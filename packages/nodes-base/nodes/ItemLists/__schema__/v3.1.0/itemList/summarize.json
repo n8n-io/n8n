@@ -1,14 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "content": {
-            "type": "string"
-        },
-        "appended_message_content": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        }
-    }
+    "name": "summarize.json",
+    "path": "packages/nodes-base/nodes/ItemLists/__schema__/v3.1.0/itemList/summarize.json",
+    "sha": "082f62d455c0f545250b5f423ba9c94eaa08c392",
+    "size": 260,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ItemLists/__schema__/v3.1.0/itemList/summarize.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ItemLists/__schema__/v3.1.0/itemList/summarize.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/082f62d455c0f545250b5f423ba9c94eaa08c392",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/ItemLists/__schema__/v3.1.0/itemList/summarize.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJjb250ZW50IjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgfSwKICAgICAgICAiYXBwZW5kZWRfbWVzc2FnZV9jb250\nZW50IjogewogICAgICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAg\nICAgICJpdGVtcyI6IHsKICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICAgICAgfQogICAgICAgIH0KICAgIH0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ItemLists/__schema__/v3.1.0/itemList/summarize.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/082f62d455c0f545250b5f423ba9c94eaa08c392",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ItemLists/__schema__/v3.1.0/itemList/summarize.json"
+    },
+    "version": 1
 }
