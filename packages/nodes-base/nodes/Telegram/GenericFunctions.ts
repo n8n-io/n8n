@@ -80,6 +80,7 @@ export function addAdditionalFields(
 	const additionalFields = this.getNodeParameter('additionalFields', index);
 
 	if (operation === 'sendMessage') {
+		// [ria] && SEND_AND_WAIT ?
 		const attributionText = 'This message was sent automatically with ';
 		const link = createUtmCampaignLink('n8n-nodes-base.telegram', instanceId);
 
@@ -260,14 +261,17 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 	const config = getSendAndWaitConfig(context);
 	let text = config.message;
 
-	const instanceId = context.getInstanceId();
-	const attributionText = 'This message was sent automatically with ';
-	const link = createUtmCampaignLink('n8n-nodes-base.telegram', instanceId);
-	text = `${text}\n\n_${attributionText}_[n8n](${link})`;
+	if (config.appendAttribution) {
+		const instanceId = context.getInstanceId();
+		const attributionText = 'This message was sent automatically with ';
+		const link = createUtmCampaignLink('n8n-nodes-base.telegram', instanceId);
+		text = `${text}\n\n_${attributionText}_[n8n](${link})`;
+	}
 
 	const body = {
 		chat_id,
 		text,
+
 		disable_web_page_preview: true,
 		parse_mode: 'Markdown',
 		reply_markup: {

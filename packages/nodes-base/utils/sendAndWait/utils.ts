@@ -29,6 +29,7 @@ export type SendAndWaitConfig = {
 	message: string;
 	url: string;
 	options: Array<{ label: string; value: string; style: string }>;
+	appendAttribution?: boolean;
 };
 
 type FormResponseTypeOptions = {
@@ -231,7 +232,17 @@ export function getSendAndWaitProperties(
 			type: 'collection',
 			placeholder: 'Add option',
 			default: {},
-			options: [limitWaitTimeOption],
+			options: [
+				limitWaitTimeOption,
+				{
+					displayName: 'Append n8n Attribution',
+					name: 'appendAttribution',
+					type: 'boolean',
+					default: true,
+					description:
+						'Whether to include the phrase "This message was sent automatically with n8n" to the end of the message',
+				},
+			],
 			displayOptions: {
 				show: {
 					responseType: ['approval'],
@@ -272,6 +283,14 @@ export function getSendAndWaitProperties(
 					default: 'Submit',
 				},
 				limitWaitTimeOption,
+				{
+					displayName: 'Append n8n Attribution',
+					name: 'appendAttribution',
+					type: 'boolean',
+					default: true,
+					description:
+						'Whether to include the phrase "This message was sent automatically with n8n" to the end of the message',
+				},
 			],
 			displayOptions: {
 				show: {
@@ -448,11 +467,18 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 		buttonDisapprovalStyle?: string;
 	};
 
+	const appendAttribution = context.getNodeParameter(
+		'options.appendAttribution',
+		0,
+		true,
+	) as boolean;
+
 	const config: SendAndWaitConfig = {
 		title: subject,
 		message,
 		url: `${resumeUrl}/${nodeId}`,
 		options: [],
+		appendAttribution,
 	};
 
 	const responseType = context.getNodeParameter('responseType', 0, 'approval') as string;
