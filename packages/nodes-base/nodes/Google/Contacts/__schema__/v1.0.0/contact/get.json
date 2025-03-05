@@ -1,14 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"resourceName": {
-			"type": "string"
-		},
-		"etag": {
-			"type": "string"
-		},
-		"contactId": {
-			"type": "string"
-		}
-	}
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Google/Contacts/__schema__/v1.0.0/contact/get.json",
+    "sha": "4f804ef8e507a30cc80b04c27bfc920a9327c900",
+    "size": 166,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Contacts/__schema__/v1.0.0/contact/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Contacts/__schema__/v1.0.0/contact/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/4f804ef8e507a30cc80b04c27bfc920a9327c900",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/Contacts/__schema__/v1.0.0/contact/get.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJyZXNv\ndXJjZU5hbWUiOiB7CgkJCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJCSJldGFn\nIjogewoJCQkidHlwZSI6ICJzdHJpbmciCgkJfSwKCQkiY29udGFjdElkIjog\newoJCQkidHlwZSI6ICJzdHJpbmciCgkJfQoJfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Contacts/__schema__/v1.0.0/contact/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/4f804ef8e507a30cc80b04c27bfc920a9327c900",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Contacts/__schema__/v1.0.0/contact/get.json"
+    },
+    "version": 1
 }
