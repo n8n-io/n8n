@@ -1,85 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"id": {
-			"type": "integer"
-		},
-		"profileId": {
-			"type": "integer"
-		},
-		"recipientId": {
-			"type": "integer"
-		},
-		"creationTime": {
-			"type": "string"
-		},
-		"modificationTime": {
-			"type": "string"
-		},
-		"active": {
-			"type": "boolean"
-		},
-		"eligible": {
-			"type": "boolean"
-		},
-		"balances": {
-			"type": "array",
-			"items": {
-				"type": "object",
-				"properties": {
-					"id": {
-						"type": "integer"
-					},
-					"balanceType": {
-						"type": "string"
-					},
-					"currency": {
-						"type": "string"
-					},
-					"amount": {
-						"type": "object",
-						"properties": {
-							"currency": {
-								"type": "string"
-							}
-						},
-						"required": [
-							"value",
-							"currency"
-						]
-					},
-					"reservedAmount": {
-						"type": "object",
-						"properties": {
-							"currency": {
-								"type": "string"
-							}
-						},
-						"required": [
-							"value",
-							"currency"
-						]
-					}
-				},
-				"required": [
-					"id",
-					"balanceType",
-					"currency",
-					"amount",
-					"reservedAmount",
-					"bankDetails"
-				]
-			}
-		}
-	},
-	"required": [
-		"id",
-		"profileId",
-		"recipientId",
-		"creationTime",
-		"modificationTime",
-		"active",
-		"eligible",
-		"balances"
-	]
+    "name": "getBalances.json",
+    "path": "packages/nodes-base/nodes/Wise/__schema__/v1.0.0/account/getBalances.json",
+    "sha": "c1fe5d69333133f49da279d3e93a5fdbdbbe4325",
+    "size": 1267,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Wise/__schema__/v1.0.0/account/getBalances.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Wise/__schema__/v1.0.0/account/getBalances.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/c1fe5d69333133f49da279d3e93a5fdbdbbe4325",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Wise/__schema__/v1.0.0/account/getBalances.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJpZCI6\nIHsKCQkJInR5cGUiOiAiaW50ZWdlciIKCQl9LAoJCSJwcm9maWxlSWQiOiB7\nCgkJCSJ0eXBlIjogImludGVnZXIiCgkJfSwKCQkicmVjaXBpZW50SWQiOiB7\nCgkJCSJ0eXBlIjogImludGVnZXIiCgkJfSwKCQkiY3JlYXRpb25UaW1lIjog\newoJCQkidHlwZSI6ICJzdHJpbmciCgkJfSwKCQkibW9kaWZpY2F0aW9uVGlt\nZSI6IHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJImFjdGl2ZSI6IHsK\nCQkJInR5cGUiOiAiYm9vbGVhbiIKCQl9LAoJCSJlbGlnaWJsZSI6IHsKCQkJ\nInR5cGUiOiAiYm9vbGVhbiIKCQl9LAoJCSJiYWxhbmNlcyI6IHsKCQkJInR5\ncGUiOiAiYXJyYXkiLAoJCQkiaXRlbXMiOiB7CgkJCQkidHlwZSI6ICJvYmpl\nY3QiLAoJCQkJInByb3BlcnRpZXMiOiB7CgkJCQkJImlkIjogewoJCQkJCQki\ndHlwZSI6ICJpbnRlZ2VyIgoJCQkJCX0sCgkJCQkJImJhbGFuY2VUeXBlIjog\newoJCQkJCQkidHlwZSI6ICJzdHJpbmciCgkJCQkJfSwKCQkJCQkiY3VycmVu\nY3kiOiB7CgkJCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJCQl9LAoJCQkJCSJh\nbW91bnQiOiB7CgkJCQkJCSJ0eXBlIjogIm9iamVjdCIsCgkJCQkJCSJwcm9w\nZXJ0aWVzIjogewoJCQkJCQkJImN1cnJlbmN5IjogewoJCQkJCQkJCSJ0eXBl\nIjogInN0cmluZyIKCQkJCQkJCX0KCQkJCQkJfSwKCQkJCQkJInJlcXVpcmVk\nIjogWwoJCQkJCQkJInZhbHVlIiwKCQkJCQkJCSJjdXJyZW5jeSIKCQkJCQkJ\nXQoJCQkJCX0sCgkJCQkJInJlc2VydmVkQW1vdW50IjogewoJCQkJCQkidHlw\nZSI6ICJvYmplY3QiLAoJCQkJCQkicHJvcGVydGllcyI6IHsKCQkJCQkJCSJj\ndXJyZW5jeSI6IHsKCQkJCQkJCQkidHlwZSI6ICJzdHJpbmciCgkJCQkJCQl9\nCgkJCQkJCX0sCgkJCQkJCSJyZXF1aXJlZCI6IFsKCQkJCQkJCSJ2YWx1ZSIs\nCgkJCQkJCQkiY3VycmVuY3kiCgkJCQkJCV0KCQkJCQl9CgkJCQl9LAoJCQkJ\nInJlcXVpcmVkIjogWwoJCQkJCSJpZCIsCgkJCQkJImJhbGFuY2VUeXBlIiwK\nCQkJCQkiY3VycmVuY3kiLAoJCQkJCSJhbW91bnQiLAoJCQkJCSJyZXNlcnZl\nZEFtb3VudCIsCgkJCQkJImJhbmtEZXRhaWxzIgoJCQkJXQoJCQl9CgkJfQoJ\nfSwKCSJyZXF1aXJlZCI6IFsKCQkiaWQiLAoJCSJwcm9maWxlSWQiLAoJCSJy\nZWNpcGllbnRJZCIsCgkJImNyZWF0aW9uVGltZSIsCgkJIm1vZGlmaWNhdGlv\nblRpbWUiLAoJCSJhY3RpdmUiLAoJCSJlbGlnaWJsZSIsCgkJImJhbGFuY2Vz\nIgoJXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Wise/__schema__/v1.0.0/account/getBalances.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/c1fe5d69333133f49da279d3e93a5fdbdbbe4325",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Wise/__schema__/v1.0.0/account/getBalances.json"
+    },
+    "version": 1
 }
