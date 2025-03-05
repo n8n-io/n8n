@@ -849,10 +849,12 @@ function removeOverride() {
 					</n8n-text>
 					<div v-if="currentResponse.errorDetails" :class="$style.errorDetails">
 						<n8n-text size="small">
-							<span v-if="currentResponse.errorDetails.httpCode">
+							<span v-if="currentResponse.errorDetails.httpCode" data-test-id="rlc-error-code">
 								{{ currentResponse.errorDetails.httpCode }} -
 							</span>
-							{{ currentResponse.errorDetails.message }}
+							<span data-test-id="rlc-error-message">{{
+								currentResponse.errorDetails.message
+							}}</span>
 						</n8n-text>
 						<N8nNotice
 							v-if="currentResponse.errorDetails.description"

@@ -133,57 +133,100 @@ describe('ResourceLocator', () => {
 		});
 	});
 
-	it('renders permission error correctly', async () => {
-		const TEST_401_ERROR = {
-			message: 'Failed to load resources',
-			httpCode: '401',
-			description: 'Authentication failed. Please check your credentials.',
-		};
+	// Testing error message deduplication
+	describe('ResourceLocator credentials error handling', () => {
+		it.each([
+			{
+				testName: 'period-separated credential message',
+				error: {
+					message: 'Authentication failed. Please check your credentials.',
+					httpCode: '401',
+					description: 'Authentication failed. Please check your credentials.',
+				},
+				expectedMessage: 'Authentication failed.',
+			},
+			{
+				testName: 'dash-separated credential message',
+				error: {
+					message: 'Authentication failed - Please check your credentials.',
+					httpCode: '401',
+					description: 'Authentication failed. Please check your credentials.',
+				},
+				expectedMessage: 'Authentication failed',
+			},
+			{
+				testName: 'credential message with "Perhaps" phrasing',
+				error: {
+					message: 'Authentication failed - Perhaps check your credentials?',
+					httpCode: '401',
+					description: 'Authentication failed. Please check your credentials.',
+				},
+				expectedMessage: 'Authentication failed',
+			},
+			{
+				testName: 'singular credential phrasing',
+				error: {
+					message: 'Authentication failed. You should check your credential.',
+					httpCode: '401',
+					description: 'Authentication failed.',
+				},
+				expectedMessage: 'Authentication failed.',
+			},
+			{
+				testName: 'verify credentials phrasing',
+				error: {
+					message: 'Authentication failed - Please verify your credentials.',
+					httpCode: '401',
+					description: 'Authentication failed.',
+				},
+				expectedMessage: 'Authentication failed',
+			},
+		])('$testName', async ({ error, expectedMessage }) => {
+			nodeTypesStore.getResourceLocatorResults.mockRejectedValue(error);
 
-		nodeTypesStore.getResourceLocatorResults.mockRejectedValue(TEST_401_ERROR);
+			const { getByTestId, findByTestId } = renderComponent();
 
-		const { getByTestId, findByTestId } = renderComponent();
+			expect(getByTestId(`resource-locator-${TEST_PARAMETER_MULTI_MODE.name}`)).toBeInTheDocument();
 
-		expect(getByTestId(`resource-locator-${TEST_PARAMETER_MULTI_MODE.name}`)).toBeInTheDocument();
+			await userEvent.click(getByTestId('rlc-input'));
+			await waitFor(() => {
+				expect(nodeTypesStore.getResourceLocatorResults).toHaveBeenCalled();
+			});
 
-		await userEvent.click(getByTestId('rlc-input'));
-		await waitFor(() => {
-			expect(nodeTypesStore.getResourceLocatorResults).toHaveBeenCalled();
+			const errorContainer = await findByTestId('rlc-error-container');
+			expect(errorContainer).toBeInTheDocument();
+
+			expect(getByTestId('rlc-error-code')).toHaveTextContent(error.httpCode);
+			expect(getByTestId('rlc-error-message')).toHaveTextContent(expectedMessage);
+
+			expect(getByTestId('permission-error-link')).toBeInTheDocument();
 		});
 
-		const errorContainer = await findByTestId('rlc-error-container');
-		expect(errorContainer).toBeInTheDocument();
+		it('renders generic error correctly', async () => {
+			const TEST_500_ERROR = {
+				message: 'Whoops',
+				httpCode: '500',
+				description: 'Something went wrong. Please try again later.',
+			};
 
-		expect(errorContainer).toHaveTextContent(TEST_401_ERROR.httpCode);
-		expect(errorContainer).toHaveTextContent(TEST_401_ERROR.message);
+			nodeTypesStore.getResourceLocatorResults.mockRejectedValue(TEST_500_ERROR);
+			const { getByTestId, findByTestId, queryByTestId } = renderComponent();
 
-		expect(getByTestId('permission-error-link')).toBeInTheDocument();
-	});
+			expect(getByTestId(`resource-locator-${TEST_PARAMETER_MULTI_MODE.name}`)).toBeInTheDocument();
 
-	it('renders generic error correctly', async () => {
-		const TEST_500_ERROR = {
-			message: 'Whoops',
-			httpCode: '500',
-			description: 'Something went wrong. Please try again later.',
-		};
+			await userEvent.click(getByTestId('rlc-input'));
 
-		nodeTypesStore.getResourceLocatorResults.mockRejectedValue(TEST_500_ERROR);
-		const { getByTestId, findByTestId, queryByTestId } = renderComponent();
+			await waitFor(() => {
+				expect(nodeTypesStore.getResourceLocatorResults).toHaveBeenCalled();
+			});
 
-		expect(getByTestId(`resource-locator-${TEST_PARAMETER_MULTI_MODE.name}`)).toBeInTheDocument();
+			const errorContainer = await findByTestId('rlc-error-container');
+			expect(errorContainer).toBeInTheDocument();
 
-		await userEvent.click(getByTestId('rlc-input'));
+			expect(errorContainer).toHaveTextContent(TEST_500_ERROR.httpCode);
+			expect(errorContainer).toHaveTextContent(TEST_500_ERROR.message);
 
-		await waitFor(() => {
-			expect(nodeTypesStore.getResourceLocatorResults).toHaveBeenCalled();
+			expect(queryByTestId('permission-error-link')).not.toBeInTheDocument();
 		});
-
-		const errorContainer = await findByTestId('rlc-error-container');
-		expect(errorContainer).toBeInTheDocument();
-
-		expect(errorContainer).toHaveTextContent(TEST_500_ERROR.httpCode);
-		expect(errorContainer).toHaveTextContent(TEST_500_ERROR.message);
-
-		expect(queryByTestId('permission-error-link')).not.toBeInTheDocument();
 	});
 });
