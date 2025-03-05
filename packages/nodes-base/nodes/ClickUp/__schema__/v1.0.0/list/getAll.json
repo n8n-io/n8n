@@ -1,84 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "orderindex": {
-            "type": "integer"
-        },
-        "content": {
-            "type": "string"
-        },
-        "task_count": {
-            "type": "integer"
-        },
-        "folder": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "hidden": {
-                    "type": "boolean"
-                },
-                "access": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "id",
-                "name",
-                "hidden",
-                "access"
-            ]
-        },
-        "space": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "access": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "id",
-                "name",
-                "access"
-            ]
-        },
-        "archived": {
-            "type": "boolean"
-        },
-        "permission_level": {
-            "type": "string"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/list/getAll.json",
+    "sha": "a5a08b775a5fd35694eaf0cbccea88426b235b86",
+    "size": 1831,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/list/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/list/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/a5a08b775a5fd35694eaf0cbccea88426b235b86",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/list/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgIm5hbWUiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJvcmRlcmluZGV4Ijog\newogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAg\nICAgICAgImNvbnRlbnQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJ0YXNrX2NvdW50IjogewogICAgICAg\nICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgImZv\nbGRlciI6IHsKICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAg\nICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAiaWQiOiB7\nCiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJuYW1lIjogewogICAgICAg\nICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAg\nIH0sCiAgICAgICAgICAgICAgICAiaGlkZGVuIjogewogICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgICAgICAgICB9LAog\nICAgICAgICAgICAgICAgImFjY2VzcyI6IHsKICAgICAgICAgICAgICAgICAg\nICAidHlwZSI6ICJib29sZWFuIgogICAgICAgICAgICAgICAgfQogICAgICAg\nICAgICB9LAogICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAg\nICAgICAiaWQiLAogICAgICAgICAgICAgICAgIm5hbWUiLAogICAgICAgICAg\nICAgICAgImhpZGRlbiIsCiAgICAgICAgICAgICAgICAiYWNjZXNzIgogICAg\nICAgICAgICBdCiAgICAgICAgfSwKICAgICAgICAic3BhY2UiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJwcm9wZXJ0\naWVzIjogewogICAgICAgICAgICAgICAgImlkIjogewogICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAg\nICAgICAgICAgICAgICAibmFtZSI6IHsKICAgICAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAg\nICAgICAgImFjY2VzcyI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6\nICJib29sZWFuIgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9LAog\nICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAiaWQi\nLAogICAgICAgICAgICAgICAgIm5hbWUiLAogICAgICAgICAgICAgICAgImFj\nY2VzcyIKICAgICAgICAgICAgXQogICAgICAgIH0sCiAgICAgICAgImFyY2hp\ndmVkIjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAg\nIH0sCiAgICAgICAgInBlcm1pc3Npb25fbGV2ZWwiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9CiAgICB9LAogICAgInJlcXVp\ncmVkIjogWwogICAgICAgICJpZCIsCiAgICAgICAgIm5hbWUiLAogICAgICAg\nICJvcmRlcmluZGV4IiwKICAgICAgICAic3RhdHVzIiwKICAgICAgICAicHJp\nb3JpdHkiLAogICAgICAgICJhc3NpZ25lZSIsCiAgICAgICAgInRhc2tfY291\nbnQiLAogICAgICAgICJkdWVfZGF0ZSIsCiAgICAgICAgInN0YXJ0X2RhdGUi\nLAogICAgICAgICJmb2xkZXIiLAogICAgICAgICJzcGFjZSIsCiAgICAgICAg\nImFyY2hpdmVkIiwKICAgICAgICAib3ZlcnJpZGVfc3RhdHVzZXMiLAogICAg\nICAgICJwZXJtaXNzaW9uX2xldmVsIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/list/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/a5a08b775a5fd35694eaf0cbccea88426b235b86",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/list/getAll.json"
     },
-    "required": [
-        "id",
-        "name",
-        "orderindex",
-        "status",
-        "priority",
-        "assignee",
-        "task_count",
-        "due_date",
-        "start_date",
-        "folder",
-        "space",
-        "archived",
-        "override_statuses",
-        "permission_level"
-    ]
+    "version": 1
 }
