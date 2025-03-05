@@ -1,8 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "integer"
-        }
-    }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/Odoo/__schema__/v1.0.0/custom/create.json",
+    "sha": "e000fbc2561de8cde6b839dc0217b2e70a3e56ed",
+    "size": 108,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Odoo/__schema__/v1.0.0/custom/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Odoo/__schema__/v1.0.0/custom/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/e000fbc2561de8cde6b839dc0217b2e70a3e56ed",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Odoo/__schema__/v1.0.0/custom/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIK\nICAgICAgICB9CiAgICB9Cn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Odoo/__schema__/v1.0.0/custom/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/e000fbc2561de8cde6b839dc0217b2e70a3e56ed",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Odoo/__schema__/v1.0.0/custom/create.json"
+    },
+    "version": 1
 }
