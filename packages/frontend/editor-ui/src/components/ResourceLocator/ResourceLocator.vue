@@ -55,6 +55,20 @@ import {
 } from '../../utils/fromAIOverrideUtils';
 import { N8nNotice } from '@n8n/design-system';
 
+/**
+ * Regular expression to check if the error message contains credential-related phrases.
+ */
+const CHECK_CREDENTIALS_REGEX = /check\s+(your\s+)?credentials?/i;
+/**
+ * Error codes and messages that indicate a permission error.
+ */
+const PERMISSION_ERROR_CODES = ['401', '403'];
+const NODE_API_AUTH_ERROR_MESSAGES = [
+	'NodeApiError: Authorization failed',
+	'NodeApiError: Unable to sign without access token',
+	'secretOrPrivateKey must be an asymmetric key when using RS256',
+];
+
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];
 	nextPageToken: unknown;
@@ -155,16 +169,12 @@ const selectedMode = computed(() => {
 
 const isListMode = computed(() => selectedMode.value === 'list');
 
+/**
+ * Check if the current response contains an error that indicates a credential issue.
+ * We do this by checking error http code
+ * But, since out NodeApiErrors sometimes just return 500, we also check the message and stack trace
+ */
 const hasCredentialError = computed(() => {
-	const PERMISSION_ERROR_CODES = ['401', '403'];
-	// Some of our NodeAPIErrors just return 500 without any details,
-	// so checking messages and stack traces for permission errors
-	const NODE_API_AUTH_ERROR_MESSAGES = [
-		'NodeApiError: Authorization failed',
-		'NodeApiError: Unable to sign without access token',
-		'secretOrPrivateKey must be an asymmetric key when using RS256',
-	];
-	// Check if error stack trace contains permission error messages
 	const stackTraceContainsCredentialError = (currentResponse.value?.errorDetails?.stackTrace ?? '')
 		.split('\n')
 		.some((line) => NODE_API_AUTH_ERROR_MESSAGES.includes(line.trim()));
@@ -664,12 +674,37 @@ async function loadResources() {
 			loading: false,
 			error: true,
 			errorDetails: {
-				message: e.message,
+				message: removeDuplicateTextFromErrorMessage(e.message),
 				description: e.description,
 				httpCode: e.httpCode,
 			},
 		});
 	}
+}
+
+/**
+ * Removes duplicate credential-related sentences from error messages.
+ * We are already showing a link to create/check the credentials, so we don't need to repeat the same message.
+ */
+function removeDuplicateTextFromErrorMessage(message: string): string {
+	let segments: string[] = [];
+
+	// Split message into sentences or segments
+	if (/[-–—]/.test(message)) {
+		// By various dash types
+		segments = message.split(/\s*[-–—]\s*/);
+	} else {
+		// By sentence boundaries
+		segments = message.split(/(?<=[.!?])\s+/);
+	}
+
+	// Filter out segments containing credential check phrases
+	const filteredSegments = segments.filter((segment: string) => {
+		if (!segment.trim()) return false;
+		return !CHECK_CREDENTIALS_REGEX.test(segment);
+	});
+
+	return filteredSegments.join(' ').trim();
 }
 
 function onInputFocus(): void {
