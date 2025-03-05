@@ -1,22 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "Modified Date": {
-            "type": "string"
-        },
-        "Created Date": {
-            "type": "string"
-        },
-        "Created By": {
-            "type": "string"
-        },
-        "_id": {
-            "type": "string"
-        }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Bubble/__schema__/v1.0.0/object/get.json",
+    "sha": "716787c9d1d5479168a6110c659b140df8d9d927",
+    "size": 393,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Bubble/__schema__/v1.0.0/object/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Bubble/__schema__/v1.0.0/object/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/716787c9d1d5479168a6110c659b140df8d9d927",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Bubble/__schema__/v1.0.0/object/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJNb2RpZmllZCBEYXRlIjogewogICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiQ3JlYXRlZCBEYXRlIjog\newogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAg\nICAgICAiQ3JlYXRlZCBCeSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgIH0sCiAgICAgICAgIl9pZCI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0KICAgIH0sCiAgICAicmVxdWly\nZWQiOiBbCiAgICAgICAgIk1vZGlmaWVkIERhdGUiLAogICAgICAgICJDcmVh\ndGVkIERhdGUiLAogICAgICAgICJfaWQiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Bubble/__schema__/v1.0.0/object/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/716787c9d1d5479168a6110c659b140df8d9d927",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Bubble/__schema__/v1.0.0/object/get.json"
     },
-    "required": [
-        "Modified Date",
-        "Created Date",
-        "_id"
-    ]
+    "version": 1
 }
