@@ -14,7 +14,7 @@ const getBinaryDataFromNode = (context: IWebhookFunctions, nodeName: string): ID
 	return context.evaluateExpression(`{{ $('${nodeName}').first().binary }}`) as IDataObject;
 };
 
-export const binaryResponse = (context: IWebhookFunctions): IDataObject => {
+export const binaryResponse = async (context: IWebhookFunctions): Promise<string> => {
 	const inputDataFieldName = context.getNodeParameter('inputDataFieldName', '') as string;
 	const parentNodes = context.getParentNodes(context.getNode().name);
 	const binaryNode = parentNodes.find((node) =>
@@ -27,7 +27,14 @@ export const binaryResponse = (context: IWebhookFunctions): IDataObject => {
 		inputDataFieldName
 	] as IBinaryData;
 
-	return binaryData;
+	// N8N_DEFAULT_BINARY_DATA_MODE=filesystem
+	if (binaryData.id) {
+		const bdFilesystem = await context.helpers.getBinaryStream(binaryData.id);
+
+		return await context.helpers.binaryToString(bdFilesystem);
+	}
+
+	return atob(binaryData.data);
 };
 
 export const renderFormCompletion = async (
@@ -44,7 +51,9 @@ export const renderFormCompletion = async (
 	};
 	const responseText = context.getNodeParameter('responseText', '') as string;
 	const binary =
-		context.getNodeParameter('respondWith', '') === 'returnBinary' ? binaryResponse(context) : '';
+		context.getNodeParameter('respondWith', '') === 'returnBinary'
+			? await binaryResponse(context)
+			: '';
 
 	let title = options.formTitle;
 	if (!title) {
@@ -60,7 +69,7 @@ export const renderFormCompletion = async (
 		formTitle: title,
 		appendAttribution,
 		responseText: sanitizeHtml(responseText),
-		responseBinary: encodeURIComponent(JSON.stringify(binary)),
+		responseBinary: encodeURIComponent(binary),
 		dangerousCustomCss: sanitizeCustomCss(options.customCss),
 		redirectUrl,
 	});
