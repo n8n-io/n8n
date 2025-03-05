@@ -1,23 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"rate": {
-			"type": "number"
-		},
-		"source": {
-			"type": "string"
-		},
-		"target": {
-			"type": "string"
-		},
-		"time": {
-			"type": "string"
-		}
-	},
-	"required": [
-		"rate",
-		"source",
-		"target",
-		"time"
-	]
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Wise/__schema__/v1.0.0/exchangeRate/get.json",
+    "sha": "06e6762606c31208bdc0cbcff8bbe7689f898037",
+    "size": 256,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Wise/__schema__/v1.0.0/exchangeRate/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Wise/__schema__/v1.0.0/exchangeRate/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/06e6762606c31208bdc0cbcff8bbe7689f898037",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Wise/__schema__/v1.0.0/exchangeRate/get.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJyYXRl\nIjogewoJCQkidHlwZSI6ICJudW1iZXIiCgkJfSwKCQkic291cmNlIjogewoJ\nCQkidHlwZSI6ICJzdHJpbmciCgkJfSwKCQkidGFyZ2V0IjogewoJCQkidHlw\nZSI6ICJzdHJpbmciCgkJfSwKCQkidGltZSI6IHsKCQkJInR5cGUiOiAic3Ry\naW5nIgoJCX0KCX0sCgkicmVxdWlyZWQiOiBbCgkJInJhdGUiLAoJCSJzb3Vy\nY2UiLAoJCSJ0YXJnZXQiLAoJCSJ0aW1lIgoJXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Wise/__schema__/v1.0.0/exchangeRate/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/06e6762606c31208bdc0cbcff8bbe7689f898037",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Wise/__schema__/v1.0.0/exchangeRate/get.json"
+    },
+    "version": 1
 }
