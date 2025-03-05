@@ -1,83 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "createdAt": {
-            "type": "string"
-        },
-        "updatedAt": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "active": {
-            "type": "boolean"
-        },
-        "nodes": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "type": {
-                        "type": "string"
-                    },
-                    "position": {
-                        "type": "array",
-                        "items": {
-                            "type": "integer"
-                        }
-                    },
-                    "id": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "webhookId": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "parameters",
-                    "id",
-                    "name"
-                ]
-            }
-        },
-        "settings": {
-            "type": "object",
-            "properties": {
-                "executionOrder": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "executionOrder"
-            ]
-        },
-        "versionId": {
-            "type": "string"
-        },
-        "triggerCount": {
-            "type": "integer"
-        }
+    "name": "update.json",
+    "path": "packages/nodes-base/nodes/N8nTrainingCustomerDatastore/__schema__/v1.0.0/workflow/update.json",
+    "sha": "90ec62833487fb06c0a59d719a6e33a42fb8e9e8",
+    "size": 1927,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/N8nTrainingCustomerDatastore/__schema__/v1.0.0/workflow/update.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/N8nTrainingCustomerDatastore/__schema__/v1.0.0/workflow/update.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/90ec62833487fb06c0a59d719a6e33a42fb8e9e8",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/N8nTrainingCustomerDatastore/__schema__/v1.0.0/workflow/update.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJjcmVhdGVkQXQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJ1cGRhdGVkQXQiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJp\nZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0s\nCiAgICAgICAgIm5hbWUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJhY3RpdmUiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAibm9kZXMi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogImFycmF5IiwKICAgICAgICAgICAg\nIml0ZW1zIjogewogICAgICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwK\nICAgICAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogewogICAgICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAg\nICAgICAgICAgICAicG9zaXRpb24iOiB7CiAgICAgICAgICAgICAgICAgICAg\nICAgICJ0eXBlIjogImFycmF5IiwKICAgICAgICAgICAgICAgICAgICAgICAg\nIml0ZW1zIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUi\nOiAiaW50ZWdlciIKICAgICAgICAgICAgICAgICAgICAgICAgfQogICAgICAg\nICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgImlkIjogewog\nICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAibmFtZSI6\nIHsKICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgIndl\nYmhvb2tJZCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAg\nIH0sCiAgICAgICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAg\nICAgICAgICAgInBhcmFtZXRlcnMiLAogICAgICAgICAgICAgICAgICAgICJp\nZCIsCiAgICAgICAgICAgICAgICAgICAgIm5hbWUiCiAgICAgICAgICAgICAg\nICBdCiAgICAgICAgICAgIH0KICAgICAgICB9LAogICAgICAgICJzZXR0aW5n\ncyI6IHsKICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAg\nICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAiZXhlY3V0aW9u\nT3JkZXIiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9LAogICAgICAgICAg\nICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAiZXhlY3V0aW9uT3Jk\nZXIiCiAgICAgICAgICAgIF0KICAgICAgICB9LAogICAgICAgICJ2ZXJzaW9u\nSWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9\nLAogICAgICAgICJ0cmlnZ2VyQ291bnQiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogImludGVnZXIiCiAgICAgICAgfQogICAgfSwKICAgICJyZXF1aXJlZCI6\nIFsKICAgICAgICAiY3JlYXRlZEF0IiwKICAgICAgICAidXBkYXRlZEF0IiwK\nICAgICAgICAiaWQiLAogICAgICAgICJuYW1lIiwKICAgICAgICAiYWN0aXZl\nIiwKICAgICAgICAibm9kZXMiLAogICAgICAgICJjb25uZWN0aW9ucyIsCiAg\nICAgICAgInNldHRpbmdzIiwKICAgICAgICAic3RhdGljRGF0YSIsCiAgICAg\nICAgIm1ldGEiLAogICAgICAgICJwaW5EYXRhIiwKICAgICAgICAidmVyc2lv\nbklkIiwKICAgICAgICAidHJpZ2dlckNvdW50IgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/N8nTrainingCustomerDatastore/__schema__/v1.0.0/workflow/update.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/90ec62833487fb06c0a59d719a6e33a42fb8e9e8",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/N8nTrainingCustomerDatastore/__schema__/v1.0.0/workflow/update.json"
     },
-    "required": [
-        "createdAt",
-        "updatedAt",
-        "id",
-        "name",
-        "active",
-        "nodes",
-        "connections",
-        "settings",
-        "staticData",
-        "meta",
-        "pinData",
-        "versionId",
-        "triggerCount"
-    ]
+    "version": 1
 }
