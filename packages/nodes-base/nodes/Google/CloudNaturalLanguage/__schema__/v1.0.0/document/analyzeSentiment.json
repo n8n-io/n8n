@@ -1,40 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "language": {
-            "type": "string"
-        },
-        "sentences": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "text": {
-                        "type": "object",
-                        "properties": {
-                            "content": {
-                                "type": "string"
-                            },
-                            "beginOffset": {
-                                "type": "integer"
-                            }
-                        },
-                        "required": [
-                            "content",
-                            "beginOffset"
-                        ]
-                    }
-                },
-                "required": [
-                    "text",
-                    "sentiment"
-                ]
-            }
-        }
+    "name": "analyzeSentiment.json",
+    "path": "packages/nodes-base/nodes/Google/CloudNaturalLanguage/__schema__/v1.0.0/document/analyzeSentiment.json",
+    "sha": "fe604e9d61c01c44a374e28dca6465fc2a4d70a7",
+    "size": 1052,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/CloudNaturalLanguage/__schema__/v1.0.0/document/analyzeSentiment.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/CloudNaturalLanguage/__schema__/v1.0.0/document/analyzeSentiment.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/fe604e9d61c01c44a374e28dca6465fc2a4d70a7",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/CloudNaturalLanguage/__schema__/v1.0.0/document/analyzeSentiment.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJsYW5ndWFnZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgIH0sCiAgICAgICAgInNlbnRlbmNlcyI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAiYXJyYXkiLAogICAgICAgICAgICAiaXRlbXMiOiB7\nCiAgICAgICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAg\nICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgInRl\neHQiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogIm9iamVj\ndCIsCiAgICAgICAgICAgICAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICAgICAgICAgICAgICAgICAgICAgImNvbnRlbnQiOiB7CiAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICJiZWdpbk9mZnNldCI6IHsKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgICAg\nICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgICAgICAgICB9\nLAogICAgICAgICAgICAgICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAiY29udGVudCIsCiAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAiYmVnaW5PZmZzZXQiCiAgICAgICAgICAgICAg\nICAgICAgICAgIF0KICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAg\nICAgICB9LAogICAgICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAg\nICAgICAgICAgICAgICJ0ZXh0IiwKICAgICAgICAgICAgICAgICAgICAic2Vu\ndGltZW50IgogICAgICAgICAgICAgICAgXQogICAgICAgICAgICB9CiAgICAg\nICAgfQogICAgfSwKICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAiZG9jdW1l\nbnRTZW50aW1lbnQiLAogICAgICAgICJsYW5ndWFnZSIsCiAgICAgICAgInNl\nbnRlbmNlcyIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/CloudNaturalLanguage/__schema__/v1.0.0/document/analyzeSentiment.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/fe604e9d61c01c44a374e28dca6465fc2a4d70a7",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/CloudNaturalLanguage/__schema__/v1.0.0/document/analyzeSentiment.json"
     },
-    "required": [
-        "documentSentiment",
-        "language",
-        "sentences"
-    ]
+    "version": 1
 }
