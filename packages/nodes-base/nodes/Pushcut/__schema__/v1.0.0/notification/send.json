@@ -1,19 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "message": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "notificationId": {
-            "type": "string"
-        }
+    "name": "send.json",
+    "path": "packages/nodes-base/nodes/Pushcut/__schema__/v1.0.0/notification/send.json",
+    "sha": "d2aeec57803d6a1a1bbb8fe5ce73abcb884be988",
+    "size": 319,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Pushcut/__schema__/v1.0.0/notification/send.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Pushcut/__schema__/v1.0.0/notification/send.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/d2aeec57803d6a1a1bbb8fe5ce73abcb884be988",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Pushcut/__schema__/v1.0.0/notification/send.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJtZXNzYWdlIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgfSwKICAgICAgICAiaWQiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJub3RpZmljYXRp\nb25JZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nIH0KICAgIH0sCiAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgIm1lc3NhZ2Ui\nLAogICAgICAgICJpZCIsCiAgICAgICAgIm5vdGlmaWNhdGlvbklkIgogICAg\nXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Pushcut/__schema__/v1.0.0/notification/send.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/d2aeec57803d6a1a1bbb8fe5ce73abcb884be988",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Pushcut/__schema__/v1.0.0/notification/send.json"
     },
-    "required": [
-        "message",
-        "id",
-        "notificationId"
-    ]
+    "version": 1
 }
