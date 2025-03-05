@@ -22,6 +22,11 @@ export async function rabbitmqConnect(
 	}, {} as IDataObject) as amqplib.Options.Connect;
 
 	const optsData: IDataObject = {};
+
+	optsData.clientProperties = {
+			connection_name: "n8n" // should customize this
+	};
+	
 	if (credentials.ssl) {
 		credentialData.protocol = 'amqps';
 
