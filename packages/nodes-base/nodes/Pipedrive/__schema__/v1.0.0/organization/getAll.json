@@ -1,153 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "integer"
-        },
-        "company_id": {
-            "type": "integer"
-        },
-        "owner_id": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "has_pic": {
-                    "type": "integer"
-                },
-                "active_flag": {
-                    "type": "boolean"
-                },
-                "value": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "id",
-                "name",
-                "email",
-                "has_pic",
-                "pic_hash",
-                "active_flag",
-                "value"
-            ]
-        },
-        "name": {
-            "type": "string"
-        },
-        "open_deals_count": {
-            "type": "integer"
-        },
-        "related_open_deals_count": {
-            "type": "integer"
-        },
-        "closed_deals_count": {
-            "type": "integer"
-        },
-        "related_closed_deals_count": {
-            "type": "integer"
-        },
-        "email_messages_count": {
-            "type": "integer"
-        },
-        "people_count": {
-            "type": "integer"
-        },
-        "activities_count": {
-            "type": "integer"
-        },
-        "done_activities_count": {
-            "type": "integer"
-        },
-        "undone_activities_count": {
-            "type": "integer"
-        },
-        "files_count": {
-            "type": "integer"
-        },
-        "notes_count": {
-            "type": "integer"
-        },
-        "followers_count": {
-            "type": "integer"
-        },
-        "won_deals_count": {
-            "type": "integer"
-        },
-        "related_won_deals_count": {
-            "type": "integer"
-        },
-        "lost_deals_count": {
-            "type": "integer"
-        },
-        "related_lost_deals_count": {
-            "type": "integer"
-        },
-        "active_flag": {
-            "type": "boolean"
-        },
-        "picture_id": {
-            "type": "null"
-        },
-        "country_code": {
-            "type": "null"
-        },
-        "first_char": {
-            "type": "string"
-        },
-        "update_time": {
-            "type": "string"
-        },
-        "delete_time": {
-            "type": "null"
-        },
-        "add_time": {
-            "type": "string"
-        },
-        "visible_to": {
-            "type": "string"
-        },
-        "label_ids": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
-        },
-        "owner_name": {
-            "type": "string"
-        },
-        "cc_email": {
-            "type": "string"
-        },
-        "category_id": {
-            "type": "null"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/organization/getAll.json",
+    "sha": "3127df038ae1f55d5d6d76616a41edd0f1429053",
+    "size": 3572,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/organization/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/organization/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/3127df038ae1f55d5d6d76616a41edd0f1429053",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/organization/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIK\nICAgICAgICB9LAogICAgICAgICJjb21wYW55X2lkIjogewogICAgICAgICAg\nICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgIm93bmVy\nX2lkIjogewogICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAg\nICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICJpZCI6IHsK\nICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAg\nICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJuYW1lIjogewogICAgICAg\nICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAg\nIH0sCiAgICAgICAgICAgICAgICAiZW1haWwiOiB7CiAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgICAgICJoYXNfcGljIjogewogICAgICAgICAgICAgICAgICAg\nICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgICAgICAgICB9LAogICAgICAg\nICAgICAgICAgImFjdGl2ZV9mbGFnIjogewogICAgICAgICAgICAgICAgICAg\nICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgICAgICAgICB9LAogICAgICAg\nICAgICAgICAgInZhbHVlIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogImludGVnZXIiCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0s\nCiAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICJp\nZCIsCiAgICAgICAgICAgICAgICAibmFtZSIsCiAgICAgICAgICAgICAgICAi\nZW1haWwiLAogICAgICAgICAgICAgICAgImhhc19waWMiLAogICAgICAgICAg\nICAgICAgInBpY19oYXNoIiwKICAgICAgICAgICAgICAgICJhY3RpdmVfZmxh\nZyIsCiAgICAgICAgICAgICAgICAidmFsdWUiCiAgICAgICAgICAgIF0KICAg\nICAgICB9LAogICAgICAgICJuYW1lIjogewogICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAib3Blbl9kZWFsc19jb3Vu\ndCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9\nLAogICAgICAgICJyZWxhdGVkX29wZW5fZGVhbHNfY291bnQiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAgICAi\nY2xvc2VkX2RlYWxzX2NvdW50IjogewogICAgICAgICAgICAidHlwZSI6ICJp\nbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgInJlbGF0ZWRfY2xvc2VkX2Rl\nYWxzX2NvdW50IjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgog\nICAgICAgIH0sCiAgICAgICAgImVtYWlsX21lc3NhZ2VzX2NvdW50Ijogewog\nICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAg\nICAgInBlb3BsZV9jb3VudCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50\nZWdlciIKICAgICAgICB9LAogICAgICAgICJhY3Rpdml0aWVzX2NvdW50Ijog\newogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAg\nICAgICAgImRvbmVfYWN0aXZpdGllc19jb3VudCI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJ1bmRvbmVf\nYWN0aXZpdGllc19jb3VudCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50\nZWdlciIKICAgICAgICB9LAogICAgICAgICJmaWxlc19jb3VudCI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAg\nICJub3Rlc19jb3VudCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdl\nciIKICAgICAgICB9LAogICAgICAgICJmb2xsb3dlcnNfY291bnQiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAg\nICAid29uX2RlYWxzX2NvdW50IjogewogICAgICAgICAgICAidHlwZSI6ICJp\nbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgInJlbGF0ZWRfd29uX2RlYWxz\nX2NvdW50IjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAg\nICAgIH0sCiAgICAgICAgImxvc3RfZGVhbHNfY291bnQiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAgICAicmVs\nYXRlZF9sb3N0X2RlYWxzX2NvdW50IjogewogICAgICAgICAgICAidHlwZSI6\nICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgImFjdGl2ZV9mbGFnIjog\newogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAg\nICAgICAgInBpY3R1cmVfaWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51\nbGwiCiAgICAgICAgfSwKICAgICAgICAiY291bnRyeV9jb2RlIjogewogICAg\nICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAgImZp\ncnN0X2NoYXIiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICB9LAogICAgICAgICJ1cGRhdGVfdGltZSI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImRlbGV0ZV90\naW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0s\nCiAgICAgICAgImFkZF90aW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgfSwKICAgICAgICAidmlzaWJsZV90byI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAg\nImxhYmVsX2lkcyI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYXJyYXkiLAog\nICAgICAgICAgICAiaXRlbXMiOiB7CiAgICAgICAgICAgICAgICAidHlwZSI6\nICJpbnRlZ2VyIgogICAgICAgICAgICB9CiAgICAgICAgfSwKICAgICAgICAi\nb3duZXJfbmFtZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgImNjX2VtYWlsIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiY2F0ZWdvcnlf\naWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgfQog\nICAgfSwKICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAiY29tcGFueV9pZCIs\nCiAgICAgICAgInJlbGF0ZWRfb3Blbl9kZWFsc19jb3VudCIsCiAgICAgICAg\nInJlbGF0ZWRfY2xvc2VkX2RlYWxzX2NvdW50IiwKICAgICAgICAiZmlsZXNf\nY291bnQiLAogICAgICAgICJub3Rlc19jb3VudCIsCiAgICAgICAgImZvbGxv\nd2Vyc19jb3VudCIsCiAgICAgICAgInJlbGF0ZWRfd29uX2RlYWxzX2NvdW50\nIiwKICAgICAgICAicmVsYXRlZF9sb3N0X2RlYWxzX2NvdW50IiwKICAgICAg\nICAiYWN0aXZlX2ZsYWciLAogICAgICAgICJjb3VudHJ5X2NvZGUiLAogICAg\nICAgICJmaXJzdF9jaGFyIiwKICAgICAgICAiZGVsZXRlX3RpbWUiLAogICAg\nICAgICJuZXh0X2FjdGl2aXR5X3RpbWUiLAogICAgICAgICJuZXh0X2FjdGl2\naXR5X2lkIiwKICAgICAgICAibGFzdF9hY3Rpdml0eV9pZCIsCiAgICAgICAg\nImxhYmVsX2lkcyIsCiAgICAgICAgIm93bmVyX25hbWUiLAogICAgICAgICJj\nY19lbWFpbCIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/organization/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/3127df038ae1f55d5d6d76616a41edd0f1429053",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/organization/getAll.json"
     },
-    "required": [
-        "company_id",
-        "related_open_deals_count",
-        "related_closed_deals_count",
-        "files_count",
-        "notes_count",
-        "followers_count",
-        "related_won_deals_count",
-        "related_lost_deals_count",
-        "active_flag",
-        "country_code",
-        "first_char",
-        "delete_time",
-        "next_activity_time",
-        "next_activity_id",
-        "last_activity_id",
-        "label_ids",
-        "owner_name",
-        "cc_email"
-    ]
+    "version": 1
 }
