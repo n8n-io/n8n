@@ -1,126 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "url": {
-            "type": "string"
-        },
-        "id": {
-            "type": "integer"
-        },
-        "type": {
-            "type": "string"
-        },
-        "title": {
-            "type": "string"
-        },
-        "raw_title": {
-            "type": "string"
-        },
-        "description": {
-            "type": "string"
-        },
-        "raw_description": {
-            "type": "string"
-        },
-        "position": {
-            "type": "integer"
-        },
-        "active": {
-            "type": "boolean"
-        },
-        "required": {
-            "type": "boolean"
-        },
-        "collapsed_for_agents": {
-            "type": "boolean"
-        },
-        "regexp_for_validation": {
-            "type": "null"
-        },
-        "title_in_portal": {
-            "type": "string"
-        },
-        "raw_title_in_portal": {
-            "type": "string"
-        },
-        "visible_in_portal": {
-            "type": "boolean"
-        },
-        "editable_in_portal": {
-            "type": "boolean"
-        },
-        "required_in_portal": {
-            "type": "boolean"
-        },
-        "tag": {
-            "type": "null"
-        },
-        "created_at": {
-            "type": "string"
-        },
-        "updated_at": {
-            "type": "string"
-        },
-        "removable": {
-            "type": "boolean"
-        },
-        "key": {
-            "type": "null"
-        },
-        "custom_field_options": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "integer"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "raw_name": {
-                        "type": "string"
-                    },
-                    "value": {
-                        "type": "string"
-                    },
-                    "default": {
-                        "type": "boolean"
-                    }
-                },
-                "required": [
-                    "id",
-                    "name",
-                    "raw_name",
-                    "value",
-                    "default"
-                ]
-            }
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Zendesk/__schema__/v1.0.0/ticketField/getAll.json",
+    "sha": "3787fe4c9e1da2d13808d1edc221cfb6d366b1da",
+    "size": 2893,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Zendesk/__schema__/v1.0.0/ticketField/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Zendesk/__schema__/v1.0.0/ticketField/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/3787fe4c9e1da2d13808d1edc221cfb6d366b1da",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Zendesk/__schema__/v1.0.0/ticketField/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJ1cmwiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJ0eXBlIjogewogICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAi\ndGl0bGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICB9LAogICAgICAgICJyYXdfdGl0bGUiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJkZXNjcmlwdGlvbiI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAg\nICAgICAgInJhd19kZXNjcmlwdGlvbiI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInBvc2l0aW9uIjogewog\nICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAg\nICAgImFjdGl2ZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIK\nICAgICAgICB9LAogICAgICAgICJyZXF1aXJlZCI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9LAogICAgICAgICJjb2xsYXBz\nZWRfZm9yX2FnZW50cyI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVh\nbiIKICAgICAgICB9LAogICAgICAgICJyZWdleHBfZm9yX3ZhbGlkYXRpb24i\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwKICAg\nICAgICAidGl0bGVfaW5fcG9ydGFsIjogewogICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAicmF3X3RpdGxlX2luX3Bv\ncnRhbCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nIH0sCiAgICAgICAgInZpc2libGVfaW5fcG9ydGFsIjogewogICAgICAgICAg\nICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgImVkaXRh\nYmxlX2luX3BvcnRhbCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVh\nbiIKICAgICAgICB9LAogICAgICAgICJyZXF1aXJlZF9pbl9wb3J0YWwiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAg\nICAgICAidGFnIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAg\nICAgIH0sCiAgICAgICAgImNyZWF0ZWRfYXQiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJ1cGRhdGVkX2F0\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwK\nICAgICAgICAicmVtb3ZhYmxlIjogewogICAgICAgICAgICAidHlwZSI6ICJi\nb29sZWFuIgogICAgICAgIH0sCiAgICAgICAgImtleSI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAgICAgICJjdXN0b21f\nZmllbGRfb3B0aW9ucyI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYXJyYXki\nLAogICAgICAgICAgICAiaXRlbXMiOiB7CiAgICAgICAgICAgICAgICAidHlw\nZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7\nCiAgICAgICAgICAgICAgICAgICAgImlkIjogewogICAgICAgICAgICAgICAg\nICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgICAgICAgICAgICAg\nIH0sCiAgICAgICAgICAgICAgICAgICAgIm5hbWUiOiB7CiAgICAgICAgICAg\nICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAg\nICAgICB9LAogICAgICAgICAgICAgICAgICAgICJyYXdfbmFtZSI6IHsKICAg\nICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgInZhbHVlIjog\newogICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAiZGVm\nYXVsdCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiYm9v\nbGVhbiIKICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICB9\nLAogICAgICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAg\nICAgICAgICJpZCIsCiAgICAgICAgICAgICAgICAgICAgIm5hbWUiLAogICAg\nICAgICAgICAgICAgICAgICJyYXdfbmFtZSIsCiAgICAgICAgICAgICAgICAg\nICAgInZhbHVlIiwKICAgICAgICAgICAgICAgICAgICAiZGVmYXVsdCIKICAg\nICAgICAgICAgICAgIF0KICAgICAgICAgICAgfQogICAgICAgIH0KICAgIH0s\nCiAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgInVybCIsCiAgICAgICAgImlk\nIiwKICAgICAgICAidHlwZSIsCiAgICAgICAgInRpdGxlIiwKICAgICAgICAi\ncmF3X3RpdGxlIiwKICAgICAgICAiZGVzY3JpcHRpb24iLAogICAgICAgICJy\nYXdfZGVzY3JpcHRpb24iLAogICAgICAgICJwb3NpdGlvbiIsCiAgICAgICAg\nImFjdGl2ZSIsCiAgICAgICAgInJlcXVpcmVkIiwKICAgICAgICAiY29sbGFw\nc2VkX2Zvcl9hZ2VudHMiLAogICAgICAgICJyZWdleHBfZm9yX3ZhbGlkYXRp\nb24iLAogICAgICAgICJ0aXRsZV9pbl9wb3J0YWwiLAogICAgICAgICJyYXdf\ndGl0bGVfaW5fcG9ydGFsIiwKICAgICAgICAidmlzaWJsZV9pbl9wb3J0YWwi\nLAogICAgICAgICJlZGl0YWJsZV9pbl9wb3J0YWwiLAogICAgICAgICJyZXF1\naXJlZF9pbl9wb3J0YWwiLAogICAgICAgICJ0YWciLAogICAgICAgICJjcmVh\ndGVkX2F0IiwKICAgICAgICAidXBkYXRlZF9hdCIsCiAgICAgICAgInJlbW92\nYWJsZSIsCiAgICAgICAgImtleSIsCiAgICAgICAgImFnZW50X2Rlc2NyaXB0\naW9uIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Zendesk/__schema__/v1.0.0/ticketField/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/3787fe4c9e1da2d13808d1edc221cfb6d366b1da",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Zendesk/__schema__/v1.0.0/ticketField/getAll.json"
     },
-    "required": [
-        "url",
-        "id",
-        "type",
-        "title",
-        "raw_title",
-        "description",
-        "raw_description",
-        "position",
-        "active",
-        "required",
-        "collapsed_for_agents",
-        "regexp_for_validation",
-        "title_in_portal",
-        "raw_title_in_portal",
-        "visible_in_portal",
-        "editable_in_portal",
-        "required_in_portal",
-        "tag",
-        "created_at",
-        "updated_at",
-        "removable",
-        "key",
-        "agent_description"
-    ]
+    "version": 1
 }
