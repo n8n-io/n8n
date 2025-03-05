@@ -43,6 +43,12 @@ export const contactOperations: INodeProperties[] = [
 				action: 'Get a contact',
 			},
 			{
+				name: 'Get By Email',
+				value: 'getByEmail',
+				description: 'Get data of a contact via email key',
+				action: 'Get a contact via email key',
+			},
+			{
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get data of many contacts',
@@ -473,6 +479,7 @@ export const contactFields: INodeProperties[] = [
 		},
 		default: '',
 	},
+
 	{
 		displayName: 'JSON Parameters',
 		name: 'jsonParameters',
@@ -1111,7 +1118,21 @@ export const contactFields: INodeProperties[] = [
 		},
 		default: '',
 	},
-
+	/* -------------------------------------------------------------------------- */
+	/*                                 contact:getByEmail                         */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Contact Email',
+		name: 'contactEmail',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: ['getByEmail'],
+				resource: ['contact'],
+			},
+		},
+		default: '',
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                contact:getAll                              */
 	/* -------------------------------------------------------------------------- */
