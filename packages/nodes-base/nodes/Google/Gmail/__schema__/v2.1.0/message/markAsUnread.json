@@ -1,34 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "threadId": {
-            "type": "string"
-        },
-        "labelIds": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "snippet": {
-            "type": "string"
-        },
-        "sizeEstimate": {
-            "type": "integer"
-        },
-        "historyId": {
-            "type": "string"
-        },
-        "internalDate": {
-            "type": "string"
-        }
+    "name": "markAsUnread.json",
+    "path": "packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/message/markAsUnread.json",
+    "sha": "c2befb668c95791c5a6e46d6fc86e94a8258baf1",
+    "size": 636,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/message/markAsUnread.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/message/markAsUnread.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/c2befb668c95791c5a6e46d6fc86e94a8258baf1",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/message/markAsUnread.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInRocmVhZElkIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAibGFiZWxJZHMi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogImFycmF5IiwKICAgICAgICAgICAg\nIml0ZW1zIjogewogICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICB9CiAgICAgICAgfSwKICAgICAgICAic25pcHBldCI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAg\nICAgInNpemVFc3RpbWF0ZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50\nZWdlciIKICAgICAgICB9LAogICAgICAgICJoaXN0b3J5SWQiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJp\nbnRlcm5hbERhdGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9CiAgICB9LAogICAgInJlcXVpcmVkIjogWwogICAgICAgICJp\nZCIsCiAgICAgICAgInRocmVhZElkIiwKICAgICAgICAibGFiZWxJZHMiCiAg\nICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/message/markAsUnread.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/c2befb668c95791c5a6e46d6fc86e94a8258baf1",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/message/markAsUnread.json"
     },
-    "required": [
-        "id",
-        "threadId",
-        "labelIds"
-    ]
+    "version": 1
 }
