@@ -706,6 +706,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<el-dialog
+		id="ndv"
 		:model-value="(!!activeNode || renaming) && !isActiveStickyNode"
 		:before-close="close"
 		:show-close="false"

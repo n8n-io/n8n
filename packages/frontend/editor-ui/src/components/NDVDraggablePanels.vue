@@ -43,6 +43,7 @@ const props = defineProps<Props>();
 
 const isDragging = ref<boolean>(false);
 const initialized = ref<boolean>(false);
+const containerWidth = ref<number>(uiStore.appGridWidth);
 
 const emit = defineEmits<{
 	init: [{ position: number }];
@@ -84,28 +85,36 @@ onBeforeUnmount(() => {
 	ndvEventBus.off('setPositionByName', setPositionByName);
 });
 
-const containerWidth = computed(() => uiStore.appGridWidth);
+watch(
+	() => uiStore.appGridWidth,
+	(width) => {
+		const ndv = document.getElementById('ndv');
+		if (ndv) {
+			const { width: ndvWidth } = ndv.getBoundingClientRect();
+			containerWidth.value = ndvWidth;
+		} else {
+			containerWidth.value = width;
+		}
+		const minRelativeWidth = pxToRelativeWidth(MIN_PANEL_WIDTH);
+		const isBelowMinWidthMainPanel = mainPanelDimensions.value.relativeWidth < minRelativeWidth;
 
-watch(containerWidth, (width) => {
-	const minRelativeWidth = pxToRelativeWidth(MIN_PANEL_WIDTH);
-	const isBelowMinWidthMainPanel = mainPanelDimensions.value.relativeWidth < minRelativeWidth;
+		// Prevent the panel resizing below MIN_PANEL_WIDTH while maintain position
+		if (isBelowMinWidthMainPanel) {
+			setMainPanelWidth(minRelativeWidth);
+		}
 
-	// Prevent the panel resizing below MIN_PANEL_WIDTH whhile maintaing position
-	if (isBelowMinWidthMainPanel) {
-		setMainPanelWidth(minRelativeWidth);
-	}
+		const isBelowMinLeft = minimumLeftPosition.value > mainPanelDimensions.value.relativeLeft;
+		const isMaxRight = maximumRightPosition.value > mainPanelDimensions.value.relativeRight;
 
-	const isBelowMinLeft = minimumLeftPosition.value > mainPanelDimensions.value.relativeLeft;
-	const isMaxRight = maximumRightPosition.value > mainPanelDimensions.value.relativeRight;
+		// When user is resizing from non-supported view(sub ~488px) we need to refit the panels
+		if (width > MIN_WINDOW_WIDTH && isBelowMinLeft && isMaxRight) {
+			setMainPanelWidth(minRelativeWidth);
+			setPositions(getInitialLeftPosition(mainPanelDimensions.value.relativeWidth));
+		}
 
-	// When user is resizing from non-supported view(sub ~488px) we need to refit the panels
-	if (width > MIN_WINDOW_WIDTH && isBelowMinLeft && isMaxRight) {
-		setMainPanelWidth(minRelativeWidth);
-		setPositions(getInitialLeftPosition(mainPanelDimensions.value.relativeWidth));
-	}
-
-	setPositions(mainPanelDimensions.value.relativeLeft);
-});
+		setPositions(mainPanelDimensions.value.relativeLeft);
+	},
+);
 
 const currentNodePaneType = computed((): MainPanelType => {
 	if (!hasInputSlot.value) return 'inputless';
