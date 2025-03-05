@@ -1,78 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "symbol": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "image": {
-            "type": "string"
-        },
-        "market_cap": {
-            "type": "integer"
-        },
-        "market_cap_rank": {
-            "type": "integer"
-        },
-        "fully_diluted_valuation": {
-            "type": "integer"
-        },
-        "total_volume": {
-            "type": "integer"
-        },
-        "market_cap_change_percentage_24h": {
-            "type": "number"
-        },
-        "ath_change_percentage": {
-            "type": "number"
-        },
-        "ath_date": {
-            "type": "string"
-        },
-        "atl": {
-            "type": "number"
-        },
-        "atl_change_percentage": {
-            "type": "number"
-        },
-        "atl_date": {
-            "type": "string"
-        },
-        "last_updated": {
-            "type": "string"
-        }
+    "name": "market.json",
+    "path": "packages/nodes-base/nodes/CoinGecko/__schema__/v1.0.0/coin/market.json",
+    "sha": "17a9208590d4e0bcb70dae1f2e91c94189fb7ab7",
+    "size": 1703,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/CoinGecko/__schema__/v1.0.0/coin/market.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/CoinGecko/__schema__/v1.0.0/coin/market.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/17a9208590d4e0bcb70dae1f2e91c94189fb7ab7",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/CoinGecko/__schema__/v1.0.0/coin/market.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInN5bWJvbCI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIm5hbWUiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAg\nICJpbWFnZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgIH0sCiAgICAgICAgIm1hcmtldF9jYXAiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAgICAibWFya2V0X2Nh\ncF9yYW5rIjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAg\nICAgIH0sCiAgICAgICAgImZ1bGx5X2RpbHV0ZWRfdmFsdWF0aW9uIjogewog\nICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAg\nICAgInRvdGFsX3ZvbHVtZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50\nZWdlciIKICAgICAgICB9LAogICAgICAgICJtYXJrZXRfY2FwX2NoYW5nZV9w\nZXJjZW50YWdlXzI0aCI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVtYmVy\nIgogICAgICAgIH0sCiAgICAgICAgImF0aF9jaGFuZ2VfcGVyY2VudGFnZSI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAibnVtYmVyIgogICAgICAgIH0sCiAg\nICAgICAgImF0aF9kYXRlIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgfSwKICAgICAgICAiYXRsIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJudW1iZXIiCiAgICAgICAgfSwKICAgICAgICAiYXRsX2NoYW5n\nZV9wZXJjZW50YWdlIjogewogICAgICAgICAgICAidHlwZSI6ICJudW1iZXIi\nCiAgICAgICAgfSwKICAgICAgICAiYXRsX2RhdGUiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJsYXN0X3Vw\nZGF0ZWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICB9CiAgICB9LAogICAgInJlcXVpcmVkIjogWwogICAgICAgICJpZCIsCiAg\nICAgICAgInN5bWJvbCIsCiAgICAgICAgIm5hbWUiLAogICAgICAgICJpbWFn\nZSIsCiAgICAgICAgImN1cnJlbnRfcHJpY2UiLAogICAgICAgICJtYXJrZXRf\nY2FwIiwKICAgICAgICAibWFya2V0X2NhcF9yYW5rIiwKICAgICAgICAiZnVs\nbHlfZGlsdXRlZF92YWx1YXRpb24iLAogICAgICAgICJ0b3RhbF92b2x1bWUi\nLAogICAgICAgICJoaWdoXzI0aCIsCiAgICAgICAgImxvd18yNGgiLAogICAg\nICAgICJwcmljZV9jaGFuZ2VfMjRoIiwKICAgICAgICAicHJpY2VfY2hhbmdl\nX3BlcmNlbnRhZ2VfMjRoIiwKICAgICAgICAibWFya2V0X2NhcF9jaGFuZ2Vf\nMjRoIiwKICAgICAgICAibWFya2V0X2NhcF9jaGFuZ2VfcGVyY2VudGFnZV8y\nNGgiLAogICAgICAgICJjaXJjdWxhdGluZ19zdXBwbHkiLAogICAgICAgICJ0\nb3RhbF9zdXBwbHkiLAogICAgICAgICJtYXhfc3VwcGx5IiwKICAgICAgICAi\nYXRoIiwKICAgICAgICAiYXRoX2NoYW5nZV9wZXJjZW50YWdlIiwKICAgICAg\nICAiYXRoX2RhdGUiLAogICAgICAgICJhdGwiLAogICAgICAgICJhdGxfY2hh\nbmdlX3BlcmNlbnRhZ2UiLAogICAgICAgICJhdGxfZGF0ZSIsCiAgICAgICAg\nInJvaSIsCiAgICAgICAgImxhc3RfdXBkYXRlZCIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/CoinGecko/__schema__/v1.0.0/coin/market.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/17a9208590d4e0bcb70dae1f2e91c94189fb7ab7",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/CoinGecko/__schema__/v1.0.0/coin/market.json"
     },
-    "required": [
-        "id",
-        "symbol",
-        "name",
-        "image",
-        "current_price",
-        "market_cap",
-        "market_cap_rank",
-        "fully_diluted_valuation",
-        "total_volume",
-        "high_24h",
-        "low_24h",
-        "price_change_24h",
-        "price_change_percentage_24h",
-        "market_cap_change_24h",
-        "market_cap_change_percentage_24h",
-        "circulating_supply",
-        "total_supply",
-        "max_supply",
-        "ath",
-        "ath_change_percentage",
-        "ath_date",
-        "atl",
-        "atl_change_percentage",
-        "atl_date",
-        "roi",
-        "last_updated"
-    ]
+    "version": 1
 }
