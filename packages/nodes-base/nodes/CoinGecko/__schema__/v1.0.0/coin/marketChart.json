@@ -1,20 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "time": {
-            "type": "string"
-        },
-        "price": {
-            "type": "number"
-        },
-        "totalVolume": {
-            "type": "number"
-        }
+    "name": "marketChart.json",
+    "path": "packages/nodes-base/nodes/CoinGecko/__schema__/v1.0.0/coin/marketChart.json",
+    "sha": "d2b8a5a3e042c2ccbd25e4b9b544a9ef3a9734f6",
+    "size": 335,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/CoinGecko/__schema__/v1.0.0/coin/marketChart.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/CoinGecko/__schema__/v1.0.0/coin/marketChart.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/d2b8a5a3e042c2ccbd25e4b9b544a9ef3a9734f6",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/CoinGecko/__schema__/v1.0.0/coin/marketChart.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJ0aW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAicHJpY2UiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogIm51bWJlciIKICAgICAgICB9LAogICAgICAgICJ0b3RhbFZvbHVt\nZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVtYmVyIgogICAgICAgIH0K\nICAgIH0sCiAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgInRpbWUiLAogICAg\nICAgICJwcmljZSIsCiAgICAgICAgIm1hcmtldENhcHMiLAogICAgICAgICJ0\nb3RhbFZvbHVtZSIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/CoinGecko/__schema__/v1.0.0/coin/marketChart.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/d2b8a5a3e042c2ccbd25e4b9b544a9ef3a9734f6",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/CoinGecko/__schema__/v1.0.0/coin/marketChart.json"
     },
-    "required": [
-        "time",
-        "price",
-        "marketCaps",
-        "totalVolume"
-    ]
+    "version": 1
 }
