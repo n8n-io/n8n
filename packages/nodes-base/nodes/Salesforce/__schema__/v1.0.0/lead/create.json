@@ -1,11 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "success": {
-            "type": "boolean"
-        }
-    }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/lead/create.json",
+    "sha": "c0d4713018328ea53f9eb519ce87d349878c6339",
+    "size": 169,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/lead/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/lead/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/c0d4713018328ea53f9eb519ce87d349878c6339",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/lead/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInN1Y2Nlc3MiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogImJvb2xlYW4iCiAgICAgICAgfQogICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/lead/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/c0d4713018328ea53f9eb519ce87d349878c6339",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/lead/create.json"
+    },
+    "version": 1
 }
