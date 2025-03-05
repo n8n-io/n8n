@@ -1,11 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "integer"
-        },
-        "name": {
-            "type": "string"
-        }
-    }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Shopify/__schema__/v1.0.0/order/getAll.json",
+    "sha": "83ebeb5a7036d54be86b21190914e37151efa175",
+    "size": 166,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Shopify/__schema__/v1.0.0/order/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Shopify/__schema__/v1.0.0/order/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/83ebeb5a7036d54be86b21190914e37151efa175",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Shopify/__schema__/v1.0.0/order/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIK\nICAgICAgICB9LAogICAgICAgICJuYW1lIjogewogICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgfQogICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Shopify/__schema__/v1.0.0/order/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/83ebeb5a7036d54be86b21190914e37151efa175",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Shopify/__schema__/v1.0.0/order/getAll.json"
+    },
+    "version": 1
 }
