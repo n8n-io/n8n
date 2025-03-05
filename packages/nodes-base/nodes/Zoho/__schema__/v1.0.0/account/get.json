@@ -1,0 +1,461 @@
+{
+    "type": "object",
+    "properties": {
+        "Owner": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "id",
+                "email"
+            ]
+        },
+        "$currency_symbol": {
+            "type": "string"
+        },
+        "$field_states": {
+            "type": "null"
+        },
+        "$state": {
+            "type": "string"
+        },
+        "$process_flow": {
+            "type": "boolean"
+        },
+        "$locked_for_me": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "$approved": {
+            "type": "boolean"
+        },
+        "$approval": {
+            "type": "object",
+            "properties": {
+                "delegate": {
+                    "type": "boolean"
+                },
+                "takeover": {
+                    "type": "boolean"
+                },
+                "approve": {
+                    "type": "boolean"
+                },
+                "reject": {
+                    "type": "boolean"
+                },
+                "resubmit": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "delegate",
+                "takeover",
+                "approve",
+                "reject",
+                "resubmit"
+            ]
+        },
+        "Created_Time": {
+            "type": "string"
+        },
+        "$editable": {
+            "type": "boolean"
+        },
+        "$is_duplicate": {
+            "type": "boolean"
+        },
+        "$review_process": {
+            "type": "object",
+            "properties": {
+                "approve": {
+                    "type": "boolean"
+                },
+                "reject": {
+                    "type": "boolean"
+                },
+                "resubmit": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "approve",
+                "reject",
+                "resubmit"
+            ]
+        },
+        "$review": {
+            "type": "null"
+        },
+        "Account_Name": {
+            "type": "string"
+        },
+        "Modified_Time": {
+            "type": "string"
+        },
+        "$in_merge": {
+            "type": "boolean"
+        },
+        "Locked__s": {
+            "type": "boolean"
+        },
+        "$approval_state": {
+            "type": "string"
+        },
+        "Account_Status": {
+            "type": "string"
+        },
+        "zohocontracts__Contracts_Counterparty_ID": {
+            "type": "null"
+        },
+        "Parent_Account": {
+            "type": "null"
+        },
+        "Bearbeitungsstatus": {
+            "type": "null"
+        },
+        "Einsatz_in_MFH": {
+            "type": "null"
+        },
+        "Upload_Tag": {
+            "type": "null"
+        },
+        "Systemart": {
+            "type": "null"
+        },
+        "Fahrplan": {
+            "type": "null"
+        },
+        "Kundensegment1": {
+            "type": "string"
+        },
+        "Einschr_nkungen": {
+            "type": "null"
+        },
+        "Kaskade": {
+            "type": "null"
+        },
+        "Funktionsbereit": {
+            "type": "null"
+        },
+        "Status_MaKo_Aufbau": {
+            "type": "null"
+        },
+        "Key_Account_Status": {
+            "type": "null"
+        },
+        "EZA_Registrierung_sichergestellt_MP": {
+            "type": "boolean"
+        },
+        "Marktdienliche_Steuerung": {
+            "type": "null"
+        },
+        "Key_Account_1": {
+            "type": "null"
+        },
+        "IBAN": {
+            "type": "null"
+        },
+        "Best_tigung_kein_FRE_n_tig": {
+            "type": "null"
+        },
+        "Umsatzsteuer_ID": {
+            "type": "null"
+        },
+        "Webformular": {
+            "type": "null"
+        },
+        "Mandatsreferenz": {
+            "type": "null"
+        },
+        "Sonstiges_Kommentar": {
+            "type": "null"
+        },
+        "Internetzugang": {
+            "type": "null"
+        },
+        "Einwilligung_DSGVO": {
+            "type": "null"
+        },
+        "Kundenquelle": {
+            "type": "string"
+        },
+        "easyaddressautocomplete__Billing_Latitude": {
+            "type": "null"
+        },
+        "Lebensdauer": {
+            "type": "null"
+        },
+        "Notizen_zur_Accountquelle": {
+            "type": "string"
+        },
+        "Eskalation_BNetzA": {
+            "type": "null"
+        },
+        "Dequeued": {
+            "type": "null"
+        },
+        "Lieferadresse_PLZ": {
+            "type": "string"
+        },
+        "Bilanzierungsverantwortlicher_MP": {
+            "type": "null"
+        },
+        "SMGW_Kompatibilit_t": {
+            "type": "null"
+        },
+        "E_Mail1": {
+            "type": "null"
+        },
+        "easyaddressautocomplete__Shipping_Latitude": {
+            "type": "null"
+        },
+        "AP_Wechselprozesse_2_MP": {
+            "type": "null"
+        },
+        "Blindleistungsverfahren": {
+            "type": "null"
+        },
+        "W_rme_Contracting_BHKW": {
+            "type": "boolean"
+        },
+        "Reporting": {
+            "type": "string"
+        },
+        "Enqueued": {
+            "type": "null"
+        },
+        "Bemerkung_Stilllegungsprozess_MP": {
+            "type": "null"
+        },
+        "Type": {
+            "type": "null"
+        },
+        "AP_Wechselprozess_2_OA1": {
+            "type": "null"
+        },
+        "Layout": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "id"
+            ]
+        },
+        "Anmeldedokumente_Mieterstrom": {
+            "type": "null"
+        },
+        "Prijektnummer_Name_Projekt_1": {
+            "type": "null"
+        },
+        "easyaddressautocomplete__Billing_Longitude": {
+            "type": "null"
+        },
+        "AP_Wechselprozesse_1_MP": {
+            "type": "null"
+        },
+        "Bemerkung_Drittversorgungsprozess_OA": {
+            "type": "null"
+        },
+        "Link_zur_Energiemanagementsystem_Umfrage": {
+            "type": "null"
+        },
+        "Namensnennung": {
+            "type": "null"
+        },
+        "LinkedIn_URL": {
+            "type": "null"
+        },
+        "Submetering": {
+            "type": "boolean"
+        },
+        "Drive_Ordner": {
+            "type": "string"
+        },
+        "API_Schnittstelle": {
+            "type": "null"
+        },
+        "Bilanzierungsformel_ausgetauscht_MP": {
+            "type": "boolean"
+        },
+        "Registrierter_VNB": {
+            "type": "null"
+        },
+        "Kreditinstitut": {
+            "type": "null"
+        },
+        "Funktion": {
+            "type": "null"
+        },
+        "Kontoinhaber": {
+            "type": "null"
+        },
+        "WiM_Hauptmessungen": {
+            "type": "null"
+        },
+        "Bundesland_Sitz": {
+            "type": "string"
+        },
+        "Ads_Keyword": {
+            "type": "null"
+        },
+        "Wechsel_in_KA": {
+            "type": "null"
+        },
+        "BDEW_Code": {
+            "type": "null"
+        },
+        "Account_Status_PV_Fachpartner": {
+            "type": "null"
+        },
+        "Alle_Akteure": {
+            "type": "null"
+        },
+        "Notiz_zur_Aufgabe": {
+            "type": "null"
+        },
+        "Portalzug_nge": {
+            "type": "null"
+        },
+        "Grund_f_r_On_Hold": {
+            "type": "null"
+        },
+        "Bilanzierung_Kommentar": {
+            "type": "null"
+        },
+        "Bemerkung_Drittversorgungsprozess_MP": {
+            "type": "null"
+        },
+        "E_Mail_elekt_Datenaustausch": {
+            "type": "null"
+        },
+        "Telefonnummer": {
+            "type": "null"
+        },
+        "Zusatzkomponenten": {
+            "type": "null"
+        },
+        "Bemerkung_Stilllegungsprozess_OA": {
+            "type": "null"
+        },
+        "easyaddressautocomplete__Shipping_Longitude": {
+            "type": "null"
+        },
+        "Kundennummer": {
+            "type": "integer"
+        },
+        "Geb_udetyp": {
+            "type": "null"
+        },
+        "Elektr_techn_Absprachen_zur_Umsetzung_der_KAs": {
+            "type": "null"
+        },
+        "Segment": {
+            "type": "null"
+        },
+        "Bilanzierungsgebiet_e_EIC_Code": {
+            "type": "null"
+        },
+        "Eintragungsnummer_Konzessionsnummer": {
+            "type": "null"
+        },
+        "Account_Potential": {
+            "type": "null"
+        },
+        "Zus_tzliche_Informationen_Besonderheiten": {
+            "type": "null"
+        },
+        "Drop_Off_Date": {
+            "type": "null"
+        },
+        "AP_Virtueller_Summenz_hler": {
+            "type": "null"
+        },
+        "Lieferadresse_Hausnummer": {
+            "type": "string"
+        },
+        "Vergabe_MaLo_MeLo": {
+            "type": "null"
+        },
+        "Lead_Name": {
+            "type": "null"
+        },
+        "E_Mobilit_t": {
+            "type": "boolean"
+        },
+        "Lieferadresse_Stra_e": {
+            "type": "string"
+        },
+        "Lieferadresse_Stadt": {
+            "type": "string"
+        },
+        "Kommentar_Status": {
+            "type": "null"
+        },
+        "Sanktionen_9_IST_Einspeisung": {
+            "type": "null"
+        },
+        "Priorit_t": {
+            "type": "null"
+        },
+        "PV_Monitoring": {
+            "type": "null"
+        },
+        "Kundenstatus": {
+            "type": "null"
+        },
+        "AP_Wechselprozess_1_OA": {
+            "type": "null"
+        },
+        "Voraussetzung": {
+            "type": "null"
+        },
+        "$canvas_id": {
+            "type": "null"
+        }
+    },
+    "required": [
+        "Owner",
+        "$currency_symbol",
+        "$field_states",
+        "Last_Activity_Time",
+        "$state",
+        "$process_flow",
+        "$locked_for_me",
+        "id",
+        "$approved",
+        "$approval",
+        "Created_Time",
+        "$editable",
+        "$zia_owner_assignment",
+        "$review_process",
+        "Website",
+        "$review",
+        "Account_Name",
+        "Modified_Time",
+        "$orchestration",
+        "$in_merge",
+        "Tag",
+        "$approval_state"
+    ],
+    "version": 1
+}
