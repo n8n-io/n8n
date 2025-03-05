@@ -1,23 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "_archived": {
-            "type": "boolean"
-        },
-        "_id": {
-            "type": "string"
-        },
-        "_locked": {
-            "type": "null"
-        },
-        "_locked_by": {
-            "type": "null"
-        },
-        "_ctime": {
-            "type": "string"
-        },
-        "_mtime": {
-            "type": "string"
-        }
-    }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/SeaTable/__schema__/v1.0.0/row/get.json",
+    "sha": "71f0d6bdf392faf5ee60d9a5f68401eeec90fc62",
+    "size": 413,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/SeaTable/__schema__/v1.0.0/row/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/SeaTable/__schema__/v1.0.0/row/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/71f0d6bdf392faf5ee60d9a5f68401eeec90fc62",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/SeaTable/__schema__/v1.0.0/row/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJfYXJjaGl2ZWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJv\nb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAiX2lkIjogewogICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiX2xvY2tl\nZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9LAog\nICAgICAgICJfbG9ja2VkX2J5IjogewogICAgICAgICAgICAidHlwZSI6ICJu\ndWxsIgogICAgICAgIH0sCiAgICAgICAgIl9jdGltZSI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIl9tdGlt\nZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0K\nICAgIH0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/SeaTable/__schema__/v1.0.0/row/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/71f0d6bdf392faf5ee60d9a5f68401eeec90fc62",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/SeaTable/__schema__/v1.0.0/row/get.json"
+    },
+    "version": 1
 }
