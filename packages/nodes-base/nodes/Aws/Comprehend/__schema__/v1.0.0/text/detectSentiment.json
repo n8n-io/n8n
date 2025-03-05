@@ -1,35 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"Sentiment": {
-			"type": "string"
-		},
-		"SentimentScore": {
-			"type": "object",
-			"properties": {
-				"Mixed": {
-					"type": "number"
-				},
-				"Negative": {
-					"type": "number"
-				},
-				"Neutral": {
-					"type": "number"
-				},
-				"Positive": {
-					"type": "number"
-				}
-			},
-			"required": [
-				"Mixed",
-				"Negative",
-				"Neutral",
-				"Positive"
-			]
-		}
-	},
-	"required": [
-		"Sentiment",
-		"SentimentScore"
-	]
+    "name": "detectSentiment.json",
+    "path": "packages/nodes-base/nodes/Aws/Comprehend/__schema__/v1.0.0/text/detectSentiment.json",
+    "sha": "704b13d6b274442d6512ebb0266a73c6eefb3027",
+    "size": 474,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Aws/Comprehend/__schema__/v1.0.0/text/detectSentiment.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Aws/Comprehend/__schema__/v1.0.0/text/detectSentiment.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/704b13d6b274442d6512ebb0266a73c6eefb3027",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Aws/Comprehend/__schema__/v1.0.0/text/detectSentiment.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJTZW50\naW1lbnQiOiB7CgkJCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJCSJTZW50aW1l\nbnRTY29yZSI6IHsKCQkJInR5cGUiOiAib2JqZWN0IiwKCQkJInByb3BlcnRp\nZXMiOiB7CgkJCQkiTWl4ZWQiOiB7CgkJCQkJInR5cGUiOiAibnVtYmVyIgoJ\nCQkJfSwKCQkJCSJOZWdhdGl2ZSI6IHsKCQkJCQkidHlwZSI6ICJudW1iZXIi\nCgkJCQl9LAoJCQkJIk5ldXRyYWwiOiB7CgkJCQkJInR5cGUiOiAibnVtYmVy\nIgoJCQkJfSwKCQkJCSJQb3NpdGl2ZSI6IHsKCQkJCQkidHlwZSI6ICJudW1i\nZXIiCgkJCQl9CgkJCX0sCgkJCSJyZXF1aXJlZCI6IFsKCQkJCSJNaXhlZCIs\nCgkJCQkiTmVnYXRpdmUiLAoJCQkJIk5ldXRyYWwiLAoJCQkJIlBvc2l0aXZl\nIgoJCQldCgkJfQoJfSwKCSJyZXF1aXJlZCI6IFsKCQkiU2VudGltZW50IiwK\nCQkiU2VudGltZW50U2NvcmUiCgldCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Aws/Comprehend/__schema__/v1.0.0/text/detectSentiment.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/704b13d6b274442d6512ebb0266a73c6eefb3027",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Aws/Comprehend/__schema__/v1.0.0/text/detectSentiment.json"
+    },
+    "version": 1
 }
