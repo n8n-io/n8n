@@ -1,95 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "task_id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "date_created": {
-            "type": "string"
-        },
-        "orderindex": {
-            "type": "integer"
-        },
-        "creator": {
-            "type": "integer"
-        },
-        "resolved": {
-            "type": "integer"
-        },
-        "unresolved": {
-            "type": "integer"
-        },
-        "items": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "orderindex": {
-                        "type": "null"
-                    },
-                    "assignee": {
-                        "type": "null"
-                    },
-                    "group_assignee": {
-                        "type": "null"
-                    },
-                    "resolved": {
-                        "type": "boolean"
-                    },
-                    "parent": {
-                        "type": "null"
-                    },
-                    "date_created": {
-                        "type": "string"
-                    },
-                    "start_date": {
-                        "type": "null"
-                    },
-                    "start_date_time": {
-                        "type": "boolean"
-                    },
-                    "due_date": {
-                        "type": "null"
-                    },
-                    "due_date_time": {
-                        "type": "boolean"
-                    },
-                    "sent_due_date_notif": {
-                        "type": "null"
-                    }
-                },
-                "required": [
-                    "id",
-                    "name",
-                    "orderindex",
-                    "assignee",
-                    "group_assignee",
-                    "resolved",
-                    "parent",
-                    "date_created",
-                    "children"
-                ]
-            }
-        }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/checklistItem/create.json",
+    "sha": "e4dff0938a0133450ee61cd37da3202b29729509",
+    "size": 2453,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/checklistItem/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/checklistItem/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/e4dff0938a0133450ee61cd37da3202b29729509",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/checklistItem/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInRhc2tfaWQiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJuYW1lIjogewog\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAg\nICAiZGF0ZV9jcmVhdGVkIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgfSwKICAgICAgICAib3JkZXJpbmRleCI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJj\ncmVhdG9yIjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAg\nICAgIH0sCiAgICAgICAgInJlc29sdmVkIjogewogICAgICAgICAgICAidHlw\nZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgInVucmVzb2x2ZWQi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwK\nICAgICAgICAiaXRlbXMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImFycmF5\nIiwKICAgICAgICAgICAgIml0ZW1zIjogewogICAgICAgICAgICAgICAgInR5\ncGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgICAgICJwcm9wZXJ0aWVzIjog\newogICAgICAgICAgICAgICAgICAgICJpZCI6IHsKICAgICAgICAgICAgICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAg\nIH0sCiAgICAgICAgICAgICAgICAgICAgIm9yZGVyaW5kZXgiOiB7CiAgICAg\nICAgICAgICAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgICAg\nICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAiYXNzaWduZWUiOiB7\nCiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAg\nICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAiZ3JvdXBf\nYXNzaWduZWUiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nIm51bGwiCiAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAg\nICAgICAicmVzb2x2ZWQiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0\neXBlIjogImJvb2xlYW4iCiAgICAgICAgICAgICAgICAgICAgfSwKICAgICAg\nICAgICAgICAgICAgICAicGFyZW50IjogewogICAgICAgICAgICAgICAgICAg\nICAgICAidHlwZSI6ICJudWxsIgogICAgICAgICAgICAgICAgICAgIH0sCiAg\nICAgICAgICAgICAgICAgICAgImRhdGVfY3JlYXRlZCI6IHsKICAgICAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgInN0YXJ0X2RhdGUiOiB7\nCiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAg\nICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAic3RhcnRf\nZGF0ZV90aW1lIjogewogICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6\nICJib29sZWFuIgogICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAg\nICAgICAgICAgImR1ZV9kYXRlIjogewogICAgICAgICAgICAgICAgICAgICAg\nICAidHlwZSI6ICJudWxsIgogICAgICAgICAgICAgICAgICAgIH0sCiAgICAg\nICAgICAgICAgICAgICAgImR1ZV9kYXRlX3RpbWUiOiB7CiAgICAgICAgICAg\nICAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgICAgICAg\nICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAic2VudF9kdWVfZGF0ZV9u\nb3RpZiI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAibnVs\nbCIKICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICB9LAog\nICAgICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAg\nICAgICJpZCIsCiAgICAgICAgICAgICAgICAgICAgIm5hbWUiLAogICAgICAg\nICAgICAgICAgICAgICJvcmRlcmluZGV4IiwKICAgICAgICAgICAgICAgICAg\nICAiYXNzaWduZWUiLAogICAgICAgICAgICAgICAgICAgICJncm91cF9hc3Np\nZ25lZSIsCiAgICAgICAgICAgICAgICAgICAgInJlc29sdmVkIiwKICAgICAg\nICAgICAgICAgICAgICAicGFyZW50IiwKICAgICAgICAgICAgICAgICAgICAi\nZGF0ZV9jcmVhdGVkIiwKICAgICAgICAgICAgICAgICAgICAiY2hpbGRyZW4i\nCiAgICAgICAgICAgICAgICBdCiAgICAgICAgICAgIH0KICAgICAgICB9CiAg\nICB9LAogICAgInJlcXVpcmVkIjogWwogICAgICAgICJpZCIsCiAgICAgICAg\nInRhc2tfaWQiLAogICAgICAgICJuYW1lIiwKICAgICAgICAiZGF0ZV9jcmVh\ndGVkIiwKICAgICAgICAib3JkZXJpbmRleCIsCiAgICAgICAgImNyZWF0b3Ii\nLAogICAgICAgICJyZXNvbHZlZCIsCiAgICAgICAgInVucmVzb2x2ZWQiLAog\nICAgICAgICJpdGVtcyIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/checklistItem/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/e4dff0938a0133450ee61cd37da3202b29729509",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/checklistItem/create.json"
     },
-    "required": [
-        "id",
-        "task_id",
-        "name",
-        "date_created",
-        "orderindex",
-        "creator",
-        "resolved",
-        "unresolved",
-        "items"
-    ]
+    "version": 1
 }
