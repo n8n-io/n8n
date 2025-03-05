@@ -85,11 +85,14 @@ class Worker {
 class DataTransfer {
 	private data: Record<string, unknown> = {};
 
-	setData = vi.fn((type, data) => {
+	setData = vi.fn((type: string, data) => {
 		this.data[type] = data;
 	});
 
-	getData = vi.fn((type) => this.data[type] ?? null);
+	getData = vi.fn((type) => {
+		if (type.startsWith('text')) type = 'text';
+		return this.data[type] ?? null;
+	});
 }
 
 Object.defineProperty(window, 'Worker', {
