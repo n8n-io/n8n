@@ -1,29 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
-        },
-        "date_created": {
-            "type": "string"
-        },
-        "hide_from_guests": {
-            "type": "boolean"
-        }
+    "name": "customFields.json",
+    "path": "packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/list/customFields.json",
+    "sha": "f0286c3511d1e286bfef622e61111bc51e2d4b0a",
+    "size": 525,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/list/customFields.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/list/customFields.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/f0286c3511d1e286bfef622e61111bc51e2d4b0a",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/list/customFields.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgIm5hbWUiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJ0eXBlIjogewogICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAi\nZGF0ZV9jcmVhdGVkIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAiaGlkZV9mcm9tX2d1ZXN0cyI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9CiAgICB9LAog\nICAgInJlcXVpcmVkIjogWwogICAgICAgICJpZCIsCiAgICAgICAgIm5hbWUi\nLAogICAgICAgICJ0eXBlIiwKICAgICAgICAidHlwZV9jb25maWciLAogICAg\nICAgICJkYXRlX2NyZWF0ZWQiLAogICAgICAgICJoaWRlX2Zyb21fZ3Vlc3Rz\nIiwKICAgICAgICAicmVxdWlyZWQiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/list/customFields.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/f0286c3511d1e286bfef622e61111bc51e2d4b0a",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/list/customFields.json"
     },
-    "required": [
-        "id",
-        "name",
-        "type",
-        "type_config",
-        "date_created",
-        "hide_from_guests",
-        "required"
-    ]
+    "version": 1
 }
