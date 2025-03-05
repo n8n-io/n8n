@@ -1,55 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"object": {
-			"type": "string"
-		},
-		"id": {
-			"type": "string"
-		},
-		"userId": {
-			"type": "string"
-		},
-		"name": {
-			"type": "string"
-		},
-		"email": {
-			"type": "string"
-		},
-		"twoFactorEnabled": {
-			"type": "boolean"
-		},
-		"status": {
-			"type": "integer"
-		},
-		"collections": {
-			"type": "null"
-		},
-		"resetPasswordEnrolled": {
-			"type": "boolean"
-		},
-		"ssoExternalId": {
-			"type": "null"
-		},
-		"type": {
-			"type": "integer"
-		},
-		"permissions": {
-			"type": "null"
-		}
-	},
-	"required": [
-		"object",
-		"id",
-		"userId",
-		"name",
-		"email",
-		"twoFactorEnabled",
-		"status",
-		"collections",
-		"resetPasswordEnrolled",
-		"type",
-		"externalId",
-		"permissions"
-	]
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Bitwarden/__schema__/v1.0.0/member/getAll.json",
+    "sha": "bddc9240f55aa63532866d7af3dc4927b7f98467",
+    "size": 733,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Bitwarden/__schema__/v1.0.0/member/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Bitwarden/__schema__/v1.0.0/member/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/bddc9240f55aa63532866d7af3dc4927b7f98467",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Bitwarden/__schema__/v1.0.0/member/getAll.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJvYmpl\nY3QiOiB7CgkJCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJCSJpZCI6IHsKCQkJ\nInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJInVzZXJJZCI6IHsKCQkJInR5cGUi\nOiAic3RyaW5nIgoJCX0sCgkJIm5hbWUiOiB7CgkJCSJ0eXBlIjogInN0cmlu\nZyIKCQl9LAoJCSJlbWFpbCI6IHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0s\nCgkJInR3b0ZhY3RvckVuYWJsZWQiOiB7CgkJCSJ0eXBlIjogImJvb2xlYW4i\nCgkJfSwKCQkic3RhdHVzIjogewoJCQkidHlwZSI6ICJpbnRlZ2VyIgoJCX0s\nCgkJImNvbGxlY3Rpb25zIjogewoJCQkidHlwZSI6ICJudWxsIgoJCX0sCgkJ\nInJlc2V0UGFzc3dvcmRFbnJvbGxlZCI6IHsKCQkJInR5cGUiOiAiYm9vbGVh\nbiIKCQl9LAoJCSJzc29FeHRlcm5hbElkIjogewoJCQkidHlwZSI6ICJudWxs\nIgoJCX0sCgkJInR5cGUiOiB7CgkJCSJ0eXBlIjogImludGVnZXIiCgkJfSwK\nCQkicGVybWlzc2lvbnMiOiB7CgkJCSJ0eXBlIjogIm51bGwiCgkJfQoJfSwK\nCSJyZXF1aXJlZCI6IFsKCQkib2JqZWN0IiwKCQkiaWQiLAoJCSJ1c2VySWQi\nLAoJCSJuYW1lIiwKCQkiZW1haWwiLAoJCSJ0d29GYWN0b3JFbmFibGVkIiwK\nCQkic3RhdHVzIiwKCQkiY29sbGVjdGlvbnMiLAoJCSJyZXNldFBhc3N3b3Jk\nRW5yb2xsZWQiLAoJCSJ0eXBlIiwKCQkiZXh0ZXJuYWxJZCIsCgkJInBlcm1p\nc3Npb25zIgoJXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Bitwarden/__schema__/v1.0.0/member/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/bddc9240f55aa63532866d7af3dc4927b7f98467",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Bitwarden/__schema__/v1.0.0/member/getAll.json"
+    },
+    "version": 1
 }
