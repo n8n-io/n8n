@@ -1768,23 +1768,7 @@ export class Telegram implements INodeType {
 					},
 				],
 				'message',
-				// [ria] needs to be in options!
-				[
-					{
-						displayName: 'Options',
-						name: 'options',
-						type: 'collection',
-						placeholder: 'Add option',
-						default: {},
-						options: [
-							{
-								...appendAttributionOption,
-								description:
-									'Whether to include the phrase “This email was sent automatically with n8n” to the end of the email',
-							},
-						],
-					},
-				],
+				undefined,
 				{
 					noButtonStyle: true,
 					defaultApproveLabel: '✅ Approve',
