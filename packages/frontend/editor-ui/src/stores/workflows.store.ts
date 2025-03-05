@@ -1117,6 +1117,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				nodeHelpers.assignNodeId(node);
 			}
 
+			if (node.extendsCredential) {
+				node.type = getCredentialOnlyNodeTypeName(node.extendsCredential);
+			}
+
 			if (!nodeMetadata.value[node.name]) {
 				nodeMetadata.value[node.name] = { pristine: true };
 			}
@@ -1188,10 +1192,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			// All nodes have to have a name
 			// TODO: Check if there is an error or whatever that is supposed to be returned
 			return;
-		}
-
-		if (nodeData.extendsCredential) {
-			nodeData.type = getCredentialOnlyNodeTypeName(nodeData.extendsCredential);
 		}
 
 		workflow.value.nodes.push(nodeData);
