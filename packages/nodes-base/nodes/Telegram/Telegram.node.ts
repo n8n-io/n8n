@@ -1768,7 +1768,18 @@ export class Telegram implements INodeType {
 					},
 				],
 				'message',
-				undefined,
+				[
+					{
+						...appendAttributionOption,
+						description:
+							'Whether to include the phrase "This message was sent automatically with n8n" to the end of the message',
+						displayOptions: {
+							show: {
+								'/operation': [SEND_AND_WAIT_OPERATION],
+							},
+						},
+					},
+				],
 				{
 					noButtonStyle: true,
 					defaultApproveLabel: '✅ Approve',
