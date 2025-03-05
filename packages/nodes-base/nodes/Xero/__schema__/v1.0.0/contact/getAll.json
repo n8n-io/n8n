@@ -1,89 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "ContactID": {
-            "type": "string"
-        },
-        "ContactStatus": {
-            "type": "string"
-        },
-        "Name": {
-            "type": "string"
-        },
-        "EmailAddress": {
-            "type": "string"
-        },
-        "Addresses": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "AddressType": {
-                        "type": "string"
-                    },
-                    "City": {
-                        "type": "string"
-                    },
-                    "PostalCode": {
-                        "type": "string"
-                    },
-                    "AddressLine1": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "AddressType"
-                ]
-            }
-        },
-        "Phones": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "PhoneType": {
-                        "type": "string"
-                    },
-                    "PhoneNumber": {
-                        "type": "string"
-                    },
-                    "PhoneAreaCode": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "PhoneType"
-                ]
-            }
-        },
-        "UpdatedDateUTC": {
-            "type": "string"
-        },
-        "IsSupplier": {
-            "type": "boolean"
-        },
-        "IsCustomer": {
-            "type": "boolean"
-        },
-        "HasAttachments": {
-            "type": "boolean"
-        },
-        "HasValidationErrors": {
-            "type": "boolean"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Xero/__schema__/v1.0.0/contact/getAll.json",
+    "sha": "44b9b22af78d3f46525a72d1ed3c47e0527946f7",
+    "size": 2176,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Xero/__schema__/v1.0.0/contact/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Xero/__schema__/v1.0.0/contact/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/44b9b22af78d3f46525a72d1ed3c47e0527946f7",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Xero/__schema__/v1.0.0/contact/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJDb250YWN0SUQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJDb250YWN0U3RhdHVzIjogewog\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAg\nICAiTmFtZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgIH0sCiAgICAgICAgIkVtYWlsQWRkcmVzcyI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIkFkZHJlc3Nl\ncyI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYXJyYXkiLAogICAgICAgICAg\nICAiaXRlbXMiOiB7CiAgICAgICAgICAgICAgICAidHlwZSI6ICJvYmplY3Qi\nLAogICAgICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAg\nICAgICAgICAgIkFkZHJlc3NUeXBlIjogewogICAgICAgICAgICAgICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgfSwK\nICAgICAgICAgICAgICAgICAgICAiQ2l0eSI6IHsKICAgICAgICAgICAgICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAg\nIH0sCiAgICAgICAgICAgICAgICAgICAgIlBvc3RhbENvZGUiOiB7CiAgICAg\nICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAg\nICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICJBZGRyZXNzTGlu\nZTEiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICB9LAog\nICAgICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAg\nICAgICJBZGRyZXNzVHlwZSIKICAgICAgICAgICAgICAgIF0KICAgICAgICAg\nICAgfQogICAgICAgIH0sCiAgICAgICAgIlBob25lcyI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAiYXJyYXkiLAogICAgICAgICAgICAiaXRlbXMiOiB7CiAg\nICAgICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAg\nICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgIlBob25l\nVHlwZSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAg\nICAgIlBob25lTnVtYmVyIjogewogICAgICAgICAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgfSwKICAgICAg\nICAgICAgICAgICAgICAiUGhvbmVBcmVhQ29kZSI6IHsKICAgICAgICAgICAg\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAg\nICAgIH0KICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAicmVx\ndWlyZWQiOiBbCiAgICAgICAgICAgICAgICAgICAgIlBob25lVHlwZSIKICAg\nICAgICAgICAgICAgIF0KICAgICAgICAgICAgfQogICAgICAgIH0sCiAgICAg\nICAgIlVwZGF0ZWREYXRlVVRDIjogewogICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgfSwKICAgICAgICAiSXNTdXBwbGllciI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9LAogICAgICAg\nICJJc0N1c3RvbWVyIjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFu\nIgogICAgICAgIH0sCiAgICAgICAgIkhhc0F0dGFjaG1lbnRzIjogewogICAg\nICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAg\nIkhhc1ZhbGlkYXRpb25FcnJvcnMiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nImJvb2xlYW4iCiAgICAgICAgfQogICAgfSwKICAgICJyZXF1aXJlZCI6IFsK\nICAgICAgICAiQ29udGFjdElEIiwKICAgICAgICAiQ29udGFjdFN0YXR1cyIs\nCiAgICAgICAgIk5hbWUiLAogICAgICAgICJBZGRyZXNzZXMiLAogICAgICAg\nICJQaG9uZXMiLAogICAgICAgICJVcGRhdGVkRGF0ZVVUQyIsCiAgICAgICAg\nIkNvbnRhY3RHcm91cHMiLAogICAgICAgICJJc1N1cHBsaWVyIiwKICAgICAg\nICAiSXNDdXN0b21lciIsCiAgICAgICAgIkNvbnRhY3RQZXJzb25zIiwKICAg\nICAgICAiSGFzQXR0YWNobWVudHMiLAogICAgICAgICJIYXNWYWxpZGF0aW9u\nRXJyb3JzIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Xero/__schema__/v1.0.0/contact/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/44b9b22af78d3f46525a72d1ed3c47e0527946f7",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Xero/__schema__/v1.0.0/contact/getAll.json"
     },
-    "required": [
-        "ContactID",
-        "ContactStatus",
-        "Name",
-        "Addresses",
-        "Phones",
-        "UpdatedDateUTC",
-        "ContactGroups",
-        "IsSupplier",
-        "IsCustomer",
-        "ContactPersons",
-        "HasAttachments",
-        "HasValidationErrors"
-    ]
+    "version": 1
 }
