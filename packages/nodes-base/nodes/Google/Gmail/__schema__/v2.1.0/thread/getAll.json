@@ -1,19 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "snippet": {
-            "type": "string"
-        },
-        "historyId": {
-            "type": "string"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/thread/getAll.json",
+    "sha": "f72b88b953ed1a827186b280f3d6f6b4fb30eafb",
+    "size": 309,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/thread/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/thread/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/f72b88b953ed1a827186b280f3d6f6b4fb30eafb",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/thread/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInNuaXBwZXQiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJoaXN0b3J5SWQi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9CiAg\nICB9LAogICAgInJlcXVpcmVkIjogWwogICAgICAgICJpZCIsCiAgICAgICAg\nInNuaXBwZXQiLAogICAgICAgICJoaXN0b3J5SWQiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/thread/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/f72b88b953ed1a827186b280f3d6f6b4fb30eafb",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/thread/getAll.json"
     },
-    "required": [
-        "id",
-        "snippet",
-        "historyId"
-    ]
+    "version": 1
 }
