@@ -1,8 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"success": {
-			"type": "boolean"
-		}
-	}
+    "name": "deleteItem.json",
+    "path": "packages/nodes-base/nodes/Webflow/__schema__/v2.0.0/item/deleteItem.json",
+    "sha": "0af212acbfb59a445107e16e6103a0db9164f5d1",
+    "size": 83,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Webflow/__schema__/v2.0.0/item/deleteItem.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Webflow/__schema__/v2.0.0/item/deleteItem.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/0af212acbfb59a445107e16e6103a0db9164f5d1",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Webflow/__schema__/v2.0.0/item/deleteItem.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJzdWNj\nZXNzIjogewoJCQkidHlwZSI6ICJib29sZWFuIgoJCX0KCX0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Webflow/__schema__/v2.0.0/item/deleteItem.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/0af212acbfb59a445107e16e6103a0db9164f5d1",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Webflow/__schema__/v2.0.0/item/deleteItem.json"
+    },
+    "version": 1
 }
