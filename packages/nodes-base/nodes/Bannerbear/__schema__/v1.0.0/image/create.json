@@ -1,92 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "created_at": {
-            "type": "string"
-        },
-        "status": {
-            "type": "string"
-        },
-        "self": {
-            "type": "string"
-        },
-        "uid": {
-            "type": "string"
-        },
-        "template": {
-            "type": "string"
-        },
-        "template_version": {
-            "type": "null"
-        },
-        "modifications": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string"
-                    },
-                    "image_url": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "name"
-                ]
-            }
-        },
-        "webhook_url": {
-            "type": "null"
-        },
-        "webhook_response_code": {
-            "type": "null"
-        },
-        "transparent": {
-            "type": "boolean"
-        },
-        "metadata": {
-            "type": "null"
-        },
-        "template_name": {
-            "type": "string"
-        },
-        "width": {
-            "type": "integer"
-        },
-        "height": {
-            "type": "integer"
-        },
-        "render_pdf": {
-            "type": "boolean"
-        },
-        "pdf_url": {
-            "type": "null"
-        },
-        "pdf_url_compressed": {
-            "type": "null"
-        }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/Bannerbear/__schema__/v1.0.0/image/create.json",
+    "sha": "99037033b23fa83b427e785ad9f337f6050b19ac",
+    "size": 1989,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Bannerbear/__schema__/v1.0.0/image/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Bannerbear/__schema__/v1.0.0/image/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/99037033b23fa83b427e785ad9f337f6050b19ac",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Bannerbear/__schema__/v1.0.0/image/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJjcmVhdGVkX2F0IjogewogICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgfSwKICAgICAgICAic3RhdHVzIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAic2Vs\nZiI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0s\nCiAgICAgICAgInVpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgIH0sCiAgICAgICAgInRlbXBsYXRlIjogewogICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAidGVtcGxh\ndGVfdmVyc2lvbiI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAg\nICAgICB9LAogICAgICAgICJtb2RpZmljYXRpb25zIjogewogICAgICAgICAg\nICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAgICJpdGVtcyI6IHsKICAg\nICAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICAg\nICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICAgICAibmFtZSI6\nIHsKICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgImlt\nYWdlX3VybCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAg\nIH0sCiAgICAgICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAg\nICAgICAgICAgIm5hbWUiCiAgICAgICAgICAgICAgICBdCiAgICAgICAgICAg\nIH0KICAgICAgICB9LAogICAgICAgICJ3ZWJob29rX3VybCI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAgICAgICJ3ZWJo\nb29rX3Jlc3BvbnNlX2NvZGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51\nbGwiCiAgICAgICAgfSwKICAgICAgICAidHJhbnNwYXJlbnQiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAi\nbWV0YWRhdGEiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAg\nICAgfSwKICAgICAgICAidGVtcGxhdGVfbmFtZSI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIndpZHRoIjog\newogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAg\nICAgICAgImhlaWdodCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdl\nciIKICAgICAgICB9LAogICAgICAgICJyZW5kZXJfcGRmIjogewogICAgICAg\nICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgInBk\nZl91cmwiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAg\nfSwKICAgICAgICAicGRmX3VybF9jb21wcmVzc2VkIjogewogICAgICAgICAg\nICAidHlwZSI6ICJudWxsIgogICAgICAgIH0KICAgIH0sCiAgICAicmVxdWly\nZWQiOiBbCiAgICAgICAgImNyZWF0ZWRfYXQiLAogICAgICAgICJzdGF0dXMi\nLAogICAgICAgICJzZWxmIiwKICAgICAgICAidWlkIiwKICAgICAgICAiaW1h\nZ2VfdXJsIiwKICAgICAgICAiaW1hZ2VfdXJsX3BuZyIsCiAgICAgICAgImlt\nYWdlX3VybF9qcGciLAogICAgICAgICJ0ZW1wbGF0ZSIsCiAgICAgICAgInRl\nbXBsYXRlX3ZlcnNpb24iLAogICAgICAgICJtb2RpZmljYXRpb25zIiwKICAg\nICAgICAid2ViaG9va191cmwiLAogICAgICAgICJ3ZWJob29rX3Jlc3BvbnNl\nX2NvZGUiLAogICAgICAgICJ0cmFuc3BhcmVudCIsCiAgICAgICAgIm1ldGFk\nYXRhIiwKICAgICAgICAidGVtcGxhdGVfbmFtZSIsCiAgICAgICAgIndpZHRo\nIiwKICAgICAgICAiaGVpZ2h0IiwKICAgICAgICAicmVuZGVyX3BkZiIsCiAg\nICAgICAgInBkZl91cmwiLAogICAgICAgICJwZGZfdXJsX2NvbXByZXNzZWQi\nCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Bannerbear/__schema__/v1.0.0/image/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/99037033b23fa83b427e785ad9f337f6050b19ac",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Bannerbear/__schema__/v1.0.0/image/create.json"
     },
-    "required": [
-        "created_at",
-        "status",
-        "self",
-        "uid",
-        "image_url",
-        "image_url_png",
-        "image_url_jpg",
-        "template",
-        "template_version",
-        "modifications",
-        "webhook_url",
-        "webhook_response_code",
-        "transparent",
-        "metadata",
-        "template_name",
-        "width",
-        "height",
-        "render_pdf",
-        "pdf_url",
-        "pdf_url_compressed"
-    ]
+    "version": 1
 }
