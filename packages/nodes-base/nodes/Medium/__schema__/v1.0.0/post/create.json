@@ -1,38 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "title": {
-            "type": "string"
-        },
-        "authorId": {
-            "type": "string"
-        },
-        "url": {
-            "type": "string"
-        },
-        "canonicalUrl": {
-            "type": "string"
-        },
-        "publishStatus": {
-            "type": "string"
-        },
-        "publishedAt": {
-            "type": "integer"
-        },
-        "license": {
-            "type": "string"
-        },
-        "licenseUrl": {
-            "type": "string"
-        },
-        "tags": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        }
-    }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/Medium/__schema__/v1.0.0/post/create.json",
+    "sha": "97dbcde0bbb4b8f02c1c5985e47fd10af547ed7c",
+    "size": 737,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Medium/__schema__/v1.0.0/post/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Medium/__schema__/v1.0.0/post/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/97dbcde0bbb4b8f02c1c5985e47fd10af547ed7c",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Medium/__schema__/v1.0.0/post/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInRpdGxlIjogewogICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiYXV0aG9ySWQiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAg\nICAgICJ1cmwiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICB9LAogICAgICAgICJjYW5vbmljYWxVcmwiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJwdWJsaXNo\nU3RhdHVzIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgfSwKICAgICAgICAicHVibGlzaGVkQXQiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAgICAibGljZW5zZSI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAg\nICAgICAgImxpY2Vuc2VVcmwiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJ0YWdzIjogewogICAgICAgICAg\nICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAgICJpdGVtcyI6IHsKICAg\nICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgfQog\nICAgICAgIH0KICAgIH0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Medium/__schema__/v1.0.0/post/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/97dbcde0bbb4b8f02c1c5985e47fd10af547ed7c",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Medium/__schema__/v1.0.0/post/create.json"
+    },
+    "version": 1
 }
