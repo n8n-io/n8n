@@ -1,71 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "object": {
-            "type": "string"
-        },
-        "available": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "amount": {
-                        "type": "integer"
-                    },
-                    "currency": {
-                        "type": "string"
-                    },
-                    "source_types": {
-                        "type": "object",
-                        "properties": {
-                            "card": {
-                                "type": "integer"
-                            }
-                        },
-                        "required": [
-                            "card"
-                        ]
-                    }
-                },
-                "required": [
-                    "amount",
-                    "currency",
-                    "source_types"
-                ]
-            }
-        },
-        "livemode": {
-            "type": "boolean"
-        },
-        "pending": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "amount": {
-                        "type": "integer"
-                    },
-                    "currency": {
-                        "type": "string"
-                    },
-                    "source_types": {
-                        "type": "object",
-                        "properties": {
-                            "card": {
-                                "type": "integer"
-                            }
-                        },
-                        "required": [
-                            "card"
-                        ]
-                    }
-                },
-                "required": [
-                    "amount",
-                    "currency",
-                    "source_types"
-                ]
-            }
-        }
-    }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Stripe/__schema__/v1.0.0/balance/get.json",
+    "sha": "71eac1a22dd8b087d913381cb8b60abbcc3276b9",
+    "size": 1994,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Stripe/__schema__/v1.0.0/balance/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Stripe/__schema__/v1.0.0/balance/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/71eac1a22dd8b087d913381cb8b60abbcc3276b9",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Stripe/__schema__/v1.0.0/balance/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJvYmplY3QiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJhdmFpbGFibGUiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogImFycmF5IiwKICAgICAgICAgICAgIml0ZW1zIjogewog\nICAgICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAg\nICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgICAgICJhbW91\nbnQiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImludGVn\nZXIiCiAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAg\nICAiY3VycmVuY3kiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAg\nICAgICAgICAgICJzb3VyY2VfdHlwZXMiOiB7CiAgICAgICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICAgICAgICAg\nICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgICAgICAgICAg\nICAgImNhcmQiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nInR5cGUiOiAiaW50ZWdlciIKICAgICAgICAgICAgICAgICAgICAgICAgICAg\nIH0KICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAg\nICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgImNhcmQiCiAgICAgICAgICAgICAgICAgICAgICAgIF0KICAgICAg\nICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICB9LAogICAgICAgICAg\nICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgICAgICJhbW91\nbnQiLAogICAgICAgICAgICAgICAgICAgICJjdXJyZW5jeSIsCiAgICAgICAg\nICAgICAgICAgICAgInNvdXJjZV90eXBlcyIKICAgICAgICAgICAgICAgIF0K\nICAgICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAgImxpdmVtb2RlIjog\newogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAg\nICAgICAgInBlbmRpbmciOiB7CiAgICAgICAgICAgICJ0eXBlIjogImFycmF5\nIiwKICAgICAgICAgICAgIml0ZW1zIjogewogICAgICAgICAgICAgICAgInR5\ncGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgICAgICJwcm9wZXJ0aWVzIjog\newogICAgICAgICAgICAgICAgICAgICJhbW91bnQiOiB7CiAgICAgICAgICAg\nICAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgICAgICAg\nICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAiY3VycmVuY3kiOiB7CiAg\nICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICJzb3VyY2Vf\ndHlwZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogIm9i\namVjdCIsCiAgICAgICAgICAgICAgICAgICAgICAgICJwcm9wZXJ0aWVzIjog\newogICAgICAgICAgICAgICAgICAgICAgICAgICAgImNhcmQiOiB7CiAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIK\nICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAg\nICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAgICAgInJlcXVpcmVk\nIjogWwogICAgICAgICAgICAgICAgICAgICAgICAgICAgImNhcmQiCiAgICAg\nICAgICAgICAgICAgICAgICAgIF0KICAgICAgICAgICAgICAgICAgICB9CiAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInJlcXVpcmVkIjog\nWwogICAgICAgICAgICAgICAgICAgICJhbW91bnQiLAogICAgICAgICAgICAg\nICAgICAgICJjdXJyZW5jeSIsCiAgICAgICAgICAgICAgICAgICAgInNvdXJj\nZV90eXBlcyIKICAgICAgICAgICAgICAgIF0KICAgICAgICAgICAgfQogICAg\nICAgIH0KICAgIH0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Stripe/__schema__/v1.0.0/balance/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/71eac1a22dd8b087d913381cb8b60abbcc3276b9",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Stripe/__schema__/v1.0.0/balance/get.json"
+    },
+    "version": 1
 }
