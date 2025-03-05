@@ -1,56 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "edit_history_tweet_ids": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "text": {
-            "type": "string"
-        },
-        "public_metrics": {
-            "type": "object",
-            "properties": {
-                "retweet_count": {
-                    "type": "integer"
-                },
-                "reply_count": {
-                    "type": "integer"
-                },
-                "like_count": {
-                    "type": "integer"
-                },
-                "quote_count": {
-                    "type": "integer"
-                },
-                "bookmark_count": {
-                    "type": "integer"
-                },
-                "impression_count": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "retweet_count",
-                "reply_count",
-                "like_count",
-                "quote_count",
-                "bookmark_count",
-                "impression_count"
-            ]
-        },
-        "author_id": {
-            "type": "string"
-        }
+    "name": "search.json",
+    "path": "packages/nodes-base/nodes/Twitter/__schema__/v2.0.0/tweet/search.json",
+    "sha": "44e418229f185ad9b8adf00b4fd404508882aa69",
+    "size": 1356,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Twitter/__schema__/v2.0.0/tweet/search.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Twitter/__schema__/v2.0.0/tweet/search.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/44e418229f185ad9b8adf00b4fd404508882aa69",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Twitter/__schema__/v2.0.0/tweet/search.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgImVkaXRfaGlzdG9yeV90d2VldF9pZHMiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogImFycmF5IiwKICAgICAgICAgICAgIml0\nZW1zIjogewogICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgICAgICB9CiAgICAgICAgfSwKICAgICAgICAidGV4dCI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInB1\nYmxpY19tZXRyaWNzIjogewogICAgICAgICAgICAidHlwZSI6ICJvYmplY3Qi\nLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAg\nICJyZXR3ZWV0X2NvdW50IjogewogICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogImludGVnZXIiCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAg\nICAgInJlcGx5X2NvdW50IjogewogICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogImludGVnZXIiCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAg\nICAgImxpa2VfY291bnQiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUi\nOiAiaW50ZWdlciIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAg\nICAicXVvdGVfY291bnQiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUi\nOiAiaW50ZWdlciIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAg\nICAiYm9va21hcmtfY291bnQiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5\ncGUiOiAiaW50ZWdlciIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAg\nICAgICAiaW1wcmVzc2lvbl9jb3VudCI6IHsKICAgICAgICAgICAgICAgICAg\nICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgICAgICAgICAgfQogICAgICAg\nICAgICB9LAogICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAg\nICAgICAicmV0d2VldF9jb3VudCIsCiAgICAgICAgICAgICAgICAicmVwbHlf\nY291bnQiLAogICAgICAgICAgICAgICAgImxpa2VfY291bnQiLAogICAgICAg\nICAgICAgICAgInF1b3RlX2NvdW50IiwKICAgICAgICAgICAgICAgICJib29r\nbWFya19jb3VudCIsCiAgICAgICAgICAgICAgICAiaW1wcmVzc2lvbl9jb3Vu\ndCIKICAgICAgICAgICAgXQogICAgICAgIH0sCiAgICAgICAgImF1dGhvcl9p\nZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0K\nICAgIH0sCiAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgImlkIiwKICAgICAg\nICAiZWRpdF9oaXN0b3J5X3R3ZWV0X2lkcyIsCiAgICAgICAgInRleHQiCiAg\nICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Twitter/__schema__/v2.0.0/tweet/search.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/44e418229f185ad9b8adf00b4fd404508882aa69",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Twitter/__schema__/v2.0.0/tweet/search.json"
     },
-    "required": [
-        "id",
-        "edit_history_tweet_ids",
-        "text"
-    ]
+    "version": 1
 }
