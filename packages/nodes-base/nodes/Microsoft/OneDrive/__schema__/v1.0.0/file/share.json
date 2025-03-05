@@ -1,52 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"@odata.context": {
-			"type": "string"
-		},
-		"id": {
-			"type": "string"
-		},
-		"roles": {
-			"type": "array",
-			"items": {
-				"type": "string"
-			}
-		},
-		"shareId": {
-			"type": "string"
-		},
-		"hasPassword": {
-			"type": "boolean"
-		},
-		"link": {
-			"type": "object",
-			"properties": {
-				"type": {
-					"type": "string"
-				},
-				"webUrl": {
-					"type": "string"
-				},
-				"scope": {
-					"type": "string"
-				},
-				"preventsDownload": {
-					"type": "boolean"
-				}
-			},
-			"required": [
-				"type",
-				"webUrl"
-			]
-		}
-	},
-	"required": [
-		"@odata.context",
-		"id",
-		"roles",
-		"shareId",
-		"hasPassword",
-		"link"
-	]
+    "name": "share.json",
+    "path": "packages/nodes-base/nodes/Microsoft/OneDrive/__schema__/v1.0.0/file/share.json",
+    "sha": "268264786e9642aa96c40a281a632627eaecb158",
+    "size": 681,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Microsoft/OneDrive/__schema__/v1.0.0/file/share.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Microsoft/OneDrive/__schema__/v1.0.0/file/share.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/268264786e9642aa96c40a281a632627eaecb158",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Microsoft/OneDrive/__schema__/v1.0.0/file/share.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJAb2Rh\ndGEuY29udGV4dCI6IHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJImlk\nIjogewoJCQkidHlwZSI6ICJzdHJpbmciCgkJfSwKCQkicm9sZXMiOiB7CgkJ\nCSJ0eXBlIjogImFycmF5IiwKCQkJIml0ZW1zIjogewoJCQkJInR5cGUiOiAi\nc3RyaW5nIgoJCQl9CgkJfSwKCQkic2hhcmVJZCI6IHsKCQkJInR5cGUiOiAi\nc3RyaW5nIgoJCX0sCgkJImhhc1Bhc3N3b3JkIjogewoJCQkidHlwZSI6ICJi\nb29sZWFuIgoJCX0sCgkJImxpbmsiOiB7CgkJCSJ0eXBlIjogIm9iamVjdCIs\nCgkJCSJwcm9wZXJ0aWVzIjogewoJCQkJInR5cGUiOiB7CgkJCQkJInR5cGUi\nOiAic3RyaW5nIgoJCQkJfSwKCQkJCSJ3ZWJVcmwiOiB7CgkJCQkJInR5cGUi\nOiAic3RyaW5nIgoJCQkJfSwKCQkJCSJzY29wZSI6IHsKCQkJCQkidHlwZSI6\nICJzdHJpbmciCgkJCQl9LAoJCQkJInByZXZlbnRzRG93bmxvYWQiOiB7CgkJ\nCQkJInR5cGUiOiAiYm9vbGVhbiIKCQkJCX0KCQkJfSwKCQkJInJlcXVpcmVk\nIjogWwoJCQkJInR5cGUiLAoJCQkJIndlYlVybCIKCQkJXQoJCX0KCX0sCgki\ncmVxdWlyZWQiOiBbCgkJIkBvZGF0YS5jb250ZXh0IiwKCQkiaWQiLAoJCSJy\nb2xlcyIsCgkJInNoYXJlSWQiLAoJCSJoYXNQYXNzd29yZCIsCgkJImxpbmsi\nCgldCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Microsoft/OneDrive/__schema__/v1.0.0/file/share.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/268264786e9642aa96c40a281a632627eaecb158",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Microsoft/OneDrive/__schema__/v1.0.0/file/share.json"
+    },
+    "version": 1
 }
