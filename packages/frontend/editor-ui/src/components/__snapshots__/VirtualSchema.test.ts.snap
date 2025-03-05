@@ -110,7 +110,12 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
               swapopacity="false"
               symbol="false"
             />
-            <!--v-if-->
+            <div
+              class="extra-info"
+              data-v-882a318e=""
+            >
+              Preview
+            </div>
           </div>
           <div
             class="notice"
@@ -119,13 +124,12 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
             theme="warning"
           >
             
-            
-            This is a preview of the schema, execute the node to see the exact schema and data. 
+            Usually outputs the following fields. Execute the node to see the actual ones. 
             
             <a
               class="n8n-link"
               data-v-882a318e=""
-              href="https://docs.n8n.io/data/data-editing/"
+              href="https://docs.n8n.io/data/schema-preview/"
               target="_blank"
             >
               
@@ -133,7 +137,7 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
                 class="primary"
               >
                 <span
-                  class="n8n-text size-small regular"
+                  class="n8n-text size-small bold"
                 >
                   
                   
@@ -144,7 +148,6 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
               </span>
               
             </a>
-            
             
             
           </div>
@@ -328,70 +331,38 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
         
         
         
-        <div
-          class="schema-item draggable"
-          data-test-id="run-data-schema-item"
-          data-v-0f5e7239=""
+        
+        <span
+          class="n8n-text compact size-14 regular n8n-icon icon el-tooltip__trigger el-tooltip__trigger icon el-tooltip__trigger el-tooltip__trigger n8n-icon icon el-tooltip__trigger el-tooltip__trigger icon el-tooltip__trigger el-tooltip__trigger"
           data-v-d00cba9a=""
-          type="item"
         >
-          <div
-            class="toggle-container"
-            data-v-0f5e7239=""
-          >
-            <!--v-if-->
-          </div>
-          <div
-            class="pill pill--preview"
-            data-name="..."
-            data-nest-level="1"
-            data-target="mappable"
-            data-test-id="run-data-schema-node-name"
-            data-v-0f5e7239=""
-          >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
-              class="type-icon"
-              data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon=""
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
-            <span
-              class="content title"
-              data-v-0f5e7239=""
-            >
-              
-              <span>
-                <!--v-if-->
-                ...
-              </span>
-              
-            </span>
-          </div>
-          <span
-            class="content text"
-            data-test-id="run-data-schema-item-value"
-            data-v-0f5e7239=""
-          >
-            <span />
-          </span>
-        </div>
+          
+          <font-awesome-icon-stub
+            beat="false"
+            beatfade="false"
+            border="false"
+            bounce="false"
+            class="14"
+            fade="false"
+            fixedwidth="false"
+            flash="false"
+            flip="false"
+            icon="ellipsis-h"
+            inverse="false"
+            listitem="false"
+            pulse="false"
+            shake="false"
+            spin="false"
+            spinpulse="false"
+            spinreverse="false"
+            swapopacity="false"
+            symbol="false"
+          />
+          
+        </span>
+        <!--teleport start-->
+        <!--teleport end-->
+        
         
         
         
@@ -464,7 +435,12 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
               <!--v-if-->
             </div>
             <!--v-if-->
-            <!--v-if-->
+            <div
+              class="extra-info"
+              data-v-882a318e=""
+            >
+              Preview
+            </div>
           </div>
           <div
             class="notice"
@@ -473,13 +449,12 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
             theme="warning"
           >
             
-            
-            This is a preview of the schema, execute the node to see the exact schema and data. 
+            Usually outputs the following fields. Execute the node to see the actual ones. 
             
             <a
               class="n8n-link"
               data-v-882a318e=""
-              href="https://docs.n8n.io/data/data-editing/"
+              href="https://docs.n8n.io/data/schema-preview/"
               target="_blank"
             >
               
@@ -487,7 +462,7 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
                 class="primary"
               >
                 <span
-                  class="n8n-text size-small regular"
+                  class="n8n-text size-small bold"
                 >
                   
                   
@@ -498,7 +473,6 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
               </span>
               
             </a>
-            
             
             
           </div>
@@ -682,70 +656,38 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
         
         
         
-        <div
-          class="schema-item draggable"
-          data-test-id="run-data-schema-item"
-          data-v-0f5e7239=""
+        
+        <span
+          class="n8n-text compact size-14 regular n8n-icon icon el-tooltip__trigger el-tooltip__trigger icon el-tooltip__trigger el-tooltip__trigger n8n-icon icon el-tooltip__trigger el-tooltip__trigger icon el-tooltip__trigger el-tooltip__trigger"
           data-v-d00cba9a=""
-          type="item"
         >
-          <div
-            class="toggle-container"
-            data-v-0f5e7239=""
-          >
-            <!--v-if-->
-          </div>
-          <div
-            class="pill pill--preview"
-            data-name="..."
-            data-nest-level="1"
-            data-target="mappable"
-            data-test-id="run-data-schema-node-name"
-            data-v-0f5e7239=""
-          >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
-              class="type-icon"
-              data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon=""
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
-            <span
-              class="content title"
-              data-v-0f5e7239=""
-            >
-              
-              <span>
-                <!--v-if-->
-                ...
-              </span>
-              
-            </span>
-          </div>
-          <span
-            class="content text"
-            data-test-id="run-data-schema-item-value"
-            data-v-0f5e7239=""
-          >
-            <span />
-          </span>
-        </div>
+          
+          <font-awesome-icon-stub
+            beat="false"
+            beatfade="false"
+            border="false"
+            bounce="false"
+            class="14"
+            fade="false"
+            fixedwidth="false"
+            flash="false"
+            flip="false"
+            icon="ellipsis-h"
+            inverse="false"
+            listitem="false"
+            pulse="false"
+            shake="false"
+            spin="false"
+            spinpulse="false"
+            spinreverse="false"
+            swapopacity="false"
+            symbol="false"
+          />
+          
+        </span>
+        <!--teleport start-->
+        <!--teleport end-->
+        
         
         
         
@@ -821,7 +763,7 @@ exports[`VirtualSchema.vue > renders previous nodes schema for AI tools 1`] = `
   </div>
   <!--v-if-->
   <div
-    class="item-count"
+    class="extra-info"
     data-test-id="run-data-schema-node-item-count"
     data-v-882a318e=""
   >
@@ -893,7 +835,7 @@ exports[`VirtualSchema.vue > renders schema for correct output branch 1`] = `
   </div>
   <!--v-if-->
   <div
-    class="item-count"
+    class="extra-info"
     data-test-id="run-data-schema-node-item-count"
     data-v-882a318e=""
   >
@@ -1447,7 +1389,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               symbol="false"
             />
             <div
-              class="item-count"
+              class="extra-info"
               data-test-id="run-data-schema-node-item-count"
               data-v-882a318e=""
             >
