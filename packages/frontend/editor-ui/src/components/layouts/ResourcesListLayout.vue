@@ -144,10 +144,11 @@ const slots = defineSlots<{
 		filters: Record<string, boolean | string | string[]>;
 		setKeyValue: (key: string, value: unknown) => void;
 	}): unknown;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	default(props: {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		data: any;
 		columns?: DatatableColumn[];
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		updateItemSize?: (data: any) => void;
 	}): unknown;
 	item(props: { item: unknown; index: number }): unknown;
