@@ -18,11 +18,12 @@ import type {
 	INodeParameterResourceLocator,
 	INodeParameters,
 	INodeProperties,
+	INodePropertyCollection,
 	INodePropertyOptions,
 	IParameterLabel,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { CREDENTIAL_EMPTY_VALUE, NodeHelpers } from 'n8n-workflow';
+import { CREDENTIAL_EMPTY_VALUE, isINodePropertyOptions, NodeHelpers } from 'n8n-workflow';
 
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import CredentialsSelect from '@/components/CredentialsSelect.vue';
@@ -66,7 +67,9 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useRouter } from 'vue-router';
 import { useElementSize } from '@vueuse/core';
+import { captureMessage } from '@sentry/vue';
 import { completeExpressionSyntax, isStringWithExpressionSyntax } from '@/utils/expressions';
+import { isPresent } from '@/utils/typesUtils';
 import CssEditor from './CssEditor/CssEditor.vue';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
@@ -422,14 +425,11 @@ const editorLanguage = computed<CodeNodeEditorLanguage>(() => {
 	return getArgument<CodeNodeEditorLanguage>('editorLanguage') ?? 'javaScript';
 });
 
-const parameterOptions = computed<INodePropertyOptions[] | undefined>(() => {
-	if (!hasRemoteMethod.value) {
-		// Options are already given
-		return props.parameter.options as INodePropertyOptions[];
-	}
+const parameterOptions = computed(() => {
+	const options = hasRemoteMethod.value ? remoteParameterOptions.value : props.parameter.options;
+	const safeOptions = (options ?? []).filter(isValidParameterOption);
 
-	// Options get loaded from server
-	return remoteParameterOptions.value;
+	return safeOptions;
 });
 
 const isSwitch = computed(
@@ -570,6 +570,12 @@ const shouldCaptureForPosthog = computed(() => {
 	}
 	return false;
 });
+
+function isValidParameterOption(
+	option: INodePropertyOptions | INodeProperties | INodePropertyCollection,
+): option is INodePropertyOptions {
+	return isINodePropertyOptions(option) && isPresent(option.value) && isPresent(option.name);
+}
 
 function isRemoteParameterOption(option: INodePropertyOptions) {
 	return remoteParameterOptionsKeys.value.includes(option.name);
@@ -1083,6 +1089,28 @@ watch(isModelValueExpression, async (isExpression, wasExpression) => {
 		await setFocus();
 	}
 });
+
+// Investigate invalid parameter options
+// Sentry issue: https://n8nio.sentry.io/issues/6275981089/?project=4503960699273216
+const unwatchParameterOptions = watch(
+	[remoteParameterOptions, () => props.parameter.options],
+	([remoteOptions, options]) => {
+		const allOptions = [...remoteOptions, ...(options ?? [])];
+		const invalidOptions = allOptions.filter((option) => !isValidParameterOption(option));
+
+		if (invalidOptions.length > 0) {
+			captureMessage('Invalid parameter options', {
+				level: 'error',
+				extra: {
+					invalidOptions,
+					parameter: props.parameter.name,
+					node: node.value,
+				},
+			});
+			unwatchParameterOptions();
+		}
+	},
+);
 
 onUpdated(async () => {
 	await nextTick();
