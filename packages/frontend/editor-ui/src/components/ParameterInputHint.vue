@@ -46,13 +46,13 @@ const simplyText = computed(() => {
 				[$style.highlight]: highlight,
 			}"
 		>
-			<span data-test-id="parameter-input-hint" v-n8n-html="simplyText"></span>
+			<span v-n8n-html="simplyText" data-test-id="parameter-input-hint"></span>
 		</div>
 		<div
 			v-else
 			ref="hintTextRef"
-			:class="{ [$style.singleline]: singleLine, [$style.highlight]: highlight }"
 			v-n8n-html="sanitizeHtml(hint)"
+			:class="{ [$style.singleline]: singleLine, [$style.highlight]: highlight }"
 		></div>
 	</n8n-text>
 </template>

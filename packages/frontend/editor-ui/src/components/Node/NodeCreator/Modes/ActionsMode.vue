@@ -250,9 +250,9 @@ onMounted(() => {
 					</template>
 					<template v-else #empty>
 						<p
+							v-n8n-html="i18n.baseText('nodeCreator.actionsCategory.noMatchingTriggers')"
 							:class="$style.resetSearch"
 							@click="resetSearch"
-							v-n8n-html="i18n.baseText('nodeCreator.actionsCategory.noMatchingTriggers')"
 						/>
 					</template>
 				</CategorizedItemsRenderer>
@@ -289,10 +289,10 @@ onMounted(() => {
 						</n8n-info-tip>
 						<p
 							v-else
+							v-n8n-html="i18n.baseText('nodeCreator.actionsCategory.noMatchingActions')"
 							:class="$style.resetSearch"
 							data-test-id="actions-panel-no-matching-actions"
 							@click="resetSearch"
-							v-n8n-html="i18n.baseText('nodeCreator.actionsCategory.noMatchingActions')"
 						/>
 					</template>
 				</CategorizedItemsRenderer>
@@ -300,12 +300,12 @@ onMounted(() => {
 		</OrderSwitcher>
 		<div v-if="containsAPIAction" :class="$style.apiHint">
 			<span
-				@click.prevent="addHttpNode"
 				v-n8n-html="
 					i18n.baseText('nodeCreator.actionsList.apiCall', {
 						interpolate: { node: subcategory ?? '' },
 					})
 				"
+				@click.prevent="addHttpNode"
 			/>
 		</div>
 	</div>
