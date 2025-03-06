@@ -9,8 +9,9 @@ import type {
 	IDataObject,
 	ResourceMapperField,
 	ILocalLoadOptionsFunctions,
-	ISupplyDataFunctions,
 	WorkflowInputsData,
+	IExecuteFunctions,
+	ISupplyDataFunctions,
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
@@ -100,7 +101,9 @@ export function getFieldEntries(context: IWorkflowNodeContext): {
 	throw new NodeOperationError(context.getNode(), result);
 }
 
-export function getWorkflowInputValues(this: ISupplyDataFunctions): INodeExecutionData[] {
+export function getWorkflowInputValues(
+	this: IExecuteFunctions | ISupplyDataFunctions,
+): INodeExecutionData[] {
 	const inputData = this.getInputData();
 
 	return inputData.map(({ json, binary }, itemIndex) => {
@@ -124,7 +127,7 @@ export function getWorkflowInputValues(this: ISupplyDataFunctions): INodeExecuti
 	});
 }
 
-export function getCurrentWorkflowInputData(this: ISupplyDataFunctions) {
+export function getCurrentWorkflowInputData(this: IExecuteFunctions | ISupplyDataFunctions) {
 	const inputData: INodeExecutionData[] = getWorkflowInputValues.call(this);
 
 	const schema = this.getNodeParameter('workflowInputs.schema', 0, []) as ResourceMapperField[];

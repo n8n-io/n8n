@@ -2,7 +2,7 @@ import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter, Logger } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 
 import type { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import type { SettingsRepository } from '@/databases/repositories/settings.repository';
@@ -57,7 +57,7 @@ describe('ExternalHooks', () => {
 				{ virtual: true },
 			);
 
-			await expect(externalHooks.init()).rejects.toThrow(ApplicationError);
+			await expect(externalHooks.init()).rejects.toThrow(UnexpectedError);
 		});
 
 		it('should successfully load hooks from valid hook file', async () => {
@@ -112,10 +112,13 @@ describe('ExternalHooks', () => {
 			externalHooks['registered']['workflow.create'] = [hookFn];
 
 			await expect(externalHooks.run('workflow.create', [workflowData])).rejects.toThrow(error);
-
-			expect(errorReporter.error).toHaveBeenCalledWith(expect.any(ApplicationError), {
-				level: 'fatal',
-			});
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'External hook "workflow.create" failed',
+					cause: error,
+				}),
+				{ level: 'fatal' },
+			);
 			expect(logger.error).toHaveBeenCalledWith(
 				'There was a problem running hook "workflow.create"',
 			);

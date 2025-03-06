@@ -330,7 +330,12 @@ export class CredentialsController {
 				credentialsId: credentialId,
 				projectId: In(toUnshare),
 			});
-			await this.enterpriseCredentialsService.shareWithProjects(req.user, credential, toShare, trx);
+			await this.enterpriseCredentialsService.shareWithProjects(
+				req.user,
+				credential.id,
+				toShare,
+				trx,
+			);
 
 			if (deleteResult.affected) {
 				amountRemoved = deleteResult.affected;

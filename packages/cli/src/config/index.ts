@@ -5,7 +5,7 @@ import { flatten } from 'flat';
 import { readFileSync } from 'fs';
 import merge from 'lodash/merge';
 import { Logger } from 'n8n-core';
-import { ApplicationError, setGlobalState } from 'n8n-workflow';
+import { setGlobalState, UserError } from 'n8n-workflow';
 import assert from 'node:assert';
 import colors from 'picocolors';
 
@@ -84,7 +84,7 @@ if (!inE2ETests && !inTest) {
 				} catch (error) {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 					if (error.code === 'ENOENT') {
-						throw new ApplicationError('File not found', { extra: { fileName } });
+						throw new UserError('File not found', { extra: { fileName } });
 					}
 					throw error;
 				}

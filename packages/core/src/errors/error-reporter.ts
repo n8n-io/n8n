@@ -16,6 +16,7 @@ type ErrorReporterInitOptions = {
 	release: string;
 	environment: string;
 	serverName: string;
+	releaseDate?: Date;
 	/**
 	 * Function to allow filtering out errors before they are sent to Sentry.
 	 * Return true if the error should be filtered out.
@@ -23,8 +24,15 @@ type ErrorReporterInitOptions = {
 	beforeSendFilter?: (event: ErrorEvent, hint: EventHint) => boolean;
 };
 
+const ONE_DAY_IN_MS = 24 * 60 * 60 * 1000;
+const SIX_WEEKS_IN_MS = 6 * 7 * ONE_DAY_IN_MS;
+const RELEASE_EXPIRATION_WARNING =
+	'Error tracking disabled because this release is older than 6 weeks.';
+
 @Service()
 export class ErrorReporter {
+	private expirationTimer?: NodeJS.Timeout;
+
 	/** Hashes of error stack traces, to deduplicate error reports. */
 	private seenErrors = new Set<string>();
 
@@ -61,6 +69,7 @@ export class ErrorReporter {
 	}
 
 	async shutdown(timeoutInMs = 1000) {
+		clearTimeout(this.expirationTimer);
 		await close(timeoutInMs);
 	}
 
@@ -71,10 +80,31 @@ export class ErrorReporter {
 		release,
 		environment,
 		serverName,
+		releaseDate,
 	}: ErrorReporterInitOptions) {
 		process.on('uncaughtException', (error) => {
 			this.error(error);
 		});
+
+		if (releaseDate) {
+			const releaseExpiresAtMs = releaseDate.getTime() + SIX_WEEKS_IN_MS;
+			const releaseExpiresInMs = () => releaseExpiresAtMs - Date.now();
+			if (releaseExpiresInMs() <= 0) {
+				this.logger.warn(RELEASE_EXPIRATION_WARNING);
+				return;
+			}
+			const checkForExpiration = () => {
+				// Once this release expires, reject all events
+				if (releaseExpiresInMs() <= 0) {
+					this.logger.warn(RELEASE_EXPIRATION_WARNING);
+					// eslint-disable-next-line @typescript-eslint/unbound-method
+					this.report = this.defaultReport;
+				} else {
+					setTimeout(checkForExpiration, ONE_DAY_IN_MS);
+				}
+			};
+			checkForExpiration();
+		}
 
 		if (!dsn) return;
 
@@ -149,8 +179,8 @@ export class ErrorReporter {
 		}
 
 		if (this.isIgnoredSqliteError(originalException)) return null;
-		if (originalException instanceof ApplicationError) {
-			if (this.isIgnoredApplicationError(originalException)) return null;
+		if (originalException instanceof ApplicationError || originalException instanceof BaseError) {
+			if (this.isIgnoredN8nError(originalException)) return null;
 
 			this.extractEventDetailsFromN8nError(event, originalException);
 		}
@@ -204,8 +234,8 @@ export class ErrorReporter {
 		);
 	}
 
-	private isIgnoredApplicationError(error: ApplicationError) {
-		return error.level === 'warning';
+	private isIgnoredN8nError(error: ApplicationError | BaseError) {
+		return error.level === 'warning' || error.level === 'info';
 	}
 
 	private extractEventDetailsFromN8nError(

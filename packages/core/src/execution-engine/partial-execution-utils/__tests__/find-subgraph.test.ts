@@ -33,6 +33,27 @@ describe('findSubgraph', () => {
 		expect(subgraph).toEqual(graph);
 	});
 
+	//                 ►►
+	//                ┌──────┐
+	//                │orphan│
+	//                └──────┘
+	//  ┌───────┐     ┌───────────┐
+	//  │trigger├────►│destination│
+	//  └───────┘     └───────────┘
+	test('works with a single node', () => {
+		const trigger = createNodeData({ name: 'trigger' });
+		const destination = createNodeData({ name: 'destination' });
+		const orphan = createNodeData({ name: 'orphan' });
+
+		const graph = new DirectedGraph()
+			.addNodes(trigger, destination, orphan)
+			.addConnections({ from: trigger, to: destination });
+
+		const subgraph = findSubgraph({ graph, destination: orphan, trigger: orphan });
+
+		expect(subgraph).toEqual(new DirectedGraph().addNode(orphan));
+	});
+
 	//                     ►►
 	//  ┌───────┐         ┌───────────┐
 	//  │       ├────────►│           │
