@@ -164,6 +164,42 @@ describe('ParameterInput.vue', () => {
 		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'foo' })]);
 	});
 
+	test('should correctly handle paste events', async () => {
+		const { container, emitted } = renderComponent(ParameterInput, {
+			pinia: createTestingPinia(),
+			props: {
+				path: 'tag',
+				parameter: {
+					displayName: 'Tag',
+					name: 'tag',
+					type: 'string',
+				},
+				modelValue: '',
+			},
+		});
+		const input = container.querySelector('input') as HTMLInputElement;
+		expect(input).toBeInTheDocument();
+		await userEvent.click(input);
+
+		async function paste(text: string) {
+			const expression = new DataTransfer();
+			expression.setData('text', text);
+			await userEvent.clear(input);
+			await userEvent.paste(expression);
+		}
+
+		await paste('foo');
+		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'foo' })]);
+
+		await paste('={{ $json.foo }}');
+		expect(emitted('update')).toContainEqual([
+			expect.objectContaining({ value: '={{ $json.foo }}' }),
+		]);
+
+		await paste('=flDvzj%y1nP');
+		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: '==flDvzj%y1nP' })]);
+	});
+
 	test('should not reset the value of a multi-select with loadOptionsMethod on load', async () => {
 		mockNodeTypesState.getNodeParameterOptions = vi.fn(async () => [
 			{ name: 'ID', value: 'id' },

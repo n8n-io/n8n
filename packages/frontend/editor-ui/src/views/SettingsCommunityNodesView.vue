@@ -10,15 +10,12 @@ import type { PublicInstalledPackage } from 'n8n-workflow';
 
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 import { useUIStore } from '@/stores/ui.store';
-import { onBeforeUnmount, ref } from 'vue';
+import { onBeforeUnmount, ref, computed, onBeforeMount, onMounted } from 'vue';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useRouter } from 'vue-router';
 import { usePushConnection } from '@/composables/usePushConnection';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
-import { computed } from 'vue';
 import { useI18n } from '@/composables/useI18n';
-import { onBeforeMount } from 'vue';
-import { onMounted } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 
 const PACKAGE_COUNT_THRESHOLD = 31;

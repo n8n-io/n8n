@@ -185,9 +185,9 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 							{{ i18n.baseText('expressionEdit.expression') }}
 						</N8nText>
 						<N8nText
+							v-n8n-html="i18n.baseText('expressionTip.javascript')"
 							:class="$style.tip"
 							size="small"
-							v-n8n-html="i18n.baseText('expressionTip.javascript')"
 						/>
 					</div>
 
