@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import { Service } from '@n8n/di';
 
 import type { TagEntity } from '@/databases/entities/tag-entity';
 import { TagRepository } from '@/databases/repositories/tag.repository';
@@ -7,6 +7,8 @@ import { validateEntity } from '@/generic-helpers';
 import type { ITagWithCountDb } from '@/interfaces';
 
 type GetAllResult<T> = T extends { withUsageCount: true } ? ITagWithCountDb[] : TagEntity[];
+
+type Action = 'Create' | 'Update';
 
 @Service()
 export class TagService {
@@ -24,7 +26,7 @@ export class TagService {
 	async save(tag: TagEntity, actionKind: 'create' | 'update') {
 		await validateEntity(tag);
 
-		const action = actionKind[0].toUpperCase() + actionKind.slice(1);
+		const action = (actionKind[0].toUpperCase() + actionKind.slice(1)) as Action;
 
 		await this.externalHooks.run(`tag.before${action}`, [tag]);
 

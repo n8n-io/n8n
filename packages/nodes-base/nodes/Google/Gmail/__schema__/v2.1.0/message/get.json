@@ -1,0 +1,170 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "threadId": {
+            "type": "string"
+        },
+        "sizeEstimate": {
+            "type": "integer"
+        },
+        "labelIds": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "headers": {
+            "type": "object",
+            "properties": {
+                "delivered-to": {
+                    "type": "string"
+                },
+                "received": {
+                    "type": "string"
+                },
+                "x-google-smtp-source": {
+                    "type": "string"
+                },
+                "x-received": {
+                    "type": "string"
+                },
+                "arc-seal": {
+                    "type": "string"
+                },
+                "arc-message-signature": {
+                    "type": "string"
+                },
+                "arc-authentication-results": {
+                    "type": "string"
+                },
+                "return-path": {
+                    "type": "string"
+                },
+                "received-spf": {
+                    "type": "string"
+                },
+                "authentication-results": {
+                    "type": "string"
+                },
+                "dkim-signature": {
+                    "type": "string"
+                },
+                "content-type": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "mime-version": {
+                    "type": "string"
+                },
+                "to": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                },
+                "message-id": {
+                    "type": "string"
+                },
+                "from": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "content-type",
+                "date",
+                "mime-version",
+                "subject",
+                "message-id",
+                "from"
+            ]
+        },
+        "text": {
+            "type": "string"
+        },
+        "textAsHtml": {
+            "type": "string"
+        },
+        "subject": {
+            "type": "string"
+        },
+        "date": {
+            "type": "string"
+        },
+        "to": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "address",
+                            "name"
+                        ]
+                    }
+                },
+                "html": {
+                    "type": "string"
+                },
+                "text": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "value",
+                "html",
+                "text"
+            ]
+        },
+        "from": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "address",
+                            "name"
+                        ]
+                    }
+                },
+                "html": {
+                    "type": "string"
+                },
+                "text": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "value",
+                "html",
+                "text"
+            ]
+        },
+        "messageId": {
+            "type": "string"
+        }
+    }
+}

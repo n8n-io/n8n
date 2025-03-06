@@ -23,6 +23,7 @@ export class Pushover implements INodeType {
 		defaults: {
 			name: 'Pushover',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

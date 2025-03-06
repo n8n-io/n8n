@@ -3,8 +3,9 @@ import { mock } from 'jest-mock-extended';
 import get from 'lodash/get';
 import merge from 'lodash/merge';
 import set from 'lodash/set';
-import { PollContext, returnJsonArray, type InstanceSettings } from 'n8n-core';
-import { ScheduledTaskManager } from 'n8n-core/dist/ScheduledTaskManager';
+import { PollContext, returnJsonArray } from 'n8n-core';
+import type { InstanceSettings, ExecutionLifecycleHooks } from 'n8n-core';
+import { ScheduledTaskManager } from 'n8n-core/dist/execution-engine/scheduled-task-manager';
 import type {
 	IBinaryData,
 	ICredentialDataDecryptedObject,
@@ -19,7 +20,6 @@ import type {
 	NodeTypeAndVersion,
 	VersionedNodeType,
 	Workflow,
-	WorkflowHooks,
 } from 'n8n-workflow';
 
 type MockDeepPartial<T> = Parameters<typeof mock<T>>[0];
@@ -212,7 +212,7 @@ export async function testPollingTriggerNode(
 					return options as IHttpRequestOptions;
 				},
 			}),
-			hooks: mock<WorkflowHooks>(),
+			hooks: mock<ExecutionLifecycleHooks>(),
 		}),
 		mode,
 		'init',

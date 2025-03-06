@@ -1,4 +1,4 @@
-import { Container } from 'typedi';
+import { Container } from '@n8n/di';
 
 import { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import type { Project } from '@/databases/entities/project';
@@ -21,6 +21,13 @@ export async function encryptCredentialData(
 	coreCredential.setData(credential.data);
 
 	return Object.assign(credential, coreCredential.getDataToSave());
+}
+
+export async function decryptCredentialData(credential: ICredentialsDb): Promise<unknown> {
+	const { createCredentialsFromCredentialsEntity } = await import('@/credentials-helper');
+	const coreCredential = createCredentialsFromCredentialsEntity(credential);
+
+	return coreCredential.getData();
 }
 
 const emptyAttributes = {

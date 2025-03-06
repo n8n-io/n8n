@@ -21,6 +21,7 @@ export class QuestDb implements INodeType {
 		defaults: {
 			name: 'QuestDB',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		parameterPane: 'wide',

@@ -1,9 +1,11 @@
+import { Service } from '@n8n/di';
 import * as a from 'assert/strict';
 import {
 	DirectedGraph,
 	filterDisabledNodes,
 	recreateNodeExecutionStack,
 	WorkflowExecute,
+	Logger,
 } from 'n8n-core';
 import type {
 	IPinData,
@@ -14,9 +16,6 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
-import { Service } from 'typedi';
-
-import { Logger } from '@/logging/logger.service';
 
 @Service()
 export class ManualExecutionService {
@@ -24,6 +23,13 @@ export class ManualExecutionService {
 
 	getExecutionStartNode(data: IWorkflowExecutionDataProcess, workflow: Workflow) {
 		let startNode;
+
+		// If the user chose a trigger to start from we honor this.
+		if (data.triggerToStartFrom?.name) {
+			startNode = workflow.getNode(data.triggerToStartFrom.name) ?? undefined;
+		}
+
+		// Old logic for partial executions v1
 		if (
 			data.startNodes?.length === 1 &&
 			Object.keys(data.pinData ?? {}).includes(data.startNodes[0].name)
@@ -42,7 +48,7 @@ export class ManualExecutionService {
 		executionId: string,
 		pinData?: IPinData,
 	): PCancelable<IRun> {
-		if (data.triggerToStartFrom?.data && data.startNodes && !data.destinationNode) {
+		if (data.triggerToStartFrom?.data && data.startNodes) {
 			this.logger.debug(
 				`Execution ID ${executionId} had triggerToStartFrom. Starting from that trigger.`,
 				{ executionId },
@@ -72,7 +78,15 @@ export class ManualExecutionService {
 				},
 			};
 
-			const workflowExecute = new WorkflowExecute(additionalData, 'manual', executionData);
+			if (data.destinationNode) {
+				executionData.startData = { destinationNode: data.destinationNode };
+			}
+
+			const workflowExecute = new WorkflowExecute(
+				additionalData,
+				data.executionMode,
+				executionData,
+			);
 			return workflowExecute.processRunExecutionData(workflow);
 		} else if (
 			data.runData === undefined ||
@@ -95,6 +109,7 @@ export class ManualExecutionService {
 
 			// Can execute without webhook so go on
 			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
+
 			return workflowExecute.run(workflow, startNode, data.destinationNode, data.pinData);
 		} else {
 			// Partial Execution
@@ -102,7 +117,7 @@ export class ManualExecutionService {
 			// Execute only the nodes between start and destination nodes
 			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
 
-			if (data.partialExecutionVersion === '1') {
+			if (data.partialExecutionVersion === 2) {
 				return workflowExecute.runPartialWorkflow2(
 					workflow,
 					data.runData,

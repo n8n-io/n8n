@@ -32,6 +32,7 @@ export class Asana implements INodeType {
 		defaults: {
 			name: 'Asana',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

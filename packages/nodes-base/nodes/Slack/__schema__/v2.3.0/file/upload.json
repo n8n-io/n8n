@@ -1,0 +1,92 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "created": {
+            "type": "integer"
+        },
+        "timestamp": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "mimetype": {
+            "type": "string"
+        },
+        "filetype": {
+            "type": "string"
+        },
+        "pretty_type": {
+            "type": "string"
+        },
+        "user": {
+            "type": "string"
+        },
+        "user_team": {
+            "type": "string"
+        },
+        "editable": {
+            "type": "boolean"
+        },
+        "size": {
+            "type": "integer"
+        },
+        "mode": {
+            "type": "string"
+        },
+        "is_external": {
+            "type": "boolean"
+        },
+        "external_type": {
+            "type": "string"
+        },
+        "is_public": {
+            "type": "boolean"
+        },
+        "public_url_shared": {
+            "type": "boolean"
+        },
+        "display_as_bot": {
+            "type": "boolean"
+        },
+        "username": {
+            "type": "string"
+        },
+        "url_private": {
+            "type": "string"
+        },
+        "url_private_download": {
+            "type": "string"
+        },
+        "media_display_type": {
+            "type": "string"
+        },
+        "permalink": {
+            "type": "string"
+        },
+        "permalink_public": {
+            "type": "string"
+        },
+        "comments_count": {
+            "type": "integer"
+        },
+        "is_starred": {
+            "type": "boolean"
+        },
+        "has_more_shares": {
+            "type": "boolean"
+        },
+        "has_rich_preview": {
+            "type": "boolean"
+        },
+        "file_access": {
+            "type": "string"
+        }
+    }
+}

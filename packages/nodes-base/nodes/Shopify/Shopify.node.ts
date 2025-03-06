@@ -27,6 +27,7 @@ export class Shopify implements INodeType {
 		defaults: {
 			name: 'Shopify',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

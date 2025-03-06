@@ -22,6 +22,7 @@ export class OpenThesaurus implements INodeType {
 		defaults: {
 			name: 'OpenThesaurus',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		properties: [

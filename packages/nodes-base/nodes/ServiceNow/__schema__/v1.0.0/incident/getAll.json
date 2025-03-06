@@ -1,0 +1,278 @@
+{
+    "type": "object",
+    "properties": {
+        "parent": {
+            "type": "string"
+        },
+        "caused_by": {
+            "type": "string"
+        },
+        "watch_list": {
+            "type": "string"
+        },
+        "upon_reject": {
+            "type": "string"
+        },
+        "sys_updated_on": {
+            "type": "string"
+        },
+        "origin_table": {
+            "type": "string"
+        },
+        "approval_history": {
+            "type": "string"
+        },
+        "number": {
+            "type": "string"
+        },
+        "state": {
+            "type": "string"
+        },
+        "sys_created_by": {
+            "type": "string"
+        },
+        "knowledge": {
+            "type": "string"
+        },
+        "order": {
+            "type": "string"
+        },
+        "delivery_plan": {
+            "type": "string"
+        },
+        "contract": {
+            "type": "string"
+        },
+        "impact": {
+            "type": "string"
+        },
+        "active": {
+            "type": "string"
+        },
+        "work_notes_list": {
+            "type": "string"
+        },
+        "priority": {
+            "type": "string"
+        },
+        "sys_domain_path": {
+            "type": "string"
+        },
+        "business_duration": {
+            "type": "string"
+        },
+        "group_list": {
+            "type": "string"
+        },
+        "approval_set": {
+            "type": "string"
+        },
+        "universal_request": {
+            "type": "string"
+        },
+        "short_description": {
+            "type": "string"
+        },
+        "correlation_display": {
+            "type": "string"
+        },
+        "delivery_task": {
+            "type": "string"
+        },
+        "work_start": {
+            "type": "string"
+        },
+        "additional_assignee_list": {
+            "type": "string"
+        },
+        "notify": {
+            "type": "string"
+        },
+        "sys_class_name": {
+            "type": "string"
+        },
+        "follow_up": {
+            "type": "string"
+        },
+        "reopened_by": {
+            "type": "string"
+        },
+        "reassignment_count": {
+            "type": "string"
+        },
+        "sla_due": {
+            "type": "string"
+        },
+        "comments_and_work_notes": {
+            "type": "string"
+        },
+        "escalation": {
+            "type": "string"
+        },
+        "upon_approval": {
+            "type": "string"
+        },
+        "correlation_id": {
+            "type": "string"
+        },
+        "made_sla": {
+            "type": "string"
+        },
+        "child_incidents": {
+            "type": "string"
+        },
+        "task_effective_number": {
+            "type": "string"
+        },
+        "sys_updated_by": {
+            "type": "string"
+        },
+        "opened_by": {
+            "type": "object",
+            "properties": {
+                "link": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "link"
+            ]
+        },
+        "user_input": {
+            "type": "string"
+        },
+        "sys_created_on": {
+            "type": "string"
+        },
+        "sys_domain": {
+            "type": "object",
+            "properties": {
+                "link": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "link"
+            ]
+        },
+        "route_reason": {
+            "type": "string"
+        },
+        "calendar_stc": {
+            "type": "string"
+        },
+        "closed_at": {
+            "type": "string"
+        },
+        "business_impact": {
+            "type": "string"
+        },
+        "rfc": {
+            "type": "string"
+        },
+        "time_worked": {
+            "type": "string"
+        },
+        "expected_start": {
+            "type": "string"
+        },
+        "opened_at": {
+            "type": "string"
+        },
+        "work_end": {
+            "type": "string"
+        },
+        "caller_id": {
+            "type": "object",
+            "properties": {
+                "link": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "link"
+            ]
+        },
+        "reopened_time": {
+            "type": "string"
+        },
+        "resolved_at": {
+            "type": "string"
+        },
+        "subcategory": {
+            "type": "string"
+        },
+        "work_notes": {
+            "type": "string"
+        },
+        "business_stc": {
+            "type": "string"
+        },
+        "cause": {
+            "type": "string"
+        },
+        "description": {
+            "type": "string"
+        },
+        "origin_id": {
+            "type": "string"
+        },
+        "calendar_duration": {
+            "type": "string"
+        },
+        "close_notes": {
+            "type": "string"
+        },
+        "sys_id": {
+            "type": "string"
+        },
+        "incident_state": {
+            "type": "string"
+        },
+        "urgency": {
+            "type": "string"
+        },
+        "problem_id": {
+            "type": "string"
+        },
+        "activity_due": {
+            "type": "string"
+        },
+        "severity": {
+            "type": "string"
+        },
+        "comments": {
+            "type": "string"
+        },
+        "approval": {
+            "type": "string"
+        },
+        "due_date": {
+            "type": "string"
+        },
+        "sys_mod_count": {
+            "type": "string"
+        },
+        "reopen_count": {
+            "type": "string"
+        },
+        "sys_tags": {
+            "type": "string"
+        },
+        "category": {
+            "type": "string"
+        },
+        "hold_reason": {
+            "type": "string"
+        }
+    }
+}

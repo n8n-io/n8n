@@ -29,6 +29,7 @@ export class SendGrid implements INodeType {
 		defaults: {
 			name: 'SendGrid',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

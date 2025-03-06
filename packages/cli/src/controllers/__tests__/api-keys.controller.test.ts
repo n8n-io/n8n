@@ -1,10 +1,10 @@
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import { Container } from 'typedi';
 
 import type { ApiKey } from '@/databases/entities/api-key';
 import type { User } from '@/databases/entities/user';
 import { EventService } from '@/events/event.service';
-import type { ApiKeysRequest, AuthenticatedRequest } from '@/requests';
+import type { AuthenticatedRequest } from '@/requests';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 import { mockInstance } from '@test/mocking';
 
@@ -13,6 +13,7 @@ import { ApiKeysController } from '../api-keys.controller';
 describe('ApiKeysController', () => {
 	const publicApiKeyService = mockInstance(PublicApiKeyService);
 	const eventService = mockInstance(EventService);
+
 	const controller = Container.get(ApiKeysController);
 
 	let req: AuthenticatedRequest;
@@ -28,7 +29,7 @@ describe('ApiKeysController', () => {
 				id: '123',
 				userId: '123',
 				label: 'My API Key',
-				apiKey: 'apiKey********',
+				apiKey: 'apiKey123',
 				createdAt: new Date(),
 			} as ApiKey;
 
@@ -36,14 +37,25 @@ describe('ApiKeysController', () => {
 
 			publicApiKeyService.createPublicApiKeyForUser.mockResolvedValue(apiKeyData);
 
+			publicApiKeyService.redactApiKey.mockImplementation(() => '***123');
+
 			// Act
 
-			const newApiKey = await controller.createAPIKey(req);
+			const newApiKey = await controller.createAPIKey(req, mock(), mock());
 
 			// Assert
 
 			expect(publicApiKeyService.createPublicApiKeyForUser).toHaveBeenCalled();
-			expect(apiKeyData).toEqual(newApiKey);
+			expect(newApiKey).toEqual(
+				expect.objectContaining({
+					id: '123',
+					userId: '123',
+					label: 'My API Key',
+					apiKey: '***123',
+					createdAt: expect.any(Date),
+					rawApiKey: 'apiKey123',
+				}),
+			);
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'public-api-key-created',
 				expect.objectContaining({ user: req.user, publicApi: false }),
@@ -64,7 +76,9 @@ describe('ApiKeysController', () => {
 				updatedAt: new Date(),
 			} as ApiKey;
 
-			publicApiKeyService.getRedactedApiKeysForUser.mockResolvedValue([apiKeyData]);
+			publicApiKeyService.getRedactedApiKeysForUser.mockResolvedValue([
+				{ ...apiKeyData, expiresAt: null },
+			]);
 
 			// Act
 
@@ -72,7 +86,7 @@ describe('ApiKeysController', () => {
 
 			// Assert
 
-			expect(apiKeys).toEqual([apiKeyData]);
+			expect(apiKeys).toEqual([{ ...apiKeyData, expiresAt: null }]);
 			expect(publicApiKeyService.getRedactedApiKeysForUser).toHaveBeenCalledWith(
 				expect.objectContaining({ id: req.user.id }),
 			);
@@ -91,11 +105,11 @@ describe('ApiKeysController', () => {
 				mfaEnabled: false,
 			});
 
-			const req = mock<ApiKeysRequest.DeleteAPIKey>({ user, params: { id: user.id } });
+			const req = mock<AuthenticatedRequest>({ user, params: { id: user.id } });
 
 			// Act
 
-			await controller.deleteAPIKey(req);
+			await controller.deleteAPIKey(req, mock(), user.id);
 
 			publicApiKeyService.deleteApiKeyForUser.mockResolvedValue();
 

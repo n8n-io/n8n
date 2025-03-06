@@ -45,6 +45,7 @@ export class Kitemaker implements INodeType {
 		defaults: {
 			name: 'Kitemaker',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

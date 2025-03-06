@@ -39,6 +39,7 @@ export class Trello implements INodeType {
 		defaults: {
 			name: 'Trello',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

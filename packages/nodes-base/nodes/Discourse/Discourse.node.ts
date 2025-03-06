@@ -28,6 +28,7 @@ export class Discourse implements INodeType {
 		defaults: {
 			name: 'Discourse',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

@@ -22,6 +22,7 @@ export class Vonage implements INodeType {
 		defaults: {
 			name: 'Vonage',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

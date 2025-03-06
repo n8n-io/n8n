@@ -25,6 +25,7 @@ export class Netlify implements INodeType {
 		defaults: {
 			name: 'Netlify',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

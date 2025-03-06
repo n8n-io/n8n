@@ -1,0 +1,191 @@
+{
+    "type": "object",
+    "properties": {
+        "error": {
+            "type": "string"
+        },
+        "subreddit_id": {
+            "type": "string"
+        },
+        "approved_at_utc": {
+            "type": "null"
+        },
+        "author_is_blocked": {
+            "type": "boolean"
+        },
+        "comment_type": {
+            "type": "null"
+        },
+        "edited": {
+            "type": "boolean"
+        },
+        "mod_reason_by": {
+            "type": "null"
+        },
+        "banned_by": {
+            "type": "null"
+        },
+        "ups": {
+            "type": "integer"
+        },
+        "author_flair_type": {
+            "type": "string"
+        },
+        "total_awards_received": {
+            "type": "integer"
+        },
+        "subreddit": {
+            "type": "string"
+        },
+        "author_flair_template_id": {
+            "type": "null"
+        },
+        "likes": {
+            "type": "boolean"
+        },
+        "replies": {
+            "type": "string"
+        },
+        "saved": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "banned_at_utc": {
+            "type": "null"
+        },
+        "mod_reason_title": {
+            "type": "null"
+        },
+        "gilded": {
+            "type": "integer"
+        },
+        "archived": {
+            "type": "boolean"
+        },
+        "collapsed_reason_code": {
+            "type": "null"
+        },
+        "no_follow": {
+            "type": "boolean"
+        },
+        "author": {
+            "type": "string"
+        },
+        "can_mod_post": {
+            "type": "boolean"
+        },
+        "created_utc": {
+            "type": "integer"
+        },
+        "send_replies": {
+            "type": "boolean"
+        },
+        "parent_id": {
+            "type": "string"
+        },
+        "score": {
+            "type": "integer"
+        },
+        "author_fullname": {
+            "type": "string"
+        },
+        "approved_by": {
+            "type": "null"
+        },
+        "collapsed": {
+            "type": "boolean"
+        },
+        "body": {
+            "type": "string"
+        },
+        "top_awarded_type": {
+            "type": "null"
+        },
+        "author_flair_css_class": {
+            "type": "null"
+        },
+        "author_patreon_flair": {
+            "type": "boolean"
+        },
+        "downs": {
+            "type": "integer"
+        },
+        "is_submitter": {
+            "type": "boolean"
+        },
+        "body_html": {
+            "type": "string"
+        },
+        "removal_reason": {
+            "type": "null"
+        },
+        "collapsed_reason": {
+            "type": "null"
+        },
+        "associated_award": {
+            "type": "null"
+        },
+        "stickied": {
+            "type": "boolean"
+        },
+        "author_premium": {
+            "type": "boolean"
+        },
+        "can_gild": {
+            "type": "boolean"
+        },
+        "unrepliable_reason": {
+            "type": "null"
+        },
+        "author_flair_text_color": {
+            "type": "null"
+        },
+        "score_hidden": {
+            "type": "boolean"
+        },
+        "permalink": {
+            "type": "string"
+        },
+        "subreddit_type": {
+            "type": "string"
+        },
+        "locked": {
+            "type": "boolean"
+        },
+        "name": {
+            "type": "string"
+        },
+        "created": {
+            "type": "integer"
+        },
+        "author_flair_text": {
+            "type": "null"
+        },
+        "rte_mode": {
+            "type": "string"
+        },
+        "link_id": {
+            "type": "string"
+        },
+        "subreddit_name_prefixed": {
+            "type": "string"
+        },
+        "controversiality": {
+            "type": "integer"
+        },
+        "author_flair_background_color": {
+            "type": "null"
+        },
+        "collapsed_because_crowd_control": {
+            "type": "null"
+        },
+        "mod_note": {
+            "type": "null"
+        },
+        "distinguished": {
+            "type": "null"
+        }
+    }
+}

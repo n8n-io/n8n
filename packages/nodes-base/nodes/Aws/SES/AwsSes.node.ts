@@ -30,6 +30,7 @@ export class AwsSes implements INodeType {
 		defaults: {
 			name: 'AWS SES',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

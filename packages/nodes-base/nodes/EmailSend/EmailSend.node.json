@@ -2,7 +2,10 @@
 	"node": "n8n-nodes-base.emailSend",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": ["Communication", "Core Nodes"],
+	"categories": ["Communication", "HITL", "Core Nodes"],
+	"subcategories": {
+		"HITL": ["Human in the Loop"]
+	},
 	"resources": {
 		"credentialDocumentation": [
 			{
@@ -27,5 +30,5 @@
 			}
 		]
 	},
-	"alias": ["SMTP"]
+	"alias": ["SMTP", "email", "human", "form", "wait", "hitl", "approval"]
 }

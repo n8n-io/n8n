@@ -30,6 +30,7 @@ export class Matrix implements INodeType {
 		defaults: {
 			name: 'Matrix',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

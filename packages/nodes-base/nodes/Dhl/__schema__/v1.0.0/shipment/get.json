@@ -1,0 +1,208 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "service": {
+            "type": "string"
+        },
+        "origin": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "object",
+                    "properties": {
+                        "countryCode": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "countryCode"
+                    ]
+                }
+            },
+            "required": [
+                "address"
+            ]
+        },
+        "destination": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "object",
+                    "properties": {
+                        "countryCode": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "countryCode"
+                    ]
+                }
+            },
+            "required": [
+                "address"
+            ]
+        },
+        "status": {
+            "type": "object",
+            "properties": {
+                "timestamp": {
+                    "type": "string"
+                },
+                "statusCode": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "statusDetailed": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "remark": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "object",
+                    "properties": {
+                        "address": {
+                            "type": "object",
+                            "properties": {
+                                "addressLocality": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "addressLocality"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "address"
+                    ]
+                }
+            },
+            "required": [
+                "timestamp",
+                "statusCode",
+                "status",
+                "description"
+            ]
+        },
+        "serviceUrl": {
+            "type": "string"
+        },
+        "returnFlag": {
+            "type": "boolean"
+        },
+        "details": {
+            "type": "object",
+            "properties": {
+                "product": {
+                    "type": "object",
+                    "properties": {
+                        "productName": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "productName"
+                    ]
+                },
+                "proofOfDeliverySignedAvailable": {
+                    "type": "boolean"
+                },
+                "totalNumberOfPieces": {
+                    "type": "integer"
+                },
+                "pieceIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "weight": {
+                    "type": "object",
+                    "properties": {
+                        "unitText": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "value"
+                    ]
+                }
+            },
+            "required": [
+                "product",
+                "proofOfDeliverySignedAvailable",
+                "totalNumberOfPieces",
+                "weight"
+            ]
+        },
+        "events": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "timestamp": {
+                        "type": "string"
+                    },
+                    "statusCode": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "statusDetailed": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "remark": {
+                        "type": "string"
+                    },
+                    "location": {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "object",
+                                "properties": {
+                                    "addressLocality": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "addressLocality"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "address"
+                        ]
+                    }
+                },
+                "required": [
+                    "timestamp",
+                    "statusCode",
+                    "status",
+                    "description"
+                ]
+            }
+        }
+    },
+    "required": [
+        "id",
+        "service",
+        "origin",
+        "destination",
+        "status",
+        "details",
+        "events"
+    ]
+}

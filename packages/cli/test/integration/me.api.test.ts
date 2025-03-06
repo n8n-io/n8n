@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import type { IPersonalizationSurveyAnswersV4 } from 'n8n-workflow';
-import { Container } from 'typedi';
 import validator from 'validator';
 
 import type { User } from '@/databases/entities/user';

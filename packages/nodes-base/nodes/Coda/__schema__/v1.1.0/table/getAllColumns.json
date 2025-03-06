@@ -1,0 +1,42 @@
+{
+	"type": "object",
+	"properties": {
+		"id": {
+			"type": "string"
+		},
+		"type": {
+			"type": "string"
+		},
+		"name": {
+			"type": "string"
+		},
+		"href": {
+			"type": "string"
+		},
+		"format": {
+			"type": "object",
+			"properties": {
+				"type": {
+					"type": "string"
+				},
+				"isArray": {
+					"type": "boolean"
+				}
+			},
+			"required": [
+				"type",
+				"isArray"
+			]
+		},
+		"display": {
+			"type": "boolean"
+		}
+	},
+	"required": [
+		"id",
+		"type",
+		"name",
+		"href",
+		"format"
+	]
+}

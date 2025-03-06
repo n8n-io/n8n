@@ -1,0 +1,95 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "deal_id": {
+            "type": "integer"
+        },
+        "product_id": {
+            "type": "integer"
+        },
+        "product_variation_id": {
+            "type": "null"
+        },
+        "name": {
+            "type": "string"
+        },
+        "order_nr": {
+            "type": "integer"
+        },
+        "quantity": {
+            "type": "integer"
+        },
+        "currency": {
+            "type": "string"
+        },
+        "active_flag": {
+            "type": "boolean"
+        },
+        "enabled_flag": {
+            "type": "boolean"
+        },
+        "add_time": {
+            "type": "string"
+        },
+        "last_edit": {
+            "type": "string"
+        },
+        "tax": {
+            "type": "integer"
+        },
+        "quantity_formatted": {
+            "type": "string"
+        },
+        "sum_formatted": {
+            "type": "string"
+        },
+        "tax_method": {
+            "type": "string"
+        },
+        "discount": {
+            "type": "integer"
+        },
+        "discount_type": {
+            "type": "string"
+        },
+        "billing_frequency": {
+            "type": "string"
+        },
+        "billing_frequency_cycles": {
+            "type": "null"
+        },
+        "product": {
+            "type": "null"
+        }
+    },
+    "required": [
+        "id",
+        "deal_id",
+        "product_id",
+        "product_variation_id",
+        "name",
+        "order_nr",
+        "item_price",
+        "quantity",
+        "sum",
+        "currency",
+        "active_flag",
+        "enabled_flag",
+        "add_time",
+        "last_edit",
+        "comments",
+        "tax",
+        "quantity_formatted",
+        "sum_formatted",
+        "tax_method",
+        "discount",
+        "discount_type",
+        "billing_frequency",
+        "billing_frequency_cycles",
+        "billing_start_date",
+        "product"
+    ]
+}

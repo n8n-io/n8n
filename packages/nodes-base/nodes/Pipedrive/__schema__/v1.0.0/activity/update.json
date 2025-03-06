@@ -1,0 +1,202 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "company_id": {
+            "type": "integer"
+        },
+        "user_id": {
+            "type": "integer"
+        },
+        "done": {
+            "type": "boolean"
+        },
+        "type": {
+            "type": "string"
+        },
+        "reference_id": {
+            "type": "null"
+        },
+        "due_date": {
+            "type": "string"
+        },
+        "due_time": {
+            "type": "string"
+        },
+        "duration": {
+            "type": "string"
+        },
+        "busy_flag": {
+            "type": "boolean"
+        },
+        "add_time": {
+            "type": "string"
+        },
+        "marked_as_done_time": {
+            "type": "string"
+        },
+        "last_notification_time": {
+            "type": "null"
+        },
+        "last_notification_user_id": {
+            "type": "null"
+        },
+        "notification_language_id": {
+            "type": "null"
+        },
+        "subject": {
+            "type": "string"
+        },
+        "lead_id": {
+            "type": "null"
+        },
+        "active_flag": {
+            "type": "boolean"
+        },
+        "update_time": {
+            "type": "string"
+        },
+        "update_user_id": {
+            "type": "integer"
+        },
+        "rec_rule": {
+            "type": "null"
+        },
+        "rec_rule_extension": {
+            "type": "null"
+        },
+        "rec_master_activity_id": {
+            "type": "null"
+        },
+        "conference_meeting_id": {
+            "type": "null"
+        },
+        "original_start_time": {
+            "type": "null"
+        },
+        "private": {
+            "type": "boolean"
+        },
+        "created_by_user_id": {
+            "type": "integer"
+        },
+        "location_subpremise": {
+            "type": "null"
+        },
+        "location_street_number": {
+            "type": "null"
+        },
+        "location_route": {
+            "type": "null"
+        },
+        "location_sublocality": {
+            "type": "null"
+        },
+        "location_locality": {
+            "type": "null"
+        },
+        "location_admin_area_level_1": {
+            "type": "null"
+        },
+        "location_admin_area_level_2": {
+            "type": "null"
+        },
+        "location_country": {
+            "type": "null"
+        },
+        "location_postal_code": {
+            "type": "null"
+        },
+        "location_formatted_address": {
+            "type": "null"
+        },
+        "series": {
+            "type": "null"
+        },
+        "is_recurring": {
+            "type": "null"
+        },
+        "lead_title": {
+            "type": "null"
+        },
+        "owner_name": {
+            "type": "string"
+        },
+        "assigned_to_user_id": {
+            "type": "integer"
+        },
+        "type_name": {
+            "type": "string"
+        },
+        "lead": {
+            "type": "null"
+        }
+    },
+    "required": [
+        "id",
+        "company_id",
+        "user_id",
+        "done",
+        "type",
+        "reference_type",
+        "reference_id",
+        "conference_meeting_client",
+        "conference_meeting_url",
+        "due_date",
+        "due_time",
+        "duration",
+        "busy_flag",
+        "add_time",
+        "marked_as_done_time",
+        "last_notification_time",
+        "last_notification_user_id",
+        "notification_language_id",
+        "subject",
+        "public_description",
+        "calendar_sync_include_context",
+        "location",
+        "org_id",
+        "person_id",
+        "deal_id",
+        "lead_id",
+        "active_flag",
+        "update_time",
+        "update_user_id",
+        "source_timezone",
+        "rec_rule",
+        "rec_rule_extension",
+        "rec_master_activity_id",
+        "conference_meeting_id",
+        "original_start_time",
+        "private",
+        "priority",
+        "note",
+        "created_by_user_id",
+        "location_subpremise",
+        "location_street_number",
+        "location_route",
+        "location_sublocality",
+        "location_locality",
+        "location_admin_area_level_1",
+        "location_admin_area_level_2",
+        "location_country",
+        "location_postal_code",
+        "location_formatted_address",
+        "attendees",
+        "participants",
+        "series",
+        "is_recurring",
+        "org_name",
+        "person_name",
+        "deal_title",
+        "lead_title",
+        "owner_name",
+        "person_dropbox_bcc",
+        "deal_dropbox_bcc",
+        "assigned_to_user_id",
+        "type_name",
+        "lead"
+    ]
+}

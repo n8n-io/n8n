@@ -1,4 +1,4 @@
-import Container from 'typedi';
+import { Container } from '@n8n/di';
 
 import { ExecutionMetadataRepository } from '@/databases/repositories/execution-metadata.repository';
 import { ExecutionMetadataService } from '@/services/execution-metadata.service';

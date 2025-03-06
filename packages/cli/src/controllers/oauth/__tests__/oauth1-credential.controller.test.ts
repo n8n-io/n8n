@@ -1,9 +1,10 @@
+import { Container } from '@n8n/di';
 import Csrf from 'csrf';
 import type { Response } from 'express';
-import { mock } from 'jest-mock-extended';
-import { Cipher } from 'n8n-core';
+import { captor, mock } from 'jest-mock-extended';
+import { Cipher, type InstanceSettings, Logger } from 'n8n-core';
+import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import nock from 'nock';
-import Container from 'typedi';
 
 import { Time } from '@/constants';
 import { OAuth1CredentialController } from '@/controllers/oauth/oauth1-credential.controller';
@@ -12,14 +13,16 @@ import type { CredentialsEntity } from '@/databases/entities/credentials-entity'
 import type { User } from '@/databases/entities/user';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { VariablesService } from '@/environments/variables/variables.service.ee';
+import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
-import { Logger } from '@/logging/logger.service';
 import type { OAuthRequest } from '@/requests';
-import { SecretsHelper } from '@/secrets-helpers';
+import { SecretsHelper } from '@/secrets-helpers.ee';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { mockInstance } from '@test/mocking';
+
+jest.mock('@/workflow-execute-additional-data');
 
 describe('OAuth1CredentialController', () => {
 	mockInstance(Logger);
@@ -28,7 +31,11 @@ describe('OAuth1CredentialController', () => {
 	mockInstance(VariablesService, {
 		getAllCached: async () => [],
 	});
-	const cipher = mockInstance(Cipher);
+	const additionalData = mock<IWorkflowExecuteAdditionalData>();
+	(WorkflowExecuteAdditionalData.getBase as jest.Mock).mockReturnValue(additionalData);
+
+	const cipher = new Cipher(mock<InstanceSettings>({ encryptionKey: 'password' }));
+	Container.set(Cipher, cipher);
 	const credentialsHelper = mockInstance(CredentialsHelper);
 	const credentialsRepository = mockInstance(CredentialsRepository);
 	const sharedCredentialsRepository = mockInstance(SharedCredentialsRepository);
@@ -44,6 +51,7 @@ describe('OAuth1CredentialController', () => {
 		id: '1',
 		name: 'Test Credential',
 		type: 'oAuth1Api',
+		data: cipher.encrypt({}),
 	});
 
 	const controller = Container.get(OAuth1CredentialController);
@@ -91,21 +99,31 @@ describe('OAuth1CredentialController', () => {
 				})
 				.once()
 				.reply(200, { oauth_token: 'random-token' });
-			cipher.encrypt.mockReturnValue('encrypted');
 
 			const req = mock<OAuthRequest.OAuth1Credential.Auth>({ user, query: { id: '1' } });
 			const authUri = await controller.getAuthUri(req);
 			expect(authUri).toEqual('https://example.domain/oauth/authorize?oauth_token=random-token');
+			const dataCaptor = captor();
 			expect(credentialsRepository.update).toHaveBeenCalledWith(
 				'1',
 				expect.objectContaining({
-					data: 'encrypted',
+					data: dataCaptor,
 					id: '1',
 					name: 'Test Credential',
 					type: 'oAuth1Api',
 				}),
 			);
-			expect(cipher.encrypt).toHaveBeenCalledWith({ csrfSecret });
+			expect(cipher.decrypt(dataCaptor.value)).toEqual(
+				JSON.stringify({ csrfSecret: 'csrf-secret' }),
+			);
+			expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
+				additionalData,
+				credential,
+				credential.type,
+				'internal',
+				undefined,
+				false,
+			);
 		});
 	});
 
@@ -218,23 +236,31 @@ describe('OAuth1CredentialController', () => {
 				})
 				.once()
 				.reply(200, 'access_token=new_token');
-			cipher.encrypt.mockReturnValue('encrypted');
 
 			await controller.handleCallback(req, res);
 
-			expect(cipher.encrypt).toHaveBeenCalledWith({
-				oauthTokenData: { access_token: 'new_token' },
-			});
+			const dataCaptor = captor();
 			expect(credentialsRepository.update).toHaveBeenCalledWith(
 				'1',
 				expect.objectContaining({
-					data: 'encrypted',
+					data: dataCaptor,
 					id: '1',
 					name: 'Test Credential',
 					type: 'oAuth1Api',
 				}),
 			);
+			expect(cipher.decrypt(dataCaptor.value)).toEqual(
+				JSON.stringify({ oauthTokenData: { access_token: 'new_token' } }),
+			);
 			expect(res.render).toHaveBeenCalledWith('oauth-callback');
+			expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
+				additionalData,
+				credential,
+				credential.type,
+				'internal',
+				undefined,
+				true,
+			);
 		});
 	});
 });

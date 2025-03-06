@@ -1,8 +1,8 @@
 import type { PushPayload } from '@n8n/api-types';
+import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import type { Workflow } from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
-import { Service } from 'typedi';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { CollaborationState } from '@/collaboration/collaboration.state';
 import type { User } from '@/databases/entities/user';
@@ -34,7 +34,7 @@ export class CollaborationService {
 				await this.handleUserMessage(event.userId, event.msg);
 			} catch (error) {
 				this.errorReporter.error(
-					new ApplicationError('Error handling CollaborationService push message', {
+					new UnexpectedError('Error handling CollaborationService push message', {
 						extra: {
 							msg: event.msg,
 							userId: event.userId,
@@ -99,6 +99,6 @@ export class CollaborationService {
 			collaborators: activeCollaborators,
 		};
 
-		this.push.sendToUsers('collaboratorsChanged', msgData, userIds);
+		this.push.sendToUsers({ type: 'collaboratorsChanged', data: msgData }, userIds);
 	}
 }

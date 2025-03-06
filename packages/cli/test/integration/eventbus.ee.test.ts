@@ -1,3 +1,4 @@
+import { Container } from '@n8n/di';
 import axios from 'axios';
 import type {
 	MessageEventBusDestinationSentryOptions,
@@ -10,7 +11,6 @@ import {
 	defaultMessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
 import syslog from 'syslog-client';
-import { Container } from 'typedi';
 import { v4 as uuid } from 'uuid';
 
 import type { User } from '@/databases/entities/user';

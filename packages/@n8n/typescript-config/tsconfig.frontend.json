@@ -1,0 +1,13 @@
+{
+	"extends": "./tsconfig.common.json",
+	"compilerOptions": {
+		"target": "esnext",
+		"module": "esnext",
+		"importHelpers": true,
+		"allowJs": true,
+		"incremental": false,
+		"allowSyntheticDefaultImports": true,
+		"lib": ["esnext", "dom", "dom.iterable", "scripthost"]
+	},
+	"include": ["src/**/*.ts", "src/**/*.vue"]
+}

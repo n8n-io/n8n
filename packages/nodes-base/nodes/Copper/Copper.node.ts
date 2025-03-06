@@ -46,6 +46,7 @@ export class Copper implements INodeType {
 		defaults: {
 			name: 'Copper',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

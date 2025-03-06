@@ -1,0 +1,202 @@
+{
+    "type": "object",
+    "properties": {
+        "kind": {
+            "type": "string"
+        },
+        "etag": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "snippet": {
+            "type": "object",
+            "properties": {
+                "publishedAt": {
+                    "type": "string"
+                },
+                "channelId": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "thumbnails": {
+                    "type": "object",
+                    "properties": {
+                        "default": {
+                            "type": "object",
+                            "properties": {
+                                "url": {
+                                    "type": "string"
+                                },
+                                "width": {
+                                    "type": "integer"
+                                },
+                                "height": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "url",
+                                "width",
+                                "height"
+                            ]
+                        },
+                        "medium": {
+                            "type": "object",
+                            "properties": {
+                                "url": {
+                                    "type": "string"
+                                },
+                                "width": {
+                                    "type": "integer"
+                                },
+                                "height": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "url",
+                                "width",
+                                "height"
+                            ]
+                        },
+                        "high": {
+                            "type": "object",
+                            "properties": {
+                                "url": {
+                                    "type": "string"
+                                },
+                                "width": {
+                                    "type": "integer"
+                                },
+                                "height": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "url",
+                                "width",
+                                "height"
+                            ]
+                        },
+                        "standard": {
+                            "type": "object",
+                            "properties": {
+                                "url": {
+                                    "type": "string"
+                                },
+                                "width": {
+                                    "type": "integer"
+                                },
+                                "height": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "url",
+                                "width",
+                                "height"
+                            ]
+                        },
+                        "maxres": {
+                            "type": "object",
+                            "properties": {
+                                "url": {
+                                    "type": "string"
+                                },
+                                "width": {
+                                    "type": "integer"
+                                },
+                                "height": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "url",
+                                "width",
+                                "height"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "default",
+                        "medium",
+                        "high",
+                        "standard"
+                    ]
+                },
+                "channelTitle": {
+                    "type": "string"
+                },
+                "localized": {
+                    "type": "object",
+                    "properties": {
+                        "title": {
+                            "type": "string"
+                        },
+                        "description": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "title",
+                        "description"
+                    ]
+                }
+            },
+            "required": [
+                "publishedAt",
+                "channelId",
+                "title",
+                "description",
+                "thumbnails",
+                "channelTitle",
+                "localized"
+            ]
+        },
+        "status": {
+            "type": "object",
+            "properties": {
+                "privacyStatus": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "privacyStatus"
+            ]
+        },
+        "contentDetails": {
+            "type": "object",
+            "properties": {
+                "itemCount": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "itemCount"
+            ]
+        },
+        "player": {
+            "type": "object",
+            "properties": {
+                "embedHtml": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "embedHtml"
+            ]
+        }
+    },
+    "required": [
+        "kind",
+        "etag",
+        "id"
+    ]
+}

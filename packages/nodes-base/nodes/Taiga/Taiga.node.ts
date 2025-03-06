@@ -39,6 +39,7 @@ export class Taiga implements INodeType {
 		defaults: {
 			name: 'Taiga',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

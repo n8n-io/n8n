@@ -1,0 +1,26 @@
+{
+    "type": "object",
+    "properties": {
+        "attributes": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "type",
+                "url"
+            ]
+        },
+        "Id": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "attributes"
+    ]
+}

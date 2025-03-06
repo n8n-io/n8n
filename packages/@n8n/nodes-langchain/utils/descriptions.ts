@@ -1,4 +1,4 @@
-import type { INodeProperties } from 'n8n-workflow';
+import type { DisplayCondition, INodeProperties, NodeParameterValue } from 'n8n-workflow';
 
 export const schemaTypeField: INodeProperties = {
 	displayName: 'Schema Type',
@@ -21,7 +21,9 @@ export const schemaTypeField: INodeProperties = {
 	description: 'How to specify the schema for the function',
 };
 
-export const jsonSchemaExampleField: INodeProperties = {
+export const buildJsonSchemaExampleField = (props?: {
+	showExtraProps?: Record<string, Array<NodeParameterValue | DisplayCondition> | undefined>;
+}): INodeProperties => ({
 	displayName: 'JSON Example',
 	name: 'jsonSchemaExample',
 	type: 'json',
@@ -34,13 +36,18 @@ export const jsonSchemaExampleField: INodeProperties = {
 	},
 	displayOptions: {
 		show: {
+			...props?.showExtraProps,
 			schemaType: ['fromJson'],
 		},
 	},
 	description: 'Example JSON object to use to generate the schema',
-};
+});
 
-export const inputSchemaField: INodeProperties = {
+export const jsonSchemaExampleField = buildJsonSchemaExampleField();
+
+export const buildInputSchemaField = (props?: {
+	showExtraProps?: Record<string, Array<NodeParameterValue | DisplayCondition> | undefined>;
+}): INodeProperties => ({
 	displayName: 'Input Schema',
 	name: 'inputSchema',
 	type: 'json',
@@ -59,14 +66,17 @@ export const inputSchemaField: INodeProperties = {
 	},
 	displayOptions: {
 		show: {
+			...props?.showExtraProps,
 			schemaType: ['manual'],
 		},
 	},
 	description: 'Schema to use for the function',
-};
+});
+
+export const inputSchemaField = buildInputSchemaField();
 
 export const promptTypeOptions: INodeProperties = {
-	displayName: 'Prompt Source (User Message)',
+	displayName: 'Source for Prompt (User Message)',
 	name: 'promptType',
 	type: 'options',
 	options: [
@@ -86,7 +96,7 @@ export const promptTypeOptions: INodeProperties = {
 };
 
 export const textInput: INodeProperties = {
-	displayName: 'Text',
+	displayName: 'Prompt (User Message)',
 	name: 'text',
 	type: 'string',
 	required: true,
@@ -98,7 +108,7 @@ export const textInput: INodeProperties = {
 };
 
 export const textFromPreviousNode: INodeProperties = {
-	displayName: 'Text From Previous Node',
+	displayName: 'Prompt (User Message)',
 	name: 'text',
 	type: 'string',
 	required: true,

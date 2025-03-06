@@ -1,14 +1,13 @@
 import { ExecutionsConfig } from '@n8n/config';
-import { BinaryDataService, InstanceSettings } from 'n8n-core';
+import { Service } from '@n8n/di';
+import { BinaryDataService, InstanceSettings, Logger } from 'n8n-core';
 import { ensureError } from 'n8n-workflow';
 import { strict } from 'node:assert';
-import { Service } from 'typedi';
 
 import { Time } from '@/constants';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { connectionState as dbConnectionState } from '@/db';
 import { OnShutdown } from '@/decorators/on-shutdown';
-import { Logger } from '@/logging/logger.service';
 
 import { OrchestrationService } from '../orchestration.service';
 

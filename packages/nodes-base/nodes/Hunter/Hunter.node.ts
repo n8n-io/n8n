@@ -22,6 +22,7 @@ export class Hunter implements INodeType {
 		defaults: {
 			name: 'Hunter',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

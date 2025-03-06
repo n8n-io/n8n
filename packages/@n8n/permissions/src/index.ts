@@ -1,4 +1,4 @@
-export type * from './types';
-export * from './constants';
-export * from './hasScope';
-export * from './combineScopes';
+export type * from './types.ee';
+export * from './constants.ee';
+export * from './hasScope.ee';
+export * from './combineScopes.ee';

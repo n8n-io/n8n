@@ -1,10 +1,9 @@
 import { GlobalConfig } from '@n8n/config';
-import { InstanceSettings } from 'n8n-core';
-import { Service } from 'typedi';
+import { Service } from '@n8n/di';
+import { InstanceSettings, Logger } from 'n8n-core';
 
 import config from '@/config';
 import { Time } from '@/constants';
-import { Logger } from '@/logging/logger.service';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { RedisClientService } from '@/services/redis-client.service';
 import { TypedEmitter } from '@/typed-emitter';

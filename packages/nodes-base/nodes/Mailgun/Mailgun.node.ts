@@ -20,6 +20,7 @@ export class Mailgun implements INodeType {
 		defaults: {
 			name: 'Mailgun',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

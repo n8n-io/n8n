@@ -34,6 +34,7 @@ export class Clockify implements INodeType {
 		defaults: {
 			name: 'Clockify',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

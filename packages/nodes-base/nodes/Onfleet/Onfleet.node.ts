@@ -34,6 +34,7 @@ export class Onfleet implements INodeType {
 		defaults: {
 			name: 'Onfleet',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

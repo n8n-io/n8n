@@ -1,5 +1,4 @@
 import type { IHttpRequestMethods, INodeTypes } from 'n8n-workflow';
-import nock from 'nock';
 
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import { setup, workflowToTests } from '@test/nodes/Helpers';
@@ -41,16 +40,6 @@ jest.mock('../../../v2/transport', () => {
 describe('Test Google BigQuery V2, insert auto map', () => {
 	const workflows = ['nodes/Google/BigQuery/test/v2/node/insert.autoMapMode.workflow.json'];
 	const tests = workflowToTests(workflows);
-
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.unmock('../../../v2/transport');
-	});
-
 	const nodeTypes = setup(tests);
 
 	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {

@@ -1,7 +1,7 @@
+import type { ApiKeyWithRawValue } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
-import { Container } from 'typedi';
+import { Container } from '@n8n/di';
 
-import type { ApiKey } from '@/databases/entities/api-key';
 import type { User } from '@/databases/entities/user';
 import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
@@ -56,10 +56,13 @@ describe('Owner shell', () => {
 		ownerShell = await createUserShell('global:owner');
 	});
 
-	test('POST /api-keys should create an api key', async () => {
-		const newApiKeyResponse = await testServer.authAgentFor(ownerShell).post('/api-keys');
+	test('POST /api-keys should create an api key with no expiration', async () => {
+		const newApiKeyResponse = await testServer
+			.authAgentFor(ownerShell)
+			.post('/api-keys')
+			.send({ label: 'My API Key', expiresAt: null });
 
-		const newApiKey = newApiKeyResponse.body.data as ApiKey;
+		const newApiKey = newApiKeyResponse.body.data as ApiKeyWithRawValue;
 
 		expect(newApiKeyResponse.statusCode).toBe(200);
 		expect(newApiKey).toBeDefined();
@@ -72,31 +75,88 @@ describe('Owner shell', () => {
 			id: expect.any(String),
 			label: 'My API Key',
 			userId: ownerShell.id,
-			apiKey: newApiKey.apiKey,
+			apiKey: newApiKey.rawApiKey,
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 		});
+
+		expect(newApiKey.expiresAt).toBeNull();
+		expect(newApiKey.rawApiKey).toBeDefined();
+	});
+
+	test('POST /api-keys should create an api key with expiration', async () => {
+		const expiresAt = Date.now() + 1000;
+
+		const newApiKeyResponse = await testServer
+			.authAgentFor(ownerShell)
+			.post('/api-keys')
+			.send({ label: 'My API Key', expiresAt });
+
+		const newApiKey = newApiKeyResponse.body.data as ApiKeyWithRawValue;
+
+		expect(newApiKeyResponse.statusCode).toBe(200);
+		expect(newApiKey).toBeDefined();
+
+		const newStoredApiKey = await Container.get(ApiKeyRepository).findOneByOrFail({
+			userId: ownerShell.id,
+		});
+
+		expect(newStoredApiKey).toEqual({
+			id: expect.any(String),
+			label: 'My API Key',
+			userId: ownerShell.id,
+			apiKey: newApiKey.rawApiKey,
+			createdAt: expect.any(Date),
+			updatedAt: expect.any(Date),
+		});
+
+		expect(newApiKey.expiresAt).toBe(expiresAt);
+		expect(newApiKey.rawApiKey).toBeDefined();
 	});
 
 	test('GET /api-keys should fetch the api key redacted', async () => {
-		const newApiKeyResponse = await testServer.authAgentFor(ownerShell).post('/api-keys');
+		const expirationDateInTheFuture = Date.now() + 1000;
+
+		const apiKeyWithNoExpiration = await testServer
+			.authAgentFor(ownerShell)
+			.post('/api-keys')
+			.send({ label: 'My API Key', expiresAt: null });
+
+		const apiKeyWithExpiration = await testServer
+			.authAgentFor(ownerShell)
+			.post('/api-keys')
+			.send({ label: 'My API Key 2', expiresAt: expirationDateInTheFuture });
 
 		const retrieveAllApiKeysResponse = await testServer.authAgentFor(ownerShell).get('/api-keys');
 
 		expect(retrieveAllApiKeysResponse.statusCode).toBe(200);
 
-		expect(retrieveAllApiKeysResponse.body.data[0]).toEqual({
-			id: newApiKeyResponse.body.data.id,
-			label: 'My API Key',
+		expect(retrieveAllApiKeysResponse.body.data[1]).toEqual({
+			id: apiKeyWithExpiration.body.data.id,
+			label: 'My API Key 2',
 			userId: ownerShell.id,
-			apiKey: publicApiKeyService.redactApiKey(newApiKeyResponse.body.data.apiKey),
+			apiKey: publicApiKeyService.redactApiKey(apiKeyWithExpiration.body.data.rawApiKey),
 			createdAt: expect.any(String),
 			updatedAt: expect.any(String),
+			expiresAt: expirationDateInTheFuture,
+		});
+
+		expect(retrieveAllApiKeysResponse.body.data[0]).toEqual({
+			id: apiKeyWithNoExpiration.body.data.id,
+			label: 'My API Key',
+			userId: ownerShell.id,
+			apiKey: publicApiKeyService.redactApiKey(apiKeyWithNoExpiration.body.data.rawApiKey),
+			createdAt: expect.any(String),
+			updatedAt: expect.any(String),
+			expiresAt: null,
 		});
 	});
 
 	test('DELETE /api-keys/:id should delete the api key', async () => {
-		const newApiKeyResponse = await testServer.authAgentFor(ownerShell).post('/api-keys');
+		const newApiKeyResponse = await testServer
+			.authAgentFor(ownerShell)
+			.post('/api-keys')
+			.send({ label: 'My API Key', expiresAt: null });
 
 		const deleteApiKeyResponse = await testServer
 			.authAgentFor(ownerShell)
@@ -121,8 +181,11 @@ describe('Member', () => {
 		await utils.setInstanceOwnerSetUp(true);
 	});
 
-	test('POST /api-keys should create an api key', async () => {
-		const newApiKeyResponse = await testServer.authAgentFor(member).post('/api-keys');
+	test('POST /api-keys should create an api key with no expiration', async () => {
+		const newApiKeyResponse = await testServer
+			.authAgentFor(member)
+			.post('/api-keys')
+			.send({ label: 'My API Key', expiresAt: null });
 
 		expect(newApiKeyResponse.statusCode).toBe(200);
 		expect(newApiKeyResponse.body.data.apiKey).toBeDefined();
@@ -136,35 +199,99 @@ describe('Member', () => {
 			id: expect.any(String),
 			label: 'My API Key',
 			userId: member.id,
-			apiKey: newApiKeyResponse.body.data.apiKey,
+			apiKey: newApiKeyResponse.body.data.rawApiKey,
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 		});
+
+		expect(newApiKeyResponse.body.data.expiresAt).toBeNull();
+		expect(newApiKeyResponse.body.data.rawApiKey).toBeDefined();
+	});
+
+	test('POST /api-keys should create an api key with expiration', async () => {
+		const expiresAt = Date.now() + 1000;
+
+		const newApiKeyResponse = await testServer
+			.authAgentFor(member)
+			.post('/api-keys')
+			.send({ label: 'My API Key', expiresAt });
+
+		const newApiKey = newApiKeyResponse.body.data as ApiKeyWithRawValue;
+
+		expect(newApiKeyResponse.statusCode).toBe(200);
+		expect(newApiKey).toBeDefined();
+
+		const newStoredApiKey = await Container.get(ApiKeyRepository).findOneByOrFail({
+			userId: member.id,
+		});
+
+		expect(newStoredApiKey).toEqual({
+			id: expect.any(String),
+			label: 'My API Key',
+			userId: member.id,
+			apiKey: newApiKey.rawApiKey,
+			createdAt: expect.any(Date),
+			updatedAt: expect.any(Date),
+		});
+
+		expect(newApiKey.expiresAt).toBe(expiresAt);
+		expect(newApiKey.rawApiKey).toBeDefined();
+	});
+
+	test('POST /api-keys should fail if max number of API keys reached', async () => {
+		await testServer.authAgentFor(member).post('/api-keys').send({ label: 'My API Key' });
+
+		const secondApiKey = await testServer
+			.authAgentFor(member)
+			.post('/api-keys')
+			.send({ label: 'My API Key' });
+
+		expect(secondApiKey.statusCode).toBe(400);
 	});
 
 	test('GET /api-keys should fetch the api key redacted', async () => {
-		const newApiKeyResponse = await testServer.authAgentFor(member).post('/api-keys');
+		const expirationDateInTheFuture = Date.now() + 1000;
+
+		const apiKeyWithNoExpiration = await testServer
+			.authAgentFor(member)
+			.post('/api-keys')
+			.send({ label: 'My API Key', expiresAt: null });
+
+		const apiKeyWithExpiration = await testServer
+			.authAgentFor(member)
+			.post('/api-keys')
+			.send({ label: 'My API Key 2', expiresAt: expirationDateInTheFuture });
 
 		const retrieveAllApiKeysResponse = await testServer.authAgentFor(member).get('/api-keys');
 
 		expect(retrieveAllApiKeysResponse.statusCode).toBe(200);
 
-		expect(retrieveAllApiKeysResponse.body.data[0]).toEqual({
-			id: newApiKeyResponse.body.data.id,
-			label: 'My API Key',
+		expect(retrieveAllApiKeysResponse.body.data[1]).toEqual({
+			id: apiKeyWithExpiration.body.data.id,
+			label: 'My API Key 2',
 			userId: member.id,
-			apiKey: publicApiKeyService.redactApiKey(newApiKeyResponse.body.data.apiKey),
+			apiKey: publicApiKeyService.redactApiKey(apiKeyWithExpiration.body.data.rawApiKey),
 			createdAt: expect.any(String),
 			updatedAt: expect.any(String),
+			expiresAt: expirationDateInTheFuture,
 		});
 
-		expect(newApiKeyResponse.body.data.apiKey).not.toEqual(
-			retrieveAllApiKeysResponse.body.data[0].apiKey,
-		);
+		expect(retrieveAllApiKeysResponse.body.data[0]).toEqual({
+			id: apiKeyWithNoExpiration.body.data.id,
+			label: 'My API Key',
+			userId: member.id,
+			apiKey: publicApiKeyService.redactApiKey(apiKeyWithNoExpiration.body.data.rawApiKey),
+			createdAt: expect.any(String),
+			updatedAt: expect.any(String),
+			expiresAt: null,
+		});
 	});
 
 	test('DELETE /api-keys/:id should delete the api key', async () => {
-		const newApiKeyResponse = await testServer.authAgentFor(member).post('/api-keys');
+		const newApiKeyResponse = await testServer
+			.authAgentFor(member)
+			.post('/api-keys')
+			.send({ label: 'My API Key', expiresAt: null });
 
 		const deleteApiKeyResponse = await testServer
 			.authAgentFor(member)

@@ -18,7 +18,7 @@ import {
 	GLOBAL_OWNER_SCOPES,
 	GLOBAL_MEMBER_SCOPES,
 	GLOBAL_ADMIN_SCOPES,
-} from '@/permissions/global-roles';
+} from '@/permissions.ee/global-roles';
 import { NoUrl } from '@/validators/no-url.validator';
 import { NoXss } from '@/validators/no-xss.validator';
 

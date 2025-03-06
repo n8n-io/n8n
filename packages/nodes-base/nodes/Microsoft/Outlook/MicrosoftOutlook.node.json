@@ -2,7 +2,10 @@
 	"node": "n8n-nodes-base.microsoftOutlook",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": ["Communication"],
+	"categories": ["Communication", "HITL"],
+	"subcategories": {
+		"HITL": ["Human in the Loop"]
+	},
 	"resources": {
 		"credentialDocumentation": [
 			{
@@ -15,5 +18,5 @@
 			}
 		]
 	},
-	"alias": ["email"]
+	"alias": ["email", "human", "form", "wait", "hitl", "approval"]
 }

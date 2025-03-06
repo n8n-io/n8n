@@ -54,6 +54,7 @@ export class Misp implements INodeType {
 		defaults: {
 			name: 'MISP',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

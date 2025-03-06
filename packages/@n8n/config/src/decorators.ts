@@ -1,6 +1,6 @@
 import 'reflect-metadata';
+import { Container, Service } from '@n8n/di';
 import { readFileSync } from 'fs';
-import { Container, Service } from 'typedi';
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 type Class = Function;
@@ -35,7 +35,7 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 
 		for (const [key, { type, envName }] of classMetadata) {
 			if (typeof type === 'function' && globalMetadata.has(type)) {
-				config[key] = Container.get(type);
+				config[key] = Container.get(type as Constructable);
 			} else if (envName) {
 				const value = readEnv(envName);
 				if (value === undefined) continue;
@@ -54,6 +54,13 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 						config[key] = false;
 					} else {
 						console.warn(`Invalid boolean value for ${envName}: ${value}`);
+					}
+				} else if (type === Date) {
+					const timestamp = Date.parse(value);
+					if (isNaN(timestamp)) {
+						console.warn(`Invalid timestamp value for ${envName}: ${value}`);
+					} else {
+						config[key] = new Date(timestamp);
 					}
 				} else if (type === String) {
 					config[key] = value;

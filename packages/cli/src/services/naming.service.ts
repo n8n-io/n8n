@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import { Service } from '@n8n/di';
 
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';

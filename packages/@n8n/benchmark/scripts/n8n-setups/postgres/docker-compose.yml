@@ -32,6 +32,9 @@ services:
       - DB_TYPE=postgresdb
       - DB_POSTGRESDB_HOST=postgres
       - DB_POSTGRESDB_PASSWORD=password
+      # Task Runner config
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_RUNNERS_MODE=internal
     ports:
       - 5678:5678
     volumes:

@@ -10,6 +10,8 @@ describe('AugmentObject', () => {
 
 			const augmentedObject = augmentArray(originalObject);
 
+			expect(augmentedObject.constructor.name).toEqual('Array');
+
 			expect(augmentedObject.push(5)).toEqual(6);
 			expect(augmentedObject).toEqual([1, 2, 3, 4, null, 5]);
 			expect(originalObject).toEqual(copyOriginal);
@@ -206,6 +208,8 @@ describe('AugmentObject', () => {
 			const copyOriginal = deepCopy(originalObject);
 
 			const augmentedObject = augmentObject(originalObject);
+
+			expect(augmentedObject.constructor.name).toEqual('Object');
 
 			augmentedObject[1] = 911;
 			expect(originalObject[1]).toEqual(11);
@@ -571,6 +575,47 @@ describe('AugmentObject', () => {
 			augmentedObject.x.z = 5;
 			expect('z' in augmentedObject.x).toBe(true);
 			expect('y' in augmentedObject.x).toBe(true);
+		});
+
+		test('should ignore non-enumerable keys', () => {
+			const originalObject: { toString?: string } = { toString: '123' };
+			const augmentedObject = augmentObject(originalObject);
+			expect('toString' in augmentedObject).toBe(true);
+			expect(Object.keys(augmentedObject)).toEqual(['toString']);
+			expect(Object.getOwnPropertyDescriptor(augmentedObject, 'toString')?.value).toEqual(
+				originalObject.toString,
+			);
+			expect(augmentedObject.toString).toEqual(originalObject.toString);
+
+			augmentedObject.toString = '456';
+			expect(augmentedObject.toString).toBe('456');
+
+			delete augmentedObject.toString;
+			expect(augmentedObject.toString).toBeUndefined();
+		});
+
+		test('should handle constructor property correctly', () => {
+			const originalObject: any = {
+				a: {
+					b: {
+						c: {
+							d: '4',
+						},
+					},
+				},
+			};
+			const augmentedObject = augmentObject(originalObject);
+
+			expect(augmentedObject.constructor.name).toEqual('Object');
+			expect(augmentedObject.a.constructor.name).toEqual('Object');
+			expect(augmentedObject.a.b.constructor.name).toEqual('Object');
+			expect(augmentedObject.a.b.c.constructor.name).toEqual('Object');
+
+			augmentedObject.constructor = {};
+			expect(augmentedObject.constructor.name).toEqual('Object');
+
+			delete augmentedObject.constructor;
+			expect(augmentedObject.constructor.name).toEqual('Object');
 		});
 	});
 });

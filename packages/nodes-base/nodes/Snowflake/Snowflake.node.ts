@@ -23,6 +23,7 @@ export class Snowflake implements INodeType {
 		defaults: {
 			name: 'Snowflake',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		parameterPane: 'wide',

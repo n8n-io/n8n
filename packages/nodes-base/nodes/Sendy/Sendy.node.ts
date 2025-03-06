@@ -25,6 +25,7 @@ export class Sendy implements INodeType {
 		defaults: {
 			name: 'Sendy',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

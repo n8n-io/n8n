@@ -1,10 +1,11 @@
+import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import { DataSource, In, Repository } from '@n8n/typeorm';
 import intersection from 'lodash/intersection';
-import { Service } from 'typedi';
+
+import type { IWorkflowDb } from '@/interfaces';
 
 import { TagEntity } from '../entities/tag-entity';
-import type { WorkflowEntity } from '../entities/workflow-entity';
 
 @Service()
 export class TagRepository extends Repository<TagEntity> {
@@ -23,7 +24,7 @@ export class TagRepository extends Repository<TagEntity> {
 	 * Set tags on workflow to import while ensuring all tags exist in the database,
 	 * either by matching incoming to existing tags or by creating them first.
 	 */
-	async setTags(tx: EntityManager, dbTags: TagEntity[], workflow: WorkflowEntity) {
+	async setTags(tx: EntityManager, dbTags: TagEntity[], workflow: IWorkflowDb) {
 		if (!workflow?.tags?.length) return;
 
 		for (let i = 0; i < workflow.tags.length; i++) {

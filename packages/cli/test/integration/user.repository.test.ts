@@ -1,4 +1,4 @@
-import Container from 'typedi';
+import { Container } from '@n8n/di';
 
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';

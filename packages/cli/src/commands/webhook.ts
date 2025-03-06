@@ -1,6 +1,6 @@
+import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
-import { ApplicationError } from 'n8n-workflow';
-import { Container } from 'typedi';
+import { UserError } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
@@ -33,7 +33,7 @@ export class Webhook extends BaseCommand {
 		this.logger.info('\nStopping n8n...');
 
 		try {
-			await this.externalHooks?.run('n8n.stop', []);
+			await this.externalHooks?.run('n8n.stop');
 
 			await Container.get(ActiveExecutions).shutdown();
 		} catch (error) {
@@ -84,9 +84,7 @@ export class Webhook extends BaseCommand {
 
 	async run() {
 		if (this.globalConfig.multiMainSetup.enabled) {
-			throw new ApplicationError(
-				'Webhook process cannot be started when multi-main setup is enabled.',
-			);
+			throw new UserError('Webhook process cannot be started when multi-main setup is enabled.');
 		}
 
 		const { ScalingService } = await import('@/scaling/scaling.service');

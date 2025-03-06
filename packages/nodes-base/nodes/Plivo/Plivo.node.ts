@@ -24,6 +24,7 @@ export class Plivo implements INodeType {
 		defaults: {
 			name: 'Plivo',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

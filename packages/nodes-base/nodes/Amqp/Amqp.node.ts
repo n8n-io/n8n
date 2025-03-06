@@ -64,6 +64,7 @@ export class Amqp implements INodeType {
 		defaults: {
 			name: 'AMQP Sender',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

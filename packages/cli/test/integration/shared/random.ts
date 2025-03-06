@@ -37,10 +37,22 @@ const randomTopLevelDomain = () => chooseRandomly(POPULAR_TOP_LEVEL_DOMAINS);
 
 export const randomName = () => randomString(4, 8).toLowerCase();
 
-export const randomCredentialPayload = (): CredentialPayload => ({
+export const randomCredentialPayload = ({
+	isManaged = false,
+}: { isManaged?: boolean } = {}): CredentialPayload => ({
 	name: randomName(),
 	type: randomName(),
 	data: { accessToken: randomString(6, 16) },
+	isManaged,
+});
+
+export const randomCredentialPayloadWithOauthTokenData = ({
+	isManaged = false,
+}: { isManaged?: boolean } = {}): CredentialPayload => ({
+	name: randomName(),
+	type: randomName(),
+	data: { accessToken: randomString(6, 16), oauthTokenData: { access_token: randomString(6, 16) } },
+	isManaged,
 });
 
 export const uniqueId = () => uuid();

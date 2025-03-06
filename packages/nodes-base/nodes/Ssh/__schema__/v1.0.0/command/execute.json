@@ -1,0 +1,20 @@
+{
+    "type": "object",
+    "properties": {
+        "signal": {
+            "type": "null"
+        },
+        "stdout": {
+            "type": "string"
+        },
+        "stderr": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "code",
+        "signal",
+        "stdout",
+        "stderr"
+    ]
+}

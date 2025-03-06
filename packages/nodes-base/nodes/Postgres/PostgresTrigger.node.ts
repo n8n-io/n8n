@@ -321,7 +321,6 @@ export class PostgresTrigger implements INodeType {
 				}
 			} finally {
 				connection.client.removeListener('notification', onNotification);
-				if (!db.$pool.ending) await db.$pool.end();
 			}
 		};
 

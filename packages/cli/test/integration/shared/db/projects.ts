@@ -1,7 +1,8 @@
-import Container from 'typedi';
+import type { ProjectRole } from '@n8n/api-types';
+import { Container } from '@n8n/di';
 
 import type { Project } from '@/databases/entities/project';
-import type { ProjectRelation, ProjectRole } from '@/databases/entities/project-relation';
+import type { ProjectRelation } from '@/databases/entities/project-relation';
 import type { User } from '@/databases/entities/user';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';

@@ -23,6 +23,7 @@ export class Gong implements INodeType {
 		defaults: {
 			name: 'Gong',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

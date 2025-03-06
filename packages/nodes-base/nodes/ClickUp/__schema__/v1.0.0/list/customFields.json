@@ -1,0 +1,29 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "date_created": {
+            "type": "string"
+        },
+        "hide_from_guests": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "id",
+        "name",
+        "type",
+        "type_config",
+        "date_created",
+        "hide_from_guests",
+        "required"
+    ]
+}

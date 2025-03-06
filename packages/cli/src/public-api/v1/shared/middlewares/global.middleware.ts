@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-invalid-void-type */
+import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import type express from 'express';
-import { Container } from 'typedi';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { BooleanLicenseFeature } from '@/interfaces';
 import { License } from '@/license';
-import { userHasScopes } from '@/permissions/check-access';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import type { AuthenticatedRequest } from '@/requests';
 
 import type { PaginatedRequest } from '../../../types';

@@ -22,7 +22,19 @@ export interface SandboxContext extends IWorkflowDataProxyData {
 	helpers: IExecuteFunctions['helpers'];
 }
 
-export const REQUIRED_N8N_ITEM_KEYS = new Set(['json', 'binary', 'pairedItem', 'error']);
+export const REQUIRED_N8N_ITEM_KEYS = new Set([
+	'json',
+	'binary',
+	'pairedItem',
+	'error',
+
+	/**
+	 * The `index` key was added accidentally to Function, FunctionItem, Gong,
+	 * Execute Workflow, and ToolWorkflowV2, so we need to allow it temporarily.
+	 * Once we stop using it in all nodes, we can stop allowing the `index` key.
+	 */
+	'index',
+]);
 
 export function getSandboxContext(
 	this: IExecuteFunctions | ISupplyDataFunctions,

@@ -1,0 +1,93 @@
+{
+    "type": "object",
+    "properties": {
+        "self": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "filename": {
+            "type": "string"
+        },
+        "author": {
+            "type": "object",
+            "properties": {
+                "self": {
+                    "type": "string"
+                },
+                "accountId": {
+                    "type": "string"
+                },
+                "emailAddress": {
+                    "type": "string"
+                },
+                "avatarUrls": {
+                    "type": "object",
+                    "properties": {
+                        "48x48": {
+                            "type": "string"
+                        },
+                        "24x24": {
+                            "type": "string"
+                        },
+                        "16x16": {
+                            "type": "string"
+                        },
+                        "32x32": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "48x48",
+                        "24x24",
+                        "16x16",
+                        "32x32"
+                    ]
+                },
+                "displayName": {
+                    "type": "string"
+                },
+                "active": {
+                    "type": "boolean"
+                },
+                "timeZone": {
+                    "type": "string"
+                },
+                "accountType": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "self",
+                "emailAddress",
+                "avatarUrls",
+                "displayName",
+                "active",
+                "timeZone"
+            ]
+        },
+        "created": {
+            "type": "string"
+        },
+        "size": {
+            "type": "integer"
+        },
+        "mimeType": {
+            "type": "string"
+        },
+        "content": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "self",
+        "id",
+        "filename",
+        "author",
+        "created",
+        "size",
+        "mimeType",
+        "content"
+    ]
+}

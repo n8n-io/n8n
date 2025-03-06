@@ -107,12 +107,8 @@ export class FlowTrigger implements INodeType {
 				}
 				qs.organization_id = credentials.organizationId as number;
 				const endpoint = '/integration_webhooks';
-				try {
-					webhooks = await flowApiRequest.call(this, 'GET', endpoint, {}, qs);
-					webhooks = webhooks.integration_webhooks;
-				} catch (error) {
-					throw error;
-				}
+				webhooks = await flowApiRequest.call(this, 'GET', endpoint, {}, qs);
+				webhooks = webhooks.integration_webhooks;
 				for (const webhook of webhooks) {
 					// @ts-ignore
 					if (webhookData.webhookIds.includes(webhook.id)) {

@@ -1,0 +1,14 @@
+{
+    "type": "object",
+    "properties": {
+        "content": {
+            "type": "string"
+        },
+        "appended_message_content": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        }
+    }
+}

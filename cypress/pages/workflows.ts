@@ -1,5 +1,13 @@
 import { BasePage } from './base';
 
+/**
+ * @deprecated Use functional composables from @composables instead.
+ * If a composable doesn't exist for your use case, please create a new one in:
+ * cypress/composables
+ *
+ * This class-based approach is being phased out in favor of more modular functional composables.
+ * Each getter and action in this class should be moved to individual composable functions.
+ */
 export class WorkflowsPage extends BasePage {
 	url = '/home/workflows';
 
@@ -27,6 +35,7 @@ export class WorkflowsPage extends BasePage {
 			this.getters.workflowActivator(workflowName).findChildByTestId('workflow-activator-status'),
 		workflowCardActions: (workflowName: string) =>
 			this.getters.workflowCard(workflowName).findChildByTestId('workflow-card-actions'),
+		workflowActionItem: (action: string) => cy.getByTestId(`action-${action}`).filter(':visible'),
 		workflowDeleteButton: () =>
 			cy.getByTestId('action-toggle-dropdown').filter(':visible').contains('Delete'),
 		workflowMoveButton: () =>
@@ -39,6 +48,18 @@ export class WorkflowsPage extends BasePage {
 		workflowOwnershipDropdown: () => cy.getByTestId('user-select-trigger'),
 		workflowOwner: (email: string) => cy.getByTestId('user-email').contains(email),
 		workflowResetFilters: () => cy.getByTestId('workflows-filter-reset'),
+		workflowSortDropdown: () => cy.getByTestId('resources-list-sort'),
+		workflowSortItem: (sort: string) =>
+			cy.getByTestId('resources-list-sort-item').contains(sort).parent(),
+		workflowPagination: () => cy.getByTestId('resources-list-pagination'),
+		workflowListPageSizeDropdown: () => this.getters.workflowPagination().find('.select-trigger'),
+		workflowListPageSizeItem: (pageSize: string, visible: boolean = true) => {
+			if (visible) {
+				return cy.get('[role=option]').filter(':visible').contains(`${pageSize}/page`);
+			}
+			return cy.get('[role=option]').contains(`${pageSize}/page`).parent();
+		},
+		workflowsListContainer: () => cy.getByTestId('resources-list-wrapper'),
 		// Not yet implemented
 		// myWorkflows: () => cy.getByTestId('my-workflows'),
 		// allWorkflows: () => cy.getByTestId('all-workflows'),

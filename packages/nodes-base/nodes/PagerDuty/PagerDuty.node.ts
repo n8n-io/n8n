@@ -34,6 +34,7 @@ export class PagerDuty implements INodeType {
 		defaults: {
 			name: 'PagerDuty',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

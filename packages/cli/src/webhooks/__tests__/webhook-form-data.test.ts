@@ -14,7 +14,7 @@ jest.unmock('node:fs');
 
 /** Test server for testing the form data parsing */
 class TestServer {
-	public agent: TestAgent;
+	agent: TestAgent;
 
 	private app: express.Application;
 

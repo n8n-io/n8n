@@ -35,6 +35,7 @@ export class YouTube implements INodeType {
 		defaults: {
 			name: 'YouTube',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

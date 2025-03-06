@@ -28,6 +28,9 @@ export async function jiraSoftwareCloudApiRequest(
 	if (jiraVersion === 'server') {
 		domain = (await this.getCredentials('jiraSoftwareServerApi')).domain as string;
 		credentialType = 'jiraSoftwareServerApi';
+	} else if (jiraVersion === 'serverPat') {
+		domain = (await this.getCredentials('jiraSoftwareServerPatApi')).domain as string;
+		credentialType = 'jiraSoftwareServerPatApi';
 	} else {
 		domain = (await this.getCredentials('jiraSoftwareCloudApi')).domain as string;
 		credentialType = 'jiraSoftwareCloudApi';
@@ -233,7 +236,7 @@ export async function getUsers(this: ILoadOptionsFunctions): Promise<INodeProper
 	const query: IDataObject = { maxResults };
 	let endpoint = '/api/2/users/search';
 
-	if (jiraVersion === 'server') {
+	if (jiraVersion === 'server' || jiraVersion === 'serverPat') {
 		endpoint = '/api/2/user/search';
 		query.username = "'";
 	}

@@ -29,6 +29,7 @@ export class Affinity implements INodeType {
 		defaults: {
 			name: 'Affinity',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

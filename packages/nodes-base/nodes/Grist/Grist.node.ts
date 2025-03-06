@@ -43,6 +43,7 @@ export class Grist implements INodeType {
 		defaults: {
 			name: 'Grist',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

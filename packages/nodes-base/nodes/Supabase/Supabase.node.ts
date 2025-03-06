@@ -293,8 +293,8 @@ export class Supabase implements INodeType {
 
 						if (keys.length !== 0) {
 							if (matchType === 'allFilters') {
-								const data = keys.reduce((obj, value) => buildQuery(obj, value), {});
-								Object.assign(qs, data);
+								const data = keys.map((key) => buildOrQuery(key));
+								Object.assign(qs, { and: `(${data.join(',')})` });
 							}
 							if (matchType === 'anyFilter') {
 								const data = keys.map((key) => buildOrQuery(key));

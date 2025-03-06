@@ -24,6 +24,7 @@ export class Oura implements INodeType {
 		defaults: {
 			name: 'Oura',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

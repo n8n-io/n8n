@@ -53,7 +53,7 @@ describe('Memoized Decorator', () => {
 			class InvalidClass {
 				// @ts-expect-error this code will fail at compile time and at runtime
 				@Memoized
-				public normalProperty = 42;
+				normalProperty = 42;
 			}
 			new InvalidClass();
 		}).toThrow(AssertionError);

@@ -1,0 +1,35 @@
+{
+    "type": "object",
+    "properties": {
+        "object": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "person": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "email"
+            ]
+        }
+    },
+    "required": [
+        "object",
+        "id",
+        "name",
+        "avatar_url",
+        "type"
+    ]
+}

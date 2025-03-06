@@ -24,6 +24,7 @@ export class LingvaNex implements INodeType {
 		defaults: {
 			name: 'LingvaNex',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

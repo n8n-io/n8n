@@ -4,7 +4,7 @@ import type { User } from '@/databases/entities/user';
 import type { UserRepository } from '@/databases/repositories/user.repository';
 import type { EventService } from '@/events/event.service';
 import type { AuthenticatedRequest } from '@/requests';
-import type { ProjectService } from '@/services/project.service';
+import type { ProjectService } from '@/services/project.service.ee';
 
 import { UsersController } from '../users.controller';
 

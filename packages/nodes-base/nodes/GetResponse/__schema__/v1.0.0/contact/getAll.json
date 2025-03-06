@@ -1,0 +1,71 @@
+{
+    "type": "object",
+    "properties": {
+        "contactId": {
+            "type": "string"
+        },
+        "href": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "note": {
+            "type": "null"
+        },
+        "origin": {
+            "type": "string"
+        },
+        "changedOn": {
+            "type": "string"
+        },
+        "timeZone": {
+            "type": "string"
+        },
+        "ipAddress": {
+            "type": "string"
+        },
+        "activities": {
+            "type": "string"
+        },
+        "campaign": {
+            "type": "object",
+            "properties": {
+                "campaignId": {
+                    "type": "string"
+                },
+                "href": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "campaignId",
+                "href",
+                "name"
+            ]
+        },
+        "createdOn": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "contactId",
+        "href",
+        "name",
+        "email",
+        "note",
+        "origin",
+        "dayOfCycle",
+        "changedOn",
+        "timeZone",
+        "ipAddress",
+        "activities",
+        "campaign",
+        "createdOn",
+        "scoring",
+        "engagementScore"
+    ]
+}

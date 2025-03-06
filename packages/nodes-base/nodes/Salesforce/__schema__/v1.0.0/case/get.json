@@ -1,0 +1,132 @@
+{
+    "type": "object",
+    "properties": {
+        "attributes": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "type",
+                "url"
+            ]
+        },
+        "Id": {
+            "type": "string"
+        },
+        "IsDeleted": {
+            "type": "boolean"
+        },
+        "MasterRecordId": {
+            "type": "null"
+        },
+        "CaseNumber": {
+            "type": "string"
+        },
+        "RecordTypeId": {
+            "type": "string"
+        },
+        "Status": {
+            "type": "string"
+        },
+        "Language": {
+            "type": "null"
+        },
+        "Priority": {
+            "type": "string"
+        },
+        "IsClosed": {
+            "type": "boolean"
+        },
+        "IsEscalated": {
+            "type": "boolean"
+        },
+        "OwnerId": {
+            "type": "string"
+        },
+        "CreatedDate": {
+            "type": "string"
+        },
+        "CreatedById": {
+            "type": "string"
+        },
+        "LastModifiedDate": {
+            "type": "string"
+        },
+        "LastModifiedById": {
+            "type": "string"
+        },
+        "SystemModstamp": {
+            "type": "string"
+        },
+        "Comments": {
+            "type": "null"
+        },
+        "ProductId": {
+            "type": "null"
+        },
+        "BusinessHoursId": {
+            "type": "string"
+        },
+        "ServiceContractId": {
+            "type": "null"
+        },
+        "AssetId": {
+            "type": "null"
+        },
+        "IsClosedOnCreate": {
+            "type": "boolean"
+        },
+        "IsStopped": {
+            "type": "boolean"
+        },
+        "StopStartDate": {
+            "type": "null"
+        },
+        "MilestoneStatus": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "attributes",
+        "Id",
+        "IsDeleted",
+        "MasterRecordId",
+        "CaseNumber",
+        "ContactId",
+        "AccountId",
+        "ParentId",
+        "SuppliedName",
+        "SuppliedEmail",
+        "SuppliedPhone",
+        "SuppliedCompany",
+        "Type",
+        "Status",
+        "Reason",
+        "Origin",
+        "Subject",
+        "Priority",
+        "Description",
+        "IsClosed",
+        "ClosedDate",
+        "IsEscalated",
+        "OwnerId",
+        "CreatedDate",
+        "CreatedById",
+        "LastModifiedDate",
+        "LastModifiedById",
+        "SystemModstamp",
+        "ContactPhone",
+        "ContactMobile",
+        "ContactEmail",
+        "ContactFax",
+        "Comments",
+        "LastViewedDate",
+        "LastReferencedDate"
+    ]
+}

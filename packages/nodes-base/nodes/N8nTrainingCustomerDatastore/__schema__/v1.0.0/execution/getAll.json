@@ -1,0 +1,31 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "finished": {
+            "type": "boolean"
+        },
+        "mode": {
+            "type": "string"
+        },
+        "stoppedAt": {
+            "type": "string"
+        },
+        "workflowId": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "id",
+        "finished",
+        "mode",
+        "retryOf",
+        "retrySuccessId",
+        "startedAt",
+        "stoppedAt",
+        "workflowId",
+        "waitTill"
+    ]
+}

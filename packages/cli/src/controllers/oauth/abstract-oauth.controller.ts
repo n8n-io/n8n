@@ -1,10 +1,10 @@
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import Csrf from 'csrf';
 import type { Response } from 'express';
-import { Credentials } from 'n8n-core';
+import { Credentials, Logger } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { jsonParse, ApplicationError } from 'n8n-workflow';
-import { Service } from 'typedi';
+import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
 import { RESPONSE_ERROR_MESSAGES, Time } from '@/constants';
 import { CredentialsHelper } from '@/credentials-helper';
@@ -16,7 +16,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
 import type { ICredentialsDb } from '@/interfaces';
-import { Logger } from '@/logging/logger.service';
 import type { AuthenticatedRequest, OAuthRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -87,9 +86,30 @@ export abstract class AbstractOAuthController {
 		return await WorkflowExecuteAdditionalData.getBase();
 	}
 
-	protected async getDecryptedData(
+	/**
+	 * Allow decrypted data to evaluate expressions that include $secrets and apply overwrites
+	 */
+	protected async getDecryptedDataForAuthUri(
 		credential: ICredentialsDb,
 		additionalData: IWorkflowExecuteAdditionalData,
+	) {
+		return await this.getDecryptedData(credential, additionalData, false);
+	}
+
+	/**
+	 * Do not apply overwrites here because that removes the CSRF state, and breaks the oauth flow
+	 */
+	protected async getDecryptedDataForCallback(
+		credential: ICredentialsDb,
+		additionalData: IWorkflowExecuteAdditionalData,
+	) {
+		return await this.getDecryptedData(credential, additionalData, true);
+	}
+
+	private async getDecryptedData(
+		credential: ICredentialsDb,
+		additionalData: IWorkflowExecuteAdditionalData,
+		raw: boolean,
 	) {
 		return await this.credentialsHelper.getDecrypted(
 			additionalData,
@@ -97,7 +117,7 @@ export abstract class AbstractOAuthController {
 			credential.type,
 			'internal',
 			undefined,
-			true,
+			raw,
 		);
 	}
 
@@ -116,10 +136,11 @@ export abstract class AbstractOAuthController {
 
 	protected async encryptAndSaveData(
 		credential: ICredentialsDb,
-		decryptedData: ICredentialDataDecryptedObject,
+		toUpdate: ICredentialDataDecryptedObject,
+		toDelete: string[] = [],
 	) {
-		const credentials = new Credentials(credential, credential.type);
-		credentials.setData(decryptedData);
+		const credentials = new Credentials(credential, credential.type, credential.data);
+		credentials.updateData(toUpdate, toDelete);
 		await this.credentialsRepository.update(credential.id, {
 			...credentials.getDataToSave(),
 			updatedAt: new Date(),
@@ -150,7 +171,7 @@ export abstract class AbstractOAuthController {
 		});
 
 		if (typeof decoded.cid !== 'string' || typeof decoded.token !== 'string') {
-			throw new ApplicationError(errorMessage);
+			throw new UnexpectedError(errorMessage);
 		}
 
 		if (decoded.userId !== req.user?.id) {
@@ -180,11 +201,14 @@ export abstract class AbstractOAuthController {
 		const state = this.decodeCsrfState(encodedState, req);
 		const credential = await this.getCredentialWithoutUser(state.cid);
 		if (!credential) {
-			throw new ApplicationError('OAuth callback failed because of insufficient permissions');
+			throw new UnexpectedError('OAuth callback failed because of insufficient permissions');
 		}
 
 		const additionalData = await this.getAdditionalData();
-		const decryptedDataOriginal = await this.getDecryptedData(credential, additionalData);
+		const decryptedDataOriginal = await this.getDecryptedDataForCallback(
+			credential,
+			additionalData,
+		);
 		const oauthCredentials = this.applyDefaultsAndOverwrites<T>(
 			credential,
 			decryptedDataOriginal,
@@ -192,7 +216,7 @@ export abstract class AbstractOAuthController {
 		);
 
 		if (!this.verifyCsrfState(decryptedDataOriginal, state)) {
-			throw new ApplicationError('The OAuth callback state is invalid!');
+			throw new UnexpectedError('The OAuth callback state is invalid!');
 		}
 
 		return [credential, decryptedDataOriginal, oauthCredentials];

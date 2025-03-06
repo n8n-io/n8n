@@ -29,6 +29,7 @@ export class QuickChart implements INodeType {
 		defaults: {
 			name: 'QuickChart',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		properties: [

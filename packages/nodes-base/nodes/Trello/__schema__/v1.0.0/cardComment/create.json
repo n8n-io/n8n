@@ -1,0 +1,352 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "idMemberCreator": {
+            "type": "string"
+        },
+        "data": {
+            "type": "object",
+            "properties": {
+                "text": {
+                    "type": "string"
+                },
+                "card": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "idShort": {
+                            "type": "integer"
+                        },
+                        "shortLink": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "id",
+                        "name",
+                        "idShort",
+                        "shortLink"
+                    ]
+                },
+                "board": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "shortLink": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "id",
+                        "name",
+                        "shortLink"
+                    ]
+                },
+                "list": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "id",
+                        "name"
+                    ]
+                }
+            },
+            "required": [
+                "text",
+                "textData",
+                "card",
+                "board",
+                "list"
+            ]
+        },
+        "appCreator": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id"
+            ]
+        },
+        "type": {
+            "type": "string"
+        },
+        "date": {
+            "type": "string"
+        },
+        "limits": {
+            "type": "object",
+            "properties": {
+                "reactions": {
+                    "type": "object",
+                    "properties": {
+                        "perAction": {
+                            "type": "object",
+                            "properties": {
+                                "status": {
+                                    "type": "string"
+                                },
+                                "disableAt": {
+                                    "type": "integer"
+                                },
+                                "warnAt": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "status",
+                                "disableAt",
+                                "warnAt"
+                            ]
+                        },
+                        "uniquePerAction": {
+                            "type": "object",
+                            "properties": {
+                                "status": {
+                                    "type": "string"
+                                },
+                                "disableAt": {
+                                    "type": "integer"
+                                },
+                                "warnAt": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "status",
+                                "disableAt",
+                                "warnAt"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "perAction",
+                        "uniquePerAction"
+                    ]
+                }
+            },
+            "required": [
+                "reactions"
+            ]
+        },
+        "display": {
+            "type": "object",
+            "properties": {
+                "translationKey": {
+                    "type": "string"
+                },
+                "entities": {
+                    "type": "object",
+                    "properties": {
+                        "contextOn": {
+                            "type": "object",
+                            "properties": {
+                                "type": {
+                                    "type": "string"
+                                },
+                                "translationKey": {
+                                    "type": "string"
+                                },
+                                "hideIfContext": {
+                                    "type": "boolean"
+                                },
+                                "idContext": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "type",
+                                "translationKey",
+                                "hideIfContext",
+                                "idContext"
+                            ]
+                        },
+                        "card": {
+                            "type": "object",
+                            "properties": {
+                                "type": {
+                                    "type": "string"
+                                },
+                                "hideIfContext": {
+                                    "type": "boolean"
+                                },
+                                "id": {
+                                    "type": "string"
+                                },
+                                "shortLink": {
+                                    "type": "string"
+                                },
+                                "text": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "type",
+                                "hideIfContext",
+                                "id",
+                                "shortLink",
+                                "text"
+                            ]
+                        },
+                        "comment": {
+                            "type": "object",
+                            "properties": {
+                                "type": {
+                                    "type": "string"
+                                },
+                                "text": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "type",
+                                "text"
+                            ]
+                        },
+                        "memberCreator": {
+                            "type": "object",
+                            "properties": {
+                                "type": {
+                                    "type": "string"
+                                },
+                                "id": {
+                                    "type": "string"
+                                },
+                                "username": {
+                                    "type": "string"
+                                },
+                                "text": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "type",
+                                "id",
+                                "username",
+                                "text"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "contextOn",
+                        "card",
+                        "comment",
+                        "memberCreator"
+                    ]
+                }
+            },
+            "required": [
+                "translationKey",
+                "entities"
+            ]
+        },
+        "entities": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "username": {
+                        "type": "string"
+                    },
+                    "text": {
+                        "type": "string"
+                    },
+                    "hideIfContext": {
+                        "type": "boolean"
+                    },
+                    "idContext": {
+                        "type": "string"
+                    },
+                    "shortLink": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "type",
+                    "text"
+                ]
+            }
+        },
+        "memberCreator": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "activityBlocked": {
+                    "type": "boolean"
+                },
+                "avatarHash": {
+                    "type": "string"
+                },
+                "avatarUrl": {
+                    "type": "string"
+                },
+                "fullName": {
+                    "type": "string"
+                },
+                "initials": {
+                    "type": "string"
+                },
+                "nonPublicAvailable": {
+                    "type": "boolean"
+                },
+                "username": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "activityBlocked",
+                "avatarHash",
+                "avatarUrl",
+                "fullName",
+                "idMemberReferrer",
+                "initials",
+                "nonPublic",
+                "nonPublicAvailable",
+                "username"
+            ]
+        }
+    },
+    "required": [
+        "id",
+        "idMemberCreator",
+        "data",
+        "appCreator",
+        "type",
+        "date",
+        "limits",
+        "display",
+        "entities",
+        "memberCreator"
+    ]
+}

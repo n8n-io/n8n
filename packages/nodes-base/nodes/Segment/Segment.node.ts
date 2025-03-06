@@ -27,6 +27,7 @@ export class Segment implements INodeType {
 		defaults: {
 			name: 'Segment',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

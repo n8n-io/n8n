@@ -16,6 +16,7 @@ export class Npm implements INodeType {
 		defaults: {
 			name: 'npm',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

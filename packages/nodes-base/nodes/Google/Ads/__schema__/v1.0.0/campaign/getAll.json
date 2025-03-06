@@ -1,0 +1,44 @@
+{
+    "type": "object",
+    "properties": {
+        "resourceName": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "advertisingChannelType": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "videoViews": {
+            "type": "string"
+        },
+        "costMicros": {
+            "type": "string"
+        },
+        "impressions": {
+            "type": "string"
+        },
+        "interactions": {
+            "type": "string"
+        },
+        "period": {
+            "type": "string"
+        },
+        "amountMicros": {
+            "type": "string"
+        },
+        "interactionRate": {
+            "type": "number"
+        },
+        "optimizationScore": {
+            "type": "number"
+        }
+    }
+}

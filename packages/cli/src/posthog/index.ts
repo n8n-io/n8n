@@ -1,8 +1,8 @@
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
 import type { PostHog } from 'posthog-node';
-import { Service } from 'typedi';
 
 import type { PublicUser } from '@/interfaces';
 

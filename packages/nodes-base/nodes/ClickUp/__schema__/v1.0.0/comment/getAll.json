@@ -1,0 +1,121 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "comment": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "text": {
+                        "type": "string"
+                    },
+                    "attributes": {
+                        "type": "object",
+                        "properties": {
+                            "block-id": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "required": [
+                    "text"
+                ]
+            }
+        },
+        "comment_text": {
+            "type": "string"
+        },
+        "user": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "initials": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "username",
+                "email",
+                "color",
+                "initials",
+                "profilePicture"
+            ]
+        },
+        "group_assignee": {
+            "type": "null"
+        },
+        "reactions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "reaction": {
+                        "type": "string"
+                    },
+                    "date": {
+                        "type": "string"
+                    },
+                    "user": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "username": {
+                                "type": "string"
+                            },
+                            "email": {
+                                "type": "string"
+                            },
+                            "initials": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "username",
+                            "email",
+                            "initials",
+                            "profilePicture"
+                        ]
+                    }
+                },
+                "required": [
+                    "reaction",
+                    "date",
+                    "user"
+                ]
+            }
+        },
+        "date": {
+            "type": "string"
+        },
+        "reply_count": {
+            "type": "integer"
+        }
+    },
+    "required": [
+        "id",
+        "comment",
+        "comment_text",
+        "user",
+        "assignee",
+        "group_assignee",
+        "reactions",
+        "date",
+        "reply_count"
+    ]
+}

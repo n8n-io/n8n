@@ -277,3 +277,19 @@ Program(Resolvable)
 ==>
 
 Program(Resolvable)
+
+# Resolvable with new emoji range
+
+{{ '🟢' }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable with new emoji range end of range
+
+{{ '🫸' }}
+
+==>
+
+Program(Resolvable)

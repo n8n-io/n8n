@@ -1,5 +1,6 @@
-import { HookContext, WebhookContext } from 'n8n-core';
-import { ApplicationError, Node, NodeHelpers } from 'n8n-workflow';
+import { Service } from '@n8n/di';
+import { HookContext, WebhookContext, Logger } from 'n8n-core';
+import { Node, NodeHelpers, UnexpectedError } from 'n8n-workflow';
 import type {
 	IHttpRequestMethods,
 	INode,
@@ -12,11 +13,9 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import type { WebhookEntity } from '@/databases/entities/webhook-entity';
 import { WebhookRepository } from '@/databases/repositories/webhook.repository';
-import { Logger } from '@/logging/logger.service';
 import { NodeTypes } from '@/node-types';
 import { CacheService } from '@/services/cache/cache.service';
 
@@ -322,7 +321,7 @@ export class WebhookService {
 	): Promise<IWebhookResponseData> {
 		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 		if (nodeType.webhook === undefined) {
-			throw new ApplicationError('Node does not have any webhooks defined', {
+			throw new UnexpectedError('Node does not have any webhooks defined', {
 				extra: { nodeName: node.name },
 			});
 		}

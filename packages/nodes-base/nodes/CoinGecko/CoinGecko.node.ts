@@ -26,6 +26,7 @@ export class CoinGecko implements INodeType {
 		defaults: {
 			name: 'CoinGecko',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		properties: [

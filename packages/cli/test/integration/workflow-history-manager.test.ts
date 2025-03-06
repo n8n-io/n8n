@@ -1,11 +1,11 @@
+import { Container } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
-import Container from 'typedi';
 
 import config from '@/config';
 import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
 import { License } from '@/license';
-import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager.ee';
+import { WorkflowHistoryManager } from '@/workflows/workflow-history.ee/workflow-history-manager.ee';
 
 import { createManyWorkflowHistoryItems } from './shared/db/workflow-history';
 import { createWorkflow } from './shared/db/workflows';

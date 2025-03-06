@@ -31,6 +31,7 @@ export class Mautic implements INodeType {
 		defaults: {
 			name: 'Mautic',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

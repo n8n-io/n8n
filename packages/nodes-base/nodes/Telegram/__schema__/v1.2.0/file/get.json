@@ -1,0 +1,35 @@
+{
+    "type": "object",
+    "properties": {
+        "ok": {
+            "type": "boolean"
+        },
+        "result": {
+            "type": "object",
+            "properties": {
+                "file_id": {
+                    "type": "string"
+                },
+                "file_unique_id": {
+                    "type": "string"
+                },
+                "file_size": {
+                    "type": "integer"
+                },
+                "file_path": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "file_id",
+                "file_unique_id",
+                "file_size",
+                "file_path"
+            ]
+        }
+    },
+    "required": [
+        "ok",
+        "result"
+    ]
+}

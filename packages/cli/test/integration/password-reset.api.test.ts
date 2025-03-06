@@ -1,7 +1,7 @@
+import { Container } from '@n8n/di';
 import { compare } from 'bcryptjs';
 import { mock } from 'jest-mock-extended';
 import { randomString } from 'n8n-workflow';
-import { Container } from 'typedi';
 import { v4 as uuid } from 'uuid';
 
 import { AuthService } from '@/auth/auth.service';
@@ -12,7 +12,7 @@ import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { JwtService } from '@/services/jwt.service';
 import { PasswordUtility } from '@/services/password.utility';
-import { setCurrentAuthenticationMethod } from '@/sso/sso-helpers';
+import { setCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
 
 import { createUser } from './shared/db/users';

@@ -1,13 +1,12 @@
+import { Service } from '@n8n/di';
 import type { Redis as SingleNodeClient, Cluster as MultiNodeClient } from 'ioredis';
 import debounce from 'lodash/debounce';
-import { InstanceSettings } from 'n8n-core';
+import { InstanceSettings, Logger } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
-import { Service } from 'typedi';
+import type { LogMetadata } from 'n8n-workflow';
 
 import config from '@/config';
 import { EventService } from '@/events/event.service';
-import { Logger } from '@/logging/logger.service';
-import type { LogMetadata } from '@/logging/types';
 import { RedisClientService } from '@/services/redis-client.service';
 
 import type { PubSub } from './pubsub.types';
@@ -95,10 +94,10 @@ export class Subscriber {
 		const metadata: LogMetadata = { msg: msgName, channel };
 
 		if ('command' in msg && msg.command === 'relay-execution-lifecycle-event') {
-			const { args, type } = msg.payload;
+			const { data, type } = msg.payload;
 			msgName += ` (${type})`;
 			metadata.type = type;
-			metadata.executionId = args.executionId;
+			if ('executionId' in data) metadata.executionId = data.executionId;
 		}
 
 		this.logger.debug(`Received pubsub msg: ${msgName}`, metadata);

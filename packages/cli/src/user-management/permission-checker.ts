@@ -1,10 +1,10 @@
+import { Service } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 import { CredentialAccessError, NodeOperationError } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { OwnershipService } from '@/services/ownership.service';
-import { ProjectService } from '@/services/project.service';
+import { ProjectService } from '@/services/project.service.ee';
 
 @Service()
 export class PermissionChecker {

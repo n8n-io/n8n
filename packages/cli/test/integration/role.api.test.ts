@@ -1,7 +1,7 @@
+import type { ProjectRole } from '@n8n/api-types';
+import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
-import { Container } from 'typedi';
 
-import type { ProjectRole } from '@/databases/entities/project-relation';
 import type { CredentialSharingRole } from '@/databases/entities/shared-credentials';
 import type { WorkflowSharingRole } from '@/databases/entities/shared-workflow';
 import type { GlobalRole } from '@/databases/entities/user';

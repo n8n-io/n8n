@@ -53,6 +53,7 @@ export class Zoom implements INodeType {
 			name: 'Zoom',
 		},
 		icon: 'file:zoom.svg',
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

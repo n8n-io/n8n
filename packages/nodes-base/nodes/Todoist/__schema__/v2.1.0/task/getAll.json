@@ -1,0 +1,82 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "project_id": {
+            "type": "string"
+        },
+        "order": {
+            "type": "integer"
+        },
+        "content": {
+            "type": "string"
+        },
+        "description": {
+            "type": "string"
+        },
+        "is_completed": {
+            "type": "boolean"
+        },
+        "priority": {
+            "type": "integer"
+        },
+        "comment_count": {
+            "type": "integer"
+        },
+        "creator_id": {
+            "type": "string"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "due": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string"
+                },
+                "string": {
+                    "type": "string"
+                },
+                "lang": {
+                    "type": "string"
+                },
+                "is_recurring": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "date",
+                "string",
+                "lang",
+                "is_recurring"
+            ]
+        },
+        "url": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "id",
+        "assigner_id",
+        "assignee_id",
+        "project_id",
+        "section_id",
+        "parent_id",
+        "order",
+        "content",
+        "description",
+        "is_completed",
+        "labels",
+        "priority",
+        "comment_count",
+        "creator_id",
+        "created_at",
+        "due",
+        "url",
+        "duration",
+        "deadline"
+    ]
+}
