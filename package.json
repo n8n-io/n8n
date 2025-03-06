@@ -3,7 +3,7 @@
   "version": "1.82.0",
   "private": true,
   "engines": {
-    "node": ">=20.15",
+    "node": "20.15",
     "pnpm": ">=10.2.1"
   },
   "packageManager": "pnpm@10.2.1",
@@ -101,3 +101,4 @@
     }
   }
 }
+
