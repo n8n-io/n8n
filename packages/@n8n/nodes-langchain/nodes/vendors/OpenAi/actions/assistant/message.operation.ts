@@ -139,6 +139,13 @@ const properties: INodeProperties[] = [
 					},
 				},
 			},
+			{
+				displayName: 'Thread ID',
+				name: 'threadId',
+				type: 'string',
+				default: '',
+				description: 'ID of the thread to continue a conversation',
+			},
 		],
 	},
 ];
@@ -185,6 +192,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		maxRetries: number;
 		timeout: number;
 		preserveOriginalTools?: boolean;
+		threadId?: string;
 	};
 
 	const baseURL = (options.baseURL ?? credentials.url) as string;
@@ -254,25 +262,40 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	if (memory) {
 		const chatMessages = await getChatMessages(memory);
 
-		// Construct a new thread from the chat history to map the memory
-		if (chatMessages.length) {
+		// If there is a threadId, continue the conversation in that thread.
+		if (options.threadId) {
+			for (const message of chatMessages.map(mapChatMessageToThreadMessage)) {
+				await client.beta.threads.messages.create(options.threadId, message);
+			}
+			chainValues.threadId = options.threadId;
+		} else if (chatMessages.length) {
+			// If there is no threadId but there are messages in memory, create a new thread with those messages.
 			const first32Messages = chatMessages.slice(0, 32);
-			// There is a undocumented limit of 32 messages per thread when creating a thread with messages
 			const mappedMessages: OpenAIClient.Beta.Threads.ThreadCreateParams.Message[] =
 				first32Messages.map(mapChatMessageToThreadMessage);
 
 			thread = await client.beta.threads.create({ messages: mappedMessages });
+
+			// If there are more than 32 messages, add them to the new thread.
 			const overLimitMessages = chatMessages.slice(32).map(mapChatMessageToThreadMessage);
 
-			// Send the remaining messages that exceed the limit of 32 sequentially
 			for (const message of overLimitMessages) {
 				await client.beta.threads.messages.create(thread.id, message);
 			}
 
 			chainValues.threadId = thread.id;
 		}
-	} else if (threadId) {
-		chainValues.threadId = threadId;
+	} else {
+		// If there is no active memory...
+		if (options.threadId) {
+			// If a threadId is provided, continue the conversation with that threadId even if there's no memory.
+			chainValues.threadId = options.threadId;
+		} else {
+			// If there is no memory or threadId, start a new thread.
+			thread = await client.beta.threads.create({ messages: [] }); // Create a new thread without chat history.
+			chainValues.threadId = thread.id;
+		}
+
 	}
 
 	let filteredResponse: IDataObject = {};
