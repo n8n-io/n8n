@@ -2,7 +2,7 @@ import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
 import { userOperations, userFields, groupOperations, groupFields } from './descriptions';
-import { searchGroups, searchGroupsForUser, searchUsers } from './GenericFunctions';
+import { searchGroups, searchGroupsForUser, searchUsers } from './generalFunctions/dataFetching';
 
 export class AwsIam implements INodeType {
 	description: INodeTypeDescription = {

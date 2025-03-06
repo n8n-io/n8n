@@ -1,4 +1,4 @@
-import { processGroupsResponse } from '../GenericFunctions';
+import { processGroupsResponse } from '../generalFunctions/dataHandling';
 
 describe('processGroupsResponse', () => {
 	let mockContext: any;
@@ -12,6 +12,11 @@ describe('processGroupsResponse', () => {
 	});
 
 	test('should process groups response correctly', async () => {
+		mockGetNodeParameter.mockImplementation((name: string) => {
+			if (name === 'includeUsers') return false;
+			return undefined;
+		});
+
 		const response = {
 			body: {
 				ListGroupsResponse: {
@@ -31,7 +36,7 @@ describe('processGroupsResponse', () => {
 		const result = await processGroupsResponse.call(mockContext, [], response);
 
 		expect(result).toHaveLength(2);
-		expect(result[0]).toEqual({ GroupName: 'Group1', GroupId: '1' });
-		expect(result[1]).toEqual({ GroupName: 'Group2', GroupId: '2' });
+		expect(result[0]).toEqual({ json: { GroupName: 'Group1', GroupId: '1' } });
+		expect(result[1]).toEqual({ json: { GroupName: 'Group2', GroupId: '2' } });
 	});
 });

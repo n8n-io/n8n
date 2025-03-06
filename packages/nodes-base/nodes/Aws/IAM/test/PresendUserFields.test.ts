@@ -1,7 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-import { presendUserFields } from '../GenericFunctions';
+import { presendUserFields } from '../generalFunctions/presendFunctions';
 
 describe('presendUserFields', () => {
 	let mockContext: any;
@@ -20,8 +17,8 @@ describe('presendUserFields', () => {
 			if (name === 'userNameNew') return 'newUser';
 			if (name === 'additionalFields') {
 				return {
-					Path: '/new-path/',
-					Tags: { tags: [{ key: 'env', value: 'dev' }] },
+					path: '/new-path/',
+					tags: { tags: [{ key: 'env', value: 'dev' }] },
 				};
 			}
 			return undefined;
@@ -40,13 +37,13 @@ describe('presendUserFields', () => {
 		);
 	});
 
-	it('should append NewUserName and NewPath for UpdateUser operation', async () => {
+	it('should append newUserName and newPath for UpdateUser operation', async () => {
 		mockContext.getNodeParameter.mockImplementation((name: string) => {
-			if (name === 'UserName') return { mode: 'value', value: 'oldUser' };
-			if (name === 'NewUserName') return 'newUser';
+			if (name === 'userName') return { mode: 'value', value: 'oldUser' };
+			if (name === 'newUserName') return 'newUser';
 			if (name === 'additionalFields') {
 				return {
-					NewPath: '/new-path/',
+					newPath: '/new-path/',
 				};
 			}
 			return undefined;
@@ -65,10 +62,10 @@ describe('presendUserFields', () => {
 		);
 	});
 
-	it('should append GroupName for AddUserToGroup operation', async () => {
+	it('should append groupName for AddUserToGroup operation', async () => {
 		mockContext.getNodeParameter.mockImplementation((name: string) => {
-			if (name === 'UserName') return { mode: 'value', value: 'someUser' };
-			if (name === 'GroupName') return { mode: 'value', value: 'someGroup' };
+			if (name === 'userName') return { mode: 'value', value: 'someUser' };
+			if (name === 'groupName') return { mode: 'value', value: 'someGroup' };
 			return undefined;
 		});
 
@@ -85,10 +82,10 @@ describe('presendUserFields', () => {
 		);
 	});
 
-	it('should append GroupName for RemoveUserFromGroup operation', async () => {
+	it('should append groupName for RemoveUserFromGroup operation', async () => {
 		mockContext.getNodeParameter.mockImplementation((name: string) => {
-			if (name === 'UserName') return { mode: 'value', value: 'someUser' };
-			if (name === 'GroupName') return { mode: 'value', value: 'someGroup' };
+			if (name === 'userName') return { mode: 'value', value: 'someUser' };
+			if (name === 'groupName') return { value: 'someGroup' }; // Corrected mock
 			return undefined;
 		});
 

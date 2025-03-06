@@ -1,7 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-import { presendGroupFields } from '../GenericFunctions';
+import { presendGroupFields } from '../generalFunctions/presendFunctions';
 
 describe('presendGroupFields', () => {
 	let mockContext: any;
@@ -16,9 +13,9 @@ describe('presendGroupFields', () => {
 	it('should append Path to the URL for CreateGroup operation', async () => {
 		mockContext.getNodeParameter.mockImplementation((name: string) => {
 			if (name === 'additionalFields') {
-				return { Path: '/new-path/' };
+				return { path: '/new-path/' };
 			}
-			if (name === 'NewName') {
+			if (name === 'newName') {
 				return 'someGroup';
 			}
 			return undefined;
@@ -37,13 +34,13 @@ describe('presendGroupFields', () => {
 		);
 	});
 
-	it('should append NewGroupName and NewPath for UpdateGroup operation', async () => {
+	it('should append newGroupName and newPath for UpdateGroup operation', async () => {
 		mockContext.getNodeParameter.mockImplementation((name: string) => {
-			if (name === 'GroupName') return { mode: 'value', value: 'some-group' };
-			if (name === 'NewGroupName') return 'newGroup';
+			if (name === 'groupName') return { mode: 'value', value: 'some-group' };
+			if (name === 'newGroupName') return 'newGroup';
 			if (name === 'additionalFields') {
 				return {
-					NewPath: '/new-path/',
+					newPath: '/new-path/',
 				};
 			}
 			return undefined;
@@ -64,7 +61,7 @@ describe('presendGroupFields', () => {
 
 	it('should validate and reject an invalid group name for CreateGroup', async () => {
 		mockContext.getNodeParameter.mockImplementation((name: string) => {
-			if (name === 'NewName') {
+			if (name === 'newName') {
 				return 'Invalid Group Name!';
 			}
 			return undefined;
@@ -83,9 +80,9 @@ describe('presendGroupFields', () => {
 
 	it('should validate and reject an invalid path for UpdateGroup', async () => {
 		mockContext.getNodeParameter.mockImplementation((name: string) => {
-			if (name === 'GroupName') return { mode: 'value', value: 'some-group' };
+			if (name === 'groupName') return { mode: 'value', value: 'some-group' };
 			if (name === 'additionalFields') {
-				return { NewPath: 'invalid-path' };
+				return { newPath: 'invalid-path' };
 			}
 			return undefined;
 		});

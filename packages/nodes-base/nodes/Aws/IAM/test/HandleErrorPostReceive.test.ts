@@ -4,8 +4,7 @@ import type {
 	IN8nHttpFullResponse,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import { handleErrorPostReceive } from '../GenericFunctions';
+import { handleErrorPostReceive } from '../generalFunctions/errorHandling';
 
 describe('handleErrorPostReceive', () => {
 	let mockThis: IExecuteSingleFunctions;

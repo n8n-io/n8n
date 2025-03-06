@@ -1,6 +1,5 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
-
-import { searchUsers } from '../GenericFunctions';
+import { searchUsers } from '../generalFunctions/dataFetching';
 
 describe('searchUsers', () => {
 	const mockRequestWithAuthentication = jest.fn();

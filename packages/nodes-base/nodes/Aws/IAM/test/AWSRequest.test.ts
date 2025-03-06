@@ -1,6 +1,6 @@
-import { awsRequest } from '../GenericFunctions';
+import { makeAwsRequest } from '../generalFunctions/awsRequest';
 
-describe('GenericFunctions - awsRequest', () => {
+describe('GenericFunctions - makeAwsRequest', () => {
 	let mockContext: any;
 	let mockRequestWithAuthentication: jest.Mock;
 
@@ -26,7 +26,7 @@ describe('GenericFunctions - awsRequest', () => {
 			body: { key: 'value' },
 		};
 
-		const result = await awsRequest.call(mockContext, requestOptions);
+		const result = await makeAwsRequest.call(mockContext, requestOptions);
 
 		expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 			'aws',
@@ -59,7 +59,7 @@ describe('GenericFunctions - awsRequest', () => {
 			headers: {},
 		};
 
-		await expect(awsRequest.call(mockContext, requestOptions)).rejects.toThrow(
+		await expect(makeAwsRequest.call(mockContext, requestOptions)).rejects.toThrow(
 			'The AWS credentials are not valid!',
 		);
 
@@ -82,7 +82,7 @@ describe('GenericFunctions - awsRequest', () => {
 			headers: {},
 		};
 
-		await expect(awsRequest.call(mockContext, requestOptions)).rejects.toThrow(
+		await expect(makeAwsRequest.call(mockContext, requestOptions)).rejects.toThrow(
 			'The AWS credentials are not valid!',
 		);
 
@@ -103,7 +103,7 @@ describe('GenericFunctions - awsRequest', () => {
 			headers: {},
 		};
 
-		await expect(awsRequest.call(mockContext, requestOptions)).rejects.toThrow(
+		await expect(makeAwsRequest.call(mockContext, requestOptions)).rejects.toThrow(
 			'AWS error response [400]: Invalid request parameter',
 		);
 	});
@@ -119,7 +119,7 @@ describe('GenericFunctions - awsRequest', () => {
 			headers: {},
 		};
 
-		await expect(awsRequest.call(mockContext, requestOptions)).rejects.toThrow(
+		await expect(makeAwsRequest.call(mockContext, requestOptions)).rejects.toThrow(
 			'AWS error response [undefined]: Something went wrong',
 		);
 	});
@@ -136,7 +136,7 @@ describe('GenericFunctions - awsRequest', () => {
 			headers: {},
 		};
 
-		await expect(awsRequest.call(mockContext, requestOptions)).rejects.toThrow(
+		await expect(makeAwsRequest.call(mockContext, requestOptions)).rejects.toThrow(
 			'AWS error response [500]: Internal Server Error',
 		);
 	});

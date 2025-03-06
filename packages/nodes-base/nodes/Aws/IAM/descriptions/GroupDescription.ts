@@ -131,7 +131,7 @@ export const groupOperations: INodeProperties[] = [
 const createFields: INodeProperties[] = [
 	{
 		displayName: 'Name',
-		name: 'NewName',
+		name: 'newName',
 		default: '',
 		placeholder: 'e.g. GroupName',
 		description: 'The name of the new group to create',
@@ -162,7 +162,7 @@ const createFields: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'Path',
-				name: 'Path',
+				name: 'path',
 				type: 'string',
 				default: '',
 				placeholder: 'e.g. /division_abc/engineering/',
@@ -178,7 +178,7 @@ const createFields: INodeProperties[] = [
 const deleteFields: INodeProperties[] = [
 	{
 		displayName: 'Group',
-		name: 'GroupName',
+		name: 'groupName',
 		default: {
 			mode: 'list',
 			value: '',
@@ -225,7 +225,7 @@ const deleteFields: INodeProperties[] = [
 const getFields: INodeProperties[] = [
 	{
 		displayName: 'Group',
-		name: 'GroupName',
+		name: 'groupName',
 		required: true,
 		type: 'resourceLocator',
 		default: {
@@ -339,7 +339,7 @@ const getAllFields: INodeProperties[] = [
 const updateFields: INodeProperties[] = [
 	{
 		displayName: 'Group',
-		name: 'GroupName',
+		name: 'groupName',
 		default: {
 			mode: 'list',
 			value: '',
@@ -383,7 +383,7 @@ const updateFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'New Name',
-		name: 'NewGroupName',
+		name: 'newGroupName',
 		default: '',
 		required: true,
 		placeholder: 'e.g. GroupName',
@@ -409,7 +409,7 @@ const updateFields: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'New Path',
-				name: 'NewPath',
+				name: 'newPath',
 				type: 'string',
 				default: '',
 				placeholder: 'e.g. /division_abc/engineering/',
