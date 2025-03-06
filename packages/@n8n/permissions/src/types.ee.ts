@@ -1,4 +1,4 @@
-import type { RESOURCES } from './constants.ee';
+import type { RESOURCES, API_KEY_RESOURCES } from './constants.ee';
 
 export type Resource = keyof typeof RESOURCES;
 
@@ -32,3 +32,17 @@ export type MaskLevels = SharingMasks;
 
 export type ScopeMode = 'oneOf' | 'allOf';
 export type ScopeOptions = { mode: ScopeMode };
+
+export type PublicApiKeyResources = keyof typeof API_KEY_RESOURCES;
+
+export type ApiKeyResourceScope<
+	R extends PublicApiKeyResources,
+	Operation extends (typeof API_KEY_RESOURCES)[R][number] = (typeof API_KEY_RESOURCES)[R][number],
+> = `${R}:${Operation}`;
+
+type AllApiKeyScopesObject = {
+	[R in PublicApiKeyResources]: ApiKeyResourceScope<R>;
+};
+
+export type ApiKeyScope<K extends PublicApiKeyResources = PublicApiKeyResources> =
+	AllApiKeyScopesObject[K];

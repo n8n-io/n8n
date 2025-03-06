@@ -1,4 +1,6 @@
 import { RoleChangeRequestDto, SettingsUpdateRequestDto } from '@n8n/api-types';
+import { getOwnerOnlyApiKeyScopes } from '@n8n/permissions';
+import { In } from '@n8n/typeorm';
 import { Response } from 'express';
 import { Logger } from 'n8n-core';
 
@@ -7,6 +9,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { AuthIdentity } from '@/databases/entities/auth-identity';
 import { Project } from '@/databases/entities/project';
 import { User } from '@/databases/entities/user';
+import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
@@ -30,6 +33,7 @@ import type { PublicUser } from '@/interfaces';
 import { listQueryMiddleware } from '@/middlewares';
 import { AuthenticatedRequest, ListQuery, UserRequest } from '@/requests';
 import { ProjectService } from '@/services/project.service.ee';
+import { PublicApiKeyService } from '@/services/public-api-key.service';
 import { UserService } from '@/services/user.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -48,6 +52,7 @@ export class UsersController {
 		private readonly credentialsService: CredentialsService,
 		private readonly projectService: ProjectService,
 		private readonly eventService: EventService,
+		private readonly publicApiKeyService: PublicApiKeyService,
 	) {}
 
 	static ERROR_MESSAGES = {
@@ -289,6 +294,15 @@ export class UsersController {
 		}
 
 		await this.userService.update(targetUser.id, { role: payload.newRoleName });
+
+		const adminDowngradedToMember =
+			req.user.role === 'global:owner' &&
+			targetUser.role === 'global:admin' &&
+			payload.newRoleName === 'global:member';
+
+		if (adminDowngradedToMember) {
+			await this.publicApiKeyService.removeOwnerOnlyScopesFromApiKeys(targetUser);
+		}
 
 		this.eventService.emit('user-changed-role', {
 			userId: req.user.id,

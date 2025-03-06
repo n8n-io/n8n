@@ -1,4 +1,5 @@
 import { CreateApiKeyRequestDto, UpdateApiKeyRequestDto } from '@n8n/api-types';
+import { getApiKeyScopesForRole } from '@n8n/permissions';
 import type { RequestHandler } from 'express';
 
 import { Body, Delete, Get, Param, Patch, Post, RestController } from '@/decorators';
@@ -6,6 +7,9 @@ import { EventService } from '@/events/event.service';
 import { isApiEnabled } from '@/public-api';
 import { AuthenticatedRequest } from '@/requests';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
+import { BadRequest } from 'express-openapi-validator/dist/openapi.validator';
+import { HttpError } from 'express-openapi-validator/dist/framework/types';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 export const isApiEnabledMiddleware: RequestHandler = (_, res, next) => {
 	if (isApiEnabled()) {
@@ -29,12 +33,13 @@ export class ApiKeysController {
 	async createAPIKey(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Body { label, expiresAt }: CreateApiKeyRequestDto,
+		@Body body: CreateApiKeyRequestDto,
 	) {
-		const newApiKey = await this.publicApiKeyService.createPublicApiKeyForUser(req.user, {
-			label,
-			expiresAt,
-		});
+		if (!this.publicApiKeyService.apiKeyHasValidScopesForRole(req.user.role, body.scopes)) {
+			throw new BadRequestError('Invalid scopes for user role');
+		}
+
+		const newApiKey = await this.publicApiKeyService.createPublicApiKeyForUser(req.user, body);
 
 		this.eventService.emit('public-api-key-created', { user: req.user, publicApi: false });
 
@@ -42,7 +47,7 @@ export class ApiKeysController {
 			...newApiKey,
 			apiKey: this.publicApiKeyService.redactApiKey(newApiKey.apiKey),
 			rawApiKey: newApiKey.apiKey,
-			expiresAt,
+			expiresAt: body.expiresAt,
 		};
 	}
 
@@ -75,12 +80,17 @@ export class ApiKeysController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('id') apiKeyId: string,
-		@Body { label }: UpdateApiKeyRequestDto,
+		@Body body: UpdateApiKeyRequestDto,
 	) {
-		await this.publicApiKeyService.updateApiKeyForUser(req.user, apiKeyId, {
-			label,
-		});
+		await this.publicApiKeyService.updateApiKeyForUser(req.user, apiKeyId, body);
 
 		return { success: true };
+	}
+
+	@Get('/scopes', { middlewares: [isApiEnabledMiddleware] })
+	async getApiKeyScopes(req: AuthenticatedRequest, _res: Response) {
+		const { role } = req.user;
+		const scopes = getApiKeyScopesForRole(role);
+		return scopes;
 	}
 }

@@ -1,4 +1,5 @@
 import { Container } from '@n8n/di';
+import { getApiKeyScopesForRole } from '@n8n/permissions';
 import { hash } from 'bcryptjs';
 
 import { AuthIdentity } from '@/databases/entities/auth-identity';
@@ -87,6 +88,7 @@ export const addApiKey = async (
 	return await Container.get(PublicApiKeyService).createPublicApiKeyForUser(user, {
 		label: randomName(),
 		expiresAt,
+		scopes: getApiKeyScopesForRole(user.role),
 	});
 };
 

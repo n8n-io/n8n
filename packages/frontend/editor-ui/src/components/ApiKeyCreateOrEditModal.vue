@@ -13,6 +13,8 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import { N8nText } from '@n8n/design-system';
 import { DateTime } from 'luxon';
 import type { ApiKey, ApiKeyWithRawValue, CreateApiKeyRequestDto } from '@n8n/api-types';
+import ApiKeyScopes from '@/components/ApiKeyScopes.vue';
+import type { ApiKeyScope } from '@n8n/permissions';
 
 const EXPIRATION_OPTIONS = {
 	'7_DAYS': 7,
@@ -28,7 +30,7 @@ const { showError, showMessage } = useToast();
 
 const uiStore = useUIStore();
 const rootStore = useRootStore();
-const { createApiKey, updateApiKey, apiKeysById } = useApiKeysStore();
+const { createApiKey, updateApiKey, apiKeysById, availableScopes } = useApiKeysStore();
 const documentTitle = useDocumentTitle();
 
 const label = ref('');
@@ -40,6 +42,7 @@ const rawApiKey = ref('');
 const customExpirationDate = ref('');
 const showExpirationDateSelector = ref(false);
 const apiKeyCreationDate = ref('');
+const selectedScopes = ref<ApiKeyScope[]>([]);
 
 const calculateExpirationDate = (daysFromNow: number) => {
 	const date = DateTime.now()
@@ -88,7 +91,11 @@ const allFormFieldsAreSet = computed(() => {
 		(expirationDaysFromNow.value === EXPIRATION_OPTIONS.CUSTOM && customExpirationDate.value) ||
 		expirationDate.value;
 
-	return label.value && (props.mode === 'edit' ? true : isExpirationDateSet);
+	return (
+		label.value &&
+		selectedScopes.value.length &&
+		(props.mode === 'edit' ? true : isExpirationDateSet)
+	);
 });
 
 const isCustomDateInThePast = (date: Date) => Date.now() > date.getTime();
@@ -104,11 +111,16 @@ onMounted(() => {
 		const apiKey = apiKeysById[props.activeId];
 		label.value = apiKey.label ?? '';
 		apiKeyCreationDate.value = getApiKeyCreationTime(apiKey);
+		selectedScopes.value = apiKey.scopes;
 	}
 });
 
 function onInput(value: string): void {
 	label.value = value;
+}
+
+function onScopeSelectionChanged(scopes: ApiKeyScope[]) {
+	selectedScopes.value = scopes;
 }
 
 const getApiKeyCreationTime = (apiKey: ApiKey): string => {
@@ -119,7 +131,7 @@ const getApiKeyCreationTime = (apiKey: ApiKey): string => {
 async function onEdit() {
 	try {
 		loading.value = true;
-		await updateApiKey(props.activeId, { label: label.value });
+		await updateApiKey(props.activeId, { label: label.value, scopes: selectedScopes.value });
 		showMessage({
 			type: 'success',
 			title: i18n.baseText('settings.api.update.toast'),
@@ -152,6 +164,7 @@ const onSave = async () => {
 	const payload: CreateApiKeyRequestDto = {
 		label: label.value,
 		expiresAt: expirationUnixTimestamp,
+		scopes: selectedScopes.value,
 	};
 
 	try {
@@ -218,7 +231,7 @@ async function handleEnterKey(event: KeyboardEvent) {
 		width="600px"
 		:lock-scroll="false"
 		:close-on-esc="true"
-		:close-on-click-outside="true"
+		:close-on-click-modal="false"
 		:show-close="true"
 	>
 		<template #content>
@@ -291,6 +304,11 @@ async function handleEnterKey(event: KeyboardEvent) {
 							:disabled-date="isCustomDateInThePast"
 						/>
 					</div>
+					<ApiKeyScopes
+						v-model="selectedScopes"
+						:available-scopes="availableScopes"
+						@update:model-value="onScopeSelectionChanged"
+					/>
 				</div>
 			</div>
 		</template>

@@ -1,13 +1,15 @@
 /* eslint-disable @typescript-eslint/no-invalid-void-type */
 import { Container } from '@n8n/di';
-import type { Scope } from '@n8n/permissions';
+import type { ApiKeyScope, Scope } from '@n8n/permissions';
 import type express from 'express';
+import type { NextFunction, Response, Request } from 'express';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { BooleanLicenseFeature } from '@/interfaces';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { AuthenticatedRequest } from '@/requests';
+import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 import type { PaginatedRequest } from '../../../types';
 import { decodeCursor } from '../services/pagination.service';
@@ -47,6 +49,21 @@ export const globalScope = (scopes: Scope | Scope[]) =>
 
 export const projectScope = (scopes: Scope | Scope[], resource: ProjectScopeResource) =>
 	buildScopeMiddleware(Array.isArray(scopes) ? scopes : [scopes], resource, { globalOnly: false });
+
+export const apiKeyScope =
+	(endpointScope: ApiKeyScope) => async (req: Request, res: Response, next: NextFunction) => {
+		const apiKey = req.headers['X-N8N-API-KEY'] as string;
+
+		const valid = await Container.get(PublicApiKeyService).apiKeyHasValidScopes(
+			apiKey,
+			endpointScope,
+		);
+
+		if (!valid) {
+			res.status(403).json({ message: 'Forbidden' });
+		}
+		next();
+	};
 
 export const validCursor = (
 	req: PaginatedRequest,

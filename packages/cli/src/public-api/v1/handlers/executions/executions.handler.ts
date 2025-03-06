@@ -8,12 +8,13 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import { EventService } from '@/events/event.service';
 
 import type { ExecutionRequest } from '../../../types';
-import { validCursor } from '../../shared/middlewares/global.middleware';
+import { apiKeyScope, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import { getSharedWorkflowIds } from '../workflows/workflows.service';
 
 export = {
 	deleteExecution: [
+		apiKeyScope('execution:delete'),
 		async (req: ExecutionRequest.Delete, res: express.Response): Promise<express.Response> => {
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:delete']);
 
@@ -58,6 +59,7 @@ export = {
 		},
 	],
 	getExecution: [
+		apiKeyScope('execution:get'),
 		async (req: ExecutionRequest.Get, res: express.Response): Promise<express.Response> => {
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
@@ -89,6 +91,7 @@ export = {
 	],
 	getExecutions: [
 		validCursor,
+		apiKeyScope('execution:list'),
 		async (req: ExecutionRequest.GetAll, res: express.Response): Promise<express.Response> => {
 			const {
 				lastId = undefined,

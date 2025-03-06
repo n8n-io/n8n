@@ -24,3 +24,36 @@ export const RESOURCES = {
 	workflow: ['share', 'execute', 'move', ...DEFAULT_OPERATIONS] as const,
 	folder: ['create', 'read', 'update', 'delete'] as const,
 } as const;
+
+export const API_KEY_RESOURCES = {
+	tag: [...DEFAULT_OPERATIONS] as const,
+	workflow: [...DEFAULT_OPERATIONS, 'move', 'activate', 'deactivate'] as const,
+	variable: ['create', 'delete', 'list'] as const,
+	securityAudit: ['generate'] as const,
+	project: ['create', 'update', 'delete', 'list'] as const,
+	user: ['read', 'list', 'create', 'changeRole', 'delete'] as const,
+	execution: ['delete', 'read', 'list', 'get'] as const,
+	credential: ['create', 'move', 'delete'] as const,
+	sourceControl: ['pull'] as const,
+	workflowTags: ['update', 'list'] as const,
+} as const;
+
+const API_KEY_COMMON_RESOURCES = [
+	'tag',
+	'workflow',
+	'variables',
+	'project',
+	'execution',
+	'credential',
+];
+
+export const API_KEY_OWNER_RESOURCES = [
+	'user',
+	'sourceControl',
+	'securityAudit',
+	...API_KEY_COMMON_RESOURCES,
+] as const;
+
+export const API_KEY_ADMIN_RESOURCES = [...API_KEY_OWNER_RESOURCES] as const;
+
+export const API_KEY_MEMBER_RESOURCES = [...API_KEY_COMMON_RESOURCES] as const;

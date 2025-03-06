@@ -6,7 +6,7 @@ import { VariablesController } from '@/environments.ee/variables/variables.contr
 import type { PaginatedRequest } from '@/public-api/types';
 import type { VariablesRequest } from '@/requests';
 
-import { globalScope, isLicensed, validCursor } from '../../shared/middlewares/global.middleware';
+import { apiKeyScope, isLicensed, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 
 type Create = VariablesRequest.Create;
@@ -16,7 +16,8 @@ type GetAll = PaginatedRequest;
 export = {
 	createVariable: [
 		isLicensed('feat:variables'),
-		globalScope('variable:create'),
+		apiKeyScope('variable:create'),
+		// globalScope('variable:create'),
 		async (req: Create, res: Response) => {
 			await Container.get(VariablesController).createVariable(req);
 
@@ -25,7 +26,8 @@ export = {
 	],
 	deleteVariable: [
 		isLicensed('feat:variables'),
-		globalScope('variable:delete'),
+		// globalScope('variable:delete'),
+		apiKeyScope('variable:delete'),
 		async (req: Delete, res: Response) => {
 			await Container.get(VariablesController).deleteVariable(req);
 
@@ -34,7 +36,8 @@ export = {
 	],
 	getVariables: [
 		isLicensed('feat:variables'),
-		globalScope('variable:list'),
+		// globalScope('variable:list'),
+		apiKeyScope('variable:list'),
 		validCursor,
 		async (req: GetAll, res: Response) => {
 			const { offset = 0, limit = 100 } = req.query;
