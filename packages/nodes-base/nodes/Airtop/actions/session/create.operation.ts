@@ -9,17 +9,16 @@ import { INTEGRATION_URL } from '../../constants';
 import {
 	validateAirtopApiResponse,
 	validateProfileName,
+	validateProxyUrl,
 	validateSaveProfileOnTermination,
 	validateTimeoutMinutes,
 } from '../../GenericFunctions';
 import { apiRequest } from '../../transport';
+import { profileNameField } from '../common/fields';
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Profile Name',
-		name: 'profileName',
-		type: 'string',
-		default: '',
+		...profileNameField,
 		displayOptions: {
 			show: {
 				resource: ['session'],
@@ -32,13 +31,14 @@ export const description: INodeProperties[] = [
 		name: 'saveProfileOnTermination',
 		type: 'boolean',
 		default: false,
-		description: 'Whether to save changes to the browsing profile',
+		description: 'Whether to automatically save the profile for this session upon termination',
 		displayOptions: {
 			show: {
 				resource: ['session'],
 				operation: ['create'],
 			},
 		},
+		hint: 'If enabled, changes made in your browsing session such as cookies and local storage will be saved in the profile',
 	},
 	{
 		displayName: 'Idle Timeout',
@@ -54,6 +54,48 @@ export const description: INodeProperties[] = [
 			},
 		},
 	},
+	{
+		displayName: 'Proxy',
+		name: 'proxy',
+		type: 'options',
+		default: 'none',
+		description: 'Choose how to configure the proxy for this session',
+		options: [
+			{
+				name: 'None',
+				value: 'none',
+				description: 'No proxy will be used',
+			},
+			{
+				name: 'Integrated',
+				value: 'integrated',
+				description: 'Use Airtop-provided proxy',
+			},
+			{
+				name: 'Custom',
+				value: 'custom',
+				description: 'Configure a custom proxy',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: ['session'],
+				operation: ['create'],
+			},
+		},
+	},
+	{
+		displayName: 'Proxy URL',
+		name: 'proxyUrl',
+		type: 'string',
+		default: '',
+		description: 'The URL of the proxy to use',
+		displayOptions: {
+			show: {
+				proxy: ['custom'],
+			},
+		},
+	},
 ];
 
 export async function execute(
@@ -65,11 +107,14 @@ export async function execute(
 	const profileName = validateProfileName.call(this, index);
 	const timeoutMinutes = validateTimeoutMinutes.call(this, index);
 	const saveProfileOnTermination = validateSaveProfileOnTermination.call(this, index, profileName);
+	const proxyParam = this.getNodeParameter('proxy', index, 'none') as string;
+	const proxyUrl = validateProxyUrl.call(this, index, proxyParam);
 
 	const body: IDataObject = {
 		configuration: {
 			profileName,
 			timeoutMinutes,
+			proxy: proxyParam === 'custom' ? proxyUrl : Boolean(proxyParam === 'integrated'),
 		},
 	};
 

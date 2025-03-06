@@ -39,6 +39,14 @@ export const createMockExecuteFunction = (nodeParameters: IDataObject) => {
 			returnJsonArray: (data: IDataObject | IDataObject[]) => {
 				return [{ json: data }] as INodeExecutionData[];
 			},
+			prepareBinaryData: async (data: Buffer) => {
+				return {
+					mimeType: 'image/jpeg',
+					fileType: 'jpg',
+					fileName: 'screenshot.jpg',
+					data: data.toString('base64'),
+				};
+			},
 		},
 		continueOnFail: () => false,
 		logger: {

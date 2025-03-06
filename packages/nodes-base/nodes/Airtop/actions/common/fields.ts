@@ -5,6 +5,10 @@ export const SESSION_MODE = {
 	EXISTING: 'existing',
 } as const;
 
+/**
+ * Session related fields
+ */
+
 export const sessionIdField: INodeProperties = {
 	displayName: 'Session ID',
 	name: 'sessionId',
@@ -32,6 +36,7 @@ export const profileNameField: INodeProperties = {
 	default: '',
 	description:
 		'The name of the <a href="https://docs.airtop.ai/guides/how-to/saving-a-profile" target="_blank">Profile</a> to load or create',
+	hint: 'Name of the <a href="https://docs.airtop.ai/guides/how-to/saving-a-profile" target="_blank">Profile</a> to load into the session. Must consist only of alphanumeric characters and hyphen "-"',
 };
 
 export const urlField: INodeProperties = {
@@ -53,6 +58,32 @@ export const autoTerminateSessionHint: NodeHint = {
 	whenToDisplay: 'beforeExecution',
 };
 
+/**
+ * Extraction related fields
+ */
+
+export const outputSchemaField: INodeProperties = {
+	displayName: 'JSON Output Schema',
+	name: 'outputSchema',
+	description: 'JSON schema defining the structure of the output',
+	hint: 'If you want to force your output to be JSON, provide a valid JSON schema describing the output. You can generate one automatically in the <a href="https://portal.airtop.ai/" target="_blank">Airtop API Playground</a>.',
+	type: 'json',
+	default: '',
+};
+
+/**
+ * Interaction related fields
+ */
+
+export const elementDescriptionField: INodeProperties = {
+	displayName: 'Element Description',
+	name: 'elementDescription',
+	type: 'string',
+	default: '',
+	description: 'The description of the element to execute the interaction on',
+	hint: 'Describe the element, e.g. "the search box at the top of the page", "the username field", "the password field". Be as descriptive as possible.',
+};
+
 export function getSessionModeFields(resource: string, operations: string[]): INodeProperties[] {
 	return [
 		{
@@ -61,6 +92,7 @@ export function getSessionModeFields(resource: string, operations: string[]): IN
 			type: 'options',
 			default: 'existing',
 			description: 'Choose between creating a new session or using an existing one',
+			hint: "Manually creating a session requires that you use the 'Create a session' and 'Create a window' operations before this operation. This provides you with more advanced configuration options, but is slightly more verbose to use.",
 			options: [
 				{
 					name: 'Automatically Create Session',
@@ -108,6 +140,10 @@ export function getSessionModeFields(resource: string, operations: string[]): IN
 		},
 		{
 			...profileNameField,
+			hint: `Name of the profile to load into the session.
+				Must consist only of alphanumeric characters and hyphens "-".
+				You can create a profile <a href="https://portal.airtop.ai/browser-profiles" target="_blank" >here</a>.
+				Note, in order to save data into a profile, you must first call the 'Save Profile on Termination' operation before you terminate the session.`,
 			displayOptions: {
 				show: {
 					resource: [resource],

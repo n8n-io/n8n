@@ -100,7 +100,7 @@ describe('Test Airtop, window create operation', () => {
 			'GET',
 			'/sessions/test-session-123/windows/win-123',
 			undefined,
-			{ disableResize: false },
+			{},
 		);
 
 		expect(result).toEqual([
@@ -157,6 +157,132 @@ describe('Test Airtop, window create operation', () => {
 		]);
 	});
 
+	it('should create a window with live view and navigation bar', async () => {
+		const nodeParameters = {
+			...baseNodeParameters,
+			getLiveView: true,
+			includeNavigationBar: true,
+		};
+
+		const result = await create.execute.call(createMockExecuteFunction(nodeParameters), 0);
+
+		expect(transport.apiRequest).toHaveBeenCalledTimes(2);
+		expect(transport.apiRequest).toHaveBeenNthCalledWith(
+			1,
+			'POST',
+			'/sessions/test-session-123/windows',
+			{
+				url: 'https://example.com',
+			},
+		);
+		expect(transport.apiRequest).toHaveBeenNthCalledWith(
+			2,
+			'GET',
+			'/sessions/test-session-123/windows/win-123',
+			undefined,
+			{ includeNavigationBar: true },
+		);
+
+		expect(result).toEqual([
+			{
+				json: {
+					sessionId: baseNodeParameters.sessionId,
+					windowId: 'win-123',
+					status: 'success',
+					data: {
+						liveViewUrl: 'https://live.airtop.ai/123-abcd',
+					},
+				},
+			},
+		]);
+	});
+
+	it('should create a window with live view and screen resolution', async () => {
+		const nodeParameters = {
+			...baseNodeParameters,
+			getLiveView: true,
+			screenResolution: '1280x720',
+		};
+
+		const result = await create.execute.call(createMockExecuteFunction(nodeParameters), 0);
+
+		expect(transport.apiRequest).toHaveBeenCalledTimes(2);
+		expect(transport.apiRequest).toHaveBeenNthCalledWith(
+			1,
+			'POST',
+			'/sessions/test-session-123/windows',
+			{
+				url: 'https://example.com',
+			},
+		);
+		expect(transport.apiRequest).toHaveBeenNthCalledWith(
+			2,
+			'GET',
+			'/sessions/test-session-123/windows/win-123',
+			undefined,
+			{ screenResolution: '1280x720' },
+		);
+
+		expect(result).toEqual([
+			{
+				json: {
+					sessionId: baseNodeParameters.sessionId,
+					windowId: 'win-123',
+					status: 'success',
+					data: {
+						liveViewUrl: 'https://live.airtop.ai/123-abcd',
+					},
+				},
+			},
+		]);
+	});
+
+	it('should create a window with all live view options', async () => {
+		const nodeParameters = {
+			...baseNodeParameters,
+			getLiveView: true,
+			includeNavigationBar: true,
+			screenResolution: '1920x1080',
+			disableResize: true,
+		};
+
+		const result = await create.execute.call(createMockExecuteFunction(nodeParameters), 0);
+
+		expect(transport.apiRequest).toHaveBeenCalledTimes(2);
+		expect(transport.apiRequest).toHaveBeenNthCalledWith(
+			1,
+			'POST',
+			'/sessions/test-session-123/windows',
+			{
+				url: 'https://example.com',
+			},
+		);
+		expect(transport.apiRequest).toHaveBeenNthCalledWith(
+			2,
+			'GET',
+			'/sessions/test-session-123/windows/win-123',
+			undefined,
+			{
+				includeNavigationBar: true,
+				screenResolution: '1920x1080',
+				disableResize: true,
+			},
+		);
+
+		expect(result).toEqual([
+			{
+				json: {
+					sessionId: baseNodeParameters.sessionId,
+					windowId: 'win-123',
+					status: 'success',
+					data: {
+						liveViewUrl: 'https://live.airtop.ai/123-abcd',
+					},
+				},
+			},
+		]);
+	});
+
 	it("should throw error when 'sessionId' parameter is empty", async () => {
 		const nodeParameters = {
 			...baseNodeParameters,
@@ -165,6 +291,18 @@ describe('Test Airtop, window create operation', () => {
 
 		await expect(create.execute.call(createMockExecuteFunction(nodeParameters), 0)).rejects.toThrow(
 			ERROR_MESSAGES.SESSION_ID_REQUIRED,
+		);
+	});
+
+	it('should throw error when screen resolution format is invalid', async () => {
+		const nodeParameters = {
+			...baseNodeParameters,
+			getLiveView: true,
+			screenResolution: 'invalid-format',
+		};
+
+		await expect(create.execute.call(createMockExecuteFunction(nodeParameters), 0)).rejects.toThrow(
+			ERROR_MESSAGES.SCREEN_RESOLUTION_INVALID,
 		);
 	});
 });

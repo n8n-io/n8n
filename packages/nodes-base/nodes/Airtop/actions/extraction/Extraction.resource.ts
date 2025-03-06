@@ -20,22 +20,22 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get Paginated',
-				value: 'getPaginated',
-				description: 'Get data from a paginated source',
-				action: 'Get paginated data',
-			},
-			{
 				name: 'Query Page',
 				value: 'query',
-				description: 'Query the current page content',
+				description: 'Query a page to extract data or ask a question given the data on the page',
 				action: 'Query page',
 			},
 			{
-				name: 'Scrape',
+				name: 'Query Page with Pagination',
+				value: 'getPaginated',
+				description: 'Extract content from paginated or dynamically loaded pages',
+				action: 'Query page with pagination',
+			},
+			{
+				name: 'Smart Scrape',
 				value: 'scrape',
-				description: 'Scrape a window and return the content as markdown',
-				action: 'Scrape window',
+				description: 'Scrape a page and return the data as markdown',
+				action: 'Smart scrape page',
 			},
 		],
 		default: 'getPaginated',

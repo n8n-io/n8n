@@ -4,6 +4,7 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 
+import { outputSchemaField } from '../common/fields';
 import { executeRequestWithSessionManagement } from '../common/session.utils';
 
 export const description: INodeProperties[] = [
@@ -38,17 +39,14 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Output Schema',
-				name: 'outputSchema',
-				description: 'JSON schema defining the structure of the output',
-				type: 'json',
-				default: '{}',
+				...outputSchemaField,
 			},
 			{
 				displayName: 'Interaction Mode',
 				name: 'interactionMode',
 				type: 'options',
 				default: 'auto',
+				hint: "When set to 'Auto', it automatically chooses the most cost-effective mode. With 'Accurate', the AI prioritizes accuracy over cost, and when set to 'Cost Efficient', it focuses on minimizing costs while ensuring effectiveness.",
 				options: [
 					{
 						name: 'Auto',
@@ -69,6 +67,7 @@ export const description: INodeProperties[] = [
 				name: 'paginationMode',
 				type: 'options',
 				default: 'auto',
+				hint: "The mode to use for pagination. If set to 'Auto', Airtop AI first looks for pagination links and then tries infinite scrolling. If set to 'Paginated', it uses pagination links. If set to 'Infinite Scroll', it scrolls the page to load more content.",
 				options: [
 					{
 						name: 'Auto',

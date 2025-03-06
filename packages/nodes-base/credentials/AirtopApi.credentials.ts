@@ -17,10 +17,15 @@ export class AirtopApi implements ICredentialType {
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
+			default: '',
+			description:
+				'The Airtop API key. You can create one in the <a href="https://portal.airtop.ai/api-keys" target="_blank">Airtop Portal</a>',
+			required: true,
 			typeOptions: {
 				password: true,
 			},
-			default: '',
+			noDataExpression: true,
+			hint: "Don't have an Airtop account? <a href='https://portal.airtop.ai/sign-up' target='_blank'>Sign up</a> and start for free.",
 		},
 	];
 

@@ -156,6 +156,61 @@ export function validateUrl(this: IExecuteFunctions, index: number) {
 }
 
 /**
+ * Validate the Proxy URL parameter
+ * @param this - The execution context
+ * @param index - The index of the node
+ * @param proxy - The value of the Proxy parameter
+ * @returns The validated proxy URL
+ */
+export function validateProxyUrl(this: IExecuteFunctions, index: number, proxy: string) {
+	let proxyUrl = this.getNodeParameter('proxyUrl', index, '') as string;
+	proxyUrl = (proxyUrl || '').trim();
+
+	// only validate proxyUrl if proxy is custom
+	if (proxy !== 'custom') {
+		return '';
+	}
+
+	if (!proxyUrl) {
+		throw new NodeOperationError(this.getNode(), ERROR_MESSAGES.PROXY_URL_REQUIRED, {
+			itemIndex: index,
+		});
+	}
+
+	if (!proxyUrl.startsWith('http')) {
+		throw new NodeOperationError(this.getNode(), ERROR_MESSAGES.PROXY_URL_INVALID, {
+			itemIndex: index,
+		});
+	}
+
+	return proxyUrl;
+}
+
+/**
+ * Validate the screen resolution parameter
+ * @param this - The execution context
+ * @param index - The index of the node
+ * @returns The validated screen resolution
+ */
+export function validateScreenResolution(this: IExecuteFunctions, index: number) {
+	let screenResolution = this.getNodeParameter('screenResolution', index, '') as string;
+	screenResolution = (screenResolution || '').trim().toLowerCase();
+	const regex = /^\d{3,4}x\d{3,4}$/; // Expected format: 1280x720
+
+	if (!screenResolution) {
+		return '';
+	}
+
+	if (!regex.test(screenResolution)) {
+		throw new NodeOperationError(this.getNode(), ERROR_MESSAGES.SCREEN_RESOLUTION_INVALID, {
+			itemIndex: index,
+		});
+	}
+
+	return screenResolution;
+}
+
+/**
  * Validate the save profile on termination parameter
  * @param this - The execution context
  * @param index - The index of the node
@@ -194,6 +249,17 @@ export function validateAirtopApiResponse(node: INode, response: IAirtopResponse
 			message: errorMessage,
 		});
 	}
+}
+
+/**
+ * Convert a screenshot from the API response to a binary buffer
+ * @param screenshot - The screenshot from the API response
+ * @returns The processed screenshot
+ */
+export function convertScreenshotToBinary(screenshot: { dataUrl: string }): Buffer {
+	const base64Data = screenshot.dataUrl.replace('data:image/jpeg;base64,', '');
+	const buffer = Buffer.from(base64Data, 'base64');
+	return buffer;
 }
 
 /**

@@ -14,4 +14,8 @@ export const ERROR_MESSAGES = {
 	URL_INVALID: "'URL' must start with 'http' or 'https'",
 	PROFILE_NAME_REQUIRED: "'Profile Name' is required when 'Save Profile' is enabled",
 	REQUIRED_PARAMETER: "Please fill the '{{field}}' parameter",
+	PROXY_URL_REQUIRED: "Please fill the 'Proxy URL' parameter",
+	PROXY_URL_INVALID: "'Proxy URL' must start with 'http' or 'https'",
+	SCREEN_RESOLUTION_INVALID:
+		"'Screen Resolution' must be in the format 'width x height' (e.g. '1280x720')",
 };

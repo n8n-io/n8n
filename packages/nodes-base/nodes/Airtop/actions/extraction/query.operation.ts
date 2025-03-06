@@ -4,6 +4,7 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 
+import { outputSchemaField } from '../common/fields';
 import { executeRequestWithSessionManagement } from '../common/session.utils';
 
 export const description: INodeProperties[] = [
@@ -39,11 +40,7 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Output Schema',
-				name: 'outputSchema',
-				description: 'JSON schema defining the structure of the output',
-				type: 'json',
-				default: '{}',
+				...outputSchemaField,
 			},
 		],
 	},

@@ -6,7 +6,12 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { validateAirtopApiResponse, validateSessionId, validateUrl } from '../../GenericFunctions';
+import {
+	validateAirtopApiResponse,
+	validateSessionId,
+	validateUrl,
+	validateScreenResolution,
+} from '../../GenericFunctions';
 import { apiRequest } from '../../transport';
 import type { IAirtopResponse } from '../../transport/types';
 import { urlField } from '../common/fields';
@@ -14,7 +19,22 @@ import { urlField } from '../common/fields';
 export const description: INodeProperties[] = [
 	{
 		...urlField,
-		description: 'Initial URL to load in the window. Defaults to http://google.com.',
+		description: 'Initial URL to load in the window. Defaults to https://www.google.com.',
+		displayOptions: {
+			show: {
+				resource: ['window'],
+				operation: ['create'],
+			},
+		},
+	},
+	// Live View Options
+	{
+		displayName: 'Get Live View',
+		name: 'getLiveView',
+		type: 'boolean',
+		default: false,
+		description:
+			'Whether to get the URL of the window\'s <a href="https://docs.airtop.ai/guides/how-to/creating-a-live-view" target="_blank">Live View</a>',
 		displayOptions: {
 			show: {
 				resource: ['window'],
@@ -23,17 +43,33 @@ export const description: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Get Live View',
-		name: 'getLiveView',
+		displayName: 'Include Navigation Bar',
+		name: 'includeNavigationBar',
 		type: 'boolean',
 		default: false,
-		description: "Whether to get the URL of the window's live view",
+		description: 'Whether to include the navigation bar in the Live View',
+		hint: 'When enabled, the navigation bar will be visible in the Live View allowing you to navigate between pages',
 		displayOptions: {
 			show: {
-				resource: ['window'],
-				operation: ['create'],
+				getLiveView: [true],
 			},
 		},
+	},
+	{
+		displayName: 'Screen Resolution',
+		name: 'screenResolution',
+		type: 'string',
+		default: '',
+		description: 'The screen resolution of the Live View',
+		placeholder: '1280x720',
+		displayOptions: {
+			show: {
+				getLiveView: [true],
+			},
+		},
+		hint: `By default, the Live View window will automatically resize to fill the available space. 
+					Setting a screen resolution (e.g. 1280x720) will force the window to open at that specific size 
+					and prevent it from being resized later.`,
 	},
 	{
 		displayName: 'Disable Resize',
@@ -43,8 +79,7 @@ export const description: INodeProperties[] = [
 		description: 'Whether to disable the window from being resized in the Live View',
 		displayOptions: {
 			show: {
-				resource: ['window'],
-				operation: ['create'],
+				getLiveView: [true],
 			},
 		},
 	},
@@ -101,7 +136,10 @@ export async function execute(
 	const sessionId = validateSessionId.call(this, index);
 	const url = validateUrl.call(this, index);
 	const additionalFields = this.getNodeParameter('additionalFields', index);
+	// Live View Options
 	const getLiveView = this.getNodeParameter('getLiveView', index, false);
+	const includeNavigationBar = this.getNodeParameter('includeNavigationBar', index, false);
+	const screenResolution = validateScreenResolution.call(this, index);
 	const disableResize = this.getNodeParameter('disableResize', index, false);
 
 	let response: IAirtopResponse;
@@ -123,12 +161,17 @@ export async function execute(
 	const windowId = String(response.data.windowId);
 
 	if (getLiveView) {
+		// Get Window info
 		response = await apiRequest.call(
 			this,
 			'GET',
 			`/sessions/${sessionId}/windows/${windowId}`,
 			undefined,
-			{ disableResize },
+			{
+				...(includeNavigationBar && { includeNavigationBar: true }),
+				...(screenResolution && { screenResolution }),
+				...(disableResize && { disableResize: true }),
+			},
 		);
 	}
 

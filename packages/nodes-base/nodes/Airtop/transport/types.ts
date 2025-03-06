@@ -2,8 +2,13 @@ import type { IDataObject } from 'n8n-workflow';
 
 export interface IAirtopResponse extends IDataObject {
 	sessionId?: string;
-	data: IDataObject;
-	meta: IDataObject;
+	data: IDataObject & {
+		modelResponse?: string;
+	};
+	meta: IDataObject & {
+		status?: string;
+		screenshots?: Array<{ dataUrl: string }>;
+	};
 	errors: IDataObject[];
 	warnings: IDataObject[];
 }

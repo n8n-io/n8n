@@ -1,12 +1,10 @@
-import nock from 'nock';
-
 import * as terminate from '../../../actions/session/terminate.operation';
 import { ERROR_MESSAGES } from '../../../constants';
 import * as transport from '../../../transport';
 import { createMockExecuteFunction } from '../helpers';
 
 jest.mock('../../../transport', () => {
-	const originalModule = jest.requireActual('../../../transport');
+	const originalModule = jest.requireActual<typeof transport>('../../../transport');
 	return {
 		...originalModule,
 		apiRequest: jest.fn(async function () {
@@ -18,12 +16,7 @@ jest.mock('../../../transport', () => {
 });
 
 describe('Test Airtop, session terminate operation', () => {
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
 	afterAll(() => {
-		nock.restore();
 		jest.unmock('../../../transport');
 	});
 

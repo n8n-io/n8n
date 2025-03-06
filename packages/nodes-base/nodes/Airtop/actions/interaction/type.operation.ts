@@ -11,6 +11,7 @@ import {
 	validateAirtopApiResponse,
 } from '../../GenericFunctions';
 import { apiRequest } from '../../transport';
+import { elementDescriptionField } from '../common/fields';
 
 export const description: INodeProperties[] = [
 	{
@@ -41,13 +42,8 @@ export const description: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Element Description',
-		name: 'elementDescription',
-		type: 'string',
-		default: '',
+		...elementDescriptionField,
 		placeholder: 'the search box',
-		description: 'The description of the element to type into',
-		hint: "Describe the element, e.g. 'the search box', 'username field', 'password field'",
 		displayOptions: {
 			show: {
 				resource: ['interaction'],

@@ -11,22 +11,19 @@ import {
 	validateAirtopApiResponse,
 } from '../../GenericFunctions';
 import { apiRequest } from '../../transport';
+import { elementDescriptionField } from '../common/fields';
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Element Description',
-		name: 'elementDescription',
-		type: 'string',
-		required: true,
-		default: '',
+		...elementDescriptionField,
 		placeholder: 'The login button',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: ['interaction'],
 				operation: ['click'],
 			},
 		},
-		description: 'The description of the element to click',
 	},
 ];
 

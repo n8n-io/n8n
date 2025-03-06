@@ -11,14 +11,12 @@ import {
 	validateAirtopApiResponse,
 } from '../../GenericFunctions';
 import { apiRequest } from '../../transport';
+import { elementDescriptionField } from '../common/fields';
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Element Description',
-		name: 'elementDescription',
-		type: 'string',
+		...elementDescriptionField,
 		required: true,
-		default: '',
 		placeholder: 'the user profile image',
 		displayOptions: {
 			show: {
@@ -26,7 +24,6 @@ export const description: INodeProperties[] = [
 				operation: ['hover'],
 			},
 		},
-		description: 'The description of the element to hover over',
 	},
 ];
 

@@ -13,6 +13,7 @@ import {
 	validateUrl,
 	validateRequiredStringField,
 	shouldCreateNewSession,
+	convertScreenshotToBinary,
 } from '../GenericFunctions';
 import type * as transport from '../transport';
 
@@ -36,6 +37,30 @@ jest.mock('../transport', () => {
 			};
 		}),
 	};
+});
+
+describe('Test convertScreenshotToBinary', () => {
+	it('should convert base64 screenshot data to buffer', () => {
+		const mockScreenshot = {
+			dataUrl: 'data:image/jpeg;base64,SGVsbG8gV29ybGQ=', // "Hello World" in base64
+		};
+
+		const result = convertScreenshotToBinary(mockScreenshot);
+
+		expect(Buffer.isBuffer(result)).toBe(true);
+		expect(result.toString()).toBe('Hello World');
+	});
+
+	it('should handle empty base64 data', () => {
+		const mockScreenshot = {
+			dataUrl: 'data:image/jpeg;base64,',
+		};
+
+		const result = convertScreenshotToBinary(mockScreenshot);
+
+		expect(Buffer.isBuffer(result)).toBe(true);
+		expect(result.length).toBe(0);
+	});
 });
 
 describe('Test Airtop utils', () => {

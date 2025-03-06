@@ -13,9 +13,11 @@ export class Airtop implements INodeType {
 		name: 'airtop',
 		icon: 'file:airtop.svg',
 		group: ['transform'],
-		version: 1,
+		defaultVersion: 1,
+		version: [1],
 		subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
 		description: 'Scrape and control any site with Airtop',
+		usableAsTool: true,
 		defaults: {
 			name: 'Airtop',
 		},

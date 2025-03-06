@@ -2,11 +2,11 @@ import type { INodeProperties } from 'n8n-workflow';
 
 import * as close from './close.operation';
 import * as create from './create.operation';
-import * as getScreenshot from './getScreenshot.operation';
 import * as load from './load.operation';
+import * as takeScreenshot from './takeScreenshot.operation';
 import { sessionIdField, windowIdField } from '../common/fields';
 
-export { create, close, getScreenshot, load };
+export { create, close, takeScreenshot, load };
 
 export const description: INodeProperties[] = [
 	{
@@ -14,6 +14,9 @@ export const description: INodeProperties[] = [
 		name: 'operation',
 		type: 'options',
 		noDataExpression: true,
+		typeOptions: {
+			sortable: false,
+		},
 		displayOptions: {
 			show: {
 				resource: ['window'],
@@ -21,28 +24,28 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Close',
-				value: 'close',
-				description: 'Close a window',
-				action: 'Close a window',
-			},
-			{
-				name: 'Create',
+				name: 'Create a New Browser Window',
 				value: 'create',
-				description: 'Create a new window',
+				description: 'Create a new browser window inside a session. Can load a URL when created.',
 				action: 'Create a window',
-			},
-			{
-				name: 'Get Screenshot',
-				value: 'getScreenshot',
-				description: 'Get a screenshot of the current window',
-				action: 'Get screenshot',
 			},
 			{
 				name: 'Load URL',
 				value: 'load',
-				description: 'Load a page in the window',
+				description: 'Load a URL in an existing window',
 				action: 'Load a page',
+			},
+			{
+				name: 'Take Screenshot',
+				value: 'takeScreenshot',
+				description: 'Take a screenshot of the current window',
+				action: 'Take screenshot',
+			},
+			{
+				name: 'Close Window',
+				value: 'close',
+				description: 'Close a window inside a session',
+				action: 'Close a window',
 			},
 		],
 		default: 'create',
@@ -60,7 +63,7 @@ export const description: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['window'],
-				operation: ['close', 'getScreenshot', 'load'],
+				operation: ['close', 'takeScreenshot', 'load'],
 			},
 		},
 	},

@@ -19,22 +19,22 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Click',
+				name: 'Click an Element',
 				value: 'click',
-				description: 'Click on an element',
-				action: 'Click on an element',
+				description: 'Execute a click on an element given a description',
+				action: 'Click an element',
 			},
 			{
-				name: 'Hover',
+				name: 'Hover on an Element',
 				value: 'hover',
-				description: 'Hover over an element',
-				action: 'Hover over an element',
+				description: 'Execute a hover action on an element given a description',
+				action: 'Hover on an element',
 			},
 			{
 				name: 'Type',
 				value: 'type',
-				description: 'Type text into an element',
-				action: 'Type text into an element',
+				description: 'Execute a Type action on an element given a description',
+				action: 'Type text',
 			},
 		],
 		default: 'click',
@@ -101,13 +101,12 @@ export const description: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Wait for Navigation',
+				displayName: 'Wait Until Event After Navigation',
 				name: 'waitForNavigation',
 				type: 'options',
 				default: 'load',
 				description:
 					"The condition to wait for the navigation to complete after an interaction (click, type or hover). Defaults to 'Fully Loaded'.",
-				hint: 'Depending on the condition, the execution might be faster or slower.',
 				options: [
 					{
 						name: 'Fully Loaded (Slower)',
