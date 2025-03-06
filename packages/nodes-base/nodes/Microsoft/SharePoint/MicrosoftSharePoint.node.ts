@@ -1,22 +1,16 @@
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
-import {
-	fileFields,
-	fileOperations,
-	itemFields,
-	itemOperations,
-	listFields,
-	listOperations,
-} from './descriptions';
+import { file, item, list } from './descriptions';
+import { getItems, getLists, getSites } from './methods/listSearch';
 
 export class MicrosoftSharePoint implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Microsoft SharePoint',
 		name: 'microsoftSharePoint',
 		icon: {
-			light: 'file:icons/SharePoint.svg',
-			dark: 'file:icons/SharePoint.svg',
+			light: 'file:microsoftSharePoint.svg',
+			dark: 'file:microsoftSharePoint.svg',
 		},
 		group: ['transform'],
 		version: 1,
@@ -63,18 +57,17 @@ export class MicrosoftSharePoint implements INodeType {
 				default: 'file',
 			},
 
-			...fileOperations,
-			...fileFields,
-			...itemOperations,
-			...itemFields,
-			...listOperations,
-			...listFields,
+			...file.description,
+			...item.description,
+			...list.description,
 		],
 	};
 
 	methods = {
-		loadOptions: {},
-
-		listSearch: {},
+		listSearch: {
+			getItems,
+			getLists,
+			getSites,
+		},
 	};
 }

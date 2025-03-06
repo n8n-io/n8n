@@ -1,3 +1,3 @@
-export * from './FileDescription';
-export * from './ItemDescription';
-export * from './ListDescription';
+export * as file from './file';
+export * as item from './item';
+export * as list from './list';
