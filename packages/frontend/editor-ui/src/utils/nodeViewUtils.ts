@@ -15,7 +15,7 @@ import type {
 	NodeHint,
 	Workflow,
 } from 'n8n-workflow';
-import { HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE, NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
 
 /*
@@ -281,24 +281,12 @@ export function getGenericHints({
 	const nodeHints: NodeHint[] = [];
 
 	// tools hints
-
-	if (node.type === HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE && hasNodeRun) {
-		const stringifiedParameters = JSON.stringify(workflowNode.parameters);
-		const placeholderRegex = /\{[a-zA-Z0-9_]+\}/;
-		if (!placeholderRegex.test(stringifiedParameters)) {
-			nodeHints.push({
-				message:
-					'No parameters are set up to be filled by AI. Add <code>{placeholder_name}</code> to the relevant parameter to do so.',
-				location: 'outputPane',
-				whenToDisplay: 'afterExecution',
-			});
-		}
-	} else if (node.type.toLocaleLowerCase().includes('tool') && hasNodeRun) {
+	if (node?.type.toLocaleLowerCase().includes('tool') && hasNodeRun) {
 		const stringifiedParameters = JSON.stringify(workflowNode.parameters);
 		if (!stringifiedParameters.includes('$fromAI')) {
 			nodeHints.push({
 				message:
-					"No parameters are currently configured for AI input.<br /> To enable AI-generated values, click the button on the left of the relevant parameter or manually add the following expression: <code>{{ $fromAI('placeholder_name') }}</code>.",
+					"No parameters are set up to be filled by AI. To enable AI-generated values, click the button on the left of the relevant parameter or add the expression: {{ $fromAI('placeholder_name') }}.",
 				location: 'outputPane',
 				whenToDisplay: 'afterExecution',
 			});
@@ -326,6 +314,17 @@ export function getGenericHints({
 			nodeHints.push({
 				message:
 					'This node runs multiple times, once for each input item. Use ‘Execute Once’ in the node settings if you want to run it only once.',
+				location: 'outputPane',
+			});
+		}
+	}
+
+	// add sendAndWait hint
+	if (hasMultipleInputItems && workflowNode.parameters.operation === SEND_AND_WAIT_OPERATION) {
+		const executeOnce = workflow.getNode(node.name)?.executeOnce;
+		if (!executeOnce) {
+			nodeHints.push({
+				message: 'This action will run only once, for the first input item',
 				location: 'outputPane',
 			});
 		}
