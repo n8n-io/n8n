@@ -1,12 +1,9 @@
 import type { INodeProperties } from 'n8n-workflow';
-
-import {
-	handleErrorPostReceive,
-	handlePagination,
-	preDeleteGroup,
-	presendGroupFields,
-	processGroupsResponse,
-} from '../GenericFunctions';
+import { presendGroupFields } from '../generalFunctions/presendFunctions';
+import { handleErrorPostReceive } from '../generalFunctions/errorHandling';
+import { preDeleteGroup } from '../generalFunctions/dataFetching';
+import { processGroupsResponse } from '../generalFunctions/dataHandling';
+import { handlePagination } from '../generalFunctions/pagination';
 
 export const groupOperations: INodeProperties[] = [
 	{

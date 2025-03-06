@@ -1,12 +1,9 @@
 import type { INodeProperties } from 'n8n-workflow';
-
-import {
-	handleErrorPostReceive,
-	handlePagination,
-	preDeleteUser,
-	presendUserFields,
-	processUsersResponse,
-} from '../GenericFunctions';
+import { presendUserFields } from '../generalFunctions/presendFunctions';
+import { handleErrorPostReceive } from '../generalFunctions/errorHandling';
+import { preDeleteUser } from '../generalFunctions/dataFetching';
+import { handlePagination } from '../generalFunctions/pagination';
+import { processUsersResponse } from '../generalFunctions/dataHandling';
 
 export const userOperations: INodeProperties[] = [
 	{
