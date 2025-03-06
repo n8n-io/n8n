@@ -23,19 +23,36 @@ import type { Readable } from 'stream';
 
 import { formatPrivateKey, generatePairedItemData } from '../../utils/utilities';
 
+const configuredOutputs = (version: number) => {
+	if (version >= 1.2) {
+		return [
+			{
+				type: `${NodeConnectionType.Main}`,
+				displayName: 'Input Data',
+			},
+			{
+				type: `${NodeConnectionType.Main}`,
+				displayName: 'Response',
+			},
+		];
+	}
+
+	return [NodeConnectionType.Main];
+};
+
 export class RespondToWebhook implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Respond to Webhook',
 		icon: { light: 'file:webhook.svg', dark: 'file:webhook.dark.svg' },
 		name: 'respondToWebhook',
 		group: ['transform'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Returns data for Webhook',
 		defaults: {
 			name: 'Respond to Webhook',
 		},
 		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		outputs: `={{(${configuredOutputs})($nodeVersion)}}`,
 		credentials: [
 			{
 				name: 'jwtAuth',
@@ -307,6 +324,8 @@ export class RespondToWebhook implements INodeType {
 			WAIT_NODE_TYPE,
 		];
 
+		let response: IN8nHttpFullResponse;
+
 		try {
 			if (nodeVersion >= 1.1) {
 				const connectedNodes = this.getParentNodes(this.getNode().name);
@@ -434,7 +453,7 @@ export class RespondToWebhook implements INodeType {
 				);
 			}
 
-			const response: IN8nHttpFullResponse = {
+			response = {
 				body: responseBody,
 				headers,
 				statusCode,
@@ -452,6 +471,10 @@ export class RespondToWebhook implements INodeType {
 			}
 
 			throw error;
+		}
+
+		if (nodeVersion >= 1.2) {
+			return [items, [{ json: { response } }]];
 		}
 
 		return [items];
