@@ -252,17 +252,17 @@ export class HomeAssistant implements INodeType {
 							attributes: IDataObject[];
 						};
 
-						const body = {
+						const body: { state: string; attributes?: IDataObject } = {
 							state,
-							attributes: {},
 						};
 
 						if (Object.entries(stateAttributes).length) {
 							if (stateAttributes.attributes !== undefined) {
-								stateAttributes.attributes.map((attribute) => {
-									// @ts-ignore
-									body.attributes[attribute.name as string] = attribute.value;
+								const attributes: IDataObject = {};
+								stateAttributes.attributes.forEach((attribute) => {
+									attributes[attribute.name as string] = attribute.value;
 								});
+								body.attributes = attributes;
 							}
 						}
 
