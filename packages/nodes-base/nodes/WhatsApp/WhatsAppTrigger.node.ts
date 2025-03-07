@@ -8,7 +8,6 @@ import {
 	type IWebhookFunctions,
 	type IWebhookResponseData,
 	NodeConnectionType,
-	type INodeProperties,
 } from 'n8n-workflow';
 
 import {
@@ -18,57 +17,27 @@ import {
 } from './GenericFunctions';
 import type { WhatsAppPageEvent } from './types';
 
-const whatsappTriggerDescription: INodeProperties[] = [
-	{
-		displayName: 'Trigger On',
-		name: 'updates',
-		type: 'multiOptions',
-		required: true,
-		default: [],
-		options: [
-			{
-				name: 'Account Review Update',
-				value: 'account_review_update',
-			},
-			{
-				name: 'Account Update',
-				value: 'account_update',
-			},
-			{
-				name: 'Business Capability Update',
-				value: 'business_capability_update',
-			},
-			{
-				name: 'Message Template Quality Update',
-				value: 'message_template_quality_update',
-			},
-			{
-				name: 'Message Template Status Update',
-				value: 'message_template_status_update',
-			},
-			{
-				name: 'Messages',
-				value: 'messages',
-			},
-			{
-				name: 'Phone Number Name Update',
-				value: 'phone_number_name_update',
-			},
-			{
-				name: 'Phone Number Quality Update',
-				value: 'phone_number_quality_update',
-			},
-			{
-				name: 'Security',
-				value: 'security',
-			},
-			{
-				name: 'Template Category Update',
-				value: 'template_category_update',
-			},
-		],
-	},
-];
+export const filterStatuses = (events: IDataObject[], allowedStatuses: string[] | undefined) => {
+	if (!allowedStatuses) {
+		return events;
+	}
+
+	if (!allowedStatuses.length) {
+		return events.filter((event) => !event.statuses);
+	}
+
+	if (!allowedStatuses.includes('all')) {
+		return events.filter((event) => {
+			const statuses = event.statuses as IDataObject[] | undefined;
+			if (statuses?.length) {
+				return statuses.some((status) => allowedStatuses.includes(status.status as string));
+			}
+			return true;
+		});
+	}
+
+	return events;
+};
 
 export class WhatsAppTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -112,7 +81,98 @@ export class WhatsAppTrigger implements INodeType {
 				type: 'notice',
 				default: '',
 			},
-			...whatsappTriggerDescription,
+			{
+				displayName: 'Trigger On',
+				name: 'updates',
+				type: 'multiOptions',
+				required: true,
+				default: [],
+				options: [
+					{
+						name: 'Account Review Update',
+						value: 'account_review_update',
+					},
+					{
+						name: 'Account Update',
+						value: 'account_update',
+					},
+					{
+						name: 'Business Capability Update',
+						value: 'business_capability_update',
+					},
+					{
+						name: 'Message Template Quality Update',
+						value: 'message_template_quality_update',
+					},
+					{
+						name: 'Message Template Status Update',
+						value: 'message_template_status_update',
+					},
+					{
+						name: 'Messages',
+						value: 'messages',
+					},
+					{
+						name: 'Phone Number Name Update',
+						value: 'phone_number_name_update',
+					},
+					{
+						name: 'Phone Number Quality Update',
+						value: 'phone_number_quality_update',
+					},
+					{
+						name: 'Security',
+						value: 'security',
+					},
+					{
+						name: 'Template Category Update',
+						value: 'template_category_update',
+					},
+				],
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				default: {},
+				placeholder: 'Add option',
+				options: [
+					{
+						displayName: 'Receive Message Status Updates',
+						name: 'messageStatusUpdates',
+						type: 'multiOptions',
+						default: ['all'],
+						description:
+							'The WhatsApp sends notifications to inform you of the status of the messages. Select the types of notifications you want to receive.',
+						options: [
+							{
+								name: 'All',
+								value: 'all',
+							},
+							{
+								name: 'Deleted',
+								value: 'deleted',
+							},
+							{
+								name: 'Delivered',
+								value: 'delivered',
+							},
+							{
+								name: 'Failed',
+								value: 'failed',
+							},
+							{
+								name: 'Read',
+								value: 'read',
+							},
+							{
+								name: 'Sent',
+								value: 'sent',
+							},
+						],
+					},
+				],
+			},
 		],
 	};
 
@@ -228,12 +288,14 @@ export class WhatsAppTrigger implements INodeType {
 				.map((change) => ({ ...change.value, field: change.field })),
 		);
 
-		if (events.length === 0) {
-			return {};
-		}
+		const options = this.getNodeParameter('options', {}) as { messageStatusUpdates?: string[] };
+
+		const returnData = filterStatuses(events as IDataObject[], options.messageStatusUpdates);
+
+		if (returnData.length === 0) return {};
 
 		return {
-			workflowData: [this.helpers.returnJsonArray(events)],
+			workflowData: [this.helpers.returnJsonArray(returnData)],
 		};
 	}
 }
