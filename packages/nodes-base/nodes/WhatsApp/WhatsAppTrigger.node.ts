@@ -138,6 +138,7 @@ export class WhatsAppTrigger implements INodeType {
 				placeholder: 'Add option',
 				options: [
 					{
+						// https://developers.facebook.com/docs/whatsapp/cloud-api/webhooks/payload-examples#message-status-updates
 						displayName: 'Receive Message Status Updates',
 						name: 'messageStatusUpdates',
 						type: 'multiOptions',
