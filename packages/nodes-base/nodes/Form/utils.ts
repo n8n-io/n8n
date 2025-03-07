@@ -72,6 +72,18 @@ export function sanitizeHtml(text: string) {
 	});
 }
 
+export function sanitizeCustomCss(css: string | undefined): string | undefined {
+	if (!css) return undefined;
+
+	// Use sanitize-html with custom settings for CSS
+	return sanitize(css, {
+		allowedTags: [], // No HTML tags allowed
+		allowedAttributes: {}, // No attributes allowed
+		// This ensures we're only keeping the text content
+		// which should be the CSS, while removing any HTML/script tags
+	});
+}
+
 export function createDescriptionMetadata(description: string) {
 	return description === ''
 		? 'n8n form'
@@ -91,6 +103,7 @@ export function prepareFormData({
 	useResponseData,
 	appendAttribution = true,
 	buttonLabel,
+	customCss,
 }: {
 	formTitle: string;
 	formDescription: string;
@@ -104,6 +117,7 @@ export function prepareFormData({
 	appendAttribution?: boolean;
 	buttonLabel?: string;
 	formSubmittedHeader?: string;
+	customCss?: string;
 }) {
 	const validForm = formFields.length > 0;
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
@@ -126,6 +140,7 @@ export function prepareFormData({
 		useResponseData,
 		appendAttribution,
 		buttonLabel,
+		dangerousCustomCss: sanitizeCustomCss(customCss),
 	};
 
 	if (redirectUrl) {
@@ -300,7 +315,7 @@ export async function prepareFormReturnItem(
 
 		if (field.fieldType === 'html') {
 			if (field.elementName) {
-				returnItem.json[field.elementName as string] = value;
+				returnItem.json[field.elementName] = value;
 			}
 			continue;
 		}
@@ -352,6 +367,7 @@ export function renderForm({
 	redirectUrl,
 	appendAttribution,
 	buttonLabel,
+	customCss,
 }: {
 	context: IWebhookFunctions;
 	res: Response;
@@ -364,6 +380,7 @@ export function renderForm({
 	redirectUrl?: string;
 	appendAttribution?: boolean;
 	buttonLabel?: string;
+	customCss?: string;
 }) {
 	formDescription = (formDescription || '').replace(/\\n/g, '\n').replace(/<br>/g, '\n');
 	const instanceId = context.getInstanceId();
@@ -406,6 +423,7 @@ export function renderForm({
 		useResponseData,
 		appendAttribution,
 		buttonLabel,
+		customCss,
 	});
 
 	res.render('form-trigger', data);
@@ -436,6 +454,7 @@ export async function formWebhook(
 		useWorkflowTimezone?: boolean;
 		appendAttribution?: boolean;
 		buttonLabel?: string;
+		customCss?: string;
 	};
 	const res = context.getResponseObject();
 	const req = context.getRequestObject();
@@ -526,6 +545,7 @@ export async function formWebhook(
 			redirectUrl,
 			appendAttribution,
 			buttonLabel,
+			customCss: options.customCss,
 		});
 
 		return {

@@ -54,11 +54,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			cy.changeQuota('maxTeamProjects', -1);
 		});
 
-		/**
-		 * @TODO: New Canvas - Fix this test
-		 */
-		// eslint-disable-next-line n8n-local-rules/no-skipped-tests
-		it.skip('should filter credentials by project ID when creating new workflow or hard reloading an opened workflow', () => {
+		it('should filter credentials by project ID when creating new workflow or hard reloading an opened workflow', () => {
 			cy.signinAsOwner();
 			cy.visit(workflowsPage.url);
 
@@ -272,11 +268,8 @@ describe('Projects', { disableAutoLogin: true }, () => {
 
 			cy.log('Move the workflow Personal from Home to Project 1');
 			projects.getHomeButton().click();
-			workflowsPage.getters
-				.workflowCards()
-				.should('have.length', 3)
-				.filter(':contains("Personal")')
-				.should('exist');
+			workflowsPage.getters.workflowCards().should('have.length', 3);
+			workflowsPage.getters.workflowCards().filter(':contains("Personal")').should('exist');
 			workflowsPage.getters.workflowCardActions('Workflow in Home project').click();
 			workflowsPage.getters.workflowMoveButton().click();
 
@@ -286,20 +279,14 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.contains('button', 'Move workflow')
 				.should('be.disabled');
 			projects.getProjectMoveSelect().click();
-			getVisibleSelect()
-				.find('li')
-				.should('have.length', 5)
-				.filter(':contains("Project 1")')
-				.click();
+			getVisibleSelect().find('li').should('have.length', 5);
+			getVisibleSelect().find('li').filter(':contains("Project 1")').click();
 			projects.getResourceMoveModal().contains('button', 'Move workflow').click();
 			clearNotifications();
 			cy.wait('@getResources');
 
-			workflowsPage.getters
-				.workflowCards()
-				.should('have.length', 3)
-				.filter(':contains("Personal")')
-				.should('not.exist');
+			workflowsPage.getters.workflowCards().should('have.length', 3);
+			workflowsPage.getters.workflowCards().filter(':contains("Personal")').should('not.exist');
 
 			cy.log('Move the workflow from Project 1 to Project 2');
 			projects.getMenuItems().first().click();
@@ -313,11 +300,8 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.contains('button', 'Move workflow')
 				.should('be.disabled');
 			projects.getProjectMoveSelect().click();
-			getVisibleSelect()
-				.find('li')
-				.should('have.length', 5)
-				.filter(':contains("Project 2")')
-				.click();
+			getVisibleSelect().find('li').should('have.length', 5);
+			getVisibleSelect().find('li').filter(':contains("Project 2")').click();
 			projects.getResourceMoveModal().contains('button', 'Move workflow').click();
 			clearNotifications();
 
@@ -333,11 +317,8 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.contains('button', 'Move workflow')
 				.should('be.disabled');
 			projects.getProjectMoveSelect().click();
-			getVisibleSelect()
-				.find('li')
-				.should('have.length', 5)
-				.filter(`:contains("${INSTANCE_MEMBERS[0].email}")`)
-				.click();
+			getVisibleSelect().find('li').should('have.length', 5);
+			getVisibleSelect().find('li').filter(`:contains("${INSTANCE_MEMBERS[0].email}")`).click();
 
 			projects.getResourceMoveModal().contains('button', 'Move workflow').click();
 			clearNotifications();
@@ -347,9 +328,9 @@ describe('Projects', { disableAutoLogin: true }, () => {
 
 			cy.log('Move the workflow from member user back to Home');
 			projects.getHomeButton().click();
+			workflowsPage.getters.workflowCards().should('have.length', 3);
 			workflowsPage.getters
 				.workflowCards()
-				.should('have.length', 3)
 				.filter(':has(.n8n-badge:contains("Project"))')
 				.should('have.length', 2);
 			workflowsPage.getters.workflowCardActions('Workflow in Home project').click();
@@ -361,19 +342,16 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.contains('button', 'Move workflow')
 				.should('be.disabled');
 			projects.getProjectMoveSelect().click();
-			getVisibleSelect()
-				.find('li')
-				.should('have.length', 5)
-				.filter(`:contains("${INSTANCE_OWNER.email}")`)
-				.click();
+			getVisibleSelect().find('li').should('have.length', 5);
+			getVisibleSelect().find('li').filter(`:contains("${INSTANCE_OWNER.email}")`).click();
 
 			projects.getResourceMoveModal().contains('button', 'Move workflow').click();
 			clearNotifications();
 			cy.wait('@getResources');
 
+			workflowsPage.getters.workflowCards().should('have.length', 3);
 			workflowsPage.getters
 				.workflowCards()
-				.should('have.length', 3)
 				.filter(':contains("Personal")')
 				.should('have.length', 1);
 
@@ -390,11 +368,8 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.contains('button', 'Move credential')
 				.should('be.disabled');
 			projects.getProjectMoveSelect().click();
-			getVisibleSelect()
-				.find('li')
-				.should('have.length', 5)
-				.filter(':contains("Project 2")')
-				.click();
+			getVisibleSelect().find('li').should('have.length', 5);
+			getVisibleSelect().find('li').filter(':contains("Project 2")').click();
 			projects.getResourceMoveModal().contains('button', 'Move credential').click();
 			clearNotifications();
 			cy.wait('@getResources');
@@ -415,11 +390,8 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.contains('button', 'Move credential')
 				.should('be.disabled');
 			projects.getProjectMoveSelect().click();
-			getVisibleSelect()
-				.find('li')
-				.should('have.length', 5)
-				.filter(`:contains("${INSTANCE_ADMIN.email}")`)
-				.click();
+			getVisibleSelect().find('li').should('have.length', 5);
+			getVisibleSelect().find('li').filter(`:contains("${INSTANCE_ADMIN.email}")`).click();
 			projects.getResourceMoveModal().contains('button', 'Move credential').click();
 			clearNotifications();
 			cy.wait('@getResources');
@@ -440,19 +412,16 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.contains('button', 'Move credential')
 				.should('be.disabled');
 			projects.getProjectMoveSelect().click();
-			getVisibleSelect()
-				.find('li')
-				.should('have.length', 5)
-				.filter(`:contains("${INSTANCE_OWNER.email}")`)
-				.click();
+			getVisibleSelect().find('li').should('have.length', 5);
+			getVisibleSelect().find('li').filter(`:contains("${INSTANCE_OWNER.email}")`).click();
 
 			projects.getResourceMoveModal().contains('button', 'Move credential').click();
 			clearNotifications();
 			cy.wait('@getResources');
 
+			credentialsPage.getters.credentialCards().should('have.length', 3);
 			credentialsPage.getters
 				.credentialCards()
-				.should('have.length', 3)
 				.filter(':contains("Personal")')
 				.should('have.length', 2);
 
@@ -466,11 +435,8 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.contains('button', 'Move credential')
 				.should('be.disabled');
 			projects.getProjectMoveSelect().click();
-			getVisibleSelect()
-				.find('li')
-				.should('have.length', 5)
-				.filter(':contains("Project 1")')
-				.click();
+			getVisibleSelect().find('li').should('have.length', 5);
+			getVisibleSelect().find('li').filter(':contains("Project 1")').click();
 			projects.getResourceMoveModal().contains('button', 'Move credential').click();
 			clearNotifications();
 
@@ -483,6 +449,8 @@ describe('Projects', { disableAutoLogin: true }, () => {
 		});
 
 		it('should allow to change inaccessible credential when the workflow was moved to a team project', () => {
+			cy.intercept('GET', /\/rest\/(workflows|credentials).*/).as('getResources');
+
 			cy.signinAsOwner();
 			cy.visit(workflowsPage.url);
 
@@ -504,15 +472,14 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			// Create a project and add a user to it
 			projects.createProject('Project 1');
 			projects.addProjectMember(INSTANCE_MEMBERS[0].email);
+
+			clearNotifications();
 			projects.getProjectSettingsSaveButton().click();
 
 			// Move the workflow from Home to Project 1
 			projects.getHomeButton().click();
-			workflowsPage.getters
-				.workflowCards()
-				.should('have.length', 1)
-				.filter(':contains("Personal")')
-				.should('exist');
+			workflowsPage.getters.workflowCards().should('have.length', 1);
+			workflowsPage.getters.workflowCards().filter(':contains("Personal")').should('exist');
 			workflowsPage.getters.workflowCardActions('My workflow').click();
 			workflowsPage.getters.workflowMoveButton().click();
 
@@ -522,12 +489,12 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.contains('button', 'Move workflow')
 				.should('be.disabled');
 			projects.getProjectMoveSelect().click();
-			getVisibleSelect()
-				.find('li')
-				.should('have.length', 4)
-				.filter(':contains("Project 1")')
-				.click();
+			getVisibleSelect().find('li').should('have.length', 4);
+			getVisibleSelect().find('li').filter(':contains("Project 1")').click();
 			projects.getResourceMoveModal().contains('button', 'Move workflow').click();
+
+			clearNotifications();
+			cy.wait('@getResources');
 
 			workflowsPage.getters
 				.workflowCards()
@@ -539,7 +506,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			mainSidebar.actions.openUserMenu();
 			cy.getByTestId('user-menu-item-logout').click();
 
-			cy.get('input[name="email"]').type(INSTANCE_MEMBERS[0].email);
+			cy.get('input[name="emailOrLdapLoginId"]').type(INSTANCE_MEMBERS[0].email);
 			cy.get('input[name="password"]').type(INSTANCE_MEMBERS[0].password);
 			cy.getByTestId('form-submit-button').click();
 

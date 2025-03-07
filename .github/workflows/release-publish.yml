@@ -51,14 +51,20 @@ jobs:
       - name: Dry-run publishing
         run: pnpm publish -r --no-git-checks --dry-run
 
-      - name: Publish to NPM
+      - name: Pre publishing changes
         run: |
           echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
           node .github/scripts/trim-fe-packageJson.js
           node .github/scripts/ensure-provenance-fields.mjs
+          cp README.md packages/cli/README.md
           sed -i "s/default: 'dev'/default: 'stable'/g" packages/cli/dist/config/schema.js
-          pnpm publish -r --publish-branch ${{github.event.pull_request.base.ref}} --access public --tag rc --no-git-checks
-          npm dist-tag rm n8n rc
+
+      - name: Publish to NPM
+        run: pnpm publish -r --publish-branch ${{github.event.pull_request.base.ref}} --access public --tag rc --no-git-checks
+
+      - name: Cleanup rc tag
+        run: npm dist-tag rm n8n rc
+        continue-on-error: true
 
       - id: set-release
         run: echo "release=${{ env.RELEASE }}" >> $GITHUB_OUTPUT
@@ -68,7 +74,7 @@ jobs:
     needs: [publish-to-npm]
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
@@ -103,7 +109,6 @@ jobs:
           context: ./docker/images/n8n
           build-args: |
             N8N_VERSION=${{ needs.publish-to-npm.outputs.release }}
-            N8N_RELEASE_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           platforms: linux/amd64,linux/arm64
           provenance: false
           push: true
@@ -156,7 +161,7 @@ jobs:
         with:
           projects: ${{ secrets.SENTRY_FRONTEND_PROJECT }}
           version: ${{ needs.publish-to-npm.outputs.release }}
-          sourcemaps: packages/editor-ui/dist
+          sourcemaps: packages/frontend/editor-ui/dist
 
       - name: Create a backend release
         uses: getsentry/action-release@v1.7.0

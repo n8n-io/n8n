@@ -43,7 +43,8 @@ type EndpointGroup =
 	| 'dynamic-node-parameters'
 	| 'apiKeys'
 	| 'evaluation'
-	| 'ai';
+	| 'ai'
+	| 'folder';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];

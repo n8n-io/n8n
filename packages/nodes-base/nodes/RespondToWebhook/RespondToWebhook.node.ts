@@ -21,7 +21,7 @@ import {
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
-import { formatPrivateKey } from '../../utils/utilities';
+import { formatPrivateKey, generatePairedItemData } from '../../utils/utilities';
 
 export class RespondToWebhook implements INodeType {
 	description: INodeTypeDescription = {
@@ -443,7 +443,11 @@ export class RespondToWebhook implements INodeType {
 			this.sendResponse(response);
 		} catch (error) {
 			if (this.continueOnFail()) {
-				const returnData = [{ json: { error: error.message } }];
+				const itemData = generatePairedItemData(items.length);
+				const returnData = this.helpers.constructExecutionMetaData(
+					[{ json: { error: error.message } }],
+					{ itemData },
+				);
 				return [returnData];
 			}
 

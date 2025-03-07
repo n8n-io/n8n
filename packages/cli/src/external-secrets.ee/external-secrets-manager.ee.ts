@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import { Cipher, Logger } from 'n8n-core';
-import { jsonParse, type IDataObject, ApplicationError, ensureError } from 'n8n-workflow';
+import { jsonParse, type IDataObject, ensureError, UnexpectedError } from 'n8n-workflow';
 
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { EventService } from '@/events/event.service';
@@ -95,7 +95,7 @@ export class ExternalSecretsManager {
 		try {
 			return jsonParse(decryptedData);
 		} catch (e) {
-			throw new ApplicationError(
+			throw new UnexpectedError(
 				'External Secrets Settings could not be decrypted. The likely reason is that a different "encryptionKey" was used to encrypt the data.',
 			);
 		}
