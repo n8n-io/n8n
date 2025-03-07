@@ -44,7 +44,14 @@ import {
 	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
-import { CUSTOM_API_CALL_KEY, FORM_NODE_TYPE, STICKY_NODE_TYPE, WAIT_NODE_TYPE } from '@/constants';
+import {
+	CUSTOM_API_CALL_KEY,
+	FORM_NODE_TYPE,
+	SIMULATE_NODE_TYPE,
+	SIMULATE_TRIGGER_NODE_TYPE,
+	STICKY_NODE_TYPE,
+	WAIT_NODE_TYPE,
+} from '@/constants';
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import { MarkerType } from '@vue-flow/core';
 import { useNodeHelpers } from './useNodeHelpers';
@@ -510,6 +517,26 @@ export function useCanvasMapping({
 		);
 	});
 
+	const simulatedNodeTypesById = computed(() => {
+		return nodes.value.reduce<Record<string, string | undefined>>((acc, node) => {
+			if ([SIMULATE_NODE_TYPE, SIMULATE_TRIGGER_NODE_TYPE].includes(node.type)) {
+				const icon = node.parameters?.icon as string;
+				const iconValue = workflowObject.value.expression.getSimpleParameterValue(
+					node,
+					icon,
+					'internal',
+					{},
+				);
+
+				if (iconValue && typeof iconValue === 'string') {
+					acc[node.id] = iconValue;
+				}
+			}
+
+			return acc;
+		}, {});
+	});
+
 	const mappedNodes = computed<CanvasNode[]>(() => [
 		...nodes.value.map<CanvasNode>((node) => {
 			const inputConnections = workflowObject.value.connectionsByDestinationNode[node.name] ?? {};
@@ -521,6 +548,7 @@ export function useCanvasMapping({
 				subtitle: nodeSubtitleById.value[node.id] ?? '',
 				type: node.type,
 				typeVersion: node.typeVersion,
+				simulatedType: simulatedNodeTypesById.value[node.id],
 				disabled: node.disabled,
 				inputs: nodeInputsById.value[node.id] ?? [],
 				outputs: nodeOutputsById.value[node.id] ?? [],

@@ -8,6 +8,8 @@ import { createCanvasConnection, createCanvasNodeElement } from '@/__tests__/dat
 import { NodeConnectionType } from 'n8n-workflow';
 import type { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useVueFlow } from '@vue-flow/core';
+import { defaultNodeTypes, mockNodeTypeDescription } from '@/__tests__/mocks';
+import { SET_NODE_TYPE, SIMULATE_NODE_TYPE } from '@/constants';
 
 const matchMedia = global.window.matchMedia;
 // @ts-expect-error Initialize window object
@@ -271,6 +273,39 @@ describe('Canvas', () => {
 			expect(patternCanvas).toBeInTheDocument();
 			expect(patternCanvas?.innerHTML).toContain('<path');
 			expect(patternCanvas?.innerHTML).not.toContain('<circle');
+		});
+	});
+
+	describe('simulate', () => {
+		it('should render simulate node', async () => {
+			const nodes = [
+				createCanvasNodeElement({
+					id: '1',
+					label: 'Node',
+					position: { x: 200, y: 200 },
+					data: {
+						type: SIMULATE_NODE_TYPE,
+						typeVersion: 1,
+						simulatedType: SET_NODE_TYPE,
+					},
+				}),
+			];
+
+			const nodeTypeDescriptions = {
+				[SET_NODE_TYPE]: mockNodeTypeDescription({ name: SET_NODE_TYPE, icon: 'fa:pen' }),
+				[`${SIMULATE_NODE_TYPE}@1`]: defaultNodeTypes[SIMULATE_NODE_TYPE].type.description,
+			};
+
+			const { container } = renderComponent({
+				props: {
+					nodes,
+					nodeTypeDescriptions,
+				},
+			});
+
+			await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(1));
+
+			expect(container.querySelector('.icon')).toBeInTheDocument();
 		});
 	});
 });
