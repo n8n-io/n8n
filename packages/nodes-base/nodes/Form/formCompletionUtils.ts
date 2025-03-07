@@ -3,9 +3,32 @@ import {
 	type NodeTypeAndVersion,
 	type IWebhookFunctions,
 	type IWebhookResponseData,
+	type IBinaryData,
+	type IDataObject,
+	OperationalError,
 } from 'n8n-workflow';
 
 import { sanitizeCustomCss, sanitizeHtml } from './utils';
+
+const getBinaryDataFromNode = (context: IWebhookFunctions, nodeName: string): IDataObject => {
+	return context.evaluateExpression(`{{ $('${nodeName}').first().binary }}`) as IDataObject;
+};
+
+export const binaryResponse = (context: IWebhookFunctions): IDataObject => {
+	const inputDataFieldName = context.getNodeParameter('inputDataFieldName', '') as string;
+	const parentNodes = context.getParentNodes(context.getNode().name);
+	const binaryNode = parentNodes.find((node) =>
+		getBinaryDataFromNode(context, node?.name)?.hasOwnProperty(inputDataFieldName),
+	);
+	if (!binaryNode) {
+		throw new OperationalError(`No binary data with field ${inputDataFieldName} found.`);
+	}
+	const binaryData = getBinaryDataFromNode(context, binaryNode?.name)[
+		inputDataFieldName
+	] as IBinaryData;
+
+	return binaryData;
+};
 
 export const renderFormCompletion = async (
 	context: IWebhookFunctions,
@@ -20,6 +43,8 @@ export const renderFormCompletion = async (
 		customCss?: string;
 	};
 	const responseText = context.getNodeParameter('responseText', '') as string;
+	const binary =
+		context.getNodeParameter('respondWith', '') === 'returnBinary' ? binaryResponse(context) : '';
 
 	let title = options.formTitle;
 	if (!title) {
@@ -35,6 +60,7 @@ export const renderFormCompletion = async (
 		formTitle: title,
 		appendAttribution,
 		responseText: sanitizeHtml(responseText),
+		responseBinary: encodeURIComponent(JSON.stringify(binary)),
 		dangerousCustomCss: sanitizeCustomCss(options.customCss),
 		redirectUrl,
 	});
