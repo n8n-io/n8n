@@ -1,86 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "historyId": {
-            "type": "string"
-        },
-        "messages": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "threadId": {
-                        "type": "string"
-                    },
-                    "snippet": {
-                        "type": "string"
-                    },
-                    "payload": {
-                        "type": "object",
-                        "properties": {
-                            "mimeType": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "mimeType"
-                        ]
-                    },
-                    "sizeEstimate": {
-                        "type": "integer"
-                    },
-                    "historyId": {
-                        "type": "string"
-                    },
-                    "internalDate": {
-                        "type": "string"
-                    },
-                    "labels": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "id": {
-                                    "type": "string"
-                                },
-                                "name": {
-                                    "type": "string"
-                                }
-                            },
-                            "required": [
-                                "id",
-                                "name"
-                            ]
-                        }
-                    },
-                    "To": {
-                        "type": "string"
-                    },
-                    "Subject": {
-                        "type": "string"
-                    },
-                    "From": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "id",
-                    "threadId",
-                    "snippet",
-                    "payload",
-                    "sizeEstimate",
-                    "historyId",
-                    "internalDate",
-                    "To",
-                    "From"
-                ]
-            }
-        }
-    }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/thread/get.json",
+    "sha": "5b0d1009fdc526fba9e2b5d4a052f04976ef6e15",
+    "size": 2626,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/thread/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/thread/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5b0d1009fdc526fba9e2b5d4a052f04976ef6e15",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/thread/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgImhpc3RvcnlJZCI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIm1lc3NhZ2Vz\nIjogewogICAgICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAg\nICJpdGVtcyI6IHsKICAgICAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIs\nCiAgICAgICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAg\nICAgICAgICAiaWQiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAg\nICAgICAgICAgICJ0aHJlYWRJZCI6IHsKICAgICAgICAgICAgICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAgIH0sCiAg\nICAgICAgICAgICAgICAgICAgInNuaXBwZXQiOiB7CiAgICAgICAgICAgICAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAg\nICB9LAogICAgICAgICAgICAgICAgICAgICJwYXlsb2FkIjogewogICAgICAg\nICAgICAgICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAg\nICAgICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICJtaW1lVHlwZSI6IHsKICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAg\nICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAg\nICAgICAgICAgICAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICJtaW1lVHlwZSIKICAgICAgICAgICAgICAg\nICAgICAgICAgXQogICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAg\nICAgICAgICAgInNpemVFc3RpbWF0ZSI6IHsKICAgICAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICAgICAgICAgICAgICB9\nLAogICAgICAgICAgICAgICAgICAgICJoaXN0b3J5SWQiOiB7CiAgICAgICAg\nICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAg\nICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICJpbnRlcm5hbERhdGUi\nOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICJs\nYWJlbHMiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImFy\ncmF5IiwKICAgICAgICAgICAgICAgICAgICAgICAgIml0ZW1zIjogewogICAg\nICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICJpZCI6IHsKICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgIm5hbWUiOiB7CiAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICAg\nICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAgICAgInJl\ncXVpcmVkIjogWwogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJp\nZCIsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIm5hbWUiCiAg\nICAgICAgICAgICAgICAgICAgICAgICAgICBdCiAgICAgICAgICAgICAgICAg\nICAgICAgIH0KICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAg\nICAgICAgICJUbyI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAg\nICAgICAgICAgIlN1YmplY3QiOiB7CiAgICAgICAgICAgICAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICB9LAogICAg\nICAgICAgICAgICAgICAgICJGcm9tIjogewogICAgICAgICAgICAgICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgfQog\nICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJyZXF1aXJlZCI6\nIFsKICAgICAgICAgICAgICAgICAgICAiaWQiLAogICAgICAgICAgICAgICAg\nICAgICJ0aHJlYWRJZCIsCiAgICAgICAgICAgICAgICAgICAgInNuaXBwZXQi\nLAogICAgICAgICAgICAgICAgICAgICJwYXlsb2FkIiwKICAgICAgICAgICAg\nICAgICAgICAic2l6ZUVzdGltYXRlIiwKICAgICAgICAgICAgICAgICAgICAi\naGlzdG9yeUlkIiwKICAgICAgICAgICAgICAgICAgICAiaW50ZXJuYWxEYXRl\nIiwKICAgICAgICAgICAgICAgICAgICAiVG8iLAogICAgICAgICAgICAgICAg\nICAgICJGcm9tIgogICAgICAgICAgICAgICAgXQogICAgICAgICAgICB9CiAg\nICAgICAgfQogICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/thread/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5b0d1009fdc526fba9e2b5d4a052f04976ef6e15",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/thread/get.json"
+    },
+    "version": 1
 }

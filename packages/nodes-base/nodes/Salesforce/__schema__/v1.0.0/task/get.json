@@ -1,139 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "attributes": {
-            "type": "object",
-            "properties": {
-                "type": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "type",
-                "url"
-            ]
-        },
-        "Id": {
-            "type": "string"
-        },
-        "Status": {
-            "type": "string"
-        },
-        "Priority": {
-            "type": "string"
-        },
-        "IsHighPriority": {
-            "type": "boolean"
-        },
-        "OwnerId": {
-            "type": "string"
-        },
-        "IsDeleted": {
-            "type": "boolean"
-        },
-        "IsClosed": {
-            "type": "boolean"
-        },
-        "CreatedDate": {
-            "type": "string"
-        },
-        "CreatedById": {
-            "type": "string"
-        },
-        "LastModifiedDate": {
-            "type": "string"
-        },
-        "LastModifiedById": {
-            "type": "string"
-        },
-        "SystemModstamp": {
-            "type": "string"
-        },
-        "IsArchived": {
-            "type": "boolean"
-        },
-        "CallDisposition": {
-            "type": "null"
-        },
-        "CallObject": {
-            "type": "null"
-        },
-        "ReminderDateTime": {
-            "type": "null"
-        },
-        "IsReminderSet": {
-            "type": "boolean"
-        },
-        "IsRecurrence": {
-            "type": "boolean"
-        },
-        "RecurrenceDayOfMonth": {
-            "type": "null"
-        },
-        "RecurrenceInstance": {
-            "type": "null"
-        },
-        "RecurrenceMonthOfYear": {
-            "type": "null"
-        },
-        "RecurrenceRegeneratedType": {
-            "type": "null"
-        },
-        "TaskSubtype": {
-            "type": "string"
-        },
-        "WhoCount": {
-            "type": "integer"
-        },
-        "WhatCount": {
-            "type": "integer"
-        },
-        "ActionCadenceStepTrackerId": {
-            "type": "null"
-        }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/task/get.json",
+    "sha": "3f28ba445d29e6e40eab50466cb3d60f0e44a7a0",
+    "size": 3156,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/task/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/task/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/3f28ba445d29e6e40eab50466cb3d60f0e44a7a0",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/task/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJhdHRyaWJ1dGVzIjogewogICAgICAgICAgICAidHlwZSI6ICJv\nYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAg\nICAgICAgICJ0eXBlIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAi\ndXJsIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgInR5cGUiLAogICAgICAg\nICAgICAgICAgInVybCIKICAgICAgICAgICAgXQogICAgICAgIH0sCiAgICAg\nICAgIklkIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgfSwKICAgICAgICAiU3RhdHVzIjogewogICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiUHJpb3JpdHkiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAg\nICJJc0hpZ2hQcmlvcml0eSI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9v\nbGVhbiIKICAgICAgICB9LAogICAgICAgICJPd25lcklkIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiSXNE\nZWxldGVkIjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAg\nICAgIH0sCiAgICAgICAgIklzQ2xvc2VkIjogewogICAgICAgICAgICAidHlw\nZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgIkNyZWF0ZWREYXRl\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwK\nICAgICAgICAiQ3JlYXRlZEJ5SWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJMYXN0TW9kaWZpZWREYXRl\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwK\nICAgICAgICAiTGFzdE1vZGlmaWVkQnlJZCI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIlN5c3RlbU1vZHN0\nYW1wIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nfSwKICAgICAgICAiSXNBcmNoaXZlZCI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAiYm9vbGVhbiIKICAgICAgICB9LAogICAgICAgICJDYWxsRGlzcG9zaXRp\nb24iOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwK\nICAgICAgICAiQ2FsbE9iamVjdCI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nbnVsbCIKICAgICAgICB9LAogICAgICAgICJSZW1pbmRlckRhdGVUaW1lIjog\newogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAg\nICAgIklzUmVtaW5kZXJTZXQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJv\nb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAiSXNSZWN1cnJlbmNlIjogewog\nICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAg\nICAgIlJlY3VycmVuY2VEYXlPZk1vbnRoIjogewogICAgICAgICAgICAidHlw\nZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAgIlJlY3VycmVuY2VJbnN0\nYW5jZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9\nLAogICAgICAgICJSZWN1cnJlbmNlTW9udGhPZlllYXIiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAiUmVjdXJy\nZW5jZVJlZ2VuZXJhdGVkVHlwZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nbnVsbCIKICAgICAgICB9LAogICAgICAgICJUYXNrU3VidHlwZSI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAg\nIldob0NvdW50IjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgog\nICAgICAgIH0sCiAgICAgICAgIldoYXRDb3VudCI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJBY3Rpb25D\nYWRlbmNlU3RlcFRyYWNrZXJJZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nbnVsbCIKICAgICAgICB9CiAgICB9LAogICAgInJlcXVpcmVkIjogWwogICAg\nICAgICJhdHRyaWJ1dGVzIiwKICAgICAgICAiSWQiLAogICAgICAgICJXaG9J\nZCIsCiAgICAgICAgIldoYXRJZCIsCiAgICAgICAgIlN1YmplY3QiLAogICAg\nICAgICJBY3Rpdml0eURhdGUiLAogICAgICAgICJTdGF0dXMiLAogICAgICAg\nICJQcmlvcml0eSIsCiAgICAgICAgIklzSGlnaFByaW9yaXR5IiwKICAgICAg\nICAiT3duZXJJZCIsCiAgICAgICAgIkRlc2NyaXB0aW9uIiwKICAgICAgICAi\nSXNEZWxldGVkIiwKICAgICAgICAiQWNjb3VudElkIiwKICAgICAgICAiSXND\nbG9zZWQiLAogICAgICAgICJDcmVhdGVkRGF0ZSIsCiAgICAgICAgIkNyZWF0\nZWRCeUlkIiwKICAgICAgICAiTGFzdE1vZGlmaWVkRGF0ZSIsCiAgICAgICAg\nIkxhc3RNb2RpZmllZEJ5SWQiLAogICAgICAgICJTeXN0ZW1Nb2RzdGFtcCIs\nCiAgICAgICAgIklzQXJjaGl2ZWQiLAogICAgICAgICJDYWxsRHVyYXRpb25J\nblNlY29uZHMiLAogICAgICAgICJDYWxsVHlwZSIsCiAgICAgICAgIkNhbGxE\naXNwb3NpdGlvbiIsCiAgICAgICAgIkNhbGxPYmplY3QiLAogICAgICAgICJS\nZW1pbmRlckRhdGVUaW1lIiwKICAgICAgICAiSXNSZW1pbmRlclNldCIsCiAg\nICAgICAgIlJlY3VycmVuY2VBY3Rpdml0eUlkIiwKICAgICAgICAiSXNSZWN1\ncnJlbmNlIiwKICAgICAgICAiUmVjdXJyZW5jZVN0YXJ0RGF0ZU9ubHkiLAog\nICAgICAgICJSZWN1cnJlbmNlRW5kRGF0ZU9ubHkiLAogICAgICAgICJSZWN1\ncnJlbmNlVGltZVpvbmVTaWRLZXkiLAogICAgICAgICJSZWN1cnJlbmNlVHlw\nZSIsCiAgICAgICAgIlJlY3VycmVuY2VJbnRlcnZhbCIsCiAgICAgICAgIlJl\nY3VycmVuY2VEYXlPZldlZWtNYXNrIiwKICAgICAgICAiUmVjdXJyZW5jZURh\neU9mTW9udGgiLAogICAgICAgICJSZWN1cnJlbmNlSW5zdGFuY2UiLAogICAg\nICAgICJSZWN1cnJlbmNlTW9udGhPZlllYXIiLAogICAgICAgICJSZWN1cnJl\nbmNlUmVnZW5lcmF0ZWRUeXBlIiwKICAgICAgICAiVGFza1N1YnR5cGUiCiAg\nICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/task/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/3f28ba445d29e6e40eab50466cb3d60f0e44a7a0",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/task/get.json"
     },
-    "required": [
-        "attributes",
-        "Id",
-        "WhoId",
-        "WhatId",
-        "Subject",
-        "ActivityDate",
-        "Status",
-        "Priority",
-        "IsHighPriority",
-        "OwnerId",
-        "Description",
-        "IsDeleted",
-        "AccountId",
-        "IsClosed",
-        "CreatedDate",
-        "CreatedById",
-        "LastModifiedDate",
-        "LastModifiedById",
-        "SystemModstamp",
-        "IsArchived",
-        "CallDurationInSeconds",
-        "CallType",
-        "CallDisposition",
-        "CallObject",
-        "ReminderDateTime",
-        "IsReminderSet",
-        "RecurrenceActivityId",
-        "IsRecurrence",
-        "RecurrenceStartDateOnly",
-        "RecurrenceEndDateOnly",
-        "RecurrenceTimeZoneSidKey",
-        "RecurrenceType",
-        "RecurrenceInterval",
-        "RecurrenceDayOfWeekMask",
-        "RecurrenceDayOfMonth",
-        "RecurrenceInstance",
-        "RecurrenceMonthOfYear",
-        "RecurrenceRegeneratedType",
-        "TaskSubtype"
-    ]
+    "version": 1
 }

@@ -1,132 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "attributes": {
-            "type": "object",
-            "properties": {
-                "type": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "type",
-                "url"
-            ]
-        },
-        "Id": {
-            "type": "string"
-        },
-        "IsDeleted": {
-            "type": "boolean"
-        },
-        "MasterRecordId": {
-            "type": "null"
-        },
-        "CaseNumber": {
-            "type": "string"
-        },
-        "RecordTypeId": {
-            "type": "string"
-        },
-        "Status": {
-            "type": "string"
-        },
-        "Language": {
-            "type": "null"
-        },
-        "Priority": {
-            "type": "string"
-        },
-        "IsClosed": {
-            "type": "boolean"
-        },
-        "IsEscalated": {
-            "type": "boolean"
-        },
-        "OwnerId": {
-            "type": "string"
-        },
-        "CreatedDate": {
-            "type": "string"
-        },
-        "CreatedById": {
-            "type": "string"
-        },
-        "LastModifiedDate": {
-            "type": "string"
-        },
-        "LastModifiedById": {
-            "type": "string"
-        },
-        "SystemModstamp": {
-            "type": "string"
-        },
-        "Comments": {
-            "type": "null"
-        },
-        "ProductId": {
-            "type": "null"
-        },
-        "BusinessHoursId": {
-            "type": "string"
-        },
-        "ServiceContractId": {
-            "type": "null"
-        },
-        "AssetId": {
-            "type": "null"
-        },
-        "IsClosedOnCreate": {
-            "type": "boolean"
-        },
-        "IsStopped": {
-            "type": "boolean"
-        },
-        "StopStartDate": {
-            "type": "null"
-        },
-        "MilestoneStatus": {
-            "type": "string"
-        }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/case/get.json",
+    "sha": "4b82a652d98d792996989928b557167628e2b8e5",
+    "size": 2827,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/case/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/case/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/4b82a652d98d792996989928b557167628e2b8e5",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/case/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJhdHRyaWJ1dGVzIjogewogICAgICAgICAgICAidHlwZSI6ICJv\nYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAg\nICAgICAgICJ0eXBlIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAi\ndXJsIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgInR5cGUiLAogICAgICAg\nICAgICAgICAgInVybCIKICAgICAgICAgICAgXQogICAgICAgIH0sCiAgICAg\nICAgIklkIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgfSwKICAgICAgICAiSXNEZWxldGVkIjogewogICAgICAgICAgICAidHlw\nZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgIk1hc3RlclJlY29y\nZElkIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0s\nCiAgICAgICAgIkNhc2VOdW1iZXIiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJSZWNvcmRUeXBlSWQiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAg\nICAgICJTdGF0dXMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJMYW5ndWFnZSI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAgICAgICJQcmlvcml0eSI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAg\nICAgICAgIklzQ2xvc2VkIjogewogICAgICAgICAgICAidHlwZSI6ICJib29s\nZWFuIgogICAgICAgIH0sCiAgICAgICAgIklzRXNjYWxhdGVkIjogewogICAg\nICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAg\nIk93bmVySWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICB9LAogICAgICAgICJDcmVhdGVkRGF0ZSI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIkNyZWF0ZWRC\neUlkIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nfSwKICAgICAgICAiTGFzdE1vZGlmaWVkRGF0ZSI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIkxhc3RNb2Rp\nZmllZEJ5SWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICB9LAogICAgICAgICJTeXN0ZW1Nb2RzdGFtcCI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIkNvbW1l\nbnRzIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0s\nCiAgICAgICAgIlByb2R1Y3RJZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nbnVsbCIKICAgICAgICB9LAogICAgICAgICJCdXNpbmVzc0hvdXJzSWQiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAg\nICAgICJTZXJ2aWNlQ29udHJhY3RJZCI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAibnVsbCIKICAgICAgICB9LAogICAgICAgICJBc3NldElkIjogewogICAg\nICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAgIklz\nQ2xvc2VkT25DcmVhdGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJvb2xl\nYW4iCiAgICAgICAgfSwKICAgICAgICAiSXNTdG9wcGVkIjogewogICAgICAg\nICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgIlN0\nb3BTdGFydERhdGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAg\nICAgICAgfSwKICAgICAgICAiTWlsZXN0b25lU3RhdHVzIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfQogICAgfSwKICAgICJy\nZXF1aXJlZCI6IFsKICAgICAgICAiYXR0cmlidXRlcyIsCiAgICAgICAgIklk\nIiwKICAgICAgICAiSXNEZWxldGVkIiwKICAgICAgICAiTWFzdGVyUmVjb3Jk\nSWQiLAogICAgICAgICJDYXNlTnVtYmVyIiwKICAgICAgICAiQ29udGFjdElk\nIiwKICAgICAgICAiQWNjb3VudElkIiwKICAgICAgICAiUGFyZW50SWQiLAog\nICAgICAgICJTdXBwbGllZE5hbWUiLAogICAgICAgICJTdXBwbGllZEVtYWls\nIiwKICAgICAgICAiU3VwcGxpZWRQaG9uZSIsCiAgICAgICAgIlN1cHBsaWVk\nQ29tcGFueSIsCiAgICAgICAgIlR5cGUiLAogICAgICAgICJTdGF0dXMiLAog\nICAgICAgICJSZWFzb24iLAogICAgICAgICJPcmlnaW4iLAogICAgICAgICJT\ndWJqZWN0IiwKICAgICAgICAiUHJpb3JpdHkiLAogICAgICAgICJEZXNjcmlw\ndGlvbiIsCiAgICAgICAgIklzQ2xvc2VkIiwKICAgICAgICAiQ2xvc2VkRGF0\nZSIsCiAgICAgICAgIklzRXNjYWxhdGVkIiwKICAgICAgICAiT3duZXJJZCIs\nCiAgICAgICAgIkNyZWF0ZWREYXRlIiwKICAgICAgICAiQ3JlYXRlZEJ5SWQi\nLAogICAgICAgICJMYXN0TW9kaWZpZWREYXRlIiwKICAgICAgICAiTGFzdE1v\nZGlmaWVkQnlJZCIsCiAgICAgICAgIlN5c3RlbU1vZHN0YW1wIiwKICAgICAg\nICAiQ29udGFjdFBob25lIiwKICAgICAgICAiQ29udGFjdE1vYmlsZSIsCiAg\nICAgICAgIkNvbnRhY3RFbWFpbCIsCiAgICAgICAgIkNvbnRhY3RGYXgiLAog\nICAgICAgICJDb21tZW50cyIsCiAgICAgICAgIkxhc3RWaWV3ZWREYXRlIiwK\nICAgICAgICAiTGFzdFJlZmVyZW5jZWREYXRlIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/case/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/4b82a652d98d792996989928b557167628e2b8e5",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/case/get.json"
     },
-    "required": [
-        "attributes",
-        "Id",
-        "IsDeleted",
-        "MasterRecordId",
-        "CaseNumber",
-        "ContactId",
-        "AccountId",
-        "ParentId",
-        "SuppliedName",
-        "SuppliedEmail",
-        "SuppliedPhone",
-        "SuppliedCompany",
-        "Type",
-        "Status",
-        "Reason",
-        "Origin",
-        "Subject",
-        "Priority",
-        "Description",
-        "IsClosed",
-        "ClosedDate",
-        "IsEscalated",
-        "OwnerId",
-        "CreatedDate",
-        "CreatedById",
-        "LastModifiedDate",
-        "LastModifiedById",
-        "SystemModstamp",
-        "ContactPhone",
-        "ContactMobile",
-        "ContactEmail",
-        "ContactFax",
-        "Comments",
-        "LastViewedDate",
-        "LastReferencedDate"
-    ]
+    "version": 1
 }

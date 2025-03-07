@@ -1,42 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"id": {
-			"type": "string"
-		},
-		"type": {
-			"type": "string"
-		},
-		"name": {
-			"type": "string"
-		},
-		"href": {
-			"type": "string"
-		},
-		"format": {
-			"type": "object",
-			"properties": {
-				"type": {
-					"type": "string"
-				},
-				"isArray": {
-					"type": "boolean"
-				}
-			},
-			"required": [
-				"type",
-				"isArray"
-			]
-		},
-		"display": {
-			"type": "boolean"
-		}
-	},
-	"required": [
-		"id",
-		"type",
-		"name",
-		"href",
-		"format"
-	]
+    "name": "getAllColumns.json",
+    "path": "packages/nodes-base/nodes/Coda/__schema__/v1.1.0/table/getAllColumns.json",
+    "sha": "5ebc6b6ea4586a7dbec6b33049558901250e68a0",
+    "size": 499,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Coda/__schema__/v1.1.0/table/getAllColumns.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Coda/__schema__/v1.1.0/table/getAllColumns.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5ebc6b6ea4586a7dbec6b33049558901250e68a0",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Coda/__schema__/v1.1.0/table/getAllColumns.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJpZCI6\nIHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJInR5cGUiOiB7CgkJCSJ0\neXBlIjogInN0cmluZyIKCQl9LAoJCSJuYW1lIjogewoJCQkidHlwZSI6ICJz\ndHJpbmciCgkJfSwKCQkiaHJlZiI6IHsKCQkJInR5cGUiOiAic3RyaW5nIgoJ\nCX0sCgkJImZvcm1hdCI6IHsKCQkJInR5cGUiOiAib2JqZWN0IiwKCQkJInBy\nb3BlcnRpZXMiOiB7CgkJCQkidHlwZSI6IHsKCQkJCQkidHlwZSI6ICJzdHJp\nbmciCgkJCQl9LAoJCQkJImlzQXJyYXkiOiB7CgkJCQkJInR5cGUiOiAiYm9v\nbGVhbiIKCQkJCX0KCQkJfSwKCQkJInJlcXVpcmVkIjogWwoJCQkJInR5cGUi\nLAoJCQkJImlzQXJyYXkiCgkJCV0KCQl9LAoJCSJkaXNwbGF5IjogewoJCQki\ndHlwZSI6ICJib29sZWFuIgoJCX0KCX0sCgkicmVxdWlyZWQiOiBbCgkJImlk\nIiwKCQkidHlwZSIsCgkJIm5hbWUiLAoJCSJocmVmIiwKCQkiZm9ybWF0IgoJ\nXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Coda/__schema__/v1.1.0/table/getAllColumns.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5ebc6b6ea4586a7dbec6b33049558901250e68a0",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Coda/__schema__/v1.1.0/table/getAllColumns.json"
+    },
+    "version": 1
 }

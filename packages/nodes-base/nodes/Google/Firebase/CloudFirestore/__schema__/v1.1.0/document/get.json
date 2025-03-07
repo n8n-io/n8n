@@ -1,48 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "readTime": {
-            "type": "string"
-        },
-        "found": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "fields": {
-                    "type": "object",
-                    "properties": {
-                        "nome": {
-                            "type": "object",
-                            "properties": {
-                                "stringValue": {
-                                    "type": "string"
-                                }
-                            },
-                            "required": [
-                                "stringValue"
-                            ]
-                        }
-                    }
-                },
-                "createTime": {
-                    "type": "string"
-                },
-                "updateTime": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "name",
-                "fields",
-                "createTime",
-                "updateTime",
-                "id"
-            ]
-        }
-    }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__schema__/v1.1.0/document/get.json",
+    "sha": "33d22b791130e433601622684f4728665c5f7a1f",
+    "size": 1302,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__schema__/v1.1.0/document/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__schema__/v1.1.0/document/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/33d22b791130e433601622684f4728665c5f7a1f",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__schema__/v1.1.0/document/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJyZWFkVGltZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgIH0sCiAgICAgICAgImZvdW5kIjogewogICAgICAgICAg\nICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6\nIHsKICAgICAgICAgICAgICAgICJuYW1lIjogewogICAgICAgICAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAg\nICAgICAgICAgICAiZmllbGRzIjogewogICAgICAgICAgICAgICAgICAgICJ0\neXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICAgICAgICAgInByb3BlcnRp\nZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJub21lIjogewogICAg\nICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICJzdHJpbmdWYWx1ZSI6IHsK\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0KICAg\nICAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgInN0cmluZ1ZhbHVlIgogICAgICAgICAgICAgICAgICAg\nICAgICAgICAgXQogICAgICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAg\nICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nICAgICJjcmVhdGVUaW1lIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAg\nICAidXBkYXRlVGltZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAg\nImlkIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgIm5hbWUiLAogICAgICAg\nICAgICAgICAgImZpZWxkcyIsCiAgICAgICAgICAgICAgICAiY3JlYXRlVGlt\nZSIsCiAgICAgICAgICAgICAgICAidXBkYXRlVGltZSIsCiAgICAgICAgICAg\nICAgICAiaWQiCiAgICAgICAgICAgIF0KICAgICAgICB9CiAgICB9Cn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__schema__/v1.1.0/document/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/33d22b791130e433601622684f4728665c5f7a1f",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__schema__/v1.1.0/document/get.json"
+    },
+    "version": 1
 }

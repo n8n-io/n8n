@@ -1,178 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "@odata.context": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "replyToId": {
-            "type": "null"
-        },
-        "etag": {
-            "type": "string"
-        },
-        "messageType": {
-            "type": "string"
-        },
-        "createdDateTime": {
-            "type": "string"
-        },
-        "lastModifiedDateTime": {
-            "type": "string"
-        },
-        "lastEditedDateTime": {
-            "type": "null"
-        },
-        "deletedDateTime": {
-            "type": "null"
-        },
-        "subject": {
-            "type": "null"
-        },
-        "summary": {
-            "type": "null"
-        },
-        "chatId": {
-            "type": "string"
-        },
-        "importance": {
-            "type": "string"
-        },
-        "locale": {
-            "type": "string"
-        },
-        "webUrl": {
-            "type": "null"
-        },
-        "channelIdentity": {
-            "type": "null"
-        },
-        "policyViolation": {
-            "type": "null"
-        },
-        "body": {
-            "type": "object",
-            "properties": {
-                "contentType": {
-                    "type": "string"
-                },
-                "content": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "contentType",
-                "content"
-            ]
-        },
-        "attachments": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "contentType": {
-                        "type": "string"
-                    },
-                    "contentUrl": {
-                        "type": "null"
-                    },
-                    "content": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "null"
-                    },
-                    "thumbnailUrl": {
-                        "type": "null"
-                    },
-                    "teamsAppId": {
-                        "type": "null"
-                    }
-                },
-                "required": [
-                    "id",
-                    "contentType",
-                    "contentUrl",
-                    "content",
-                    "name",
-                    "thumbnailUrl",
-                    "teamsAppId"
-                ]
-            }
-        },
-        "mentions": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "integer"
-                    },
-                    "mentionText": {
-                        "type": "string"
-                    },
-                    "mentioned": {
-                        "type": "object",
-                        "properties": {
-                            "device": {
-                                "type": "null"
-                            },
-                            "user": {
-                                "type": "null"
-                            },
-                            "conversation": {
-                                "type": "null"
-                            },
-                            "tag": {
-                                "type": "null"
-                            },
-                            "application": {
-                                "type": "object",
-                                "properties": {
-                                    "@odata.type": {
-                                        "type": "string"
-                                    },
-                                    "id": {
-                                        "type": "string"
-                                    },
-                                    "displayName": {
-                                        "type": "string"
-                                    },
-                                    "applicationIdentityType": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "@odata.type",
-                                    "id",
-                                    "displayName",
-                                    "applicationIdentityType"
-                                ]
-                            }
-                        },
-                        "required": [
-                            "device",
-                            "user",
-                            "conversation",
-                            "tag",
-                            "application"
-                        ]
-                    }
-                },
-                "required": [
-                    "id",
-                    "mentionText",
-                    "mentioned"
-                ]
-            }
-        }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/chatMessage/get.json",
+    "sha": "4760c1360f2d5f4e75c9694b0b76092c741da3f3",
+    "size": 5199,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/chatMessage/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/chatMessage/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/4760c1360f2d5f4e75c9694b0b76092c741da3f3",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/chatMessage/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJAb2RhdGEuY29udGV4dCI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImlkIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAicmVw\nbHlUb0lkIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAg\nIH0sCiAgICAgICAgImV0YWciOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJtZXNzYWdlVHlwZSI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAg\nImNyZWF0ZWREYXRlVGltZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgIH0sCiAgICAgICAgImxhc3RNb2RpZmllZERhdGVUaW1l\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwK\nICAgICAgICAibGFzdEVkaXRlZERhdGVUaW1lIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAgImRlbGV0ZWREYXRl\nVGltZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9\nLAogICAgICAgICJzdWJqZWN0IjogewogICAgICAgICAgICAidHlwZSI6ICJu\ndWxsIgogICAgICAgIH0sCiAgICAgICAgInN1bW1hcnkiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAiY2hhdElk\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwK\nICAgICAgICAiaW1wb3J0YW5jZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImxvY2FsZSI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIndl\nYlVybCI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9\nLAogICAgICAgICJjaGFubmVsSWRlbnRpdHkiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAicG9saWN5VmlvbGF0\naW9uIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0s\nCiAgICAgICAgImJvZHkiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9iamVj\ndCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAg\nICAgImNvbnRlbnRUeXBlIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAg\nICAiY29udGVudCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0sCiAgICAg\nICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICJjb250ZW50\nVHlwZSIsCiAgICAgICAgICAgICAgICAiY29udGVudCIKICAgICAgICAgICAg\nXQogICAgICAgIH0sCiAgICAgICAgImF0dGFjaG1lbnRzIjogewogICAgICAg\nICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAgICJpdGVtcyI6IHsK\nICAgICAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAg\nICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICAgICAiaWQi\nOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICJj\nb250ZW50VHlwZSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAg\nICAgICAgICAgImNvbnRlbnRVcmwiOiB7CiAgICAgICAgICAgICAgICAgICAg\nICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgICAgICAgICAiY29udGVudCI6IHsKICAgICAgICAgICAgICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAg\nIH0sCiAgICAgICAgICAgICAgICAgICAgIm5hbWUiOiB7CiAgICAgICAgICAg\nICAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgICAgICAgICAg\nICAgfSwKICAgICAgICAgICAgICAgICAgICAidGh1bWJuYWlsVXJsIjogewog\nICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAg\nICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgInRlYW1zQXBw\nSWQiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogIm51bGwi\nCiAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICAg\nICAiaWQiLAogICAgICAgICAgICAgICAgICAgICJjb250ZW50VHlwZSIsCiAg\nICAgICAgICAgICAgICAgICAgImNvbnRlbnRVcmwiLAogICAgICAgICAgICAg\nICAgICAgICJjb250ZW50IiwKICAgICAgICAgICAgICAgICAgICAibmFtZSIs\nCiAgICAgICAgICAgICAgICAgICAgInRodW1ibmFpbFVybCIsCiAgICAgICAg\nICAgICAgICAgICAgInRlYW1zQXBwSWQiCiAgICAgICAgICAgICAgICBdCiAg\nICAgICAgICAgIH0KICAgICAgICB9LAogICAgICAgICJtZW50aW9ucyI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAiYXJyYXkiLAogICAgICAgICAgICAiaXRl\nbXMiOiB7CiAgICAgICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAg\nICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAg\nICAgImlkIjogewogICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJp\nbnRlZ2VyIgogICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAg\nICAgICAgIm1lbnRpb25UZXh0IjogewogICAgICAgICAgICAgICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgICAgICAgICAibWVudGlvbmVkIjogewogICAgICAgICAgICAg\nICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAg\nICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICJkZXZpY2UiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICAgICAgICAgICAgICAgICAg\nICAgIH0sCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAidXNlciI6IHsK\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJudWxs\nIgogICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICJjb252ZXJzYXRpb24iOiB7CiAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICAg\nICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAidGFnIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICJ0eXBlIjogIm51bGwiCiAgICAgICAgICAgICAgICAgICAgICAgICAgICB9\nLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgImFwcGxpY2F0aW9uIjog\newogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogIm9i\namVjdCIsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInByb3Bl\ncnRpZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICJAb2RhdGEudHlwZSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgImlkIjogewogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAiZGlzcGxheU5hbWUiOiB7CiAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJhcHBsaWNhdGlv\nbklkZW50aXR5VHlwZSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAiQG9kYXRhLnR5cGUiLAogICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAiaWQiLAogICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAiZGlzcGxheU5hbWUiLAogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAiYXBwbGljYXRpb25JZGVudGl0eVR5cGUiCiAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgXQogICAgICAgICAgICAgICAg\nICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgICAgICAgICB9LAogICAg\nICAgICAgICAgICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAiZGV2aWNlIiwKICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICJ1c2VyIiwKICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICJjb252ZXJzYXRpb24iLAogICAgICAgICAgICAgICAgICAgICAgICAgICAg\nInRhZyIsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAiYXBwbGljYXRp\nb24iCiAgICAgICAgICAgICAgICAgICAgICAgIF0KICAgICAgICAgICAgICAg\nICAgICB9CiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInJl\ncXVpcmVkIjogWwogICAgICAgICAgICAgICAgICAgICJpZCIsCiAgICAgICAg\nICAgICAgICAgICAgIm1lbnRpb25UZXh0IiwKICAgICAgICAgICAgICAgICAg\nICAibWVudGlvbmVkIgogICAgICAgICAgICAgICAgXQogICAgICAgICAgICB9\nCiAgICAgICAgfQogICAgfSwKICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAi\nQG9kYXRhLmNvbnRleHQiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/chatMessage/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/4760c1360f2d5f4e75c9694b0b76092c741da3f3",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/chatMessage/get.json"
     },
-    "required": [
-        "@odata.context"
-    ]
+    "version": 1
 }

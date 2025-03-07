@@ -1,40 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "state": {
-            "type": "string"
-        },
-        "board_kind": {
-            "type": "string"
-        },
-        "owners": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "id"
-                ]
-            }
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/MondayCom/__schema__/v1.0.0/board/getAll.json",
+    "sha": "4a4efe0fc96a024aae71bf600d1526e76ec4ec2c",
+    "size": 795,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/MondayCom/__schema__/v1.0.0/board/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/MondayCom/__schema__/v1.0.0/board/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/4a4efe0fc96a024aae71bf600d1526e76ec4ec2c",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/MondayCom/__schema__/v1.0.0/board/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgIm5hbWUiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJzdGF0ZSI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAg\nImJvYXJkX2tpbmQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJvd25lcnMiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogImFycmF5IiwKICAgICAgICAgICAgIml0ZW1zIjogewogICAgICAg\nICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgICAgICJw\ncm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgICAgICJpZCI6IHsKICAg\nICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAg\nICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAgICAgImlkIgog\nICAgICAgICAgICAgICAgXQogICAgICAgICAgICB9CiAgICAgICAgfQogICAg\nfSwKICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAiaWQiLAogICAgICAgICJu\nYW1lIiwKICAgICAgICAiZGVzY3JpcHRpb24iLAogICAgICAgICJzdGF0ZSIs\nCiAgICAgICAgImJvYXJkX2ZvbGRlcl9pZCIsCiAgICAgICAgImJvYXJkX2tp\nbmQiLAogICAgICAgICJvd25lcnMiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/MondayCom/__schema__/v1.0.0/board/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/4a4efe0fc96a024aae71bf600d1526e76ec4ec2c",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/MondayCom/__schema__/v1.0.0/board/getAll.json"
     },
-    "required": [
-        "id",
-        "name",
-        "description",
-        "state",
-        "board_folder_id",
-        "board_kind",
-        "owners"
-    ]
+    "version": 1
 }

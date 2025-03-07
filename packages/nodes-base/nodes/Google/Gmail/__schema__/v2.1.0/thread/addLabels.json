@@ -1,33 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "messages": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "threadId": {
-                        "type": "string"
-                    },
-                    "labelIds": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    }
-                },
-                "required": [
-                    "id",
-                    "threadId",
-                    "labelIds"
-                ]
-            }
-        }
-    }
+    "name": "addLabels.json",
+    "path": "packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/thread/addLabels.json",
+    "sha": "e5507b39bf211301b98ef5b9259f280c531bdf5d",
+    "size": 821,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/thread/addLabels.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/thread/addLabels.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/e5507b39bf211301b98ef5b9259f280c531bdf5d",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/thread/addLabels.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgIm1lc3NhZ2VzIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAgICJpdGVtcyI6IHsKICAgICAg\nICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICAgICAi\ncHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICAgICAiaWQiOiB7CiAg\nICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICJ0aHJlYWRJ\nZCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAg\nImxhYmVsSWRzIjogewogICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6\nICJhcnJheSIsCiAgICAgICAgICAgICAgICAgICAgICAgICJpdGVtcyI6IHsK\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgICAg\nIH0KICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAicmVxdWly\nZWQiOiBbCiAgICAgICAgICAgICAgICAgICAgImlkIiwKICAgICAgICAgICAg\nICAgICAgICAidGhyZWFkSWQiLAogICAgICAgICAgICAgICAgICAgICJsYWJl\nbElkcyIKICAgICAgICAgICAgICAgIF0KICAgICAgICAgICAgfQogICAgICAg\nIH0KICAgIH0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/thread/addLabels.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/e5507b39bf211301b98ef5b9259f280c531bdf5d",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/thread/addLabels.json"
+    },
+    "version": 1
 }

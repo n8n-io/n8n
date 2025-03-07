@@ -1,116 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "scriptOrgName": {
-            "type": "string"
-        },
-        "scriptId": {
-            "type": "string"
-        },
-        "script": {
-            "type": "string"
-        },
-        "branch": {
-            "type": "string"
-        },
-        "environment": {
-            "type": "string"
-        },
-        "argument": {
-            "type": "string"
-        },
-        "code": {
-            "type": "null"
-        },
-        "launchType": {
-            "type": "string"
-        },
-        "nbLaunches": {
-            "type": "integer"
-        },
-        "s3Folder": {
-            "type": "string"
-        },
-        "orgS3Folder": {
-            "type": "string"
-        },
-        "updatedAt": {
-            "type": "integer"
-        },
-        "name": {
-            "type": "string"
-        },
-        "fileMgmt": {
-            "type": "string"
-        },
-        "maxParallelism": {
-            "type": "integer"
-        },
-        "notifications": {
-            "type": "object",
-            "properties": {
-                "mailManualExitError": {
-                    "type": "boolean"
-                },
-                "mailManualTimeError": {
-                    "type": "boolean"
-                },
-                "mailManualExitSuccess": {
-                    "type": "boolean"
-                },
-                "mailManualLaunchError": {
-                    "type": "boolean"
-                },
-                "mailAutomaticExitError": {
-                    "type": "boolean"
-                },
-                "mailAutomaticTimeError": {
-                    "type": "boolean"
-                },
-                "mailAutomaticExitSuccess": {
-                    "type": "boolean"
-                },
-                "mailAutomaticLaunchError": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "mailManualExitError",
-                "mailManualTimeError",
-                "mailManualExitSuccess",
-                "mailManualLaunchError",
-                "mailAutomaticExitError",
-                "mailAutomaticTimeError",
-                "mailAutomaticExitSuccess",
-                "mailAutomaticLaunchError"
-            ]
-        },
-        "lastEndType": {
-            "type": "string"
-        },
-        "wasSetupValidWhenSubmittedByTheFrontend": {
-            "type": "boolean"
-        }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Phantombuster/__schema__/v1.0.0/agent/get.json",
+    "sha": "c8dc56375cf3dbd71b56a1cdc7c52cae5ab0de50",
+    "size": 2840,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Phantombuster/__schema__/v1.0.0/agent/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Phantombuster/__schema__/v1.0.0/agent/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/c8dc56375cf3dbd71b56a1cdc7c52cae5ab0de50",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Phantombuster/__schema__/v1.0.0/agent/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInNjcmlwdE9yZ05hbWUiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJzY3Jp\ncHRJZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nIH0sCiAgICAgICAgInNjcmlwdCI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImJyYW5jaCI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImVu\ndmlyb25tZW50IjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgfSwKICAgICAgICAiYXJndW1lbnQiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJjb2RlIjogewog\nICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAg\nImxhdW5jaFR5cGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJuYkxhdW5jaGVzIjogewogICAgICAgICAg\nICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgInMzRm9s\nZGVyIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nfSwKICAgICAgICAib3JnUzNGb2xkZXIiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJ1cGRhdGVkQXQiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAg\nICAgICAibmFtZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgImZpbGVNZ210IjogewogICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAibWF4UGFyYWxs\nZWxpc20iOiB7CiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAg\nICAgfSwKICAgICAgICAibm90aWZpY2F0aW9ucyI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7\nCiAgICAgICAgICAgICAgICAibWFpbE1hbnVhbEV4aXRFcnJvciI6IHsKICAg\nICAgICAgICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgICAg\nICAgICAgfSwKICAgICAgICAgICAgICAgICJtYWlsTWFudWFsVGltZUVycm9y\nIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgIm1haWxNYW51YWxF\neGl0U3VjY2VzcyI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJi\nb29sZWFuIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJt\nYWlsTWFudWFsTGF1bmNoRXJyb3IiOiB7CiAgICAgICAgICAgICAgICAgICAg\nInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAg\nICAgICAgICAibWFpbEF1dG9tYXRpY0V4aXRFcnJvciI6IHsKICAgICAgICAg\nICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgICAgICAgICAg\nfSwKICAgICAgICAgICAgICAgICJtYWlsQXV0b21hdGljVGltZUVycm9yIjog\newogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAg\nICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgIm1haWxBdXRvbWF0aWNF\neGl0U3VjY2VzcyI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJi\nb29sZWFuIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJt\nYWlsQXV0b21hdGljTGF1bmNoRXJyb3IiOiB7CiAgICAgICAgICAgICAgICAg\nICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICAgICAgICAgIH0KICAgICAg\nICAgICAgfSwKICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAg\nICAgICAgIm1haWxNYW51YWxFeGl0RXJyb3IiLAogICAgICAgICAgICAgICAg\nIm1haWxNYW51YWxUaW1lRXJyb3IiLAogICAgICAgICAgICAgICAgIm1haWxN\nYW51YWxFeGl0U3VjY2VzcyIsCiAgICAgICAgICAgICAgICAibWFpbE1hbnVh\nbExhdW5jaEVycm9yIiwKICAgICAgICAgICAgICAgICJtYWlsQXV0b21hdGlj\nRXhpdEVycm9yIiwKICAgICAgICAgICAgICAgICJtYWlsQXV0b21hdGljVGlt\nZUVycm9yIiwKICAgICAgICAgICAgICAgICJtYWlsQXV0b21hdGljRXhpdFN1\nY2Nlc3MiLAogICAgICAgICAgICAgICAgIm1haWxBdXRvbWF0aWNMYXVuY2hF\ncnJvciIKICAgICAgICAgICAgXQogICAgICAgIH0sCiAgICAgICAgImxhc3RF\nbmRUeXBlIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgfSwKICAgICAgICAid2FzU2V0dXBWYWxpZFdoZW5TdWJtaXR0ZWRCeVRo\nZUZyb250ZW5kIjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgog\nICAgICAgIH0KICAgIH0sCiAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgImlk\nIiwKICAgICAgICAic2NyaXB0T3JnTmFtZSIsCiAgICAgICAgInNjcmlwdElk\nIiwKICAgICAgICAic2NyaXB0IiwKICAgICAgICAiYnJhbmNoIiwKICAgICAg\nICAiZW52aXJvbm1lbnQiLAogICAgICAgICJhcmd1bWVudCIsCiAgICAgICAg\nImNvZGUiLAogICAgICAgICJsYXVuY2hUeXBlIiwKICAgICAgICAibmJMYXVu\nY2hlcyIsCiAgICAgICAgInMzRm9sZGVyIiwKICAgICAgICAib3JnUzNGb2xk\nZXIiLAogICAgICAgICJ1cGRhdGVkQXQiLAogICAgICAgICJuYW1lIiwKICAg\nICAgICAiZmlsZU1nbXQiLAogICAgICAgICJtYXhQYXJhbGxlbGlzbSIKICAg\nIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Phantombuster/__schema__/v1.0.0/agent/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/c8dc56375cf3dbd71b56a1cdc7c52cae5ab0de50",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Phantombuster/__schema__/v1.0.0/agent/get.json"
     },
-    "required": [
-        "id",
-        "scriptOrgName",
-        "scriptId",
-        "script",
-        "branch",
-        "environment",
-        "argument",
-        "code",
-        "launchType",
-        "nbLaunches",
-        "s3Folder",
-        "orgS3Folder",
-        "updatedAt",
-        "name",
-        "fileMgmt",
-        "maxParallelism"
-    ]
+    "version": 1
 }

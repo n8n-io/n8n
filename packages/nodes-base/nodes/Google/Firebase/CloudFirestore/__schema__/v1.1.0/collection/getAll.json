@@ -1,11 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "name": {
-            "type": "string"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__schema__/v1.1.0/collection/getAll.json",
+    "sha": "869e147c21770a71e64a729d1f8440d8eb6b987f",
+    "size": 149,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__schema__/v1.1.0/collection/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__schema__/v1.1.0/collection/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/869e147c21770a71e64a729d1f8440d8eb6b987f",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__schema__/v1.1.0/collection/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJuYW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfQogICAgfSwKICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAi\nbmFtZSIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__schema__/v1.1.0/collection/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/869e147c21770a71e64a729d1f8440d8eb6b987f",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__schema__/v1.1.0/collection/getAll.json"
     },
-    "required": [
-        "name"
-    ]
+    "version": 1
 }

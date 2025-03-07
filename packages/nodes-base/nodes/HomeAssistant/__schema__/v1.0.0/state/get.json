@@ -1,61 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "entity_id": {
-            "type": "string"
-        },
-        "state": {
-            "type": "string"
-        },
-        "attributes": {
-            "type": "object",
-            "properties": {
-                "friendly_name": {
-                    "type": "string"
-                },
-                "state_class": {
-                    "type": "string"
-                },
-                "unit_of_measurement": {
-                    "type": "string"
-                },
-                "device_class": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "friendly_name"
-            ]
-        },
-        "last_changed": {
-            "type": "string"
-        },
-        "last_reported": {
-            "type": "string"
-        },
-        "last_updated": {
-            "type": "string"
-        },
-        "context": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "id",
-                "parent_id",
-                "user_id"
-            ]
-        }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/HomeAssistant/__schema__/v1.0.0/state/get.json",
+    "sha": "f28ca784513186178b41f6b8ce8adbccbf39219e",
+    "size": 1370,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/HomeAssistant/__schema__/v1.0.0/state/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/HomeAssistant/__schema__/v1.0.0/state/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/f28ca784513186178b41f6b8ce8adbccbf39219e",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/HomeAssistant/__schema__/v1.0.0/state/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJlbnRpdHlfaWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJzdGF0ZSI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImF0dHJp\nYnV0ZXMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAg\nICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgImZyaWVu\nZGx5X25hbWUiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJzdGF0\nZV9jbGFzcyI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInVuaXRf\nb2ZfbWVhc3VyZW1lbnQiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAg\nICJkZXZpY2VfY2xhc3MiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9LAog\nICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAiZnJp\nZW5kbHlfbmFtZSIKICAgICAgICAgICAgXQogICAgICAgIH0sCiAgICAgICAg\nImxhc3RfY2hhbmdlZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgIH0sCiAgICAgICAgImxhc3RfcmVwb3J0ZWQiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJs\nYXN0X3VwZGF0ZWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJjb250ZXh0IjogewogICAgICAgICAgICAi\ndHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsK\nICAgICAgICAgICAgICAgICJpZCI6IHsKICAgICAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAg\nIH0sCiAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAg\nICJpZCIsCiAgICAgICAgICAgICAgICAicGFyZW50X2lkIiwKICAgICAgICAg\nICAgICAgICJ1c2VyX2lkIgogICAgICAgICAgICBdCiAgICAgICAgfQogICAg\nfSwKICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAiZW50aXR5X2lkIiwKICAg\nICAgICAic3RhdGUiLAogICAgICAgICJhdHRyaWJ1dGVzIiwKICAgICAgICAi\nbGFzdF9jaGFuZ2VkIiwKICAgICAgICAibGFzdF91cGRhdGVkIiwKICAgICAg\nICAiY29udGV4dCIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/HomeAssistant/__schema__/v1.0.0/state/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/f28ca784513186178b41f6b8ce8adbccbf39219e",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/HomeAssistant/__schema__/v1.0.0/state/get.json"
     },
-    "required": [
-        "entity_id",
-        "state",
-        "attributes",
-        "last_changed",
-        "last_updated",
-        "context"
-    ]
+    "version": 1
 }

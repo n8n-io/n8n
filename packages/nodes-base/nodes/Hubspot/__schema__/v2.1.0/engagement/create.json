@@ -1,108 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "engagement": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "portalId": {
-                    "type": "integer"
-                },
-                "active": {
-                    "type": "boolean"
-                },
-                "createdAt": {
-                    "type": "integer"
-                },
-                "lastUpdated": {
-                    "type": "integer"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "timestamp": {
-                    "type": "integer"
-                },
-                "bodyPreview": {
-                    "type": "string"
-                },
-                "bodyPreviewIsTruncated": {
-                    "type": "boolean"
-                },
-                "bodyPreviewHtml": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "id",
-                "portalId",
-                "active",
-                "createdAt",
-                "lastUpdated",
-                "type",
-                "timestamp",
-                "allAccessibleTeamIds",
-                "queueMembershipIds"
-            ]
-        },
-        "associations": {
-            "type": "object",
-            "properties": {
-                "contactIds": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "companyIds": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "dealIds": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "ownerIds": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "ticketIds": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                }
-            },
-            "required": [
-                "contactIds",
-                "companyIds",
-                "dealIds",
-                "ownerIds",
-                "workflowIds",
-                "ticketIds",
-                "contentIds",
-                "quoteIds",
-                "marketingEventIds",
-                "partnerClientIds",
-                "orderIds",
-                "cartIds"
-            ]
-        },
-        "metadata": {
-            "type": "object",
-            "properties": {
-                "status": {
-                    "type": "string"
-                }
-            }
-        }
-    }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/engagement/create.json",
+    "sha": "41acf16ae21f4f65e740b49a1f911bda7115104b",
+    "size": 2954,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/engagement/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/engagement/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/41acf16ae21f4f65e740b49a1f911bda7115104b",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/engagement/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJlbmdhZ2VtZW50IjogewogICAgICAgICAgICAidHlwZSI6ICJv\nYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAg\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJp\nbnRlZ2VyIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJw\nb3J0YWxJZCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJpbnRl\nZ2VyIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJhY3Rp\ndmUiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIK\nICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiY3JlYXRlZEF0\nIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImxhc3RVcGRhdGVk\nIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInR5cGUiOiB7CiAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAg\nICAgICAgfSwKICAgICAgICAgICAgICAgICJ0aW1lc3RhbXAiOiB7CiAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICAgICAg\nICAgIH0sCiAgICAgICAgICAgICAgICAiYm9keVByZXZpZXciOiB7CiAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAg\nICAgfSwKICAgICAgICAgICAgICAgICJib2R5UHJldmlld0lzVHJ1bmNhdGVk\nIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImJvZHlQcmV2aWV3\nSHRtbCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0sCiAgICAgICAgICAg\nICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICJpZCIsCiAgICAgICAg\nICAgICAgICAicG9ydGFsSWQiLAogICAgICAgICAgICAgICAgImFjdGl2ZSIs\nCiAgICAgICAgICAgICAgICAiY3JlYXRlZEF0IiwKICAgICAgICAgICAgICAg\nICJsYXN0VXBkYXRlZCIsCiAgICAgICAgICAgICAgICAidHlwZSIsCiAgICAg\nICAgICAgICAgICAidGltZXN0YW1wIiwKICAgICAgICAgICAgICAgICJhbGxB\nY2Nlc3NpYmxlVGVhbUlkcyIsCiAgICAgICAgICAgICAgICAicXVldWVNZW1i\nZXJzaGlwSWRzIgogICAgICAgICAgICBdCiAgICAgICAgfSwKICAgICAgICAi\nYXNzb2NpYXRpb25zIjogewogICAgICAgICAgICAidHlwZSI6ICJvYmplY3Qi\nLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAg\nICJjb250YWN0SWRzIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nImFycmF5IiwKICAgICAgICAgICAgICAgICAgICAiaXRlbXMiOiB7CiAgICAg\nICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAg\nICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nICAgICJjb21wYW55SWRzIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogImFycmF5IiwKICAgICAgICAgICAgICAgICAgICAiaXRlbXMiOiB7CiAg\nICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAg\nICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgfSwKICAgICAgICAg\nICAgICAgICJkZWFsSWRzIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogImFycmF5IiwKICAgICAgICAgICAgICAgICAgICAiaXRlbXMiOiB7CiAg\nICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAg\nICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgfSwKICAgICAgICAg\nICAgICAgICJvd25lcklkcyI6IHsKICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJhcnJheSIsCiAgICAgICAgICAgICAgICAgICAgIml0ZW1zIjogewog\nICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAg\nICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgIH0sCiAgICAgICAg\nICAgICAgICAidGlja2V0SWRzIjogewogICAgICAgICAgICAgICAgICAgICJ0\neXBlIjogImFycmF5IiwKICAgICAgICAgICAgICAgICAgICAiaXRlbXMiOiB7\nCiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAg\nICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgfQogICAgICAg\nICAgICB9LAogICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAg\nICAgICAiY29udGFjdElkcyIsCiAgICAgICAgICAgICAgICAiY29tcGFueUlk\ncyIsCiAgICAgICAgICAgICAgICAiZGVhbElkcyIsCiAgICAgICAgICAgICAg\nICAib3duZXJJZHMiLAogICAgICAgICAgICAgICAgIndvcmtmbG93SWRzIiwK\nICAgICAgICAgICAgICAgICJ0aWNrZXRJZHMiLAogICAgICAgICAgICAgICAg\nImNvbnRlbnRJZHMiLAogICAgICAgICAgICAgICAgInF1b3RlSWRzIiwKICAg\nICAgICAgICAgICAgICJtYXJrZXRpbmdFdmVudElkcyIsCiAgICAgICAgICAg\nICAgICAicGFydG5lckNsaWVudElkcyIsCiAgICAgICAgICAgICAgICAib3Jk\nZXJJZHMiLAogICAgICAgICAgICAgICAgImNhcnRJZHMiCiAgICAgICAgICAg\nIF0KICAgICAgICB9LAogICAgICAgICJtZXRhZGF0YSI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMi\nOiB7CiAgICAgICAgICAgICAgICAic3RhdHVzIjogewogICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0KICAg\nICAgICAgICAgfQogICAgICAgIH0KICAgIH0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/engagement/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/41acf16ae21f4f65e740b49a1f911bda7115104b",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/engagement/create.json"
+    },
+    "version": 1
 }

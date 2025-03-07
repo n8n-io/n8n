@@ -1,17 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"index": {
-			"type": "integer"
-		},
-		"text": {
-			"type": "string"
-		},
-		"logprobs": {
-			"type": "null"
-		},
-		"finish_reason": {
-			"type": "string"
-		}
-	}
+    "name": "complete.json",
+    "path": "packages/nodes-base/nodes/OpenAi/__schema__/v1.1.0/text/complete.json",
+    "sha": "dc3f1367b149081f1a8277717a2d2f8d05bcb238",
+    "size": 203,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/OpenAi/__schema__/v1.1.0/text/complete.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/OpenAi/__schema__/v1.1.0/text/complete.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/dc3f1367b149081f1a8277717a2d2f8d05bcb238",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/OpenAi/__schema__/v1.1.0/text/complete.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJpbmRl\neCI6IHsKCQkJInR5cGUiOiAiaW50ZWdlciIKCQl9LAoJCSJ0ZXh0IjogewoJ\nCQkidHlwZSI6ICJzdHJpbmciCgkJfSwKCQkibG9ncHJvYnMiOiB7CgkJCSJ0\neXBlIjogIm51bGwiCgkJfSwKCQkiZmluaXNoX3JlYXNvbiI6IHsKCQkJInR5\ncGUiOiAic3RyaW5nIgoJCX0KCX0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/OpenAi/__schema__/v1.1.0/text/complete.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/dc3f1367b149081f1a8277717a2d2f8d05bcb238",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/OpenAi/__schema__/v1.1.0/text/complete.json"
+    },
+    "version": 1
 }

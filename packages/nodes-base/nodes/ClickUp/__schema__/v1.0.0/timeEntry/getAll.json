@@ -1,146 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"id": {
-			"type": "string"
-		},
-		"task": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "string"
-				},
-				"name": {
-					"type": "string"
-				},
-				"status": {
-					"type": "object",
-					"properties": {
-						"status": {
-							"type": "string"
-						},
-						"color": {
-							"type": "string"
-						},
-						"type": {
-							"type": "string"
-						},
-						"orderindex": {
-							"type": "integer"
-						}
-					},
-					"required": [
-						"status",
-						"color",
-						"type",
-						"orderindex"
-					]
-				}
-			},
-			"required": [
-				"id",
-				"name",
-				"status",
-				"custom_type"
-			]
-		},
-		"wid": {
-			"type": "string"
-		},
-		"user": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "integer"
-				},
-				"username": {
-					"type": "string"
-				},
-				"email": {
-					"type": "string"
-				},
-				"color": {
-					"type": "string"
-				},
-				"initials": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"id",
-				"username",
-				"email",
-				"color",
-				"initials",
-				"profilePicture"
-			]
-		},
-		"billable": {
-			"type": "boolean"
-		},
-		"start": {
-			"type": "string"
-		},
-		"end": {
-			"type": "string"
-		},
-		"duration": {
-			"type": "string"
-		},
-		"description": {
-			"type": "string"
-		},
-		"source": {
-			"type": "string"
-		},
-		"at": {
-			"type": "string"
-		},
-		"is_locked": {
-			"type": "boolean"
-		},
-		"approval_id": {
-			"type": "null"
-		},
-		"task_location": {
-			"type": "object",
-			"properties": {
-				"list_id": {
-					"type": "string"
-				},
-				"folder_id": {
-					"type": "string"
-				},
-				"space_id": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"list_id",
-				"folder_id",
-				"space_id"
-			]
-		},
-		"task_url": {
-			"type": "string"
-		}
-	},
-	"required": [
-		"id",
-		"task",
-		"wid",
-		"user",
-		"billable",
-		"start",
-		"end",
-		"duration",
-		"description",
-		"tags",
-		"source",
-		"at",
-		"is_locked",
-		"approval_id",
-		"task_location",
-		"task_url"
-	]
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/timeEntry/getAll.json",
+    "sha": "c2c44cc4c12e0f1fb7e6556164a9f3c19a37791f",
+    "size": 1999,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/timeEntry/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/timeEntry/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/c2c44cc4c12e0f1fb7e6556164a9f3c19a37791f",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/timeEntry/getAll.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJpZCI6\nIHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJInRhc2siOiB7CgkJCSJ0\neXBlIjogIm9iamVjdCIsCgkJCSJwcm9wZXJ0aWVzIjogewoJCQkJImlkIjog\newoJCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJCX0sCgkJCQkibmFtZSI6IHsK\nCQkJCQkidHlwZSI6ICJzdHJpbmciCgkJCQl9LAoJCQkJInN0YXR1cyI6IHsK\nCQkJCQkidHlwZSI6ICJvYmplY3QiLAoJCQkJCSJwcm9wZXJ0aWVzIjogewoJ\nCQkJCQkic3RhdHVzIjogewoJCQkJCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJ\nCQl9LAoJCQkJCQkiY29sb3IiOiB7CgkJCQkJCQkidHlwZSI6ICJzdHJpbmci\nCgkJCQkJCX0sCgkJCQkJCSJ0eXBlIjogewoJCQkJCQkJInR5cGUiOiAic3Ry\naW5nIgoJCQkJCQl9LAoJCQkJCQkib3JkZXJpbmRleCI6IHsKCQkJCQkJCSJ0\neXBlIjogImludGVnZXIiCgkJCQkJCX0KCQkJCQl9LAoJCQkJCSJyZXF1aXJl\nZCI6IFsKCQkJCQkJInN0YXR1cyIsCgkJCQkJCSJjb2xvciIsCgkJCQkJCSJ0\neXBlIiwKCQkJCQkJIm9yZGVyaW5kZXgiCgkJCQkJXQoJCQkJfQoJCQl9LAoJ\nCQkicmVxdWlyZWQiOiBbCgkJCQkiaWQiLAoJCQkJIm5hbWUiLAoJCQkJInN0\nYXR1cyIsCgkJCQkiY3VzdG9tX3R5cGUiCgkJCV0KCQl9LAoJCSJ3aWQiOiB7\nCgkJCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJCSJ1c2VyIjogewoJCQkidHlw\nZSI6ICJvYmplY3QiLAoJCQkicHJvcGVydGllcyI6IHsKCQkJCSJpZCI6IHsK\nCQkJCQkidHlwZSI6ICJpbnRlZ2VyIgoJCQkJfSwKCQkJCSJ1c2VybmFtZSI6\nIHsKCQkJCQkidHlwZSI6ICJzdHJpbmciCgkJCQl9LAoJCQkJImVtYWlsIjog\newoJCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJCX0sCgkJCQkiY29sb3IiOiB7\nCgkJCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJfSwKCQkJCSJpbml0aWFscyI6\nIHsKCQkJCQkidHlwZSI6ICJzdHJpbmciCgkJCQl9CgkJCX0sCgkJCSJyZXF1\naXJlZCI6IFsKCQkJCSJpZCIsCgkJCQkidXNlcm5hbWUiLAoJCQkJImVtYWls\nIiwKCQkJCSJjb2xvciIsCgkJCQkiaW5pdGlhbHMiLAoJCQkJInByb2ZpbGVQ\naWN0dXJlIgoJCQldCgkJfSwKCQkiYmlsbGFibGUiOiB7CgkJCSJ0eXBlIjog\nImJvb2xlYW4iCgkJfSwKCQkic3RhcnQiOiB7CgkJCSJ0eXBlIjogInN0cmlu\nZyIKCQl9LAoJCSJlbmQiOiB7CgkJCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJ\nCSJkdXJhdGlvbiI6IHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJImRl\nc2NyaXB0aW9uIjogewoJCQkidHlwZSI6ICJzdHJpbmciCgkJfSwKCQkic291\ncmNlIjogewoJCQkidHlwZSI6ICJzdHJpbmciCgkJfSwKCQkiYXQiOiB7CgkJ\nCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJCSJpc19sb2NrZWQiOiB7CgkJCSJ0\neXBlIjogImJvb2xlYW4iCgkJfSwKCQkiYXBwcm92YWxfaWQiOiB7CgkJCSJ0\neXBlIjogIm51bGwiCgkJfSwKCQkidGFza19sb2NhdGlvbiI6IHsKCQkJInR5\ncGUiOiAib2JqZWN0IiwKCQkJInByb3BlcnRpZXMiOiB7CgkJCQkibGlzdF9p\nZCI6IHsKCQkJCQkidHlwZSI6ICJzdHJpbmciCgkJCQl9LAoJCQkJImZvbGRl\ncl9pZCI6IHsKCQkJCQkidHlwZSI6ICJzdHJpbmciCgkJCQl9LAoJCQkJInNw\nYWNlX2lkIjogewoJCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJCX0KCQkJfSwK\nCQkJInJlcXVpcmVkIjogWwoJCQkJImxpc3RfaWQiLAoJCQkJImZvbGRlcl9p\nZCIsCgkJCQkic3BhY2VfaWQiCgkJCV0KCQl9LAoJCSJ0YXNrX3VybCI6IHsK\nCQkJInR5cGUiOiAic3RyaW5nIgoJCX0KCX0sCgkicmVxdWlyZWQiOiBbCgkJ\nImlkIiwKCQkidGFzayIsCgkJIndpZCIsCgkJInVzZXIiLAoJCSJiaWxsYWJs\nZSIsCgkJInN0YXJ0IiwKCQkiZW5kIiwKCQkiZHVyYXRpb24iLAoJCSJkZXNj\ncmlwdGlvbiIsCgkJInRhZ3MiLAoJCSJzb3VyY2UiLAoJCSJhdCIsCgkJImlz\nX2xvY2tlZCIsCgkJImFwcHJvdmFsX2lkIiwKCQkidGFza19sb2NhdGlvbiIs\nCgkJInRhc2tfdXJsIgoJXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/timeEntry/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/c2c44cc4c12e0f1fb7e6556164a9f3c19a37791f",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/timeEntry/getAll.json"
+    },
+    "version": 1
 }

@@ -1,35 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "name": {
-            "type": "string"
-        },
-        "path_lower": {
-            "type": "string"
-        },
-        "path_display": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "client_modified": {
-            "type": "string"
-        },
-        "server_modified": {
-            "type": "string"
-        },
-        "rev": {
-            "type": "string"
-        },
-        "size": {
-            "type": "integer"
-        },
-        "is_downloadable": {
-            "type": "boolean"
-        },
-        "content_hash": {
-            "type": "string"
-        }
-    }
+    "name": "upload.json",
+    "path": "packages/nodes-base/nodes/Dropbox/__schema__/v1.0.0/file/upload.json",
+    "sha": "0eb2cf017fa6b25ccbef6c1e20963d6bf79d3a76",
+    "size": 685,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Dropbox/__schema__/v1.0.0/file/upload.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Dropbox/__schema__/v1.0.0/file/upload.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/0eb2cf017fa6b25ccbef6c1e20963d6bf79d3a76",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Dropbox/__schema__/v1.0.0/file/upload.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJuYW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAicGF0aF9sb3dlciI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInBhdGhf\nZGlzcGxheSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgIH0sCiAgICAgICAgImlkIjogewogICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgfSwKICAgICAgICAiY2xpZW50X21vZGlmaWVkIjog\newogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAg\nICAgICAic2VydmVyX21vZGlmaWVkIjogewogICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAicmV2IjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAic2l6\nZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9\nLAogICAgICAgICJpc19kb3dubG9hZGFibGUiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAiY29udGVudF9o\nYXNoIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nfQogICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Dropbox/__schema__/v1.0.0/file/upload.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/0eb2cf017fa6b25ccbef6c1e20963d6bf79d3a76",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Dropbox/__schema__/v1.0.0/file/upload.json"
+    },
+    "version": 1
 }

@@ -1,67 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"id": {
-			"type": "string"
-		},
-		"identifier": {
-			"type": "string"
-		},
-		"title": {
-			"type": "string"
-		},
-		"priority": {
-			"type": "integer"
-		},
-		"archivedAt": {
-			"type": "null"
-		},
-		"state": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "string"
-				},
-				"name": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"id",
-				"name"
-			]
-		},
-		"createdAt": {
-			"type": "string"
-		},
-		"creator": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "string"
-				},
-				"displayName": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"id",
-				"displayName"
-			]
-		}
-	},
-	"required": [
-		"id",
-		"identifier",
-		"title",
-		"priority",
-		"archivedAt",
-		"assignee",
-		"state",
-		"createdAt",
-		"creator",
-		"description",
-		"dueDate",
-		"cycle"
-	]
+    "name": "update.json",
+    "path": "packages/nodes-base/nodes/Linear/__schema__/v1.0.0/issue/update.json",
+    "sha": "2c44fe814cec59c19b3c8346918a01a8dd88f1f7",
+    "size": 856,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Linear/__schema__/v1.0.0/issue/update.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Linear/__schema__/v1.0.0/issue/update.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/2c44fe814cec59c19b3c8346918a01a8dd88f1f7",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Linear/__schema__/v1.0.0/issue/update.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJpZCI6\nIHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJImlkZW50aWZpZXIiOiB7\nCgkJCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJCSJ0aXRsZSI6IHsKCQkJInR5\ncGUiOiAic3RyaW5nIgoJCX0sCgkJInByaW9yaXR5IjogewoJCQkidHlwZSI6\nICJpbnRlZ2VyIgoJCX0sCgkJImFyY2hpdmVkQXQiOiB7CgkJCSJ0eXBlIjog\nIm51bGwiCgkJfSwKCQkic3RhdGUiOiB7CgkJCSJ0eXBlIjogIm9iamVjdCIs\nCgkJCSJwcm9wZXJ0aWVzIjogewoJCQkJImlkIjogewoJCQkJCSJ0eXBlIjog\nInN0cmluZyIKCQkJCX0sCgkJCQkibmFtZSI6IHsKCQkJCQkidHlwZSI6ICJz\ndHJpbmciCgkJCQl9CgkJCX0sCgkJCSJyZXF1aXJlZCI6IFsKCQkJCSJpZCIs\nCgkJCQkibmFtZSIKCQkJXQoJCX0sCgkJImNyZWF0ZWRBdCI6IHsKCQkJInR5\ncGUiOiAic3RyaW5nIgoJCX0sCgkJImNyZWF0b3IiOiB7CgkJCSJ0eXBlIjog\nIm9iamVjdCIsCgkJCSJwcm9wZXJ0aWVzIjogewoJCQkJImlkIjogewoJCQkJ\nCSJ0eXBlIjogInN0cmluZyIKCQkJCX0sCgkJCQkiZGlzcGxheU5hbWUiOiB7\nCgkJCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJfQoJCQl9LAoJCQkicmVxdWly\nZWQiOiBbCgkJCQkiaWQiLAoJCQkJImRpc3BsYXlOYW1lIgoJCQldCgkJfQoJ\nfSwKCSJyZXF1aXJlZCI6IFsKCQkiaWQiLAoJCSJpZGVudGlmaWVyIiwKCQki\ndGl0bGUiLAoJCSJwcmlvcml0eSIsCgkJImFyY2hpdmVkQXQiLAoJCSJhc3Np\nZ25lZSIsCgkJInN0YXRlIiwKCQkiY3JlYXRlZEF0IiwKCQkiY3JlYXRvciIs\nCgkJImRlc2NyaXB0aW9uIiwKCQkiZHVlRGF0ZSIsCgkJImN5Y2xlIgoJXQp9\nCg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Linear/__schema__/v1.0.0/issue/update.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/2c44fe814cec59c19b3c8346918a01a8dd88f1f7",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Linear/__schema__/v1.0.0/issue/update.json"
+    },
+    "version": 1
 }

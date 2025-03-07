@@ -1,35 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "@odata.context": {
-            "type": "string"
-        },
-        "@odata.etag": {
-            "type": "string"
-        },
-        "displayName": {
-            "type": "string"
-        },
-        "isOwner": {
-            "type": "boolean"
-        },
-        "isShared": {
-            "type": "boolean"
-        },
-        "wellknownListName": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/Microsoft/ToDo/__schema__/v1.0.0/list/create.json",
+    "sha": "088ea032f717aa5cab4e21222489866ff9770a34",
+    "size": 679,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Microsoft/ToDo/__schema__/v1.0.0/list/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Microsoft/ToDo/__schema__/v1.0.0/list/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/088ea032f717aa5cab4e21222489866ff9770a34",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Microsoft/ToDo/__schema__/v1.0.0/list/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJAb2RhdGEuY29udGV4dCI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIkBvZGF0YS5ldGFnIjog\newogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAg\nICAgICAiZGlzcGxheU5hbWUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJpc093bmVyIjogewogICAgICAg\nICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgImlz\nU2hhcmVkIjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAg\nICAgIH0sCiAgICAgICAgIndlbGxrbm93bkxpc3ROYW1lIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiaWQi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9CiAg\nICB9LAogICAgInJlcXVpcmVkIjogWwogICAgICAgICJAb2RhdGEuY29udGV4\ndCIsCiAgICAgICAgIkBvZGF0YS5ldGFnIiwKICAgICAgICAiZGlzcGxheU5h\nbWUiLAogICAgICAgICJpc093bmVyIiwKICAgICAgICAiaXNTaGFyZWQiLAog\nICAgICAgICJ3ZWxsa25vd25MaXN0TmFtZSIsCiAgICAgICAgImlkIgogICAg\nXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Microsoft/ToDo/__schema__/v1.0.0/list/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/088ea032f717aa5cab4e21222489866ff9770a34",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Microsoft/ToDo/__schema__/v1.0.0/list/create.json"
     },
-    "required": [
-        "@odata.context",
-        "@odata.etag",
-        "displayName",
-        "isOwner",
-        "isShared",
-        "wellknownListName",
-        "id"
-    ]
+    "version": 1
 }

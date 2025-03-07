@@ -1,15 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"ok": {
-			"type": "boolean"
-		},
-		"presence": {
-			"type": "string"
-		}
-	},
-	"required": [
-		"ok",
-		"presence"
-	]
+    "name": "getPresence.json",
+    "path": "packages/nodes-base/nodes/Slack/__schema__/v2.3.0/user/getPresence.json",
+    "sha": "e489919c0b1a21c897a8a8e81125a52113a8f5a3",
+    "size": 159,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/user/getPresence.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/user/getPresence.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/e489919c0b1a21c897a8a8e81125a52113a8f5a3",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/user/getPresence.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJvayI6\nIHsKCQkJInR5cGUiOiAiYm9vbGVhbiIKCQl9LAoJCSJwcmVzZW5jZSI6IHsK\nCQkJInR5cGUiOiAic3RyaW5nIgoJCX0KCX0sCgkicmVxdWlyZWQiOiBbCgkJ\nIm9rIiwKCQkicHJlc2VuY2UiCgldCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/user/getPresence.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/e489919c0b1a21c897a8a8e81125a52113a8f5a3",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/user/getPresence.json"
+    },
+    "version": 1
 }

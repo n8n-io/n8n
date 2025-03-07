@@ -1,131 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "@odata.context": {
-            "type": "string"
-        },
-        "@odata.etag": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "subject": {
-            "type": "string"
-        },
-        "bodyPreview": {
-            "type": "string"
-        },
-        "webLink": {
-            "type": "string"
-        },
-        "start": {
-            "type": "object",
-            "properties": {
-                "dateTime": {
-                    "type": "string"
-                },
-                "timeZone": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "dateTime",
-                "timeZone"
-            ]
-        },
-        "end": {
-            "type": "object",
-            "properties": {
-                "dateTime": {
-                    "type": "string"
-                },
-                "timeZone": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "dateTime",
-                "timeZone"
-            ]
-        },
-        "attendees": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "type": {
-                        "type": "string"
-                    },
-                    "status": {
-                        "type": "object",
-                        "properties": {
-                            "response": {
-                                "type": "string"
-                            },
-                            "time": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "response",
-                            "time"
-                        ]
-                    },
-                    "emailAddress": {
-                        "type": "object",
-                        "properties": {
-                            "name": {
-                                "type": "string"
-                            },
-                            "address": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "name",
-                            "address"
-                        ]
-                    }
-                },
-                "required": [
-                    "type",
-                    "status",
-                    "emailAddress"
-                ]
-            }
-        },
-        "organizer": {
-            "type": "object",
-            "properties": {
-                "emailAddress": {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string"
-                        },
-                        "address": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "name",
-                        "address"
-                    ]
-                }
-            },
-            "required": [
-                "emailAddress"
-            ]
-        },
-        "calendar@odata.associationLink": {
-            "type": "string"
-        },
-        "calendar@odata.navigationLink": {
-            "type": "string"
-        }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/event/get.json",
+    "sha": "41bf7331756463ae124157d0caa8c81dece07014",
+    "size": 3550,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/event/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/event/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/41bf7331756463ae124157d0caa8c81dece07014",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/event/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJAb2RhdGEuY29udGV4dCI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIkBvZGF0YS5ldGFnIjog\newogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAg\nICAgICAiaWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICB9LAogICAgICAgICJzdWJqZWN0IjogewogICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiYm9keVByZXZpZXci\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAog\nICAgICAgICJ3ZWJMaW5rIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgfSwKICAgICAgICAic3RhcnQiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjog\newogICAgICAgICAgICAgICAgImRhdGVUaW1lIjogewogICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAg\nICAgICAgICAgICAgICAidGltZVpvbmUiOiB7CiAgICAgICAgICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfQogICAgICAg\nICAgICB9LAogICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAg\nICAgICAiZGF0ZVRpbWUiLAogICAgICAgICAgICAgICAgInRpbWVab25lIgog\nICAgICAgICAgICBdCiAgICAgICAgfSwKICAgICAgICAiZW5kIjogewogICAg\nICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAicHJvcGVy\ndGllcyI6IHsKICAgICAgICAgICAgICAgICJkYXRlVGltZSI6IHsKICAgICAg\nICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAg\nICB9LAogICAgICAgICAgICAgICAgInRpbWVab25lIjogewogICAgICAgICAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0K\nICAgICAgICAgICAgfSwKICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAg\nICAgICAgICAgICAgImRhdGVUaW1lIiwKICAgICAgICAgICAgICAgICJ0aW1l\nWm9uZSIKICAgICAgICAgICAgXQogICAgICAgIH0sCiAgICAgICAgImF0dGVu\nZGVlcyI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYXJyYXkiLAogICAgICAg\nICAgICAiaXRlbXMiOiB7CiAgICAgICAgICAgICAgICAidHlwZSI6ICJvYmpl\nY3QiLAogICAgICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAg\nICAgICAgICAgICAgInR5cGUiOiB7CiAgICAgICAgICAgICAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICB9LAogICAg\nICAgICAgICAgICAgICAgICJzdGF0dXMiOiB7CiAgICAgICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICAgICAgICAg\nICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgICAgICAgICAg\nICAgInJlc3BvbnNlIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAgICAg\nICAgIH0sCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAidGltZSI6IHsK\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAg\nICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgICAgICJyZXF1\naXJlZCI6IFsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJyZXNwb25z\nZSIsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAidGltZSIKICAgICAg\nICAgICAgICAgICAgICAgICAgXQogICAgICAgICAgICAgICAgICAgIH0sCiAg\nICAgICAgICAgICAgICAgICAgImVtYWlsQWRkcmVzcyI6IHsKICAgICAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAg\nICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAibmFtZSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAg\nICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAgICAgImFkZHJl\nc3MiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAgICAgICAgICAgfQogICAg\nICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAg\nICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAi\nbmFtZSIsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAiYWRkcmVzcyIK\nICAgICAgICAgICAgICAgICAgICAgICAgXQogICAgICAgICAgICAgICAgICAg\nIH0KICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAicmVxdWly\nZWQiOiBbCiAgICAgICAgICAgICAgICAgICAgInR5cGUiLAogICAgICAgICAg\nICAgICAgICAgICJzdGF0dXMiLAogICAgICAgICAgICAgICAgICAgICJlbWFp\nbEFkZHJlc3MiCiAgICAgICAgICAgICAgICBdCiAgICAgICAgICAgIH0KICAg\nICAgICB9LAogICAgICAgICJvcmdhbml6ZXIiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICAgICAgICAgImVtYWlsQWRkcmVzcyI6IHsKICAgICAgICAgICAg\nICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAgICAg\nICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgICAgICAgICAibmFt\nZSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nICAgICAgICAgICAgImFkZHJlc3MiOiB7CiAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAg\nICAgIH0KICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAg\nICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICAgICAgICAgIm5h\nbWUiLAogICAgICAgICAgICAgICAgICAgICAgICAiYWRkcmVzcyIKICAgICAg\nICAgICAgICAgICAgICBdCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAg\nIH0sCiAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAg\nICJlbWFpbEFkZHJlc3MiCiAgICAgICAgICAgIF0KICAgICAgICB9LAogICAg\nICAgICJjYWxlbmRhckBvZGF0YS5hc3NvY2lhdGlvbkxpbmsiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJj\nYWxlbmRhckBvZGF0YS5uYXZpZ2F0aW9uTGluayI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0KICAgIH0sCiAgICAicmVxdWly\nZWQiOiBbCiAgICAgICAgIkBvZGF0YS5jb250ZXh0IgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/event/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/41bf7331756463ae124157d0caa8c81dece07014",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/event/get.json"
     },
-    "required": [
-        "@odata.context"
-    ]
+    "version": 1
 }

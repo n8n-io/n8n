@@ -1,160 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "cc_emails": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "fwd_emails": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "reply_cc_emails": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "ticket_cc_emails": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "fr_escalated": {
-            "type": "boolean"
-        },
-        "spam": {
-            "type": "boolean"
-        },
-        "priority": {
-            "type": "integer"
-        },
-        "requester_id": {
-            "type": "integer"
-        },
-        "source": {
-            "type": "integer"
-        },
-        "status": {
-            "type": "integer"
-        },
-        "subject": {
-            "type": "string"
-        },
-        "association_type": {
-            "type": "null"
-        },
-        "id": {
-            "type": "integer"
-        },
-        "due_by": {
-            "type": "string"
-        },
-        "fr_due_by": {
-            "type": "string"
-        },
-        "is_escalated": {
-            "type": "boolean"
-        },
-        "created_at": {
-            "type": "string"
-        },
-        "updated_at": {
-            "type": "string"
-        },
-        "tags": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "description": {
-            "type": "string"
-        },
-        "description_text": {
-            "type": "string"
-        },
-        "attachments": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "integer"
-                    },
-                    "content_type": {
-                        "type": "string"
-                    },
-                    "size": {
-                        "type": "integer"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "attachment_url": {
-                        "type": "string"
-                    },
-                    "created_at": {
-                        "type": "string"
-                    },
-                    "updated_at": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "id",
-                    "content_type",
-                    "size",
-                    "name",
-                    "attachment_url",
-                    "created_at",
-                    "updated_at"
-                ]
-            }
-        },
-        "source_additional_info": {
-            "type": "null"
-        },
-        "nr_due_by": {
-            "type": "null"
-        },
-        "nr_escalated": {
-            "type": "boolean"
-        }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Freshdesk/__schema__/v1.0.0/ticket/get.json",
+    "sha": "82d7ace13eb8349bb9a807230606a812391863df",
+    "size": 3717,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Freshdesk/__schema__/v1.0.0/ticket/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Freshdesk/__schema__/v1.0.0/ticket/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/82d7ace13eb8349bb9a807230606a812391863df",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Freshdesk/__schema__/v1.0.0/ticket/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJjY19lbWFpbHMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImFy\ncmF5IiwKICAgICAgICAgICAgIml0ZW1zIjogewogICAgICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICB9CiAgICAgICAgfSwKICAg\nICAgICAiZndkX2VtYWlscyI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYXJy\nYXkiLAogICAgICAgICAgICAiaXRlbXMiOiB7CiAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgIH0KICAgICAgICB9LAogICAg\nICAgICJyZXBseV9jY19lbWFpbHMiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nImFycmF5IiwKICAgICAgICAgICAgIml0ZW1zIjogewogICAgICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICB9CiAgICAgICAgfSwK\nICAgICAgICAidGlja2V0X2NjX2VtYWlscyI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAiYXJyYXkiLAogICAgICAgICAgICAiaXRlbXMiOiB7CiAgICAgICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgIH0KICAgICAg\nICB9LAogICAgICAgICJmcl9lc2NhbGF0ZWQiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAic3BhbSI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9LAogICAg\nICAgICJwcmlvcml0eSI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdl\nciIKICAgICAgICB9LAogICAgICAgICJyZXF1ZXN0ZXJfaWQiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAgICAi\nc291cmNlIjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAg\nICAgIH0sCiAgICAgICAgInN0YXR1cyI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJzdWJqZWN0Ijogewog\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAg\nICAiYXNzb2NpYXRpb25fdHlwZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nbnVsbCIKICAgICAgICB9LAogICAgICAgICJpZCI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJkdWVfYnki\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAog\nICAgICAgICJmcl9kdWVfYnkiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJpc19lc2NhbGF0ZWQiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAg\nICAiY3JlYXRlZF9hdCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgIH0sCiAgICAgICAgInVwZGF0ZWRfYXQiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJ0YWdz\nIjogewogICAgICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAg\nICJpdGVtcyI6IHsKICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAgImRlc2NyaXB0aW9u\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwK\nICAgICAgICAiZGVzY3JpcHRpb25fdGV4dCI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImF0dGFjaG1lbnRz\nIjogewogICAgICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAg\nICJpdGVtcyI6IHsKICAgICAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIs\nCiAgICAgICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAg\nICAgICAgICAiaWQiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogImludGVnZXIiCiAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAg\nICAgICAgICAgICAiY29udGVudF90eXBlIjogewogICAgICAgICAgICAgICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAg\nfSwKICAgICAgICAgICAgICAgICAgICAic2l6ZSI6IHsKICAgICAgICAgICAg\nICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICAgICAgICAg\nICAgICB9LAogICAgICAgICAgICAgICAgICAgICJuYW1lIjogewogICAgICAg\nICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAg\nICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAiYXR0YWNobWVudF91\ncmwiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAg\nICJjcmVhdGVkX2F0IjogewogICAgICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAg\nICAgICAgICAgICAidXBkYXRlZF9hdCI6IHsKICAgICAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAgIH0K\nICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAicmVxdWlyZWQi\nOiBbCiAgICAgICAgICAgICAgICAgICAgImlkIiwKICAgICAgICAgICAgICAg\nICAgICAiY29udGVudF90eXBlIiwKICAgICAgICAgICAgICAgICAgICAic2l6\nZSIsCiAgICAgICAgICAgICAgICAgICAgIm5hbWUiLAogICAgICAgICAgICAg\nICAgICAgICJhdHRhY2htZW50X3VybCIsCiAgICAgICAgICAgICAgICAgICAg\nImNyZWF0ZWRfYXQiLAogICAgICAgICAgICAgICAgICAgICJ1cGRhdGVkX2F0\nIgogICAgICAgICAgICAgICAgXQogICAgICAgICAgICB9CiAgICAgICAgfSwK\nICAgICAgICAic291cmNlX2FkZGl0aW9uYWxfaW5mbyI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAgICAgICJucl9kdWVf\nYnkiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwK\nICAgICAgICAibnJfZXNjYWxhdGVkIjogewogICAgICAgICAgICAidHlwZSI6\nICJib29sZWFuIgogICAgICAgIH0KICAgIH0sCiAgICAicmVxdWlyZWQiOiBb\nCiAgICAgICAgImNjX2VtYWlscyIsCiAgICAgICAgImZ3ZF9lbWFpbHMiLAog\nICAgICAgICJyZXBseV9jY19lbWFpbHMiLAogICAgICAgICJ0aWNrZXRfY2Nf\nZW1haWxzIiwKICAgICAgICAiZnJfZXNjYWxhdGVkIiwKICAgICAgICAic3Bh\nbSIsCiAgICAgICAgImVtYWlsX2NvbmZpZ19pZCIsCiAgICAgICAgImdyb3Vw\nX2lkIiwKICAgICAgICAicHJpb3JpdHkiLAogICAgICAgICJyZXF1ZXN0ZXJf\naWQiLAogICAgICAgICJyZXNwb25kZXJfaWQiLAogICAgICAgICJzb3VyY2Ui\nLAogICAgICAgICJjb21wYW55X2lkIiwKICAgICAgICAic3RhdHVzIiwKICAg\nICAgICAic3ViamVjdCIsCiAgICAgICAgImFzc29jaWF0aW9uX3R5cGUiLAog\nICAgICAgICJzdXBwb3J0X2VtYWlsIiwKICAgICAgICAidG9fZW1haWxzIiwK\nICAgICAgICAicHJvZHVjdF9pZCIsCiAgICAgICAgImlkIiwKICAgICAgICAi\ndHlwZSIsCiAgICAgICAgImR1ZV9ieSIsCiAgICAgICAgImZyX2R1ZV9ieSIs\nCiAgICAgICAgImlzX2VzY2FsYXRlZCIsCiAgICAgICAgImN1c3RvbV9maWVs\nZHMiLAogICAgICAgICJjcmVhdGVkX2F0IiwKICAgICAgICAidXBkYXRlZF9h\ndCIsCiAgICAgICAgInRhZ3MiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Freshdesk/__schema__/v1.0.0/ticket/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/82d7ace13eb8349bb9a807230606a812391863df",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Freshdesk/__schema__/v1.0.0/ticket/get.json"
     },
-    "required": [
-        "cc_emails",
-        "fwd_emails",
-        "reply_cc_emails",
-        "ticket_cc_emails",
-        "fr_escalated",
-        "spam",
-        "email_config_id",
-        "group_id",
-        "priority",
-        "requester_id",
-        "responder_id",
-        "source",
-        "company_id",
-        "status",
-        "subject",
-        "association_type",
-        "support_email",
-        "to_emails",
-        "product_id",
-        "id",
-        "type",
-        "due_by",
-        "fr_due_by",
-        "is_escalated",
-        "custom_fields",
-        "created_at",
-        "updated_at",
-        "tags"
-    ]
+    "version": 1
 }

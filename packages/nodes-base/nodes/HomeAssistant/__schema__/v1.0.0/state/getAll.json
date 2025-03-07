@@ -1,86 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "entity_id": {
-            "type": "string"
-        },
-        "state": {
-            "type": "string"
-        },
-        "attributes": {
-            "type": "object",
-            "properties": {
-                "editable": {
-                    "type": "boolean"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "device_trackers": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "user_id": {
-                    "type": "string"
-                },
-                "friendly_name": {
-                    "type": "string"
-                },
-                "latitude": {
-                    "type": "number"
-                },
-                "longitude": {
-                    "type": "number"
-                },
-                "gps_accuracy": {
-                    "type": "integer"
-                },
-                "source": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "friendly_name"
-            ]
-        },
-        "last_changed": {
-            "type": "string"
-        },
-        "last_reported": {
-            "type": "string"
-        },
-        "last_updated": {
-            "type": "string"
-        },
-        "context": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "parent_id": {
-                    "type": "null"
-                },
-                "user_id": {
-                    "type": "null"
-                }
-            },
-            "required": [
-                "id",
-                "parent_id",
-                "user_id"
-            ]
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/HomeAssistant/__schema__/v1.0.0/state/getAll.json",
+    "sha": "e68f67946dc8ccaf208b824f1439dce57114c35e",
+    "size": 2074,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/HomeAssistant/__schema__/v1.0.0/state/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/HomeAssistant/__schema__/v1.0.0/state/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/e68f67946dc8ccaf208b824f1439dce57114c35e",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/HomeAssistant/__schema__/v1.0.0/state/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJlbnRpdHlfaWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJzdGF0ZSI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImF0dHJp\nYnV0ZXMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAg\nICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgImVkaXRh\nYmxlIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4i\nCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImlkIjogewog\nICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICAgICAiZGV2aWNlX3RyYWNrZXJzIjog\newogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImFycmF5IiwKICAgICAg\nICAgICAgICAgICAgICAiaXRlbXMiOiB7CiAgICAgICAgICAgICAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICB9CiAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInVzZXJfaWQiOiB7\nCiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJmcmllbmRseV9uYW1lIjog\newogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAibGF0aXR1ZGUiOiB7CiAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAibnVtYmVyIgogICAgICAgICAg\nICAgICAgfSwKICAgICAgICAgICAgICAgICJsb25naXR1ZGUiOiB7CiAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAibnVtYmVyIgogICAgICAgICAgICAg\nICAgfSwKICAgICAgICAgICAgICAgICJncHNfYWNjdXJhY3kiOiB7CiAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICAgICAg\nICAgIH0sCiAgICAgICAgICAgICAgICAic291cmNlIjogewogICAgICAgICAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0K\nICAgICAgICAgICAgfSwKICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAg\nICAgICAgICAgICAgImZyaWVuZGx5X25hbWUiCiAgICAgICAgICAgIF0KICAg\nICAgICB9LAogICAgICAgICJsYXN0X2NoYW5nZWQiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJsYXN0X3Jl\ncG9ydGVkIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgfSwKICAgICAgICAibGFzdF91cGRhdGVkIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiY29udGV4dCI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAg\nInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAiaWQiOiB7CiAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAg\nICAgfSwKICAgICAgICAgICAgICAgICJwYXJlbnRfaWQiOiB7CiAgICAgICAg\nICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICAgICAgICAgIH0s\nCiAgICAgICAgICAgICAgICAidXNlcl9pZCI6IHsKICAgICAgICAgICAgICAg\nICAgICAidHlwZSI6ICJudWxsIgogICAgICAgICAgICAgICAgfQogICAgICAg\nICAgICB9LAogICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAg\nICAgICAiaWQiLAogICAgICAgICAgICAgICAgInBhcmVudF9pZCIsCiAgICAg\nICAgICAgICAgICAidXNlcl9pZCIKICAgICAgICAgICAgXQogICAgICAgIH0K\nICAgIH0sCiAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgImVudGl0eV9pZCIs\nCiAgICAgICAgInN0YXRlIiwKICAgICAgICAiYXR0cmlidXRlcyIsCiAgICAg\nICAgImxhc3RfY2hhbmdlZCIsCiAgICAgICAgImxhc3RfcmVwb3J0ZWQiLAog\nICAgICAgICJsYXN0X3VwZGF0ZWQiLAogICAgICAgICJjb250ZXh0IgogICAg\nXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/HomeAssistant/__schema__/v1.0.0/state/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/e68f67946dc8ccaf208b824f1439dce57114c35e",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/HomeAssistant/__schema__/v1.0.0/state/getAll.json"
     },
-    "required": [
-        "entity_id",
-        "state",
-        "attributes",
-        "last_changed",
-        "last_reported",
-        "last_updated",
-        "context"
-    ]
+    "version": 1
 }

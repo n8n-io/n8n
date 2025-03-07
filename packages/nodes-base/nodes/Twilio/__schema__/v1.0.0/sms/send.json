@@ -1,92 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "account_sid": {
-            "type": "string"
-        },
-        "api_version": {
-            "type": "string"
-        },
-        "body": {
-            "type": "string"
-        },
-        "date_created": {
-            "type": "string"
-        },
-        "date_sent": {
-            "type": "null"
-        },
-        "date_updated": {
-            "type": "string"
-        },
-        "direction": {
-            "type": "string"
-        },
-        "error_code": {
-            "type": "null"
-        },
-        "error_message": {
-            "type": "null"
-        },
-        "from": {
-            "type": "string"
-        },
-        "messaging_service_sid": {
-            "type": "null"
-        },
-        "num_media": {
-            "type": "string"
-        },
-        "num_segments": {
-            "type": "string"
-        },
-        "price": {
-            "type": "null"
-        },
-        "sid": {
-            "type": "string"
-        },
-        "status": {
-            "type": "string"
-        },
-        "subresource_uris": {
-            "type": "object",
-            "properties": {
-                "media": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "media"
-            ]
-        },
-        "to": {
-            "type": "string"
-        },
-        "uri": {
-            "type": "string"
-        }
+    "name": "send.json",
+    "path": "packages/nodes-base/nodes/Twilio/__schema__/v1.0.0/sms/send.json",
+    "sha": "9be46b27b603698e0f2206ea352b48f12955231b",
+    "size": 1875,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Twilio/__schema__/v1.0.0/sms/send.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Twilio/__schema__/v1.0.0/sms/send.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/9be46b27b603698e0f2206ea352b48f12955231b",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Twilio/__schema__/v1.0.0/sms/send.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJhY2NvdW50X3NpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImFwaV92ZXJzaW9uIjogewog\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAg\nICAiYm9keSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgIH0sCiAgICAgICAgImRhdGVfY3JlYXRlZCI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImRhdGVfc2Vu\ndCI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9LAog\nICAgICAgICJkYXRlX3VwZGF0ZWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJkaXJlY3Rpb24iOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAg\nICJlcnJvcl9jb2RlIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgog\nICAgICAgIH0sCiAgICAgICAgImVycm9yX21lc3NhZ2UiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAiZnJvbSI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAg\nICAgICAgIm1lc3NhZ2luZ19zZXJ2aWNlX3NpZCI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAgICAgICJudW1fbWVkaWEi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAog\nICAgICAgICJudW1fc2VnbWVudHMiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJwcmljZSI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAgICAgICJzaWQi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAog\nICAgICAgICJzdGF0dXMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJzdWJyZXNvdXJjZV91cmlzIjogewog\nICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAicHJv\ncGVydGllcyI6IHsKICAgICAgICAgICAgICAgICJtZWRpYSI6IHsKICAgICAg\nICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAg\nICB9CiAgICAgICAgICAgIH0sCiAgICAgICAgICAgICJyZXF1aXJlZCI6IFsK\nICAgICAgICAgICAgICAgICJtZWRpYSIKICAgICAgICAgICAgXQogICAgICAg\nIH0sCiAgICAgICAgInRvIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgfSwKICAgICAgICAidXJpIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgfQogICAgfSwKICAgICJyZXF1aXJl\nZCI6IFsKICAgICAgICAiYWNjb3VudF9zaWQiLAogICAgICAgICJhcGlfdmVy\nc2lvbiIsCiAgICAgICAgImJvZHkiLAogICAgICAgICJkYXRlX2NyZWF0ZWQi\nLAogICAgICAgICJkYXRlX3NlbnQiLAogICAgICAgICJkYXRlX3VwZGF0ZWQi\nLAogICAgICAgICJkaXJlY3Rpb24iLAogICAgICAgICJlcnJvcl9jb2RlIiwK\nICAgICAgICAiZXJyb3JfbWVzc2FnZSIsCiAgICAgICAgImZyb20iLAogICAg\nICAgICJtZXNzYWdpbmdfc2VydmljZV9zaWQiLAogICAgICAgICJudW1fbWVk\naWEiLAogICAgICAgICJudW1fc2VnbWVudHMiLAogICAgICAgICJwcmljZSIs\nCiAgICAgICAgInByaWNlX3VuaXQiLAogICAgICAgICJzaWQiLAogICAgICAg\nICJzdGF0dXMiLAogICAgICAgICJzdWJyZXNvdXJjZV91cmlzIiwKICAgICAg\nICAidG8iLAogICAgICAgICJ1cmkiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Twilio/__schema__/v1.0.0/sms/send.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/9be46b27b603698e0f2206ea352b48f12955231b",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Twilio/__schema__/v1.0.0/sms/send.json"
     },
-    "required": [
-        "account_sid",
-        "api_version",
-        "body",
-        "date_created",
-        "date_sent",
-        "date_updated",
-        "direction",
-        "error_code",
-        "error_message",
-        "from",
-        "messaging_service_sid",
-        "num_media",
-        "num_segments",
-        "price",
-        "price_unit",
-        "sid",
-        "status",
-        "subresource_uris",
-        "to",
-        "uri"
-    ]
+    "version": 1
 }

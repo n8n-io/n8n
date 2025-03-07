@@ -1,181 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "integer"
-        },
-        "name": {
-            "type": "string"
-        },
-        "tax": {
-            "type": "integer"
-        },
-        "active_flag": {
-            "type": "boolean"
-        },
-        "selectable": {
-            "type": "boolean"
-        },
-        "first_char": {
-            "type": "string"
-        },
-        "visible_to": {
-            "type": "string"
-        },
-        "owner_id": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "has_pic": {
-                    "type": "integer"
-                },
-                "pic_hash": {
-                    "type": "null"
-                },
-                "active_flag": {
-                    "type": "boolean"
-                },
-                "value": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "id",
-                "name",
-                "email",
-                "has_pic",
-                "pic_hash",
-                "active_flag",
-                "value"
-            ]
-        },
-        "add_time": {
-            "type": "string"
-        },
-        "update_time": {
-            "type": "string"
-        },
-        "billing_frequency": {
-            "type": "string"
-        },
-        "billing_frequency_cycles": {
-            "type": "null"
-        },
-        "prices": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "integer"
-                    },
-                    "currency": {
-                        "type": "string"
-                    },
-                    "notes": {
-                        "type": "string"
-                    },
-                    "product_id": {
-                        "type": "integer"
-                    }
-                },
-                "required": [
-                    "id",
-                    "price",
-                    "currency",
-                    "cost",
-                    "overhead_cost",
-                    "notes",
-                    "product_id"
-                ]
-            }
-        },
-        "product_variations": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "integer"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "product_id": {
-                        "type": "integer"
-                    },
-                    "prices": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "id": {
-                                    "type": "integer"
-                                },
-                                "product_id": {
-                                    "type": "integer"
-                                },
-                                "product_variation_id": {
-                                    "type": "integer"
-                                },
-                                "currency": {
-                                    "type": "string"
-                                },
-                                "cost": {
-                                    "type": "integer"
-                                },
-                                "comment": {
-                                    "type": "string"
-                                },
-                                "overhead_cost": {
-                                    "type": "integer"
-                                },
-                                "price": {
-                                    "type": "integer"
-                                },
-                                "price_formatted": {
-                                    "type": "string"
-                                }
-                            },
-                            "required": [
-                                "id",
-                                "product_id",
-                                "product_variation_id",
-                                "currency",
-                                "cost",
-                                "comment",
-                                "overhead_cost",
-                                "price",
-                                "price_formatted"
-                            ]
-                        }
-                    }
-                },
-                "required": [
-                    "id",
-                    "name",
-                    "product_id",
-                    "prices"
-                ]
-            }
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/product/getAll.json",
+    "sha": "1e67b3d077344d45f6ca1cbf594debc37f82b3e4",
+    "size": 5341,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/product/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/product/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/1e67b3d077344d45f6ca1cbf594debc37f82b3e4",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/product/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIK\nICAgICAgICB9LAogICAgICAgICJuYW1lIjogewogICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAidGF4IjogewogICAg\nICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAg\nImFjdGl2ZV9mbGFnIjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFu\nIgogICAgICAgIH0sCiAgICAgICAgInNlbGVjdGFibGUiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAiZmly\nc3RfY2hhciI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgIH0sCiAgICAgICAgInZpc2libGVfdG8iOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJvd25lcl9pZCI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAg\nInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAiaWQiOiB7CiAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICAgICAg\nICAgIH0sCiAgICAgICAgICAgICAgICAibmFtZSI6IHsKICAgICAgICAgICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAog\nICAgICAgICAgICAgICAgImVtYWlsIjogewogICAgICAgICAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAg\nICAgICAgICAiaGFzX3BpYyI6IHsKICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJpbnRlZ2VyIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nICAgICJwaWNfaGFzaCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6\nICJudWxsIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJh\nY3RpdmVfZmxhZyI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJi\nb29sZWFuIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJ2\nYWx1ZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2Vy\nIgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9LAogICAgICAgICAg\nICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAiaWQiLAogICAgICAg\nICAgICAgICAgIm5hbWUiLAogICAgICAgICAgICAgICAgImVtYWlsIiwKICAg\nICAgICAgICAgICAgICJoYXNfcGljIiwKICAgICAgICAgICAgICAgICJwaWNf\naGFzaCIsCiAgICAgICAgICAgICAgICAiYWN0aXZlX2ZsYWciLAogICAgICAg\nICAgICAgICAgInZhbHVlIgogICAgICAgICAgICBdCiAgICAgICAgfSwKICAg\nICAgICAiYWRkX3RpbWUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJ1cGRhdGVfdGltZSI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImJp\nbGxpbmdfZnJlcXVlbmN5IjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgfSwKICAgICAgICAiYmlsbGluZ19mcmVxdWVuY3lfY3lj\nbGVzIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0s\nCiAgICAgICAgInByaWNlcyI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYXJy\nYXkiLAogICAgICAgICAgICAiaXRlbXMiOiB7CiAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAgInByb3BlcnRpZXMi\nOiB7CiAgICAgICAgICAgICAgICAgICAgImlkIjogewogICAgICAgICAgICAg\nICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgICAgICAgICAg\nICAgIH0sCiAgICAgICAgICAgICAgICAgICAgImN1cnJlbmN5IjogewogICAg\nICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAibm90ZXMiOiB7\nCiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICJwcm9k\ndWN0X2lkIjogewogICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJp\nbnRlZ2VyIgogICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAg\nIH0sCiAgICAgICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAg\nICAgICAgICAgImlkIiwKICAgICAgICAgICAgICAgICAgICAicHJpY2UiLAog\nICAgICAgICAgICAgICAgICAgICJjdXJyZW5jeSIsCiAgICAgICAgICAgICAg\nICAgICAgImNvc3QiLAogICAgICAgICAgICAgICAgICAgICJvdmVyaGVhZF9j\nb3N0IiwKICAgICAgICAgICAgICAgICAgICAibm90ZXMiLAogICAgICAgICAg\nICAgICAgICAgICJwcm9kdWN0X2lkIgogICAgICAgICAgICAgICAgXQogICAg\nICAgICAgICB9CiAgICAgICAgfSwKICAgICAgICAicHJvZHVjdF92YXJpYXRp\nb25zIjogewogICAgICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAg\nICAgICJpdGVtcyI6IHsKICAgICAgICAgICAgICAgICJ0eXBlIjogIm9iamVj\ndCIsCiAgICAgICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAg\nICAgICAgICAgICAiaWQiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0\neXBlIjogImludGVnZXIiCiAgICAgICAgICAgICAgICAgICAgfSwKICAgICAg\nICAgICAgICAgICAgICAibmFtZSI6IHsKICAgICAgICAgICAgICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAgIH0sCiAg\nICAgICAgICAgICAgICAgICAgInByb2R1Y3RfaWQiOiB7CiAgICAgICAgICAg\nICAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgICAgICAg\nICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAicHJpY2VzIjogewogICAg\nICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAg\nICAgICAgICAgICAgICAgICJpdGVtcyI6IHsKICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAiaWQiOiB7CiAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAicHJvZHVjdF9pZCI6IHsKICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICJwcm9kdWN0X3ZhcmlhdGlvbl9pZCI6IHsKICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIK\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICJjdXJyZW5jeSI6IHsKICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgImNvc3QiOiB7CiAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAiY29tbWVudCI6IHsKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgIm92ZXJoZWFkX2Nvc3QiOiB7CiAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAicHJpY2UiOiB7CiAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAicHJpY2VfZm9ybWF0dGVkIjogewogICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAg\nICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAiaWQiLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJw\ncm9kdWN0X2lkIiwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAi\ncHJvZHVjdF92YXJpYXRpb25faWQiLAogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICJjdXJyZW5jeSIsCiAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgImNvc3QiLAogICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICJjb21tZW50IiwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAib3ZlcmhlYWRfY29zdCIsCiAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgInByaWNlIiwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAicHJpY2VfZm9ybWF0dGVkIgogICAgICAgICAgICAgICAgICAgICAgICAg\nICAgXQogICAgICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAg\nICAgICAgfQogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJy\nZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICAgICAiaWQiLAogICAgICAg\nICAgICAgICAgICAgICJuYW1lIiwKICAgICAgICAgICAgICAgICAgICAicHJv\nZHVjdF9pZCIsCiAgICAgICAgICAgICAgICAgICAgInByaWNlcyIKICAgICAg\nICAgICAgICAgIF0KICAgICAgICAgICAgfQogICAgICAgIH0KICAgIH0sCiAg\nICAicmVxdWlyZWQiOiBbCiAgICAgICAgImFjdGl2ZV9mbGFnIiwKICAgICAg\nICAiZmlyc3RfY2hhciIsCiAgICAgICAgImZpbGVzX2NvdW50IiwKICAgICAg\nICAiYWRkX3RpbWUiLAogICAgICAgICJ1cGRhdGVfdGltZSIsCiAgICAgICAg\nImJpbGxpbmdfZnJlcXVlbmN5IiwKICAgICAgICAicHJpY2VzIiwKICAgICAg\nICAicHJvZHVjdF92YXJpYXRpb25zIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/product/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/1e67b3d077344d45f6ca1cbf594debc37f82b3e4",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/product/getAll.json"
     },
-    "required": [
-        "active_flag",
-        "first_char",
-        "files_count",
-        "add_time",
-        "update_time",
-        "billing_frequency",
-        "prices",
-        "product_variations"
-    ]
+    "version": 1
 }

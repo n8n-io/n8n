@@ -1,50 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "resourceName": {
-            "type": "string"
-        },
-        "etag": {
-            "type": "string"
-        },
-        "names": {
-            "type": "object",
-            "properties": {
-                "displayName": {
-                    "type": "string"
-                },
-                "familyName": {
-                    "type": "string"
-                },
-                "givenName": {
-                    "type": "string"
-                },
-                "displayNameLastFirst": {
-                    "type": "string"
-                },
-                "unstructuredName": {
-                    "type": "string"
-                }
-            }
-        },
-        "contactId": {
-            "type": "string"
-        },
-        "phoneNumbers": {
-            "type": "object",
-            "properties": {
-                "mobile": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Google/Contacts/__schema__/v1.0.0/contact/getAll.json",
+    "sha": "fe8756f62f41f09e14697714f7116be95d84a4c3",
+    "size": 1166,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Contacts/__schema__/v1.0.0/contact/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Contacts/__schema__/v1.0.0/contact/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/fe8756f62f41f09e14697714f7116be95d84a4c3",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/Contacts/__schema__/v1.0.0/contact/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJyZXNvdXJjZU5hbWUiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJldGFnIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAibmFt\nZXMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAg\nICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgImRpc3BsYXlO\nYW1lIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiZmFtaWx5TmFt\nZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImdpdmVuTmFtZSI6\nIHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImRpc3BsYXlOYW1lTGFz\ndEZpcnN0IjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAidW5zdHJ1\nY3R1cmVkTmFtZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0KICAgICAg\nICB9LAogICAgICAgICJjb250YWN0SWQiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJwaG9uZU51bWJlcnMi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAg\nICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgIm1vYmlsZSI6IHsK\nICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAg\nICAgICAgICAgICAgIml0ZW1zIjogewogICAgICAgICAgICAgICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgfQogICAg\nICAgICAgICAgICAgfQogICAgICAgICAgICB9CiAgICAgICAgfQogICAgfSwK\nICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAicmVzb3VyY2VOYW1lIiwKICAg\nICAgICAiZXRhZyIsCiAgICAgICAgImNvbnRhY3RJZCIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Contacts/__schema__/v1.0.0/contact/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/fe8756f62f41f09e14697714f7116be95d84a4c3",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Contacts/__schema__/v1.0.0/contact/getAll.json"
     },
-    "required": [
-        "resourceName",
-        "etag",
-        "contactId"
-    ]
+    "version": 1
 }

@@ -1,111 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "kind": {
-            "type": "string"
-        },
-        "selfLink": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "projectNumber": {
-            "type": "string"
-        },
-        "generation": {
-            "type": "string"
-        },
-        "metageneration": {
-            "type": "string"
-        },
-        "location": {
-            "type": "string"
-        },
-        "storageClass": {
-            "type": "string"
-        },
-        "etag": {
-            "type": "string"
-        },
-        "timeCreated": {
-            "type": "string"
-        },
-        "updated": {
-            "type": "string"
-        },
-        "softDeletePolicy": {
-            "type": "object",
-            "properties": {
-                "retentionDurationSeconds": {
-                    "type": "string"
-                },
-                "effectiveTime": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "retentionDurationSeconds"
-            ]
-        },
-        "iamConfiguration": {
-            "type": "object",
-            "properties": {
-                "bucketPolicyOnly": {
-                    "type": "object",
-                    "properties": {
-                        "enabled": {
-                            "type": "boolean"
-                        }
-                    },
-                    "required": [
-                        "enabled"
-                    ]
-                },
-                "uniformBucketLevelAccess": {
-                    "type": "object",
-                    "properties": {
-                        "enabled": {
-                            "type": "boolean"
-                        }
-                    },
-                    "required": [
-                        "enabled"
-                    ]
-                },
-                "publicAccessPrevention": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "bucketPolicyOnly",
-                "uniformBucketLevelAccess",
-                "publicAccessPrevention"
-            ]
-        },
-        "locationType": {
-            "type": "string"
-        },
-        "rpo": {
-            "type": "string"
-        }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Google/CloudStorage/__schema__/v1.0.0/bucket/get.json",
+    "sha": "384c135909221ec200296dbbfa5bc7df71fefbe2",
+    "size": 2691,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/CloudStorage/__schema__/v1.0.0/bucket/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/CloudStorage/__schema__/v1.0.0/bucket/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/384c135909221ec200296dbbfa5bc7df71fefbe2",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/CloudStorage/__schema__/v1.0.0/bucket/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJraW5kIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAic2VsZkxpbmsiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJpZCI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAg\nICAgIm5hbWUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICB9LAogICAgICAgICJwcm9qZWN0TnVtYmVyIjogewogICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiZ2VuZXJh\ndGlvbiI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nIH0sCiAgICAgICAgIm1ldGFnZW5lcmF0aW9uIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAibG9jYXRpb24i\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAog\nICAgICAgICJzdG9yYWdlQ2xhc3MiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJldGFnIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAidGlt\nZUNyZWF0ZWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICB9LAogICAgICAgICJ1cGRhdGVkIjogewogICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAic29mdERlbGV0ZVBv\nbGljeSI6IHsKICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAg\nICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAicmV0ZW50\naW9uRHVyYXRpb25TZWNvbmRzIjogewogICAgICAgICAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAg\nICAgICAiZWZmZWN0aXZlVGltZSI6IHsKICAgICAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAg\nIH0sCiAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAg\nICJyZXRlbnRpb25EdXJhdGlvblNlY29uZHMiCiAgICAgICAgICAgIF0KICAg\nICAgICB9LAogICAgICAgICJpYW1Db25maWd1cmF0aW9uIjogewogICAgICAg\nICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGll\ncyI6IHsKICAgICAgICAgICAgICAgICJidWNrZXRQb2xpY3lPbmx5Ijogewog\nICAgICAgICAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAg\nICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAg\nICAgICAgICJlbmFibGVkIjogewogICAgICAgICAgICAgICAgICAgICAgICAg\nICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICAgICAgICAgICAgICAgICAg\nfQogICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAg\nInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgICAgICAgICAiZW5hYmxl\nZCIKICAgICAgICAgICAgICAgICAgICBdCiAgICAgICAgICAgICAgICB9LAog\nICAgICAgICAgICAgICAgInVuaWZvcm1CdWNrZXRMZXZlbEFjY2VzcyI6IHsK\nICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAg\nICAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAg\nICAgICAgICAiZW5hYmxlZCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgICAgICAgICAgICAgICAg\nIH0KICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAg\nICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICAgICAgICAgImVuYWJs\nZWQiCiAgICAgICAgICAgICAgICAgICAgXQogICAgICAgICAgICAgICAgfSwK\nICAgICAgICAgICAgICAgICJwdWJsaWNBY2Nlc3NQcmV2ZW50aW9uIjogewog\nICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAg\nICAgICAgIH0KICAgICAgICAgICAgfSwKICAgICAgICAgICAgInJlcXVpcmVk\nIjogWwogICAgICAgICAgICAgICAgImJ1Y2tldFBvbGljeU9ubHkiLAogICAg\nICAgICAgICAgICAgInVuaWZvcm1CdWNrZXRMZXZlbEFjY2VzcyIsCiAgICAg\nICAgICAgICAgICAicHVibGljQWNjZXNzUHJldmVudGlvbiIKICAgICAgICAg\nICAgXQogICAgICAgIH0sCiAgICAgICAgImxvY2F0aW9uVHlwZSI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAg\nInJwbyI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nIH0KICAgIH0sCiAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgImtpbmQiLAog\nICAgICAgICJzZWxmTGluayIsCiAgICAgICAgImlkIiwKICAgICAgICAibmFt\nZSIsCiAgICAgICAgInByb2plY3ROdW1iZXIiLAogICAgICAgICJtZXRhZ2Vu\nZXJhdGlvbiIsCiAgICAgICAgImxvY2F0aW9uIiwKICAgICAgICAic3RvcmFn\nZUNsYXNzIiwKICAgICAgICAiZXRhZyIsCiAgICAgICAgInRpbWVDcmVhdGVk\nIiwKICAgICAgICAidXBkYXRlZCIsCiAgICAgICAgInNvZnREZWxldGVQb2xp\nY3kiLAogICAgICAgICJsb2NhdGlvblR5cGUiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/CloudStorage/__schema__/v1.0.0/bucket/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/384c135909221ec200296dbbfa5bc7df71fefbe2",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/CloudStorage/__schema__/v1.0.0/bucket/get.json"
     },
-    "required": [
-        "kind",
-        "selfLink",
-        "id",
-        "name",
-        "projectNumber",
-        "metageneration",
-        "location",
-        "storageClass",
-        "etag",
-        "timeCreated",
-        "updated",
-        "softDeletePolicy",
-        "locationType"
-    ]
+    "version": 1
 }

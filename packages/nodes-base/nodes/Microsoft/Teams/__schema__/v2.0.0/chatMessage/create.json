@@ -1,142 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "@odata.context": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "replyToId": {
-            "type": "null"
-        },
-        "etag": {
-            "type": "string"
-        },
-        "messageType": {
-            "type": "string"
-        },
-        "createdDateTime": {
-            "type": "string"
-        },
-        "lastModifiedDateTime": {
-            "type": "string"
-        },
-        "lastEditedDateTime": {
-            "type": "null"
-        },
-        "deletedDateTime": {
-            "type": "null"
-        },
-        "subject": {
-            "type": "null"
-        },
-        "summary": {
-            "type": "null"
-        },
-        "chatId": {
-            "type": "string"
-        },
-        "importance": {
-            "type": "string"
-        },
-        "locale": {
-            "type": "string"
-        },
-        "webUrl": {
-            "type": "null"
-        },
-        "channelIdentity": {
-            "type": "null"
-        },
-        "policyViolation": {
-            "type": "null"
-        },
-        "eventDetail": {
-            "type": "null"
-        },
-        "from": {
-            "type": "object",
-            "properties": {
-                "application": {
-                    "type": "null"
-                },
-                "device": {
-                    "type": "null"
-                },
-                "user": {
-                    "type": "object",
-                    "properties": {
-                        "@odata.type": {
-                            "type": "string"
-                        },
-                        "id": {
-                            "type": "string"
-                        },
-                        "displayName": {
-                            "type": "string"
-                        },
-                        "userIdentityType": {
-                            "type": "string"
-                        },
-                        "tenantId": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "@odata.type",
-                        "id",
-                        "displayName",
-                        "userIdentityType",
-                        "tenantId"
-                    ]
-                }
-            },
-            "required": [
-                "application",
-                "device",
-                "user"
-            ]
-        },
-        "body": {
-            "type": "object",
-            "properties": {
-                "contentType": {
-                    "type": "string"
-                },
-                "content": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "contentType",
-                "content"
-            ]
-        }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/chatMessage/create.json",
+    "sha": "93ccc7eeaac2075275267f063f61dbc06e437a58",
+    "size": 3427,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/chatMessage/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/chatMessage/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/93ccc7eeaac2075275267f063f61dbc06e437a58",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/chatMessage/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJAb2RhdGEuY29udGV4dCI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImlkIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAicmVw\nbHlUb0lkIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAg\nIH0sCiAgICAgICAgImV0YWciOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJtZXNzYWdlVHlwZSI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAg\nImNyZWF0ZWREYXRlVGltZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgIH0sCiAgICAgICAgImxhc3RNb2RpZmllZERhdGVUaW1l\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwK\nICAgICAgICAibGFzdEVkaXRlZERhdGVUaW1lIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAgImRlbGV0ZWREYXRl\nVGltZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9\nLAogICAgICAgICJzdWJqZWN0IjogewogICAgICAgICAgICAidHlwZSI6ICJu\ndWxsIgogICAgICAgIH0sCiAgICAgICAgInN1bW1hcnkiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAiY2hhdElk\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwK\nICAgICAgICAiaW1wb3J0YW5jZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImxvY2FsZSI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIndl\nYlVybCI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9\nLAogICAgICAgICJjaGFubmVsSWRlbnRpdHkiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAicG9saWN5VmlvbGF0\naW9uIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0s\nCiAgICAgICAgImV2ZW50RGV0YWlsIjogewogICAgICAgICAgICAidHlwZSI6\nICJudWxsIgogICAgICAgIH0sCiAgICAgICAgImZyb20iOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVz\nIjogewogICAgICAgICAgICAgICAgImFwcGxpY2F0aW9uIjogewogICAgICAg\nICAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgICAgICAgICB9\nLAogICAgICAgICAgICAgICAgImRldmljZSI6IHsKICAgICAgICAgICAgICAg\nICAgICAidHlwZSI6ICJudWxsIgogICAgICAgICAgICAgICAgfSwKICAgICAg\nICAgICAgICAgICJ1c2VyIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogIm9iamVjdCIsCiAgICAgICAgICAgICAgICAgICAgInByb3BlcnRpZXMi\nOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJAb2RhdGEudHlwZSI6IHsK\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAg\nICAgICAgImlkIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAgICAgICB9LAogICAg\nICAgICAgICAgICAgICAgICAgICAiZGlzcGxheU5hbWUiOiB7CiAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgICAgICJ1\nc2VySWRlbnRpdHlUeXBlIjogewogICAgICAgICAgICAgICAgICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAgICAgICB9\nLAogICAgICAgICAgICAgICAgICAgICAgICAidGVuYW50SWQiOiB7CiAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgICAgICB9LAog\nICAgICAgICAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAg\nICAgICAgICAgICAgIkBvZGF0YS50eXBlIiwKICAgICAgICAgICAgICAgICAg\nICAgICAgImlkIiwKICAgICAgICAgICAgICAgICAgICAgICAgImRpc3BsYXlO\nYW1lIiwKICAgICAgICAgICAgICAgICAgICAgICAgInVzZXJJZGVudGl0eVR5\ncGUiLAogICAgICAgICAgICAgICAgICAgICAgICAidGVuYW50SWQiCiAgICAg\nICAgICAgICAgICAgICAgXQogICAgICAgICAgICAgICAgfQogICAgICAgICAg\nICB9LAogICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAg\nICAiYXBwbGljYXRpb24iLAogICAgICAgICAgICAgICAgImRldmljZSIsCiAg\nICAgICAgICAgICAgICAidXNlciIKICAgICAgICAgICAgXQogICAgICAgIH0s\nCiAgICAgICAgImJvZHkiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9iamVj\ndCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAg\nICAgImNvbnRlbnRUeXBlIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAg\nICAiY29udGVudCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0sCiAgICAg\nICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICJjb250ZW50\nVHlwZSIsCiAgICAgICAgICAgICAgICAiY29udGVudCIKICAgICAgICAgICAg\nXQogICAgICAgIH0KICAgIH0sCiAgICAicmVxdWlyZWQiOiBbCiAgICAgICAg\nIkBvZGF0YS5jb250ZXh0IiwKICAgICAgICAiaWQiLAogICAgICAgICJyZXBs\neVRvSWQiLAogICAgICAgICJldGFnIiwKICAgICAgICAibWVzc2FnZVR5cGUi\nLAogICAgICAgICJjcmVhdGVkRGF0ZVRpbWUiLAogICAgICAgICJsYXN0TW9k\naWZpZWREYXRlVGltZSIsCiAgICAgICAgImxhc3RFZGl0ZWREYXRlVGltZSIs\nCiAgICAgICAgImRlbGV0ZWREYXRlVGltZSIsCiAgICAgICAgInN1YmplY3Qi\nLAogICAgICAgICJzdW1tYXJ5IiwKICAgICAgICAiY2hhdElkIiwKICAgICAg\nICAiaW1wb3J0YW5jZSIsCiAgICAgICAgImxvY2FsZSIsCiAgICAgICAgIndl\nYlVybCIsCiAgICAgICAgImNoYW5uZWxJZGVudGl0eSIsCiAgICAgICAgInBv\nbGljeVZpb2xhdGlvbiIsCiAgICAgICAgImV2ZW50RGV0YWlsIiwKICAgICAg\nICAiZnJvbSIsCiAgICAgICAgImJvZHkiLAogICAgICAgICJhdHRhY2htZW50\ncyIsCiAgICAgICAgIm1lbnRpb25zIiwKICAgICAgICAicmVhY3Rpb25zIgog\nICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/chatMessage/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/93ccc7eeaac2075275267f063f61dbc06e437a58",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/chatMessage/create.json"
     },
-    "required": [
-        "@odata.context",
-        "id",
-        "replyToId",
-        "etag",
-        "messageType",
-        "createdDateTime",
-        "lastModifiedDateTime",
-        "lastEditedDateTime",
-        "deletedDateTime",
-        "subject",
-        "summary",
-        "chatId",
-        "importance",
-        "locale",
-        "webUrl",
-        "channelIdentity",
-        "policyViolation",
-        "eventDetail",
-        "from",
-        "body",
-        "attachments",
-        "mentions",
-        "reactions"
-    ]
+    "version": 1
 }

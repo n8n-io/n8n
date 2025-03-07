@@ -1,0 +1,382 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "date": {
+            "type": "string"
+        },
+        "date_gmt": {
+            "type": "string"
+        },
+        "guid": {
+            "type": "object",
+            "properties": {
+                "rendered": {
+                    "type": "string"
+                },
+                "raw": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "rendered",
+                "raw"
+            ]
+        },
+        "modified": {
+            "type": "string"
+        },
+        "modified_gmt": {
+            "type": "string"
+        },
+        "password": {
+            "type": "string"
+        },
+        "slug": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "link": {
+            "type": "string"
+        },
+        "title": {
+            "type": "object",
+            "properties": {
+                "raw": {
+                    "type": "string"
+                },
+                "rendered": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "raw",
+                "rendered"
+            ]
+        },
+        "content": {
+            "type": "object",
+            "properties": {
+                "raw": {
+                    "type": "string"
+                },
+                "rendered": {
+                    "type": "string"
+                },
+                "protected": {
+                    "type": "boolean"
+                },
+                "block_version": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "raw",
+                "rendered",
+                "protected",
+                "block_version"
+            ]
+        },
+        "excerpt": {
+            "type": "object",
+            "properties": {
+                "raw": {
+                    "type": "string"
+                },
+                "rendered": {
+                    "type": "string"
+                },
+                "protected": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "raw",
+                "rendered",
+                "protected"
+            ]
+        },
+        "author": {
+            "type": "integer"
+        },
+        "featured_media": {
+            "type": "integer"
+        },
+        "parent": {
+            "type": "integer"
+        },
+        "menu_order": {
+            "type": "integer"
+        },
+        "comment_status": {
+            "type": "string"
+        },
+        "ping_status": {
+            "type": "string"
+        },
+        "template": {
+            "type": "string"
+        },
+        "meta": {
+            "type": "object",
+            "properties": {
+                "footnotes": {
+                    "type": "string"
+                }
+            }
+        },
+        "permalink_template": {
+            "type": "string"
+        },
+        "generated_slug": {
+            "type": "string"
+        },
+        "class_list": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "_links": {
+            "type": "object",
+            "properties": {
+                "self": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            },
+                            "targetHints": {
+                                "type": "object",
+                                "properties": {
+                                    "allow": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                },
+                                "required": [
+                                    "allow"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "href"
+                        ]
+                    }
+                },
+                "collection": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "href"
+                        ]
+                    }
+                },
+                "about": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "href"
+                        ]
+                    }
+                },
+                "author": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "embeddable": {
+                                "type": "boolean"
+                            },
+                            "href": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "embeddable",
+                            "href"
+                        ]
+                    }
+                },
+                "replies": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "embeddable": {
+                                "type": "boolean"
+                            },
+                            "href": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "embeddable",
+                            "href"
+                        ]
+                    }
+                },
+                "version-history": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "count": {
+                                "type": "integer"
+                            },
+                            "href": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "count",
+                            "href"
+                        ]
+                    }
+                },
+                "wp:attachment": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "href"
+                        ]
+                    }
+                },
+                "wp:action-publish": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "href"
+                        ]
+                    }
+                },
+                "wp:action-unfiltered-html": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "href"
+                        ]
+                    }
+                },
+                "wp:action-assign-author": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "href"
+                        ]
+                    }
+                },
+                "curies": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "href": {
+                                "type": "string"
+                            },
+                            "templated": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "href",
+                            "templated"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "self",
+                "collection",
+                "about",
+                "author",
+                "replies",
+                "version-history",
+                "wp:attachment",
+                "wp:action-publish",
+                "wp:action-unfiltered-html",
+                "wp:action-assign-author",
+                "curies"
+            ]
+        }
+    },
+    "required": [
+        "id",
+        "date",
+        "date_gmt",
+        "guid",
+        "modified",
+        "modified_gmt",
+        "password",
+        "slug",
+        "status",
+        "type",
+        "link",
+        "title",
+        "content",
+        "excerpt",
+        "author",
+        "featured_media",
+        "parent",
+        "menu_order",
+        "comment_status",
+        "ping_status",
+        "template",
+        "meta",
+        "permalink_template",
+        "generated_slug",
+        "_links"
+    ],
+    "version": 1
+}

@@ -1,34 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "gid": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "resource_type": {
-            "type": "string"
-        },
-        "parent": {
-            "type": "object",
-            "properties": {
-                "gid": {
-                    "type": "string"
-                },
-                "resource_type": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "gid",
-                "resource_type"
-            ]
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Asana/__schema__/v1.0.0/subtask/getAll.json",
+    "sha": "2267f67bbf5c1ffdf9eef88d6e676a2eda9add22",
+    "size": 683,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Asana/__schema__/v1.0.0/subtask/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Asana/__schema__/v1.0.0/subtask/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/2267f67bbf5c1ffdf9eef88d6e676a2eda9add22",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Asana/__schema__/v1.0.0/subtask/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJnaWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJuYW1lIjogewogICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAicmVzb3VyY2VfdHlw\nZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0s\nCiAgICAgICAgInBhcmVudCI6IHsKICAgICAgICAgICAgInR5cGUiOiAib2Jq\nZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAg\nICAgICAiZ2lkIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAicmVz\nb3VyY2VfdHlwZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0sCiAgICAg\nICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICJnaWQiLAog\nICAgICAgICAgICAgICAgInJlc291cmNlX3R5cGUiCiAgICAgICAgICAgIF0K\nICAgICAgICB9CiAgICB9LAogICAgInJlcXVpcmVkIjogWwogICAgICAgICJn\naWQiLAogICAgICAgICJuYW1lIiwKICAgICAgICAicmVzb3VyY2VfdHlwZSIK\nICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Asana/__schema__/v1.0.0/subtask/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/2267f67bbf5c1ffdf9eef88d6e676a2eda9add22",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Asana/__schema__/v1.0.0/subtask/getAll.json"
     },
-    "required": [
-        "gid",
-        "name",
-        "resource_type"
-    ]
+    "version": 1
 }

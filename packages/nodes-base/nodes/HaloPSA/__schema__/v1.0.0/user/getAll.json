@@ -1,30 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "integer"
-        },
-        "name": {
-            "type": "string"
-        },
-        "site_id": {
-            "type": "integer"
-        },
-        "surname": {
-            "type": "string"
-        },
-        "emailaddress": {
-            "type": "string"
-        },
-        "inactive": {
-            "type": "boolean"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/HaloPSA/__schema__/v1.0.0/user/getAll.json",
+    "sha": "3d85c0abb0d78e68b88d1b709ffc5ce5233a7db6",
+    "size": 530,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/HaloPSA/__schema__/v1.0.0/user/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/HaloPSA/__schema__/v1.0.0/user/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/3d85c0abb0d78e68b88d1b709ffc5ce5233a7db6",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/HaloPSA/__schema__/v1.0.0/user/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIK\nICAgICAgICB9LAogICAgICAgICJuYW1lIjogewogICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAic2l0ZV9pZCI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAogICAg\nICAgICJzdXJuYW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAiZW1haWxhZGRyZXNzIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiaW5h\nY3RpdmUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAg\nICAgfQogICAgfSwKICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAiaWQiLAog\nICAgICAgICJuYW1lIiwKICAgICAgICAic2l0ZV9pZCIsCiAgICAgICAgInN1\ncm5hbWUiLAogICAgICAgICJpbmFjdGl2ZSIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/HaloPSA/__schema__/v1.0.0/user/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/3d85c0abb0d78e68b88d1b709ffc5ce5233a7db6",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/HaloPSA/__schema__/v1.0.0/user/getAll.json"
     },
-    "required": [
-        "id",
-        "name",
-        "site_id",
-        "surname",
-        "inactive"
-    ]
+    "version": 1
 }

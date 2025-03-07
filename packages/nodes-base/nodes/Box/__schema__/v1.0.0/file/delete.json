@@ -1,11 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"success": {
-			"type": "boolean"
-		}
-	},
-	"required": [
-		"success"
-	]
+    "name": "delete.json",
+    "path": "packages/nodes-base/nodes/Box/__schema__/v1.0.0/file/delete.json",
+    "sha": "1be032ad855fc16878cfd281d98b3e3a361bdf2a",
+    "size": 114,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Box/__schema__/v1.0.0/file/delete.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Box/__schema__/v1.0.0/file/delete.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/1be032ad855fc16878cfd281d98b3e3a361bdf2a",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Box/__schema__/v1.0.0/file/delete.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJzdWNj\nZXNzIjogewoJCQkidHlwZSI6ICJib29sZWFuIgoJCX0KCX0sCgkicmVxdWly\nZWQiOiBbCgkJInN1Y2Nlc3MiCgldCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Box/__schema__/v1.0.0/file/delete.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/1be032ad855fc16878cfd281d98b3e3a361bdf2a",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Box/__schema__/v1.0.0/file/delete.json"
+    },
+    "version": 1
 }

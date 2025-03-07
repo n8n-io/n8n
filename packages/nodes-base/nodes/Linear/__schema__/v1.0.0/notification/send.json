@@ -1,0 +1,16 @@
+{
+    "type": "object",
+    "properties": {
+        "status": {
+            "type": "integer"
+        },
+        "message": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "status",
+        "message"
+    ],
+    "version": 1
+}

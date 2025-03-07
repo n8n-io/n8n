@@ -1,19 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "fullName": {
-            "type": "string"
-        },
-        "username": {
-            "type": "string"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Trello/__schema__/v1.0.0/boardMember/getAll.json",
+    "sha": "2b5216b84ba65f5fb1605f07e9e5dedcbbaf9449",
+    "size": 309,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Trello/__schema__/v1.0.0/boardMember/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Trello/__schema__/v1.0.0/boardMember/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/2b5216b84ba65f5fb1605f07e9e5dedcbbaf9449",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Trello/__schema__/v1.0.0/boardMember/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgImZ1bGxOYW1lIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAidXNlcm5hbWUi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9CiAg\nICB9LAogICAgInJlcXVpcmVkIjogWwogICAgICAgICJpZCIsCiAgICAgICAg\nImZ1bGxOYW1lIiwKICAgICAgICAidXNlcm5hbWUiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Trello/__schema__/v1.0.0/boardMember/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/2b5216b84ba65f5fb1605f07e9e5dedcbbaf9449",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Trello/__schema__/v1.0.0/boardMember/getAll.json"
     },
-    "required": [
-        "id",
-        "fullName",
-        "username"
-    ]
+    "version": 1
 }

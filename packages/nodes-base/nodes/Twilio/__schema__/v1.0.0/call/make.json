@@ -1,106 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "price_unit": {
-            "type": "string"
-        },
-        "parent_call_sid": {
-            "type": "null"
-        },
-        "caller_name": {
-            "type": "null"
-        },
-        "duration": {
-            "type": "null"
-        },
-        "from": {
-            "type": "string"
-        },
-        "to": {
-            "type": "string"
-        },
-        "annotation": {
-            "type": "null"
-        },
-        "answered_by": {
-            "type": "null"
-        },
-        "sid": {
-            "type": "string"
-        },
-        "queue_time": {
-            "type": "string"
-        },
-        "price": {
-            "type": "null"
-        },
-        "api_version": {
-            "type": "string"
-        },
-        "status": {
-            "type": "string"
-        },
-        "direction": {
-            "type": "string"
-        },
-        "start_time": {
-            "type": "null"
-        },
-        "from_formatted": {
-            "type": "string"
-        },
-        "group_sid": {
-            "type": "null"
-        },
-        "trunk_sid": {
-            "type": "null"
-        },
-        "forwarded_from": {
-            "type": "null"
-        },
-        "uri": {
-            "type": "string"
-        },
-        "account_sid": {
-            "type": "string"
-        },
-        "end_time": {
-            "type": "null"
-        },
-        "to_formatted": {
-            "type": "string"
-        },
-        "subresource_uris": {
-            "type": "object",
-            "properties": {
-                "notifications": {
-                    "type": "string"
-                },
-                "user_defined_messages": {
-                    "type": "string"
-                },
-                "transcriptions": {
-                    "type": "string"
-                },
-                "recordings": {
-                    "type": "string"
-                },
-                "streams": {
-                    "type": "string"
-                },
-                "payments": {
-                    "type": "string"
-                },
-                "user_defined_message_subscriptions": {
-                    "type": "string"
-                },
-                "siprec": {
-                    "type": "string"
-                },
-                "events": {
-                    "type": "string"
-                }
-            }
-        }
-    }
+    "name": "make.json",
+    "path": "packages/nodes-base/nodes/Twilio/__schema__/v1.0.0/call/make.json",
+    "sha": "34e90d9b4328a137d4002d66c0a377fc51f90886",
+    "size": 2409,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Twilio/__schema__/v1.0.0/call/make.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Twilio/__schema__/v1.0.0/call/make.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/34e90d9b4328a137d4002d66c0a377fc51f90886",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Twilio/__schema__/v1.0.0/call/make.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJwcmljZV91bml0IjogewogICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgfSwKICAgICAgICAicGFyZW50X2NhbGxfc2lkIjog\newogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAg\nICAgImNhbGxlcl9uYW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxs\nIgogICAgICAgIH0sCiAgICAgICAgImR1cmF0aW9uIjogewogICAgICAgICAg\nICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAgImZyb20iOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAg\nICAgICJ0byI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgIH0sCiAgICAgICAgImFubm90YXRpb24iOiB7CiAgICAgICAgICAgICJ0\neXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAiYW5zd2VyZWRfYnki\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwKICAg\nICAgICAic2lkIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgfSwKICAgICAgICAicXVldWVfdGltZSI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInByaWNlIjog\newogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAg\nICAgImFwaV92ZXJzaW9uIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgfSwKICAgICAgICAic3RhdHVzIjogewogICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiZGlyZWN0\naW9uIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nfSwKICAgICAgICAic3RhcnRfdGltZSI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAibnVsbCIKICAgICAgICB9LAogICAgICAgICJmcm9tX2Zvcm1hdHRlZCI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAg\nICAgICAgImdyb3VwX3NpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVs\nbCIKICAgICAgICB9LAogICAgICAgICJ0cnVua19zaWQiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAiZm9yd2Fy\nZGVkX2Zyb20iOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAg\nICAgfSwKICAgICAgICAidXJpIjogewogICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgfSwKICAgICAgICAiYWNjb3VudF9zaWQiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAg\nICJlbmRfdGltZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAg\nICAgICB9LAogICAgICAgICJ0b19mb3JtYXR0ZWQiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJzdWJyZXNv\ndXJjZV91cmlzIjogewogICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAog\nICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICJu\nb3RpZmljYXRpb25zIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAi\ndXNlcl9kZWZpbmVkX21lc3NhZ2VzIjogewogICAgICAgICAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAg\nICAgICAgICAidHJhbnNjcmlwdGlvbnMiOiB7CiAgICAgICAgICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAg\nICAgICAgICAgICJyZWNvcmRpbmdzIjogewogICAgICAgICAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAg\nICAgICAgICAic3RyZWFtcyI6IHsKICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAg\nICAgInBheW1lbnRzIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAi\ndXNlcl9kZWZpbmVkX21lc3NhZ2Vfc3Vic2NyaXB0aW9ucyI6IHsKICAgICAg\nICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAg\nICB9LAogICAgICAgICAgICAgICAgInNpcHJlYyI6IHsKICAgICAgICAgICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAog\nICAgICAgICAgICAgICAgImV2ZW50cyI6IHsKICAgICAgICAgICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9CiAgICAgICAg\nICAgIH0KICAgICAgICB9CiAgICB9Cn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Twilio/__schema__/v1.0.0/call/make.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/34e90d9b4328a137d4002d66c0a377fc51f90886",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Twilio/__schema__/v1.0.0/call/make.json"
+    },
+    "version": 1
 }

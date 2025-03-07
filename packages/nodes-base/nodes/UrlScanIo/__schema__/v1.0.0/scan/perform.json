@@ -1,23 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "scanId": {
-            "type": "string"
-        },
-        "message": {
-            "type": "string"
-        },
-        "result": {
-            "type": "string"
-        },
-        "api": {
-            "type": "string"
-        },
-        "visibility": {
-            "type": "string"
-        },
-        "url": {
-            "type": "string"
-        }
-    }
+    "name": "perform.json",
+    "path": "packages/nodes-base/nodes/UrlScanIo/__schema__/v1.0.0/scan/perform.json",
+    "sha": "c6d422d18fb6bba34aae7f0d4c1ff7e80c0a0b06",
+    "size": 410,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/UrlScanIo/__schema__/v1.0.0/scan/perform.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/UrlScanIo/__schema__/v1.0.0/scan/perform.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/c6d422d18fb6bba34aae7f0d4c1ff7e80c0a0b06",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/UrlScanIo/__schema__/v1.0.0/scan/perform.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJzY2FuSWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJtZXNzYWdlIjogewogICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAicmVzdWx0\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwK\nICAgICAgICAiYXBpIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAidmlzaWJpbGl0eSI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInVybCI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0KICAg\nIH0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/UrlScanIo/__schema__/v1.0.0/scan/perform.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/c6d422d18fb6bba34aae7f0d4c1ff7e80c0a0b06",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/UrlScanIo/__schema__/v1.0.0/scan/perform.json"
+    },
+    "version": 1
 }

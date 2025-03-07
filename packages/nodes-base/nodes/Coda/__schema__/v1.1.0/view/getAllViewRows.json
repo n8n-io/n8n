@@ -1,65 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "Contract ID": {
-            "type": "string"
-        },
-        "Contract Link": {
-            "type": "string"
-        },
-        "Summary": {
-            "type": "string"
-        },
-        "over4MB?": {
-            "type": "boolean"
-        },
-        "fileSize": {
-            "type": "string"
-        },
-        "Summarize": {
-            "type": "string"
-        },
-        "contractTextOutput": {
-            "type": "string"
-        },
-        "extractText": {
-            "type": "string"
-        },
-        "lastUpdated": {
-            "type": "string"
-        },
-        "Status Date": {
-            "type": "string"
-        },
-        "Contract Signature Date": {
-            "type": "string"
-        },
-        "Processing Organization": {
-            "type": "string"
-        },
-        "Contract Notes": {
-            "type": "string"
-        },
-        "Full Deletion Required?": {
-            "type": "boolean"
-        },
-        "IT Addendum?": {
-            "type": "boolean"
-        },
-        "Do not use name/logo?": {
-            "type": "boolean"
-        },
-        "Created on": {
-            "type": "string"
-        },
-        "rowID": {
-            "type": "integer"
-        }
+    "name": "getAllViewRows.json",
+    "path": "packages/nodes-base/nodes/Coda/__schema__/v1.1.0/view/getAllViewRows.json",
+    "sha": "55f97b0a36a4a580d11a7aafb9117a1a259a7fff",
+    "size": 1360,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Coda/__schema__/v1.1.0/view/getAllViewRows.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Coda/__schema__/v1.1.0/view/getAllViewRows.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/55f97b0a36a4a580d11a7aafb9117a1a259a7fff",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Coda/__schema__/v1.1.0/view/getAllViewRows.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgIkNvbnRyYWN0IElEIjogewogICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiQ29udHJh\nY3QgTGluayI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgIH0sCiAgICAgICAgIlN1bW1hcnkiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJvdmVyNE1CPyI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9LAogICAg\nICAgICJmaWxlU2l6ZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgIH0sCiAgICAgICAgIlN1bW1hcml6ZSI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImNvbnRy\nYWN0VGV4dE91dHB1dCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgIH0sCiAgICAgICAgImV4dHJhY3RUZXh0IjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAibGFz\ndFVwZGF0ZWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICB9LAogICAgICAgICJTdGF0dXMgRGF0ZSI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIkNvbnRyYWN0\nIFNpZ25hdHVyZSBEYXRlIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgfSwKICAgICAgICAiUHJvY2Vzc2luZyBPcmdhbml6YXRp\nb24iOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9\nLAogICAgICAgICJDb250cmFjdCBOb3RlcyI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIkZ1bGwgRGVsZXRp\nb24gUmVxdWlyZWQ/IjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFu\nIgogICAgICAgIH0sCiAgICAgICAgIklUIEFkZGVuZHVtPyI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9LAogICAgICAgICJE\nbyBub3QgdXNlIG5hbWUvbG9nbz8iOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAiQ3JlYXRlZCBvbiI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAg\nICAgInJvd0lEIjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgog\nICAgICAgIH0KICAgIH0sCiAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgImlk\nIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Coda/__schema__/v1.1.0/view/getAllViewRows.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/55f97b0a36a4a580d11a7aafb9117a1a259a7fff",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Coda/__schema__/v1.1.0/view/getAllViewRows.json"
     },
-    "required": [
-        "id"
-    ]
+    "version": 1
 }

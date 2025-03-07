@@ -1,19 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "symbol": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/CoinGecko/__schema__/v1.0.0/coin/getAll.json",
+    "sha": "2b0957f8df29fa2af71bcb36e5b4900774145d72",
+    "size": 297,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/CoinGecko/__schema__/v1.0.0/coin/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/CoinGecko/__schema__/v1.0.0/coin/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/2b0957f8df29fa2af71bcb36e5b4900774145d72",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/CoinGecko/__schema__/v1.0.0/coin/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInN5bWJvbCI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIm5hbWUiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9CiAgICB9LAog\nICAgInJlcXVpcmVkIjogWwogICAgICAgICJpZCIsCiAgICAgICAgInN5bWJv\nbCIsCiAgICAgICAgIm5hbWUiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/CoinGecko/__schema__/v1.0.0/coin/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/2b0957f8df29fa2af71bcb36e5b4900774145d72",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/CoinGecko/__schema__/v1.0.0/coin/getAll.json"
     },
-    "required": [
-        "id",
-        "symbol",
-        "name"
-    ]
+    "version": 1
 }

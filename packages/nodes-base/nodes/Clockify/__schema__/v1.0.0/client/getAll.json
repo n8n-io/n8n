@@ -1,0 +1,35 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "workspaceId": {
+            "type": "string"
+        },
+        "archived": {
+            "type": "boolean"
+        },
+        "currencyId": {
+            "type": "string"
+        },
+        "currencyCode": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "id",
+        "name",
+        "email",
+        "workspaceId",
+        "archived",
+        "address",
+        "note",
+        "currencyId",
+        "currencyCode"
+    ],
+    "version": 1
+}

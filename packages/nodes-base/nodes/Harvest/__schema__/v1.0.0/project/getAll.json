@@ -1,92 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "integer"
-        },
-        "name": {
-            "type": "string"
-        },
-        "is_active": {
-            "type": "boolean"
-        },
-        "is_billable": {
-            "type": "boolean"
-        },
-        "is_fixed_fee": {
-            "type": "boolean"
-        },
-        "bill_by": {
-            "type": "string"
-        },
-        "budget_by": {
-            "type": "string"
-        },
-        "budget_is_monthly": {
-            "type": "boolean"
-        },
-        "notify_when_over_budget": {
-            "type": "boolean"
-        },
-        "over_budget_notification_percentage": {
-            "type": "integer"
-        },
-        "show_budget_to_all": {
-            "type": "boolean"
-        },
-        "created_at": {
-            "type": "string"
-        },
-        "updated_at": {
-            "type": "string"
-        },
-        "cost_budget_include_expenses": {
-            "type": "boolean"
-        },
-        "client": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "currency": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "id",
-                "name",
-                "currency"
-            ]
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Harvest/__schema__/v1.0.0/project/getAll.json",
+    "sha": "79af39b4917fc6e478f89622b81a891ab173b6e6",
+    "size": 2074,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Harvest/__schema__/v1.0.0/project/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Harvest/__schema__/v1.0.0/project/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/79af39b4917fc6e478f89622b81a891ab173b6e6",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Harvest/__schema__/v1.0.0/project/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIK\nICAgICAgICB9LAogICAgICAgICJuYW1lIjogewogICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiaXNfYWN0aXZlIjog\newogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAg\nICAgICAgImlzX2JpbGxhYmxlIjogewogICAgICAgICAgICAidHlwZSI6ICJi\nb29sZWFuIgogICAgICAgIH0sCiAgICAgICAgImlzX2ZpeGVkX2ZlZSI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9LAogICAg\nICAgICJiaWxsX2J5IjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAiYnVkZ2V0X2J5IjogewogICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiYnVkZ2V0\nX2lzX21vbnRobHkiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4i\nCiAgICAgICAgfSwKICAgICAgICAibm90aWZ5X3doZW5fb3Zlcl9idWRnZXQi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwK\nICAgICAgICAib3Zlcl9idWRnZXRfbm90aWZpY2F0aW9uX3BlcmNlbnRhZ2Ui\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwK\nICAgICAgICAic2hvd19idWRnZXRfdG9fYWxsIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgImNyZWF0ZWRf\nYXQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9\nLAogICAgICAgICJ1cGRhdGVkX2F0IjogewogICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiY29zdF9idWRnZXRfaW5j\nbHVkZV9leHBlbnNlcyI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVh\nbiIKICAgICAgICB9LAogICAgICAgICJjbGllbnQiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjog\newogICAgICAgICAgICAgICAgImlkIjogewogICAgICAgICAgICAgICAgICAg\nICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgICAgICAgICB9LAogICAgICAg\nICAgICAgICAgIm5hbWUiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAg\nICJjdXJyZW5jeSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0sCiAgICAg\nICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICJpZCIsCiAg\nICAgICAgICAgICAgICAibmFtZSIsCiAgICAgICAgICAgICAgICAiY3VycmVu\nY3kiCiAgICAgICAgICAgIF0KICAgICAgICB9CiAgICB9LAogICAgInJlcXVp\ncmVkIjogWwogICAgICAgICJpZCIsCiAgICAgICAgIm5hbWUiLAogICAgICAg\nICJjb2RlIiwKICAgICAgICAiaXNfYWN0aXZlIiwKICAgICAgICAiaXNfYmls\nbGFibGUiLAogICAgICAgICJpc19maXhlZF9mZWUiLAogICAgICAgICJiaWxs\nX2J5IiwKICAgICAgICAiYnVkZ2V0IiwKICAgICAgICAiYnVkZ2V0X2J5IiwK\nICAgICAgICAiYnVkZ2V0X2lzX21vbnRobHkiLAogICAgICAgICJub3RpZnlf\nd2hlbl9vdmVyX2J1ZGdldCIsCiAgICAgICAgIm92ZXJfYnVkZ2V0X25vdGlm\naWNhdGlvbl9wZXJjZW50YWdlIiwKICAgICAgICAic2hvd19idWRnZXRfdG9f\nYWxsIiwKICAgICAgICAiY3JlYXRlZF9hdCIsCiAgICAgICAgInVwZGF0ZWRf\nYXQiLAogICAgICAgICJzdGFydHNfb24iLAogICAgICAgICJlbmRzX29uIiwK\nICAgICAgICAib3Zlcl9idWRnZXRfbm90aWZpY2F0aW9uX2RhdGUiLAogICAg\nICAgICJub3RlcyIsCiAgICAgICAgImNvc3RfYnVkZ2V0IiwKICAgICAgICAi\nY29zdF9idWRnZXRfaW5jbHVkZV9leHBlbnNlcyIsCiAgICAgICAgImhvdXJs\neV9yYXRlIiwKICAgICAgICAiZmVlIiwKICAgICAgICAiY2xpZW50IgogICAg\nXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Harvest/__schema__/v1.0.0/project/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/79af39b4917fc6e478f89622b81a891ab173b6e6",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Harvest/__schema__/v1.0.0/project/getAll.json"
     },
-    "required": [
-        "id",
-        "name",
-        "code",
-        "is_active",
-        "is_billable",
-        "is_fixed_fee",
-        "bill_by",
-        "budget",
-        "budget_by",
-        "budget_is_monthly",
-        "notify_when_over_budget",
-        "over_budget_notification_percentage",
-        "show_budget_to_all",
-        "created_at",
-        "updated_at",
-        "starts_on",
-        "ends_on",
-        "over_budget_notification_date",
-        "notes",
-        "cost_budget",
-        "cost_budget_include_expenses",
-        "hourly_rate",
-        "fee",
-        "client"
-    ]
+    "version": 1
 }

@@ -1,35 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "object": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
-        },
-        "person": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "email"
-            ]
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Notion/__schema__/v2.2.0/user/getAll.json",
+    "sha": "1a6e69e74693dedc89b0facc98a1c582d1536a95",
+    "size": 643,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Notion/__schema__/v2.2.0/user/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Notion/__schema__/v2.2.0/user/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/1a6e69e74693dedc89b0facc98a1c582d1536a95",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Notion/__schema__/v2.2.0/user/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJvYmplY3QiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIm5hbWUiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAg\nICJ0eXBlIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgfSwKICAgICAgICAicGVyc29uIjogewogICAgICAgICAgICAidHlwZSI6\nICJvYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAg\nICAgICAgICAgICJlbWFpbCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0s\nCiAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICJl\nbWFpbCIKICAgICAgICAgICAgXQogICAgICAgIH0KICAgIH0sCiAgICAicmVx\ndWlyZWQiOiBbCiAgICAgICAgIm9iamVjdCIsCiAgICAgICAgImlkIiwKICAg\nICAgICAibmFtZSIsCiAgICAgICAgImF2YXRhcl91cmwiLAogICAgICAgICJ0\neXBlIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Notion/__schema__/v2.2.0/user/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/1a6e69e74693dedc89b0facc98a1c582d1536a95",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Notion/__schema__/v2.2.0/user/getAll.json"
     },
-    "required": [
-        "object",
-        "id",
-        "name",
-        "avatar_url",
-        "type"
-    ]
+    "version": 1
 }

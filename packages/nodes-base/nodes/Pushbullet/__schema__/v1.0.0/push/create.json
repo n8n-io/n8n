@@ -1,57 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"active": {
-			"type": "boolean"
-		},
-		"iden": {
-			"type": "string"
-		},
-		"created": {
-			"type": "number"
-		},
-		"modified": {
-			"type": "number"
-		},
-		"type": {
-			"type": "string"
-		},
-		"dismissed": {
-			"type": "boolean"
-		},
-		"direction": {
-			"type": "string"
-		},
-		"receiver_iden": {
-			"type": "string"
-		},
-		"receiver_email": {
-			"type": "string"
-		},
-		"receiver_email_normalized": {
-			"type": "string"
-		},
-		"client_iden": {
-			"type": "string"
-		},
-		"title": {
-			"type": "string"
-		},
-		"body": {
-			"type": "string"
-		}
-	},
-	"required": [
-		"active",
-		"iden",
-		"created",
-		"modified",
-		"type",
-		"dismissed",
-		"direction",
-		"receiver_iden",
-		"receiver_email",
-		"receiver_email_normalized",
-		"client_iden"
-	]
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/Pushbullet/__schema__/v1.0.0/push/create.json",
+    "sha": "d17bed7459b5779535ff7256ceeff84d2f1dea03",
+    "size": 786,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Pushbullet/__schema__/v1.0.0/push/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Pushbullet/__schema__/v1.0.0/push/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/d17bed7459b5779535ff7256ceeff84d2f1dea03",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Pushbullet/__schema__/v1.0.0/push/create.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJhY3Rp\ndmUiOiB7CgkJCSJ0eXBlIjogImJvb2xlYW4iCgkJfSwKCQkiaWRlbiI6IHsK\nCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJImNyZWF0ZWQiOiB7CgkJCSJ0\neXBlIjogIm51bWJlciIKCQl9LAoJCSJtb2RpZmllZCI6IHsKCQkJInR5cGUi\nOiAibnVtYmVyIgoJCX0sCgkJInR5cGUiOiB7CgkJCSJ0eXBlIjogInN0cmlu\nZyIKCQl9LAoJCSJkaXNtaXNzZWQiOiB7CgkJCSJ0eXBlIjogImJvb2xlYW4i\nCgkJfSwKCQkiZGlyZWN0aW9uIjogewoJCQkidHlwZSI6ICJzdHJpbmciCgkJ\nfSwKCQkicmVjZWl2ZXJfaWRlbiI6IHsKCQkJInR5cGUiOiAic3RyaW5nIgoJ\nCX0sCgkJInJlY2VpdmVyX2VtYWlsIjogewoJCQkidHlwZSI6ICJzdHJpbmci\nCgkJfSwKCQkicmVjZWl2ZXJfZW1haWxfbm9ybWFsaXplZCI6IHsKCQkJInR5\ncGUiOiAic3RyaW5nIgoJCX0sCgkJImNsaWVudF9pZGVuIjogewoJCQkidHlw\nZSI6ICJzdHJpbmciCgkJfSwKCQkidGl0bGUiOiB7CgkJCSJ0eXBlIjogInN0\ncmluZyIKCQl9LAoJCSJib2R5IjogewoJCQkidHlwZSI6ICJzdHJpbmciCgkJ\nfQoJfSwKCSJyZXF1aXJlZCI6IFsKCQkiYWN0aXZlIiwKCQkiaWRlbiIsCgkJ\nImNyZWF0ZWQiLAoJCSJtb2RpZmllZCIsCgkJInR5cGUiLAoJCSJkaXNtaXNz\nZWQiLAoJCSJkaXJlY3Rpb24iLAoJCSJyZWNlaXZlcl9pZGVuIiwKCQkicmVj\nZWl2ZXJfZW1haWwiLAoJCSJyZWNlaXZlcl9lbWFpbF9ub3JtYWxpemVkIiwK\nCQkiY2xpZW50X2lkZW4iCgldCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Pushbullet/__schema__/v1.0.0/push/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/d17bed7459b5779535ff7256ceeff84d2f1dea03",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Pushbullet/__schema__/v1.0.0/push/create.json"
+    },
+    "version": 1
 }

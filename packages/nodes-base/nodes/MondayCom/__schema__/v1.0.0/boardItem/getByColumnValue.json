@@ -1,77 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "created_at": {
-            "type": "string"
-        },
-        "state": {
-            "type": "string"
-        },
-        "board": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "id"
-            ]
-        },
-        "column_values": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "type": {
-                        "type": "string"
-                    },
-                    "column": {
-                        "type": "object",
-                        "properties": {
-                            "title": {
-                                "type": "string"
-                            },
-                            "archived": {
-                                "type": "boolean"
-                            },
-                            "settings_str": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "title",
-                            "archived",
-                            "description",
-                            "settings_str"
-                        ]
-                    }
-                },
-                "required": [
-                    "id",
-                    "text",
-                    "type",
-                    "value",
-                    "column"
-                ]
-            }
-        }
+    "name": "getByColumnValue.json",
+    "path": "packages/nodes-base/nodes/MondayCom/__schema__/v1.0.0/boardItem/getByColumnValue.json",
+    "sha": "c2d55f569db039511c0145bd175a58ed11f55a77",
+    "size": 1986,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/MondayCom/__schema__/v1.0.0/boardItem/getByColumnValue.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/MondayCom/__schema__/v1.0.0/boardItem/getByColumnValue.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/c2d55f569db039511c0145bd175a58ed11f55a77",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/MondayCom/__schema__/v1.0.0/boardItem/getByColumnValue.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgIm5hbWUiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJjcmVhdGVkX2F0Ijog\newogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAg\nICAgICAic3RhdGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJib2FyZCI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAg\nICAgICAgICAgICAgICAiaWQiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9\nLAogICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAi\naWQiCiAgICAgICAgICAgIF0KICAgICAgICB9LAogICAgICAgICJjb2x1bW5f\ndmFsdWVzIjogewogICAgICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAg\nICAgICAgICJpdGVtcyI6IHsKICAgICAgICAgICAgICAgICJ0eXBlIjogIm9i\namVjdCIsCiAgICAgICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAg\nICAgICAgICAgICAgICAiaWQiOiB7CiAgICAgICAgICAgICAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICB9LAogICAg\nICAgICAgICAgICAgICAgICJ0eXBlIjogewogICAgICAgICAgICAgICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgfSwK\nICAgICAgICAgICAgICAgICAgICAiY29sdW1uIjogewogICAgICAgICAgICAg\nICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAg\nICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICJ0aXRsZSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgICAg\nICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAgICAgImFyY2hpdmVk\nIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nImJvb2xlYW4iCiAgICAgICAgICAgICAgICAgICAgICAgICAgICB9LAogICAg\nICAgICAgICAgICAgICAgICAgICAgICAgInNldHRpbmdzX3N0ciI6IHsKICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAg\nICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgICAgICJyZXF1aXJl\nZCI6IFsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0aXRsZSIsCiAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAiYXJjaGl2ZWQiLAogICAgICAg\nICAgICAgICAgICAgICAgICAgICAgImRlc2NyaXB0aW9uIiwKICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICJzZXR0aW5nc19zdHIiCiAgICAgICAgICAg\nICAgICAgICAgICAgIF0KICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAg\nICAgICAgICB9LAogICAgICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAg\nICAgICAgICAgICAgICAgICJpZCIsCiAgICAgICAgICAgICAgICAgICAgInRl\neHQiLAogICAgICAgICAgICAgICAgICAgICJ0eXBlIiwKICAgICAgICAgICAg\nICAgICAgICAidmFsdWUiLAogICAgICAgICAgICAgICAgICAgICJjb2x1bW4i\nCiAgICAgICAgICAgICAgICBdCiAgICAgICAgICAgIH0KICAgICAgICB9CiAg\nICB9LAogICAgInJlcXVpcmVkIjogWwogICAgICAgICJpZCIsCiAgICAgICAg\nIm5hbWUiLAogICAgICAgICJjcmVhdGVkX2F0IiwKICAgICAgICAic3RhdGUi\nLAogICAgICAgICJib2FyZCIsCiAgICAgICAgImNvbHVtbl92YWx1ZXMiCiAg\nICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/MondayCom/__schema__/v1.0.0/boardItem/getByColumnValue.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/c2d55f569db039511c0145bd175a58ed11f55a77",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/MondayCom/__schema__/v1.0.0/boardItem/getByColumnValue.json"
     },
-    "required": [
-        "id",
-        "name",
-        "created_at",
-        "state",
-        "board",
-        "column_values"
-    ]
+    "version": 1
 }

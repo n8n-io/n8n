@@ -1,120 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "object": {
-            "type": "string"
-        },
-        "address": {
-            "type": "object",
-            "properties": {
-                "country": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "city",
-                "country",
-                "line1",
-                "line2",
-                "postal_code",
-                "state"
-            ]
-        },
-        "balance": {
-            "type": "integer"
-        },
-        "created": {
-            "type": "integer"
-        },
-        "default_source": {
-            "type": "null"
-        },
-        "delinquent": {
-            "type": "boolean"
-        },
-        "discount": {
-            "type": "null"
-        },
-        "invoice_prefix": {
-            "type": "string"
-        },
-        "invoice_settings": {
-            "type": "object",
-            "properties": {
-                "custom_fields": {
-                    "type": "null"
-                },
-                "footer": {
-                    "type": "null"
-                },
-                "rendering_options": {
-                    "type": "null"
-                }
-            },
-            "required": [
-                "custom_fields",
-                "default_payment_method",
-                "footer",
-                "rendering_options"
-            ]
-        },
-        "livemode": {
-            "type": "boolean"
-        },
-        "metadata": {
-            "type": "object",
-            "properties": {
-                "Telefone": {
-                    "type": "string"
-                },
-                "Pais": {
-                    "type": "string"
-                }
-            }
-        },
-        "next_invoice_sequence": {
-            "type": "integer"
-        },
-        "preferred_locales": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "shipping": {
-            "type": "null"
-        },
-        "tax_exempt": {
-            "type": "string"
-        },
-        "test_clock": {
-            "type": "null"
-        }
+    "name": "update.json",
+    "path": "packages/nodes-base/nodes/Stripe/__schema__/v1.0.0/customer/update.json",
+    "sha": "52b2c53ec178f058d553e27de04439a76abb328d",
+    "size": 2688,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Stripe/__schema__/v1.0.0/customer/update.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Stripe/__schema__/v1.0.0/customer/update.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/52b2c53ec178f058d553e27de04439a76abb328d",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Stripe/__schema__/v1.0.0/customer/update.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgIm9iamVjdCI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImFkZHJlc3MiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJw\ncm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgImNvdW50cnkiOiB7CiAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAg\nICAgICAgfQogICAgICAgICAgICB9LAogICAgICAgICAgICAicmVxdWlyZWQi\nOiBbCiAgICAgICAgICAgICAgICAiY2l0eSIsCiAgICAgICAgICAgICAgICAi\nY291bnRyeSIsCiAgICAgICAgICAgICAgICAibGluZTEiLAogICAgICAgICAg\nICAgICAgImxpbmUyIiwKICAgICAgICAgICAgICAgICJwb3N0YWxfY29kZSIs\nCiAgICAgICAgICAgICAgICAic3RhdGUiCiAgICAgICAgICAgIF0KICAgICAg\nICB9LAogICAgICAgICJiYWxhbmNlIjogewogICAgICAgICAgICAidHlwZSI6\nICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgImNyZWF0ZWQiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAg\nICAiZGVmYXVsdF9zb3VyY2UiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51\nbGwiCiAgICAgICAgfSwKICAgICAgICAiZGVsaW5xdWVudCI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9LAogICAgICAgICJk\naXNjb3VudCI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAg\nICB9LAogICAgICAgICJpbnZvaWNlX3ByZWZpeCI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImludm9pY2Vf\nc2V0dGluZ3MiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAg\nICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgImN1\nc3RvbV9maWVsZHMiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAi\nbnVsbCIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiZm9v\ndGVyIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInJlbmRlcmluZ19v\ncHRpb25zIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogIm51bGwi\nCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0sCiAgICAgICAgICAg\nICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICJjdXN0b21fZmllbGRz\nIiwKICAgICAgICAgICAgICAgICJkZWZhdWx0X3BheW1lbnRfbWV0aG9kIiwK\nICAgICAgICAgICAgICAgICJmb290ZXIiLAogICAgICAgICAgICAgICAgInJl\nbmRlcmluZ19vcHRpb25zIgogICAgICAgICAgICBdCiAgICAgICAgfSwKICAg\nICAgICAibGl2ZW1vZGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJvb2xl\nYW4iCiAgICAgICAgfSwKICAgICAgICAibWV0YWRhdGEiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVz\nIjogewogICAgICAgICAgICAgICAgIlRlbGVmb25lIjogewogICAgICAgICAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0s\nCiAgICAgICAgICAgICAgICAiUGFpcyI6IHsKICAgICAgICAgICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9CiAgICAgICAg\nICAgIH0KICAgICAgICB9LAogICAgICAgICJuZXh0X2ludm9pY2Vfc2VxdWVu\nY2UiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAg\nfSwKICAgICAgICAicHJlZmVycmVkX2xvY2FsZXMiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogImFycmF5IiwKICAgICAgICAgICAgIml0ZW1zIjogewogICAg\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICB9CiAg\nICAgICAgfSwKICAgICAgICAic2hpcHBpbmciOiB7CiAgICAgICAgICAgICJ0\neXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAidGF4X2V4ZW1wdCI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAg\nICAgICAgInRlc3RfY2xvY2siOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51\nbGwiCiAgICAgICAgfQogICAgfSwKICAgICJyZXF1aXJlZCI6IFsKICAgICAg\nICAiaWQiLAogICAgICAgICJvYmplY3QiLAogICAgICAgICJhZGRyZXNzIiwK\nICAgICAgICAiYmFsYW5jZSIsCiAgICAgICAgImNyZWF0ZWQiLAogICAgICAg\nICJjdXJyZW5jeSIsCiAgICAgICAgImRlZmF1bHRfc291cmNlIiwKICAgICAg\nICAiZGVsaW5xdWVudCIsCiAgICAgICAgImRlc2NyaXB0aW9uIiwKICAgICAg\nICAiZGlzY291bnQiLAogICAgICAgICJlbWFpbCIsCiAgICAgICAgImludm9p\nY2VfcHJlZml4IiwKICAgICAgICAiaW52b2ljZV9zZXR0aW5ncyIsCiAgICAg\nICAgImxpdmVtb2RlIiwKICAgICAgICAibWV0YWRhdGEiLAogICAgICAgICJu\nYW1lIiwKICAgICAgICAicGhvbmUiLAogICAgICAgICJwcmVmZXJyZWRfbG9j\nYWxlcyIsCiAgICAgICAgInNoaXBwaW5nIiwKICAgICAgICAidGF4X2V4ZW1w\ndCIsCiAgICAgICAgInRlc3RfY2xvY2siCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Stripe/__schema__/v1.0.0/customer/update.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/52b2c53ec178f058d553e27de04439a76abb328d",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Stripe/__schema__/v1.0.0/customer/update.json"
     },
-    "required": [
-        "id",
-        "object",
-        "address",
-        "balance",
-        "created",
-        "currency",
-        "default_source",
-        "delinquent",
-        "description",
-        "discount",
-        "email",
-        "invoice_prefix",
-        "invoice_settings",
-        "livemode",
-        "metadata",
-        "name",
-        "phone",
-        "preferred_locales",
-        "shipping",
-        "tax_exempt",
-        "test_clock"
-    ]
+    "version": 1
 }

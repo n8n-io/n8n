@@ -1,32 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "index": {
-            "type": "integer"
-        },
-        "message": {
-            "type": "object",
-            "properties": {
-                "role": {
-                    "type": "string"
-                },
-                "content": {
-                    "type": "string"
-                },
-                "refusal": {
-                    "type": "null"
-                }
-            },
-            "required": [
-                "role",
-                "content"
-            ]
-        },
-        "logprobs": {
-            "type": "null"
-        },
-        "finish_reason": {
-            "type": "string"
-        }
-    }
+    "name": "complete.json",
+    "path": "packages/nodes-base/nodes/OpenAi/__schema__/v1.1.0/chat/complete.json",
+    "sha": "894cbdfcb6295cac6e2121e90ae8866b40f67a61",
+    "size": 682,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/OpenAi/__schema__/v1.1.0/chat/complete.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/OpenAi/__schema__/v1.1.0/chat/complete.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/894cbdfcb6295cac6e2121e90ae8866b40f67a61",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/OpenAi/__schema__/v1.1.0/chat/complete.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpbmRleCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdl\nciIKICAgICAgICB9LAogICAgICAgICJtZXNzYWdlIjogewogICAgICAgICAg\nICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6\nIHsKICAgICAgICAgICAgICAgICJyb2xlIjogewogICAgICAgICAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAg\nICAgICAgICAgICAiY29udGVudCI6IHsKICAgICAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAg\nICAgICAgInJlZnVzYWwiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUi\nOiAibnVsbCIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgInJvbGUi\nLAogICAgICAgICAgICAgICAgImNvbnRlbnQiCiAgICAgICAgICAgIF0KICAg\nICAgICB9LAogICAgICAgICJsb2dwcm9icyI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAibnVsbCIKICAgICAgICB9LAogICAgICAgICJmaW5pc2hfcmVhc29u\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfQog\nICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/OpenAi/__schema__/v1.1.0/chat/complete.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/894cbdfcb6295cac6e2121e90ae8866b40f67a61",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/OpenAi/__schema__/v1.1.0/chat/complete.json"
+    },
+    "version": 1
 }

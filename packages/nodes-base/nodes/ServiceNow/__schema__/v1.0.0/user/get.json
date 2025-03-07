@@ -1,19 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "sys_domain": {
-            "type": "object",
-            "properties": {
-                "link": {
-                    "type": "string"
-                },
-                "value": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "link"
-            ]
-        }
-    }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/ServiceNow/__schema__/v1.0.0/user/get.json",
+    "sha": "79d1bb04933b60228d34bc34d63521b181668886",
+    "size": 386,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ServiceNow/__schema__/v1.0.0/user/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ServiceNow/__schema__/v1.0.0/user/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/79d1bb04933b60228d34bc34d63521b181668886",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/ServiceNow/__schema__/v1.0.0/user/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJzeXNfZG9tYWluIjogewogICAgICAgICAgICAidHlwZSI6ICJv\nYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAg\nICAgICAgICJsaW5rIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAi\ndmFsdWUiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9LAogICAgICAgICAg\nICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAibGluayIKICAgICAg\nICAgICAgXQogICAgICAgIH0KICAgIH0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ServiceNow/__schema__/v1.0.0/user/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/79d1bb04933b60228d34bc34d63521b181668886",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ServiceNow/__schema__/v1.0.0/user/get.json"
+    },
+    "version": 1
 }

@@ -1,149 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "attributes": {
-            "type": "object",
-            "properties": {
-                "type": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "type",
-                "url"
-            ]
-        },
-        "Id": {
-            "type": "string"
-        },
-        "IsDeleted": {
-            "type": "boolean"
-        },
-        "MasterRecordId": {
-            "type": "null"
-        },
-        "LastName": {
-            "type": "string"
-        },
-        "MiddleName": {
-            "type": "null"
-        },
-        "Suffix": {
-            "type": "null"
-        },
-        "Name": {
-            "type": "string"
-        },
-        "Company": {
-            "type": "string"
-        },
-        "Latitude": {
-            "type": "null"
-        },
-        "Longitude": {
-            "type": "null"
-        },
-        "GeocodeAccuracy": {
-            "type": "null"
-        },
-        "Address": {
-            "type": "object",
-            "properties": {
-                "geocodeAccuracy": {
-                    "type": "null"
-                },
-                "latitude": {
-                    "type": "null"
-                },
-                "longitude": {
-                    "type": "null"
-                }
-            },
-            "required": [
-                "city",
-                "country",
-                "geocodeAccuracy",
-                "latitude",
-                "longitude",
-                "postalCode",
-                "state",
-                "street"
-            ]
-        },
-        "Fax": {
-            "type": "null"
-        },
-        "PhotoUrl": {
-            "type": "string"
-        },
-        "Status": {
-            "type": "string"
-        },
-        "AnnualRevenue": {
-            "type": "null"
-        },
-        "OwnerId": {
-            "type": "string"
-        },
-        "HasOptedOutOfEmail": {
-            "type": "boolean"
-        },
-        "IsConverted": {
-            "type": "boolean"
-        },
-        "IsUnreadByOwner": {
-            "type": "boolean"
-        },
-        "CreatedDate": {
-            "type": "string"
-        },
-        "CreatedById": {
-            "type": "string"
-        },
-        "LastModifiedDate": {
-            "type": "string"
-        },
-        "LastModifiedById": {
-            "type": "string"
-        },
-        "SystemModstamp": {
-            "type": "string"
-        },
-        "DoNotCall": {
-            "type": "boolean"
-        },
-        "HasOptedOutOfFax": {
-            "type": "boolean"
-        },
-        "LastTransferDate": {
-            "type": "string"
-        },
-        "Jigsaw": {
-            "type": "null"
-        },
-        "JigsawContactId": {
-            "type": "null"
-        },
-        "EmailBouncedReason": {
-            "type": "null"
-        },
-        "EmailBouncedDate": {
-            "type": "null"
-        },
-        "IndividualId": {
-            "type": "null"
-        },
-        "Pronouns": {
-            "type": "null"
-        },
-        "GenderIdentity": {
-            "type": "null"
-        },
-        "IsPriorityRecord": {
-            "type": "boolean"
-        }
-    }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/lead/get.json",
+    "sha": "ea838b13cca22e6dc45214022aee55ab404813aa",
+    "size": 3288,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/lead/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/lead/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/ea838b13cca22e6dc45214022aee55ab404813aa",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/lead/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJhdHRyaWJ1dGVzIjogewogICAgICAgICAgICAidHlwZSI6ICJv\nYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAg\nICAgICAgICJ0eXBlIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAi\ndXJsIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgInR5cGUiLAogICAgICAg\nICAgICAgICAgInVybCIKICAgICAgICAgICAgXQogICAgICAgIH0sCiAgICAg\nICAgIklkIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgfSwKICAgICAgICAiSXNEZWxldGVkIjogewogICAgICAgICAgICAidHlw\nZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgIk1hc3RlclJlY29y\nZElkIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0s\nCiAgICAgICAgIkxhc3ROYW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgfSwKICAgICAgICAiTWlkZGxlTmFtZSI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAgICAgICJT\ndWZmaXgiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAg\nfSwKICAgICAgICAiTmFtZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgIH0sCiAgICAgICAgIkNvbXBhbnkiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJMYXRp\ndHVkZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9\nLAogICAgICAgICJMb25naXR1ZGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nIm51bGwiCiAgICAgICAgfSwKICAgICAgICAiR2VvY29kZUFjY3VyYWN5Ijog\newogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAg\nICAgIkFkZHJlc3MiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIs\nCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAg\nImdlb2NvZGVBY2N1cmFjeSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJudWxsIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAg\nICJsYXRpdHVkZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJu\ndWxsIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJsb25n\naXR1ZGUiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAibnVsbCIK\nICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgImNpdHkiLAogICAgICAg\nICAgICAgICAgImNvdW50cnkiLAogICAgICAgICAgICAgICAgImdlb2NvZGVB\nY2N1cmFjeSIsCiAgICAgICAgICAgICAgICAibGF0aXR1ZGUiLAogICAgICAg\nICAgICAgICAgImxvbmdpdHVkZSIsCiAgICAgICAgICAgICAgICAicG9zdGFs\nQ29kZSIsCiAgICAgICAgICAgICAgICAic3RhdGUiLAogICAgICAgICAgICAg\nICAgInN0cmVldCIKICAgICAgICAgICAgXQogICAgICAgIH0sCiAgICAgICAg\nIkZheCI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9\nLAogICAgICAgICJQaG90b1VybCI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIlN0YXR1cyI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIkFu\nbnVhbFJldmVudWUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAg\nICAgICAgfSwKICAgICAgICAiT3duZXJJZCI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIkhhc09wdGVkT3V0\nT2ZFbWFpbCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAg\nICAgICB9LAogICAgICAgICJJc0NvbnZlcnRlZCI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9LAogICAgICAgICJJc1VucmVh\nZEJ5T3duZXIiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAg\nICAgICAgfSwKICAgICAgICAiQ3JlYXRlZERhdGUiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJDcmVhdGVk\nQnlJZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nIH0sCiAgICAgICAgIkxhc3RNb2RpZmllZERhdGUiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJMYXN0TW9k\naWZpZWRCeUlkIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgfSwKICAgICAgICAiU3lzdGVtTW9kc3RhbXAiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJEb05v\ndENhbGwiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAg\nICAgfSwKICAgICAgICAiSGFzT3B0ZWRPdXRPZkZheCI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9LAogICAgICAgICJMYXN0\nVHJhbnNmZXJEYXRlIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAiSmlnc2F3IjogewogICAgICAgICAgICAi\ndHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAgIkppZ3Nhd0NvbnRh\nY3RJZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9\nLAogICAgICAgICJFbWFpbEJvdW5jZWRSZWFzb24iOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAiRW1haWxCb3Vu\nY2VkRGF0ZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAg\nICB9LAogICAgICAgICJJbmRpdmlkdWFsSWQiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAiUHJvbm91bnMiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAg\nICAiR2VuZGVySWRlbnRpdHkiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51\nbGwiCiAgICAgICAgfSwKICAgICAgICAiSXNQcmlvcml0eVJlY29yZCI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9CiAgICB9\nCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/lead/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/ea838b13cca22e6dc45214022aee55ab404813aa",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/lead/get.json"
+    },
+    "version": 1
 }

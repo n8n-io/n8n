@@ -1,14 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "query": {
-            "type": "string"
-        },
-        "timestamp": {
-            "type": "string"
-        },
-        "profileUrl": {
-            "type": "string"
-        }
-    }
+    "name": "getOutput.json",
+    "path": "packages/nodes-base/nodes/Phantombuster/__schema__/v1.0.0/agent/getOutput.json",
+    "sha": "783aef0a7db0b409ace3b46bd2f3a53d6608bd6f",
+    "size": 237,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Phantombuster/__schema__/v1.0.0/agent/getOutput.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Phantombuster/__schema__/v1.0.0/agent/getOutput.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/783aef0a7db0b409ace3b46bd2f3a53d6608bd6f",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Phantombuster/__schema__/v1.0.0/agent/getOutput.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJxdWVyeSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgIH0sCiAgICAgICAgInRpbWVzdGFtcCI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInByb2Zp\nbGVVcmwiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICB9CiAgICB9Cn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Phantombuster/__schema__/v1.0.0/agent/getOutput.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/783aef0a7db0b409ace3b46bd2f3a53d6608bd6f",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Phantombuster/__schema__/v1.0.0/agent/getOutput.json"
+    },
+    "version": 1
 }

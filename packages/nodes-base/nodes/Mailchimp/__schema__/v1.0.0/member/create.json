@@ -1,163 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "email_address": {
-            "type": "string"
-        },
-        "unique_email_id": {
-            "type": "string"
-        },
-        "contact_id": {
-            "type": "string"
-        },
-        "full_name": {
-            "type": "string"
-        },
-        "web_id": {
-            "type": "integer"
-        },
-        "email_type": {
-            "type": "string"
-        },
-        "status": {
-            "type": "string"
-        },
-        "consents_to_one_to_one_messaging": {
-            "type": "boolean"
-        },
-        "sms_phone_number": {
-            "type": "string"
-        },
-        "sms_subscription_status": {
-            "type": "string"
-        },
-        "sms_subscription_last_updated": {
-            "type": "string"
-        },
-        "merge_fields": {
-            "type": "object",
-            "properties": {
-                "FNAME": {
-                    "type": "string"
-                },
-                "LNAME": {
-                    "type": "string"
-                }
-            }
-        },
-        "ip_signup": {
-            "type": "string"
-        },
-        "timestamp_signup": {
-            "type": "string"
-        },
-        "ip_opt": {
-            "type": "string"
-        },
-        "timestamp_opt": {
-            "type": "string"
-        },
-        "member_rating": {
-            "type": "integer"
-        },
-        "last_changed": {
-            "type": "string"
-        },
-        "language": {
-            "type": "string"
-        },
-        "vip": {
-            "type": "boolean"
-        },
-        "email_client": {
-            "type": "string"
-        },
-        "location": {
-            "type": "object",
-            "properties": {
-                "gmtoff": {
-                    "type": "integer"
-                },
-                "dstoff": {
-                    "type": "integer"
-                },
-                "country_code": {
-                    "type": "string"
-                },
-                "timezone": {
-                    "type": "string"
-                },
-                "region": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "latitude",
-                "longitude",
-                "gmtoff",
-                "dstoff",
-                "country_code",
-                "timezone",
-                "region"
-            ]
-        },
-        "source": {
-            "type": "string"
-        },
-        "tags_count": {
-            "type": "integer"
-        },
-        "tags": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "integer"
-                    },
-                    "name": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "id",
-                    "name"
-                ]
-            }
-        },
-        "list_id": {
-            "type": "string"
-        },
-        "_links": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "rel": {
-                        "type": "string"
-                    },
-                    "href": {
-                        "type": "string"
-                    },
-                    "method": {
-                        "type": "string"
-                    },
-                    "targetSchema": {
-                        "type": "string"
-                    },
-                    "schema": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "rel",
-                    "href",
-                    "method"
-                ]
-            }
-        }
-    }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/Mailchimp/__schema__/v1.0.0/member/create.json",
+    "sha": "e48950811ea391d1862619871d0adfa880a55b40",
+    "size": 3942,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Mailchimp/__schema__/v1.0.0/member/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Mailchimp/__schema__/v1.0.0/member/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/e48950811ea391d1862619871d0adfa880a55b40",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Mailchimp/__schema__/v1.0.0/member/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgImVtYWlsX2FkZHJlc3MiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJ1bmlx\ndWVfZW1haWxfaWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJjb250YWN0X2lkIjogewogICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiZnVsbF9u\nYW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nfSwKICAgICAgICAid2ViX2lkIjogewogICAgICAgICAgICAidHlwZSI6ICJp\nbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgImVtYWlsX3R5cGUiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAg\nICJzdGF0dXMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICB9LAogICAgICAgICJjb25zZW50c190b19vbmVfdG9fb25lX21lc3Nh\nZ2luZyI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAg\nICB9LAogICAgICAgICJzbXNfcGhvbmVfbnVtYmVyIjogewogICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAic21zX3N1\nYnNjcmlwdGlvbl9zdGF0dXMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJzbXNfc3Vic2NyaXB0aW9uX2xh\nc3RfdXBkYXRlZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgIm1lcmdlX2ZpZWxkcyI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMi\nOiB7CiAgICAgICAgICAgICAgICAiRk5BTUUiOiB7CiAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgICAgICJMTkFNRSI6IHsKICAgICAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAg\nIH0KICAgICAgICB9LAogICAgICAgICJpcF9zaWdudXAiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJ0aW1l\nc3RhbXBfc2lnbnVwIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAiaXBfb3B0IjogewogICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAidGltZXN0YW1w\nX29wdCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nIH0sCiAgICAgICAgIm1lbWJlcl9yYXRpbmciOiB7CiAgICAgICAgICAgICJ0\neXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAgICAibGFzdF9jaGFu\nZ2VkIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nfSwKICAgICAgICAibGFuZ3VhZ2UiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJ2aXAiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAiZW1h\naWxfY2xpZW50IjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgfSwKICAgICAgICAibG9jYXRpb24iOiB7CiAgICAgICAgICAgICJ0\neXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICAgICAgICAgImdtdG9mZiI6IHsKICAgICAgICAgICAgICAgICAg\nICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgICAgICAgICAgfSwKICAgICAg\nICAgICAgICAgICJkc3RvZmYiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5\ncGUiOiAiaW50ZWdlciIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAg\nICAgICAiY291bnRyeV9jb2RlIjogewogICAgICAgICAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAg\nICAgICAidGltZXpvbmUiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAg\nICJyZWdpb24iOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9LAogICAgICAg\nICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAibGF0aXR1ZGUi\nLAogICAgICAgICAgICAgICAgImxvbmdpdHVkZSIsCiAgICAgICAgICAgICAg\nICAiZ210b2ZmIiwKICAgICAgICAgICAgICAgICJkc3RvZmYiLAogICAgICAg\nICAgICAgICAgImNvdW50cnlfY29kZSIsCiAgICAgICAgICAgICAgICAidGlt\nZXpvbmUiLAogICAgICAgICAgICAgICAgInJlZ2lvbiIKICAgICAgICAgICAg\nXQogICAgICAgIH0sCiAgICAgICAgInNvdXJjZSI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInRhZ3NfY291\nbnQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAg\nfSwKICAgICAgICAidGFncyI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYXJy\nYXkiLAogICAgICAgICAgICAiaXRlbXMiOiB7CiAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAgInByb3BlcnRpZXMi\nOiB7CiAgICAgICAgICAgICAgICAgICAgImlkIjogewogICAgICAgICAgICAg\nICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgICAgICAgICAg\nICAgIH0sCiAgICAgICAgICAgICAgICAgICAgIm5hbWUiOiB7CiAgICAgICAg\nICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAg\nICAgICAgICB9CiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAg\nInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgICAgICJpZCIsCiAgICAg\nICAgICAgICAgICAgICAgIm5hbWUiCiAgICAgICAgICAgICAgICBdCiAgICAg\nICAgICAgIH0KICAgICAgICB9LAogICAgICAgICJsaXN0X2lkIjogewogICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAi\nX2xpbmtzIjogewogICAgICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAg\nICAgICAgICJpdGVtcyI6IHsKICAgICAgICAgICAgICAgICJ0eXBlIjogIm9i\namVjdCIsCiAgICAgICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAg\nICAgICAgICAgICAgICAicmVsIjogewogICAgICAgICAgICAgICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgICAgICAgICAiaHJlZiI6IHsKICAgICAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAgIH0s\nCiAgICAgICAgICAgICAgICAgICAgIm1ldGhvZCI6IHsKICAgICAgICAgICAg\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAg\nICAgIH0sCiAgICAgICAgICAgICAgICAgICAgInRhcmdldFNjaGVtYSI6IHsK\nICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgInNjaGVt\nYSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgIH0sCiAg\nICAgICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAg\nICAgInJlbCIsCiAgICAgICAgICAgICAgICAgICAgImhyZWYiLAogICAgICAg\nICAgICAgICAgICAgICJtZXRob2QiCiAgICAgICAgICAgICAgICBdCiAgICAg\nICAgICAgIH0KICAgICAgICB9CiAgICB9Cn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Mailchimp/__schema__/v1.0.0/member/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/e48950811ea391d1862619871d0adfa880a55b40",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Mailchimp/__schema__/v1.0.0/member/create.json"
+    },
+    "version": 1
 }

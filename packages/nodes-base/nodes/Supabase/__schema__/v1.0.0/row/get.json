@@ -1,8 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "created_at": {
-            "type": "string"
-        }
-    }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Supabase/__schema__/v1.0.0/row/get.json",
+    "sha": "cc38346b659b6dda0cf37e303611a77e1dce8156",
+    "size": 115,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Supabase/__schema__/v1.0.0/row/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Supabase/__schema__/v1.0.0/row/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/cc38346b659b6dda0cf37e303611a77e1dce8156",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Supabase/__schema__/v1.0.0/row/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJjcmVhdGVkX2F0IjogewogICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgfQogICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Supabase/__schema__/v1.0.0/row/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/cc38346b659b6dda0cf37e303611a77e1dce8156",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Supabase/__schema__/v1.0.0/row/get.json"
+    },
+    "version": 1
 }

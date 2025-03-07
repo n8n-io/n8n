@@ -1,41 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "user": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "is_bot": {
-                    "type": "boolean"
-                },
-                "first_name": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                },
-                "language_code": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "id",
-                "is_bot",
-                "first_name"
-            ]
-        },
-        "status": {
-            "type": "string"
-        },
-        "is_anonymous": {
-            "type": "boolean"
-        }
+    "name": "administrators.json",
+    "path": "packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/chat/administrators.json",
+    "sha": "5022ccd4f8899caf6fc6a5d2de196689138cf1f1",
+    "size": 909,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/chat/administrators.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/chat/administrators.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5022ccd4f8899caf6fc6a5d2de196689138cf1f1",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/chat/administrators.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJ1c2VyIjogewogICAgICAgICAgICAidHlwZSI6ICJvYmplY3Qi\nLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAg\nICJpZCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2Vy\nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJpc19ib3Qi\nOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAg\nICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiZmlyc3RfbmFtZSI6\nIHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInVzZXJuYW1lIjogewog\nICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICAgICAibGFuZ3VhZ2VfY29kZSI6IHsK\nICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nICAgICAgICB9CiAgICAgICAgICAgIH0sCiAgICAgICAgICAgICJyZXF1aXJl\nZCI6IFsKICAgICAgICAgICAgICAgICJpZCIsCiAgICAgICAgICAgICAgICAi\naXNfYm90IiwKICAgICAgICAgICAgICAgICJmaXJzdF9uYW1lIgogICAgICAg\nICAgICBdCiAgICAgICAgfSwKICAgICAgICAic3RhdHVzIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiaXNf\nYW5vbnltb3VzIjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgog\nICAgICAgIH0KICAgIH0sCiAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgInVz\nZXIiLAogICAgICAgICJzdGF0dXMiLAogICAgICAgICJpc19hbm9ueW1vdXMi\nCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/chat/administrators.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5022ccd4f8899caf6fc6a5d2de196689138cf1f1",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/chat/administrators.json"
     },
-    "required": [
-        "user",
-        "status",
-        "is_anonymous"
-    ]
+    "version": 1
 }
