@@ -61,7 +61,8 @@ const logHiringBanner = () => {
 const updateGridWidth = async () => {
 	await nextTick();
 	if (appGrid.value) {
-		uiStore.appGridWidth = appGrid.value.clientWidth;
+		const { width, height } = appGrid.value.getBoundingClientRect();
+		uiStore.appGridDimensions = { width, height };
 	}
 };
 

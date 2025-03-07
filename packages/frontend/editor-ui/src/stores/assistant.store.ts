@@ -147,14 +147,20 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	function openChat() {
 		chatWindowOpen.value = true;
 		chatMessages.value = chatMessages.value.map((msg) => ({ ...msg, read: true }));
-		uiStore.appGridWidth = window.innerWidth - chatWidth.value;
+		uiStore.appGridDimensions = {
+			...uiStore.appGridDimensions,
+			width: window.innerWidth - chatWidth.value,
+		};
 	}
 
 	function closeChat() {
 		chatWindowOpen.value = false;
 		// Looks smoother if we wait for slide animation to finish before updating the grid width
 		setTimeout(() => {
-			uiStore.appGridWidth = window.innerWidth;
+			uiStore.appGridDimensions = {
+				...uiStore.appGridDimensions,
+				width: window.innerWidth,
+			};
 			// If session has ended, reset the chat
 			if (isSessionEnded.value) {
 				resetAssistantChat();
