@@ -822,8 +822,10 @@ onMounted(async () => {
 						<div class="time-saved">
 							<N8nInput
 								id="timeSavedPerExecution"
-								type="number"
 								v-model="workflowSettings.timeSavedPerExecution"
+								:disabled="readOnlyEnv || !workflowPermissions.update"
+								data-test-id="workflow-settings-time-saved-per-execution"
+								type="number"
 								@update:model-value="updateTimeSavedPerExecution"
 							/>
 							<span>{{ i18n.baseText('workflowSettings.timeSavedPerExecution.hint') }}</span>
