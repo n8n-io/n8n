@@ -14,7 +14,6 @@ import {
 } from './chartjs.utils';
 import { useInsightsStore } from '@/features/insights/insights.store';
 import InsightsSummary from '@/features/insights/InsightsSummary.vue';
-import { useInsights } from '@/features/insights/insights.composable';
 const props = defineProps<{
 	insightType: string;
 }>();
@@ -330,7 +329,7 @@ const rows = ref(
 						:columns
 						:rows
 						:current-page="currentPage"
-						@update:current-page="($event) => (currentPage = $event)"
+						@update:current-page="($event: number) => (currentPage = $event)"
 					/>
 				</div>
 			</div>
