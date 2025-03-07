@@ -769,6 +769,56 @@
 				});
 			});
 
+			let interval = 1000;
+			let timeoutId;
+			let formWaitingUrl;
+
+			const checkExecutionStatus = async () => {
+				if (!interval) return;
+
+				try {
+					const response = await fetch(`${formWaitingUrl ?? window.location.href}/n8n-execution-status`);
+					const text = (await response.text()).trim();
+
+					if (text === "form-waiting") {
+						window.location.replace(formWaitingUrl ?? window.location.href);
+						return;
+					}
+
+					if (text === "success") {
+						form.style.display = 'none';
+						document.querySelector('#submitted-form').style.display = 'block';
+						clearTimeout(timeoutId);
+						return;
+					}
+
+					if (text === "null") {
+						form.style.display = 'none';
+						document.querySelector('#submitted-form').style.display = 'block';
+						document.querySelector('#submitted-header').textContent = 'Could not get execution status';
+						document.querySelector('#submitted-content').textContent =
+							'Make sure "Save successful production executions" is enabled in your workflow settings';
+						clearTimeout(timeoutId);
+						return;
+					}
+
+					if(["canceled", "crashed", "error" ].includes(text)) {
+						form.style.display = 'none';
+						document.querySelector('#submitted-form').style.display = 'block';
+						document.querySelector('#submitted-header').textContent = 'Problem submitting response';
+						document.querySelector('#submitted-content').textContent =
+							'Please try again or contact support if the problem persists';
+						clearTimeout(timeoutId);
+						return;
+					}
+
+					interval = Math.round(interval * 1.1);
+					timeoutId = setTimeout(checkExecutionStatus, interval);
+				} catch (error) {
+					console.error("Error fetching data:", error);
+				}
+			};
+
 			form.addEventListener('submit', (e) => {
 				const valid = [];
 				e.preventDefault();
@@ -813,6 +863,11 @@
 					document.querySelector('#submit-btn').disabled = true;
 					document.querySelector('#submit-btn').style.cursor = 'not-allowed';
 					document.querySelector('#submit-btn span').style.display = 'inline-block';
+
+					if (window.location.href.includes('form-waiting')) {
+						intervalId = setTimeout(checkExecutionStatus, interval);
+					}
+
 					fetch('', {
 						method: 'POST',
 						body: formData,
@@ -827,6 +882,12 @@
 								try{
 									json = JSON.parse(text);
 								} catch (e) {}
+
+								if(json?.formWaitingUrl) {
+									formWaitingUrl = json.formWaitingUrl;
+									intervalId = setTimeout(checkExecutionStatus, interval);
+									return;
+								}
 
 								if (json?.redirectURL) {
 									const url = json.redirectURL.includes("://") ? json.redirectURL : "https://" + json.redirectURL;
@@ -844,6 +905,13 @@
 								if (text) {
 									document.body.innerHTML = text;
 									return;
+								}
+
+								if (text === '') {
+									// this is empty cleanup response from responsePromise
+									// no need to keep checking execution status
+									clearTimeout(timeoutId);
+									interval = 0;
 								}
 							}
 
