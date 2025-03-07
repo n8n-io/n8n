@@ -7,6 +7,7 @@ import {
 } from 'n8n-workflow';
 
 import { renderForm, sanitizeHtml } from './utils';
+import { getResolvables } from '../../utils/utilities';
 
 export const renderFormNode = async (
 	context: IWebhookFunctions,
@@ -69,4 +70,25 @@ export const renderFormNode = async (
 	return {
 		noWebhookResponse: true,
 	};
+};
+
+export const evaluateHtmlExpressions = (
+	context: IWebhookFunctions,
+	fields: FormFieldsParameter,
+) => {
+	return fields.map((field) => {
+		if (field.fieldType === 'html') {
+			let { html } = field;
+
+			if (!html) return field;
+
+			for (const resolvable of getResolvables(html)) {
+				html = html.replace(resolvable, context.evaluateExpression(resolvable) as string);
+			}
+
+			field.html = html;
+		}
+
+		return field;
+	});
 };
