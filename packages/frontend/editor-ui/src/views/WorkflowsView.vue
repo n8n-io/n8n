@@ -57,6 +57,8 @@ import { debounce } from 'lodash-es';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useFoldersStore } from '@/stores/folders.store';
+import InsightsSummary from '@/features/insights/InsightsSummary.vue';
+import { useInsights } from '@/features/insights/insights.composable';
 
 interface Filters extends BaseFilters {
 	status: string | boolean;
@@ -96,6 +98,16 @@ const foldersStore = useFoldersStore();
 
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
+
+const insights = useInsights();
+const isOverviewSubPage = computed(
+	() =>
+		route.name === VIEWS.WORKFLOWS ||
+		route.name === VIEWS.HOMEPAGE ||
+		route.name === VIEWS.CREDENTIALS ||
+		route.name === VIEWS.EXECUTIONS ||
+		route.name === VIEWS.FOLDERS,
+);
 
 const loading = ref(false);
 const breadcrumbsLoading = ref(false);
@@ -847,7 +859,10 @@ const createFolderInCurrent = async () => {
 		@sort="onSortUpdated"
 	>
 		<template #header>
-			<ProjectHeader @create-folder="createFolderInCurrent" />
+			{{}}
+			<ProjectHeader @create-folder="createFolderInCurrent">
+				<InsightsSummary v-if="isOverviewSubPage" :summaries="insights.tabs" />
+			</ProjectHeader>
 		</template>
 		<template v-if="showFolders" #add-button>
 			<N8nTooltip placement="top">
