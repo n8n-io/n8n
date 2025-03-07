@@ -1,3 +1,5 @@
+import { DateTime, Duration, Interval } from 'luxon';
+
 import { ensureError } from '@/errors/ensure-error';
 import { ExpressionError } from '@/errors/expression.error';
 import {
@@ -587,6 +589,200 @@ describe('WorkflowDataProxy', () => {
 			);
 			expect(noRunDataProxy.$rawParameter.options).toEqual({
 				waitForSubWorkflow: '={{ true }}',
+			});
+		});
+	});
+
+	describe('DateTime and Time-related functions', () => {
+		const fixture = loadFixture('base');
+		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'End');
+
+		test('$now should return current datetime', () => {
+			expect(proxy.$now).toBeInstanceOf(DateTime);
+		});
+
+		test('$today should return datetime at start of day', () => {
+			const today = proxy.$today;
+			expect(today).toBeInstanceOf(DateTime);
+			expect(today.hour).toBe(0);
+			expect(today.minute).toBe(0);
+			expect(today.second).toBe(0);
+			expect(today.millisecond).toBe(0);
+		});
+
+		test('should expose DateTime, Interval, and Duration', () => {
+			expect(proxy.DateTime).toBe(DateTime);
+			expect(proxy.Interval).toBe(Interval);
+			expect(proxy.Duration).toBe(Duration);
+		});
+
+		test('$now should be configurable with timezone', () => {
+			const timezoneProxy = getProxyFromFixture(
+				{ ...fixture.workflow, settings: { timezone: 'America/New_York' } },
+				fixture.run,
+				'End',
+			);
+
+			expect(timezoneProxy.$now.zoneName).toBe('America/New_York');
+		});
+	});
+
+	describe('Node version and ID', () => {
+		const fixture = loadFixture('base');
+		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'End');
+
+		test('$nodeVersion should return node type version', () => {
+			expect(proxy.$nodeVersion).toBe(1);
+		});
+
+		test('$nodeId should return node ID', () => {
+			expect(proxy.$nodeId).toBe('uuid-5');
+		});
+
+		test('$webhookId should be optional', () => {
+			expect(proxy.$webhookId).toBeUndefined();
+		});
+	});
+
+	describe('$jmesPath', () => {
+		const fixture = loadFixture('base');
+		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'End');
+
+		test('should query simple object', () => {
+			const data = { name: 'John', age: 30 };
+			expect(proxy.$jmesPath(data, 'name')).toBe('John');
+		});
+
+		test('should query nested object', () => {
+			const data = {
+				user: {
+					name: 'John',
+					details: { age: 30 },
+				},
+			};
+			expect(proxy.$jmesPath(data, 'user.details.age')).toBe(30);
+		});
+
+		test('should query array', () => {
+			const data = [
+				{ name: 'John', age: 30 },
+				{ name: 'Jane', age: 25 },
+			];
+			expect(proxy.$jmesPath(data, '[*].name')).toEqual(['John', 'Jane']);
+		});
+
+		test('should throw error for invalid arguments', () => {
+			expect(() => proxy.$jmesPath('not an object', 'test')).toThrow(ExpressionError);
+			expect(() => proxy.$jmesPath({}, 123 as unknown as string)).toThrow(ExpressionError);
+		});
+
+		test('$jmespath should alias $jmesPath', () => {
+			const data = { name: 'John' };
+			expect(proxy.$jmespath(data, 'name')).toBe(proxy.$jmesPath(data, 'name'));
+		});
+	});
+
+	describe('$mode', () => {
+		const fixture = loadFixture('base');
+		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'End', 'manual');
+
+		test('should return execution mode', () => {
+			expect(proxy.$mode).toBe('manual');
+		});
+	});
+
+	describe('$item', () => {
+		const fixture = loadFixture('base');
+		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'End');
+
+		test('should return data proxy for specific item', () => {
+			const itemProxy = proxy.$item(1);
+			expect(itemProxy.$json.data).toBe(160);
+		});
+
+		test('should allow specifying run index', () => {
+			const itemProxy = proxy.$item(1, 0);
+			expect(itemProxy.$json.data).toBe(160);
+		});
+	});
+
+	describe('$items', () => {
+		const fixture = loadFixture('base');
+		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'End');
+
+		describe('Default behavior (no arguments)', () => {
+			test('should return input items from previous node', () => {
+				const items = proxy.$items();
+				expect(items.length).toBe(5);
+				expect(items[0].json.data).toBe(105);
+				expect(items[1].json.data).toBe(160);
+			});
+
+			test('should limit items for nodes with executeOnce=true', () => {
+				// Mock a node with executeOnce=true
+				const mockWorkflow = {
+					...fixture.workflow,
+					nodes: fixture.workflow.nodes.map((node) =>
+						node.name === 'Rename' ? { ...node, executeOnce: true } : node,
+					),
+				};
+
+				const mockProxy = getProxyFromFixture(mockWorkflow, fixture.run, 'End');
+				const items = mockProxy.$items();
+
+				expect(items.length).toBe(1);
+				expect(items[0].json.data).toBe(105);
+			});
+		});
+
+		describe('With node name argument', () => {
+			test('should return items for specified node', () => {
+				const items = proxy.$items('Rename');
+				expect(items.length).toBe(5);
+				expect(items[0].json.data).toBe(105);
+				expect(items[1].json.data).toBe(160);
+			});
+
+			test('should throw error for non-existent node', () => {
+				expect(() => proxy.$items('NonExistentNode')).toThrowError(ExpressionError);
+			});
+		});
+
+		describe('With node name and output index', () => {
+			const switchWorkflow = loadFixture('multiple_outputs');
+			const switchProxy = getProxyFromFixture(
+				switchWorkflow.workflow,
+				switchWorkflow.run,
+				'Edit Fields',
+			);
+
+			test('should return items from specific output', () => {
+				const items = switchProxy.$items('If', 1);
+				expect(items[0].json.code).toBe(1);
+			});
+		});
+
+		describe('With node name, output index, and run index', () => {
+			test('should handle negative run index', () => {
+				const items = proxy.$items('Rename', 0, -1);
+				expect(items.length).toBe(5);
+				expect(items[0].json.data).toBe(105);
+			});
+		});
+
+		describe('Error handling', () => {
+			test('should throw error for invalid run index', () => {
+				expect(() => proxy.$items('Rename', 0, 999)).toThrowError(ExpressionError);
+			});
+
+			test('should handle nodes with no execution data', () => {
+				const noDataWorkflow = {
+					...fixture.workflow,
+					nodes: fixture.workflow.nodes.filter((node) => node.name !== 'Rename'),
+				};
+				const noDataProxy = getProxyFromFixture(noDataWorkflow, null, 'End');
+
+				expect(() => noDataProxy.$items('Rename')).toThrowError(ExpressionError);
 			});
 		});
 	});

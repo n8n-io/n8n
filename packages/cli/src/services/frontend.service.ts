@@ -1,5 +1,5 @@
 import type { FrontendSettings, ITelemetrySettings } from '@n8n/api-types';
-import { GlobalConfig, FrontendConfig, SecurityConfig } from '@n8n/config';
+import { GlobalConfig, SecurityConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
@@ -44,7 +44,6 @@ export class FrontendService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly urlService: UrlService,
 		private readonly securityConfig: SecurityConfig,
-		private readonly frontendConfig: FrontendConfig,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
@@ -146,7 +145,6 @@ export class FrontendService {
 				},
 			},
 			publicApi: {
-				apiKeysPerUserLimit: this.license.getApiKeysPerUserLimit(),
 				enabled: isApiEnabled(),
 				latestVersion: 1,
 				path: this.globalConfig.publicApi.path,
@@ -232,9 +230,11 @@ export class FrontendService {
 			security: {
 				blockFileAccessToN8nFiles: this.securityConfig.blockFileAccessToN8nFiles,
 			},
-			betaFeatures: this.frontendConfig.betaFeatures,
 			easyAIWorkflowOnboarded: false,
 			partialExecution: this.globalConfig.partialExecutions,
+			folders: {
+				enabled: false,
+			},
 		};
 	}
 
@@ -361,6 +361,8 @@ export class FrontendService {
 		this.settings.binaryDataMode = config.getEnv('binaryDataManager.mode');
 
 		this.settings.enterprise.projects.team.limit = this.license.getTeamProjectLimit();
+
+		this.settings.folders.enabled = config.get('folders.enabled');
 
 		return this.settings;
 	}

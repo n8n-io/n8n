@@ -12,6 +12,7 @@ import type {
 import assert from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
+import config from '@/config';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import type { MockedNodeItem, TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { TestRun } from '@/databases/entities/test-run.ee';
@@ -164,9 +165,17 @@ export class TestRunnerService {
 			pastExecutionWorkflowData,
 		);
 
+		const startNodesData = this.getStartNodesData(
+			workflow,
+			pastExecutionData,
+			pastExecutionWorkflowData,
+		);
+
 		// Prepare the data to run the workflow
+		// Evaluation executions should run the same way as manual,
+		// because they need pinned data and partial execution logic
 		const data: IWorkflowExecutionDataProcess = {
-			...this.getStartNodesData(workflow, pastExecutionData, pastExecutionWorkflowData),
+			...startNodesData,
 			executionMode: 'evaluation',
 			runData: {},
 			pinData,
@@ -174,6 +183,25 @@ export class TestRunnerService {
 			userId: metadata.userId,
 			partialExecutionVersion: 2,
 		};
+
+		// When in queue mode, we need to pass additional data to the execution
+		// the same way as it would be passed in manual mode
+		if (config.getEnv('executions.mode') === 'queue') {
+			data.executionData = {
+				startData: {
+					startNodes: startNodesData.startNodes,
+				},
+				resultData: {
+					pinData,
+					runData: {},
+				},
+				manualData: {
+					userId: metadata.userId,
+					partialExecutionVersion: 2,
+					triggerToStartFrom: startNodesData.triggerToStartFrom,
+				},
+			};
+		}
 
 		// Trigger the workflow under test with mocked data
 		const executionId = await this.workflowRunner.run(data);
@@ -292,6 +320,8 @@ export class TestRunnerService {
 			userId: user.id,
 		};
 
+		let testRunEndStatusForTelemetry;
+
 		const abortSignal = abortController.signal;
 		try {
 			// Get the evaluation workflow
@@ -338,7 +368,7 @@ export class TestRunnerService {
 			// Update test run status
 			await this.testRunRepository.markAsRunning(testRun.id, pastExecutions.length);
 
-			this.telemetry.track('User runs test', {
+			this.telemetry.track('User ran test', {
 				user_id: user.id,
 				test_id: test.id,
 				run_id: testRun.id,
@@ -504,13 +534,17 @@ export class TestRunnerService {
 				await Db.transaction(async (trx) => {
 					await this.testRunRepository.markAsCancelled(testRun.id, trx);
 					await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRun.id, trx);
+
+					testRunEndStatusForTelemetry = 'cancelled';
 				});
 			} else {
 				const aggregatedMetrics = metrics.getAggregatedMetrics();
 
 				await this.testRunRepository.markAsCompleted(testRun.id, aggregatedMetrics);
 
-				this.logger.debug('Test run finished', { testId: test.id });
+				this.logger.debug('Test run finished', { testId: test.id, testRunId: testRun.id });
+
+				testRunEndStatusForTelemetry = 'completed';
 			}
 		} catch (e) {
 			if (e instanceof ExecutionCancelledError) {
@@ -523,15 +557,26 @@ export class TestRunnerService {
 					await this.testRunRepository.markAsCancelled(testRun.id, trx);
 					await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRun.id, trx);
 				});
+
+				testRunEndStatusForTelemetry = 'cancelled';
 			} else if (e instanceof TestRunError) {
 				await this.testRunRepository.markAsError(testRun.id, e.code, e.extra as IDataObject);
+				testRunEndStatusForTelemetry = 'error';
 			} else {
 				await this.testRunRepository.markAsError(testRun.id, 'UNKNOWN_ERROR');
+				testRunEndStatusForTelemetry = 'error';
 				throw e;
 			}
 		} finally {
 			// Clean up abort controller
 			this.abortControllers.delete(testRun.id);
+
+			// Send telemetry event
+			this.telemetry.track('Test run finished', {
+				test_id: test.id,
+				run_id: testRun.id,
+				status: testRunEndStatusForTelemetry,
+			});
 		}
 	}
 
