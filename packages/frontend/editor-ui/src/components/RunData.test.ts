@@ -166,14 +166,14 @@ describe('RunData', () => {
 		expect(queryByTestId('ndv-pin-data')).not.toBeInTheDocument();
 	});
 
-	it('should disable pin data button when data is pinned', async () => {
+	it('should not disable pin data button when data is pinned [ADO-3143]', async () => {
 		const { getByTestId } = render({
 			defaultRunItems: [],
 			displayMode: 'table',
 			pinnedData: [{ json: { name: 'Test' } }],
 		});
 		const pinDataButton = getByTestId('ndv-pin-data');
-		expect(pinDataButton).toBeDisabled();
+		expect(pinDataButton).not.toBeDisabled();
 	});
 
 	it('should render callout when data is pinned in output panel', async () => {

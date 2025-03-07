@@ -12,7 +12,13 @@ import type { IExecutionResponse, INodeUi, IWorkflowDb, IWorkflowSettings } from
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
-import type { IPinData, ExecutionSummary, IConnection, INodeExecutionData } from 'n8n-workflow';
+import type {
+	IPinData,
+	ExecutionSummary,
+	IConnection,
+	INodeExecutionData,
+	INode,
+} from 'n8n-workflow';
 import { stringSizeInBytes } from '@/utils/typesUtils';
 import { dataPinningEventBus } from '@/event-bus';
 import { useUIStore } from '@/stores/ui.store';
@@ -678,6 +684,83 @@ describe('useWorkflowsStore', () => {
 
 			expect(workflowsStore.workflow.nodes[0].position).toStrictEqual([0, 0]);
 			expect(workflowsStore.nodeMetadata[nodeName].parametersLastUpdatedAt).toBe(undefined);
+		});
+	});
+
+	describe('setNodes()', () => {
+		it('should transform credential-only nodes', () => {
+			const setNodeId = '1';
+			const credentialOnlyNodeId = '2';
+			workflowsStore.setNodes([
+				mock<INode>({
+					id: setNodeId,
+					name: 'Edit Fields',
+					type: 'n8n-nodes-base.set',
+				}),
+				mock<INode>({
+					id: credentialOnlyNodeId,
+					name: 'AlienVault Request',
+					type: 'n8n-nodes-base.httpRequest',
+					extendsCredential: 'alienVaultApi',
+				}),
+			]);
+
+			expect(workflowsStore.workflow.nodes[0].id).toEqual(setNodeId);
+			expect(workflowsStore.workflow.nodes[1].id).toEqual(credentialOnlyNodeId);
+			expect(workflowsStore.workflow.nodes[1].type).toEqual('n8n-creds-base.alienVaultApi');
+			expect(workflowsStore.nodeMetadata).toEqual({
+				'AlienVault Request': { pristine: true },
+				'Edit Fields': { pristine: true },
+			});
+		});
+	});
+
+	describe('updateNodeAtIndex', () => {
+		it.each([
+			{
+				description: 'should update node at given index with provided data',
+				nodeIndex: 0,
+				nodeData: { name: 'Updated Node' },
+				initialNodes: [{ name: 'Original Node' }],
+				expectedNodes: [{ name: 'Updated Node' }],
+				expectedResult: true,
+			},
+			{
+				description: 'should not update node if index is invalid',
+				nodeIndex: -1,
+				nodeData: { name: 'Updated Node' },
+				initialNodes: [{ name: 'Original Node' }],
+				expectedNodes: [{ name: 'Original Node' }],
+				expectedResult: false,
+			},
+			{
+				description: 'should return false if node data is unchanged',
+				nodeIndex: 0,
+				nodeData: { name: 'Original Node' },
+				initialNodes: [{ name: 'Original Node' }],
+				expectedNodes: [{ name: 'Original Node' }],
+				expectedResult: false,
+			},
+			{
+				description: 'should update multiple properties of a node',
+				nodeIndex: 0,
+				nodeData: { name: 'Updated Node', type: 'newType' },
+				initialNodes: [{ name: 'Original Node', type: 'oldType' }],
+				expectedNodes: [{ name: 'Updated Node', type: 'newType' }],
+				expectedResult: true,
+			},
+		])('$description', ({ nodeIndex, nodeData, initialNodes, expectedNodes, expectedResult }) => {
+			workflowsStore.workflow.nodes = initialNodes as unknown as IWorkflowDb['nodes'];
+
+			const result = workflowsStore.updateNodeAtIndex(nodeIndex, nodeData);
+
+			expect(result).toBe(expectedResult);
+			expect(workflowsStore.workflow.nodes).toEqual(expectedNodes);
+		});
+
+		it('should throw error if out of bounds', () => {
+			workflowsStore.workflow.nodes = [];
+			expect(() => workflowsStore.updateNodeAtIndex(0, { name: 'Updated Node' })).toThrowError();
 		});
 	});
 

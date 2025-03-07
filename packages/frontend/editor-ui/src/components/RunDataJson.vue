@@ -29,6 +29,7 @@ const props = withDefaults(
 		inputData: INodeExecutionData[];
 		mappingEnabled?: boolean;
 		distanceFromActive: number;
+		outputIndex: number | undefined;
 		runIndex: number | undefined;
 		totalRuns: number | undefined;
 		search: string | undefined;
@@ -45,7 +46,6 @@ const telemetry = useTelemetry();
 
 const selectedJsonPath = ref(nonExistingJsonPath);
 const draggingPath = ref<null | string>(null);
-const displayMode = ref('json');
 const jsonDataContainer = ref(null);
 
 const { height } = useElementSize(jsonDataContainer);
@@ -119,12 +119,13 @@ const getListItemName = (path: string) => {
 			<LazyRunDataJsonActions
 				v-if="!editMode.enabled"
 				:node="node"
+				:pane-type="paneType"
 				:push-ref="pushRef"
-				:display-mode="displayMode"
 				:distance-from-active="distanceFromActive"
 				:selected-json-path="selectedJsonPath"
 				:json-data="jsonData"
-				:pane-type="paneType"
+				:output-index="outputIndex"
+				:run-index="runIndex"
 			/>
 		</Suspense>
 		<Draggable

@@ -177,7 +177,7 @@ describe('WorkflowsView', () => {
 			);
 		});
 
-		it('should set status filter based on query parameters', async () => {
+		it('should set active status filter based on query parameters', async () => {
 			await router.replace({ query: { status: 'true' } });
 
 			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
@@ -192,6 +192,26 @@ describe('WorkflowsView', () => {
 				expect.any(String),
 				expect.objectContaining({
 					active: true,
+				}),
+				expect.any(Boolean),
+			);
+		});
+
+		it('should set deactivated status filter based on query parameters', async () => {
+			await router.replace({ query: { status: 'false' } });
+
+			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
+
+			renderComponent({ pinia });
+			await waitAllPromises();
+
+			expect(workflowsStore.fetchWorkflowsPage).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.any(Number),
+				expect.any(Number),
+				expect.any(String),
+				expect.objectContaining({
+					active: false,
 				}),
 				expect.any(Boolean),
 			);
