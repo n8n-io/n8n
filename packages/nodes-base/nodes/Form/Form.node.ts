@@ -20,7 +20,7 @@ import {
 
 import { cssVariables } from './cssVariables';
 import { renderFormCompletion } from './formCompletionUtils';
-import { renderFormNode } from './formNodeUtils';
+import { evaluateHtmlExpressions, renderFormNode } from './formNodeUtils';
 import { configureWaitTillDate } from '../../utils/sendAndWait/configureWaitTillDate.util';
 import { limitWaitTimeProperties } from '../../utils/sendAndWait/descriptions';
 import { formDescription, formFields, formTitle } from '../Form/common.descriptions';
@@ -346,6 +346,8 @@ export class Form extends Node {
 				},
 			);
 		}
+
+		fields = evaluateHtmlExpressions(context, fields);
 
 		const method = context.getRequestObject().method;
 
