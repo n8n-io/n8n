@@ -80,6 +80,14 @@ const properties: INodeProperties[] = [
 				description: 'The fields you want to include in the output',
 			},
 			viewRLC,
+			{
+				displayName: 'Return Fields By Field ID',
+				name: 'returnFieldsByFieldId',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to return fields keyed by field ID instead of field name in the response',
+			},
 		],
 	},
 	{
@@ -172,7 +180,9 @@ export async function execute(
 			const filterByFormula = this.getNodeParameter('filterByFormula', i) as string;
 
 			const body: IDataObject = {};
-			const qs: IDataObject = {};
+			const qs: IDataObject = {
+				returnFieldsByFieldId: options.returnFieldsByFieldId ? true : false,
+			};
 
 			if (filterByFormula) {
 				qs.filterByFormula = filterByFormula;
