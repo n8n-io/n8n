@@ -74,7 +74,7 @@ const addTargetBlank = (html: string) =>
 						:class="[$style.infoIcon, showTooltip ? $style.visible : $style.hidden]"
 					>
 						<N8nTooltip placement="top" :popper-class="$style.tooltipPopper" :show-after="300">
-							<N8nIcon icon="question-circle" size="small" />
+							<N8nIcon :class="$style.icon" icon="question-circle" size="small" />
 							<template #content>
 								<div v-n8n-html="addTargetBlank(tooltipText)" />
 							</template>
@@ -141,6 +141,10 @@ const addTargetBlank = (html: string) =>
 			}
 		}
 	}
+}
+
+.infoIcon:has(.icon[aria-describedby]) {
+	opacity: 1;
 }
 
 .trailing-content {
