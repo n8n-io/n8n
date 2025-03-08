@@ -18,15 +18,17 @@ interface Props {
 	messages: ChatMessage[];
 	sessionId: string;
 	showCloseButton?: boolean;
+	isOpen?: boolean;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), { isOpen: true });
 
 const emit = defineEmits<{
 	displayExecution: [id: string];
 	sendMessage: [message: string];
 	refreshSession: [];
 	close: [];
+	clickHeader: [];
 }>();
 
 const messageComposable = useMessage();
@@ -142,10 +144,9 @@ function copySessionId() {
 </script>
 
 <template>
-	<div :class="$style.chat" data-test-id="workflow-lm-chat-dialog">
-		<header :class="$style.chatHeader">
-			<span :class="$style.chatTitle">{{ locale.baseText('chat.window.title') }}</span>
-			<div :class="$style.session">
+	<div :class="[$style.chat, isOpen ? $style.isOpen : null]" data-test-id="workflow-lm-chat-dialog">
+		<PanelHeader :title="locale.baseText('chat.window.title')" @click="emit('clickHeader')">
+			<template #actions>
 				<span>{{ locale.baseText('chat.window.session.title') }}</span>
 				<n8n-tooltip placement="left">
 					<template #content>
@@ -174,9 +175,9 @@ function copySessionId() {
 					icon="times"
 					@click="emit('close')"
 				/>
-			</div>
-		</header>
-		<main :class="$style.chatBody">
+			</template>
+		</PanelHeader>
+		<main v-if="isOpen" :class="$style.chatBody">
 			<MessagesList :messages="messages" :class="$style.messages">
 				<template #beforeMessage="{ message }">
 					<MessageOptionTooltip
@@ -209,7 +210,7 @@ function copySessionId() {
 			</MessagesList>
 		</main>
 
-		<div :class="$style.messagesInput">
+		<div v-if="isOpen" :class="$style.messagesInput">
 			<ChatInput
 				data-test-id="lm-chat-inputs"
 				:placeholder="inputPlaceholder"
@@ -265,28 +266,7 @@ function copySessionId() {
 	overflow: hidden;
 	background-color: var(--color-background-light);
 }
-.chatHeader {
-	font-size: var(--font-size-s);
-	font-weight: 400;
-	line-height: 18px;
-	text-align: left;
-	border-bottom: 1px solid var(--color-foreground-base);
-	padding: var(--chat--spacing);
-	background-color: var(--color-foreground-xlight);
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-}
-.chatTitle {
-	font-weight: 600;
-}
-.session {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing-2xs);
-	color: var(--color-text-base);
-	max-width: 70%;
-}
+
 .sessionId {
 	display: inline-block;
 	white-space: nowrap;
@@ -294,10 +274,6 @@ function copySessionId() {
 	overflow: hidden;
 
 	cursor: pointer;
-}
-.headerButton {
-	max-height: 1.1rem;
-	border: none;
 }
 .chatBody {
 	display: flex;
