@@ -211,6 +211,19 @@ export const fromFileOptions: INodeProperties = {
 				'Whether to detect and exclude the byte-order-mark from the CSV Input if present',
 		},
 		{
+			displayName: 'Preserve Quotes',
+			name: 'relaxQuotes',
+			type: 'boolean',
+			displayOptions: {
+				show: {
+					'/fileFormat': ['csv'],
+				},
+			},
+			default: false,
+			description:
+				"Whether to handle unclosed quotes in CSV fields as part of the field's content, rather than causing a parsing error",
+		},
+		{
 			displayName: 'Header Row',
 			name: 'headerRow',
 			type: 'boolean',
