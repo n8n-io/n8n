@@ -27,6 +27,7 @@ import type {
 	IExecutionResponse,
 	INodeUi,
 	IUpdateInformation,
+	IWorkflowDataAutoSave,
 	IWorkflowDataUpdate,
 	IWorkflowDb,
 	IWorkflowTemplate,
@@ -64,6 +65,7 @@ import {
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
 	AI_CREDITS_EXPERIMENT,
+	LOCAL_STORAGE_WORKFLOW_AUTOSAVE_KEY,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -112,6 +114,7 @@ import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWo
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtils';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
+import { DateTime } from 'luxon';
 
 defineOptions({
 	name: 'NodeView',
@@ -397,8 +400,9 @@ async function initializeWorkspaceForNewWorkflow() {
 }
 
 async function initializeWorkspaceForExistingWorkflow(id: string) {
+	let workflowData: IWorkflowDb | undefined;
 	try {
-		const workflowData = await workflowsStore.fetchWorkflow(id);
+		workflowData = await workflowsStore.fetchWorkflow(id);
 
 		openWorkflow(workflowData);
 
@@ -416,6 +420,63 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 	} finally {
 		uiStore.nodeViewInitialized = true;
 		initializedWorkflowId.value = workflowId.value;
+
+		setTimeout(async () => {
+			if (workflowData) {
+				await checkIfAutosavedWorkflowAvailable(workflowData);
+			}
+		}, 3000);
+	}
+}
+
+async function checkIfAutosavedWorkflowAvailable(workflowData: IWorkflowDb) {
+	try {
+		const autosave = localStorage.getItem(LOCAL_STORAGE_WORKFLOW_AUTOSAVE_KEY);
+		if (autosave) {
+			const autosaved = JSON.parse(autosave) as IWorkflowDataAutoSave;
+
+			if (workflowData.id === autosaved.workflow.id && typeof workflowData.updatedAt === 'string') {
+				const autosavedUpdatedAt = DateTime.fromISO(autosaved.updatedAt);
+				const currentWorkflowUpdatedAt = DateTime.fromISO(workflowData.updatedAt);
+
+				const autosaveDiffThresholdSeconds = 5;
+				const { seconds: autosaveAgeDiffSeconds } = autosavedUpdatedAt.diff(
+					currentWorkflowUpdatedAt,
+					'seconds',
+				);
+
+				// TODO: This could use other kind of logic too, like consider only nodes & connections
+				// like at getCurrentWorkflow cacheKey logic. That would be more solid if client and server
+				// clocks drift apart.
+				if (autosaveAgeDiffSeconds > autosaveDiffThresholdSeconds) {
+					const importConfirm = await message.confirm(
+						i18n.baseText('nodeView.confirmMessage.loadAutosave'),
+						i18n.baseText('nodeView.confirmMessage.loadAutosave.headline'),
+						{
+							type: 'warning',
+							confirmButtonText: i18n.baseText(
+								'nodeView.confirmMessage.loadAutosave.confirmButtonText',
+							),
+							cancelButtonText: i18n.baseText(
+								'nodeView.confirmMessage.loadAutosave.cancelButtonText',
+							),
+						},
+					);
+
+					if (importConfirm !== MODAL_CONFIRM) {
+						return;
+					}
+
+					openWorkflow({
+						...workflowData,
+						...autosaved.workflow,
+					});
+					uiStore.stateIsDirty = true;
+				}
+			}
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('nodeView.couldntLoadAutosave'));
 	}
 }
 

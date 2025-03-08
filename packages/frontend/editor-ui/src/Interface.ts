@@ -247,6 +247,11 @@ export interface IWorkflowDataCreate extends IWorkflowDataUpdate {
 	parentFolderId?: string;
 }
 
+export interface IWorkflowDataAutoSave {
+	updatedAt: Iso8601DateTimeString;
+	workflow: IWorkflowData;
+}
+
 /**
  * Workflow data with mandatory `templateId`
  * This is used to identify sample workflows that we create for onboarding

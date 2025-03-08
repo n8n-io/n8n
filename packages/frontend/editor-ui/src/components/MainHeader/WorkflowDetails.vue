@@ -2,6 +2,7 @@
 import {
 	DUPLICATE_MODAL_KEY,
 	EnterpriseEditionFeature,
+	LOCAL_STORAGE_WORKFLOW_AUTOSAVE_KEY,
 	MAX_WORKFLOW_NAME_LENGTH,
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
@@ -43,7 +44,7 @@ import { hasPermission } from '@/utils/rbac/permissions';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { computed, ref, useCssModule, watch } from 'vue';
+import { computed, onMounted, ref, useCssModule, watch } from 'vue';
 import type {
 	ActionDropdownItem,
 	IWorkflowDataUpdate,
@@ -99,6 +100,33 @@ const importFileRef = ref<HTMLInputElement | undefined>();
 
 const tagsEventBus = createEventBus();
 const sourceControlModalEventBus = createEventBus();
+
+onMounted(async () => {
+	workflowsStore.$subscribe(async () => {
+		const workflow = await workflowHelpers.getWorkflowDataToSave();
+
+		// TODO: saving workflow autosave copies by id? Would we risk saving too much data on localStorage,
+		// over time on large instances with thousands of workflows, would we want to use IndexedDB instead?
+
+		// TODO: saving and rehydrating new workflows that haven't been saved on server yet
+
+		// TODO: instead of subscribing on every change we could just periodically run this if there
+		// are performance worries
+
+		// TODO: This could check if nodes & connections have changed and only autosave
+		// if so instead of relying on uiStore.stateIsDirty
+
+		if (uiStore.stateIsDirty && workflow.id) {
+			localStorage.setItem(
+				LOCAL_STORAGE_WORKFLOW_AUTOSAVE_KEY,
+				JSON.stringify({
+					updatedAt: new Date().toISOString(),
+					workflow,
+				}),
+			);
+		}
+	});
+});
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
