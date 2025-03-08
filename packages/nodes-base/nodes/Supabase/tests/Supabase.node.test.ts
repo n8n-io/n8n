@@ -15,7 +15,8 @@ import { Supabase } from '../Supabase.node';
 describe('Test Supabase Node', () => {
 	const node = new Supabase();
 
-	const input = [{ json: {} }];
+	// Input for create tests
+	const input = [{ json: { email: 'test@example.com', phone: '+1234567890' } }];
 
 	const createMockExecuteFunction = (
 		nodeParameters: IDataObject,
@@ -29,7 +30,6 @@ describe('Test Supabase Node', () => {
 				options?: IGetNodeParameterOptions | undefined,
 			) {
 				const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
-
 				const parameterValue = get(nodeParameters, parameter, fallbackValue);
 
 				if ((parameterValue as IDataObject)?.nodeOperationError) {
@@ -45,10 +45,11 @@ describe('Test Supabase Node', () => {
 			getInputData: () => input,
 			helpers: {
 				constructExecutionMetaData: (
-					_inputData: INodeExecutionData[],
+					inputData: INodeExecutionData[],
 					_options: { itemData: IPairedItemData | IPairedItemData[] },
-				) => [],
-				returnJsonArray: (_jsonData: IDataObject | IDataObject[]) => [],
+				) => inputData,
+				returnJsonArray: (jsonData: IDataObject | IDataObject[]) =>
+					Array.isArray(jsonData) ? jsonData.map((data) => ({ json: data })) : [{ json: jsonData }],
 			},
 		} as unknown as IExecuteFunctions;
 		return fakeExecuteFunction;
@@ -95,5 +96,99 @@ describe('Test Supabase Node', () => {
 				offset: 0,
 			},
 		);
+	});
+
+	describe('Create Operation', () => {
+		it('should create a row and return data when returnData is true', async () => {
+			const supabaseApiRequest = jest
+				.spyOn(utils, 'supabaseApiRequest')
+				.mockResolvedValue([{ email: 'test@example.com', phone: '+1234567890' }]);
+
+			const fakeExecuteFunction = createMockExecuteFunction({
+				resource: 'row',
+				operation: 'create',
+				tableId: 'signups',
+				dataToSend: 'autoMapInputData',
+				inputsToIgnore: '',
+				returnData: true,
+			});
+
+			const result = await node.execute.call(fakeExecuteFunction);
+
+			expect(supabaseApiRequest).toHaveBeenCalledWith(
+				'POST',
+				'/signups',
+				[{ email: 'test@example.com', phone: '+1234567890' }],
+				{},
+				undefined,
+				{},
+				true,
+			);
+			expect(result[0][0].json).toEqual({
+				email: 'test@example.com',
+				phone: '+1234567890',
+			});
+		});
+
+		it('should create a row without returning data when returnData is false', async () => {
+			const supabaseApiRequest = jest.spyOn(utils, 'supabaseApiRequest').mockResolvedValue({});
+
+			const fakeExecuteFunction = createMockExecuteFunction({
+				resource: 'row',
+				operation: 'create',
+				tableId: 'signups',
+				dataToSend: 'autoMapInputData',
+				inputsToIgnore: '',
+				returnData: false,
+			});
+
+			const result = await node.execute.call(fakeExecuteFunction);
+
+			expect(supabaseApiRequest).toHaveBeenCalledWith(
+				'POST',
+				'/signups',
+				[{ email: 'test@example.com', phone: '+1234567890' }],
+				{},
+				undefined,
+				{},
+				false,
+			);
+			expect(result[0][0].json).toEqual({
+				success: true,
+				message: 'Row inserted',
+			});
+		});
+
+		it('should coerce non-boolean returnData to boolean and proceed', async () => {
+			const supabaseApiRequest = jest
+				.spyOn(utils, 'supabaseApiRequest')
+				.mockResolvedValue([{ email: 'test@example.com', phone: '+1234567890' }]);
+
+			const fakeExecuteFunction = createMockExecuteFunction({
+				resource: 'row',
+				operation: 'create',
+				tableId: 'signups',
+				dataToSend: 'autoMapInputData',
+				inputsToIgnore: '',
+				returnData: 'hello', // Non-boolean expression result
+			});
+
+			const result = await node.execute.call(fakeExecuteFunction);
+
+			// 'hello' is truthy, so expect returnData to be treated as true
+			expect(supabaseApiRequest).toHaveBeenCalledWith(
+				'POST',
+				'/signups',
+				[{ email: 'test@example.com', phone: '+1234567890' }],
+				{},
+				undefined,
+				{},
+				'hello', // Passed as-is, but coerced to true in JS
+			);
+			expect(result[0][0].json).toEqual({
+				email: 'test@example.com',
+				phone: '+1234567890',
+			});
+		});
 	});
 });
