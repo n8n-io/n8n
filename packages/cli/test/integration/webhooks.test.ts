@@ -1,6 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import { agent as testAgent } from 'supertest';
 import type SuperAgentTest from 'supertest/lib/agent';
 
@@ -10,7 +9,6 @@ import { TestWebhooks } from '@/webhooks/test-webhooks';
 import { WaitingForms } from '@/webhooks/waiting-forms';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import { WebhookServer } from '@/webhooks/webhook-server';
-import type { IWebhookResponseCallbackData } from '@/webhooks/webhook.types';
 import { mockInstance } from '@test/mocking';
 
 let agent: SuperAgentTest;
@@ -60,9 +58,6 @@ describe('WebhookServer', () => {
 				it('should handle regular requests', async () => {
 					const pathPrefix = Container.get(GlobalConfig).endpoints[key];
 					manager.getWebhookMethods.mockResolvedValueOnce(['GET']);
-					manager.executeWebhook.mockResolvedValueOnce(
-						mockResponse({ test: true }, { key: 'value ' }),
-					);
 
 					const response = await agent
 						.get(`/${pathPrefix}/abcd`)
@@ -75,13 +70,5 @@ describe('WebhookServer', () => {
 				});
 			});
 		}
-
-		const mockResponse = (data = {}, headers = {}, status = 200) => {
-			const response = mock<IWebhookResponseCallbackData>();
-			response.responseCode = status;
-			response.data = data;
-			response.headers = headers;
-			return response;
-		};
 	});
 });
