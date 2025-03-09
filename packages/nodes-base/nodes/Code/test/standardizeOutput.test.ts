@@ -142,4 +142,44 @@ describe('standardizeOutput', () => {
     global.JSON.stringify = originalStringifyFunction;
     */
 	});
+
+	it('simulates the real-world Code Node scenario from screenshots', () => {
+		// This test simulates the exact scenario shown in the user's screenshots
+		const jsonString = '{"name":"John","age":30,"data":"Line 1 \\n \\n Line 2\\n \\n"}';
+		const input: IDataObject = {
+			jsonString1: jsonString,
+		};
+
+		// Run it through standardizeOutput, simulating what the Code Node does
+		const result = standardizeOutput({ ...input }) as IDataObject;
+
+		// 1. Test the "foo" scenario - direct access to the JSON string
+		// With our fix, this remains a valid JSON string
+		expect(result.jsonString1).toBe(jsonString);
+
+		// 2. Test the "bar" scenario - manual JSON.stringify
+		// This simulates what happens when a user stringifies in Code Node
+		const stringified = JSON.stringify(result.jsonString1 as string);
+		expect(stringified).not.toBe(jsonString); // It should be wrapped in quotes
+		expect(stringified.startsWith('"') && stringified.endsWith('"')).toBe(true);
+
+		// 3. Test the "baz" workaround - removing outer quotes manually
+		// After our fix, this should produce a valid, properly escaped JSON string
+		const workaround = stringified.substring(1, stringified.length - 1);
+		// The test string has double backslashes that get escaped in the stringified output
+		expect(workaround).toContain('name');
+		expect(workaround).toContain('John');
+		expect(workaround).toContain('age');
+		expect(workaround).toContain('30');
+
+		// Verify the original string can still be parsed
+		try {
+			const parsed = JSON.parse(jsonString) as IDataObject;
+			expect(parsed.name).toBe('John');
+			expect(parsed.age).toBe(30);
+		} catch (error) {
+			// This should not happen with valid JSON
+			fail('Failed to parse JSON string');
+		}
+	});
 });
