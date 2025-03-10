@@ -138,7 +138,7 @@ const folderActions = ref<Array<UserAction & { onlyAvailableOn?: 'mainBreadcrumb
 		disabled: false,
 	},
 	{
-		label: i18n.baseText('folders.actions.create'),
+		label: i18n.baseText('folders.actions.create.workflow'),
 		value: FOLDER_LIST_ITEM_ACTIONS.CREATE_WORKFLOW,
 		disabled: false,
 	},
@@ -1042,7 +1042,11 @@ const deleteFolder = async (folderId: string, workflowCount: number, subFolderCo
 			<div v-if="breadcrumbsLoading" :class="$style['breadcrumbs-loading']">
 				<n8n-loading :loading="breadcrumbsLoading" :rows="1" variant="p" />
 			</div>
-			<div v-else-if="showFolders && currentFolder" :class="$style['breadcrumbs-container']">
+			<div
+				v-else-if="showFolders && currentFolder"
+				:class="$style['breadcrumbs-container']"
+				data-test-id="main-breadcrumbs"
+			>
 				<FolderBreadcrumbs
 					:breadcrumbs="mainBreadcrumbs"
 					:actions="mainBreadcrumbsActions"
