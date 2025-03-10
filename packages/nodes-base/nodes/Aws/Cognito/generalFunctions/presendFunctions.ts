@@ -9,7 +9,7 @@ import {
 } from 'n8n-workflow';
 
 import { makeAwsRequest } from './makeAwsRequest';
-import { getUserPoolConfigurationData, validateEmail, validatePhoneNumber } from './helpers';
+import { validateEmail, validatePhoneNumber } from './helpers';
 
 export async function presendStringifyBody(
 	this: IExecuteSingleFunctions,
@@ -100,10 +100,12 @@ export async function presendUserFields(
 		}),
 	};
 
-	const userAttributes = await getUserPoolConfigurationData.call(
-		this as unknown as ILoadOptionsFunctions,
-		userPoolId as string,
-	);
+	const userAttributes = await makeAwsRequest.call(this, {
+		url: '',
+		method: 'POST',
+		headers: { 'X-Amz-Target': 'AWSCognitoIdentityProviderService.DescribeUserPool' },
+		body: JSON.stringify({ UserPoolId: userPoolId }),
+	});
 	const userPoolDetails = userAttributes?.UserPool as { UsernameAttributes?: string[] } | undefined;
 	const allowedUsernameAttributes = userPoolDetails?.UsernameAttributes ?? [];
 
