@@ -7014,7 +7014,6 @@ packages:
   bson@6.10.0:
     resolution: {integrity: sha512-ROchNosXMJD2cbQGm84KoP7vOGPO6/bOAW0veMMbzhXLqoZptcaYRVLitwvuhwhjjpU1qP4YZRWLhgETdgqUQw==}
     engines: {node: '>=16.20.1'}
-    deprecated: a critical bug affecting only useBigInt64=true deserialization usage is fixed in bson@6.10.3
 
   buffer-crc32@0.2.13:
     resolution: {integrity: sha512-VO9Ht/+p3SN7SKWqcrgEzjGbRSJYTx+Q1pTQC0wrWqHx0vpJraQ6GtHx8tvcg1rlK1byhU5gccxgOgj7B0TDkQ==}
@@ -8862,7 +8861,6 @@ packages:
   gm@1.25.0:
     resolution: {integrity: sha512-4kKdWXTtgQ4biIo7hZA396HT062nDVVHPjQcurNZ3o/voYN+o5FUC5kOwuORbpExp3XbTJ3SU7iRipiIhQtovw==}
     engines: {node: '>=14'}
-    deprecated: The gm module has been sunset. Please migrate to an alternative. https://github.com/aheckmann/gm?tab=readme-ov-file#2025-02-24-this-project-is-not-maintained
 
   google-auth-library@8.9.0:
     resolution: {integrity: sha512-f7aQCJODJFmYWN6PeNKzgvy9LI2tYmXnzpNDHEjG5sDNPgGb2FXQyTBnXeSH+PAtpKESFD+LmHw3Ox3mN7e1Fg==}
@@ -13317,9 +13315,6 @@ packages:
 
   vue-component-type-helpers@2.1.10:
     resolution: {integrity: sha512-lfgdSLQKrUmADiSV6PbBvYgQ33KF3Ztv6gP85MfGaGaSGMTXORVaHT1EHfsqCgzRNBstPKYDmvAV9Do5CmJ07A==}
-
-  vue-component-type-helpers@2.2.8:
-    resolution: {integrity: sha512-4bjIsC284coDO9om4HPA62M7wfsTvcmZyzdfR0aUlFXqq4tXxM1APyXpNVxPC8QazKw9OhmZNHBVDA6ODaZsrA==}
 
   vue-component-type-helpers@2.2.8:
     resolution: {integrity: sha512-4bjIsC284coDO9om4HPA62M7wfsTvcmZyzdfR0aUlFXqq4tXxM1APyXpNVxPC8QazKw9OhmZNHBVDA6ODaZsrA==}
@@ -27635,8 +27630,6 @@ snapshots:
       typescript: 5.7.2
 
   vue-component-type-helpers@2.1.10: {}
-
-  vue-component-type-helpers@2.2.8: {}
 
   vue-component-type-helpers@2.2.8: {}
 
