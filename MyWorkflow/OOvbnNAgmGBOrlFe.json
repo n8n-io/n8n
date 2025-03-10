@@ -1,0 +1,177 @@
+{
+  "active": false,
+  "connections": {
+    "Webhook (MITM Proxy Data)": {
+      "main": [
+        [
+          {
+            "node": "Extract Prompt Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Prompt Data": {
+      "main": [
+        [
+          {
+            "node": "Classify Code Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Code Type": {
+      "main": [
+        [
+          {
+            "node": "Store Prompt in Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Prompt in Database": {
+      "main": [
+        [
+          {
+            "node": "Score AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score AI Response": {
+      "main": [
+        [
+          {
+            "node": "Update Score in Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2025-02-16T14:27:35.492Z",
+  "id": "OOvbnNAgmGBOrlFe",
+  "meta": null,
+  "name": "My workflow 3",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-code-monitoring",
+        "options": {}
+      },
+      "name": "Webhook (MITM Proxy Data)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "your-webhook-id",
+      "id": "10b82f24-2098-4129-8d21-e1618bdb199a"
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "prompt",
+              "value": "={{$json[\"content\"]}}"
+            },
+            {
+              "name": "url",
+              "value": "={{$json[\"url\"]}}"
+            },
+            {
+              "name": "category",
+              "value": "={{ $json[\"category\"] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Extract Prompt Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        200,
+        0
+      ],
+      "id": "efbd5680-e5a9-4e3c-8f40-261e7bf93706"
+    },
+    {
+      "parameters": {
+        "functionCode": "let code = $json[\"prompt\"];\nif (code.includes(\"import\") || code.includes(\"def \")) {\n  return [{ json: { category: \"Python\" } }];\n} else if (code.includes(\"function\") || code.includes(\"const \")) {\n  return [{ json: { category: \"JavaScript\" } }];\n} else if (code.includes(\"SELECT \")) {\n  return [{ json: { category: \"SQL\" } }];\n} else {\n  return [{ json: { category: \"Other\" } }];\n}"
+      },
+      "name": "Classify Code Type",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        400,
+        0
+      ],
+      "id": "2c53f604-8d4e-4873-a867-35d96fd5888b"
+    },
+    {
+      "parameters": {
+        "schema": "ai_code_prompts",
+        "additionalFields": {}
+      },
+      "name": "Store Prompt in Database",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        600,
+        0
+      ],
+      "id": "932914cf-9760-4405-b820-f411d2daa3f7"
+    },
+    {
+      "parameters": {
+        "functionCode": "let response = $json[\"response\"];\nlet score = Math.random() * 10;\nreturn [{ json: { score } }];"
+      },
+      "name": "Score AI Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        400,
+        200
+      ],
+      "id": "cd20d91c-ec0c-4f66-942d-a522cbf98866"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "schema": "ai_code_prompts",
+        "updateKey": "prompt",
+        "additionalFields": {}
+      },
+      "name": "Update Score in Database",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        600,
+        200
+      ],
+      "id": "29911eb6-58d4-43e4-ae0f-6de92091def2"
+    }
+  ],
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-02-16T14:27:35.492Z",
+  "versionId": "2cd4a4e8-4aae-4879-b288-674bc8113f64"
+}
