@@ -1,0 +1,258 @@
+{
+  "active": false,
+  "connections": {
+    "Webhook21": {
+      "main": [
+        [
+          {
+            "node": "代碼預處理2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "代碼分析18": {
+      "main": [
+        []
+      ]
+    },
+    "Embeddings OpenAI4": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Qdrant Vector Store18",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "結果處理15": {
+      "main": [
+        [
+          {
+            "node": "結果檢查14",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "結果檢查14": {
+      "main": [
+        [
+          {
+            "node": "成功通知22",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "錯誤通知22",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant Vector Store18": {
+      "main": [
+        []
+      ]
+    },
+    "代碼預處理2": {
+      "main": [
+        [
+          {
+            "node": "代碼分析18",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2025-02-16T19:43:06.992Z",
+  "id": "ZCeSZJVdgpAj8NF4",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "name": "My workflow 4",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "webhook15",
+        "options": {}
+      },
+      "id": "e809691f-bf55-4453-bdef-950c19419858",
+      "name": "Webhook21",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        120,
+        10080
+      ],
+      "webhookId": "f68a740d-0108-4211-bd07-e6573c6305b4"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0].json;\nreturn {\n  json: {\n    text: input.code,\n    chatId: input.chatId,\n    metadata: {\n      timestamp: new Date().toISOString(),\n      version: input.version || '1.0'\n    }\n  }\n};"
+      },
+      "id": "9c296753-702e-44b7-8b49-ac62aa1b98ec",
+      "name": "代碼分析18",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        600,
+        10060
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0].json;\n\n// 代碼預處理\nconst processedCode = input.text.trim();\n\n// 基本代碼分析\nconst analysis = {\n  lineCount: processedCode.split('\\n').length,\n  characters: processedCode.length,\n  // 添加其他分析指標\n};\n\nreturn {\n  json: {\n    ...input,\n    analysis,\n    preprocessed: processedCode,\n  }\n};"
+      },
+      "id": "43f4dd90-25ab-4cdd-afc4-d0efda295898",
+      "name": "代碼預處理2",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        400,
+        10040
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "4fa063c7-bb34-4273-bd5e-08354390828f",
+      "name": "Embeddings OpenAI4",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        760,
+        10260
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "BAreECE9F2JxOvTm",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0].json;\nconst embeddingResults = $node['Qdrant知識庫9'].json;\n\nreturn {\n  json: {\n    success: true,\n    result: {\n      original: input,\n      embeddings: embeddingResults\n    },\n    chatId: input.chatId\n  }\n};"
+      },
+      "id": "76c8ad2d-9e74-45cf-8431-5b8aee8efbb1",
+      "name": "結果處理15",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1120,
+        10080
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.success }}",
+              "value2": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f6143769-74d8-4ea0-90f6-4b3253354c63",
+      "name": "結果檢查14",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        1320,
+        10080
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "向量存儲成功：{{ $json.result | json }}",
+        "additionalFields": {}
+      },
+      "id": "9b755fb9-022e-4755-ab40-3e57c5b1256c",
+      "name": "成功通知22",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        1520,
+        9980
+      ],
+      "typeVersion": 1.2,
+      "webhookId": "2b058709-c902-4385-bf24-9992ca5a9c10",
+      "credentials": {
+        "telegramApi": {
+          "id": "wnMrcs0Xnj762sB2",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "向量存儲失敗：{{ $json.error }}",
+        "additionalFields": {}
+      },
+      "id": "32438323-f752-4503-83aa-e63491e2927e",
+      "name": "錯誤通知22",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        1520,
+        10180
+      ],
+      "typeVersion": 1.2,
+      "webhookId": "90aca0ea-c857-4c97-bf52-a8286d23de9b",
+      "credentials": {
+        "telegramApi": {
+          "id": "wvmKR0hLnZGzf2v2",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "2808891f-0b97-4ad1-830d-33139ba447a8",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "52e7200d-2a90-4e29-9375-23d53a39a42d",
+      "name": "Qdrant Vector Store18",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1,
+      "position": [
+        800,
+        10040
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "qdrantApi": {
+          "id": "qJuBd7VqwC07ELeJ",
+          "name": "QdrantApi account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-02-18T19:31:23.000Z",
+  "versionId": "2613253e-db42-4859-b22e-cc5137a8c723"
+}
