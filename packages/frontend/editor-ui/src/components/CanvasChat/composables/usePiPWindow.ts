@@ -1,11 +1,23 @@
-import { computed, type ComputedRef, onBeforeUnmount, onMounted, ref, type ShallowRef } from 'vue';
+import {
+	computed,
+	type ComputedRef,
+	onBeforeUnmount,
+	onMounted,
+	type Ref,
+	ref,
+	type ShallowRef,
+} from 'vue';
 
+/**
+ * A composable that allows to pop out given content in document PiP (picture-in-picture) window
+ */
 export function usePiPWindow(
 	container: Readonly<ShallowRef<HTMLDivElement | null>>,
 	content: Readonly<ShallowRef<HTMLDivElement | null>>,
 ): {
 	isPoppedOut: ComputedRef<boolean>;
 	canPopOut: ComputedRef<boolean>;
+	pipWindow?: Ref<Window | undefined>;
 	onPopOut?: () => void;
 } {
 	const pipWindow = ref<Window>();
@@ -66,5 +78,5 @@ export function usePiPWindow(
 		}
 	});
 
-	return { canPopOut, isPoppedOut, onPopOut };
+	return { canPopOut, isPoppedOut, pipWindow, onPopOut };
 }

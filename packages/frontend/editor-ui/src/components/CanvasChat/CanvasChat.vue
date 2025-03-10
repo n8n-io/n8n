@@ -27,6 +27,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { usePiPWindow } from '@/components/CanvasChat/composables/usePiPWindow';
+import { N8nResizeWrapper } from '@n8n/design-system';
 
 const workflowsStore = useWorkflowsStore();
 const canvasStore = useCanvasStore();
@@ -100,7 +101,7 @@ const {
 	onWindowResize,
 } = useResize(container);
 
-const { canPopOut, isPoppedOut, onPopOut } = usePiPWindow(pipContainer, pipContent);
+const { canPopOut, isPoppedOut, pipWindow, onPopOut } = usePiPWindow(pipContainer, pipContent);
 
 // Extracted pure functions for better testability
 function createChatConfig(params: {
@@ -276,7 +277,7 @@ watchEffect(() => {
 		<div ref="pipContent" :class="$style.wrapper">
 			<N8nResizeWrapper
 				v-if="chatTriggerNode"
-				:is-resizing-enabled="isChatOpen || isLogsOpen"
+				:is-resizing-enabled="!isPoppedOut && (isChatOpen || isLogsOpen)"
 				:supported-directions="['top']"
 				:class="[$style.resizeWrapper, !isChatOpen && !isLogsOpen && $style.empty]"
 				:height="height"
@@ -285,11 +286,12 @@ watchEffect(() => {
 			>
 				<div ref="container" :class="[$style.container, 'ignore-key-press-canvas']" tabindex="0">
 					<div v-if="isChatOpen || isLogsOpen" :class="$style.chatResizer">
-						<n8n-resize-wrapper
+						<N8nResizeWrapper
 							v-if="isChatOpen"
 							:supported-directions="['right']"
 							:width="chatWidth"
 							:class="$style.chat"
+							:window-obj="pipWindow"
 							@resize="onResizeChatDebounced"
 						>
 							<div :class="$style.inner">
@@ -305,7 +307,7 @@ watchEffect(() => {
 									@send-message="sendMessage"
 								/>
 							</div>
-						</n8n-resize-wrapper>
+						</N8nResizeWrapper>
 						<div v-if="isLogsOpen && connectedNode" :class="$style.logs">
 							<ChatLogsPanel
 								:key="`${resultData?.length ?? messages?.length}`"
@@ -328,10 +330,6 @@ watchEffect(() => {
 
 <style lang="scss" module>
 @media all and (display-mode: picture-in-picture) {
-	.logs {
-		width: 400px;
-	}
-
 	.resizeWrapper {
 		height: 100% !important;
 		max-height: 100vh !important;
