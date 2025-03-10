@@ -1,4 +1,4 @@
-import { makeAwsRequest } from '../GenericFunctions';
+import { makeAwsRequest } from '../generalFunctions/makeAwsRequest';
 
 describe('GenericFunctions - makeAwsRequest', () => {
 	let mockContext: any;
@@ -91,10 +91,11 @@ describe('GenericFunctions - makeAwsRequest', () => {
 		);
 	});
 
-	test('should handle unexpected error structures gracefully', async () => {
+	test('should handle unexpected error structures', async () => {
 		mockGetCredentials.mockResolvedValueOnce({ region: 'us-east-1' });
+
 		mockRequestWithAuthentication.mockRejectedValueOnce({
-			cause: { error: { message: 'Something went wrong' } },
+			response: { body: { message: 'Something went wrong' } },
 		});
 
 		const requestOptions = {

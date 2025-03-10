@@ -1,7 +1,6 @@
 import type { IHttpRequestOptions } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import { presendGroupFields } from '../GenericFunctions';
+import { presendGroupFields } from '../generalFunctions/presendFunctions';
 
 describe('presendGroupFields', () => {
 	let mockContext: any;

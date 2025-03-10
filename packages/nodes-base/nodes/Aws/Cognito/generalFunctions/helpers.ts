@@ -125,18 +125,6 @@ export function validatePhoneNumber(phoneNumber: string): boolean {
 	return phoneRegex.test(phoneNumber);
 }
 
-export async function getUserPoolConfigurationData(
-	this: ILoadOptionsFunctions,
-	userPoolId: string,
-): Promise<IDataObject> {
-	return await makeAwsRequest.call(this, {
-		url: '',
-		method: 'POST',
-		headers: { 'X-Amz-Target': 'AWSCognitoIdentityProviderService.DescribeUserPool' },
-		body: JSON.stringify({ UserPoolId: userPoolId }),
-	});
-}
-
 export async function listUsersInGroup(
 	this: IExecuteSingleFunctions | ILoadOptionsFunctions,
 	groupName: string,

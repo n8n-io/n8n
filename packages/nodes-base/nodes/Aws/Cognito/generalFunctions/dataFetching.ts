@@ -7,7 +7,7 @@ import {
 	type INodeListSearchResult,
 } from 'n8n-workflow';
 import { makeAwsRequest } from './makeAwsRequest';
-import { getUserPoolConfigurationData, searchUsersForGroup } from './helpers';
+import { searchUsersForGroup } from './helpers';
 import type { IUserAttribute, IUserPool } from './types';
 
 export async function searchGroups(
@@ -115,6 +115,21 @@ export async function searchUsers(
 		throw new ApplicationError('User Pool ID is required to search users');
 	}
 
+	const userPoolData: IDataObject = await makeAwsRequest.call(this, {
+		url: '',
+		method: 'POST',
+		headers: { 'X-Amz-Target': 'AWSCognitoIdentityProviderService.DescribeUserPool' },
+		body: JSON.stringify({ UserPoolId: userPoolId }),
+	});
+
+	const userPool = userPoolData.UserPool as IUserPool;
+
+	if (!(userPool && Array.isArray(userPool.UsernameAttributes))) {
+		throw new ApplicationError('Invalid user pool configuration');
+	}
+
+	const usernameAttributes = userPool.UsernameAttributes;
+
 	const opts: IHttpRequestOptions = {
 		url: '',
 		method: 'POST',
@@ -125,15 +140,6 @@ export async function searchUsers(
 			NextToken: paginationToken,
 		}),
 	};
-
-	const userPoolData: IDataObject = await getUserPoolConfigurationData.call(this, userPoolId);
-	const userPool = userPoolData.UserPool as IUserPool;
-
-	if (!(userPool && Array.isArray(userPool.UsernameAttributes))) {
-		throw new ApplicationError('Invalid user pool configuration');
-	}
-
-	const usernameAttributes = userPool.UsernameAttributes;
 
 	const responseData = await makeAwsRequest.call(this, opts);
 	const users = responseData.Users;

@@ -1,6 +1,5 @@
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import { presendFilters } from '../GenericFunctions';
+import { presendFilters } from '../generalFunctions/presendFunctions';
 
 describe('presendFilters', () => {
 	let mockContext: any;

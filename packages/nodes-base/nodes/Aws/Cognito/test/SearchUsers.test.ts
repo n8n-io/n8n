@@ -1,8 +1,7 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import { searchUsers } from '../generalFunctions/dataFetching';
 
-import { searchUsers } from '../GenericFunctions';
-
-describe('searchUsers', () => {
+describe('GenericFunctions - searchUsers', () => {
 	const mockRequestWithAuthentication = jest.fn();
 
 	const mockContext = {
@@ -10,37 +9,16 @@ describe('searchUsers', () => {
 			requestWithAuthentication: mockRequestWithAuthentication,
 		},
 		getNodeParameter: jest.fn(),
-		getCredentials: jest.fn(),
+		getCredentials: jest.fn().mockResolvedValue({ region: 'us-east-1' }),
 	} as unknown as ILoadOptionsFunctions;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-
-		(mockContext.getCredentials as jest.Mock).mockResolvedValue({ region: 'us-east-1' });
-
-		(mockContext.helpers.requestWithAuthentication as jest.Mock).mockResolvedValueOnce({
-			Users: [
-				{
-					Username: 'User1',
-					Attributes: [
-						{ Name: 'email', Value: 'user1@example.com' },
-						{ Name: 'sub', Value: 'sub1' },
-					],
-				},
-				{
-					Username: 'User2',
-					Attributes: [
-						{ Name: 'email', Value: 'user2@example.com' },
-						{ Name: 'sub', Value: 'sub2' },
-					],
-				},
-			],
-			NextToken: 'nextTokenValue',
-		});
 	});
 
 	it('should throw an error if User Pool ID is missing', async () => {
 		(mockContext.getNodeParameter as jest.Mock).mockReturnValueOnce({});
+
 		await expect(searchUsers.call(mockContext)).rejects.toThrow(
 			'User Pool ID is required to search users',
 		);
@@ -49,30 +27,82 @@ describe('searchUsers', () => {
 	it('should make a POST request to search users and return results', async () => {
 		(mockContext.getNodeParameter as jest.Mock).mockReturnValueOnce({ value: 'mockUserPoolId' });
 
+		mockRequestWithAuthentication.mockResolvedValueOnce({
+			UserPool: {
+				UsernameAttributes: ['email'],
+			},
+		});
+
+		mockRequestWithAuthentication.mockResolvedValueOnce({
+			Users: [
+				{
+					Username: 'testuser1',
+					Attributes: [
+						{ Name: 'email', Value: 'test1@example.com' },
+						{ Name: 'sub', Value: 'sub-1' },
+					],
+				},
+				{
+					Username: 'testuser2',
+					Attributes: [
+						{ Name: 'email', Value: 'test2@example.com' },
+						{ Name: 'sub', Value: 'sub-2' },
+					],
+				},
+			],
+			NextToken: 'nextTokenValue',
+		});
+
 		const response = await searchUsers.call(mockContext);
 
-		expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
-			'aws',
-			expect.objectContaining({
-				baseURL: 'https://cognito-idp.us-east-1.amazonaws.com',
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/x-amz-json-1.1',
-					'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListUsers',
+		expect(mockRequestWithAuthentication).toHaveBeenCalledTimes(2);
+		expect(response).toEqual({
+			results: [
+				{ name: 'test1@example.com', value: 'sub-1' },
+				{ name: 'test2@example.com', value: 'sub-2' },
+			],
+			paginationToken: 'nextTokenValue',
+		});
+	});
+
+	it('should handle pagination and return all results', async () => {
+		(mockContext.getNodeParameter as jest.Mock).mockReturnValueOnce({ value: 'mockUserPoolId' });
+
+		mockRequestWithAuthentication.mockResolvedValueOnce({
+			UserPool: { UsernameAttributes: ['email'] },
+		});
+
+		mockRequestWithAuthentication.mockResolvedValueOnce({
+			Users: [
+				{
+					Username: 'testuser1',
+					Attributes: [
+						{ Name: 'email', Value: 'test1@example.com' },
+						{ Name: 'sub', Value: 'sub-1' },
+					],
 				},
+			],
+			NextToken: 'nextTokenValue',
+		});
+
+		const response = await searchUsers.call(mockContext, '', 'prevTokenValue');
+
+		expect(mockRequestWithAuthentication).toHaveBeenCalledTimes(2);
+
+		expect(mockRequestWithAuthentication).toHaveBeenNthCalledWith(
+			2,
+			expect.any(String),
+			expect.objectContaining({
 				body: JSON.stringify({
 					UserPoolId: 'mockUserPoolId',
 					MaxResults: 60,
-					NextToken: undefined,
+					NextToken: 'prevTokenValue',
 				}),
 			}),
 		);
 
 		expect(response).toEqual({
-			results: [
-				{ name: 'User1', value: 'sub1' },
-				{ name: 'User2', value: 'sub2' },
-			],
+			results: [{ name: 'test1@example.com', value: 'sub-1' }],
 			paginationToken: 'nextTokenValue',
 		});
 	});
@@ -81,15 +111,16 @@ describe('searchUsers', () => {
 		(mockContext.getNodeParameter as jest.Mock).mockReturnValueOnce({ value: 'mockUserPoolId' });
 
 		mockRequestWithAuthentication.mockResolvedValueOnce({
+			UserPool: { UsernameAttributes: ['email'] },
+		});
+
+		mockRequestWithAuthentication.mockResolvedValueOnce({
 			Users: [],
 			NextToken: undefined,
 		});
 
 		const response = await searchUsers.call(mockContext);
 
-		expect(response).toEqual({
-			results: [],
-			paginationToken: undefined,
-		});
+		expect(response).toEqual({ results: [], paginationToken: undefined });
 	});
 });

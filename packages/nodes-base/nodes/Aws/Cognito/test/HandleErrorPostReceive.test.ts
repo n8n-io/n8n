@@ -1,7 +1,6 @@
 import type { INodeExecutionData, IN8nHttpFullResponse, JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import { handleErrorPostReceive } from '../GenericFunctions';
+import { handleErrorPostReceive } from '../generalFunctions/errorHandling';
 
 describe('handleErrorPostReceive', () => {
 	let mockContext: any;
