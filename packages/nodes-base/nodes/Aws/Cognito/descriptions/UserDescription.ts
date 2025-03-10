@@ -477,12 +477,6 @@ const getFields: INodeProperties[] = [
 				],
 			},
 		],
-		// routing: {
-		// 	send: {
-		// 		type: 'body',
-		// 		property: 'Username',
-		// 	},
-		// },
 		required: true,
 		type: 'resourceLocator',
 	},
@@ -686,7 +680,7 @@ const deleteFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'User',
-		name: 'Username',
+		name: 'userName',
 		default: {
 			mode: 'list',
 			value: '',
@@ -788,7 +782,7 @@ const updateFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'User',
-		name: 'Username',
+		name: 'userName',
 		default: {
 			mode: 'list',
 			value: '',
@@ -1187,7 +1181,7 @@ const removeFromGroupFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Group',
-		name: 'GroupName',
+		name: 'groupName',
 		default: {
 			mode: 'list',
 			value: '',

@@ -21,8 +21,6 @@ export async function presendStringifyBody(
 	return requestOptions;
 }
 
-//GROUPS
-
 export async function presendGroupFields(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
@@ -74,8 +72,6 @@ export async function presendVerifyPath(
 	return requestOptions;
 }
 
-//USERS
-
 export async function presendUserFields(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
@@ -83,6 +79,8 @@ export async function presendUserFields(
 ): Promise<IHttpRequestOptions> {
 	const userName = (this.getNodeParameter('userName') as IDataObject).value;
 	const userPoolId = (this.getNodeParameter('userPoolId') as IDataObject).value;
+	console.log('Username', userName);
+	console.log('Pool ID', userPoolId);
 
 	if (!userPoolId) {
 		throw new NodeApiError(this.getNode(), {

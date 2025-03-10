@@ -14,8 +14,6 @@ import {
 import { makeAwsRequest } from './awsRequest';
 import { getUserPoolConfigurationData, listUsersInGroup, searchUsersForGroup } from './helpers';
 
-//USER POOLS
-
 export async function searchUserPools(
 	this: ILoadOptionsFunctions,
 	filter?: string,
@@ -47,8 +45,6 @@ export async function searchUserPools(
 
 	return { results, paginationToken: responseData.NextToken };
 }
-
-//USERS
 
 interface IUserAttribute {
 	Name: string;
@@ -125,8 +121,6 @@ export async function searchUsers(
 
 	return { results, paginationToken: responseData.NextToken };
 }
-
-//GROUPS
 
 export async function processGroupsResponse(
 	this: IExecuteSingleFunctions,
