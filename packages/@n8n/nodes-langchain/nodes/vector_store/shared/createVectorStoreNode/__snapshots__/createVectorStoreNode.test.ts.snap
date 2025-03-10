@@ -158,6 +158,27 @@ exports[`createVectorStoreNode retrieve mode supplies vector store as data 1`] =
       },
     },
     {
+      "default": 200,
+      "description": "Number of documents to embed in a single batch",
+      "displayName": "Embedding Batch Size",
+      "displayOptions": {
+        "show": {
+          "@version": [
+            {
+              "_cnd": {
+                "gte": 1.1,
+              },
+            },
+          ],
+          "mode": [
+            "insert",
+          ],
+        },
+      },
+      "name": "embeddingBatchSize",
+      "type": "number",
+    },
+    {
       "default": "",
       "description": "Search prompt to retrieve matching documents from the vector store using similarity-based ranking",
       "displayName": "Prompt",
@@ -229,6 +250,9 @@ exports[`createVectorStoreNode retrieve mode supplies vector store as data 1`] =
       "name": "loadField",
     },
   ],
-  "version": 1,
+  "version": [
+    1,
+    1.1,
+  ],
 }
 `;

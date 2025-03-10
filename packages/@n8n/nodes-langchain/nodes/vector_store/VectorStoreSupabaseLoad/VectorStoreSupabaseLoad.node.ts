@@ -14,8 +14,8 @@ import { getMetadataFiltersValues } from '@utils/helpers';
 import { logWrapper } from '@utils/logWrapper';
 import { metadataFilterField } from '@utils/sharedFields';
 
+import { supabaseTableNameSearch } from '../shared/createVectorStoreNode/methods/listSearch';
 import { supabaseTableNameRLC } from '../shared/descriptions';
-import { supabaseTableNameSearch } from '../shared/methods/listSearch';
 
 // This node is deprecated. Use VectorStoreSupabase instead.
 export class VectorStoreSupabaseLoad implements INodeType {
