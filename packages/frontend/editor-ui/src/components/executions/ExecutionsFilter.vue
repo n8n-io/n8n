@@ -257,8 +257,8 @@ onBeforeMount(() => {
 				}}</label>
 				<AnnotationTagsDropdown
 					id="execution-filter-annotation-tags"
-					:placeholder="locale.baseText('workflowOpen.filterWorkflows')"
 					v-model="filter.annotationTags"
+					:placeholder="locale.baseText('workflowOpen.filterWorkflows')"
 					:create-enabled="false"
 					data-test-id="executions-filter-annotation-tags-select"
 					@update:model-value="onAnnotationTagsChange"

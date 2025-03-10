@@ -74,9 +74,9 @@ const onClick = (event: MouseEvent) => {
 				<slot>
 					<span
 						:id="`${id}-content`"
+						v-n8n-html="displayContent"
 						:class="showFullContent ? $style['expanded'] : $style['truncated']"
 						role="region"
-						v-n8n-html="displayContent"
 					/>
 				</slot>
 			</N8nText>

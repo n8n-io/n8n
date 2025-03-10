@@ -431,7 +431,7 @@ watch(refDebounced(search, 500), (term) => {
 			</div>
 		</template>
 		<template #content>
-			<div :class="[$style.table]" v-if="changes.workflows.length">
+			<div v-if="changes.workflows.length" :class="[$style.table]">
 				<div :class="[$style.tableHeader]">
 					<N8nCheckbox
 						:class="$style.selectAll"

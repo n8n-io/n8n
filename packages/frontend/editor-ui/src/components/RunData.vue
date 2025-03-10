@@ -528,8 +528,7 @@ const showPinButton = computed(() => {
 
 const pinButtonDisabled = computed(
 	() =>
-		pinnedData.hasData.value ||
-		!rawInputData.value.length ||
+		(!rawInputData.value.length && !pinnedData.hasData.value) ||
 		!!binaryData.value?.length ||
 		isReadOnlyRoute.value ||
 		readOnlyEnv.value,
@@ -1172,7 +1171,7 @@ function init() {
 	} else if (displayMode.value === 'binary') {
 		ndvStore.setPanelDisplayMode({
 			pane: props.paneType,
-			mode: 'table',
+			mode: 'schema',
 		});
 	}
 }
@@ -1828,6 +1827,7 @@ defineExpose({ enterEditMode });
 					:mapping-enabled="mappingEnabled"
 					:distance-from-active="distanceFromActive"
 					:run-index="runIndex"
+					:output-index="currentOutputIndex"
 					:total-runs="maxRunIndex"
 					:search="search"
 				/>
