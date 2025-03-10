@@ -216,8 +216,8 @@ watch(
 			<n8n-tooltip placement="top">
 				<template #content>
 					<div
-						@click="displayActivationError"
 						v-n8n-html="i18n.baseText('workflowActivator.theWorkflowIsSetToBeActiveBut')"
+						@click="displayActivationError"
 					></div>
 				</template>
 				<font-awesome-icon icon="exclamation-triangle" @click="displayActivationError" />

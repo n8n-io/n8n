@@ -1,4 +1,6 @@
+import { META_KEY } from '../constants';
 import { NDV } from '../pages/ndv';
+import { successToast } from '../pages/notifications';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
 const WorkflowPage = new WorkflowPageClass();
@@ -9,6 +11,23 @@ describe('Expression editor modal', () => {
 		WorkflowPage.actions.visit();
 		WorkflowPage.actions.addInitialNodeToCanvas('Schedule');
 		cy.on('uncaught:exception', (error) => error.name !== 'ExpressionError');
+	});
+
+	describe('Keybinds', () => {
+		beforeEach(() => {
+			WorkflowPage.actions.addNodeToCanvas('Hacker News');
+			WorkflowPage.actions.zoomToFit();
+			WorkflowPage.actions.openNode('Hacker News');
+			WorkflowPage.actions.openExpressionEditorModal();
+		});
+
+		it('should save the workflow with save keybind', () => {
+			WorkflowPage.getters.expressionModalInput().clear();
+			WorkflowPage.getters.expressionModalInput().click().type('{{ "hello"');
+			WorkflowPage.getters.expressionModalOutput().contains('hello');
+			WorkflowPage.getters.expressionModalInput().click().type(`{${META_KEY}+s}`);
+			successToast().should('be.visible');
+		});
 	});
 
 	describe('Static data', () => {

@@ -110,7 +110,6 @@ export class E2EController {
 		[LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT]: -1,
 		[LICENSE_QUOTAS.TEAM_PROJECT_LIMIT]: 0,
 		[LICENSE_QUOTAS.AI_CREDITS]: 0,
-		[LICENSE_QUOTAS.API_KEYS_PER_USER_LIMIT]: 1,
 	};
 
 	private numericFeatures: Record<NumericLicenseFeature, number> = {
@@ -124,8 +123,6 @@ export class E2EController {
 		[LICENSE_QUOTAS.TEAM_PROJECT_LIMIT]:
 			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.TEAM_PROJECT_LIMIT],
 		[LICENSE_QUOTAS.AI_CREDITS]: E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.AI_CREDITS],
-		[LICENSE_QUOTAS.API_KEYS_PER_USER_LIMIT]:
-			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.API_KEYS_PER_USER_LIMIT],
 	};
 
 	constructor(

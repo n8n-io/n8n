@@ -24,7 +24,8 @@ type ErrorReporterInitOptions = {
 	beforeSendFilter?: (event: ErrorEvent, hint: EventHint) => boolean;
 };
 
-const SIX_WEEKS_IN_MS = 6 * 7 * 24 * 60 * 60 * 1000;
+const ONE_DAY_IN_MS = 24 * 60 * 60 * 1000;
+const SIX_WEEKS_IN_MS = 6 * 7 * ONE_DAY_IN_MS;
 const RELEASE_EXPIRATION_WARNING =
 	'Error tracking disabled because this release is older than 6 weeks.';
 
@@ -86,17 +87,23 @@ export class ErrorReporter {
 		});
 
 		if (releaseDate) {
-			const releaseExpiresInMs = releaseDate.getTime() + SIX_WEEKS_IN_MS - Date.now();
-			if (releaseExpiresInMs <= 0) {
+			const releaseExpiresAtMs = releaseDate.getTime() + SIX_WEEKS_IN_MS;
+			const releaseExpiresInMs = () => releaseExpiresAtMs - Date.now();
+			if (releaseExpiresInMs() <= 0) {
 				this.logger.warn(RELEASE_EXPIRATION_WARNING);
 				return;
 			}
-			// Once this release expires, reject all events
-			this.expirationTimer = setTimeout(() => {
-				this.logger.warn(RELEASE_EXPIRATION_WARNING);
-				// eslint-disable-next-line @typescript-eslint/unbound-method
-				this.report = this.defaultReport;
-			}, releaseExpiresInMs);
+			const checkForExpiration = () => {
+				// Once this release expires, reject all events
+				if (releaseExpiresInMs() <= 0) {
+					this.logger.warn(RELEASE_EXPIRATION_WARNING);
+					// eslint-disable-next-line @typescript-eslint/unbound-method
+					this.report = this.defaultReport;
+				} else {
+					setTimeout(checkForExpiration, ONE_DAY_IN_MS);
+				}
+			};
+			checkForExpiration();
 		}
 
 		if (!dsn) return;

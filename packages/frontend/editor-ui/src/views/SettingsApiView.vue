@@ -6,13 +6,14 @@ import { useDocumentTitle } from '@/composables/useDocumentTitle';
 
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { API_KEY_CREATE_OR_EDIT_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
+import { API_KEY_CREATE_OR_EDIT_MODAL_KEY, DOCS_DOMAIN, MODAL_CONFIRM } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useUIStore } from '@/stores/ui.store';
 import { useApiKeysStore } from '@/stores/apiKeys.store';
 import { storeToRefs } from 'pinia';
+import { useRootStore } from '@/stores/root.store';
 
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
@@ -29,8 +30,12 @@ const loading = ref(false);
 const apiKeysStore = useApiKeysStore();
 const { getAndCacheApiKeys, deleteApiKey } = apiKeysStore;
 const { apiKeysSortByCreationDate } = storeToRefs(apiKeysStore);
+const { isSwaggerUIEnabled, publicApiPath, publicApiLatestVersion } = settingsStore;
+const { baseUrl } = useRootStore();
 
 const { isPublicApiEnabled } = settingsStore;
+
+const apiDocsURL = ref('');
 
 const onCreateApiKey = async () => {
 	telemetry.track('User clicked create API key button');
@@ -43,6 +48,10 @@ const onCreateApiKey = async () => {
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.api'));
+
+	apiDocsURL.value = isSwaggerUIEnabled
+		? `${baseUrl}${publicApiPath}/v${publicApiLatestVersion}/docs`
+		: `https://${DOCS_DOMAIN}/api/api-reference/`;
 
 	if (!isPublicApiEnabled) return;
 
@@ -107,37 +116,91 @@ function onEdit(id: string) {
 				</span>
 			</n8n-heading>
 		</div>
-		<template v-if="apiKeysSortByCreationDate.length">
-			<el-row
-				v-for="apiKey in apiKeysSortByCreationDate"
-				:key="apiKey.id"
-				:gutter="10"
-				:class="$style.destinationItem"
-			>
-				<el-col>
-					<ApiKeyCard :api-key="apiKey" @delete="onDelete" @edit="onEdit" />
-				</el-col>
-			</el-row>
+		<p v-if="isPublicApiEnabled && apiKeysSortByCreationDate.length" :class="$style.topHint">
+			<n8n-text>
+				<i18n-t keypath="settings.api.view.info" tag="span">
+					<template #apiAction>
+						<a
+							data-test-id="api-docs-link"
+							href="https://docs.n8n.io/api"
+							target="_blank"
+							v-text="i18n.baseText('settings.api.view.info.api')"
+						/>
+					</template>
+					<template #webhookAction>
+						<a
+							data-test-id="webhook-docs-link"
+							href="https://docs.n8n.io/integrations/core-nodes/n8n-nodes-base.webhook/"
+							target="_blank"
+							v-text="i18n.baseText('settings.api.view.info.webhook')"
+						/>
+					</template>
+				</i18n-t>
+			</n8n-text>
+		</p>
 
-			<div class="mt-m text-right">
-				<n8n-button
-					size="large"
-					:disabled="!apiKeysStore.canAddMoreApiKeys"
-					@click="onCreateApiKey"
+		<div :class="$style.apiKeysContainer">
+			<template v-if="apiKeysSortByCreationDate.length">
+				<el-row
+					v-for="(apiKey, index) in apiKeysSortByCreationDate"
+					:key="apiKey.id"
+					:gutter="10"
+					:class="[{ [$style.destinationItem]: index !== apiKeysSortByCreationDate.length - 1 }]"
 				>
-					{{ i18n.baseText('settings.api.create.button') }}
-				</n8n-button>
-			</div>
-		</template>
+					<el-col>
+						<ApiKeyCard :api-key="apiKey" @delete="onDelete" @edit="onEdit" />
+					</el-col>
+				</el-row>
+			</template>
+		</div>
+
+		<div v-if="isPublicApiEnabled && apiKeysSortByCreationDate.length" :class="$style.BottomHint">
+			<N8nText size="small" color="text-light">
+				{{
+					i18n.baseText(
+						`settings.api.view.${settingsStore.isSwaggerUIEnabled ? 'tryapi' : 'more-details'}`,
+					)
+				}}
+			</N8nText>
+			{{ ' ' }}
+			<n8n-link
+				v-if="isSwaggerUIEnabled"
+				data-test-id="api-playground-link"
+				:to="apiDocsURL"
+				:new-window="true"
+				size="small"
+			>
+				{{ i18n.baseText('settings.api.view.apiPlayground') }}
+			</n8n-link>
+			<n8n-link
+				v-else
+				data-test-id="api-endpoint-docs-link"
+				:to="apiDocsURL"
+				:new-window="true"
+				size="small"
+			>
+				{{ i18n.baseText(`settings.api.view.external-docs`) }}
+			</n8n-link>
+		</div>
+		<div class="mt-m text-right">
+			<n8n-button
+				v-if="isPublicApiEnabled && apiKeysSortByCreationDate.length"
+				size="large"
+				@click="onCreateApiKey"
+			>
+				{{ i18n.baseText('settings.api.create.button') }}
+			</n8n-button>
+		</div>
 
 		<n8n-action-box
-			v-else-if="!isPublicApiEnabled && cloudPlanStore.userIsTrialing"
+			v-if="!isPublicApiEnabled && cloudPlanStore.userIsTrialing"
 			data-test-id="public-api-upgrade-cta"
 			:heading="i18n.baseText('settings.api.trial.upgradePlan.title')"
 			:description="i18n.baseText('settings.api.trial.upgradePlan.description')"
 			:button-text="i18n.baseText('settings.api.trial.upgradePlan.cta')"
 			@click:button="onUpgrade"
 		/>
+
 		<n8n-action-box
 			v-if="isPublicApiEnabled && !apiKeysSortByCreationDate.length"
 			:button-text="
@@ -154,7 +217,7 @@ function onEdit(id: string) {
 	display: flex;
 	align-items: center;
 	white-space: nowrap;
-	margin-bottom: var(--spacing-2xl);
+	margin-bottom: var(--spacing-xl);
 
 	*:first-child {
 		flex-grow: 1;
@@ -176,7 +239,27 @@ function onEdit(id: string) {
 	right: var(--spacing-s);
 }
 
-.hint {
+.topHint {
+	margin-top: none;
+	margin-bottom: var(--spacing-s);
 	color: var(--color-text-light);
+
+	span {
+		font-size: var(--font-size-s);
+		line-height: var(--font-line-height-loose);
+		font-weight: var(--font-weight-regular);
+	}
+}
+
+.BottomHint {
+	margin-bottom: var(--spacing-s);
+	margin-top: var(--spacing-s);
+}
+
+.apiKeysContainer {
+	max-height: 45vh;
+	overflow-y: auto;
+	overflow-x: hidden;
+	scrollbar-width: none;
 }
 </style>
