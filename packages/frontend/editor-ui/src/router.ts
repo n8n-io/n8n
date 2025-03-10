@@ -26,7 +26,8 @@ const ErrorView = async () => await import('./views/ErrorView.vue');
 const ForgotMyPasswordView = async () => await import('./views/ForgotMyPasswordView.vue');
 const MainHeader = async () => await import('@/components/MainHeader/MainHeader.vue');
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
-const CanvasChat = async () => await import('@/components/CanvasChat/CanvasChat.vue');
+const CanvasBottomPanel = async () =>
+	await import('@/components/CanvasChat/v2/CanvasBottomPanel.vue');
 const NodeView = async () => await import('@/views/NodeView.vue');
 const WorkflowExecutionsView = async () => await import('@/views/WorkflowExecutionsView.vue');
 const WorkflowExecutionsLandingPage = async () =>
@@ -358,7 +359,7 @@ export const routes: RouteRecordRaw[] = [
 			default: NodeView,
 			header: MainHeader,
 			sidebar: MainSidebar,
-			footer: CanvasChat,
+			footer: CanvasBottomPanel,
 		},
 		meta: {
 			nodeView: true,
@@ -391,7 +392,7 @@ export const routes: RouteRecordRaw[] = [
 			default: NodeView,
 			header: MainHeader,
 			sidebar: MainSidebar,
-			footer: CanvasChat,
+			footer: CanvasBottomPanel,
 		},
 		meta: {
 			nodeView: true,
