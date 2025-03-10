@@ -160,17 +160,8 @@ const selectValidator = z
 
 // SortBy parameter validation
 const sortByValidator = z
-	.string()
-	.optional()
-	.refine(
-		(val) => {
-			if (!val) return true;
-			return VALID_SORT_OPTIONS.includes(val as (typeof VALID_SORT_OPTIONS)[number]);
-		},
-		{
-			message: `sortBy must be one of: ${VALID_SORT_OPTIONS.join(', ')}`,
-		},
-	);
+	.enum(VALID_SORT_OPTIONS, { message: `sortBy must be one of: ${VALID_SORT_OPTIONS.join(', ')}` })
+	.optional();
 
 export class ListFolderQueryDto extends Z.class({
 	filter: filterValidator,
