@@ -85,7 +85,7 @@ const nodeType = computed((): INodeTypeDescription | null => {
 });
 
 const isNodeRunning = computed(() => {
-	if (!uiStore.isActionActive['workflowRunning'] || codeGenerationInProgress.value) return false;
+	if (!uiStore.isActionActive.workflowRunning || codeGenerationInProgress.value) return false;
 	const triggeredNode = workflowsStore.executedNode;
 	return (
 		workflowsStore.isNodeExecuting(node.value?.name ?? '') || triggeredNode === node.value?.name

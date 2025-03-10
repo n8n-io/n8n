@@ -1,5 +1,6 @@
 import { escapeMappingString } from '@/utils/mappingUtils';
 import {
+	type CompletionContext,
 	insertCompletionText,
 	pickedCompletion,
 	type Completion,
@@ -16,16 +17,21 @@ import { blockCommentSnippet, snippets } from './snippets';
 const START_CHARACTERS = ['"', "'", '(', '.', '@'];
 const START_CHARACTERS_REGEX = /[\.\(\'\"\@]/;
 
-export const typescriptCompletionSource: CompletionSource = async (context) => {
-	const { worker } = context.state.facet(typescriptWorkerFacet);
-
+export const matchText = (context: CompletionContext) => {
 	let word = context.matchBefore(START_CHARACTERS_REGEX);
-	if (!word?.text) {
-		word = context.matchBefore(/[\"\'].*/);
-	}
 	if (!word?.text) {
 		word = context.matchBefore(/[\$\w]+/);
 	}
+	if (!word?.text) {
+		word = context.matchBefore(/[\"\'].*/);
+	}
+	return word;
+};
+
+export const typescriptCompletionSource: CompletionSource = async (context) => {
+	const { worker } = context.state.facet(typescriptWorkerFacet);
+
+	const word = matchText(context);
 
 	const blockComment = context.matchBefore(/\/\*?\*?/);
 	if (blockComment) {
@@ -46,7 +52,7 @@ export const typescriptCompletionSource: CompletionSource = async (context) => {
 	if (isGlobal) {
 		options = options
 			.flatMap((opt) => {
-				if (opt.label === '$') {
+				if (opt.label === '$()') {
 					return [
 						opt,
 						...autocompletableNodeNames().map((name) => ({
