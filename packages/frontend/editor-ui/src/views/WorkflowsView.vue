@@ -127,43 +127,33 @@ const currentFolderId = ref<string | null>(null);
  */
 const folderActions = ref<Array<UserAction & { onlyAvailableOn?: 'mainBreadcrumbs' | 'card' }>>([
 	{
-		label: 'Open',
+		label: i18n.baseText('generic.open'),
 		value: FOLDER_LIST_ITEM_ACTIONS.OPEN,
 		disabled: false,
 		onlyAvailableOn: 'card',
 	},
 	{
-		label: 'Create Folder',
+		label: i18n.baseText('folders.actions.create'),
 		value: FOLDER_LIST_ITEM_ACTIONS.CREATE,
 		disabled: false,
 	},
 	{
-		label: 'Create Workflow',
+		label: i18n.baseText('folders.actions.create'),
 		value: FOLDER_LIST_ITEM_ACTIONS.CREATE_WORKFLOW,
 		disabled: false,
 	},
 	{
-		label: 'Rename',
+		label: i18n.baseText('generic.rename'),
 		value: FOLDER_LIST_ITEM_ACTIONS.RENAME,
 		disabled: false,
 	},
 	{
-		label: 'Move to Folder',
+		label: i18n.baseText('folders.actions.moveToFolder'),
 		value: FOLDER_LIST_ITEM_ACTIONS.MOVE,
 		disabled: true,
 	},
 	{
-		label: 'Change Owner',
-		value: FOLDER_LIST_ITEM_ACTIONS.CHOWN,
-		disabled: true,
-	},
-	{
-		label: 'Manage Tags',
-		value: FOLDER_LIST_ITEM_ACTIONS.TAGS,
-		disabled: true,
-	},
-	{
-		label: 'Delete',
+		label: i18n.baseText('generic.delete'),
 		value: FOLDER_LIST_ITEM_ACTIONS.DELETE,
 		disabled: false,
 	},
@@ -305,7 +295,7 @@ sourceControlStore.$onAction(({ name, after }) => {
 	after(async () => await initialize());
 });
 
-const onFolderDeleted = (payload: { folderId: string }) => {
+const onFolderDeleted = async (payload: { folderId: string }) => {
 	const folderInfo = foldersStore.getCachedFolder(payload.folderId);
 	foldersStore.deleteFoldersFromCache([payload.folderId, folderInfo?.parentFolder ?? '']);
 	// If the deleted folder is the current folder, navigate to the parent folder
@@ -314,6 +304,8 @@ const onFolderDeleted = (payload: { folderId: string }) => {
 			name: VIEWS.PROJECTS_FOLDERS,
 			params: { projectId: route.params.projectId, folderId: folderInfo?.parentFolder ?? '' },
 		});
+	} else {
+		await fetchWorkflows();
 	}
 };
 
@@ -373,6 +365,14 @@ const fetchWorkflows = async () => {
 	const homeProjectFilter = filters.value.homeProject || undefined;
 	const parentFolder = (route.params?.folderId as string) || undefined;
 
+	const tags = filters.value.tags.length
+		? filters.value.tags.map((tagId) => tagsStore.tagsById[tagId]?.name)
+		: [];
+	const activeFilter = filters.value.status ? Boolean(filters.value.status) : undefined;
+
+	// Only fetch folders if showFolders is enabled and there are not tags or active filter applied
+	const fetchFolders = showFolders.value && !tags.length && activeFilter === undefined;
+
 	try {
 		const fetchedResources = await workflowsStore.fetchWorkflowsPage(
 			routeProjectId ?? homeProjectFilter,
@@ -381,11 +381,11 @@ const fetchWorkflows = async () => {
 			currentSort.value,
 			{
 				name: filters.value.search || undefined,
-				active: filters.value.status ? Boolean(filters.value.status) : undefined,
-				tags: filters.value.tags.map((tagId) => tagsStore.tagsById[tagId]?.name),
+				active: activeFilter,
+				tags,
 				parentFolderId: parentFolder ?? '0', // 0 is the root folder in the API
 			},
-			showFolders.value,
+			fetchFolders,
 		);
 
 		foldersStore.cacheFolders(
@@ -789,10 +789,7 @@ const onBreadCrumbsAction = async (action: string) => {
 			if (!route.params.folderId) return;
 			const subFolderCount = getCurrentFolderSubFolderCount();
 			const workflowCount = getCurrentFolderWorkflowCount();
-			uiStore.openDeleteFolderModal(route.params.folderId as string, workflowListEventBus, {
-				subFolderCount,
-				workflowCount,
-			});
+			await deleteFolder(route.params.folderId as string, workflowCount, subFolderCount);
 			break;
 		case FOLDER_LIST_ITEM_ACTIONS.RENAME:
 			if (!route.params.folderId) return;
@@ -825,16 +822,7 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 			break;
 		case FOLDER_LIST_ITEM_ACTIONS.DELETE: {
 			const content = getFolderContent(clickedFolder.id);
-			if (content.subFolderCount || content.workflowCount) {
-				uiStore.openDeleteFolderModal(clickedFolder.id, workflowListEventBus, content);
-			} else {
-				await foldersStore.deleteFolder(route.params.projectId as string, clickedFolder.id);
-				toast.showMessage({
-					title: i18n.baseText('folders.delete.success.message'),
-					type: 'success',
-				});
-				await fetchWorkflows();
-			}
+			await deleteFolder(clickedFolder.id, content.workflowCount, content.subFolderCount);
 			break;
 		}
 		case FOLDER_LIST_ITEM_ACTIONS.RENAME:
@@ -869,7 +857,7 @@ const createFolder = async (parent: { id: string; name: string; type: 'project' 
 				parent.type === 'folder' ? parent.id : undefined,
 			);
 
-			let newFolderURL = `/projects/${route.params.projectId}`;
+			let newFolderURL = `/projects/${route.params.projectId}/folders/${newFolder.id}/workflows`;
 			if (newFolder.parentFolder) {
 				newFolderURL = `/projects/${route.params.projectId}/folders/${newFolder.id}/workflows`;
 			}
@@ -883,8 +871,8 @@ const createFolder = async (parent: { id: string; name: string; type: 'project' 
 				}),
 				type: 'success',
 			});
-			// If we are on an empty list, just add the new folder to the list
-			if (!workflowsAndFolders.value.length) {
+			// If we are on an empty list or the first page is not yet filled, just add the new folder to the list
+			if (!workflowsAndFolders.value.length || workflowsAndFolders.value.length < pageSize.value) {
 				workflowsAndFolders.value = [
 					{
 						id: newFolder.id,
@@ -898,6 +886,9 @@ const createFolder = async (parent: { id: string; name: string; type: 'project' 
 						subFolderCount: 0,
 					},
 				];
+				foldersStore.cacheFolders([
+					{ id: newFolder.id, name: newFolder.name, parentFolder: currentFolder.value?.id },
+				]);
 			} else {
 				// Else fetch again with same filters & pagination applied
 				await fetchWorkflows();
@@ -950,6 +941,22 @@ const createFolderInCurrent = async () => {
 		name: currentParent,
 		type: currentFolder.value ? 'folder' : 'project',
 	});
+};
+
+const deleteFolder = async (folderId: string, workflowCount: number, subFolderCount: number) => {
+	if (subFolderCount || workflowCount) {
+		uiStore.openDeleteFolderModal(folderId, workflowListEventBus, {
+			workflowCount,
+			subFolderCount,
+		});
+	} else {
+		await foldersStore.deleteFolder(route.params.projectId as string, folderId);
+		toast.showMessage({
+			title: i18n.baseText('folders.delete.success.message'),
+			type: 'success',
+		});
+		await fetchWorkflows();
+	}
 };
 </script>
 

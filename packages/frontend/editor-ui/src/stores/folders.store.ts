@@ -96,12 +96,16 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		});
 	};
 
-	async function deleteFolder(projectId: string, folderId: string) {
-		await workflowsApi.deleteFolder(rootStore.restApiContext, projectId, folderId);
+	async function deleteFolder(projectId: string, folderId: string, newParentId?: string) {
+		await workflowsApi.deleteFolder(rootStore.restApiContext, projectId, folderId, newParentId);
 	}
 
 	async function renameFolder(projectId: string, folderId: string, name: string) {
 		await workflowsApi.renameFolder(rootStore.restApiContext, projectId, folderId, name);
+	}
+
+	async function fetchProjectFolders(projectId: string) {
+		return await workflowsApi.getProjectFolders(rootStore.restApiContext, projectId);
 	}
 
 	return {
@@ -115,5 +119,6 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		deleteFolder,
 		deleteFoldersFromCache,
 		renameFolder,
+		fetchProjectFolders,
 	};
 });

@@ -1,11 +1,12 @@
 <script lang="ts" setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@/composables/useI18n';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useRoute } from 'vue-router';
+import type { FolderListItem } from '@/Interface';
 
 const props = defineProps<{
 	modalName: string;
@@ -29,7 +30,22 @@ const foldersStore = useFoldersStore();
 const loading = ref(false);
 const operation = ref('');
 const deleteConfirmText = ref('');
-const selectedFolder = ref<{ id: string; name: string; parentFolder?: string } | null>(null);
+const selectedFolderId = ref<string | null>(null);
+const projectFolders = ref<FolderListItem[]>([]);
+
+const currentFolder = computed(() => {
+	return projectFolders.value.find((folder) => folder.id === props.activeId);
+});
+
+// Available folders to transfer are all folders except the current folder, it's parent and its children
+const availableFolders = computed(() => {
+	return projectFolders.value.filter(
+		(folder) =>
+			folder.id !== props.activeId &&
+			folder.parentFolder?.id !== props.activeId &&
+			folder.id !== currentFolder.value?.parentFolder?.id,
+	);
+});
 
 const folderToDelete = computed(() => {
 	if (!props.activeId) return null;
@@ -58,14 +74,10 @@ const enabled = computed(() => {
 	) {
 		return true;
 	}
-	if (operation.value === 'transfer' && selectedFolder.value) {
+	if (operation.value === 'transfer' && selectedFolderId.value) {
 		return true;
 	}
 	return false;
-});
-
-const folders = computed(() => {
-	return Object.values(foldersStore.breadcrumbsCache);
 });
 
 const folderContentWarningMessage = computed(() => {
@@ -96,19 +108,21 @@ async function onSubmit() {
 	}
 	try {
 		loading.value = true;
-		const params = { id: props.activeId } as { id: string; transferId?: string };
-		if (operation.value === 'transfer' && selectedFolder.value) {
-			params.transferId = selectedFolder.value.id;
-		}
-		await foldersStore.deleteFolder(route.params.projectId as string, props.activeId);
+
+		await foldersStore.deleteFolder(
+			route.params.projectId as string,
+			props.activeId,
+			selectedFolderId.value ?? undefined,
+		);
+
 		let message = '';
-		if (params.transferId) {
-			const transferFolder = folders.value.find((folder) => folder.id === params.transferId);
-			if (transferFolder) {
-				message = i18n.baseText('folders.transfer.confirm.message', {
-					interpolate: { folderName: transferFolder.name ?? '' },
-				});
-			}
+		if (selectedFolderId.value) {
+			const selectedFolder = availableFolders.value.find(
+				(folder) => folder.id === selectedFolderId.value,
+			);
+			message = i18n.baseText('folders.transfer.confirm.message', {
+				interpolate: { folderName: selectedFolder?.name ?? '' },
+			});
 		}
 		showMessage({
 			type: 'success',
@@ -123,6 +137,10 @@ async function onSubmit() {
 		loading.value = false;
 	}
 }
+
+onMounted(async () => {
+	projectFolders.value = await foldersStore.fetchProjectFolders(route.params.projectId as string);
+});
 </script>
 
 <template>
@@ -157,17 +175,21 @@ async function onSubmit() {
 							i18n.baseText('folders.transfer.selectFolder')
 						}}</n8n-text>
 						<N8nSelect
-							v-model="selectedFolder"
+							v-model="selectedFolderId"
 							option-label="name"
 							option-value="id"
 							:placeholder="i18n.baseText('folders.transfer.selectFolder')"
 						>
 							<N8nOption
-								v-for="folder in folders"
+								v-for="folder in availableFolders"
 								:key="folder.id"
 								:value="folder.id"
 								:label="folder.name"
 							>
+								<div :class="$style['folder-select-item']">
+									<n8n-icon icon="folder" />
+									<span> {{ folder.name }}</span>
+								</div>
 							</N8nOption>
 						</N8nSelect>
 					</div>
@@ -226,5 +248,11 @@ async function onSubmit() {
 }
 .optionInput {
 	padding-left: var(--spacing-l);
+}
+
+.folder-select-item {
+	display: flex;
+	gap: var(--spacing-2xs);
+	align-items: center;
 }
 </style>

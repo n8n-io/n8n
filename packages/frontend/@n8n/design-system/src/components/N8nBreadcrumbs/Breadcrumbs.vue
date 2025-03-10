@@ -232,6 +232,7 @@ const handleTooltipClose = () => {
 .list {
 	display: flex;
 	list-style: none;
+	align-items: center;
 }
 
 .item.current span {
