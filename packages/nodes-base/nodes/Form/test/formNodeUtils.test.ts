@@ -7,7 +7,7 @@ import {
 	type NodeTypeAndVersion,
 } from 'n8n-workflow';
 
-import { evaluateHtmlExpressions, renderFormNode } from '../formNodeUtils';
+import { renderFormNode } from '../formNodeUtils';
 
 describe('formNodeUtils', () => {
 	let webhookFunctions: MockProxy<IWebhookFunctions>;
@@ -119,24 +119,5 @@ describe('formNodeUtils', () => {
 			useResponseData: true,
 			validForm: true,
 		});
-	});
-
-	it('should resolve expressions in html fields', async () => {
-		webhookFunctions.evaluateExpression.mockImplementation((expression) => {
-			if (expression === '{{ $json.formMode }}') {
-				return 'Title';
-			}
-		});
-
-		const result = evaluateHtmlExpressions(webhookFunctions, [
-			{
-				fieldLabel: 'Custom HTML',
-				fieldType: 'html',
-				elementName: 'test',
-				html: '<h1>{{ $json.formMode }}</h1>',
-			},
-		]);
-
-		expect(result[0].html).toBe('<h1>Title</h1>');
 	});
 });

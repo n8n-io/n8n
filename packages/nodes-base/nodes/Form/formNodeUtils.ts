@@ -6,8 +6,7 @@ import {
 	type IWebhookResponseData,
 } from 'n8n-workflow';
 
-import { renderForm, sanitizeHtml } from './utils';
-import { getResolvables } from '../../utils/utilities';
+import { renderForm } from './utils';
 
 export const renderFormNode = async (
 	context: IWebhookFunctions,
@@ -43,12 +42,6 @@ export const renderFormNode = async (
 			) as string) || 'Submit';
 	}
 
-	for (const field of fields) {
-		if (field.fieldType === 'html') {
-			field.html = sanitizeHtml(field.html as string);
-		}
-	}
-
 	const appendAttribution = context.evaluateExpression(
 		`{{ $('${trigger?.name}').params.options?.appendAttribution === false ? false : true }}`,
 	) as boolean;
@@ -70,25 +63,4 @@ export const renderFormNode = async (
 	return {
 		noWebhookResponse: true,
 	};
-};
-
-export const evaluateHtmlExpressions = (
-	context: IWebhookFunctions,
-	fields: FormFieldsParameter,
-) => {
-	return fields.map((field) => {
-		if (field.fieldType === 'html') {
-			let { html } = field;
-
-			if (!html) return field;
-
-			for (const resolvable of getResolvables(html)) {
-				html = html.replace(resolvable, context.evaluateExpression(resolvable) as string);
-			}
-
-			field.html = html;
-		}
-
-		return field;
-	});
 };

@@ -20,7 +20,7 @@ import {
 
 import { cssVariables } from './cssVariables';
 import { renderFormCompletion } from './formCompletionUtils';
-import { evaluateHtmlExpressions, renderFormNode } from './formNodeUtils';
+import { renderFormNode } from './formNodeUtils';
 import { configureWaitTillDate } from '../../utils/sendAndWait/configureWaitTillDate.util';
 import { limitWaitTimeProperties } from '../../utils/sendAndWait/descriptions';
 import { formDescription, formFields, formTitle } from '../Form/common.descriptions';
@@ -336,18 +336,8 @@ export class Form extends Node {
 				});
 			}
 		} else {
-			fields = (context.getNodeParameter('formFields.values', []) as FormFieldsParameter).map(
-				(field) => {
-					if (field.fieldType === 'hiddenField') {
-						field.fieldLabel = field.fieldName as string;
-					}
-
-					return field;
-				},
-			);
+			fields = context.getNodeParameter('formFields.values', []) as FormFieldsParameter;
 		}
-
-		fields = evaluateHtmlExpressions(context, fields);
 
 		const method = context.getRequestObject().method;
 
