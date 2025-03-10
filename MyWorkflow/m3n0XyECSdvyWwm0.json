@@ -1,0 +1,227 @@
+{
+  "active": false,
+  "connections": {
+    "Set Track ID": {
+      "main": [
+        [
+          {
+            "node": "Get Song Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Song Details": {
+      "main": [
+        [
+          {
+            "node": "Extract Song URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Song URL": {
+      "main": [
+        [
+          {
+            "node": "Fetch Lyrics Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Lyrics Page": {
+      "main": [
+        [
+          {
+            "node": "Parse Lyrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Lyrics": {
+      "main": [
+        [
+          {
+            "node": "Send to OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send to OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Translate Lyrics (Optional)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Translate Lyrics (Optional)": {
+      "main": [
+        [
+          {
+            "node": "Save Lyrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2024-12-06T10:18:19.132Z",
+  "id": "m3n0XyECSdvyWwm0",
+  "meta": null,
+  "name": "My workflow 2",
+  "nodes": [
+    {
+      "parameters": {
+        "functionCode": "return [{ json: { trackId: \"[TRACK_ID]\" } }];"
+      },
+      "name": "Set Track ID",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        460,
+        460
+      ],
+      "id": "3c143973-60d7-40b5-bfbf-b0e4ef7e9c8f"
+    },
+    {
+      "parameters": {
+        "url": "https://api.genius.com/songs/{{$json[\"trackId\"]}}",
+        "options": {},
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Authorization",
+              "value": "Bearer [YOUR_ACCESS_TOKEN]"
+            }
+          ]
+        }
+      },
+      "name": "Get Song Details",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        660,
+        460
+      ],
+      "id": "f9da637b-a8ff-4a7a-a666-25c204098778"
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{ json: { songUrl: $json[\"response\"][\"song\"][\"url\"] } }];"
+      },
+      "name": "Extract Song URL",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        860,
+        460
+      ],
+      "id": "55e80dd0-e9b0-4d7f-a36b-33f929d4fcfe"
+    },
+    {
+      "parameters": {
+        "url": "={{$json[\"songUrl\"]}}",
+        "options": {
+          "fullResponse": true
+        },
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+            }
+          ]
+        }
+      },
+      "name": "Fetch Lyrics Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        1060,
+        460
+      ],
+      "id": "7ad0e9c0-d302-4048-a344-dd1b13e835d1"
+    },
+    {
+      "parameters": {
+        "functionCode": "const cheerio = require('cheerio');\nconst $ = cheerio.load($json[\"body\"]);\nconst lyrics = $(\".lyrics\").text().trim();\nreturn [{ json: { lyrics } }];"
+      },
+      "name": "Parse Lyrics",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1260,
+        460
+      ],
+      "id": "e6a638f8-25c7-4b5e-835e-560a1f62e557"
+    },
+    {
+      "parameters": {
+        "authentication": "headerAuth",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "jsonParameters": true,
+        "options": {}
+      },
+      "name": "Send to OpenAI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        1460,
+        460
+      ],
+      "id": "4996d98c-954a-4d18-89c1-c336361be520"
+    },
+    {
+      "parameters": {
+        "authentication": "headerAuth",
+        "url": "https://api-free.deepl.com/v2/translate",
+        "options": {}
+      },
+      "name": "Translate Lyrics (Optional)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        1660,
+        460
+      ],
+      "id": "cc25ed0e-cc14-42b0-b01e-130d9c96b370"
+    },
+    {
+      "parameters": {
+        "fileName": "Translated_Lyrics.txt",
+        "options": {}
+      },
+      "name": "Save Lyrics",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        1860,
+        460
+      ],
+      "id": "5627df51-fffe-41c7-8f79-3b22d0a5518b"
+    }
+  ],
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2024-12-06T10:18:19.132Z",
+  "versionId": "7752ccc8-939d-4750-a95e-4077a47a8b57"
+}
