@@ -157,6 +157,7 @@ const handleTooltipClose = () => {
 						placement="bottom"
 						size="small"
 						icon-orientation="horizontal"
+						data-test-id="hidden-items-menu"
 						@visible-change="onHiddenMenuVisibleChange"
 						@action="emitItemSelected"
 					>
@@ -183,7 +184,7 @@ const handleTooltipClose = () => {
 							/>
 						</div>
 						<div v-else :class="$style.tooltipContent">
-							<div>
+							<div data-test-id="hidden-items-tooltip">
 								<n8n-text>{{ loadedHiddenItems.map((item) => item.label).join(' / ') }}</n8n-text>
 							</div>
 						</div>
@@ -198,7 +199,9 @@ const handleTooltipClose = () => {
 						[$style.item]: true,
 						[$style.current]: props.highlightLastItem && index === items.length - 1,
 					}"
-					data-test-id="breadcrumbs-item"
+					:data-test-id="
+						index === items.length - 1 ? 'breadcrumbs-item-current' : 'breadcrumbs-item'
+					"
 					@click.prevent="emitItemSelected(item.id)"
 				>
 					<n8n-link v-if="item.href" :href="item.href" theme="text">{{ item.label }}</n8n-link>

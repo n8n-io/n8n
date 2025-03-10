@@ -80,7 +80,7 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 </script>
 
 <template>
-	<div>
+	<div data-test-id="folder-card">
 		<router-link :to="cardUrl" @click="() => emit('folderOpened', { folder: props.data })">
 			<n8n-card :class="$style.card">
 				<template #prepend>
