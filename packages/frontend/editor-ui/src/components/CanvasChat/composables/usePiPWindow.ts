@@ -1,3 +1,4 @@
+import { useTelemetry } from '@/composables/useTelemetry';
 import {
 	computed,
 	type ComputedRef,
@@ -23,6 +24,7 @@ export function usePiPWindow(
 	const pipWindow = ref<Window>();
 	const canPopOut = computed(() => !!window.documentPictureInPicture);
 	const isPoppedOut = computed(() => !!pipWindow.value);
+	const telemetry = useTelemetry();
 
 	function showPip() {
 		if (!content.value) {
@@ -50,6 +52,8 @@ export function usePiPWindow(
 		// Move the content to the Picture-in-Picture window.
 		pipWindow.value?.document.body.append(content.value);
 		pipWindow.value?.addEventListener('pagehide', () => {
+			telemetry.track('User toggled log view', { new_state: 'attached' });
+
 			pipWindow.value = undefined;
 
 			if (content.value) {
@@ -59,7 +63,10 @@ export function usePiPWindow(
 	}
 
 	async function onPopOut() {
+		telemetry.track('User toggled log view', { new_state: 'floating' });
+
 		pipWindow.value = await window.documentPictureInPicture?.requestWindow();
+
 		showPip();
 	}
 

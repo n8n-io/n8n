@@ -274,7 +274,7 @@ watchEffect(() => {
 
 <template>
 	<div ref="pipContainer">
-		<div ref="pipContent" :class="$style.wrapper">
+		<div ref="pipContent" :class="$style.pipContent">
 			<N8nResizeWrapper
 				v-if="chatTriggerNode"
 				:is-resizing-enabled="!isPoppedOut && (isChatOpen || isLogsOpen)"
@@ -336,7 +336,7 @@ watchEffect(() => {
 	}
 }
 
-.wrapper {
+.pipContent {
 	height: 100%;
 }
 
