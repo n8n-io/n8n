@@ -115,3 +115,57 @@ export async function getWorkflows(
 	const nextPaginationToken = page * per_page < responseData.total_count ? page + 1 : undefined;
 	return { results, paginationToken: nextPaginationToken };
 }
+
+export async function getRefs(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const owner = this.getCurrentNodeParameter('owner', { extractValue: true });
+	const repository = this.getCurrentNodeParameter('repository', { extractValue: true });
+	const page = paginationToken ? +paginationToken : 1;
+	const per_page = 100;
+
+	const refs: INodeListSearchItems[] = [];
+
+	// Fetch branches
+	const branches = await githubApiRequest.call(
+		this,
+		'GET',
+		`/repos/${owner}/${repository}/branches`,
+		{},
+		{ page, per_page },
+	);
+	for (const branch of branches) {
+		refs.push({
+			name: branch.name,
+			value: branch.name,
+			description: `Branch: ${branch.name}`,
+		});
+	}
+
+	// Fetch tags
+	const tags = await githubApiRequest.call(
+		this,
+		'GET',
+		`/repos/${owner}/${repository}/tags`,
+		{},
+		{ page, per_page },
+	);
+	for (const tag of tags) {
+		refs.push({
+			name: tag.name,
+			value: tag.name,
+			description: `Tag: ${tag.name}`,
+		});
+	}
+
+	if (filter) {
+		const filteredRefs = refs.filter((ref) =>
+			ref.name.toLowerCase().includes(filter.toLowerCase()),
+		);
+		return { results: filteredRefs };
+	}
+	const nextPaginationToken = page * per_page < refs.length ? page + 1 : undefined;
+	return { results: refs, paginationToken: nextPaginationToken };
+}
