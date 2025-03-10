@@ -39,7 +39,12 @@ export class N8nOutputFixingParser extends BaseOutputParser {
 
 		try {
 			// First attempt to parse the completion
-			const response = await this.outputParser.parse(completion, callbacks, (e) => e);
+			const response = await this.outputParser.parse(completion, callbacks, (e) => {
+				if (e instanceof OutputParserException) {
+					return e;
+				}
+				return new OutputParserException(e.message, completion);
+			});
 			logAiEvent(this.context, 'ai-output-parsed', { text: completion, response });
 
 			this.context.addOutputData(NodeConnectionType.AiOutputParser, index, [
