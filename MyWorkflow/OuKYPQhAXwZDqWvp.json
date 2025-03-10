@@ -1,0 +1,7142 @@
+{
+  "active": false,
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Google Analytics Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Google Analytics Data": {
+      "main": [
+        [
+          {
+            "node": "Extract and Deduplicate Keywords",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract and Deduplicate Keywords": {
+      "main": [
+        [
+          {
+            "node": "Classify Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Data": {
+      "main": [
+        [
+          {
+            "node": "Branch by Target DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Branch by Target DB": {
+      "main": [
+        [
+          {
+            "node": "Store in SQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store in SQL": {
+      "main": [
+        [
+          {
+            "node": "Upsert Qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Qdrant": {
+      "main": [
+        [
+          {
+            "node": "Notify Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "query": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "page": {
+      "main": [
+        [
+          {
+            "node": "Split Out1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out2": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "date": {
+      "main": [
+        [
+          {
+            "node": "Split Out2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "queryes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "pages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "date1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger1": {
+      "main": [
+        [
+          {
+            "node": "query",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "page",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch GA Data": {
+      "main": [
+        [
+          {
+            "node": "Extract and Deduplicate Keywords1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Files": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert into Supabase Vectorstore": {
+      "main": [
+        [
+          {
+            "node": "Merge Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Img to ImgBB": {
+      "main": [
+        [
+          {
+            "node": "ReSmush.it Image Optimisation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ReSmush.it Image Optimisation": {
+      "main": [
+        [
+          {
+            "node": "Store Optimised Image ImgBB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set image description": {
+      "main": [
+        [
+          {
+            "node": "Generate Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Image": {
+      "main": [
+        [
+          {
+            "node": "Upload Img to ImgBB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Optimised Image ImgBB": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger2": {
+      "main": [
+        [
+          {
+            "node": "Fetch GA Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract and Deduplicate Keywords1": {
+      "main": [
+        [
+          {
+            "node": "Classify Data1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Data1": {
+      "main": [
+        [
+          {
+            "node": "Branch by Target DB1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Branch by Target DB1": {
+      "main": [
+        [
+          {
+            "node": "Store in SQL1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store in SQL1": {
+      "main": [
+        [
+          {
+            "node": "Upsert Qdrant1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Qdrant1": {
+      "main": [
+        [
+          {
+            "node": "Notify Success1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SerpAPI": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Information Extractor": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out URLs": {
+      "main": [
+        [
+          {
+            "node": "Check if GitHub URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if GitHub URL": {
+      "main": [
+        [
+          {
+            "node": "Transform GitHub URL2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape Repository Page": {
+      "main": [
+        [
+          {
+            "node": "Process Scraped Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Scraped Code": {
+      "main": [
+        [
+          {
+            "node": "Store Code Knowledge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Code Knowledge": {
+      "main": [
+        [
+          {
+            "node": "Notify Success2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Code Keywords2": {
+      "main": [
+        [
+          {
+            "node": "Perplexity Code Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform GitHub URL2": {
+      "main": [
+        [
+          {
+            "node": "Scrape Repository Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Vector": {
+      "main": [
+        [
+          {
+            "node": "Telegram Notification2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger3": {
+      "main": [
+        [
+          {
+            "node": "Perplexity Query2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split URL List2": {
+      "main": [
+        [
+          {
+            "node": "Transform GitHub URL3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform GitHub URL3": {
+      "main": [
+        [
+          {
+            "node": "Scrape Repository Text2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape Repository Text2": {
+      "main": [
+        [
+          {
+            "node": "Store in Code Knowledge Base2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Generate Vector",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger4": {
+      "main": [
+        [
+          {
+            "node": "Perplexity Query3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split URL List3": {
+      "main": [
+        [
+          {
+            "node": "Transform GitHub URL4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform GitHub URL4": {
+      "main": [
+        [
+          {
+            "node": "Scrape Repository Text3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape Repository Text3": {
+      "main": [
+        [
+          {
+            "node": "Store in Code Knowledge Base3",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Generate Vector1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Vector1": {
+      "main": [
+        [
+          {
+            "node": "Telegram Notification3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Feed1": {
+      "main": [
+        [
+          {
+            "node": "Extract Keywords1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Keywords1": {
+      "main": [
+        [
+          {
+            "node": "Process Keywords1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Keywords1": {
+      "main": [
+        [
+          {
+            "node": "Perplexity API1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Perplexity Chat Completions": {
+      "main": [
+        [
+          {
+            "node": "Set Code Keywords2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "pages": {
+      "main": [
+        [
+          {
+            "node": "Set Code Keywords1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Code Keywords1": {
+      "main": [
+        [
+          {
+            "node": "Perplexity Query1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Perplexity Query1": {
+      "main": [
+        [
+          {
+            "node": "Split URL List1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split URL List1": {
+      "main": [
+        [
+          {
+            "node": "Check GitHub URL1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "queryes": {
+      "main": [
+        [
+          {
+            "node": "RSS Feed1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "設定摘要1": {
+      "main": [
+        [
+          {
+            "node": "準備爬取後資料1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "完成流程1": {
+      "main": [
+        [
+          {
+            "node": "數據篩選與分類1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "清洗與轉換數據1": {
+      "main": [
+        [
+          {
+            "node": "是否為大型內容?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "是否為大型內容?1": {
+      "main": [
+        [
+          {
+            "node": "設定摘要1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "準備爬取後資料1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "數據篩選與分類1": {
+      "main": [
+        [
+          {
+            "node": "AI三重驗證(問答)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI三重驗證(問答)1": {
+      "main": [
+        [
+          {
+            "node": "驗證失敗?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "驗證失敗?1": {
+      "main": [
+        [
+          {
+            "node": "通知使用者(成功構建)1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "備案A:嘗試其他方式1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "備案B:二次清洗後重試1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "備案C:嘗試改用其他DB1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "刪除新加入數據1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "通知使用者(失敗報告)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All files": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create File record2": {
+      "main": [
+        [
+          {
+            "node": "Insert into Supabase Vectorstore1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Download",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Get All files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI2": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Supabase Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract Document PDF1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Create File record2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structgure Response from Proxmox": {
+      "main": [
+        [
+          {
+            "node": "Format Response and Hide Sensitive Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge2": {
+      "main": [
+        [
+          {
+            "node": "Structgure Response from Proxmox",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request5",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request5",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request5",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Document PDF1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Insert into Supabase Vectorstore1",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Files1": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items1": {
+      "main": [
+        [],
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert into Supabase Vectorstore1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request5": {
+      "main": [
+        [
+          {
+            "node": "Structure Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obsidian資料來源(Webhook)": {
+      "main": [
+        [
+          {
+            "node": "分離附件",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "分離附件": {
+      "main": [
+        [
+          {
+            "node": "修正Base64",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "修正Base64": {
+      "main": [
+        [
+          {
+            "node": "逐一處理附件",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "逐一處理附件": {
+      "main": [
+        [
+          {
+            "node": "轉換附件為檔案",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "上傳至Google Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "轉換附件為檔案": {
+      "main": [
+        [
+          {
+            "node": "逐一處理附件",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "上傳至Google Drive": {
+      "main": [
+        [
+          {
+            "node": "彙整附件連結",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "彙整附件連結": {
+      "main": [
+        [
+          {
+            "node": "準備基礎資料",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "準備基礎資料": {
+      "main": [
+        [
+          {
+            "node": "寫入SQL基礎資訊",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "寫入SQL基礎資訊": {
+      "main": [
+        [
+          {
+            "node": "切分筆記並轉向量",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "主動抓取範例(Scraping)": {
+      "main": [
+        [
+          {
+            "node": "清洗與轉換數據",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "清洗與轉換數據": {
+      "main": [
+        [
+          {
+            "node": "是否為大型內容?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "數據篩選與分類": {
+      "main": [
+        [
+          {
+            "node": "AI三重驗證(問答)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI三重驗證(問答)": {
+      "main": [
+        [
+          {
+            "node": "驗證失敗?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "驗證失敗?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "備案A:嘗試其他方式",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "備案B:二次清洗後重試",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "備案C:嘗試改用其他DB",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "刪除新加入數據",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "通知使用者(失敗報告)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obsidian筆記資料輸入(Webhook)": {
+      "main": [
+        [
+          {
+            "node": "分離附件1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "分離附件1": {
+      "main": [
+        [
+          {
+            "node": "修正Base",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "修正Base": {
+      "main": [
+        [
+          {
+            "node": "逐一處理附件1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "逐一處理附件1": {
+      "main": [
+        [
+          {
+            "node": "轉換附件為檔案1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "上傳至Google Drive1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "轉換附件為檔案1": {
+      "main": [
+        [
+          {
+            "node": "逐一處理附件1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "上傳至Google Drive1": {
+      "main": [
+        [
+          {
+            "node": "彙整附件連結1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "彙整附件連結1": {
+      "main": [
+        [
+          {
+            "node": "準備基礎資料1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "準備基礎資料1": {
+      "main": [
+        [
+          {
+            "node": "寫入SQL基礎資訊1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "寫入SQL基礎資訊1": {
+      "main": [
+        [
+          {
+            "node": "切分筆記並轉向量1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obsidian筆記(Webhook)": {
+      "main": [
+        [
+          {
+            "node": "分離筆記附件",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "分離筆記附件": {
+      "main": [
+        [
+          {
+            "node": "修正Base65",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "逐一處理筆記附件": {
+      "main": [
+        [
+          {
+            "node": "轉換附件為檔案2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "上傳至Google Drive(附件)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "上傳至Google Drive(附件)": {
+      "main": [
+        [
+          {
+            "node": "彙整附件連結2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "準備SQL基礎資料": {
+      "main": [
+        [
+          {
+            "node": "寫入SQL(筆記元數據)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "寫入SQL(筆記元數據)": {
+      "main": [
+        [
+          {
+            "node": "切分筆記(進行向量化)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "設定摘要(最終)": {
+      "main": [
+        [
+          {
+            "node": "通知使用者(成功構建)4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "修正Base65": {
+      "main": [
+        [
+          {
+            "node": "逐一處理筆記附件",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "轉換附件為檔案2": {
+      "main": [
+        [
+          {
+            "node": "逐一處理筆記附件",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "彙整附件連結2": {
+      "main": [
+        [
+          {
+            "node": "準備SQL基礎資料",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Initial Keywords": {
+      "main": [
+        [
+          {
+            "node": "GPT Expand Keywords",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GPT Expand Keywords": {
+      "main": [
+        [
+          {
+            "node": "Check Depth",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Depth": {
+      "main": [
+        [
+          {
+            "node": "Decrease Depth",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decrease Depth": {
+      "main": [
+        [
+          {
+            "node": "GitHub to GitIngest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obsidian資料來源(Webhook)1": {
+      "main": [
+        [
+          {
+            "node": "分離附件2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "分離附件2": {
+      "main": [
+        [
+          {
+            "node": "修正Base66",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "修正Base66": {
+      "main": [
+        [
+          {
+            "node": "逐一處理附件2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "逐一處理附件2": {
+      "main": [
+        [
+          {
+            "node": "轉換附件為檔案3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "上傳至Google Drive2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "轉換附件為檔案3": {
+      "main": [
+        [
+          {
+            "node": "逐一處理附件2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "上傳至Google Drive2": {
+      "main": [
+        [
+          {
+            "node": "彙整附件連結3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "彙整附件連結3": {
+      "main": [
+        [
+          {
+            "node": "準備基礎資料2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "準備基礎資料2": {
+      "main": [
+        [
+          {
+            "node": "寫入SQL基礎資訊2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "寫入SQL基礎資訊2": {
+      "main": [
+        [
+          {
+            "node": "切分筆記並轉向量2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "切分筆記並轉向量2": {
+      "main": [
+        [
+          {
+            "node": "設定摘要3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "設定摘要3": {
+      "main": [
+        [
+          {
+            "node": "準備爬取後資料4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "完成流程4": {
+      "main": [
+        [
+          {
+            "node": "數據篩選與分類4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "清洗與轉換數據4": {
+      "main": [
+        [
+          {
+            "node": "是否為大型內容?4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "是否為大型內容?4": {
+      "main": [
+        [
+          {
+            "node": "設定摘要3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "準備爬取後資料4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "數據篩選與分類4": {
+      "main": [
+        [
+          {
+            "node": "AI三重驗證(問答)4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI三重驗證(問答)4": {
+      "main": [
+        [
+          {
+            "node": "驗證失敗?4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "驗證失敗?4": {
+      "main": [
+        [
+          {
+            "node": "通知使用者(成功構建)4",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "備案A:嘗試其他方式4",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "備案B:二次清洗後重試4",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "備案C:嘗試改用其他DB4",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "刪除新加入數據4",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "通知使用者(失敗報告)4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "備案A:嘗試其他方式4": {
+      "main": [
+        [
+          {
+            "node": "完成流程4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "備案B:二次清洗後重試4": {
+      "main": [
+        [
+          {
+            "node": "完成流程4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "備案C:嘗試改用其他DB4": {
+      "main": [
+        [
+          {
+            "node": "完成流程4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "刪除新加入數據4": {
+      "main": [
+        [
+          {
+            "node": "完成流程4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "通知使用者(失敗報告)4": {
+      "main": [
+        [
+          {
+            "node": "完成流程4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2025-02-01T04:20:52.349Z",
+  "id": "OuKYPQhAXwZDqWvp",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "name": "準備了 暴君",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 4
+            }
+          ]
+        }
+      },
+      "id": "8df9cffa-f531-4752-9e19-e8840a6707a9",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -4720,
+        -1380
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.googleanalyze.example.com/data",
+        "options": {}
+      },
+      "id": "31c4f43d-45bf-4abd-be4f-3e6f6da95ac2",
+      "name": "Fetch Google Analytics Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -4460,
+        -1380
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = items[0].json;\n// 假設 API 回傳的 JSON 中有個 report 字段包含文字報告\nconst text = data.report || '';\n\n// 簡單關鍵字抽取：以非字母數字拆分、過濾長度大於3的單詞，全部轉小寫\nlet words = text.split(/\\W+/).filter(word => word.length > 3).map(word => word.toLowerCase());\n\n// 去除重複關鍵字\nwords = [...new Set(words)];\n\n// 將結果存入 keywords 字段，同時保留原始報告文字\nreturn [{ json: { keywords: words, reportText: text } }];\n"
+      },
+      "id": "c4c6511e-dafb-448b-a9ea-b0b633f74eb1",
+      "name": "Extract and Deduplicate Keywords",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4220,
+        -1380
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = items[0].json;\n// 簡單分類：若 reportText 中含有 'error'，則歸類為 technical，否則為 general\nconst classification = data.reportText.includes('error') ? 'technical' : 'general';\n\n// 決定目標資料庫：technical 資料存入 MongoDB，其它存入 MySQL\nconst targetDb = classification === 'technical' ? 'mongodb' : 'mysql';\n\nreturn [{ json: { ...data, classification, targetDb } }];\n"
+      },
+      "id": "0587e7a7-26a1-41e5-afec-64f368f9fda4",
+      "name": "Classify Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3960,
+        -1380
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "value1": "={{ $json.targetDb }}",
+              "operation": "equals",
+              "value2": "mysql"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6f5ded30-6b97-4c22-a349-0e3b87e58b9d",
+      "name": "Branch by Target DB",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -3720,
+        -1380
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{`INSERT INTO knowledge_metadata (title, classification, keywords) VALUES ('Google Analytics Report', '${$json.classification}', '${JSON.stringify($json.keywords)}')`}}"
+      },
+      "id": "8ab730d3-9c42-40ff-bde8-3b75fe0911ec",
+      "name": "Store in SQL",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        -3460,
+        -1480
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "67b4be54-350d-47cb-8a7f-150d107515c5",
+      "name": "Store in MongoDB",
+      "type": "n8n-nodes-mongodb-upgraded.mongoDbOperations",
+      "typeVersion": 1,
+      "position": [
+        -3680,
+        -960
+      ],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "jsCode": "const { randomUUID } = require('crypto');\nconst { QdrantClient } = require('@qdrant/js-client-rest');\n\n// 請根據實際情況修改 Qdrant 端點\nconst client = new QdrantClient({ url: 'http://localhost:6333' });\nconst collectionName = 'knowledge_vectors';\n\nconst data = items[0].json;\n\n// 模擬計算嵌入向量（此處僅以隨機數組模擬 128 維向量）\nconst embedding = Array(128).fill(0).map(() => Math.random());\n\nconst upsertItem = {\n  points: [\n    {\n      id: randomUUID(),\n      vector: { default: embedding },\n      payload: {\n        title: 'Google Analytics Report',\n        classification: data.classification,\n        keywords: data.keywords\n      }\n    }\n  ]\n};\n\nreturn client.upsert(collectionName, upsertItem).then(() => {\n  return [{ json: { success: true } }];\n}).catch(err => {\n  return [{ json: { error: err.message } }];\n});\n"
+      },
+      "id": "1b3b8a9a-2522-4943-81c2-3846d6c142eb",
+      "name": "Upsert Qdrant",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3200,
+        -1380
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "知識庫更新成功！已存入資料，請檢查數據。",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "eb4caa41-bc16-4203-bcdc-75775693634d",
+      "name": "Notify Success",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -2960,
+        -1380
+      ],
+      "webhookId": "4849f804-7c32-4bdf-b3ec-548efc59bb19"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "rows",
+        "options": {}
+      },
+      "id": "d11a4b20-1343-4870-865a-4f99b39257d7",
+      "name": "Split Out",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -5520,
+        -960
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7343c80f-37f3-4bb5-84d8-9f21f8a350cd",
+              "name": "Keyword",
+              "value": "={{ $json.keys[0] }}",
+              "type": "string"
+            },
+            {
+              "id": "436e7c8b-2df2-40a9-97af-597dc00cf143",
+              "name": "clicks",
+              "value": "={{ $json.clicks }}",
+              "type": "number"
+            },
+            {
+              "id": "5b4aaffe-391a-4c9d-8249-f447397a3f5d",
+              "name": "impressions",
+              "value": "={{ $json.impressions }}",
+              "type": "number"
+            },
+            {
+              "id": "33677237-57fe-48f4-aff8-72ae81b5f5a2",
+              "name": "ctr",
+              "value": "={{ $json.ctr }}",
+              "type": "number"
+            },
+            {
+              "id": "f961deee-d222-4df7-a7ff-b7286405e4a7",
+              "name": "position",
+              "value": "={{ $json.position }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e5a7d1a5-2109-4042-96a5-af239feef870",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -5320,
+        -960
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/webmasters/v3/sites/sc-domain:effibotics.com/searchAnalytics/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"startDate\": \"2024-04-01\",\n  \"endDate\": \"2024-05-01\",\n  \"dimensions\": [\"query\"]\n}",
+        "options": {}
+      },
+      "id": "2450f62b-6673-4795-9e62-0cb0985617b5",
+      "name": "query",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -5740,
+        -960
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "rows",
+        "options": {}
+      },
+      "id": "c87e9384-ef56-43e3-890b-24103f7ab30a",
+      "name": "Split Out1",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -5500,
+        -780
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7343c80f-37f3-4bb5-84d8-9f21f8a350cd",
+              "name": "page",
+              "value": "={{ $json.keys[0] }}",
+              "type": "string"
+            },
+            {
+              "id": "436e7c8b-2df2-40a9-97af-597dc00cf143",
+              "name": "clicks",
+              "value": "={{ $json.clicks }}",
+              "type": "number"
+            },
+            {
+              "id": "5b4aaffe-391a-4c9d-8249-f447397a3f5d",
+              "name": "impressions",
+              "value": "={{ $json.impressions }}",
+              "type": "number"
+            },
+            {
+              "id": "33677237-57fe-48f4-aff8-72ae81b5f5a2",
+              "name": "ctr",
+              "value": "={{ $json.ctr }}",
+              "type": "number"
+            },
+            {
+              "id": "f961deee-d222-4df7-a7ff-b7286405e4a7",
+              "name": "position",
+              "value": "={{ $json.position }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "698c51c4-9f83-473b-a271-bc3358ea0526",
+      "name": "Edit Fields1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -5300,
+        -780
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/webmasters/v3/sites/sc-domain:effibotics.com/searchAnalytics/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"startDate\": \"2024-04-01\",\n  \"endDate\": \"2024-05-01\",\n  \"dimensions\": [\"page\"]\n}",
+        "options": {}
+      },
+      "id": "74bf3de7-c38a-4f5b-9636-9175379a56cf",
+      "name": "page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -5700,
+        -780
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "rows",
+        "options": {}
+      },
+      "id": "4903fd01-ef75-41d1-ad8b-5644723f13c7",
+      "name": "Split Out2",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -5480,
+        -600
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7343c80f-37f3-4bb5-84d8-9f21f8a350cd",
+              "name": "date",
+              "value": "={{ $json.keys[0] }}",
+              "type": "string"
+            },
+            {
+              "id": "436e7c8b-2df2-40a9-97af-597dc00cf143",
+              "name": "clicks",
+              "value": "={{ $json.clicks }}",
+              "type": "number"
+            },
+            {
+              "id": "5b4aaffe-391a-4c9d-8249-f447397a3f5d",
+              "name": "impressions",
+              "value": "={{ $json.impressions }}",
+              "type": "number"
+            },
+            {
+              "id": "33677237-57fe-48f4-aff8-72ae81b5f5a2",
+              "name": "ctr",
+              "value": "={{ $json.ctr }}",
+              "type": "number"
+            },
+            {
+              "id": "f961deee-d222-4df7-a7ff-b7286405e4a7",
+              "name": "position",
+              "value": "={{ $json.position }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "75b392f7-620b-49b0-b539-c7f90985a1b8",
+      "name": "Edit Fields2",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -5300,
+        -600
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/webmasters/v3/sites/sc-domain:effibotics.com/searchAnalytics/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"startDate\": \"2024-04-01\",\n  \"endDate\": \"2024-05-01\",\n  \"dimensions\": [\"date\"]\n}",
+        "options": {}
+      },
+      "id": "2645128a-c3be-4d2c-8e92-e98507d8c115",
+      "name": "date",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -5700,
+        -600
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/10hSuGOOf14YvVY2Bw8WXUIpsyXO614l7qNEjkyVY_Qg/edit?usp=sharing",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 996986484,
+          "mode": "list",
+          "cachedResultName": "Query",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/10hSuGOOf14YvVY2Bw8WXUIpsyXO614l7qNEjkyVY_Qg/edit#gid=996986484"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "Keyword"
+          ],
+          "schema": [
+            {
+              "id": "Keyword",
+              "displayName": "Keyword",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "clicks",
+              "displayName": "clicks",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "impressions",
+              "displayName": "impressions",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ctr",
+              "displayName": "ctr",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "position",
+              "displayName": "position",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "14777370-8628-48ca-9eaf-e040493fa30a",
+      "name": "queryes",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -5080,
+        -1020
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/10hSuGOOf14YvVY2Bw8WXUIpsyXO614l7qNEjkyVY_Qg/edit?usp=sharing",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1823079319,
+          "mode": "list",
+          "cachedResultName": "Dates",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/10hSuGOOf14YvVY2Bw8WXUIpsyXO614l7qNEjkyVY_Qg/edit#gid=1823079319"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "date"
+          ],
+          "schema": [
+            {
+              "id": "date",
+              "displayName": "date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "clicks",
+              "displayName": "clicks",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "impressions",
+              "displayName": "impressions",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ctr",
+              "displayName": "ctr",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "position",
+              "displayName": "position",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ec738165-d2c0-4aad-911a-aa514f1b6001",
+      "name": "date1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -5060,
+        -580
+      ],
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/10hSuGOOf14YvVY2Bw8WXUIpsyXO614l7qNEjkyVY_Qg/edit?usp=sharing",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "PAGES",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/10hSuGOOf14YvVY2Bw8WXUIpsyXO614l7qNEjkyVY_Qg/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "page"
+          ],
+          "schema": [
+            {
+              "id": "page",
+              "displayName": "page",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "clicks",
+              "displayName": "clicks",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "impressions",
+              "displayName": "impressions",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ctr",
+              "displayName": "ctr",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "position",
+              "displayName": "position",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "55e1b966-6c1a-455a-aa32-bcbe657ec0fb",
+      "name": "pages",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -5080,
+        -800
+      ]
+    },
+    {
+      "parameters": {
+        "content": "# Search console automation",
+        "height": 80,
+        "width": 521.6875
+      },
+      "id": "5dbb9aeb-7569-4d1d-9f6b-3fcf06e1b867",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -5620,
+        -1080
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## What do I do\n\nI help prepaire reports each day that you can use for your day to day reporting for the Google search console results\n\nWith this, you can get all your results on a schedule and create any report based on your preferences\n\n\n## Usage\n\n1. Make a copy of this google sheet https://docs.google.com/spreadsheets/d/10hSuGOOf14YvVY2Bw8WXUIpsyXO614l7qNEjkyVY_Qg/edit?usp=sharing\n\n2. Set your google service credentials and add these scopes `https://www.googleapis.com/auth/webmasters, https://www.googleapis.com/auth/webmasters.readonly, https://www.googleapis.com/auth/adwords`\n\n3. Replace the domains with your desired domains\n",
+        "height": 188.48085106382936,
+        "width": 442.76879432624156
+      },
+      "id": "3dfbbb28-7eab-4a71-8a16-840e5efb2064",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -6300,
+        -1000
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "id": "a37915f5-67f2-4ac9-b126-108d8ce44665",
+      "name": "Schedule Trigger1",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -6040,
+        -780
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.googleanalyze.example.com/data",
+        "options": {}
+      },
+      "id": "da94f6f8-a074-4c37-a000-99ff06e11de8",
+      "name": "Fetch GA Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -2840,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "files"
+      },
+      "id": "4a194faa-9a74-4c3b-a693-f15cc4985611",
+      "name": "Get All Files",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -4460,
+        -460
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": "1",
+        "options": {}
+      },
+      "id": "bea59a4e-ced6-47fc-a36a-2bef362d6c1c",
+      "name": "Loop Over Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -3920,
+        -460
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://your-supabase-storage-url/{{ $json.name }}",
+        "options": {}
+      },
+      "id": "60af7120-be35-4376-820b-4dfc2494908f",
+      "name": "Download File",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3580,
+        -460
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "id": "39d0610a-8611-43cf-9c46-c28dc7768dc0",
+      "name": "Extract Document PDF",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -3240,
+        -360
+      ]
+    },
+    {
+      "parameters": {
+        "model": "text-embedding-3-small",
+        "options": {}
+      },
+      "id": "c5048119-37d2-41a7-8bc5-65aac7ce3d92",
+      "name": "Embeddings OpenAI",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1,
+      "position": [
+        -3740,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "tableName": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "options": {
+          "queryName": "match_documents"
+        }
+      },
+      "id": "9f3d50ac-7ab3-451e-bb4b-207232e89060",
+      "name": "Insert into Supabase Vectorstore",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1,
+      "position": [
+        -2780,
+        -460
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "6401dfc4-4d8d-4bb2-9bb9-08f17c5f37b0",
+      "name": "Merge Files",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        -3100,
+        -460
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.imgbb.com/1/upload",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-type",
+              "value": "multipart/form-data"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "image",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c66a3f51-e1fb-4858-b28a-743f934f45fa",
+      "name": "Upload Img to ImgBB",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3440,
+        980
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=http://api.resmush.it/ws.php?img={{ $json.data.url }}",
+        "options": {}
+      },
+      "id": "c7135256-0f11-4d24-91fb-adffd3680e3d",
+      "name": "ReSmush.it Image Optimisation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3240,
+        980
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.imgbb.com/1/upload",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-type",
+              "value": "application/x-www-form-urlencoded"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "image",
+              "value": "={{ $json.dest }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b900d608-bc03-4992-8d57-db4f5f009e83",
+      "name": "Store Optimised Image ImgBB",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3020,
+        980
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "desc1",
+              "name": "description",
+              "type": "string",
+              "value": "=Balancing Autonomy and Human Interaction in AI Applications, featuring a person"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f6779f2d-16dd-4a96-a5c3-24a9aa0d0a02",
+      "name": "Set image description",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -3900,
+        940
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "prompt": "=Create a minimalist professional illustration of {{ $json.description }} with a modern tech style, clean composition, professional aesthetic, and a square aspect ratio.",
+        "options": {}
+      },
+      "id": "b74d2347-7b5a-48e9-b988-abf7f198a907",
+      "name": "Generate Image",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.4,
+      "position": [
+        -3700,
+        940
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "703e28ec-98e8-4d36-9ce2-69a1153c2a08",
+      "name": "No Operation, do nothing",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -2800,
+        980
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 4
+            }
+          ]
+        }
+      },
+      "id": "4e715671-be5f-49d8-86d0-f43923cbaf96",
+      "name": "Schedule Trigger2",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -3100,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = items[0].json;\n// 假設回傳的數據中，reportText 字段包含完整報表文字\nconst text = data.reportText || '';\n\n// 以非字母數字拆分、過濾長度大於3的單詞，全部轉小寫\nlet words = text.split(/\\W+/).filter(word => word.length > 3).map(word => word.toLowerCase());\n\n// 去除重複關鍵字\nwords = [...new Set(words)];\n\nreturn [{ json: { keywords: words, reportText: text } }];"
+      },
+      "id": "e87ad7c0-6c8d-47f3-8642-bcac161b65be",
+      "name": "Extract and Deduplicate Keywords1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2600,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = items[0].json;\n// 若報表內容包含 'error'，則歸類為 technical，否則為 general\nconst classification = data.reportText.includes('error') ? 'technical' : 'general';\n// 根據分類決定目標資料庫：technical -> mongodb，其他 -> mysql\nconst targetDb = classification === 'technical' ? 'mongodb' : 'mysql';\n\nreturn [{ json: { ...data, classification, targetDb } }];"
+      },
+      "id": "fa9cfca6-f9b1-4a03-8f03-ddeb6454c417",
+      "name": "Classify Data1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2340,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "value1": "={{ $json.targetDb }}",
+              "operation": "equals",
+              "value2": "mysql"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7973cd29-c5b4-41f8-9da6-a51847ae3a29",
+      "name": "Branch by Target DB1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -2100,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{`INSERT INTO knowledge_metadata (title, classification, keywords) VALUES ('Google Analytics Report', '${$json.classification}', '${JSON.stringify($json.keywords)}')`}}"
+      },
+      "id": "c6d4ad4c-1004-4a90-8bad-bb9229a38d0f",
+      "name": "Store in SQL1",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        -1840,
+        -180
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "10f3b81f-7eb0-43b5-afef-54ddcefdb913",
+      "name": "Store in MongoDB1",
+      "type": "n8n-nodes-mongodb-upgraded.mongoDbOperations",
+      "typeVersion": 1,
+      "position": [
+        -1840,
+        20
+      ],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "jsCode": "const { randomUUID } = require('crypto');\n// 模擬產生 128 維向量（實際上可替換為 OpenAI Embeddings）\nconst embedding = Array(128).fill(0).map(() => Math.random());\nconst data = items[0].json;\nconst upsertItem = {\n  points: [\n    {\n      id: randomUUID(),\n      vector: { default: embedding },\n      payload: { title: 'Google Analytics Report', classification: data.classification, keywords: data.keywords }\n    }\n  ]\n};\n\n// 此處應呼叫 Qdrant 客戶端上傳向量，此示例僅返回模擬結果\nreturn [{ json: { success: true, upsert: upsertItem } }];"
+      },
+      "id": "87c333af-e30a-4ba9-9632-f1d28d62c8bf",
+      "name": "Upsert Qdrant1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1600,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "知識庫更新成功！已存入資料，請檢查數據。",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "083ae85f-f2ed-40b4-9f4e-4718ba19822d",
+      "name": "Notify Success1",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1340,
+        -80
+      ],
+      "webhookId": "fbcafd32-bd4b-4b47-8ea8-d773acb6c6d8"
+    },
+    {
+      "parameters": {},
+      "id": "5f698232-cbb2-47c9-a6b2-3390b5910d42",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -6640,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "codeKeywords",
+              "type": "string",
+              "value": "={{ $json.inputKeywords || 'refactor, performance, optimization, code quality' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b66f5324-d746-4130-87e7-5ebfb4b22b3e",
+      "name": "Set Code Keywords",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -6440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.perplexity.ai/search",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { query: $json.codeKeywords, template: 'code-keywords' } }}",
+        "options": {}
+      },
+      "id": "35cc0c6e-fee4-4c78-bb01-46822f24e254",
+      "name": "Perplexity Query",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -6240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "[\"https://example.com/repo1\", \"https://github.com/user/repo2\"]"
+      },
+      "id": "f92e73fc-fe93-4488-b82c-ba0382da9bcc",
+      "name": "Parse Perplexity Output",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        -6060,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "output",
+        "options": {}
+      },
+      "id": "d00dee1d-0270-4d81-b29f-278f19c3f818",
+      "name": "Split URL List",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -5840,
+        300
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "1d9c5af9-d365-4571-bd57-431b1ecd1140",
+      "name": "Check GitHub URL",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        -5640,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const url = $json;\nif (typeof url === 'string' && url.startsWith('https://github.com')) {\n  // 將 https://github.com/ 替換為 https://gitingest.com/\n  return [{ json: url.replace('https://github.com', 'https://gitingest.com') }];\n}\nreturn [{ json: url }];"
+      },
+      "id": "8df827b8-f2d3-4012-9888-27e891906033",
+      "name": "Transform GitHub URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -5440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json }}",
+        "options": {}
+      },
+      "id": "fb51dd0c-1304-453d-ad12-bb7b9acdd208",
+      "name": "Scrape Repository Text",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -5240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "https://docs.google.com/spreadsheets/d/your_spreadsheet_id/edit",
+          "cachedResultName": "Code Knowledge Base"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "Results",
+          "cachedResultName": "Results"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {
+            "Repository URL": "={{ $json }}",
+            "Scraped Text": "={{ $json.data }}"
+          },
+          "matchingColumns": []
+        },
+        "options": {}
+      },
+      "id": "05d29c75-bdbc-479e-80f8-ef6b3725913c",
+      "name": "Store in Code Knowledge Base",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -5040,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "Code Knowledge Base has been updated successfully.",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "72f20b4a-0feb-4259-b685-aca23eac2f2f",
+      "name": "Telegram Notification",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -4840,
+        300
+      ],
+      "webhookId": "f6d996e8-9888-4412-984f-2baedc49e514"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "url",
+              "type": "string",
+              "value": "={{ $json.url }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ce62d017-52bf-4a33-9f19-d1317e92e992",
+      "name": "Set HTML Scraping Fallback URL",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -4640,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://app.scrapingbee.com/api/v1",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "api_key",
+              "value": "<your_scrapingbee_apikey>"
+            },
+            {
+              "name": "url",
+              "value": "={{ $json.url }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9ae2ad73-0642-43fc-89d9-e25d590830f9",
+      "name": "ScrapingBee - Get Page HTML",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -4440,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "html": "={{ $json.data }}",
+        "options": {}
+      },
+      "id": "990a3d3f-161e-422d-9e6c-97fd053cd103",
+      "name": "HTML to Markdown",
+      "type": "n8n-nodes-base.markdown",
+      "typeVersion": 1,
+      "position": [
+        -4240,
+        340
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "92f7d610-e14a-44c6-aace-a086c7dc505d",
+      "name": "Merge Fallback Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        -4040,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "https://docs.google.com/spreadsheets/d/your_spreadsheet_id/edit",
+          "cachedResultName": "Code Knowledge Base"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "Fallback",
+          "cachedResultName": "Fallback"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {
+            "Fallback URL": "={{ $json.url }}",
+            "HTML Content": "={{ $json.data }}"
+          },
+          "matchingColumns": []
+        },
+        "options": {}
+      },
+      "id": "983704df-3524-44db-a992-f208a67ef857",
+      "name": "Store Fallback Results in Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -3840,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "agent": "planAndExecuteAgent",
+        "options": {
+          "humanMessageTemplate": "Previous steps: {previous_steps}\n\nCurrent objective: {current_step}\n\n{agent_scratchpad}\n\nYou may extract and combine relevant data from your previous steps when responding to me."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -5840,
+        120
+      ],
+      "id": "73c3588f-0946-484c-8f91-03ef1951fc78",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolSerpApi",
+      "typeVersion": 1,
+      "position": [
+        -3640,
+        140
+      ],
+      "id": "f190b042-3719-4a5b-bea1-b7f2939152e1",
+      "name": "SerpAPI",
+      "credentials": {
+        "serpApi": {
+          "id": "kQOd911C47AyvC7d",
+          "name": "SerpAPI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1,
+      "position": [
+        -3480,
+        340
+      ],
+      "id": "55b6cd5e-3817-4e87-80d3-4f0804396a25",
+      "name": "Information Extractor"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3120,
+        340
+      ],
+      "id": "cc7b3d53-ee1c-4abb-b18e-118e48cdabbc",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "path": "124a05b1-44b8-4a3d-8bbc-fc0c73ac48ba",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -2900,
+        340
+      ],
+      "id": "ec3a7f44-d255-449b-9880-b71b0629f34e",
+      "name": "Webhook",
+      "webhookId": "124a05b1-44b8-4a3d-8bbc-fc0c73ac48ba"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2680,
+        340
+      ],
+      "id": "5ce3dd36-98e3-45f0-9fe3-a403851656dd",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "codeKeywords",
+              "type": "string",
+              "value": "={{ $json.inputKeywords || 'refactor, performance, optimization, code quality' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "086c2642-b07f-4092-81ee-50869d073e7c",
+      "name": "Set Code Keywords1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -4680,
+        -800
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.perplexity.ai/search",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { query: $json.codeKeywords, template: 'code-keywords' } }}",
+        "options": {}
+      },
+      "id": "e1125275-e9f0-415e-adc0-9daedb43cc4f",
+      "name": "Perplexity Query1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -4460,
+        -820
+      ]
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "[\"https://example.com/repo1\", \"https://github.com/user/repo2\"]"
+      },
+      "id": "d27093ca-2daf-43df-925a-d2c96ffabbed",
+      "name": "Parse Perplexity Output1",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        -4040,
+        -800
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "output",
+        "options": {}
+      },
+      "id": "d82f0946-b941-405b-b2ac-5a90c752133e",
+      "name": "Split URL List1",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -3980,
+        -680
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "c506f5f7-a871-4234-9ec8-48dff38f46cd",
+      "name": "Check GitHub URL1",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        -3780,
+        -680
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const url = $json;\nif (typeof url === 'string' && url.startsWith('https://github.com')) {\n  // 將 https://github.com/ 替換為 https://gitingest.com/\n  return [{ json: url.replace('https://github.com', 'https://gitingest.com') }];\n}\nreturn [{ json: url }];"
+      },
+      "id": "788fac66-e8cb-4a9d-938c-b20536c442a2",
+      "name": "Transform GitHub URL1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3580,
+        -680
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json }}",
+        "options": {}
+      },
+      "id": "a19be228-cdd4-45da-8840-e9eaa0b13f16",
+      "name": "Scrape Repository Text1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3380,
+        -680
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "https://docs.google.com/spreadsheets/d/your_spreadsheet_id/edit",
+          "cachedResultName": "Code Knowledge Base"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "Results",
+          "cachedResultName": "Results"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {
+            "Repository URL": "={{ $json }}",
+            "Scraped Text": "={{ $json.data }}"
+          },
+          "matchingColumns": []
+        },
+        "options": {}
+      },
+      "id": "a0db403b-5dc3-4a5a-86cd-55c2468c9eaa",
+      "name": "Store in Code Knowledge Base1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -3180,
+        -680
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "Code Knowledge Base has been updated successfully.",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "819d20e4-f22c-47c6-a809-fbf0df5f452f",
+      "name": "Telegram Notification1",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -2980,
+        -680
+      ],
+      "webhookId": "106a29a5-cec0-4c81-bd75-7c716b39ca20"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "url",
+              "type": "string",
+              "value": "={{ $json.url }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "22b7cd8e-f9aa-4552-b15c-17f52023a0de",
+      "name": "Set HTML Scraping Fallback URL1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2780,
+        -640
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://app.scrapingbee.com/api/v1",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "api_key",
+              "value": "<your_scrapingbee_apikey>"
+            },
+            {
+              "name": "url",
+              "value": "={{ $json.url }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "dfea2b6b-0697-4304-8aab-dde1c5f77c96",
+      "name": "ScrapingBee - Get Page HTML1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2580,
+        -640
+      ]
+    },
+    {
+      "parameters": {
+        "html": "={{ $json.data }}",
+        "options": {}
+      },
+      "id": "2751bd9c-7755-4163-bd40-5c5058f3b1c5",
+      "name": "HTML to Markdown1",
+      "type": "n8n-nodes-base.markdown",
+      "typeVersion": 1,
+      "position": [
+        -2380,
+        -640
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "15ab3c9a-c85a-4979-a907-ab8807ee8374",
+      "name": "Merge Fallback Results1",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        -2180,
+        -640
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "https://docs.google.com/spreadsheets/d/your_spreadsheet_id/edit",
+          "cachedResultName": "Code Knowledge Base"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "Fallback",
+          "cachedResultName": "Fallback"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {
+            "Fallback URL": "={{ $json.url }}",
+            "HTML Content": "={{ $json.data }}"
+          },
+          "matchingColumns": []
+        },
+        "options": {}
+      },
+      "id": "acbfb409-b2c9-4503-bdd8-0d4f15dd9a57",
+      "name": "Store Fallback Results in Sheets1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -1980,
+        -640
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.perplexity.ai/search",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"prompt\": $json.code_query,\n  \"output_format\": \"urls\"\n}",
+        "options": {}
+      },
+      "id": "e1b63c5c-e588-4c73-8072-e6322530c35b",
+      "name": "Perplexity Code Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -6380,
+        840
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "output",
+        "options": {}
+      },
+      "id": "1e2c66f3-22e0-4d46-89ef-fb9e7b5e277d",
+      "name": "Split Out URLs",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -5820,
+        740
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ab4304e7-4839-4a9c-88f1-165c4a89bb1d",
+      "name": "Check if GitHub URL",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.1,
+      "position": [
+        -5620,
+        740
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {}
+      },
+      "id": "a8ca1872-d636-4c50-9d87-193133490526",
+      "name": "Scrape Repository Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -5220,
+        740
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const scrapedText = items[0].json;\n// 在此可添加進一步的文本處理，例如清洗 HTML、分塊等\nitems[0].json.processedText = scrapedText;\nreturn items;"
+      },
+      "id": "5ca0c08b-e0f2-4935-bc1d-6da5c9c66789",
+      "name": "Process Scraped Code",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -5020,
+        740
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ `INSERT INTO code_knowledge (title, content, source_url) VALUES ('Code Repository', '${$json.processedText}', '${$json.url}')` }}"
+      },
+      "id": "0783ed1d-3d47-437f-bde4-090b5cfb93cb",
+      "name": "Store Code Knowledge",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        -4820,
+        740
+      ]
+    },
+    {
+      "parameters": {
+        "content": "# Code Knowledge Base Builder with Perplexity\n\nThis workflow performs the following steps:\n1. Manual trigger starts the process.\n2. A dedicated prompt for code optimization keywords is set.\n3. The prompt is submitted to Perplexity API which returns a list of website URLs.\n4. The output is parsed and split into individual URLs.\n5. For each URL, if it is a GitHub URL, it is automatically transformed to the gitingest.com domain.\n6. The repository page is scraped to retrieve its full text content.\n7. The scraped content is processed and stored into a code knowledge database.\n8. Finally, a Telegram message is sent to notify of success.\n\nCustomize API keys and credentials as needed.",
+        "height": 300,
+        "width": 600,
+        "color": 7
+      },
+      "id": "4c22ef6d-3532-49be-878d-21f3d267a001",
+      "name": "Sticky Note - Workflow Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -6620,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set1",
+              "name": "code_query",
+              "type": "string",
+              "value": "={{ 'JavaScript code optimization best practices' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "58b92343-c49e-40c1-8dd8-d6e755a395fb",
+      "name": "Set Code Keywords2",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -6640,
+        820
+      ]
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "[{\"url\": \"The URL of the repository\"}]"
+      },
+      "id": "d3e9c682-07f1-4a39-ba38-dd2a70932024",
+      "name": "Parse Perplexity Output2",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        -6020,
+        740
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const url = items[0].json.url;\nif (url.includes('github.com')) {\n  items[0].json.url = url.replace('https://github.com', 'https://gitingest.com');\n}\nreturn items;"
+      },
+      "id": "4662d743-c7c6-420f-bbf1-573c03f232ed",
+      "name": "Transform GitHub URL2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -5420,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "Code Knowledge Base updated with new repository data!",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "0498cf2b-5f3d-4400-87b1-6177bf3ffd7b",
+      "name": "Notify Success2",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -4620,
+        740
+      ],
+      "webhookId": "9db0c773-66ec-4cad-818d-614363ce20c3"
+    },
+    {
+      "parameters": {
+        "jsCode": "const { randomUUID } = require('crypto');\nconst embedding = Array(128).fill(0).map(() => Math.random());\nconst data = items[0].json;\nreturn [{ json: { id: randomUUID(), vector: embedding, payload: data } }];"
+      },
+      "id": "7d53c35f-a927-4d59-a868-d98eb5f63847",
+      "name": "Generate Vector",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3480,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 4
+            }
+          ]
+        }
+      },
+      "id": "256052a5-2929-482c-aab6-fb9a04af8a8a",
+      "name": "Schedule Trigger3",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -5100,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.perplexity.ai/search",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"query\": \"Code optimization best practices\", \"template\": \"code-keywords\" }",
+        "options": {}
+      },
+      "id": "e39356e7-e82a-4b74-8bcb-0b9e95a3826e",
+      "name": "Perplexity Query2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -4880,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "[\"https://example.com/repo1\", \"https://github.com/user/repo2\"]"
+      },
+      "id": "ef4d9443-4a92-44a3-a8ed-e0e3479d41c5",
+      "name": "Parse Perplexity Output3",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        -4680,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "output",
+        "options": {}
+      },
+      "id": "7e0d8f23-dbc0-46c2-867d-9e19233bdef9",
+      "name": "Split URL List2",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -4480,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const url = $json;\nif (url.startsWith('https://github.com')) {\n  return [{ json: url.replace('https://github.com', 'https://gitingest.com') }];\n}\nreturn [{ json: url }];"
+      },
+      "id": "eeb73a66-8755-4d4f-94e5-52ce30fa4187",
+      "name": "Transform GitHub URL3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4280,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json }}",
+        "options": {}
+      },
+      "id": "fc0c5e1d-1739-406e-a988-031a95f1c3db",
+      "name": "Scrape Repository Text2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -4080,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": "https://docs.google.com/spreadsheets/d/your_spreadsheet_id/edit",
+        "sheetName": "Results",
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {
+            "Repository URL": "={{ $json }}",
+            "Scraped Text": "={{ $json.data }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "33f08deb-7fc6-4a4e-beaf-5316b4e5ee88",
+      "name": "Store in Code Knowledge Base2",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -3880,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ `INSERT INTO code_knowledge (title, content, source_url) VALUES ('Code Repository', '${$json.data}', '${$json}')` }}"
+      },
+      "id": "82b9baa0-c827-4e5f-babf-f23625c105bf",
+      "name": "Store Code Knowledge1",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        -3680,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "Code Knowledge Base has been updated successfully.",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "e0f2a5b7-e2a8-439e-9e1c-bb88f549e109",
+      "name": "Telegram Notification2",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -3280,
+        500
+      ],
+      "webhookId": "aa14db98-2884-43fa-a0e6-f543b62f5c78"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 4
+            }
+          ]
+        }
+      },
+      "id": "9377fc55-4bc4-4934-8d06-964703116962",
+      "name": "Schedule Trigger4",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -6140,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.perplexity.ai/search",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"query\": \"Code optimization best practices\", \"template\": \"code-keywords\" }",
+        "options": {}
+      },
+      "id": "29efbecf-b42a-4f24-98a2-6d50c2a2a502",
+      "name": "Perplexity Query3",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -5920,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "[\"https://example.com/repo1\", \"https://github.com/user/repo2\"]"
+      },
+      "id": "39c6f1f9-7401-46c2-938c-5f3320806de8",
+      "name": "Parse Perplexity Output4",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        -5700,
+        -260
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "output",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "id": "ae1543ca-a547-48cf-8a2f-a683122c9fb0",
+      "name": "Split URL List3",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -5540,
+        -140
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": false,
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const url = $json;\nif (url.startsWith('https://github.com')) {\n  return [{ json: url.replace('https://github.com', 'https://gitingest.com') }];\n}\nreturn [{ json: url }];"
+      },
+      "id": "cc0b3492-d36b-411b-8647-e739abbac040",
+      "name": "Transform GitHub URL4",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -5320,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json }}",
+        "options": {}
+      },
+      "id": "b5be3739-f9ac-49cc-b134-308262805b4e",
+      "name": "Scrape Repository Text3",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -5120,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": "https://docs.google.com/spreadsheets/d/your_spreadsheet_id/edit",
+        "sheetName": "Results",
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {
+            "Repository URL": "={{ $json }}",
+            "Scraped Text": "={{ $json.data }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "fd895f57-37d5-4bda-b8c9-c6fcae964934",
+      "name": "Store in Code Knowledge Base3",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -4920,
+        -120
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ZJ11dqBezQirp1MK",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ `INSERT INTO code_knowledge (title, content, source_url) VALUES ('Code Repository', '${$json.data}', '${$json}')` }}"
+      },
+      "id": "c26650d4-203f-478d-99d1-337f0862d5d4",
+      "name": "Store Code Knowledge2",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        -4720,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { randomUUID } = require('crypto');\nconst embedding = Array(128).fill(0).map(() => Math.random());\nconst data = items[0].json;\nreturn [{ json: { id: randomUUID(), vector: embedding, payload: data } }];"
+      },
+      "id": "cd09d7be-0133-452d-825f-3fa1cbe0be3f",
+      "name": "Generate Vector1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4520,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "Code Knowledge Base has been updated successfully.",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "79a880c2-6cff-4e7c-a323-97d5a3473672",
+      "name": "Telegram Notification3",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -4320,
+        -120
+      ],
+      "webhookId": "81385dd0-f953-4b89-b53a-be4c18807fa0"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.perplexity.ai/chat/completions",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"sonar-pro\",\n  \"messages\": [\n    { \"role\": \"system\", \"content\": \"Be precise and concise.\" },\n    { \"role\": \"user\", \"content\": \"What are the latest trends in JavaScript performance optimization?\" }\n  ],\n  \"frequency_penalty\": 1,\n  \"temperature\": 0.2,\n  \"presence_penalty\": 0,\n  \"max_tokens\": 150,\n  \"top_p\": 0.9,\n  \"top_k\": 0\n}",
+        "options": {}
+      },
+      "id": "76c1f96a-53cb-4c12-80bb-4538517af1ab",
+      "name": "Perplexity Chat Completions",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        -6860,
+        800
+      ],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {},
+      "name": "MongoDB",
+      "type": "n8n-nodes-base.mongodb",
+      "typeVersion": 1,
+      "position": [
+        -6140,
+        800
+      ],
+      "id": "43022e81-3792-48bb-a73c-e10885c7a9dd"
+    },
+    {
+      "parameters": {
+        "url": "https://blockchain.blog/feed",
+        "options": {}
+      },
+      "name": "RSS Feed1",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [
+        -4780,
+        -1040
+      ],
+      "id": "d8345a2d-5798-45bc-8bb7-012334a8a1ed"
+    },
+    {
+      "parameters": {
+        "authentication": "headerAuth",
+        "url": "https://api.textrazor.com/",
+        "options": {}
+      },
+      "name": "Extract Keywords1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        -4560,
+        -1040
+      ],
+      "id": "1d039d2b-419b-4eaf-9d14-2ea7e86f44e3",
+      "alwaysOutputData": true,
+      "notesInFlow": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "AuPEFKyISbAbimaS",
+          "name": "Header Auth account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Clean and sort keywords\nreturn {json: {keywords: $input.all().json.response.keywords.sort((a,b) => b.relevance - a.relevance).slice(0,5).map(k => k.term)}};"
+      },
+      "name": "Process Keywords1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -4300,
+        -1060
+      ],
+      "id": "c6410520-8955-44db-a440-b28678bf1b63"
+    },
+    {
+      "parameters": {
+        "authentication": "headerAuth",
+        "url": "https://api.perplexity.ai/chat/completions",
+        "options": {}
+      },
+      "name": "Perplexity API1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        -4060,
+        -1060
+      ],
+      "id": "85a8740e-0341-4691-bfdd-ca37b2351c5b"
+    },
+    {
+      "parameters": {},
+      "name": "MongoDB1",
+      "type": "n8n-nodes-base.mongodb",
+      "typeVersion": 1,
+      "position": [
+        -3320,
+        -1180
+      ],
+      "id": "8732e50b-18a3-4fa8-be48-cb6a59794146"
+    },
+    {
+      "parameters": {},
+      "id": "488bd601-4cbc-4eb5-9e4e-b0f02e1e7a45",
+      "name": "瀏覽器自動化(Browserless)",
+      "type": "n8n-nodes-browserless.browserless",
+      "typeVersion": 1,
+      "position": [
+        320,
+        2740
+      ],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "summary",
+              "type": "string",
+              "value": "={{$json[\"choices\"][0].text}}"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "45b0f0df-1d10-4da6-8030-e387a93beafe",
+      "name": "設定摘要1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1640,
+        2360
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "594009ed-c175-449c-b76b-014a9c3a920f",
+      "name": "完成流程1",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        3080,
+        2640
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://example.com",
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "id": "933ba010-d7e2-4345-aecc-21ca18946bbd",
+      "name": "主動抓取範例(Scraping)1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        2700
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "6015f5ad-a2fd-4c20-9ef8-e88c0ccac1dc",
+      "name": "文字操作(TextManipulation)1",
+      "type": "n8n-nodes-text-manipulation.textManipulation",
+      "typeVersion": 1,
+      "position": [
+        660,
+        2760
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Example: parse, remove HTML tags, etc.\nconst raw = items[0].json;\nconst cleaned = {};\n\n// Implement your custom cleaning\n// e.g. remove HTML, refine text, parse JSON, etc.\n// For demo, let's assume raw.html is the scraped content\n\nif (raw.html) {\n  cleaned.text = raw.html.replace(/<[^>]+>/g, ''); // remove tags\n} else {\n  cleaned.text = 'No content';\n}\n\nreturn [{ json: cleaned }];"
+      },
+      "id": "b9b2eecd-c9ce-4dfd-959b-95bbffd0b955",
+      "name": "清洗與轉換數據1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        940,
+        2780
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "value1": "={{ $json.text.length }}",
+              "operation": "larger",
+              "value2": 50000
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "96de7ffc-738b-4d7f-85c9-d96c3e00713d",
+      "name": "是否為大型內容?1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1200,
+        2740
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "scraped_summary",
+              "type": "string",
+              "value": "={{ $json[\"choices\"][0].text }}"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "ef4b67f9-716a-43a4-be11-1bfef4a67a53",
+      "name": "準備爬取後資料1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2160,
+        2540
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "878c5853-9e04-47bd-bea2-919376c3b46e",
+      "name": "資料驗證(DataValidation)1",
+      "type": "n8n-nodes-data-validation.dataValidation",
+      "typeVersion": 1,
+      "position": [
+        2480,
+        2540
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "e3896ccc-69c5-4daf-9170-df7724e0c4cc",
+      "name": "儲存到MongoDB(Mongo Db Operations)1",
+      "type": "n8n-nodes-mongodb-upgraded.mongoDbOperations",
+      "typeVersion": 1,
+      "position": [
+        2740,
+        2600
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 假設已成功上傳至Qdrant, 這裡可對數據做分類(官方文件/代碼資料/API等).\n// 此處可依內容做後續分類, 並將結果寫入 json 分類.\nconst item = items[0].json;\nitem.classification = 'official-doc'; // 或其他判斷\nreturn [{ json: item }];"
+      },
+      "id": "684d79ed-2642-4c50-b414-71659c29208f",
+      "name": "數據篩選與分類1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3360,
+        2660
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 進行3個簡單問題檢測, 如果能回答代表數據有效.\n// 此處可連接OpenAI或LangChain, 做QA測試. 簡化示例:\nconst item = items[0].json;\n\nlet passCount = 0;\n// 假設三個問題都回答正確\npassCount = 3; // 這裡僅示意\n\nif(passCount === 3) {\n  item.verifyStatus = 'success';\n} else {\n  item.verifyStatus = 'fail';\n}\n\nreturn [{ json: item }];"
+      },
+      "id": "78f5e8c7-0e12-48eb-8ac6-aaa5b8ea73aa",
+      "name": "AI三重驗證(問答)1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3640,
+        2660
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "value1": "={{ $json.verifyStatus }}",
+              "operation": "equals",
+              "value2": "fail"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c11b2a10-b6f9-43df-a2ab-f2edd3f4e9bb",
+      "name": "驗證失敗?1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3980,
+        2720
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "17c69a72-472f-4d15-9ab3-4715f0809e42",
+      "name": "備案A:嘗試其他方式1",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        4860,
+        2380
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "6ff6085f-0baf-4837-a697-ef0f6a08f43b",
+      "name": "備案B:二次清洗後重試1",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        4740,
+        3280
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "49f15f93-f3e1-4784-811c-0e137b3e6ceb",
+      "name": "備案C:嘗試改用其他DB1",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        4720,
+        3540
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "7b19cf08-98d0-4648-be43-52942f1d5a29",
+      "name": "刪除新加入數據1",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        4800,
+        3020
+      ]
+    },
+    {
+      "parameters": {
+        "text": "數據驗證失敗, 已嘗試多重備案但仍無法通過. 以下為前20行測試資料...",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "e1b95884-531f-4233-82e9-a84721598213",
+      "name": "通知使用者(失敗報告)1",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        4860,
+        2660
+      ],
+      "webhookId": "ed1227ae-545e-49e6-8545-592b18190187"
+    },
+    {
+      "parameters": {
+        "text": "數據成功加入資料庫! 當前已構建 X 個數據庫, 新增數據標題: ... \n(可列出簡介+分類+描述)\n\n全部數據庫包含資料: ...",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "a19b858c-a842-46c8-883f-1b2f20cac975",
+      "name": "通知使用者(成功構建)1",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        4840,
+        2020
+      ],
+      "webhookId": "19c59147-beaf-4401-b0f5-bae4451bd734"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://yqtvdcvjboenlblgcivl.supabase.co/storage/v1/object/list/private",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"prefix\": \"\",\n  \"limit\": 100,\n  \"offset\": 0,\n  \"sortBy\": {\n    \"column\": \"name\",\n    \"order\": \"asc\"\n  }\n}",
+        "options": {}
+      },
+      "id": "bcd4c537-0132-4262-89aa-04630bc0b493",
+      "name": "Get All files",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        1980,
+        5140
+      ],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "b61d82a4-689d-4e81-8346-c9e4ed9d243a",
+      "name": "Default Data Loader",
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "position": [
+        3360,
+        5340
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "chunkSize": 500,
+        "chunkOverlap": 200,
+        "options": {}
+      },
+      "id": "cb127c8a-faad-4032-b981-9c182f23bfa4",
+      "name": "Recursive Character Text Splitter",
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "position": [
+        3360,
+        5520
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "tableId": "files",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "name",
+              "fieldValue": "={{ $('Loop Over Items1').item.json.name }}"
+            },
+            {
+              "fieldId": "storage_id",
+              "fieldValue": "={{ $('Loop Over Items1').item.json.id }}"
+            }
+          ]
+        }
+      },
+      "id": "6b2cae1a-eddb-467c-9634-3f0e6647e0b9",
+      "name": "Create File record2",
+      "type": "n8n-nodes-base.supabase",
+      "position": [
+        3120,
+        5140
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "9b14e306-a04d-40f7-bc5b-b8eda8d8f7f2",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "leftValue": "={{ \n    !$('Aggregate').item.json.data || \n    !Array.isArray($('Aggregate').item.json.data) || \n    !$('Aggregate').item.json.data.some(item => \n        item.storage_id === $('Loop Over Items1').item.json.id \n    ) \n}}",
+              "rightValue": ""
+            },
+            {
+              "id": "c3c0af88-9aea-4539-8948-1b69e601c27c",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              },
+              "leftValue": "={{ $json.name }}",
+              "rightValue": ".emptyFolderPlaceholder"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "57621e57-aa10-47f7-ad11-940f448c775b",
+      "name": "If",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        2300,
+        5140
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "url": "=https://yqtvdcvjboenlblgcivl.supabase.co/storage/v1/object/private/{{ $json.name }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {}
+      },
+      "id": "ec80415f-2e20-440d-a57a-334cb9ee181c",
+      "name": "Download",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        2480,
+        5140
+      ],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "id": "ce252e9e-3f3c-427a-a1f4-82cb45138d5d",
+      "name": "Aggregate",
+      "type": "n8n-nodes-base.aggregate",
+      "position": [
+        1800,
+        5140
+      ],
+      "typeVersion": 1,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "b1d14e59-e6ee-467c-ac98-3ffe1f4383a1",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "position": [
+        360,
+        100
+      ],
+      "webhookId": "3c40d311-7996-4ed4-b2fa-c73bea5f4cf5",
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "26c64869-faea-4fb1-a24a-1fdaeb402ff5",
+      "name": "OpenAI Chat Model1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        840,
+        -80
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "550c52c7-44bc-444d-991c-ca8c44ce32f7",
+      "name": "Embeddings OpenAI2",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "position": [
+        920,
+        200
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "ada15b83-3459-45fd-9ee6-8bb031cbff24",
+      "name": "OpenAI Chat Model2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        1200,
+        60
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {},
+      "id": "c7bd3c91-9b01-41f9-9b6e-5dd2953fdcad",
+      "name": "Vector Store Tool1",
+      "type": "@n8n/n8n-nodes-langchain.toolVectorStore",
+      "position": [
+        1000,
+        -80
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "version": 1,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    },
+                    "leftValue": "={{$binary.data?.fileExtension == undefined }}",
+                    "rightValue": "txt"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "txt"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "version": 1,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "bf04cbec-dd86-4607-988f-4c96b6fd4b58",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{$binary.data.fileExtension  }}",
+                    "rightValue": "pdf"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "pdf"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5bb816b0-c622-4421-a9b7-5729bf5c9ab1",
+      "name": "Switch",
+      "type": "n8n-nodes-base.switch",
+      "position": [
+        2640,
+        5140
+      ],
+      "typeVersion": 3.1
+    },
+    {
+      "parameters": {},
+      "id": "7874d171-ee51-462c-9fc9-fa80c9086b6e",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "position": [
+        2960,
+        5100
+      ],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "tableName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "documents",
+          "cachedResultName": "documents"
+        },
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "file_id",
+                "value": "300b0128-0955-4058-b0d3-a9aefe728432"
+              }
+            ]
+          }
+        }
+      },
+      "id": "65d2cf87-de25-4e02-bfaf-7a1ed9c0e962",
+      "name": "Supabase Vector Store",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "position": [
+        880,
+        100
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "### ... or watch set up video [10 min]\n[![Youtube Thumbnail](https://cflobdhpqwnoisuctsoc.supabase.co/storage/v1/object/public/my_storage/Chat with Files - Blur.png)](https://www.youtube.com/watch?v=glWUkdZe_3w)\n",
+        "height": 540,
+        "width": 671,
+        "color": 7
+      },
+      "id": "bb231615-8c5a-4fc7-99d0-6f9ef9f09221",
+      "name": "Sticky Note9",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -260,
+        -600
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "method": "=POST",
+        "url": "=https://proxmox.syncbricks.com/api2/json{{ $json.output.url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.output.details }}",
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "id": "741d5fc6-6435-48ef-b734-0edc8d96f466",
+      "name": "HTTP Request1",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        1040,
+        -160
+      ],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {},
+      "id": "7faac344-a087-40fd-bda4-20ecdac5fa43",
+      "name": "Proxmox API Documentation",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "position": [
+        -860,
+        120
+      ],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "51c6c719-71ee-44c1-9596-dabaa8374732",
+      "name": "Auto-fixing Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserAutofixing",
+      "position": [
+        -500,
+        -300
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "01a21908-082b-4adc-a7fc-3853c520f40b",
+      "name": "Google Gemini Chat Model1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "position": [
+        -540,
+        140
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {},
+      "id": "178a8bea-6ec9-4b4d-ad35-8b013887e4dd",
+      "name": "Structured Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "position": [
+        -320,
+        -100
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {},
+      "id": "c0d27dfb-8186-4054-9852-9fdf6d3dab50",
+      "name": "Proxmox",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "position": [
+        -660,
+        340
+      ],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "9975d047-fd6f-4f88-aac0-598309a0e66c",
+      "name": "Google Gemini Chat Model2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "position": [
+        1520,
+        -300
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "676b9ebd-0663-4bc1-a32d-8c70aa8b164d",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "position": [
+        -1700,
+        360
+      ],
+      "webhookId": "c86fa48b-ae66-46f2-b438-f156225a5c74",
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {}
+      },
+      "id": "eda91017-646b-4062-b87f-636cbac8e2b9",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "position": [
+        -1700,
+        20
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {},
+      "id": "31671eac-afb6-4575-85df-59751624fa67",
+      "name": "Proxmox API Wiki",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "position": [
+        -980,
+        380
+      ],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "jsCode": "// Access all items from the incoming node\nconst items = $input.all();\n\n// Combine all fields of each item into a single string\nconst combinedData = items.map(item => {\n    const inputData = item.json; // Access the JSON data of the current item\n    \n    // Combine all fields into a single string\n    const combinedField = Object.entries(inputData)\n        .map(([key, value]) => {\n            // Handle objects or arrays by converting them to JSON strings\n            const formattedValue = typeof value === 'object' ? JSON.stringify(value) : value;\n            return `${key}: ${formattedValue}`;\n        })\n        .join(' | '); // Combine key-value pairs as a single string with a delimiter\n\n    // Return the new structure\n    return {\n        json: {\n            combinedField // Only keep the combined field for table representation\n        },\n    };\n});\n\n// Output the combined data\nreturn combinedData;\n"
+      },
+      "id": "9da42bc1-c44e-4911-88e4-fb37ec9e02c9",
+      "name": "Structure Response",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1080,
+        -440
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "// Access the 'data' field from the input\nlet rawData = $json[\"data\"];\n\n// Split the string by colon (:) to extract parts\nlet parts = rawData.split(\":\");\n\n// Create an object with the extracted parts\nreturn {\n  upid: parts[0],       // UPID\n  node: parts[1],       // Node (e.g., psb1)\n  processID: parts[2],  // Process ID\n  taskID: parts[3],     // Task ID\n  timestamp: parts[4],  // Timestamp\n  operation: parts[5],  // Operation (e.g., aptupdate)\n  user: parts[7]        // User (e.g., root@pam!n8n)\n};\n"
+      },
+      "id": "059dafb6-5dc2-4cf1-a73e-faeed5ed75a6",
+      "name": "Structgure Response from Proxmox",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1760,
+        160
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract required fields from the input\nlet node = $json[\"node\"] || \"unknown node\";\nlet operation = $json[\"operation\"] || \"unknown operation\";\nlet user = $json[\"user\"] || \"unknown user\";\nlet rawTimestamp = $json[\"timestamp\"] || \"unknown timestamp\";\n\n// Convert timestamp to a readable format\nlet readableTimestamp = \"Invalid timestamp\";\ntry {\n  let timestamp = parseInt(rawTimestamp, 16) * 1000; // Convert hex to milliseconds\n  readableTimestamp = new Date(timestamp).toLocaleString();\n} catch (error) {\n  readableTimestamp = \"Unable to parse timestamp\";\n}\n\n// Construct the simple message\nlet message = `The operation '${operation}' was executed successfully on node '${node}' by user '${user}' at '${readableTimestamp}'.`;\n\nreturn {\n  message: message\n};\n"
+      },
+      "id": "1a3a67ca-3293-46d9-9ce5-4f806ba978f2",
+      "name": "Format Response and Hide Sensitive Data",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        2020,
+        160
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "6d6b5973-4b40-46c3-b012-2619cc82f058",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "position": [
+        -1120,
+        160
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "loose"
+          },
+          "combinator": "or",
+          "conditions": [
+            {
+              "id": "da8ce97e-70bf-42a4-981c-e2133bcee24a",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.output.details }}",
+              "rightValue": ""
+            },
+            {
+              "id": "d7052c40-9a43-452e-901c-6c8fd0122e5f",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.output.details }}",
+              "rightValue": ""
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "1a47e097-3543-4e23-9329-3ca877455897",
+      "name": "If2",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        600,
+        -60
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {},
+      "id": "e97de31b-6088-4fdd-bdec-2fe5ebb920a9",
+      "name": "Merge2",
+      "type": "n8n-nodes-base.merge",
+      "position": [
+        1460,
+        0
+      ],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "version": 2,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.output.response_type }}",
+                    "rightValue": "GET"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "GET"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "version": 2,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "e3edd683-b884-4c88-b1ea-d3640141b054",
+                    "operator": {
+                      "name": "filter.operator.equals",
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.output.response_type }}",
+                    "rightValue": "POST"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "POST"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "version": 2,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "a9c59c0d-001c-4d95-992e-bff2af54eb4a",
+                    "operator": {
+                      "name": "filter.operator.equals",
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.output.response_type }}",
+                    "rightValue": "PUT"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "Update"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "version": 2,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "70bf8cc2-0a43-431c-97c7-a8b4eadb5bd9",
+                    "operator": {
+                      "name": "filter.operator.equals",
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.output.response_type }}",
+                    "rightValue": "OPTIONS"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "OPTIONS"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "version": 2,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "0e43b05b-7f45-40a3-b8aa-180dd8155b08",
+                    "operator": {
+                      "name": "filter.operator.equals",
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.output.response_type }}",
+                    "rightValue": "DELETE"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "DELETE"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "version": 2,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "bd03a24c-a233-4302-a576-1bfe0060c367",
+                    "operator": {
+                      "name": "filter.operator.equals",
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.output.response_type }}",
+                    "rightValue": "Invalid"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "INVALID"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "dad87063-ef97-423d-ac8a-22b4cb311125",
+      "name": "Switch1",
+      "type": "n8n-nodes-base.switch",
+      "position": [
+        100,
+        -180
+      ],
+      "typeVersion": 3.2
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "id": "7191bbac-845a-45bd-a1e6-c10fbc28c297",
+      "name": "Extract Document PDF1",
+      "type": "n8n-nodes-base.extractFromFile",
+      "position": [
+        2800,
+        5180
+      ],
+      "typeVersion": 1,
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "39f3cc30-14ff-4a20-8630-58f17db97706",
+      "name": "Embeddings OpenAI1",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "position": [
+        3180,
+        5320
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "dataToSend": "autoMapInputData"
+      },
+      "id": "ada73e42-547c-4a81-b285-67e7e4742000",
+      "name": "Get All Files1",
+      "type": "n8n-nodes-base.supabase",
+      "position": [
+        1600,
+        5140
+      ],
+      "typeVersion": 1,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "batchSize": "=1",
+        "options": {}
+      },
+      "id": "73de63c7-23ff-43b8-9f78-12405b923ae2",
+      "name": "Loop Over Items1",
+      "type": "n8n-nodes-base.splitInBatches",
+      "position": [
+        2140,
+        5140
+      ],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "tableName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "documents",
+          "cachedResultName": "documents"
+        },
+        "options": {
+          "queryName": "match_documents"
+        }
+      },
+      "id": "0b216d96-aae8-4859-a412-9e0e3cb8a457",
+      "name": "Insert into Supabase Vectorstore1",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "position": [
+        3280,
+        5140
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "path": "459d848d-72ed-490f-bc48-e5dc60242896",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "id": "94cdcd3e-0390-495f-bdd2-29ca4007bac5",
+      "name": "Webhook1",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        -1700,
+        200
+      ],
+      "webhookId": "459d848d-72ed-490f-bc48-e5dc60242896",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "=GET",
+        "url": "=https://10.11.12.101:8006/api2/json{{ $json.output.properties.url.pattern }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "id": "4e63b947-455d-4622-98f6-27b2a02a1475",
+      "name": "HTTP Request5",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        640,
+        -280
+      ],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "aecbc440-e774-421e-873c-23f70dc1742f",
+      "name": "AI Agent3",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        -100,
+        300
+      ],
+      "typeVersion": 1.7
+    },
+    {
+      "parameters": {
+        "content": "### Replace credentials.",
+        "height": 80
+      },
+      "id": "61e767df-609a-47d6-9cfd-3b8cf0009ea9",
+      "name": "Sticky Note19",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1540,
+        5020
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "### Replace Storage name, database ID and credentials.",
+        "height": 89.3775420487804
+      },
+      "id": "0facf2eb-fe8b-4361-a113-6cf76cf5af5f",
+      "name": "Sticky Note20",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1900,
+        5020
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "obsidian-to-n8n",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "64d91f32-ac35-4379-8fe7-f1974e451879",
+      "name": "Obsidian資料來源(Webhook)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -5220,
+        -700
+      ],
+      "webhookId": "custom-webhook-id"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "body.attachments",
+        "options": {}
+      },
+      "id": "64da39a4-fcfb-4903-96e4-c3651e0bb404",
+      "name": "分離附件",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -5020,
+        -700
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "data",
+              "type": "string",
+              "value": "=\n            {{$json.data.replace(^data:.*?, ,'')}}\n            "
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "523e9fee-6019-4d57-be98-27f852900bcd",
+      "name": "修正Base64",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -4780,
+        -720
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "17c89687-afed-4f4c-98bc-31a9c85ad276",
+      "name": "逐一處理附件",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -4580,
+        -700
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "data",
+        "options": {
+          "fileName": "={{$json[\"name\"]}}"
+        }
+      },
+      "id": "9e975297-174e-4c5f-9c19-5cc76aaeecfa",
+      "name": "轉換附件為檔案",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        -4320,
+        -720
+      ]
+    },
+    {
+      "parameters": {
+        "name": "={{$json[\"name\"]}}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "YOUR_GDRIVE_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "blockchain-attachments"
+        },
+        "options": {}
+      },
+      "id": "8d1860b2-b51b-4d47-b46a-fa52e50d8c05",
+      "name": "上傳至Google Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -3960,
+        -600
+      ]
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "webContentLink"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1d4e07d0-4472-4fdf-a732-59a413126106",
+      "name": "彙整附件連結",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -3740,
+        -600
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "title",
+              "type": "string",
+              "value": "={{ $('Obsidian資料來源(Webhook)').item.json.body.title }}"
+            },
+            {
+              "name": "author",
+              "type": "string",
+              "value": "={{ $('Obsidian資料來源(Webhook)').item.json.body.author }}"
+            },
+            {
+              "name": "category",
+              "type": "string",
+              "value": "={{ $('Obsidian資料來源(Webhook)').item.json.body.category }}"
+            },
+            {
+              "name": "content",
+              "type": "string",
+              "value": "={{ $('Obsidian資料來源(Webhook)').item.json.body.content }}"
+            },
+            {
+              "name": "tags",
+              "type": "array",
+              "value": "={{ $('Obsidian資料來源(Webhook)').item.json.body.tags }}"
+            },
+            {
+              "name": "attachmentLinks",
+              "type": "array",
+              "value": "={{ $json[\"webContentLink\"] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "535ae430-b38f-411a-b200-b064b2c22bc2",
+      "name": "準備基礎資料",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -3520,
+        -600
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{`INSERT INTO note_metadata (title, author, category, content, tags, attachments) VALUES ('${$json.title}', '${$json.author}', '${$json.category}', '${$json.content}', '${JSON.stringify($json.tags)}', '${JSON.stringify($json.attachmentLinks)}')`}}"
+      },
+      "id": "267fca73-3c54-4f5a-be91-6c96420ae285",
+      "name": "寫入SQL基礎資訊",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        -3300,
+        -600
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = $json.content || '';\nconst chunkSize = 1000;\nconst chunks = [];\nfor (let i = 0; i < content.length; i += chunkSize) {\n  chunks.push(content.slice(i, i + chunkSize));\n}\n\nreturn chunks.map((ck, idx) => {\n  return {\n    json: {\n      noteTitle: $json.title,\n      chunkIndex: idx,\n      chunk: ck,\n      category: $json.category\n    }\n  };\n});"
+      },
+      "id": "9e18222e-b942-4a1d-a6eb-8bff5f6daa58",
+      "name": "切分筆記並轉向量",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3080,
+        -600
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "fcc5eb83-430a-4e8e-93b8-9064d8e381d9",
+      "name": "摘要切分資料",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 2,
+      "position": [
+        -3380,
+        820
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "summary",
+              "type": "string",
+              "value": "={{$json[\"choices\"][0].text}}"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "8c2489b0-1c0c-4ba4-b836-92aacfe0a77a",
+      "name": "設定摘要",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2200,
+        -760
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "ef24c55f-e863-444a-8598-68c3573ca97d",
+      "name": "建立OpenAI Embeddings",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1,
+      "position": [
+        -2740,
+        -560
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "01ade03e-3a32-4259-80a6-56dedca0ac45",
+      "name": "上傳至Qdrant向量庫",
+      "type": "@n8n/n8n-nodes-langchain.code",
+      "typeVersion": 1,
+      "position": [
+        -2860,
+        -960
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "6efbf759-735d-48d9-bac1-bdd833309f70",
+      "name": "完成流程",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -3300,
+        1060
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://example.com",
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "id": "a26f89d1-ca28-4f59-859f-c53599f6d599",
+      "name": "主動抓取範例(Scraping)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -5080,
+        -500
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Example: parse, remove HTML tags, etc.\nconst raw = items[0].json;\nconst cleaned = {};\n\n// Implement your custom cleaning\n// e.g. remove HTML, refine text, parse JSON, etc.\n// For demo, let's assume raw.html is the scraped content\n\nif (raw.html) {\n  cleaned.text = raw.html.replace(/<[^>]+>/g, ''); // remove tags\n} else {\n  cleaned.text = 'No content';\n}\n\nreturn [{ json: cleaned }];"
+      },
+      "id": "b1202976-3119-4847-93a9-5b004345d1f3",
+      "name": "清洗與轉換數據",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4920,
+        -540
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "value2": ".pdf",
+              "operation": "endsWith",
+              "value1": "={{ $json.name }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9d4e35a3-30fe-441a-9995-ca92b914c504",
+      "name": "檢查附件檔案類型",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -3360,
+        -500
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 主要流程：\n1. (可選)排程觸發器\n2. Webhook(Obsidian)或HTTP抓取(自動抓取)\n3. 分離附件 & Base64處理\n4. 上傳附件至Google Drive\n5. 寫入SQL（元數據）\n6. 切分筆記並轉向量\n7. 摘要切分資料（OpenAI）\n8. 建立OpenAI Embeddings\n9. 上傳至Qdrant向量庫\n10. 完成流程\n\n※可根據需求擴充：GitIngest、Fallback機制、Telegram通知等等",
+        "height": 400,
+        "width": 480
+      },
+      "id": "dc758ab7-5fda-44ee-92ad-1cd94dc84d76",
+      "name": "便利貼說明",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -5960,
+        -460
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "value1": "={{ $json.text.length }}",
+              "operation": "larger",
+              "value2": 50000
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4f73cd4a-d1b7-4a9d-85cf-103f94dd14cb",
+      "name": "是否為大型內容?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -4720,
+        -540
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "scraped_summary",
+              "type": "string",
+              "value": "={{ $json[\"choices\"][0].text }}"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "9170397d-0cf4-495a-8c9a-75894daf152b",
+      "name": "準備爬取後資料",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -4160,
+        -540
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 假設已成功上傳至Qdrant, 這裡可對數據做分類(官方文件/代碼資料/API等).\n// 此處可依內容做後續分類, 並將結果寫入 json 分類.\nconst item = items[0].json;\nitem.classification = 'official-doc'; // 或其他判斷\nreturn [{ json: item }];"
+      },
+      "id": "8912efb4-200f-4505-bddb-676d9030c0fb",
+      "name": "數據篩選與分類",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3000,
+        1060
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 進行3個簡單問題檢測, 如果能回答代表數據有效.\n// 此處可連接OpenAI或LangChain, 做QA測試. 簡化示例:\nconst item = items[0].json;\n\nlet passCount = 0;\n// 假設三個問題都回答正確\npassCount = 3; // 這裡僅示意\n\nif(passCount === 3) {\n  item.verifyStatus = 'success';\n} else {\n  item.verifyStatus = 'fail';\n}\n\nreturn [{ json: item }];"
+      },
+      "id": "fb94c040-cf64-458c-8fe8-f7edb680e653",
+      "name": "AI三重驗證(問答)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2800,
+        1060
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "value1": "={{ $json.verifyStatus }}",
+              "operation": "equals",
+              "value2": "fail"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7da4ab66-35bf-4ba3-9a78-8b3d3f01b92b",
+      "name": "驗證失敗?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2640,
+        1020
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "e2c18ad2-1cc0-4a87-8501-6a0551531160",
+      "name": "備案A:嘗試其他方式",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -980,
+        1080
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "07e45e73-66d9-4209-a25c-290f0a6dd34c",
+      "name": "備案B:二次清洗後重試",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -1380,
+        700
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "162a7e31-00bd-4d9b-9d33-964f8358e162",
+      "name": "備案C:嘗試改用其他DB",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -1520,
+        1140
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "bb4983f8-bd5b-4027-b0aa-8ea9ebd796f8",
+      "name": "刪除新加入數據",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -1340,
+        920
+      ]
+    },
+    {
+      "parameters": {
+        "text": "數據驗證失敗, 已嘗試多重備案但仍無法通過. 以下為前20行測試資料...",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "5c18ded7-2f67-4829-a344-c55b005f28f1",
+      "name": "通知使用者(失敗報告)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1420,
+        460
+      ],
+      "webhookId": "2937a0c5-451b-4c2b-b67d-15280efb428d"
+    },
+    {
+      "parameters": {
+        "text": "數據成功加入資料庫! 當前已構建 X 個數據庫, 新增數據標題: ... \n(可列出簡介+分類+描述)\n\n全部數據庫包含資料: ...",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "a3205337-70db-467d-90f0-738ad5071555",
+      "name": "通知使用者(成功構建)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -940,
+        660
+      ],
+      "webhookId": "56a00fb8-1e9a-43ab-b7da-082ddceafec5"
+    },
+    {
+      "parameters": {},
+      "id": "1d6015f1-4f14-49b8-8994-753d02a0e0a6",
+      "name": "文字操作(TextManipulation)",
+      "type": "n8n-nodes-text-manipulation.textManipulation",
+      "typeVersion": 1,
+      "position": [
+        -4940,
+        -280
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "1ebad6c7-491f-4031-b6bf-9e2b01d2242e",
+      "name": "資料驗證(DataValidation)",
+      "type": "n8n-nodes-data-validation.dataValidation",
+      "typeVersion": 1,
+      "position": [
+        -4700,
+        -260
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "09094b37-4329-4f4f-a3c9-0f41d23a0e7d",
+      "name": "儲存到MongoDB(Mongo Db Operations)",
+      "type": "n8n-nodes-mongodb-upgraded.mongoDbOperations",
+      "typeVersion": 1,
+      "position": [
+        -3620,
+        -520
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "obsidian-to-n8n",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "e3beddb9-c956-42c3-8444-9de7e421d2d0",
+      "name": "Obsidian筆記資料輸入(Webhook)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -5960,
+        1000
+      ],
+      "webhookId": "custom-webhook-id"
+    },
+    {
+      "parameters": {
+        "content": "可使用Browserless進行更進階的爬取或互動，如需先打開頁面、執行JS，再交給Webpage Content Extractor處理",
+        "height": 100,
+        "width": 440
+      },
+      "id": "766f7df3-2113-4159-97b9-4a6d474ca8e8",
+      "name": "瀏覽器自動化備註",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2680,
+        1680
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "body.attachments",
+        "options": {}
+      },
+      "id": "f5f39e81-4677-4540-ad0c-e10ebe176235",
+      "name": "分離附件1",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -5760,
+        1000
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "data",
+              "type": "string",
+              "value": "={{ $json.data.replace(/^data:.*?,/, '') }}"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "98696cd3-6374-48a8-abe6-8a70cf0e2daf",
+      "name": "修正Base",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -5540,
+        980
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "65ba41d2-e391-49bb-8662-9afe1c88196d",
+      "name": "逐一處理附件1",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -5240,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "data",
+        "options": {
+          "fileName": "={{$json[\"name\"]}}"
+        }
+      },
+      "id": "e57a466d-1765-4928-a56a-a3e1d4c75fb8",
+      "name": "轉換附件為檔案1",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        -5220,
+        1380
+      ]
+    },
+    {
+      "parameters": {
+        "name": "={{$json[\"name\"]}}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "YOUR_GDRIVE_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "blockchain-attachments"
+        },
+        "options": {}
+      },
+      "id": "aea9be5a-5821-4671-9d2c-0bd625321786",
+      "name": "上傳至Google Drive1",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -4940,
+        1020
+      ]
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "webContentLink"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f3638231-8354-473b-9270-cfac1aad4fa6",
+      "name": "彙整附件連結1",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -4660,
+        1040
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "title",
+              "type": "string",
+              "value": "={{ $('Obsidian筆記資料輸入(Webhook)').item.json.body.title }}"
+            },
+            {
+              "name": "author",
+              "type": "string",
+              "value": "={{ $('Obsidian筆記資料輸入(Webhook)').item.json.body.author }}"
+            },
+            {
+              "name": "category",
+              "type": "string",
+              "value": "={{ $('Obsidian筆記資料輸入(Webhook)').item.json.body.category }}"
+            },
+            {
+              "name": "content",
+              "type": "string",
+              "value": "={{ $('Obsidian筆記資料輸入(Webhook)').item.json.body.content }}"
+            },
+            {
+              "name": "tags",
+              "type": "array",
+              "value": "={{ $('Obsidian筆記資料輸入(Webhook)').item.json.body.tags }}"
+            },
+            {
+              "name": "attachmentLinks",
+              "type": "array",
+              "value": "={{ $json[\"webContentLink\"] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "284f44c9-f4c1-4a9e-be4d-c6ec50ba208e",
+      "name": "準備基礎資料1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -4380,
+        1000
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{`INSERT INTO note_metadata (title, author, category, content, tags, attachments) VALUES ('${$json.title}', '${$json.author}', '${$json.category}', '${$json.content}', '${JSON.stringify($json.tags)}', '${JSON.stringify($json.attachmentLinks)}')`}}"
+      },
+      "id": "e13c1923-e911-4b7d-adff-71ea1c64a01f",
+      "name": "寫入SQL基礎資訊1",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        -4160,
+        1040
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = $json.content || '';\nconst chunkSize = 1000;\nconst chunks = [];\nfor (let i = 0; i < content.length; i += chunkSize) {\n  chunks.push(content.slice(i, i + chunkSize));\n}\n\nreturn chunks.map((ck, idx) => {\n  return {\n    json: {\n      noteTitle: $json.title,\n      chunkIndex: idx,\n      chunk: ck,\n      category: $json.category\n    }\n  };\n});"
+      },
+      "id": "2f7df6be-35bd-4ac8-b6b0-dcac789fac69",
+      "name": "切分筆記並轉向量1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3900,
+        1040
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "1fbfac94-6f7b-4fea-aa23-b7df664c668a",
+      "name": "摘要切分資料1",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 2,
+      "position": [
+        -4400,
+        -260
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "a30c159e-1a61-47ed-81c2-86abc62cad89",
+      "name": "建立OpenAI Embeddings1",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1,
+      "position": [
+        -3700,
+        1320
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "6ded43cd-fea2-4413-9eba-420e12af9a9f",
+      "name": "上傳至Qdrant向量庫1",
+      "type": "@n8n/n8n-nodes-langchain.code",
+      "typeVersion": 1,
+      "position": [
+        -3680,
+        1040
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "c453b766-6f7d-4823-94ab-ac09f07bef97",
+      "name": "簡要摘要爬取內容1",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 2,
+      "position": [
+        -4340,
+        2640
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 4
+            }
+          ]
+        }
+      },
+      "id": "3756154a-27b5-49b1-ad76-0aa1e321bdc6",
+      "name": "排程觸發器(可選)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -4560,
+        4020
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "obsidian-to-n8n",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "8692148e-4b71-4641-a027-1e56ff7dc856",
+      "name": "Obsidian筆記(Webhook)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -4260,
+        4020
+      ],
+      "webhookId": "custom-webhook-id"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "body.attachments",
+        "options": {}
+      },
+      "id": "c308fbe5-7059-4fce-a4a8-2d25cab02a5c",
+      "name": "分離筆記附件",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -4060,
+        4020
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "efd965e5-0af5-4eb2-9b8c-a5d7f5ef2dc6",
+      "name": "逐一處理筆記附件",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -3580,
+        4000
+      ]
+    },
+    {
+      "parameters": {
+        "name": "={{ $json[\"name\"] }}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "YOUR_GDRIVE_FOLDER_ID",
+          "mode": "list"
+        },
+        "options": {}
+      },
+      "id": "9bd8f607-30b9-4f52-b083-61e0dd510b7f",
+      "name": "上傳至Google Drive(附件)",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -3160,
+        3720
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "title",
+              "type": "string",
+              "value": "={{ $('Obsidian筆記(Webhook)').item.json.body.title }}"
+            },
+            {
+              "name": "author",
+              "type": "string",
+              "value": "={{ $('Obsidian筆記(Webhook)').item.json.body.author }}"
+            },
+            {
+              "name": "category",
+              "type": "string",
+              "value": "={{ $('Obsidian筆記(Webhook)').item.json.body.category }}"
+            },
+            {
+              "name": "content",
+              "type": "string",
+              "value": "={{ $('Obsidian筆記(Webhook)').item.json.body.content }}"
+            },
+            {
+              "name": "tags",
+              "type": "array",
+              "value": "={{ $('Obsidian筆記(Webhook)').item.json.body.tags }}"
+            },
+            {
+              "name": "attachmentLinks",
+              "type": "array",
+              "value": "={{ $json[\"webContentLink\"] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d81ea490-3769-4e9d-aabb-de8c27b6b120",
+      "name": "準備SQL基礎資料",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2560,
+        3520
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{`INSERT INTO note_metadata (title, author, category, content, tags, attachments) VALUES ('${$json.title}', '${$json.author}', '${$json.category}', '${$json.content}', '${JSON.stringify($json.tags)}', '${JSON.stringify($json.attachmentLinks)}')`}}"
+      },
+      "id": "a3b5efb1-d363-4ba2-94b7-62f5cb8c9c46",
+      "name": "寫入SQL(筆記元數據)",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        -2220,
+        3460
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = $json.content || '';\nconst chunkSize = 1000;\nconst chunks = [];\nfor (let i = 0; i < content.length; i += chunkSize) {\n  chunks.push(content.slice(i, i + chunkSize));\n}\n\nreturn chunks.map((ck, idx) => {\n  return {\n    json: {\n      noteTitle: $json.title,\n      chunkIndex: idx,\n      chunk: ck,\n      category: $json.category\n    }\n  };\n});"
+      },
+      "id": "d257df18-a8c7-4210-a5ac-5896e8f122cf",
+      "name": "切分筆記(進行向量化)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1780,
+        3600
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "53b1e6ae-1279-4f99-902b-793bd7010699",
+      "name": "OpenAI摘要(切分結果)",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 2,
+      "position": [
+        -3800,
+        3060
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "summary",
+              "type": "string",
+              "value": "={{$json[\"choices\"][0].text}}"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "df57dc45-c5b7-4d6f-bc9c-c01b2cdadfa6",
+      "name": "設定摘要(最終)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1980,
+        4700
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "789546cd-ed3a-4b44-b463-e936a9b41099",
+      "name": "建立OpenAI Embeddings(筆記)",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1,
+      "position": [
+        -880,
+        4440
+      ]
+    },
+    {
+      "parameters": {
+        "content": "# 流程簡介\n1. (可選) 排程或手動觸發\n2. Obsidian 或其他資料來源(Webhook)\n3. 分離/修正附件後，上傳至 GDrive\n4. 將資料切分並寫入 SQL/Mongo/Qdrant\n5. 進行 AI 驗證(三重問答)\n6. 如果失敗，則啟動備案A/B/C\n7. 若全部失敗，通知失敗並刪除\n8. 若成功，通知成功並列出數據庫資訊\n\n支援檢查 GH → gitingest 替換流程(可加到抓取前).",
+        "height": 460,
+        "width": 440
+      },
+      "id": "d06efcf9-99d1-43cc-a197-9e12a48eb4c0",
+      "name": "流程備註(簡要)",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -4520,
+        3420
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "data",
+              "type": "string",
+              "value": "={{ $json.data.replace(/^data:.*?,/, '') }}"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "73db5ad8-a060-4362-8d8c-3182d40ba5f7",
+      "name": "修正Base65",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -3860,
+        4020
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "data",
+        "options": {
+          "fileName": "={{ $json[\"name\"] }}"
+        }
+      },
+      "id": "54ef1a64-3811-4590-b852-f40e2d234b8b",
+      "name": "轉換附件為檔案2",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        -3560,
+        3280
+      ]
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "webContentLink"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3974afde-6ded-449f-8ed0-b3bdf468aabc",
+      "name": "彙整附件連結2",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -2860,
+        3540
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "b4f8bc44-a6bc-44ad-bfe3-20d29a17cd2a",
+      "name": "上傳至Qdrant向量庫2",
+      "type": "@n8n/n8n-nodes-langchain.code",
+      "typeVersion": 1,
+      "position": [
+        -940,
+        4200
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "73045f10-2a66-42cf-a958-e42c201aa891",
+      "name": "簡要摘要爬取內容2",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 2,
+      "position": [
+        -3960,
+        4580
+      ]
+    },
+    {
+      "parameters": {
+        "content": "可使用 Browserless node 進行自動化爬取或操作"
+      },
+      "id": "ff8e04e6-9cf6-4ff0-80f3-f492b5a36060",
+      "name": "瀏覽器自動化備註1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -4960,
+        2640
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "keywords",
+              "type": "array",
+              "value": "=[\"Solidity\", \"智能合約\"]"
+            },
+            {
+              "name": "searchDepth",
+              "type": "number",
+              "value": 2
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "747e942f-00f0-4504-94c1-39bc7b54ef23",
+      "name": "Set Initial Keywords",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        340,
+        3240
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "headerAuth",
+        "options": {}
+      },
+      "id": "1261f300-dcdf-4372-8ce2-c8387ddf9e73",
+      "name": "GPT Expand Keywords",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        540,
+        3240
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true
+          },
+          "conditions": [
+            {
+              "value1": "={{ $json.searchDepth }}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0c217fa7-3e5b-41ca-8454-e9faa9b84f78",
+      "name": "Check Depth",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        740,
+        3220
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "searchDepth",
+              "type": "number",
+              "value": "={{ $json.searchDepth - 1 }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e6065ee2-0ee2-43e0-9c3d-b3a973ac3a91",
+      "name": "Decrease Depth",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        940,
+        3240
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url.replace('github.com', 'gitingest.com/api/v1/ingest') }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "headerAuth",
+        "options": {}
+      },
+      "id": "170b6a49-b3d2-4688-b917-2b22f0df37b7",
+      "name": "GitHub to GitIngest",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1140,
+        3240
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 4
+            }
+          ]
+        }
+      },
+      "id": "9427a4d4-a5ae-4366-b176-ad4e08230960",
+      "name": "排程觸發器2",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -4880,
+        4720
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "obsidian-to-n8n",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "cfc399eb-3740-436c-80f2-c84b71e9413f",
+      "name": "Obsidian資料來源(Webhook)1",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -4540,
+        4900
+      ],
+      "webhookId": "custom-webhook-id"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "body.attachments",
+        "options": {}
+      },
+      "id": "8b370081-3c19-4e88-96dd-a0eb2eae954c",
+      "name": "分離附件2",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -4200,
+        4900
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "data",
+              "type": "string",
+              "value": "=\n            {{$json.data.replace(^data:.*?, ,'')}}\n            "
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "ee3df2e1-bf92-4e3d-af61-df2115df57b1",
+      "name": "修正Base66",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -3880,
+        4940
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "f88a06a0-b791-4443-8ea5-0be7796b96ff",
+      "name": "逐一處理附件2",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -3400,
+        4680
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "data",
+        "options": {
+          "fileName": "={{$json[\"name\"]}}"
+        }
+      },
+      "id": "8f858094-e081-4558-afb6-461413cac8e6",
+      "name": "轉換附件為檔案3",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        -3340,
+        5280
+      ]
+    },
+    {
+      "parameters": {
+        "name": "={{$json[\"name\"]}}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "YOUR_GDRIVE_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "blockchain-attachments"
+        },
+        "options": {}
+      },
+      "id": "c011f5fd-928d-4bc2-b2e3-91cc1be2e42f",
+      "name": "上傳至Google Drive2",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -3080,
+        4820
+      ]
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "webContentLink"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c8dd0d8e-1418-4110-99a5-c29508e61a90",
+      "name": "彙整附件連結3",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -2720,
+        4980
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "title",
+              "type": "string",
+              "value": "={{ $('Obsidian資料來源(Webhook)1').item.json.body.title }}"
+            },
+            {
+              "name": "author",
+              "type": "string",
+              "value": "={{ $('Obsidian資料來源(Webhook)1').item.json.body.author }}"
+            },
+            {
+              "name": "category",
+              "type": "string",
+              "value": "={{ $('Obsidian資料來源(Webhook)1').item.json.body.category }}"
+            },
+            {
+              "name": "content",
+              "type": "string",
+              "value": "={{ $('Obsidian資料來源(Webhook)1').item.json.body.content }}"
+            },
+            {
+              "name": "tags",
+              "type": "array",
+              "value": "={{ $('Obsidian資料來源(Webhook)1').item.json.body.tags }}"
+            },
+            {
+              "name": "attachmentLinks",
+              "type": "array",
+              "value": "={{ $json[\"webContentLink\"] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "975f856b-279b-48b6-8746-3456655ae49b",
+      "name": "準備基礎資料2",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2380,
+        5020
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{`INSERT INTO note_metadata (title, author, category, content, tags, attachments) VALUES ('${$json.title}', '${$json.author}', '${$json.category}', '${$json.content}', '${JSON.stringify($json.tags)}', '${JSON.stringify($json.attachmentLinks)}')`}}"
+      },
+      "id": "14594182-e26a-4f5f-ae77-ac05a1d9431c",
+      "name": "寫入SQL基礎資訊2",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        -2080,
+        5060
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = $json.content || '';\nconst chunkSize = 1000;\nconst chunks = [];\nfor (let i = 0; i < content.length; i += chunkSize) {\n  chunks.push(content.slice(i, i + chunkSize));\n}\n\nreturn chunks.map((ck, idx) => {\n  return {\n    json: {\n      noteTitle: $json.title,\n      chunkIndex: idx,\n      chunk: ck,\n      category: $json.category\n    }\n  };\n});"
+      },
+      "id": "cf59f3c2-b69a-460b-9656-a23a48b762a0",
+      "name": "切分筆記並轉向量2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1760,
+        5060
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "dc94a505-874f-4f7f-b159-1ea2db459b9e",
+      "name": "摘要切分資料2",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 2,
+      "position": [
+        -5200,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "7dc6d8f3-8bc9-47bc-8814-2758db59cbad",
+      "name": "建立OpenAI Embeddings2",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        5340
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "e889d31a-4d05-4f74-9cc7-6e6d7233485b",
+      "name": "上傳至Qdrant向量庫3",
+      "type": "@n8n/n8n-nodes-langchain.code",
+      "typeVersion": 1,
+      "position": [
+        -620,
+        5080
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "value2": ".pdf",
+              "operation": "endsWith",
+              "value1": "={{ $json[\"name\"] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5cf531a4-a982-4ed6-8f8d-f3445ad7c8ff",
+      "name": "檢查附件檔案類型1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2780,
+        5240
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 主要流程：\n1. (可選)排程觸發器\n2. Webhook(Obsidian)或HTTP抓取(自動抓取)\n3. 分離附件 & Base64處理\n4. 上傳附件至Google Drive\n5. 寫入SQL（元數據）\n6. 切分筆記並轉向量\n7. 摘要切分資料（OpenAI）\n8. 建立OpenAI Embeddings\n9. 上傳至Qdrant向量庫\n10. 完成流程\n\n※可根據需求擴充：GitIngest、Fallback機制、Telegram通知等等"
+      },
+      "id": "44a6b58a-dfba-4b0e-95e9-efcb74eccfe1",
+      "name": "便利貼說明1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -100,
+        3420
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "7c055416-c068-4247-8b70-12e5e4eb7dcc",
+      "name": "簡要摘要爬取內容3",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 2,
+      "position": [
+        -3500,
+        5980
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "88e3ca0b-ab0a-40c6-8642-88319bcd68e5",
+      "name": "瀏覽器自動化(Browserless)2",
+      "type": "n8n-nodes-browserless.browserless",
+      "typeVersion": 1,
+      "position": [
+        -6700,
+        1680
+      ],
+      "credentials": {}
+    },
+    {
+      "parameters": {},
+      "id": "cf08e535-6504-457a-87be-b9035758cda9",
+      "name": "文字操作(TextManipulation)2",
+      "type": "n8n-nodes-text-manipulation.textManipulation",
+      "typeVersion": 1,
+      "position": [
+        -5480,
+        1960
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "fb6e0856-5b59-4cd0-b1ce-ec71475b5c8a",
+      "name": "資料驗證(DataValidation)2",
+      "type": "n8n-nodes-data-validation.dataValidation",
+      "typeVersion": 1,
+      "position": [
+        -4120,
+        2020
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "b0d1f845-8fd6-4c91-98a4-19b4563c2de9",
+      "name": "儲存到MongoDB(Mongo Db Operations)2",
+      "type": "n8n-nodes-mongodb-upgraded.mongoDbOperations",
+      "typeVersion": 1,
+      "position": [
+        -3700,
+        1940
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "summary",
+              "type": "string",
+              "value": "={{$json[\"choices\"][0].text}}"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "87ee439e-7139-4f6b-bbfd-796f6d2986db",
+      "name": "設定摘要3",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -4680,
+        1840
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "25b5dd68-2d7e-4f04-8453-9f89018911ce",
+      "name": "完成流程4",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -3380,
+        1960
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://example.com",
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "id": "03164747-bb91-40cc-8f9f-bd57801d6e82",
+      "name": "主動抓取範例(Scraping)4",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -6340,
+        1920
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Example: parse, remove HTML tags, etc.\nconst raw = items[0].json;\nconst cleaned = {};\n\n// Implement your custom cleaning\n// e.g. remove HTML, refine text, parse JSON, etc.\n// For demo, let's assume raw.html is the scraped content\n\nif (raw.html) {\n  cleaned.text = raw.html.replace(/<[^>]+>/g, ''); // remove tags\n} else {\n  cleaned.text = 'No content';\n}\n\nreturn [{ json: cleaned }];"
+      },
+      "id": "34be7029-5d60-4925-8647-723b5b89e535",
+      "name": "清洗與轉換數據4",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -5280,
+        1980
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "value1": "={{ $json.text.length }}",
+              "operation": "larger",
+              "value2": 50000
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2bb4601d-7f7d-4574-b4b1-c3a0ab38617a",
+      "name": "是否為大型內容?4",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -4980,
+        2080
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "scraped_summary",
+              "type": "string",
+              "value": "={{ $json[\"choices\"][0].text }}"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "2734b764-6cbe-4420-b374-ff3bef3dabe5",
+      "name": "準備爬取後資料4",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -4420,
+        2020
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 假設已成功上傳至Qdrant, 這裡可對數據做分類(官方文件/代碼資料/API等).\n// 此處可依內容做後續分類, 並將結果寫入 json 分類.\nconst item = items[0].json;\nitem.classification = 'official-doc'; // 或其他判斷\nreturn [{ json: item }];"
+      },
+      "id": "ef4fef65-a9c3-411a-9a24-a5d9f67ea848",
+      "name": "數據篩選與分類4",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3080,
+        1980
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 進行3個簡單問題檢測, 如果能回答代表數據有效.\n// 此處可連接OpenAI或LangChain, 做QA測試. 簡化示例:\nconst item = items[0].json;\n\nlet passCount = 0;\n// 假設三個問題都回答正確\npassCount = 3; // 這裡僅示意\n\nif(passCount === 3) {\n  item.verifyStatus = 'success';\n} else {\n  item.verifyStatus = 'fail';\n}\n\nreturn [{ json: item }];"
+      },
+      "id": "07072988-5c25-48e6-a499-34c6d6a38fb4",
+      "name": "AI三重驗證(問答)4",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2840,
+        2060
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "value1": "={{ $json.verifyStatus }}",
+              "operation": "equals",
+              "value2": "fail"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9d27f25e-ccd5-49ee-83b6-b05989e0c0ac",
+      "name": "驗證失敗?4",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2640,
+        2160
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "5310c922-9520-4909-b2f9-bdbfadceb66d",
+      "name": "備案A:嘗試其他方式4",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -1800,
+        1740
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "2f251e2c-ca1a-4c4f-ba3d-8f5ebabde962",
+      "name": "備案B:二次清洗後重試4",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -1900,
+        2680
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "806b0741-db47-4a7a-9f7e-74819d089e9f",
+      "name": "備案C:嘗試改用其他DB4",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -1940,
+        2940
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "d3fbaa9a-b07c-420e-be45-a8754516d06d",
+      "name": "刪除新加入數據4",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -1800,
+        2460
+      ]
+    },
+    {
+      "parameters": {
+        "text": "數據驗證失敗, 已嘗試多重備案但仍無法通過. 以下為前20行測試資料...",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "0aacedf8-f972-4cb0-981f-d9c5dfe5b4b8",
+      "name": "通知使用者(失敗報告)4",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1760,
+        2160
+      ],
+      "webhookId": "a4f79a38-72e6-4085-95c7-13d3c044efb8"
+    },
+    {
+      "parameters": {
+        "text": "數據成功加入資料庫! 當前已構建 X 個數據庫, 新增數據標題: ... \n(可列出簡介+分類+描述)\n\n全部數據庫包含資料: ...",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "e5a00b59-e712-4c57-923d-e09f6111e314",
+      "name": "通知使用者(成功構建)4",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1800,
+        1940
+      ],
+      "webhookId": "ae17b90e-736e-4690-b36c-407bd2ddfba1"
+    }
+  ],
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-02-05T03:11:14.000Z",
+  "versionId": "66026212-dbd8-4f22-a418-451d211bc225"
+}
