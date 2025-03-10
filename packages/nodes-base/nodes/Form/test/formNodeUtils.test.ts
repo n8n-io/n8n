@@ -1,4 +1,5 @@
 import { type Response } from 'express';
+import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import {
 	type FormFieldsParameter,
@@ -9,10 +10,19 @@ import {
 import { renderFormNode } from '../formNodeUtils';
 
 describe('formNodeUtils', () => {
+	let webhookFunctions: MockProxy<IWebhookFunctions>;
+
+	beforeEach(() => {
+		webhookFunctions = mock<IWebhookFunctions>();
+	});
+
+	afterEach(() => {
+		jest.clearAllMocks();
+	});
+
 	it('should sanitize custom html', async () => {
-		const executeFunctions = mock<IWebhookFunctions>();
-		executeFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
-		executeFunctions.getNodeParameter.calledWith('options').mockReturnValue({
+		webhookFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
+		webhookFunctions.getNodeParameter.calledWith('options').mockReturnValue({
 			formTitle: 'Test Title',
 			formDescription: 'Test Description',
 			buttonLabel: 'Test Button Label',
@@ -47,12 +57,12 @@ describe('formNodeUtils', () => {
 			},
 		];
 
-		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
+		webhookFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
 
 		const responseMock = mock<Response>({ render: mockRender } as any);
 		const triggerMock = mock<NodeTypeAndVersion>({ name: 'triggerName' } as any);
 
-		await renderFormNode(executeFunctions, responseMock, triggerMock, formFields, 'test');
+		await renderFormNode(webhookFunctions, responseMock, triggerMock, formFields, 'test');
 
 		expect(mockRender).toHaveBeenCalledWith('form-trigger', {
 			appendAttribution: true,

@@ -336,15 +336,7 @@ export class Form extends Node {
 				});
 			}
 		} else {
-			fields = (context.getNodeParameter('formFields.values', []) as FormFieldsParameter).map(
-				(field) => {
-					if (field.fieldType === 'hiddenField') {
-						field.fieldLabel = field.fieldName as string;
-					}
-
-					return field;
-				},
-			);
+			fields = context.getNodeParameter('formFields.values', []) as FormFieldsParameter;
 		}
 
 		const method = context.getRequestObject().method;
