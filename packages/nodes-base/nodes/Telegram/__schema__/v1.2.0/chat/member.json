@@ -1,52 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "ok": {
-            "type": "boolean"
-        },
-        "result": {
-            "type": "object",
-            "properties": {
-                "user": {
-                    "type": "object",
-                    "properties": {
-                        "id": {
-                            "type": "integer"
-                        },
-                        "is_bot": {
-                            "type": "boolean"
-                        },
-                        "first_name": {
-                            "type": "string"
-                        },
-                        "language_code": {
-                            "type": "string"
-                        },
-                        "username": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "id",
-                        "is_bot",
-                        "first_name"
-                    ]
-                },
-                "status": {
-                    "type": "string"
-                },
-                "is_anonymous": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "user",
-                "status"
-            ]
-        }
+    "name": "member.json",
+    "path": "packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/chat/member.json",
+    "sha": "4916fa6fd9e630334df13e73d3cf9e6f78521329",
+    "size": 1380,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/chat/member.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/chat/member.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/4916fa6fd9e630334df13e73d3cf9e6f78521329",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/chat/member.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJvayI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIK\nICAgICAgICB9LAogICAgICAgICJyZXN1bHQiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICAgICAgICAgInVzZXIiOiB7CiAgICAgICAgICAgICAgICAgICAg\nInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgICAgICAgICAicHJvcGVy\ndGllcyI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgImlkIjogewogICAg\nICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAg\nICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAg\nICAgImlzX2JvdCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0\neXBlIjogImJvb2xlYW4iCiAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAg\nICAgICAgICAgICAgICAgICAgICAgICJmaXJzdF9uYW1lIjogewogICAgICAg\nICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAi\nbGFuZ3VhZ2VfY29kZSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAgICAgfSwK\nICAgICAgICAgICAgICAgICAgICAgICAgInVzZXJuYW1lIjogewogICAgICAg\nICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAg\nICAgICAgICAgICJpZCIsCiAgICAgICAgICAgICAgICAgICAgICAgICJpc19i\nb3QiLAogICAgICAgICAgICAgICAgICAgICAgICAiZmlyc3RfbmFtZSIKICAg\nICAgICAgICAgICAgICAgICBdCiAgICAgICAgICAgICAgICB9LAogICAgICAg\nICAgICAgICAgInN0YXR1cyI6IHsKICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAg\nICAgImlzX2Fub255bW91cyI6IHsKICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJib29sZWFuIgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9\nLAogICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAi\ndXNlciIsCiAgICAgICAgICAgICAgICAic3RhdHVzIgogICAgICAgICAgICBd\nCiAgICAgICAgfQogICAgfSwKICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAi\nb2siLAogICAgICAgICJyZXN1bHQiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/chat/member.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/4916fa6fd9e630334df13e73d3cf9e6f78521329",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/chat/member.json"
     },
-    "required": [
-        "ok",
-        "result"
-    ]
+    "version": 1
 }

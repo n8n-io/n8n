@@ -1,50 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "kind": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "etag": {
-            "type": "string"
-        },
-        "primaryEmail": {
-            "type": "string"
-        },
-        "name": {
-            "type": "object",
-            "properties": {
-                "givenName": {
-                    "type": "string"
-                },
-                "familyName": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "givenName",
-                "familyName"
-            ]
-        },
-        "isAdmin": {
-            "type": "boolean"
-        },
-        "isDelegatedAdmin": {
-            "type": "boolean"
-        },
-        "creationTime": {
-            "type": "string"
-        },
-        "customerId": {
-            "type": "string"
-        },
-        "orgUnitPath": {
-            "type": "string"
-        },
-        "isMailboxSetup": {
-            "type": "boolean"
-        }
-    }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/Google/GSuiteAdmin/__schema__/v1.0.0/user/create.json",
+    "sha": "78cc7ba1d769b58c2cc15ad1977812c7a5ef54b5",
+    "size": 1060,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/GSuiteAdmin/__schema__/v1.0.0/user/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/GSuiteAdmin/__schema__/v1.0.0/user/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/78cc7ba1d769b58c2cc15ad1977812c7a5ef54b5",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/GSuiteAdmin/__schema__/v1.0.0/user/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJraW5kIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAiaWQiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJldGFnIjogewogICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAi\ncHJpbWFyeUVtYWlsIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAibmFtZSI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAg\nICAgICAgICAgICAgICAiZ2l2ZW5OYW1lIjogewogICAgICAgICAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAg\nICAgICAgICAgICAiZmFtaWx5TmFtZSI6IHsKICAgICAgICAgICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9CiAgICAgICAg\nICAgIH0sCiAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAg\nICAgICJnaXZlbk5hbWUiLAogICAgICAgICAgICAgICAgImZhbWlseU5hbWUi\nCiAgICAgICAgICAgIF0KICAgICAgICB9LAogICAgICAgICJpc0FkbWluIjog\newogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAg\nICAgICAgImlzRGVsZWdhdGVkQWRtaW4iOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAiY3JlYXRpb25UaW1l\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwK\nICAgICAgICAiY3VzdG9tZXJJZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIm9yZ1VuaXRQYXRoIjogewog\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAg\nICAiaXNNYWlsYm94U2V0dXAiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJv\nb2xlYW4iCiAgICAgICAgfQogICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/GSuiteAdmin/__schema__/v1.0.0/user/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/78cc7ba1d769b58c2cc15ad1977812c7a5ef54b5",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/GSuiteAdmin/__schema__/v1.0.0/user/create.json"
+    },
+    "version": 1
 }

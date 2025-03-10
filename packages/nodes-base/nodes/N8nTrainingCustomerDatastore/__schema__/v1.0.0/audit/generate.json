@@ -1,0 +1,63 @@
+{
+    "type": "object",
+    "properties": {
+        "Credentials Risk Report": {
+            "type": "object",
+            "properties": {
+                "risk": {
+                    "type": "string"
+                },
+                "sections": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "title": {
+                                "type": "string"
+                            },
+                            "description": {
+                                "type": "string"
+                            },
+                            "recommendation": {
+                                "type": "string"
+                            },
+                            "location": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "kind": {
+                                            "type": "string"
+                                        },
+                                        "id": {
+                                            "type": "string"
+                                        },
+                                        "name": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "kind",
+                                        "id",
+                                        "name"
+                                    ]
+                                }
+                            }
+                        },
+                        "required": [
+                            "title",
+                            "description",
+                            "recommendation",
+                            "location"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "risk",
+                "sections"
+            ]
+        }
+    },
+    "version": 1
+}

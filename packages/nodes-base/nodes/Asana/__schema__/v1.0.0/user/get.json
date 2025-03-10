@@ -1,36 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"gid": {
-			"type": "string"
-		},
-		"email": {
-			"type": "string"
-		},
-		"name": {
-			"type": "string"
-		},
-		"resource_type": {
-			"type": "string"
-		},
-		"workspaces": {
-			"type": "array",
-			"items": {
-				"type": "object",
-				"properties": {
-					"gid": {
-						"type": "string"
-					},
-					"name": {
-						"type": "string"
-					},
-					"resource_type": {
-						"type": "string"
-					}
-				},
-				"required": ["gid", "name", "resource_type"]
-			}
-		}
-	},
-	"required": ["gid", "email", "name", "photo", "resource_type", "workspaces"]
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Asana/__schema__/v1.0.0/user/get.json",
+    "sha": "ce834122d4a05ee7ea835b144f7060bf9dbe655f",
+    "size": 583,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Asana/__schema__/v1.0.0/user/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Asana/__schema__/v1.0.0/user/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/ce834122d4a05ee7ea835b144f7060bf9dbe655f",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Asana/__schema__/v1.0.0/user/get.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJnaWQi\nOiB7CgkJCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJCSJlbWFpbCI6IHsKCQkJ\nInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJIm5hbWUiOiB7CgkJCSJ0eXBlIjog\nInN0cmluZyIKCQl9LAoJCSJyZXNvdXJjZV90eXBlIjogewoJCQkidHlwZSI6\nICJzdHJpbmciCgkJfSwKCQkid29ya3NwYWNlcyI6IHsKCQkJInR5cGUiOiAi\nYXJyYXkiLAoJCQkiaXRlbXMiOiB7CgkJCQkidHlwZSI6ICJvYmplY3QiLAoJ\nCQkJInByb3BlcnRpZXMiOiB7CgkJCQkJImdpZCI6IHsKCQkJCQkJInR5cGUi\nOiAic3RyaW5nIgoJCQkJCX0sCgkJCQkJIm5hbWUiOiB7CgkJCQkJCSJ0eXBl\nIjogInN0cmluZyIKCQkJCQl9LAoJCQkJCSJyZXNvdXJjZV90eXBlIjogewoJ\nCQkJCQkidHlwZSI6ICJzdHJpbmciCgkJCQkJfQoJCQkJfSwKCQkJCSJyZXF1\naXJlZCI6IFsiZ2lkIiwgIm5hbWUiLCAicmVzb3VyY2VfdHlwZSJdCgkJCX0K\nCQl9Cgl9LAoJInJlcXVpcmVkIjogWyJnaWQiLCAiZW1haWwiLCAibmFtZSIs\nICJwaG90byIsICJyZXNvdXJjZV90eXBlIiwgIndvcmtzcGFjZXMiXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Asana/__schema__/v1.0.0/user/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/ce834122d4a05ee7ea835b144f7060bf9dbe655f",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Asana/__schema__/v1.0.0/user/get.json"
+    },
+    "version": 1
 }

@@ -1,142 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "email": {
-            "type": "string"
-        },
-        "phone": {
-            "type": "string"
-        },
-        "firstName": {
-            "type": "string"
-        },
-        "lastName": {
-            "type": "string"
-        },
-        "orgid": {
-            "type": "string"
-        },
-        "orgname": {
-            "type": "string"
-        },
-        "segmentio_id": {
-            "type": "string"
-        },
-        "bounced_hard": {
-            "type": "string"
-        },
-        "bounced_soft": {
-            "type": "string"
-        },
-        "ip": {
-            "type": "string"
-        },
-        "hash": {
-            "type": "string"
-        },
-        "socialdata_lastcheck": {
-            "type": "null"
-        },
-        "email_local": {
-            "type": "string"
-        },
-        "email_domain": {
-            "type": "string"
-        },
-        "sentcnt": {
-            "type": "string"
-        },
-        "gravatar": {
-            "type": "string"
-        },
-        "deleted": {
-            "type": "string"
-        },
-        "anonymized": {
-            "type": "string"
-        },
-        "udate": {
-            "type": "string"
-        },
-        "deleted_at": {
-            "type": "null"
-        },
-        "created_utc_timestamp": {
-            "type": "string"
-        },
-        "updated_utc_timestamp": {
-            "type": "string"
-        },
-        "created_timestamp": {
-            "type": "string"
-        },
-        "updated_timestamp": {
-            "type": "string"
-        },
-        "mpp_tracking": {
-            "type": "string"
-        },
-        "links": {
-            "type": "object",
-            "properties": {
-                "bounceLogs": {
-                    "type": "string"
-                },
-                "contactAutomations": {
-                    "type": "string"
-                },
-                "contactData": {
-                    "type": "string"
-                },
-                "contactGoals": {
-                    "type": "string"
-                },
-                "contactLists": {
-                    "type": "string"
-                },
-                "contactLogs": {
-                    "type": "string"
-                },
-                "contactTags": {
-                    "type": "string"
-                },
-                "contactDeals": {
-                    "type": "string"
-                },
-                "deals": {
-                    "type": "string"
-                },
-                "fieldValues": {
-                    "type": "string"
-                },
-                "geoIps": {
-                    "type": "string"
-                },
-                "notes": {
-                    "type": "string"
-                },
-                "organization": {
-                    "type": "string"
-                },
-                "plusAppend": {
-                    "type": "string"
-                },
-                "trackingLogs": {
-                    "type": "string"
-                },
-                "scoreValues": {
-                    "type": "string"
-                },
-                "accountContacts": {
-                    "type": "string"
-                },
-                "automationEntryCounts": {
-                    "type": "string"
-                }
-            }
-        },
-        "id": {
-            "type": "string"
-        }
-    }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/contact/getAll.json",
+    "sha": "ae3b678c1f241d4285653565ac77ea2844da5f62",
+    "size": 3422,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/contact/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/contact/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/ae3b678c1f241d4285653565ac77ea2844da5f62",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/contact/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJlbWFpbCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgIH0sCiAgICAgICAgInBob25lIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiZmlyc3ROYW1l\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwK\nICAgICAgICAibGFzdE5hbWUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJvcmdpZCI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIm9yZ25h\nbWUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9\nLAogICAgICAgICJzZWdtZW50aW9faWQiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJib3VuY2VkX2hhcmQi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAog\nICAgICAgICJib3VuY2VkX3NvZnQiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJpcCI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImhhc2gi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAog\nICAgICAgICJzb2NpYWxkYXRhX2xhc3RjaGVjayI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAgICAgICJlbWFpbF9sb2Nh\nbCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0s\nCiAgICAgICAgImVtYWlsX2RvbWFpbiI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInNlbnRjbnQiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAg\nICJncmF2YXRhciI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgImRlbGV0ZWQiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJhbm9ueW1pemVk\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwK\nICAgICAgICAidWRhdGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJkZWxldGVkX2F0IjogewogICAgICAg\nICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAgImNyZWF0\nZWRfdXRjX3RpbWVzdGFtcCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgIH0sCiAgICAgICAgInVwZGF0ZWRfdXRjX3RpbWVzdGFt\ncCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0s\nCiAgICAgICAgImNyZWF0ZWRfdGltZXN0YW1wIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAidXBkYXRlZF90\naW1lc3RhbXAiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICB9LAogICAgICAgICJtcHBfdHJhY2tpbmciOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJsaW5rcyI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAg\nInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAiYm91bmNlTG9ncyI6\nIHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImNvbnRhY3RBdXRvbWF0\naW9ucyI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImNvbnRhY3RE\nYXRhIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiY29udGFjdEdv\nYWxzIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiY29udGFjdExp\nc3RzIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiY29udGFjdExv\nZ3MiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJjb250YWN0VGFn\ncyI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImNvbnRhY3REZWFs\ncyI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImRlYWxzIjogewog\nICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICAgICAiZmllbGRWYWx1ZXMiOiB7CiAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAg\nICAgICAgfSwKICAgICAgICAgICAgICAgICJnZW9JcHMiOiB7CiAgICAgICAg\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAg\nfSwKICAgICAgICAgICAgICAgICJub3RlcyI6IHsKICAgICAgICAgICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAg\nICAgICAgICAgICAgIm9yZ2FuaXphdGlvbiI6IHsKICAgICAgICAgICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAg\nICAgICAgICAgICAgInBsdXNBcHBlbmQiOiB7CiAgICAgICAgICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAg\nICAgICAgICAgICJ0cmFja2luZ0xvZ3MiOiB7CiAgICAgICAgICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAg\nICAgICAgICAgICJzY29yZVZhbHVlcyI6IHsKICAgICAgICAgICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAg\nICAgICAgICAgImFjY291bnRDb250YWN0cyI6IHsKICAgICAgICAgICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAg\nICAgICAgICAgICAgImF1dG9tYXRpb25FbnRyeUNvdW50cyI6IHsKICAgICAg\nICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAg\nICB9CiAgICAgICAgICAgIH0KICAgICAgICB9LAogICAgICAgICJpZCI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0KICAgIH0K\nfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/contact/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/ae3b678c1f241d4285653565ac77ea2844da5f62",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/contact/getAll.json"
+    },
+    "version": 1
 }

@@ -1,139 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "title": {
-            "type": "string"
-        },
-        "owner_id": {
-            "type": "integer"
-        },
-        "creator_id": {
-            "type": "integer"
-        },
-        "label_ids": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "value": {
-            "type": "null"
-        },
-        "expected_close_date": {
-            "type": "null"
-        },
-        "is_archived": {
-            "type": "boolean"
-        },
-        "source_name": {
-            "type": "string"
-        },
-        "origin": {
-            "type": "string"
-        },
-        "was_seen": {
-            "type": "boolean"
-        },
-        "add_time": {
-            "type": "string"
-        },
-        "update_time": {
-            "type": "string"
-        },
-        "4ab3d8a89fda2c9c54d97f0866fee6466972fe89": {
-            "type": "string"
-        },
-        "53ffd671d280f0c9a55970cd84f45aa77cd530a4": {
-            "type": "integer"
-        },
-        "841a75f7e934371ba8232f7ae7dd0d7628c64e1d": {
-            "type": "string"
-        },
-        "1fe8e42d10e3d2157622d5a889c23d5ca032294c": {
-            "type": "string"
-        },
-        "6f2173470675a59837cc6c1b1c5b14ceb7179e4f": {
-            "type": "string"
-        },
-        "f322f098a65fdf8a89a37594fc726b96fd2592ca": {
-            "type": "integer"
-        },
-        "97e2e0d8a08e9db54e358145686d3819db5199aa": {
-            "type": "integer"
-        },
-        "90bb36492fc0f0a792825991428c1c37b128c747": {
-            "type": "integer"
-        },
-        "605ad30ac60d0abead1b24ca6da7358da39bb2dd": {
-            "type": "integer"
-        },
-        "0244d091c3f4dc963af267bc3f0625f62f0a113a": {
-            "type": "string"
-        },
-        "4b897f0541c86ebbc895f37a74cd233a37dff4f9": {
-            "type": "string"
-        },
-        "5c6879c9e1846491da9e6be9352adc15e3cfba2f": {
-            "type": "string"
-        },
-        "51dd778f70a8d2183487a4646fdfa4409592b805": {
-            "type": "integer"
-        },
-        "4a05b7107a6d10f807b1ce20cab44920705ee27a": {
-            "type": "string"
-        },
-        "fef1cec50bfba8fbccf025d21faaeaf49be5d9a4": {
-            "type": "string"
-        },
-        "766c4133375414b0769c3961a5b1b762add94778": {
-            "type": "string"
-        },
-        "0a3b7c687c6e1d9349c9051f3b8479c2d55170c8": {
-            "type": "string"
-        },
-        "9ad5f2cc62f7926372c1f95ae8425a09d721ef50": {
-            "type": "integer"
-        },
-        "725468bc0f1074227a97ce5a9a1c3b6444d05004": {
-            "type": "string"
-        },
-        "02edbeb283d17eea411157a711119d0a03694866": {
-            "type": "string"
-        },
-        "03c06dc14ea780dd8c69ec5ca37ba7579d87454a": {
-            "type": "string"
-        },
-        "visible_to": {
-            "type": "string"
-        },
-        "cc_email": {
-            "type": "string"
-        }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/lead/get.json",
+    "sha": "925e6db8fca8bfee5b480d6eb34ffa4cf1c563a2",
+    "size": 3516,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/lead/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/lead/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/925e6db8fca8bfee5b480d6eb34ffa4cf1c563a2",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/lead/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInRpdGxlIjogewogICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAib3duZXJfaWQiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAg\nICAgICAiY3JlYXRvcl9pZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50\nZWdlciIKICAgICAgICB9LAogICAgICAgICJsYWJlbF9pZHMiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogImFycmF5IiwKICAgICAgICAgICAgIml0ZW1zIjog\newogICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAg\nICB9CiAgICAgICAgfSwKICAgICAgICAidmFsdWUiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAiZXhwZWN0ZWRf\nY2xvc2VfZGF0ZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAg\nICAgICB9LAogICAgICAgICJpc19hcmNoaXZlZCI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9LAogICAgICAgICJzb3VyY2Vf\nbmFtZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nIH0sCiAgICAgICAgIm9yaWdpbiI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIndhc19zZWVuIjogewogICAg\nICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAg\nImFkZF90aW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgfSwKICAgICAgICAidXBkYXRlX3RpbWUiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICI0YWIzZDhh\nODlmZGEyYzljNTRkOTdmMDg2NmZlZTY0NjY5NzJmZTg5IjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiNTNm\nZmQ2NzFkMjgwZjBjOWE1NTk3MGNkODRmNDVhYTc3Y2Q1MzBhNCI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAg\nICI4NDFhNzVmN2U5MzQzNzFiYTgyMzJmN2FlN2RkMGQ3NjI4YzY0ZTFkIjog\newogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAg\nICAgICAiMWZlOGU0MmQxMGUzZDIxNTc2MjJkNWE4ODljMjNkNWNhMDMyMjk0\nYyI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0s\nCiAgICAgICAgIjZmMjE3MzQ3MDY3NWE1OTgzN2NjNmMxYjFjNWIxNGNlYjcx\nNzllNGYiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICB9LAogICAgICAgICJmMzIyZjA5OGE2NWZkZjhhODlhMzc1OTRmYzcyNmI5\nNmZkMjU5MmNhIjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgog\nICAgICAgIH0sCiAgICAgICAgIjk3ZTJlMGQ4YTA4ZTlkYjU0ZTM1ODE0NTY4\nNmQzODE5ZGI1MTk5YWEiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImludGVn\nZXIiCiAgICAgICAgfSwKICAgICAgICAiOTBiYjM2NDkyZmMwZjBhNzkyODI1\nOTkxNDI4YzFjMzdiMTI4Yzc0NyI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\naW50ZWdlciIKICAgICAgICB9LAogICAgICAgICI2MDVhZDMwYWM2MGQwYWJl\nYWQxYjI0Y2E2ZGE3MzU4ZGEzOWJiMmRkIjogewogICAgICAgICAgICAidHlw\nZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgIjAyNDRkMDkxYzNm\nNGRjOTYzYWYyNjdiYzNmMDYyNWY2MmYwYTExM2EiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICI0Yjg5N2Yw\nNTQxYzg2ZWJiYzg5NWYzN2E3NGNkMjMzYTM3ZGZmNGY5IjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiNWM2\nODc5YzllMTg0NjQ5MWRhOWU2YmU5MzUyYWRjMTVlM2NmYmEyZiI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAg\nIjUxZGQ3NzhmNzBhOGQyMTgzNDg3YTQ2NDZmZGZhNDQwOTU5MmI4MDUiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAg\nICAgICAiNGEwNWI3MTA3YTZkMTBmODA3YjFjZTIwY2FiNDQ5MjA3MDVlZTI3\nYSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0s\nCiAgICAgICAgImZlZjFjZWM1MGJmYmE4ZmJjY2YwMjVkMjFmYWFlYWY0OWJl\nNWQ5YTQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICB9LAogICAgICAgICI3NjZjNDEzMzM3NTQxNGIwNzY5YzM5NjFhNWIxYjc2\nMmFkZDk0Nzc4IjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgfSwKICAgICAgICAiMGEzYjdjNjg3YzZlMWQ5MzQ5YzkwNTFmM2I4\nNDc5YzJkNTUxNzBjOCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgIH0sCiAgICAgICAgIjlhZDVmMmNjNjJmNzkyNjM3MmMxZjk1\nYWU4NDI1YTA5ZDcyMWVmNTAiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImlu\ndGVnZXIiCiAgICAgICAgfSwKICAgICAgICAiNzI1NDY4YmMwZjEwNzQyMjdh\nOTdjZTVhOWExYzNiNjQ0NGQwNTAwNCI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIjAyZWRiZWIyODNkMTdl\nZWE0MTExNTdhNzExMTE5ZDBhMDM2OTQ4NjYiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICIwM2MwNmRjMTRl\nYTc4MGRkOGM2OWVjNWNhMzdiYTc1NzlkODc0NTRhIjogewogICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAidmlzaWJs\nZV90byI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nIH0sCiAgICAgICAgImNjX2VtYWlsIjogewogICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgfQogICAgfSwKICAgICJyZXF1aXJlZCI6IFsK\nICAgICAgICAiaWQiLAogICAgICAgICJ0aXRsZSIsCiAgICAgICAgIm93bmVy\nX2lkIiwKICAgICAgICAiY3JlYXRvcl9pZCIsCiAgICAgICAgImxhYmVsX2lk\ncyIsCiAgICAgICAgInZhbHVlIiwKICAgICAgICAiZXhwZWN0ZWRfY2xvc2Vf\nZGF0ZSIsCiAgICAgICAgInBlcnNvbl9pZCIsCiAgICAgICAgIm9yZ2FuaXph\ndGlvbl9pZCIsCiAgICAgICAgImlzX2FyY2hpdmVkIiwKICAgICAgICAic291\ncmNlX25hbWUiLAogICAgICAgICJvcmlnaW4iLAogICAgICAgICJvcmlnaW5f\naWQiLAogICAgICAgICJjaGFubmVsIiwKICAgICAgICAiY2hhbm5lbF9pZCIs\nCiAgICAgICAgIndhc19zZWVuIiwKICAgICAgICAibmV4dF9hY3Rpdml0eV9p\nZCIsCiAgICAgICAgImFkZF90aW1lIiwKICAgICAgICAidXBkYXRlX3RpbWUi\nLAogICAgICAgICJ2aXNpYmxlX3RvIiwKICAgICAgICAiY2NfZW1haWwiCiAg\nICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/lead/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/925e6db8fca8bfee5b480d6eb34ffa4cf1c563a2",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/lead/get.json"
     },
-    "required": [
-        "id",
-        "title",
-        "owner_id",
-        "creator_id",
-        "label_ids",
-        "value",
-        "expected_close_date",
-        "person_id",
-        "organization_id",
-        "is_archived",
-        "source_name",
-        "origin",
-        "origin_id",
-        "channel",
-        "channel_id",
-        "was_seen",
-        "next_activity_id",
-        "add_time",
-        "update_time",
-        "visible_to",
-        "cc_email"
-    ]
+    "version": 1
 }

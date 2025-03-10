@@ -1,22 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "Created Date": {
-            "type": "string"
-        },
-        "Created By": {
-            "type": "string"
-        },
-        "Modified Date": {
-            "type": "string"
-        },
-        "_id": {
-            "type": "string"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Bubble/__schema__/v1.0.0/object/getAll.json",
+    "sha": "22de0260ff7d3de9082b4e50a076d40cdde89c0f",
+    "size": 393,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Bubble/__schema__/v1.0.0/object/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Bubble/__schema__/v1.0.0/object/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/22de0260ff7d3de9082b4e50a076d40cdde89c0f",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Bubble/__schema__/v1.0.0/object/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJDcmVhdGVkIERhdGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJDcmVhdGVkIEJ5Ijogewog\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAg\nICAiTW9kaWZpZWQgRGF0ZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgIH0sCiAgICAgICAgIl9pZCI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0KICAgIH0sCiAgICAicmVxdWly\nZWQiOiBbCiAgICAgICAgIkNyZWF0ZWQgRGF0ZSIsCiAgICAgICAgIk1vZGlm\naWVkIERhdGUiLAogICAgICAgICJfaWQiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Bubble/__schema__/v1.0.0/object/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/22de0260ff7d3de9082b4e50a076d40cdde89c0f",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Bubble/__schema__/v1.0.0/object/getAll.json"
     },
-    "required": [
-        "Created Date",
-        "Modified Date",
-        "_id"
-    ]
+    "version": 1
 }

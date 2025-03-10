@@ -1,56 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "metadata": {
-            "type": "object",
-            "properties": {
-                ".tag": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "path_lower": {
-                    "type": "string"
-                },
-                "path_display": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "client_modified": {
-                    "type": "string"
-                },
-                "server_modified": {
-                    "type": "string"
-                },
-                "rev": {
-                    "type": "string"
-                },
-                "size": {
-                    "type": "integer"
-                },
-                "is_downloadable": {
-                    "type": "boolean"
-                },
-                "content_hash": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                ".tag",
-                "name",
-                "path_lower",
-                "path_display",
-                "id",
-                "client_modified",
-                "server_modified",
-                "rev",
-                "size",
-                "is_downloadable",
-                "content_hash"
-            ]
-        }
-    }
+    "name": "delete.json",
+    "path": "packages/nodes-base/nodes/Dropbox/__schema__/v1.0.0/file/delete.json",
+    "sha": "a9ed960fe9f2a5d3d398f42e92aab2f45ef0a691",
+    "size": 1467,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Dropbox/__schema__/v1.0.0/file/delete.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Dropbox/__schema__/v1.0.0/file/delete.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/a9ed960fe9f2a5d3d398f42e92aab2f45ef0a691",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Dropbox/__schema__/v1.0.0/file/delete.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJtZXRhZGF0YSI6IHsKICAgICAgICAgICAgInR5cGUiOiAib2Jq\nZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAg\nICAgICAiLnRhZyI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgIm5h\nbWUiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJwYXRoX2xvd2Vy\nIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAicGF0aF9kaXNwbGF5\nIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiaWQiOiB7CiAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAg\nICAgfSwKICAgICAgICAgICAgICAgICJjbGllbnRfbW9kaWZpZWQiOiB7CiAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAg\nICAgICAgfSwKICAgICAgICAgICAgICAgICJzZXJ2ZXJfbW9kaWZpZWQiOiB7\nCiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJyZXYiOiB7CiAgICAgICAg\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAg\nfSwKICAgICAgICAgICAgICAgICJzaXplIjogewogICAgICAgICAgICAgICAg\nICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgICAgICAgICB9LAogICAg\nICAgICAgICAgICAgImlzX2Rvd25sb2FkYWJsZSI6IHsKICAgICAgICAgICAg\nICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgICAgICAgICAgfSwK\nICAgICAgICAgICAgICAgICJjb250ZW50X2hhc2giOiB7CiAgICAgICAgICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfQog\nICAgICAgICAgICB9LAogICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAg\nICAgICAgICAgICAiLnRhZyIsCiAgICAgICAgICAgICAgICAibmFtZSIsCiAg\nICAgICAgICAgICAgICAicGF0aF9sb3dlciIsCiAgICAgICAgICAgICAgICAi\ncGF0aF9kaXNwbGF5IiwKICAgICAgICAgICAgICAgICJpZCIsCiAgICAgICAg\nICAgICAgICAiY2xpZW50X21vZGlmaWVkIiwKICAgICAgICAgICAgICAgICJz\nZXJ2ZXJfbW9kaWZpZWQiLAogICAgICAgICAgICAgICAgInJldiIsCiAgICAg\nICAgICAgICAgICAic2l6ZSIsCiAgICAgICAgICAgICAgICAiaXNfZG93bmxv\nYWRhYmxlIiwKICAgICAgICAgICAgICAgICJjb250ZW50X2hhc2giCiAgICAg\nICAgICAgIF0KICAgICAgICB9CiAgICB9Cn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Dropbox/__schema__/v1.0.0/file/delete.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/a9ed960fe9f2a5d3d398f42e92aab2f45ef0a691",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Dropbox/__schema__/v1.0.0/file/delete.json"
+    },
+    "version": 1
 }

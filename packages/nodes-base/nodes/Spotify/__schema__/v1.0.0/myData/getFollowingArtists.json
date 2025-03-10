@@ -1,89 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "external_urls": {
-            "type": "object",
-            "properties": {
-                "spotify": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "spotify"
-            ]
-        },
-        "followers": {
-            "type": "object",
-            "properties": {
-                "href": {
-                    "type": "null"
-                },
-                "total": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "href",
-                "total"
-            ]
-        },
-        "genres": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "href": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "images": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "url": {
-                        "type": "string"
-                    },
-                    "height": {
-                        "type": "integer"
-                    },
-                    "width": {
-                        "type": "integer"
-                    }
-                },
-                "required": [
-                    "url",
-                    "height",
-                    "width"
-                ]
-            }
-        },
-        "name": {
-            "type": "string"
-        },
-        "popularity": {
-            "type": "integer"
-        },
-        "type": {
-            "type": "string"
-        },
-        "uri": {
-            "type": "string"
-        }
+    "name": "getFollowingArtists.json",
+    "path": "packages/nodes-base/nodes/Spotify/__schema__/v1.0.0/myData/getFollowingArtists.json",
+    "sha": "78b629ca852ad69412bc35d2f2e63acca87603dc",
+    "size": 1957,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Spotify/__schema__/v1.0.0/myData/getFollowingArtists.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Spotify/__schema__/v1.0.0/myData/getFollowingArtists.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/78b629ca852ad69412bc35d2f2e63acca87603dc",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Spotify/__schema__/v1.0.0/myData/getFollowingArtists.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJleHRlcm5hbF91cmxzIjogewogICAgICAgICAgICAidHlwZSI6\nICJvYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAg\nICAgICAgICAgICJzcG90aWZ5IjogewogICAgICAgICAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAg\nfSwKICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAg\nInNwb3RpZnkiCiAgICAgICAgICAgIF0KICAgICAgICB9LAogICAgICAgICJm\nb2xsb3dlcnMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAg\nICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgImhy\nZWYiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAg\nICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAidG90YWwiOiB7CiAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICAg\nICAgICAgIH0KICAgICAgICAgICAgfSwKICAgICAgICAgICAgInJlcXVpcmVk\nIjogWwogICAgICAgICAgICAgICAgImhyZWYiLAogICAgICAgICAgICAgICAg\nInRvdGFsIgogICAgICAgICAgICBdCiAgICAgICAgfSwKICAgICAgICAiZ2Vu\ncmVzIjogewogICAgICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAg\nICAgICJpdGVtcyI6IHsKICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAgImhyZWYiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAg\nICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgIH0sCiAgICAgICAgImltYWdlcyI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAiYXJyYXkiLAogICAgICAgICAgICAiaXRlbXMiOiB7CiAgICAgICAgICAg\nICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAgInByb3Bl\ncnRpZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgInVybCI6IHsKICAgICAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAg\nICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgImhlaWdodCI6IHsK\nICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAg\nICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICJ3aWR0\naCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdl\nciIKICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICB9LAog\nICAgICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAg\nICAgICJ1cmwiLAogICAgICAgICAgICAgICAgICAgICJoZWlnaHQiLAogICAg\nICAgICAgICAgICAgICAgICJ3aWR0aCIKICAgICAgICAgICAgICAgIF0KICAg\nICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAgIm5hbWUiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJw\nb3B1bGFyaXR5IjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgog\nICAgICAgIH0sCiAgICAgICAgInR5cGUiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJ1cmkiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9CiAgICB9LAogICAg\nInJlcXVpcmVkIjogWwogICAgICAgICJleHRlcm5hbF91cmxzIiwKICAgICAg\nICAiZm9sbG93ZXJzIiwKICAgICAgICAiZ2VucmVzIiwKICAgICAgICAiaHJl\nZiIsCiAgICAgICAgImlkIiwKICAgICAgICAiaW1hZ2VzIiwKICAgICAgICAi\nbmFtZSIsCiAgICAgICAgInBvcHVsYXJpdHkiLAogICAgICAgICJ0eXBlIiwK\nICAgICAgICAidXJpIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Spotify/__schema__/v1.0.0/myData/getFollowingArtists.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/78b629ca852ad69412bc35d2f2e63acca87603dc",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Spotify/__schema__/v1.0.0/myData/getFollowingArtists.json"
     },
-    "required": [
-        "external_urls",
-        "followers",
-        "genres",
-        "href",
-        "id",
-        "images",
-        "name",
-        "popularity",
-        "type",
-        "uri"
-    ]
+    "version": 1
 }

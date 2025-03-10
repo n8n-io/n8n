@@ -1,100 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "metaData": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "scheduled": {
-                    "type": "string"
-                },
-                "started": {
-                    "type": "string"
-                },
-                "duration": {
-                    "type": "integer"
-                },
-                "primaryUserId": {
-                    "type": "string"
-                },
-                "direction": {
-                    "type": "string"
-                },
-                "system": {
-                    "type": "string"
-                },
-                "scope": {
-                    "type": "string"
-                },
-                "media": {
-                    "type": "string"
-                },
-                "language": {
-                    "type": "string"
-                },
-                "workspaceId": {
-                    "type": "string"
-                },
-                "customData": {
-                    "type": "null"
-                },
-                "purpose": {
-                    "type": "null"
-                },
-                "meetingUrl": {
-                    "type": "string"
-                },
-                "isPrivate": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "id",
-                "url",
-                "title",
-                "scheduled",
-                "started",
-                "duration",
-                "primaryUserId",
-                "direction",
-                "system",
-                "scope",
-                "media",
-                "language",
-                "workspaceId",
-                "sdrDisposition",
-                "clientUniqueId",
-                "customData",
-                "purpose",
-                "meetingUrl",
-                "isPrivate",
-                "calendarEventId"
-            ]
-        },
-        "media": {
-            "type": "object",
-            "properties": {
-                "audioUrl": {
-                    "type": "string"
-                },
-                "videoUrl": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "audioUrl"
-            ]
-        }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Gong/__schema__/v1.0.0/call/get.json",
+    "sha": "6e3eb274acf2f33d921a6a7c3f854bf7667333a2",
+    "size": 2601,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Gong/__schema__/v1.0.0/call/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Gong/__schema__/v1.0.0/call/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/6e3eb274acf2f33d921a6a7c3f854bf7667333a2",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Gong/__schema__/v1.0.0/call/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJtZXRhRGF0YSI6IHsKICAgICAgICAgICAgInR5cGUiOiAib2Jq\nZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAg\nICAgICAiaWQiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJ1cmwi\nOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJ0aXRsZSI6IHsKICAg\nICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAg\nICAgICB9LAogICAgICAgICAgICAgICAgInNjaGVkdWxlZCI6IHsKICAgICAg\nICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAg\nICB9LAogICAgICAgICAgICAgICAgInN0YXJ0ZWQiOiB7CiAgICAgICAgICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwK\nICAgICAgICAgICAgICAgICJkdXJhdGlvbiI6IHsKICAgICAgICAgICAgICAg\nICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgICAgICJwcmltYXJ5VXNlcklkIjogewogICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAg\nICAgICAgICAgICAgICAiZGlyZWN0aW9uIjogewogICAgICAgICAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAg\nICAgICAgICAgICAic3lzdGVtIjogewogICAgICAgICAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAg\nICAgICAic2NvcGUiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJt\nZWRpYSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImxhbmd1YWdl\nIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAid29ya3NwYWNlSWQi\nOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJjdXN0b21EYXRhIjog\newogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAg\nICAgICAgICB9LAogICAgICAgICAgICAgICAgInB1cnBvc2UiOiB7CiAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICAgICAgICAg\nIH0sCiAgICAgICAgICAgICAgICAibWVldGluZ1VybCI6IHsKICAgICAgICAg\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9\nLAogICAgICAgICAgICAgICAgImlzUHJpdmF0ZSI6IHsKICAgICAgICAgICAg\nICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgICAgICAgICAgfQog\nICAgICAgICAgICB9LAogICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAg\nICAgICAgICAgICAiaWQiLAogICAgICAgICAgICAgICAgInVybCIsCiAgICAg\nICAgICAgICAgICAidGl0bGUiLAogICAgICAgICAgICAgICAgInNjaGVkdWxl\nZCIsCiAgICAgICAgICAgICAgICAic3RhcnRlZCIsCiAgICAgICAgICAgICAg\nICAiZHVyYXRpb24iLAogICAgICAgICAgICAgICAgInByaW1hcnlVc2VySWQi\nLAogICAgICAgICAgICAgICAgImRpcmVjdGlvbiIsCiAgICAgICAgICAgICAg\nICAic3lzdGVtIiwKICAgICAgICAgICAgICAgICJzY29wZSIsCiAgICAgICAg\nICAgICAgICAibWVkaWEiLAogICAgICAgICAgICAgICAgImxhbmd1YWdlIiwK\nICAgICAgICAgICAgICAgICJ3b3Jrc3BhY2VJZCIsCiAgICAgICAgICAgICAg\nICAic2RyRGlzcG9zaXRpb24iLAogICAgICAgICAgICAgICAgImNsaWVudFVu\naXF1ZUlkIiwKICAgICAgICAgICAgICAgICJjdXN0b21EYXRhIiwKICAgICAg\nICAgICAgICAgICJwdXJwb3NlIiwKICAgICAgICAgICAgICAgICJtZWV0aW5n\nVXJsIiwKICAgICAgICAgICAgICAgICJpc1ByaXZhdGUiLAogICAgICAgICAg\nICAgICAgImNhbGVuZGFyRXZlbnRJZCIKICAgICAgICAgICAgXQogICAgICAg\nIH0sCiAgICAgICAgIm1lZGlhIjogewogICAgICAgICAgICAidHlwZSI6ICJv\nYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAg\nICAgICAgICJhdWRpb1VybCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAg\nICAgInZpZGVvVXJsIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgImF1ZGlv\nVXJsIgogICAgICAgICAgICBdCiAgICAgICAgfQogICAgfSwKICAgICJyZXF1\naXJlZCI6IFsKICAgICAgICAibWV0YURhdGEiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Gong/__schema__/v1.0.0/call/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/6e3eb274acf2f33d921a6a7c3f854bf7667333a2",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Gong/__schema__/v1.0.0/call/get.json"
     },
-    "required": [
-        "metaData"
-    ]
+    "version": 1
 }

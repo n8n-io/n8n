@@ -1,32 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "finished": {
-            "type": "boolean"
-        },
-        "mode": {
-            "type": "string"
-        },
-        "retryOf": {
-            "type": "null"
-        },
-        "retrySuccessId": {
-            "type": "null"
-        },
-        "status": {
-            "type": "string"
-        },
-        "startedAt": {
-            "type": "string"
-        },
-        "deletedAt": {
-            "type": "null"
-        },
-        "workflowId": {
-            "type": "string"
-        }
-    }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/N8nTrainingCustomerDatastore/__schema__/v1.0.0/execution/get.json",
+    "sha": "3da4591deae759cfc580f2b95adffd67b3440ce5",
+    "size": 601,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/N8nTrainingCustomerDatastore/__schema__/v1.0.0/execution/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/N8nTrainingCustomerDatastore/__schema__/v1.0.0/execution/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/3da4591deae759cfc580f2b95adffd67b3440ce5",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/N8nTrainingCustomerDatastore/__schema__/v1.0.0/execution/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgImZpbmlzaGVkIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgIm1vZGUiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAg\nICAgICJyZXRyeU9mIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgog\nICAgICAgIH0sCiAgICAgICAgInJldHJ5U3VjY2Vzc0lkIjogewogICAgICAg\nICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAgInN0YXR1\ncyI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0s\nCiAgICAgICAgInN0YXJ0ZWRBdCI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImRlbGV0ZWRBdCI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAgICAgICJ3\nb3JrZmxvd0lkIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgfQogICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/N8nTrainingCustomerDatastore/__schema__/v1.0.0/execution/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/3da4591deae759cfc580f2b95adffd67b3440ce5",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/N8nTrainingCustomerDatastore/__schema__/v1.0.0/execution/get.json"
+    },
+    "version": 1
 }

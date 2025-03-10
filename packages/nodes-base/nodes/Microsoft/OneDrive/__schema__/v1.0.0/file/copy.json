@@ -1,8 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "location": {
-            "type": "string"
-        }
-    }
+    "name": "copy.json",
+    "path": "packages/nodes-base/nodes/Microsoft/OneDrive/__schema__/v1.0.0/file/copy.json",
+    "sha": "0d83b0fe0335d1392745f3c6133bb5352b964988",
+    "size": 113,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Microsoft/OneDrive/__schema__/v1.0.0/file/copy.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Microsoft/OneDrive/__schema__/v1.0.0/file/copy.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/0d83b0fe0335d1392745f3c6133bb5352b964988",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Microsoft/OneDrive/__schema__/v1.0.0/file/copy.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJsb2NhdGlvbiI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgIH0KICAgIH0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Microsoft/OneDrive/__schema__/v1.0.0/file/copy.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/0d83b0fe0335d1392745f3c6133bb5352b964988",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Microsoft/OneDrive/__schema__/v1.0.0/file/copy.json"
+    },
+    "version": 1
 }

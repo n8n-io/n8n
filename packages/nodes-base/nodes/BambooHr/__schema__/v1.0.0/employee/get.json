@@ -1,14 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "1357": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/BambooHr/__schema__/v1.0.0/employee/get.json",
+    "sha": "1d9e00ebd6e3add2cc20e26afe87a3c9c75db3ac",
+    "size": 203,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/BambooHr/__schema__/v1.0.0/employee/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/BambooHr/__schema__/v1.0.0/employee/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/1d9e00ebd6e3add2cc20e26afe87a3c9c75db3ac",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/BambooHr/__schema__/v1.0.0/employee/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICIxMzU3IjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAiaWQiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9CiAgICB9LAogICAgInJlcXVpcmVkIjog\nWwogICAgICAgICJpZCIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/BambooHr/__schema__/v1.0.0/employee/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/1d9e00ebd6e3add2cc20e26afe87a3c9c75db3ac",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/BambooHr/__schema__/v1.0.0/employee/get.json"
     },
-    "required": [
-        "id"
-    ]
+    "version": 1
 }

@@ -1,90 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "object": {
-            "type": "string"
-        },
-        "balance": {
-            "type": "integer"
-        },
-        "created": {
-            "type": "integer"
-        },
-        "currency": {
-            "type": "null"
-        },
-        "default_source": {
-            "type": "null"
-        },
-        "delinquent": {
-            "type": "boolean"
-        },
-        "discount": {
-            "type": "null"
-        },
-        "invoice_prefix": {
-            "type": "string"
-        },
-        "invoice_settings": {
-            "type": "object",
-            "properties": {
-                "custom_fields": {
-                    "type": "null"
-                },
-                "default_payment_method": {
-                    "type": "null"
-                },
-                "footer": {
-                    "type": "null"
-                },
-                "rendering_options": {
-                    "type": "null"
-                }
-            },
-            "required": [
-                "custom_fields",
-                "default_payment_method",
-                "footer",
-                "rendering_options"
-            ]
-        },
-        "livemode": {
-            "type": "boolean"
-        },
-        "tax_exempt": {
-            "type": "string"
-        },
-        "test_clock": {
-            "type": "null"
-        },
-        "next_invoice_sequence": {
-            "type": "integer"
-        }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/Stripe/__schema__/v1.0.0/customer/create.json",
+    "sha": "4339a60ce449873643b335fcc7554c72ac8a2efa",
+    "size": 1988,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Stripe/__schema__/v1.0.0/customer/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Stripe/__schema__/v1.0.0/customer/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/4339a60ce449873643b335fcc7554c72ac8a2efa",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Stripe/__schema__/v1.0.0/customer/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgIm9iamVjdCI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImJhbGFuY2UiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAg\nICAgICAiY3JlYXRlZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdl\nciIKICAgICAgICB9LAogICAgICAgICJjdXJyZW5jeSI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAgICAgICJkZWZhdWx0\nX3NvdXJjZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAg\nICB9LAogICAgICAgICJkZWxpbnF1ZW50IjogewogICAgICAgICAgICAidHlw\nZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgImRpc2NvdW50Ijog\newogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAg\nICAgImludm9pY2VfcHJlZml4IjogewogICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgfSwKICAgICAgICAiaW52b2ljZV9zZXR0aW5ncyI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAg\nInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAiY3VzdG9tX2ZpZWxk\ncyI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAg\nICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJkZWZhdWx0X3BheW1l\nbnRfbWV0aG9kIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogIm51\nbGwiCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImZvb3Rl\nciI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAg\nICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJyZW5kZXJpbmdfb3B0\naW9ucyI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJudWxsIgog\nICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9LAogICAgICAgICAgICAi\ncmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAiY3VzdG9tX2ZpZWxkcyIs\nCiAgICAgICAgICAgICAgICAiZGVmYXVsdF9wYXltZW50X21ldGhvZCIsCiAg\nICAgICAgICAgICAgICAiZm9vdGVyIiwKICAgICAgICAgICAgICAgICJyZW5k\nZXJpbmdfb3B0aW9ucyIKICAgICAgICAgICAgXQogICAgICAgIH0sCiAgICAg\nICAgImxpdmVtb2RlIjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFu\nIgogICAgICAgIH0sCiAgICAgICAgInRheF9leGVtcHQiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJ0ZXN0\nX2Nsb2NrIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAg\nIH0sCiAgICAgICAgIm5leHRfaW52b2ljZV9zZXF1ZW5jZSI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9CiAgICB9LAogICAg\nInJlcXVpcmVkIjogWwogICAgICAgICJpZCIsCiAgICAgICAgIm9iamVjdCIs\nCiAgICAgICAgImFkZHJlc3MiLAogICAgICAgICJiYWxhbmNlIiwKICAgICAg\nICAiY3JlYXRlZCIsCiAgICAgICAgImN1cnJlbmN5IiwKICAgICAgICAiZGVm\nYXVsdF9zb3VyY2UiLAogICAgICAgICJkZWxpbnF1ZW50IiwKICAgICAgICAi\nZGVzY3JpcHRpb24iLAogICAgICAgICJkaXNjb3VudCIsCiAgICAgICAgImVt\nYWlsIiwKICAgICAgICAiaW52b2ljZV9wcmVmaXgiLAogICAgICAgICJpbnZv\naWNlX3NldHRpbmdzIiwKICAgICAgICAibGl2ZW1vZGUiLAogICAgICAgICJt\nZXRhZGF0YSIsCiAgICAgICAgIm5hbWUiLAogICAgICAgICJwaG9uZSIsCiAg\nICAgICAgInByZWZlcnJlZF9sb2NhbGVzIiwKICAgICAgICAic2hpcHBpbmci\nLAogICAgICAgICJ0YXhfZXhlbXB0IiwKICAgICAgICAidGVzdF9jbG9jayIK\nICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Stripe/__schema__/v1.0.0/customer/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/4339a60ce449873643b335fcc7554c72ac8a2efa",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Stripe/__schema__/v1.0.0/customer/create.json"
     },
-    "required": [
-        "id",
-        "object",
-        "address",
-        "balance",
-        "created",
-        "currency",
-        "default_source",
-        "delinquent",
-        "description",
-        "discount",
-        "email",
-        "invoice_prefix",
-        "invoice_settings",
-        "livemode",
-        "metadata",
-        "name",
-        "phone",
-        "preferred_locales",
-        "shipping",
-        "tax_exempt",
-        "test_clock"
-    ]
+    "version": 1
 }

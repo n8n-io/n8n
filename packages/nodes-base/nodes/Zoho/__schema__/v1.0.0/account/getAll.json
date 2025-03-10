@@ -1,151 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "Owner": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "name",
-                "id",
-                "email"
-            ]
-        },
-        "$currency_symbol": {
-            "type": "string"
-        },
-        "$field_states": {
-            "type": "null"
-        },
-        "$review_process": {
-            "type": "object",
-            "properties": {
-                "approve": {
-                    "type": "boolean"
-                },
-                "reject": {
-                    "type": "boolean"
-                },
-                "resubmit": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "approve",
-                "reject",
-                "resubmit"
-            ]
-        },
-        "$review": {
-            "type": "null"
-        },
-        "$state": {
-            "type": "string"
-        },
-        "$process_flow": {
-            "type": "boolean"
-        },
-        "$locked_for_me": {
-            "type": "boolean"
-        },
-        "Account_Name": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "$approved": {
-            "type": "boolean"
-        },
-        "$approval": {
-            "type": "object",
-            "properties": {
-                "delegate": {
-                    "type": "boolean"
-                },
-                "takeover": {
-                    "type": "boolean"
-                },
-                "approve": {
-                    "type": "boolean"
-                },
-                "reject": {
-                    "type": "boolean"
-                },
-                "resubmit": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "delegate",
-                "approve",
-                "reject",
-                "resubmit"
-            ]
-        },
-        "Modified_Time": {
-            "type": "string"
-        },
-        "Created_Time": {
-            "type": "string"
-        },
-        "$editable": {
-            "type": "boolean"
-        },
-        "$in_merge": {
-            "type": "boolean"
-        },
-        "Created_By": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "name",
-                "id",
-                "email"
-            ]
-        },
-        "Tag": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string"
-                    },
-                    "id": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "name",
-                    "id"
-                ]
-            }
-        },
-        "$approval_state": {
-            "type": "string"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Zoho/__schema__/v1.0.0/account/getAll.json",
+    "sha": "8f04e6fced58772360e14fd0e01f2460e4d2cca8",
+    "size": 3556,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Zoho/__schema__/v1.0.0/account/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Zoho/__schema__/v1.0.0/account/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/8f04e6fced58772360e14fd0e01f2460e4d2cca8",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Zoho/__schema__/v1.0.0/account/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJPd25lciI6IHsKICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0\nIiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAg\nICAibmFtZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImlkIjog\newogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiZW1haWwiOiB7CiAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAg\nICAgfQogICAgICAgICAgICB9LAogICAgICAgICAgICAicmVxdWlyZWQiOiBb\nCiAgICAgICAgICAgICAgICAibmFtZSIsCiAgICAgICAgICAgICAgICAiaWQi\nLAogICAgICAgICAgICAgICAgImVtYWlsIgogICAgICAgICAgICBdCiAgICAg\nICAgfSwKICAgICAgICAiJGN1cnJlbmN5X3N5bWJvbCI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIiRmaWVs\nZF9zdGF0ZXMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAg\nICAgfSwKICAgICAgICAiJHJldmlld19wcm9jZXNzIjogewogICAgICAgICAg\nICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6\nIHsKICAgICAgICAgICAgICAgICJhcHByb3ZlIjogewogICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgICAgICAgICB9LAog\nICAgICAgICAgICAgICAgInJlamVjdCI6IHsKICAgICAgICAgICAgICAgICAg\nICAidHlwZSI6ICJib29sZWFuIgogICAgICAgICAgICAgICAgfSwKICAgICAg\nICAgICAgICAgICJyZXN1Ym1pdCI6IHsKICAgICAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJib29sZWFuIgogICAgICAgICAgICAgICAgfQogICAgICAgICAg\nICB9LAogICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAg\nICAiYXBwcm92ZSIsCiAgICAgICAgICAgICAgICAicmVqZWN0IiwKICAgICAg\nICAgICAgICAgICJyZXN1Ym1pdCIKICAgICAgICAgICAgXQogICAgICAgIH0s\nCiAgICAgICAgIiRyZXZpZXciOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51\nbGwiCiAgICAgICAgfSwKICAgICAgICAiJHN0YXRlIjogewogICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiJHByb2Nl\nc3NfZmxvdyI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAg\nICAgICB9LAogICAgICAgICIkbG9ja2VkX2Zvcl9tZSI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9LAogICAgICAgICJBY2Nv\ndW50X05hbWUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICB9LAogICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIiRhcHByb3ZlZCI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9LAogICAgICAg\nICIkYXBwcm92YWwiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIs\nCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAg\nImRlbGVnYXRlIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImJv\nb2xlYW4iCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInRh\na2VvdmVyIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImJvb2xl\nYW4iCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImFwcHJv\ndmUiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIK\nICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAicmVqZWN0Ijog\newogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAg\nICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInJlc3VibWl0Ijogewog\nICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAg\nICAgICAgICB9CiAgICAgICAgICAgIH0sCiAgICAgICAgICAgICJyZXF1aXJl\nZCI6IFsKICAgICAgICAgICAgICAgICJkZWxlZ2F0ZSIsCiAgICAgICAgICAg\nICAgICAiYXBwcm92ZSIsCiAgICAgICAgICAgICAgICAicmVqZWN0IiwKICAg\nICAgICAgICAgICAgICJyZXN1Ym1pdCIKICAgICAgICAgICAgXQogICAgICAg\nIH0sCiAgICAgICAgIk1vZGlmaWVkX1RpbWUiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJDcmVhdGVkX1Rp\nbWUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9\nLAogICAgICAgICIkZWRpdGFibGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAiJGluX21lcmdlIjogewog\nICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAg\nICAgIkNyZWF0ZWRfQnkiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9iamVj\ndCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAg\nICAgIm5hbWUiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJpZCI6\nIHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImVtYWlsIjogewogICAg\nICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAg\nICAgIH0KICAgICAgICAgICAgfSwKICAgICAgICAgICAgInJlcXVpcmVkIjog\nWwogICAgICAgICAgICAgICAgIm5hbWUiLAogICAgICAgICAgICAgICAgImlk\nIiwKICAgICAgICAgICAgICAgICJlbWFpbCIKICAgICAgICAgICAgXQogICAg\nICAgIH0sCiAgICAgICAgIlRhZyI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nYXJyYXkiLAogICAgICAgICAgICAiaXRlbXMiOiB7CiAgICAgICAgICAgICAg\nICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAgInByb3BlcnRp\nZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgIm5hbWUiOiB7CiAgICAgICAg\nICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAg\nICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICJpZCI6IHsKICAgICAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAg\nICAgICAgICAgIH0KICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAg\nICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAgICAgIm5hbWUiLAog\nICAgICAgICAgICAgICAgICAgICJpZCIKICAgICAgICAgICAgICAgIF0KICAg\nICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAgIiRhcHByb3ZhbF9zdGF0\nZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0K\nICAgIH0sCiAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgImlkIgogICAgXQp9\nCg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Zoho/__schema__/v1.0.0/account/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/8f04e6fced58772360e14fd0e01f2460e4d2cca8",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Zoho/__schema__/v1.0.0/account/getAll.json"
     },
-    "required": [
-        "id"
-    ]
+    "version": 1
 }

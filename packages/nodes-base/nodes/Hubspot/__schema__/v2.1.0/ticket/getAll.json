@@ -1,24 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "portalId": {
-            "type": "integer"
-        },
-        "objectType": {
-            "type": "string"
-        },
-        "objectId": {
-            "type": "integer"
-        },
-        "isDeleted": {
-            "type": "boolean"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/ticket/getAll.json",
+    "sha": "c0fac888ba17b9fe6340d8380588b889487b122c",
+    "size": 434,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/ticket/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/ticket/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/c0fac888ba17b9fe6340d8380588b889487b122c",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/ticket/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJwb3J0YWxJZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50\nZWdlciIKICAgICAgICB9LAogICAgICAgICJvYmplY3RUeXBlIjogewogICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAi\nb2JqZWN0SWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAg\nICAgICAgfSwKICAgICAgICAiaXNEZWxldGVkIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJib29sZWFuIgogICAgICAgIH0KICAgIH0sCiAgICAicmVxdWly\nZWQiOiBbCiAgICAgICAgInBvcnRhbElkIiwKICAgICAgICAib2JqZWN0VHlw\nZSIsCiAgICAgICAgIm9iamVjdElkIiwKICAgICAgICAicHJvcGVydGllcyIs\nCiAgICAgICAgImlzRGVsZXRlZCIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/ticket/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/c0fac888ba17b9fe6340d8380588b889487b122c",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/ticket/getAll.json"
     },
-    "required": [
-        "portalId",
-        "objectType",
-        "objectId",
-        "properties",
-        "isDeleted"
-    ]
+    "version": 1
 }

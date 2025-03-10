@@ -1,90 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "integer"
-        },
-        "first_name": {
-            "type": "string"
-        },
-        "last_name": {
-            "type": "string"
-        },
-        "email": {
-            "type": "string"
-        },
-        "telephone": {
-            "type": "string"
-        },
-        "timezone": {
-            "type": "string"
-        },
-        "weekly_capacity": {
-            "type": "integer"
-        },
-        "has_access_to_all_future_projects": {
-            "type": "boolean"
-        },
-        "is_contractor": {
-            "type": "boolean"
-        },
-        "is_active": {
-            "type": "boolean"
-        },
-        "calendar_integration_enabled": {
-            "type": "boolean"
-        },
-        "created_at": {
-            "type": "string"
-        },
-        "updated_at": {
-            "type": "string"
-        },
-        "can_create_projects": {
-            "type": "boolean"
-        },
-        "roles": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "access_roles": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "permissions_claims": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "avatar_url": {
-            "type": "string"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Harvest/__schema__/v1.0.0/user/getAll.json",
+    "sha": "3e7788edd9bf52d79e9b3f589f30c8fc39764a54",
+    "size": 2000,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Harvest/__schema__/v1.0.0/user/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Harvest/__schema__/v1.0.0/user/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/3e7788edd9bf52d79e9b3f589f30c8fc39764a54",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Harvest/__schema__/v1.0.0/user/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIK\nICAgICAgICB9LAogICAgICAgICJmaXJzdF9uYW1lIjogewogICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAibGFzdF9u\nYW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nfSwKICAgICAgICAiZW1haWwiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJ0ZWxlcGhvbmUiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJ0\naW1lem9uZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgIH0sCiAgICAgICAgIndlZWtseV9jYXBhY2l0eSI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJoYXNf\nYWNjZXNzX3RvX2FsbF9mdXR1cmVfcHJvamVjdHMiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAiaXNfY29u\ndHJhY3RvciI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAg\nICAgICB9LAogICAgICAgICJpc19hY3RpdmUiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAiY2FsZW5kYXJf\naW50ZWdyYXRpb25fZW5hYmxlZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nYm9vbGVhbiIKICAgICAgICB9LAogICAgICAgICJjcmVhdGVkX2F0Ijogewog\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAg\nICAidXBkYXRlZF9hdCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgIH0sCiAgICAgICAgImNhbl9jcmVhdGVfcHJvamVjdHMiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAg\nICAgICAicm9sZXMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImFycmF5IiwK\nICAgICAgICAgICAgIml0ZW1zIjogewogICAgICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgICAgICB9CiAgICAgICAgfSwKICAgICAgICAi\nYWNjZXNzX3JvbGVzIjogewogICAgICAgICAgICAidHlwZSI6ICJhcnJheSIs\nCiAgICAgICAgICAgICJpdGVtcyI6IHsKICAgICAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAg\nInBlcm1pc3Npb25zX2NsYWltcyI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nYXJyYXkiLAogICAgICAgICAgICAiaXRlbXMiOiB7CiAgICAgICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgIH0KICAgICAgICB9LAog\nICAgICAgICJhdmF0YXJfdXJsIjogewogICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgfQogICAgfSwKICAgICJyZXF1aXJlZCI6IFsKICAg\nICAgICAiaWQiLAogICAgICAgICJmaXJzdF9uYW1lIiwKICAgICAgICAibGFz\ndF9uYW1lIiwKICAgICAgICAiZW1haWwiLAogICAgICAgICJ0ZWxlcGhvbmUi\nLAogICAgICAgICJ0aW1lem9uZSIsCiAgICAgICAgIndlZWtseV9jYXBhY2l0\neSIsCiAgICAgICAgImhhc19hY2Nlc3NfdG9fYWxsX2Z1dHVyZV9wcm9qZWN0\ncyIsCiAgICAgICAgImlzX2NvbnRyYWN0b3IiLAogICAgICAgICJpc19hY3Rp\ndmUiLAogICAgICAgICJjYWxlbmRhcl9pbnRlZ3JhdGlvbl9lbmFibGVkIiwK\nICAgICAgICAiY2FsZW5kYXJfaW50ZWdyYXRpb25fc291cmNlIiwKICAgICAg\nICAiY3JlYXRlZF9hdCIsCiAgICAgICAgInVwZGF0ZWRfYXQiLAogICAgICAg\nICJjYW5fY3JlYXRlX3Byb2plY3RzIiwKICAgICAgICAiZGVmYXVsdF9ob3Vy\nbHlfcmF0ZSIsCiAgICAgICAgInJvbGVzIiwKICAgICAgICAiYWNjZXNzX3Jv\nbGVzIiwKICAgICAgICAicGVybWlzc2lvbnNfY2xhaW1zIiwKICAgICAgICAi\nYXZhdGFyX3VybCIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Harvest/__schema__/v1.0.0/user/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/3e7788edd9bf52d79e9b3f589f30c8fc39764a54",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Harvest/__schema__/v1.0.0/user/getAll.json"
     },
-    "required": [
-        "id",
-        "first_name",
-        "last_name",
-        "email",
-        "telephone",
-        "timezone",
-        "weekly_capacity",
-        "has_access_to_all_future_projects",
-        "is_contractor",
-        "is_active",
-        "calendar_integration_enabled",
-        "calendar_integration_source",
-        "created_at",
-        "updated_at",
-        "can_create_projects",
-        "default_hourly_rate",
-        "roles",
-        "access_roles",
-        "permissions_claims",
-        "avatar_url"
-    ]
+    "version": 1
 }

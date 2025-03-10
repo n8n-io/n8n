@@ -1,95 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "to": {
-            "type": "object",
-            "properties": {
-                "self": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "iconUrl": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "statusCategory": {
-                    "type": "object",
-                    "properties": {
-                        "self": {
-                            "type": "string"
-                        },
-                        "id": {
-                            "type": "integer"
-                        },
-                        "key": {
-                            "type": "string"
-                        },
-                        "colorName": {
-                            "type": "string"
-                        },
-                        "name": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "self",
-                        "id",
-                        "key",
-                        "colorName",
-                        "name"
-                    ]
-                }
-            },
-            "required": [
-                "self",
-                "description",
-                "iconUrl",
-                "name",
-                "id",
-                "statusCategory"
-            ]
-        },
-        "hasScreen": {
-            "type": "boolean"
-        },
-        "isGlobal": {
-            "type": "boolean"
-        },
-        "isInitial": {
-            "type": "boolean"
-        },
-        "isAvailable": {
-            "type": "boolean"
-        },
-        "isConditional": {
-            "type": "boolean"
-        },
-        "isLooped": {
-            "type": "boolean"
-        }
+    "name": "transitions.json",
+    "path": "packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issue/transitions.json",
+    "sha": "c49a20171c8ebf3e21b80345d6c652e36ec61481",
+    "size": 2370,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issue/transitions.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issue/transitions.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/c49a20171c8ebf3e21b80345d6c652e36ec61481",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issue/transitions.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgIm5hbWUiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJ0byI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgInByb3BlcnRp\nZXMiOiB7CiAgICAgICAgICAgICAgICAic2VsZiI6IHsKICAgICAgICAgICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAog\nICAgICAgICAgICAgICAgImRlc2NyaXB0aW9uIjogewogICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAg\nICAgICAgICAgICAgICAiaWNvblVybCI6IHsKICAgICAgICAgICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAg\nICAgICAgICAgIm5hbWUiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAg\nICJpZCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInN0YXR1c0Nh\ndGVnb3J5IjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogIm9iamVj\ndCIsCiAgICAgICAgICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAg\nICAgICAgICAgICAgICAgICAgICJzZWxmIjogewogICAgICAgICAgICAgICAg\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAg\nICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAiaWQiOiB7CiAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgog\nICAgICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAg\nICAgICAia2V5IjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAgICAgICB9LAogICAg\nICAgICAgICAgICAgICAgICAgICAiY29sb3JOYW1lIjogewogICAgICAgICAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAibmFt\nZSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgInJlcXVpcmVkIjogWwog\nICAgICAgICAgICAgICAgICAgICAgICAic2VsZiIsCiAgICAgICAgICAgICAg\nICAgICAgICAgICJpZCIsCiAgICAgICAgICAgICAgICAgICAgICAgICJrZXki\nLAogICAgICAgICAgICAgICAgICAgICAgICAiY29sb3JOYW1lIiwKICAgICAg\nICAgICAgICAgICAgICAgICAgIm5hbWUiCiAgICAgICAgICAgICAgICAgICAg\nXQogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9LAogICAgICAgICAg\nICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAic2VsZiIsCiAgICAg\nICAgICAgICAgICAiZGVzY3JpcHRpb24iLAogICAgICAgICAgICAgICAgImlj\nb25VcmwiLAogICAgICAgICAgICAgICAgIm5hbWUiLAogICAgICAgICAgICAg\nICAgImlkIiwKICAgICAgICAgICAgICAgICJzdGF0dXNDYXRlZ29yeSIKICAg\nICAgICAgICAgXQogICAgICAgIH0sCiAgICAgICAgImhhc1NjcmVlbiI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9LAogICAg\nICAgICJpc0dsb2JhbCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVh\nbiIKICAgICAgICB9LAogICAgICAgICJpc0luaXRpYWwiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAiaXNB\ndmFpbGFibGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAg\nICAgICAgfSwKICAgICAgICAiaXNDb25kaXRpb25hbCI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9LAogICAgICAgICJpc0xv\nb3BlZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAg\nICB9CiAgICB9LAogICAgInJlcXVpcmVkIjogWwogICAgICAgICJpZCIsCiAg\nICAgICAgIm5hbWUiLAogICAgICAgICJ0byIsCiAgICAgICAgImhhc1NjcmVl\nbiIsCiAgICAgICAgImlzR2xvYmFsIiwKICAgICAgICAiaXNJbml0aWFsIiwK\nICAgICAgICAiaXNBdmFpbGFibGUiLAogICAgICAgICJpc0NvbmRpdGlvbmFs\nIiwKICAgICAgICAiaXNMb29wZWQiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issue/transitions.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/c49a20171c8ebf3e21b80345d6c652e36ec61481",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issue/transitions.json"
     },
-    "required": [
-        "id",
-        "name",
-        "to",
-        "hasScreen",
-        "isGlobal",
-        "isInitial",
-        "isAvailable",
-        "isConditional",
-        "isLooped"
-    ]
+    "version": 1
 }

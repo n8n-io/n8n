@@ -1,56 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "danceability": {
-            "type": "number"
-        },
-        "energy": {
-            "type": "number"
-        },
-        "key": {
-            "type": "integer"
-        },
-        "loudness": {
-            "type": "number"
-        },
-        "mode": {
-            "type": "integer"
-        },
-        "speechiness": {
-            "type": "number"
-        },
-        "acousticness": {
-            "type": "number"
-        },
-        "liveness": {
-            "type": "number"
-        },
-        "valence": {
-            "type": "number"
-        },
-        "tempo": {
-            "type": "number"
-        },
-        "type": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "uri": {
-            "type": "string"
-        },
-        "track_href": {
-            "type": "string"
-        },
-        "analysis_url": {
-            "type": "string"
-        },
-        "duration_ms": {
-            "type": "integer"
-        },
-        "time_signature": {
-            "type": "integer"
-        }
-    }
+    "name": "getAudioFeatures.json",
+    "path": "packages/nodes-base/nodes/Spotify/__schema__/v1.0.0/track/getAudioFeatures.json",
+    "sha": "40e85f9fa98691b9c95b3ce1b651a6173f9d9c7b",
+    "size": 1105,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Spotify/__schema__/v1.0.0/track/getAudioFeatures.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Spotify/__schema__/v1.0.0/track/getAudioFeatures.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/40e85f9fa98691b9c95b3ce1b651a6173f9d9c7b",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Spotify/__schema__/v1.0.0/track/getAudioFeatures.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJkYW5jZWFiaWxpdHkiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nIm51bWJlciIKICAgICAgICB9LAogICAgICAgICJlbmVyZ3kiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogIm51bWJlciIKICAgICAgICB9LAogICAgICAgICJr\nZXkiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAg\nfSwKICAgICAgICAibG91ZG5lc3MiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nIm51bWJlciIKICAgICAgICB9LAogICAgICAgICJtb2RlIjogewogICAgICAg\nICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgInNw\nZWVjaGluZXNzIjogewogICAgICAgICAgICAidHlwZSI6ICJudW1iZXIiCiAg\nICAgICAgfSwKICAgICAgICAiYWNvdXN0aWNuZXNzIjogewogICAgICAgICAg\nICAidHlwZSI6ICJudW1iZXIiCiAgICAgICAgfSwKICAgICAgICAibGl2ZW5l\nc3MiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bWJlciIKICAgICAgICB9\nLAogICAgICAgICJ2YWxlbmNlIjogewogICAgICAgICAgICAidHlwZSI6ICJu\ndW1iZXIiCiAgICAgICAgfSwKICAgICAgICAidGVtcG8iOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogIm51bWJlciIKICAgICAgICB9LAogICAgICAgICJ0eXBl\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwK\nICAgICAgICAiaWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJ1cmkiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJ0cmFja19ocmVmIjog\newogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAg\nICAgICAiYW5hbHlzaXNfdXJsIjogewogICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgfSwKICAgICAgICAiZHVyYXRpb25fbXMiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAg\nICAidGltZV9zaWduYXR1cmUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImlu\ndGVnZXIiCiAgICAgICAgfQogICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Spotify/__schema__/v1.0.0/track/getAudioFeatures.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/40e85f9fa98691b9c95b3ce1b651a6173f9d9c7b",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Spotify/__schema__/v1.0.0/track/getAudioFeatures.json"
+    },
+    "version": 1
 }

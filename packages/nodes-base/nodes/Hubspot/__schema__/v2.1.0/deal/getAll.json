@@ -1,155 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "portalId": {
-            "type": "integer"
-        },
-        "dealId": {
-            "type": "integer"
-        },
-        "isDeleted": {
-            "type": "boolean"
-        },
-        "properties": {
-            "type": "object",
-            "properties": {
-                "dealname": {
-                    "type": "object",
-                    "properties": {
-                        "value": {
-                            "type": "string"
-                        },
-                        "timestamp": {
-                            "type": "integer"
-                        },
-                        "source": {
-                            "type": "string"
-                        },
-                        "versions": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "name": {
-                                        "type": "string"
-                                    },
-                                    "value": {
-                                        "type": "string"
-                                    },
-                                    "timestamp": {
-                                        "type": "integer"
-                                    },
-                                    "sourceId": {
-                                        "type": "string"
-                                    },
-                                    "source": {
-                                        "type": "string"
-                                    },
-                                    "sourceMetadata": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "name",
-                                    "value",
-                                    "timestamp",
-                                    "source",
-                                    "sourceVid"
-                                ]
-                            }
-                        }
-                    },
-                    "required": [
-                        "value",
-                        "timestamp",
-                        "source",
-                        "sourceId",
-                        "updatedByUserId",
-                        "versions"
-                    ]
-                },
-                "dealstage": {
-                    "type": "object",
-                    "properties": {
-                        "value": {
-                            "type": "string"
-                        },
-                        "timestamp": {
-                            "type": "integer"
-                        },
-                        "source": {
-                            "type": "string"
-                        },
-                        "versions": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "name": {
-                                        "type": "string"
-                                    },
-                                    "value": {
-                                        "type": "string"
-                                    },
-                                    "timestamp": {
-                                        "type": "integer"
-                                    },
-                                    "sourceId": {
-                                        "type": "string"
-                                    },
-                                    "source": {
-                                        "type": "string"
-                                    },
-                                    "sourceMetadata": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "name",
-                                    "value",
-                                    "timestamp",
-                                    "source",
-                                    "sourceVid"
-                                ]
-                            }
-                        }
-                    },
-                    "required": [
-                        "value",
-                        "timestamp",
-                        "source",
-                        "sourceId",
-                        "updatedByUserId",
-                        "versions"
-                    ]
-                }
-            }
-        },
-        "stateChanges": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "changeFlag": {
-                        "type": "string"
-                    },
-                    "timestamp": {
-                        "type": "integer"
-                    }
-                },
-                "required": [
-                    "changeFlag",
-                    "timestamp"
-                ]
-            }
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/deal/getAll.json",
+    "sha": "25248a2408d85e59a3af74be04668179b5d08012",
+    "size": 5488,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/deal/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/deal/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/25248a2408d85e59a3af74be04668179b5d08012",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/deal/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJwb3J0YWxJZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50\nZWdlciIKICAgICAgICB9LAogICAgICAgICJkZWFsSWQiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAgICAiaXNE\nZWxldGVkIjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAg\nICAgIH0sCiAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICAgICAgICAgImRlYWxuYW1lIjogewogICAgICAgICAgICAgICAg\nICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICAgICAgICAgInBy\nb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ2YWx1ZSI6\nIHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAg\nICAgICAgICAgInRpbWVzdGFtcCI6IHsKICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgICAgICAgICAgICAg\nICAgIH0sCiAgICAgICAgICAgICAgICAgICAgICAgICJzb3VyY2UiOiB7CiAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAg\nICAgICJ2ZXJzaW9ucyI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICJ0eXBlIjogImFycmF5IiwKICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICJpdGVtcyI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAibmFtZSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgInZhbHVlIjogewogICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAidGltZXN0YW1wIjogewogICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAi\naW50ZWdlciIKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nfSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInNvdXJj\nZUlkIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAic291cmNlIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAic291cmNlTWV0YWRhdGEiOiB7CiAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0KICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgIm5hbWUiLAogICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAidmFsdWUiLAogICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAidGltZXN0YW1wIiwKICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgInNvdXJjZSIsCiAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICJzb3VyY2VWaWQiCiAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgXQogICAgICAgICAgICAgICAgICAg\nICAgICAgICAgfQogICAgICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAg\nICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAicmVxdWlyZWQi\nOiBbCiAgICAgICAgICAgICAgICAgICAgICAgICJ2YWx1ZSIsCiAgICAgICAg\nICAgICAgICAgICAgICAgICJ0aW1lc3RhbXAiLAogICAgICAgICAgICAgICAg\nICAgICAgICAic291cmNlIiwKICAgICAgICAgICAgICAgICAgICAgICAgInNv\ndXJjZUlkIiwKICAgICAgICAgICAgICAgICAgICAgICAgInVwZGF0ZWRCeVVz\nZXJJZCIsCiAgICAgICAgICAgICAgICAgICAgICAgICJ2ZXJzaW9ucyIKICAg\nICAgICAgICAgICAgICAgICBdCiAgICAgICAgICAgICAgICB9LAogICAgICAg\nICAgICAgICAgImRlYWxzdGFnZSI6IHsKICAgICAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAgICAgICJwcm9wZXJ0\naWVzIjogewogICAgICAgICAgICAgICAgICAgICAgICAidmFsdWUiOiB7CiAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAg\nICAgICJ0aW1lc3RhbXAiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgICAgICAgICAgICAgICAgICB9\nLAogICAgICAgICAgICAgICAgICAgICAgICAic291cmNlIjogewogICAgICAg\nICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAi\ndmVyc2lvbnMiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJhcnJheSIsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAiaXRl\nbXMiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUi\nOiAib2JqZWN0IiwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAi\ncHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgIm5hbWUiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICJ2YWx1ZSI6IHsKICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgInRpbWVzdGFtcCI6IHsKICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImludGVn\nZXIiCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJzb3VyY2VJZCI6\nIHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nInNvdXJjZSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgInNvdXJjZU1ldGFkYXRhIjogewogICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICJuYW1lIiwKICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgInZhbHVlIiwKICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgInRpbWVzdGFtcCIsCiAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICJzb3VyY2UiLAogICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAic291cmNlVmlkIgogICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgIF0KICAgICAgICAgICAgICAgICAgICAgICAg\nICAgIH0KICAgICAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgInJlcXVpcmVkIjogWwog\nICAgICAgICAgICAgICAgICAgICAgICAidmFsdWUiLAogICAgICAgICAgICAg\nICAgICAgICAgICAidGltZXN0YW1wIiwKICAgICAgICAgICAgICAgICAgICAg\nICAgInNvdXJjZSIsCiAgICAgICAgICAgICAgICAgICAgICAgICJzb3VyY2VJ\nZCIsCiAgICAgICAgICAgICAgICAgICAgICAgICJ1cGRhdGVkQnlVc2VySWQi\nLAogICAgICAgICAgICAgICAgICAgICAgICAidmVyc2lvbnMiCiAgICAgICAg\nICAgICAgICAgICAgXQogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9\nCiAgICAgICAgfSwKICAgICAgICAic3RhdGVDaGFuZ2VzIjogewogICAgICAg\nICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAgICJpdGVtcyI6IHsK\nICAgICAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAg\nICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICAgICAiY2hh\nbmdlRmxhZyI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAg\nICAgICAgInRpbWVzdGFtcCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAg\nInR5cGUiOiAiaW50ZWdlciIKICAgICAgICAgICAgICAgICAgICB9CiAgICAg\nICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInJlcXVpcmVkIjogWwog\nICAgICAgICAgICAgICAgICAgICJjaGFuZ2VGbGFnIiwKICAgICAgICAgICAg\nICAgICAgICAidGltZXN0YW1wIgogICAgICAgICAgICAgICAgXQogICAgICAg\nICAgICB9CiAgICAgICAgfQogICAgfSwKICAgICJyZXF1aXJlZCI6IFsKICAg\nICAgICAicG9ydGFsSWQiLAogICAgICAgICJkZWFsSWQiLAogICAgICAgICJp\nc0RlbGV0ZWQiLAogICAgICAgICJhc3NvY2lhdGlvbnMiLAogICAgICAgICJw\ncm9wZXJ0aWVzIiwKICAgICAgICAic3RhdGVDaGFuZ2VzIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/deal/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/25248a2408d85e59a3af74be04668179b5d08012",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/deal/getAll.json"
     },
-    "required": [
-        "portalId",
-        "dealId",
-        "isDeleted",
-        "associations",
-        "properties",
-        "stateChanges"
-    ]
+    "version": 1
 }

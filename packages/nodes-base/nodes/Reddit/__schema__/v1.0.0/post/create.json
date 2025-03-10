@@ -1,17 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "url": {
-            "type": "string"
-        },
-        "drafts_count": {
-            "type": "integer"
-        },
-        "id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        }
-    }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/Reddit/__schema__/v1.0.0/post/create.json",
+    "sha": "26d15b61b459dbe502cdb568faaf2a0fa039c527",
+    "size": 289,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Reddit/__schema__/v1.0.0/post/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Reddit/__schema__/v1.0.0/post/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/26d15b61b459dbe502cdb568faaf2a0fa039c527",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Reddit/__schema__/v1.0.0/post/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJ1cmwiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJkcmFmdHNfY291bnQiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAgICAiaWQi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAog\nICAgICAgICJuYW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfQogICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Reddit/__schema__/v1.0.0/post/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/26d15b61b459dbe502cdb568faaf2a0fa039c527",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Reddit/__schema__/v1.0.0/post/create.json"
+    },
+    "version": 1
 }

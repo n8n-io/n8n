@@ -1,99 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"id": {
-			"type": "string"
-		},
-		"summary": {
-			"type": "string"
-		},
-		"start": {
-			"type": "object",
-			"properties": {
-				"dateTime": {
-					"type": "string"
-				},
-				"timeZone": {
-					"type": "string"
-				}
-			}
-		},
-		"end": {
-			"type": "object",
-			"properties": {
-				"dateTime": {
-					"type": "string"
-				},
-				"timeZone": {
-					"type": "string"
-				}
-			}
-		},
-		"creator": {
-			"type": "object",
-			"properties": {
-				"email": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"email"
-			]
-		},
-		"organizer": {
-			"type": "object",
-			"properties": {
-				"email": {
-					"type": "string"
-				},
-				"displayName": {
-					"type": "string"
-				},
-				"self": {
-					"type": "boolean"
-				}
-			},
-			"required": [
-				"email"
-			]
-		},
-		"created": {
-			"type": "string"
-		},
-		"updated": {
-			"type": "string"
-		},
-		"etag": {
-			"type": "string"
-		},
-		"eventType": {
-			"type": "string"
-		},
-		"htmlLink": {
-			"type": "string"
-		},
-		"iCalUID": {
-			"type": "string"
-		},
-		"kind": {
-			"type": "string"
-		},
-		"reminders": {
-			"type": "object",
-			"properties": {
-				"useDefault": {
-					"type": "boolean"
-				}
-			},
-			"required": [
-				"useDefault"
-			]
-		},
-		"sequence": {
-			"type": "integer"
-		},
-		"status": {
-			"type": "string"
-		}
-	}
+    "name": "update.json",
+    "path": "packages/nodes-base/nodes/Google/Calendar/__schema__/v1.3.0/event/update.json",
+    "sha": "fe2ac886a229afb042753bc683a2da617f9f381e",
+    "size": 1323,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Calendar/__schema__/v1.3.0/event/update.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Calendar/__schema__/v1.3.0/event/update.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/fe2ac886a229afb042753bc683a2da617f9f381e",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/Calendar/__schema__/v1.3.0/event/update.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJpZCI6\nIHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJInN1bW1hcnkiOiB7CgkJ\nCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJCSJzdGFydCI6IHsKCQkJInR5cGUi\nOiAib2JqZWN0IiwKCQkJInByb3BlcnRpZXMiOiB7CgkJCQkiZGF0ZVRpbWUi\nOiB7CgkJCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJfSwKCQkJCSJ0aW1lWm9u\nZSI6IHsKCQkJCQkidHlwZSI6ICJzdHJpbmciCgkJCQl9CgkJCX0KCQl9LAoJ\nCSJlbmQiOiB7CgkJCSJ0eXBlIjogIm9iamVjdCIsCgkJCSJwcm9wZXJ0aWVz\nIjogewoJCQkJImRhdGVUaW1lIjogewoJCQkJCSJ0eXBlIjogInN0cmluZyIK\nCQkJCX0sCgkJCQkidGltZVpvbmUiOiB7CgkJCQkJInR5cGUiOiAic3RyaW5n\nIgoJCQkJfQoJCQl9CgkJfSwKCQkiY3JlYXRvciI6IHsKCQkJInR5cGUiOiAi\nb2JqZWN0IiwKCQkJInByb3BlcnRpZXMiOiB7CgkJCQkiZW1haWwiOiB7CgkJ\nCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJfQoJCQl9LAoJCQkicmVxdWlyZWQi\nOiBbCgkJCQkiZW1haWwiCgkJCV0KCQl9LAoJCSJvcmdhbml6ZXIiOiB7CgkJ\nCSJ0eXBlIjogIm9iamVjdCIsCgkJCSJwcm9wZXJ0aWVzIjogewoJCQkJImVt\nYWlsIjogewoJCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJCX0sCgkJCQkiZGlz\ncGxheU5hbWUiOiB7CgkJCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJfSwKCQkJ\nCSJzZWxmIjogewoJCQkJCSJ0eXBlIjogImJvb2xlYW4iCgkJCQl9CgkJCX0s\nCgkJCSJyZXF1aXJlZCI6IFsKCQkJCSJlbWFpbCIKCQkJXQoJCX0sCgkJImNy\nZWF0ZWQiOiB7CgkJCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJCSJ1cGRhdGVk\nIjogewoJCQkidHlwZSI6ICJzdHJpbmciCgkJfSwKCQkiZXRhZyI6IHsKCQkJ\nInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJImV2ZW50VHlwZSI6IHsKCQkJInR5\ncGUiOiAic3RyaW5nIgoJCX0sCgkJImh0bWxMaW5rIjogewoJCQkidHlwZSI6\nICJzdHJpbmciCgkJfSwKCQkiaUNhbFVJRCI6IHsKCQkJInR5cGUiOiAic3Ry\naW5nIgoJCX0sCgkJImtpbmQiOiB7CgkJCSJ0eXBlIjogInN0cmluZyIKCQl9\nLAoJCSJyZW1pbmRlcnMiOiB7CgkJCSJ0eXBlIjogIm9iamVjdCIsCgkJCSJw\ncm9wZXJ0aWVzIjogewoJCQkJInVzZURlZmF1bHQiOiB7CgkJCQkJInR5cGUi\nOiAiYm9vbGVhbiIKCQkJCX0KCQkJfSwKCQkJInJlcXVpcmVkIjogWwoJCQkJ\nInVzZURlZmF1bHQiCgkJCV0KCQl9LAoJCSJzZXF1ZW5jZSI6IHsKCQkJInR5\ncGUiOiAiaW50ZWdlciIKCQl9LAoJCSJzdGF0dXMiOiB7CgkJCSJ0eXBlIjog\nInN0cmluZyIKCQl9Cgl9Cn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Calendar/__schema__/v1.3.0/event/update.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/fe2ac886a229afb042753bc683a2da617f9f381e",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Calendar/__schema__/v1.3.0/event/update.json"
+    },
+    "version": 1
 }

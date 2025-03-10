@@ -1,88 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"TextDetections": {
-			"type": "array",
-			"items": {
-				"type": "object",
-				"properties": {
-					"Confidence": {
-						"type": "number"
-					},
-					"DetectedText": {
-						"type": "string"
-					},
-					"Geometry": {
-						"type": "object",
-						"properties": {
-							"BoundingBox": {
-								"type": "object",
-								"properties": {
-									"Height": {
-										"type": "number"
-									},
-									"Left": {
-										"type": "number"
-									},
-									"Top": {
-										"type": "number"
-									},
-									"Width": {
-										"type": "number"
-									}
-								},
-								"required": [
-									"Height",
-									"Left",
-									"Top",
-									"Width"
-								]
-							},
-							"Polygon": {
-								"type": "array",
-								"items": {
-									"type": "object",
-									"properties": {
-										"X": {
-											"type": "number"
-										},
-										"Y": {
-											"type": "number"
-										}
-									},
-									"required": [
-										"X",
-										"Y"
-									]
-								}
-							}
-						},
-						"required": [
-							"BoundingBox",
-							"Polygon"
-						]
-					},
-					"Id": {
-						"type": "integer"
-					},
-					"Type": {
-						"type": "string"
-					},
-					"ParentId": {
-						"type": "integer"
-					}
-				},
-				"required": [
-					"Confidence",
-					"DetectedText",
-					"Geometry",
-					"Id",
-					"Type"
-				]
-			}
-		},
-		"TextModelVersion": {
-			"type": "string"
-		}
-	}
+    "name": "analyze.json",
+    "path": "packages/nodes-base/nodes/Aws/Rekognition/__schema__/v1.0.0/image/analyze.json",
+    "sha": "4fe5e118b0a346d83f99680c20a3484861163436",
+    "size": 1460,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Aws/Rekognition/__schema__/v1.0.0/image/analyze.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Aws/Rekognition/__schema__/v1.0.0/image/analyze.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/4fe5e118b0a346d83f99680c20a3484861163436",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Aws/Rekognition/__schema__/v1.0.0/image/analyze.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJUZXh0\nRGV0ZWN0aW9ucyI6IHsKCQkJInR5cGUiOiAiYXJyYXkiLAoJCQkiaXRlbXMi\nOiB7CgkJCQkidHlwZSI6ICJvYmplY3QiLAoJCQkJInByb3BlcnRpZXMiOiB7\nCgkJCQkJIkNvbmZpZGVuY2UiOiB7CgkJCQkJCSJ0eXBlIjogIm51bWJlciIK\nCQkJCQl9LAoJCQkJCSJEZXRlY3RlZFRleHQiOiB7CgkJCQkJCSJ0eXBlIjog\nInN0cmluZyIKCQkJCQl9LAoJCQkJCSJHZW9tZXRyeSI6IHsKCQkJCQkJInR5\ncGUiOiAib2JqZWN0IiwKCQkJCQkJInByb3BlcnRpZXMiOiB7CgkJCQkJCQki\nQm91bmRpbmdCb3giOiB7CgkJCQkJCQkJInR5cGUiOiAib2JqZWN0IiwKCQkJ\nCQkJCQkicHJvcGVydGllcyI6IHsKCQkJCQkJCQkJIkhlaWdodCI6IHsKCQkJ\nCQkJCQkJCSJ0eXBlIjogIm51bWJlciIKCQkJCQkJCQkJfSwKCQkJCQkJCQkJ\nIkxlZnQiOiB7CgkJCQkJCQkJCQkidHlwZSI6ICJudW1iZXIiCgkJCQkJCQkJ\nCX0sCgkJCQkJCQkJCSJUb3AiOiB7CgkJCQkJCQkJCQkidHlwZSI6ICJudW1i\nZXIiCgkJCQkJCQkJCX0sCgkJCQkJCQkJCSJXaWR0aCI6IHsKCQkJCQkJCQkJ\nCSJ0eXBlIjogIm51bWJlciIKCQkJCQkJCQkJfQoJCQkJCQkJCX0sCgkJCQkJ\nCQkJInJlcXVpcmVkIjogWwoJCQkJCQkJCQkiSGVpZ2h0IiwKCQkJCQkJCQkJ\nIkxlZnQiLAoJCQkJCQkJCQkiVG9wIiwKCQkJCQkJCQkJIldpZHRoIgoJCQkJ\nCQkJCV0KCQkJCQkJCX0sCgkJCQkJCQkiUG9seWdvbiI6IHsKCQkJCQkJCQki\ndHlwZSI6ICJhcnJheSIsCgkJCQkJCQkJIml0ZW1zIjogewoJCQkJCQkJCQki\ndHlwZSI6ICJvYmplY3QiLAoJCQkJCQkJCQkicHJvcGVydGllcyI6IHsKCQkJ\nCQkJCQkJCSJYIjogewoJCQkJCQkJCQkJCSJ0eXBlIjogIm51bWJlciIKCQkJ\nCQkJCQkJCX0sCgkJCQkJCQkJCQkiWSI6IHsKCQkJCQkJCQkJCQkidHlwZSI6\nICJudW1iZXIiCgkJCQkJCQkJCQl9CgkJCQkJCQkJCX0sCgkJCQkJCQkJCSJy\nZXF1aXJlZCI6IFsKCQkJCQkJCQkJCSJYIiwKCQkJCQkJCQkJCSJZIgoJCQkJ\nCQkJCQldCgkJCQkJCQkJfQoJCQkJCQkJfQoJCQkJCQl9LAoJCQkJCQkicmVx\ndWlyZWQiOiBbCgkJCQkJCQkiQm91bmRpbmdCb3giLAoJCQkJCQkJIlBvbHln\nb24iCgkJCQkJCV0KCQkJCQl9LAoJCQkJCSJJZCI6IHsKCQkJCQkJInR5cGUi\nOiAiaW50ZWdlciIKCQkJCQl9LAoJCQkJCSJUeXBlIjogewoJCQkJCQkidHlw\nZSI6ICJzdHJpbmciCgkJCQkJfSwKCQkJCQkiUGFyZW50SWQiOiB7CgkJCQkJ\nCSJ0eXBlIjogImludGVnZXIiCgkJCQkJfQoJCQkJfSwKCQkJCSJyZXF1aXJl\nZCI6IFsKCQkJCQkiQ29uZmlkZW5jZSIsCgkJCQkJIkRldGVjdGVkVGV4dCIs\nCgkJCQkJIkdlb21ldHJ5IiwKCQkJCQkiSWQiLAoJCQkJCSJUeXBlIgoJCQkJ\nXQoJCQl9CgkJfSwKCQkiVGV4dE1vZGVsVmVyc2lvbiI6IHsKCQkJInR5cGUi\nOiAic3RyaW5nIgoJCX0KCX0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Aws/Rekognition/__schema__/v1.0.0/image/analyze.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/4fe5e118b0a346d83f99680c20a3484861163436",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Aws/Rekognition/__schema__/v1.0.0/image/analyze.json"
+    },
+    "version": 1
 }

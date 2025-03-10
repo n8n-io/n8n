@@ -1,55 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "title": {
-            "type": "string"
-        },
-        "fields": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "type": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "id",
-                    "type",
-                    "name"
-                ]
-            }
-        },
-        "employees": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "firstName": {
-                        "type": "string"
-                    },
-                    "lastName": {
-                        "type": "string"
-                    },
-                    "hireDate": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "id"
-                ]
-            }
-        }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/BambooHr/__schema__/v1.0.0/companyReport/get.json",
+    "sha": "709685de5c13231cd0489db24fcce578b221145c",
+    "size": 1332,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/BambooHr/__schema__/v1.0.0/companyReport/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/BambooHr/__schema__/v1.0.0/companyReport/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/709685de5c13231cd0489db24fcce578b221145c",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/BambooHr/__schema__/v1.0.0/companyReport/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJ0aXRsZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgIH0sCiAgICAgICAgImZpZWxkcyI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAiYXJyYXkiLAogICAgICAgICAgICAiaXRlbXMiOiB7CiAgICAg\nICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAg\nInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiB7\nCiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICJuYW1l\nIjogewogICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICAg\nICAiaWQiLAogICAgICAgICAgICAgICAgICAgICJ0eXBlIiwKICAgICAgICAg\nICAgICAgICAgICAibmFtZSIKICAgICAgICAgICAgICAgIF0KICAgICAgICAg\nICAgfQogICAgICAgIH0sCiAgICAgICAgImVtcGxveWVlcyI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAiYXJyYXkiLAogICAgICAgICAgICAiaXRlbXMiOiB7\nCiAgICAgICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAg\nICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgImlk\nIjogewogICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAi\nZmlyc3ROYW1lIjogewogICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nICAgICAgICAibGFzdE5hbWUiOiB7CiAgICAgICAgICAgICAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICB9LAogICAg\nICAgICAgICAgICAgICAgICJoaXJlRGF0ZSI6IHsKICAgICAgICAgICAgICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAg\nIH0KICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAicmVxdWly\nZWQiOiBbCiAgICAgICAgICAgICAgICAgICAgImlkIgogICAgICAgICAgICAg\nICAgXQogICAgICAgICAgICB9CiAgICAgICAgfQogICAgfSwKICAgICJyZXF1\naXJlZCI6IFsKICAgICAgICAidGl0bGUiLAogICAgICAgICJmaWVsZHMiLAog\nICAgICAgICJlbXBsb3llZXMiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/BambooHr/__schema__/v1.0.0/companyReport/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/709685de5c13231cd0489db24fcce578b221145c",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/BambooHr/__schema__/v1.0.0/companyReport/get.json"
     },
-    "required": [
-        "title",
-        "fields",
-        "employees"
-    ]
+    "version": 1
 }

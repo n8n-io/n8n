@@ -1,143 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "Taxable": {
-            "type": "boolean"
-        },
-        "BillAddr": {
-            "type": "object",
-            "properties": {
-                "Id": {
-                    "type": "string"
-                },
-                "Line1": {
-                    "type": "string"
-                },
-                "City": {
-                    "type": "string"
-                },
-                "PostalCode": {
-                    "type": "string"
-                },
-                "CountrySubDivisionCode": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "Id"
-            ]
-        },
-        "Job": {
-            "type": "boolean"
-        },
-        "BillWithParent": {
-            "type": "boolean"
-        },
-        "CurrencyRef": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "value",
-                "name"
-            ]
-        },
-        "PreferredDeliveryMethod": {
-            "type": "string"
-        },
-        "domain": {
-            "type": "string"
-        },
-        "sparse": {
-            "type": "boolean"
-        },
-        "Id": {
-            "type": "string"
-        },
-        "SyncToken": {
-            "type": "string"
-        },
-        "MetaData": {
-            "type": "object",
-            "properties": {
-                "CreateTime": {
-                    "type": "string"
-                },
-                "LastUpdatedTime": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "CreateTime",
-                "LastUpdatedTime"
-            ]
-        },
-        "FullyQualifiedName": {
-            "type": "string"
-        },
-        "CompanyName": {
-            "type": "string"
-        },
-        "DisplayName": {
-            "type": "string"
-        },
-        "PrintOnCheckName": {
-            "type": "string"
-        },
-        "Active": {
-            "type": "boolean"
-        },
-        "PrimaryEmailAddr": {
-            "type": "object",
-            "properties": {
-                "Address": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "Address"
-            ]
-        },
-        "DefaultTaxCodeRef": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "value"
-            ]
-        },
-        "GivenName": {
-            "type": "string"
-        },
-        "FamilyName": {
-            "type": "string"
-        }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/QuickBooks/__schema__/v1.0.0/customer/get.json",
+    "sha": "bfc5285b13ff579f32763337d0c2f28db348b709",
+    "size": 3270,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/QuickBooks/__schema__/v1.0.0/customer/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/QuickBooks/__schema__/v1.0.0/customer/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/bfc5285b13ff579f32763337d0c2f28db348b709",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/QuickBooks/__schema__/v1.0.0/customer/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJUYXhhYmxlIjogewogICAgICAgICAgICAidHlwZSI6ICJib29s\nZWFuIgogICAgICAgIH0sCiAgICAgICAgIkJpbGxBZGRyIjogewogICAgICAg\nICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGll\ncyI6IHsKICAgICAgICAgICAgICAgICJJZCI6IHsKICAgICAgICAgICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAg\nICAgICAgICAgICAgIkxpbmUxIjogewogICAgICAgICAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAg\nICAgICAiQ2l0eSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgIlBv\nc3RhbENvZGUiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJDb3Vu\ndHJ5U3ViRGl2aXNpb25Db2RlIjogewogICAgICAgICAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAg\nfSwKICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAg\nIklkIgogICAgICAgICAgICBdCiAgICAgICAgfSwKICAgICAgICAiSm9iIjog\newogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAg\nICAgICAgIkJpbGxXaXRoUGFyZW50IjogewogICAgICAgICAgICAidHlwZSI6\nICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgIkN1cnJlbmN5UmVmIjog\newogICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAi\ncHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICJ2YWx1ZSI6IHsKICAg\nICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAg\nICAgICB9LAogICAgICAgICAgICAgICAgIm5hbWUiOiB7CiAgICAgICAgICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfQog\nICAgICAgICAgICB9LAogICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAg\nICAgICAgICAgICAidmFsdWUiLAogICAgICAgICAgICAgICAgIm5hbWUiCiAg\nICAgICAgICAgIF0KICAgICAgICB9LAogICAgICAgICJQcmVmZXJyZWREZWxp\ndmVyeU1ldGhvZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgImRvbWFpbiI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInNwYXJzZSI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9LAogICAg\nICAgICJJZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgIH0sCiAgICAgICAgIlN5bmNUb2tlbiI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIk1ldGFEYXRhIjog\newogICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAi\ncHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICJDcmVhdGVUaW1lIjog\newogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiTGFzdFVwZGF0ZWRUaW1l\nIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICAgICAgICAgIH0KICAgICAgICAgICAgfSwKICAgICAgICAgICAgInJl\ncXVpcmVkIjogWwogICAgICAgICAgICAgICAgIkNyZWF0ZVRpbWUiLAogICAg\nICAgICAgICAgICAgIkxhc3RVcGRhdGVkVGltZSIKICAgICAgICAgICAgXQog\nICAgICAgIH0sCiAgICAgICAgIkZ1bGx5UXVhbGlmaWVkTmFtZSI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAg\nIkNvbXBhbnlOYW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAiRGlzcGxheU5hbWUiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJQcmlu\ndE9uQ2hlY2tOYW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAiQWN0aXZlIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgIlByaW1hcnlF\nbWFpbEFkZHIiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAg\nICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgIkFk\nZHJlc3MiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9LAogICAgICAgICAg\nICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAiQWRkcmVzcyIKICAg\nICAgICAgICAgXQogICAgICAgIH0sCiAgICAgICAgIkRlZmF1bHRUYXhDb2Rl\nUmVmIjogewogICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAg\nICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICJ2YWx1ZSI6\nIHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgICAgICAgICB9CiAgICAgICAgICAgIH0sCiAgICAgICAgICAgICJyZXF1\naXJlZCI6IFsKICAgICAgICAgICAgICAgICJ2YWx1ZSIKICAgICAgICAgICAg\nXQogICAgICAgIH0sCiAgICAgICAgIkdpdmVuTmFtZSI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIkZhbWls\neU5hbWUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICB9CiAgICB9LAogICAgInJlcXVpcmVkIjogWwogICAgICAgICJUYXhhYmxl\nIiwKICAgICAgICAiSm9iIiwKICAgICAgICAiQmlsbFdpdGhQYXJlbnQiLAog\nICAgICAgICJCYWxhbmNlIiwKICAgICAgICAiQmFsYW5jZVdpdGhKb2JzIiwK\nICAgICAgICAiQ3VycmVuY3lSZWYiLAogICAgICAgICJQcmVmZXJyZWREZWxp\ndmVyeU1ldGhvZCIsCiAgICAgICAgImRvbWFpbiIsCiAgICAgICAgInNwYXJz\nZSIsCiAgICAgICAgIklkIiwKICAgICAgICAiU3luY1Rva2VuIiwKICAgICAg\nICAiTWV0YURhdGEiLAogICAgICAgICJGdWxseVF1YWxpZmllZE5hbWUiLAog\nICAgICAgICJEaXNwbGF5TmFtZSIsCiAgICAgICAgIlByaW50T25DaGVja05h\nbWUiLAogICAgICAgICJBY3RpdmUiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/QuickBooks/__schema__/v1.0.0/customer/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/bfc5285b13ff579f32763337d0c2f28db348b709",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/QuickBooks/__schema__/v1.0.0/customer/get.json"
     },
-    "required": [
-        "Taxable",
-        "Job",
-        "BillWithParent",
-        "Balance",
-        "BalanceWithJobs",
-        "CurrencyRef",
-        "PreferredDeliveryMethod",
-        "domain",
-        "sparse",
-        "Id",
-        "SyncToken",
-        "MetaData",
-        "FullyQualifiedName",
-        "DisplayName",
-        "PrintOnCheckName",
-        "Active"
-    ]
+    "version": 1
 }

@@ -1,19 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "key": {
-            "type": "string"
-        },
-        "self": {
-            "type": "string"
-        }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issue/create.json",
+    "sha": "a96cb45eeb08e7ad0be42860790c877cca882d81",
+    "size": 291,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issue/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issue/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/a96cb45eeb08e7ad0be42860790c877cca882d81",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issue/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgImtleSI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInNlbGYiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9CiAgICB9LAogICAg\nInJlcXVpcmVkIjogWwogICAgICAgICJpZCIsCiAgICAgICAgImtleSIsCiAg\nICAgICAgInNlbGYiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issue/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/a96cb45eeb08e7ad0be42860790c877cca882d81",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issue/create.json"
     },
-    "required": [
-        "id",
-        "key",
-        "self"
-    ]
+    "version": 1
 }

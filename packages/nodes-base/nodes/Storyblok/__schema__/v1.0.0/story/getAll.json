@@ -1,127 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "name": {
-            "type": "string"
-        },
-        "created_at": {
-            "type": "string"
-        },
-        "id": {
-            "type": "integer"
-        },
-        "uuid": {
-            "type": "string"
-        },
-        "slug": {
-            "type": "string"
-        },
-        "full_slug": {
-            "type": "string"
-        },
-        "sort_by_date": {
-            "type": "null"
-        },
-        "position": {
-            "type": "integer"
-        },
-        "tag_list": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "is_startpage": {
-            "type": "boolean"
-        },
-        "group_id": {
-            "type": "string"
-        },
-        "path": {
-            "type": "null"
-        },
-        "deleted_at": {
-            "type": "null"
-        },
-        "updated_at": {
-            "type": "string"
-        },
-        "is_folder": {
-            "type": "boolean"
-        },
-        "published": {
-            "type": "boolean"
-        },
-        "unpublished_changes": {
-            "type": "boolean"
-        },
-        "pinned": {
-            "type": "boolean"
-        },
-        "publish_at": {
-            "type": "null"
-        },
-        "expire_at": {
-            "type": "null"
-        },
-        "default_root": {
-            "type": "null"
-        },
-        "disble_fe_editor": {
-            "type": "boolean"
-        },
-        "disable_fe_editor": {
-            "type": "boolean"
-        },
-        "last_author": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "userid": {
-                    "type": "string"
-                },
-                "friendly_name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "id",
-                "userid",
-                "friendly_name",
-                "avatar"
-            ]
-        },
-        "last_author_id": {
-            "type": "integer"
-        },
-        "content_type": {
-            "type": "string"
-        },
-        "can_not_view": {
-            "type": "boolean"
-        },
-        "scheduled_dates": {
-            "type": "null"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Storyblok/__schema__/v1.0.0/story/getAll.json",
+    "sha": "8ff13eab5fd4704e66937ee48bdc884d85fc7965",
+    "size": 2701,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Storyblok/__schema__/v1.0.0/story/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Storyblok/__schema__/v1.0.0/story/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/8ff13eab5fd4704e66937ee48bdc884d85fc7965",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Storyblok/__schema__/v1.0.0/story/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJuYW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAiY3JlYXRlZF9hdCI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImlkIjog\newogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAg\nICAgICAgInV1aWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJzbHVnIjogewogICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiZnVsbF9zbHVnIjog\newogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAg\nICAgICAic29ydF9ieV9kYXRlIjogewogICAgICAgICAgICAidHlwZSI6ICJu\ndWxsIgogICAgICAgIH0sCiAgICAgICAgInBvc2l0aW9uIjogewogICAgICAg\nICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgInRh\nZ19saXN0IjogewogICAgICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAg\nICAgICAgICJpdGVtcyI6IHsKICAgICAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAgImlzX3N0\nYXJ0cGFnZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAg\nICAgICB9LAogICAgICAgICJncm91cF9pZCI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInBhdGgiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAi\nZGVsZXRlZF9hdCI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAg\nICAgICB9LAogICAgICAgICJ1cGRhdGVkX2F0IjogewogICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiaXNfZm9sZGVy\nIjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0s\nCiAgICAgICAgInB1Ymxpc2hlZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nYm9vbGVhbiIKICAgICAgICB9LAogICAgICAgICJ1bnB1Ymxpc2hlZF9jaGFu\nZ2VzIjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAg\nIH0sCiAgICAgICAgInBpbm5lZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nYm9vbGVhbiIKICAgICAgICB9LAogICAgICAgICJwdWJsaXNoX2F0Ijogewog\nICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAg\nImV4cGlyZV9hdCI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAg\nICAgICB9LAogICAgICAgICJkZWZhdWx0X3Jvb3QiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAiZGlzYmxlX2Zl\nX2VkaXRvciI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAg\nICAgICB9LAogICAgICAgICJkaXNhYmxlX2ZlX2VkaXRvciI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9LAogICAgICAgICJs\nYXN0X2F1dGhvciI6IHsKICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwK\nICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAi\naWQiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIK\nICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAidXNlcmlkIjog\newogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiZnJpZW5kbHlfbmFtZSI6\nIHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgICAgICAgICB9CiAgICAgICAgICAgIH0sCiAgICAgICAgICAgICJyZXF1\naXJlZCI6IFsKICAgICAgICAgICAgICAgICJpZCIsCiAgICAgICAgICAgICAg\nICAidXNlcmlkIiwKICAgICAgICAgICAgICAgICJmcmllbmRseV9uYW1lIiwK\nICAgICAgICAgICAgICAgICJhdmF0YXIiCiAgICAgICAgICAgIF0KICAgICAg\nICB9LAogICAgICAgICJsYXN0X2F1dGhvcl9pZCI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJjb250ZW50\nX3R5cGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICB9LAogICAgICAgICJjYW5fbm90X3ZpZXciOiB7CiAgICAgICAgICAgICJ0\neXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAic2NoZWR1bGVk\nX2RhdGVzIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAg\nIH0KICAgIH0sCiAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgIm5hbWUiLAog\nICAgICAgICJjcmVhdGVkX2F0IiwKICAgICAgICAicHVibGlzaGVkX2F0IiwK\nICAgICAgICAiYWx0ZXJuYXRlcyIsCiAgICAgICAgImlkIiwKICAgICAgICAi\ndXVpZCIsCiAgICAgICAgInNsdWciLAogICAgICAgICJmdWxsX3NsdWciLAog\nICAgICAgICJzb3J0X2J5X2RhdGUiLAogICAgICAgICJwb3NpdGlvbiIsCiAg\nICAgICAgInRhZ19saXN0IiwKICAgICAgICAiaXNfc3RhcnRwYWdlIiwKICAg\nICAgICAicGFyZW50X2lkIiwKICAgICAgICAiZ3JvdXBfaWQiLAogICAgICAg\nICJmaXJzdF9wdWJsaXNoZWRfYXQiLAogICAgICAgICJwYXRoIgogICAgXQp9\nCg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Storyblok/__schema__/v1.0.0/story/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/8ff13eab5fd4704e66937ee48bdc884d85fc7965",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Storyblok/__schema__/v1.0.0/story/getAll.json"
     },
-    "required": [
-        "name",
-        "created_at",
-        "published_at",
-        "alternates",
-        "id",
-        "uuid",
-        "slug",
-        "full_slug",
-        "sort_by_date",
-        "position",
-        "tag_list",
-        "is_startpage",
-        "parent_id",
-        "group_id",
-        "first_published_at",
-        "path"
-    ]
+    "version": 1
 }

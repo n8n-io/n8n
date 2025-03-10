@@ -1,20 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "signal": {
-            "type": "null"
-        },
-        "stdout": {
-            "type": "string"
-        },
-        "stderr": {
-            "type": "string"
-        }
+    "name": "execute.json",
+    "path": "packages/nodes-base/nodes/Ssh/__schema__/v1.0.0/command/execute.json",
+    "sha": "24b67f8a964077939abe310ce973cb8710849944",
+    "size": 323,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Ssh/__schema__/v1.0.0/command/execute.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Ssh/__schema__/v1.0.0/command/execute.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/24b67f8a964077939abe310ce973cb8710849944",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Ssh/__schema__/v1.0.0/command/execute.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJzaWduYWwiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwi\nCiAgICAgICAgfSwKICAgICAgICAic3Rkb3V0IjogewogICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAic3RkZXJyIjog\newogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfQogICAg\nfSwKICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAiY29kZSIsCiAgICAgICAg\nInNpZ25hbCIsCiAgICAgICAgInN0ZG91dCIsCiAgICAgICAgInN0ZGVyciIK\nICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Ssh/__schema__/v1.0.0/command/execute.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/24b67f8a964077939abe310ce973cb8710849944",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Ssh/__schema__/v1.0.0/command/execute.json"
     },
-    "required": [
-        "code",
-        "signal",
-        "stdout",
-        "stderr"
-    ]
+    "version": 1
 }

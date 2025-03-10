@@ -1,92 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "created": {
-            "type": "integer"
-        },
-        "timestamp": {
-            "type": "integer"
-        },
-        "name": {
-            "type": "string"
-        },
-        "title": {
-            "type": "string"
-        },
-        "mimetype": {
-            "type": "string"
-        },
-        "filetype": {
-            "type": "string"
-        },
-        "pretty_type": {
-            "type": "string"
-        },
-        "user": {
-            "type": "string"
-        },
-        "user_team": {
-            "type": "string"
-        },
-        "editable": {
-            "type": "boolean"
-        },
-        "size": {
-            "type": "integer"
-        },
-        "mode": {
-            "type": "string"
-        },
-        "is_external": {
-            "type": "boolean"
-        },
-        "external_type": {
-            "type": "string"
-        },
-        "is_public": {
-            "type": "boolean"
-        },
-        "public_url_shared": {
-            "type": "boolean"
-        },
-        "display_as_bot": {
-            "type": "boolean"
-        },
-        "username": {
-            "type": "string"
-        },
-        "url_private": {
-            "type": "string"
-        },
-        "url_private_download": {
-            "type": "string"
-        },
-        "media_display_type": {
-            "type": "string"
-        },
-        "permalink": {
-            "type": "string"
-        },
-        "permalink_public": {
-            "type": "string"
-        },
-        "comments_count": {
-            "type": "integer"
-        },
-        "is_starred": {
-            "type": "boolean"
-        },
-        "has_more_shares": {
-            "type": "boolean"
-        },
-        "has_rich_preview": {
-            "type": "boolean"
-        },
-        "file_access": {
-            "type": "string"
-        }
-    }
+    "name": "upload.json",
+    "path": "packages/nodes-base/nodes/Slack/__schema__/v2.3.0/file/upload.json",
+    "sha": "f7d310271d0e75a43779a07e42d593fd5c361856",
+    "size": 1924,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/file/upload.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/file/upload.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/f7d310271d0e75a43779a07e42d593fd5c361856",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/file/upload.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgImNyZWF0ZWQiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAgICAidGltZXN0YW1w\nIjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0s\nCiAgICAgICAgIm5hbWUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJ0aXRsZSI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIm1pbWV0eXBl\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwK\nICAgICAgICAiZmlsZXR5cGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJwcmV0dHlfdHlwZSI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAg\nInVzZXIiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICB9LAogICAgICAgICJ1c2VyX3RlYW0iOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJlZGl0YWJsZSI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9LAogICAg\nICAgICJzaXplIjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgog\nICAgICAgIH0sCiAgICAgICAgIm1vZGUiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJpc19leHRlcm5hbCI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9LAog\nICAgICAgICJleHRlcm5hbF90eXBlIjogewogICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiaXNfcHVibGljIjogewog\nICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAg\nICAgInB1YmxpY191cmxfc2hhcmVkIjogewogICAgICAgICAgICAidHlwZSI6\nICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgImRpc3BsYXlfYXNfYm90\nIjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0s\nCiAgICAgICAgInVzZXJuYW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgfSwKICAgICAgICAidXJsX3ByaXZhdGUiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAg\nICJ1cmxfcHJpdmF0ZV9kb3dubG9hZCI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIm1lZGlhX2Rpc3BsYXlf\ndHlwZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nIH0sCiAgICAgICAgInBlcm1hbGluayI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInBlcm1hbGlua19wdWJs\naWMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9\nLAogICAgICAgICJjb21tZW50c19jb3VudCI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJpc19zdGFycmVk\nIjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0s\nCiAgICAgICAgImhhc19tb3JlX3NoYXJlcyI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAiYm9vbGVhbiIKICAgICAgICB9LAogICAgICAgICJoYXNfcmljaF9w\ncmV2aWV3IjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAg\nICAgIH0sCiAgICAgICAgImZpbGVfYWNjZXNzIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgfQogICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/file/upload.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/f7d310271d0e75a43779a07e42d593fd5c361856",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/file/upload.json"
+    },
+    "version": 1
 }

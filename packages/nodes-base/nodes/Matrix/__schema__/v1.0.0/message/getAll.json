@@ -1,96 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "content": {
-            "type": "object",
-            "properties": {
-                "msgtype": {
-                    "type": "string"
-                },
-                "body": {
-                    "type": "string"
-                },
-                "com.beeper.linkpreviews": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "og:url": {
-                                "type": "string"
-                            },
-                            "og:title": {
-                                "type": "string"
-                            },
-                            "og:image": {
-                                "type": "string"
-                            },
-                            "matrix:image:size": {
-                                "type": "integer"
-                            },
-                            "og:image:width": {
-                                "type": "integer"
-                            },
-                            "og:image:height": {
-                                "type": "integer"
-                            },
-                            "og:image:type": {
-                                "type": "string"
-                            },
-                            "matched_url": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "og:url",
-                            "og:title",
-                            "og:image",
-                            "matrix:image:size",
-                            "og:image:width",
-                            "og:image:height",
-                            "og:image:type",
-                            "matched_url"
-                        ]
-                    }
-                }
-            }
-        },
-        "origin_server_ts": {
-            "type": "integer"
-        },
-        "room_id": {
-            "type": "string"
-        },
-        "sender": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
-        },
-        "unsigned": {
-            "type": "object",
-            "properties": {
-                "age": {
-                    "type": "integer"
-                }
-            }
-        },
-        "event_id": {
-            "type": "string"
-        },
-        "user_id": {
-            "type": "string"
-        },
-        "age": {
-            "type": "integer"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Matrix/__schema__/v1.0.0/message/getAll.json",
+    "sha": "50482761529f75ff14aefc933b58aa7c46d723ec",
+    "size": 2782,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Matrix/__schema__/v1.0.0/message/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Matrix/__schema__/v1.0.0/message/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/50482761529f75ff14aefc933b58aa7c46d723ec",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Matrix/__schema__/v1.0.0/message/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJjb250ZW50IjogewogICAgICAgICAgICAidHlwZSI6ICJvYmpl\nY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAg\nICAgICJtc2d0eXBlIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAi\nYm9keSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImNvbS5iZWVw\nZXIubGlua3ByZXZpZXdzIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogImFycmF5IiwKICAgICAgICAgICAgICAgICAgICAiaXRlbXMiOiB7CiAg\nICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAg\nICAgICAgICAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAg\nICAgICAgICAgICAgICAgICAgIm9nOnVybCI6IHsKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAg\nICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAg\nICAgIm9nOnRpdGxlIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAgICAg\nICAgIH0sCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAib2c6aW1hZ2Ui\nOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICJtYXRyaXg6aW1hZ2U6c2l6ZSI6IHsK\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJpbnRl\nZ2VyIgogICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICJvZzppbWFnZTp3aWR0aCI6IHsKICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgog\nICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICJvZzppbWFnZTpoZWlnaHQiOiB7CiAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAg\nICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAib2c6aW1hZ2U6dHlwZSI6IHsKICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAgICAg\nIm1hdGNoZWRfdXJsIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAgICAg\nICAgIH0KICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgICAg\nICAgICAgICAgIm9nOnVybCIsCiAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAib2c6dGl0bGUiLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgIm9n\nOmltYWdlIiwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJtYXRyaXg6\naW1hZ2U6c2l6ZSIsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAib2c6\naW1hZ2U6d2lkdGgiLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgIm9n\nOmltYWdlOmhlaWdodCIsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAi\nb2c6aW1hZ2U6dHlwZSIsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAi\nbWF0Y2hlZF91cmwiCiAgICAgICAgICAgICAgICAgICAgICAgIF0KICAgICAg\nICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAg\nIH0KICAgICAgICB9LAogICAgICAgICJvcmlnaW5fc2VydmVyX3RzIjogewog\nICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAg\nICAgInJvb21faWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJzZW5kZXIiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJ0eXBlIjogewog\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAg\nICAidW5zaWduZWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIs\nCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAg\nImFnZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2Vy\nIgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9CiAgICAgICAgfSwK\nICAgICAgICAiZXZlbnRfaWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJ1c2VyX2lkIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiYWdl\nIjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0K\nICAgIH0sCiAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgImNvbnRlbnQiLAog\nICAgICAgICJvcmlnaW5fc2VydmVyX3RzIiwKICAgICAgICAicm9vbV9pZCIs\nCiAgICAgICAgInNlbmRlciIsCiAgICAgICAgInR5cGUiLAogICAgICAgICJ1\nbnNpZ25lZCIsCiAgICAgICAgImV2ZW50X2lkIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Matrix/__schema__/v1.0.0/message/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/50482761529f75ff14aefc933b58aa7c46d723ec",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Matrix/__schema__/v1.0.0/message/getAll.json"
     },
-    "required": [
-        "content",
-        "origin_server_ts",
-        "room_id",
-        "sender",
-        "type",
-        "unsigned",
-        "event_id"
-    ]
+    "version": 1
 }

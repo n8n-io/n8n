@@ -1,72 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "active": {
-            "type": "boolean"
-        },
-        "email": {
-            "type": "string"
-        },
-        "id": {
-            "type": "integer"
-        },
-        "name": {
-            "type": "string"
-        },
-        "phone": {
-            "type": "null"
-        },
-        "time_zone": {
-            "type": "string"
-        },
-        "twitter_id": {
-            "type": "null"
-        },
-        "facebook_id": {
-            "type": "null"
-        },
-        "created_at": {
-            "type": "string"
-        },
-        "updated_at": {
-            "type": "string"
-        },
-        "unique_external_id": {
-            "type": "null"
-        },
-        "first_name": {
-            "type": "string"
-        },
-        "last_name": {
-            "type": "string"
-        },
-        "visitor_id": {
-            "type": "string"
-        },
-        "org_contact_id": {
-            "type": "integer"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Freshdesk/__schema__/v1.0.0/contact/getAll.json",
+    "sha": "cb13f264f82bdb1dfe558d7cbaeef0b754ca6666",
+    "size": 1434,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Freshdesk/__schema__/v1.0.0/contact/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Freshdesk/__schema__/v1.0.0/contact/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/cb13f264f82bdb1dfe558d7cbaeef0b754ca6666",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Freshdesk/__schema__/v1.0.0/contact/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJhY3RpdmUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJvb2xl\nYW4iCiAgICAgICAgfSwKICAgICAgICAiZW1haWwiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJpZCI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAogICAg\nICAgICJuYW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgfSwKICAgICAgICAicGhvbmUiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAidGltZV96b25lIjogewog\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAg\nICAidHdpdHRlcl9pZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIK\nICAgICAgICB9LAogICAgICAgICJmYWNlYm9va19pZCI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAgICAgICJjcmVhdGVk\nX2F0IjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nfSwKICAgICAgICAidXBkYXRlZF9hdCI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInVuaXF1ZV9leHRlcm5h\nbF9pZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9\nLAogICAgICAgICJmaXJzdF9uYW1lIjogewogICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAibGFzdF9uYW1lIjogewog\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAg\nICAidmlzaXRvcl9pZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgIH0sCiAgICAgICAgIm9yZ19jb250YWN0X2lkIjogewogICAg\nICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0KICAgIH0sCiAg\nICAicmVxdWlyZWQiOiBbCiAgICAgICAgImFjdGl2ZSIsCiAgICAgICAgImFk\nZHJlc3MiLAogICAgICAgICJkZXNjcmlwdGlvbiIsCiAgICAgICAgImVtYWls\nIiwKICAgICAgICAiaWQiLAogICAgICAgICJqb2JfdGl0bGUiLAogICAgICAg\nICJsYW5ndWFnZSIsCiAgICAgICAgIm1vYmlsZSIsCiAgICAgICAgIm5hbWUi\nLAogICAgICAgICJwaG9uZSIsCiAgICAgICAgInRpbWVfem9uZSIsCiAgICAg\nICAgInR3aXR0ZXJfaWQiLAogICAgICAgICJjdXN0b21fZmllbGRzIiwKICAg\nICAgICAiZmFjZWJvb2tfaWQiLAogICAgICAgICJjcmVhdGVkX2F0IiwKICAg\nICAgICAidXBkYXRlZF9hdCIsCiAgICAgICAgImNzYXRfcmF0aW5nIiwKICAg\nICAgICAicHJlZmVycmVkX3NvdXJjZSIsCiAgICAgICAgImNvbXBhbnlfaWQi\nLAogICAgICAgICJ1bmlxdWVfZXh0ZXJuYWxfaWQiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Freshdesk/__schema__/v1.0.0/contact/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/cb13f264f82bdb1dfe558d7cbaeef0b754ca6666",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Freshdesk/__schema__/v1.0.0/contact/getAll.json"
     },
-    "required": [
-        "active",
-        "address",
-        "description",
-        "email",
-        "id",
-        "job_title",
-        "language",
-        "mobile",
-        "name",
-        "phone",
-        "time_zone",
-        "twitter_id",
-        "custom_fields",
-        "facebook_id",
-        "created_at",
-        "updated_at",
-        "csat_rating",
-        "preferred_source",
-        "company_id",
-        "unique_external_id"
-    ]
+    "version": 1
 }

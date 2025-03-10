@@ -1,15 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "status": {
-            "type": "integer"
-        },
-        "request": {
-            "type": "string"
-        }
+    "name": "push.json",
+    "path": "packages/nodes-base/nodes/Pushover/__schema__/v1.0.0/message/push.json",
+    "sha": "029c520f6256b9d6a41cf0f4fb12acfe7c1ad519",
+    "size": 234,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Pushover/__schema__/v1.0.0/message/push.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Pushover/__schema__/v1.0.0/message/push.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/029c520f6256b9d6a41cf0f4fb12acfe7c1ad519",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Pushover/__schema__/v1.0.0/message/push.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJzdGF0dXMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImludGVn\nZXIiCiAgICAgICAgfSwKICAgICAgICAicmVxdWVzdCI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0KICAgIH0sCiAgICAicmVx\ndWlyZWQiOiBbCiAgICAgICAgInN0YXR1cyIsCiAgICAgICAgInJlcXVlc3Qi\nCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Pushover/__schema__/v1.0.0/message/push.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/029c520f6256b9d6a41cf0f4fb12acfe7c1ad519",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Pushover/__schema__/v1.0.0/message/push.json"
     },
-    "required": [
-        "status",
-        "request"
-    ]
+    "version": 1
 }

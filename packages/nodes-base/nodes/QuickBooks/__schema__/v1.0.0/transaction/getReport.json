@@ -1,139 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "Header": {
-            "type": "object",
-            "properties": {
-                "Time": {
-                    "type": "string"
-                },
-                "ReportName": {
-                    "type": "string"
-                },
-                "DateMacro": {
-                    "type": "string"
-                },
-                "StartPeriod": {
-                    "type": "string"
-                },
-                "EndPeriod": {
-                    "type": "string"
-                },
-                "Currency": {
-                    "type": "string"
-                },
-                "Option": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "Name": {
-                                "type": "string"
-                            },
-                            "Value": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "Name",
-                            "Value"
-                        ]
-                    }
-                }
-            },
-            "required": [
-                "Time",
-                "ReportName",
-                "DateMacro",
-                "StartPeriod",
-                "EndPeriod",
-                "Currency",
-                "Option"
-            ]
-        },
-        "Columns": {
-            "type": "object",
-            "properties": {
-                "Column": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "ColTitle": {
-                                "type": "string"
-                            },
-                            "ColType": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "ColTitle",
-                            "ColType"
-                        ]
-                    }
-                }
-            },
-            "required": [
-                "Column"
-            ]
-        },
-        "Rows": {
-            "type": "object",
-            "properties": {
-                "Row": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "ColData": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "value": {
-                                            "type": "string"
-                                        },
-                                        "id": {
-                                            "type": "string"
-                                        }
-                                    },
-                                    "required": [
-                                        "value"
-                                    ]
-                                }
-                            },
-                            "type": {
-                                "type": "string"
-                            },
-                            "Summary": {
-                                "type": "object",
-                                "properties": {
-                                    "ColData": {
-                                        "type": "array",
-                                        "items": {
-                                            "type": "object",
-                                            "properties": {
-                                                "value": {
-                                                    "type": "string"
-                                                }
-                                            },
-                                            "required": [
-                                                "value"
-                                            ]
-                                        }
-                                    }
-                                },
-                                "required": [
-                                    "ColData"
-                                ]
-                            }
-                        }
-                    }
-                }
-            },
-            "required": [
-                "Row"
-            ]
-        }
-    }
+    "name": "getReport.json",
+    "path": "packages/nodes-base/nodes/QuickBooks/__schema__/v1.0.0/transaction/getReport.json",
+    "sha": "16d5570da1699a63c9f272da4da733349eedb81d",
+    "size": 4708,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/QuickBooks/__schema__/v1.0.0/transaction/getReport.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/QuickBooks/__schema__/v1.0.0/transaction/getReport.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/16d5570da1699a63c9f272da4da733349eedb81d",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/QuickBooks/__schema__/v1.0.0/transaction/getReport.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJIZWFkZXIiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9iamVj\ndCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAg\nICAgIlRpbWUiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJSZXBv\ncnROYW1lIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiRGF0ZU1h\nY3JvIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiU3RhcnRQZXJp\nb2QiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJFbmRQZXJpb2Qi\nOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJDdXJyZW5jeSI6IHsK\nICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nICAgICAgICB9LAogICAgICAgICAgICAgICAgIk9wdGlvbiI6IHsKICAgICAg\nICAgICAgICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAgICAg\nICAgICAgIml0ZW1zIjogewogICAgICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAgICAgICAgICAicHJvcGVy\ndGllcyI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJOYW1lIjog\newogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAiVmFsdWUiOiB7CiAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAg\nICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgICAgICAgICB9\nLAogICAgICAgICAgICAgICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAiTmFtZSIsCiAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAiVmFsdWUiCiAgICAgICAgICAgICAgICAgICAgICAg\nIF0KICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICB9CiAg\nICAgICAgICAgIH0sCiAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAg\nICAgICAgICAgICJUaW1lIiwKICAgICAgICAgICAgICAgICJSZXBvcnROYW1l\nIiwKICAgICAgICAgICAgICAgICJEYXRlTWFjcm8iLAogICAgICAgICAgICAg\nICAgIlN0YXJ0UGVyaW9kIiwKICAgICAgICAgICAgICAgICJFbmRQZXJpb2Qi\nLAogICAgICAgICAgICAgICAgIkN1cnJlbmN5IiwKICAgICAgICAgICAgICAg\nICJPcHRpb24iCiAgICAgICAgICAgIF0KICAgICAgICB9LAogICAgICAgICJD\nb2x1bW5zIjogewogICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAg\nICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICJDb2x1\nbW4iOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiYXJyYXkiLAog\nICAgICAgICAgICAgICAgICAgICJpdGVtcyI6IHsKICAgICAgICAgICAgICAg\nICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgICAgICAg\nICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAiQ29sVGl0bGUiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJDb2xUeXBl\nIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0KICAgICAg\nICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAgICAg\nInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgICAgICAgICAgICAgIkNv\nbFRpdGxlIiwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJDb2xUeXBl\nIgogICAgICAgICAgICAgICAgICAgICAgICBdCiAgICAgICAgICAgICAgICAg\nICAgfQogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9LAogICAgICAg\nICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAiQ29sdW1uIgog\nICAgICAgICAgICBdCiAgICAgICAgfSwKICAgICAgICAiUm93cyI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgInByb3Bl\ncnRpZXMiOiB7CiAgICAgICAgICAgICAgICAiUm93IjogewogICAgICAgICAg\nICAgICAgICAgICJ0eXBlIjogImFycmF5IiwKICAgICAgICAgICAgICAgICAg\nICAiaXRlbXMiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nIm9iamVjdCIsCiAgICAgICAgICAgICAgICAgICAgICAgICJwcm9wZXJ0aWVz\nIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAgIkNvbERhdGEiOiB7\nCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiYXJy\nYXkiLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJpdGVtcyI6\nIHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUi\nOiAib2JqZWN0IiwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAidmFsdWUiOiB7CiAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJpZCI6IHsKICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICB9CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nIH0sCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJyZXF1\naXJlZCI6IFsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICJ2YWx1ZSIKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgXQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0KICAgICAg\nICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAidHlwZSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgICAg\nICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAgICAgIlN1bW1hcnki\nOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAi\nb2JqZWN0IiwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAicHJv\ncGVydGllcyI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgIkNvbERhdGEiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAiaXRlbXMiOiB7CiAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAib2Jq\nZWN0IiwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgInZhbHVlIjogewogICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ2YWx1ZSIK\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBd\nCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9CiAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgIkNvbERhdGEiCiAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgXQogICAgICAgICAgICAgICAgICAgICAgICAgICAg\nfQogICAgICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICAg\nICAgfQogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9LAogICAgICAg\nICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAiUm93IgogICAg\nICAgICAgICBdCiAgICAgICAgfQogICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/QuickBooks/__schema__/v1.0.0/transaction/getReport.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/16d5570da1699a63c9f272da4da733349eedb81d",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/QuickBooks/__schema__/v1.0.0/transaction/getReport.json"
+    },
+    "version": 1
 }

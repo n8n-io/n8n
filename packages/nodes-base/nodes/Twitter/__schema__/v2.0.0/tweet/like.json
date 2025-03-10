@@ -1,11 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"liked": {
-			"type": "boolean"
-		}
-	},
-	"required": [
-		"liked"
-	]
+    "name": "like.json",
+    "path": "packages/nodes-base/nodes/Twitter/__schema__/v2.0.0/tweet/like.json",
+    "sha": "dae3efbb3133127e1b12e38d902025e47e89c238",
+    "size": 110,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Twitter/__schema__/v2.0.0/tweet/like.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Twitter/__schema__/v2.0.0/tweet/like.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/dae3efbb3133127e1b12e38d902025e47e89c238",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Twitter/__schema__/v2.0.0/tweet/like.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJsaWtl\nZCI6IHsKCQkJInR5cGUiOiAiYm9vbGVhbiIKCQl9Cgl9LAoJInJlcXVpcmVk\nIjogWwoJCSJsaWtlZCIKCV0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Twitter/__schema__/v2.0.0/tweet/like.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/dae3efbb3133127e1b12e38d902025e47e89c238",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Twitter/__schema__/v2.0.0/tweet/like.json"
+    },
+    "version": 1
 }

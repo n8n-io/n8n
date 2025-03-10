@@ -1,46 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "presentationId": {
-            "type": "string"
-        },
-        "replies": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "replaceAllText": {
-                        "type": "object",
-                        "properties": {
-                            "occurrencesChanged": {
-                                "type": "integer"
-                            }
-                        },
-                        "required": [
-                            "occurrencesChanged"
-                        ]
-                    }
-                },
-                "required": [
-                    "replaceAllText"
-                ]
-            }
-        },
-        "writeControl": {
-            "type": "object",
-            "properties": {
-                "requiredRevisionId": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "requiredRevisionId"
-            ]
-        }
+    "name": "replaceText.json",
+    "path": "packages/nodes-base/nodes/Google/Slides/__schema__/v2.0.0/presentation/replaceText.json",
+    "sha": "af4f135eabf396b5015ca77a2d870f823c505a47",
+    "size": 1178,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Slides/__schema__/v2.0.0/presentation/replaceText.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Slides/__schema__/v2.0.0/presentation/replaceText.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/af4f135eabf396b5015ca77a2d870f823c505a47",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/Slides/__schema__/v2.0.0/presentation/replaceText.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJwcmVzZW50YXRpb25JZCI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInJlcGxpZXMiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogImFycmF5IiwKICAgICAgICAgICAgIml0ZW1z\nIjogewogICAgICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAg\nICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgICAg\nICJyZXBsYWNlQWxsVGV4dCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAg\nInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgICAgICAgICAgICAgInBy\nb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAib2Nj\ndXJyZW5jZXNDaGFuZ2VkIjogewogICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgICAgICAgICAgICAg\nICAgICAgICB9CiAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAg\nICAgICAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICJvY2N1cnJlbmNlc0NoYW5nZWQiCiAgICAgICAgICAg\nICAgICAgICAgICAgIF0KICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAg\nICAgICAgICB9LAogICAgICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAg\nICAgICAgICAgICAgICAgICJyZXBsYWNlQWxsVGV4dCIKICAgICAgICAgICAg\nICAgIF0KICAgICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAgIndyaXRl\nQ29udHJvbCI6IHsKICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAg\nICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAicmVx\ndWlyZWRSZXZpc2lvbklkIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfSwK\nICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgInJl\ncXVpcmVkUmV2aXNpb25JZCIKICAgICAgICAgICAgXQogICAgICAgIH0KICAg\nIH0sCiAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgInByZXNlbnRhdGlvbklk\nIiwKICAgICAgICAicmVwbGllcyIsCiAgICAgICAgIndyaXRlQ29udHJvbCIK\nICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Slides/__schema__/v2.0.0/presentation/replaceText.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/af4f135eabf396b5015ca77a2d870f823c505a47",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Slides/__schema__/v2.0.0/presentation/replaceText.json"
     },
-    "required": [
-        "presentationId",
-        "replies",
-        "writeControl"
-    ]
+    "version": 1
 }

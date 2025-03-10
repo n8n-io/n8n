@@ -1,125 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"id": {
-			"type": "integer"
-		},
-		"email_opted_in": {
-			"type": "boolean"
-		},
-		"email_status": {
-			"type": "string"
-		},
-		"date_created": {
-			"type": "string"
-		},
-		"last_updated": {
-			"type": "string"
-		},
-		"ScoreValue": {
-			"type": "null"
-		},
-		"last_updated_utc_millis": {
-			"type": "integer"
-		},
-		"email_addresses": {
-			"type": "array",
-			"items": {
-				"type": "object",
-				"properties": {
-					"email": {
-						"type": "string"
-					},
-					"field": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"email",
-					"field"
-				]
-			}
-		},
-		"addresses": {
-			"type": "array",
-			"items": {
-				"type": "object",
-				"properties": {
-					"line1": {
-						"type": "string"
-					},
-					"locality": {
-						"type": "string"
-					},
-					"region": {
-						"type": "string"
-					},
-					"field": {
-						"type": "string"
-					},
-					"postal_code": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"line1",
-					"line2",
-					"locality",
-					"region",
-					"field",
-					"postal_code",
-					"zip_code",
-					"zip_four",
-					"country_code"
-				]
-			}
-		},
-		"phone_numbers": {
-			"type": "array",
-			"items": {
-				"type": "object",
-				"properties": {
-					"number": {
-						"type": "string"
-					},
-					"field": {
-						"type": "string"
-					},
-					"number_e164": {
-						"type": "null"
-					}
-				},
-				"required": [
-					"number",
-					"extension",
-					"field",
-					"type"
-				]
-			}
-		},
-		"given_name": {
-			"type": "string"
-		},
-		"family_name": {
-			"type": "string"
-		}
-	},
-	"required": [
-		"tag_ids",
-		"id",
-		"company",
-		"email_opted_in",
-		"email_status",
-		"date_created",
-		"last_updated",
-		"ScoreValue",
-		"last_updated_utc_millis",
-		"email_addresses",
-		"addresses",
-		"phone_numbers",
-		"given_name",
-		"family_name",
-		"middle_name",
-		"owner_id"
-	]
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Keap/__schema__/v1.0.0/contact/getAll.json",
+    "sha": "5567ca1dffecc150bdb2166a9a99bed2e81aeaaa",
+    "size": 1864,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Keap/__schema__/v1.0.0/contact/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Keap/__schema__/v1.0.0/contact/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5567ca1dffecc150bdb2166a9a99bed2e81aeaaa",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Keap/__schema__/v1.0.0/contact/getAll.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJpZCI6\nIHsKCQkJInR5cGUiOiAiaW50ZWdlciIKCQl9LAoJCSJlbWFpbF9vcHRlZF9p\nbiI6IHsKCQkJInR5cGUiOiAiYm9vbGVhbiIKCQl9LAoJCSJlbWFpbF9zdGF0\ndXMiOiB7CgkJCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJCSJkYXRlX2NyZWF0\nZWQiOiB7CgkJCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJCSJsYXN0X3VwZGF0\nZWQiOiB7CgkJCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJCSJTY29yZVZhbHVl\nIjogewoJCQkidHlwZSI6ICJudWxsIgoJCX0sCgkJImxhc3RfdXBkYXRlZF91\ndGNfbWlsbGlzIjogewoJCQkidHlwZSI6ICJpbnRlZ2VyIgoJCX0sCgkJImVt\nYWlsX2FkZHJlc3NlcyI6IHsKCQkJInR5cGUiOiAiYXJyYXkiLAoJCQkiaXRl\nbXMiOiB7CgkJCQkidHlwZSI6ICJvYmplY3QiLAoJCQkJInByb3BlcnRpZXMi\nOiB7CgkJCQkJImVtYWlsIjogewoJCQkJCQkidHlwZSI6ICJzdHJpbmciCgkJ\nCQkJfSwKCQkJCQkiZmllbGQiOiB7CgkJCQkJCSJ0eXBlIjogInN0cmluZyIK\nCQkJCQl9CgkJCQl9LAoJCQkJInJlcXVpcmVkIjogWwoJCQkJCSJlbWFpbCIs\nCgkJCQkJImZpZWxkIgoJCQkJXQoJCQl9CgkJfSwKCQkiYWRkcmVzc2VzIjog\newoJCQkidHlwZSI6ICJhcnJheSIsCgkJCSJpdGVtcyI6IHsKCQkJCSJ0eXBl\nIjogIm9iamVjdCIsCgkJCQkicHJvcGVydGllcyI6IHsKCQkJCQkibGluZTEi\nOiB7CgkJCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJCQl9LAoJCQkJCSJsb2Nh\nbGl0eSI6IHsKCQkJCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJCX0sCgkJCQkJ\nInJlZ2lvbiI6IHsKCQkJCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJCX0sCgkJ\nCQkJImZpZWxkIjogewoJCQkJCQkidHlwZSI6ICJzdHJpbmciCgkJCQkJfSwK\nCQkJCQkicG9zdGFsX2NvZGUiOiB7CgkJCQkJCSJ0eXBlIjogInN0cmluZyIK\nCQkJCQl9CgkJCQl9LAoJCQkJInJlcXVpcmVkIjogWwoJCQkJCSJsaW5lMSIs\nCgkJCQkJImxpbmUyIiwKCQkJCQkibG9jYWxpdHkiLAoJCQkJCSJyZWdpb24i\nLAoJCQkJCSJmaWVsZCIsCgkJCQkJInBvc3RhbF9jb2RlIiwKCQkJCQkiemlw\nX2NvZGUiLAoJCQkJCSJ6aXBfZm91ciIsCgkJCQkJImNvdW50cnlfY29kZSIK\nCQkJCV0KCQkJfQoJCX0sCgkJInBob25lX251bWJlcnMiOiB7CgkJCSJ0eXBl\nIjogImFycmF5IiwKCQkJIml0ZW1zIjogewoJCQkJInR5cGUiOiAib2JqZWN0\nIiwKCQkJCSJwcm9wZXJ0aWVzIjogewoJCQkJCSJudW1iZXIiOiB7CgkJCQkJ\nCSJ0eXBlIjogInN0cmluZyIKCQkJCQl9LAoJCQkJCSJmaWVsZCI6IHsKCQkJ\nCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJCX0sCgkJCQkJIm51bWJlcl9lMTY0\nIjogewoJCQkJCQkidHlwZSI6ICJudWxsIgoJCQkJCX0KCQkJCX0sCgkJCQki\ncmVxdWlyZWQiOiBbCgkJCQkJIm51bWJlciIsCgkJCQkJImV4dGVuc2lvbiIs\nCgkJCQkJImZpZWxkIiwKCQkJCQkidHlwZSIKCQkJCV0KCQkJfQoJCX0sCgkJ\nImdpdmVuX25hbWUiOiB7CgkJCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJCSJm\nYW1pbHlfbmFtZSI6IHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0KCX0sCgki\ncmVxdWlyZWQiOiBbCgkJInRhZ19pZHMiLAoJCSJpZCIsCgkJImNvbXBhbnki\nLAoJCSJlbWFpbF9vcHRlZF9pbiIsCgkJImVtYWlsX3N0YXR1cyIsCgkJImRh\ndGVfY3JlYXRlZCIsCgkJImxhc3RfdXBkYXRlZCIsCgkJIlNjb3JlVmFsdWUi\nLAoJCSJsYXN0X3VwZGF0ZWRfdXRjX21pbGxpcyIsCgkJImVtYWlsX2FkZHJl\nc3NlcyIsCgkJImFkZHJlc3NlcyIsCgkJInBob25lX251bWJlcnMiLAoJCSJn\naXZlbl9uYW1lIiwKCQkiZmFtaWx5X25hbWUiLAoJCSJtaWRkbGVfbmFtZSIs\nCgkJIm93bmVyX2lkIgoJXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Keap/__schema__/v1.0.0/contact/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5567ca1dffecc150bdb2166a9a99bed2e81aeaaa",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Keap/__schema__/v1.0.0/contact/getAll.json"
+    },
+    "version": 1
 }

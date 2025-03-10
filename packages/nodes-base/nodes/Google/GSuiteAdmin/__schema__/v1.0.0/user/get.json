@@ -1,116 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "kind": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "etag": {
-            "type": "string"
-        },
-        "primaryEmail": {
-            "type": "string"
-        },
-        "name": {
-            "type": "object",
-            "properties": {
-                "givenName": {
-                    "type": "string"
-                },
-                "familyName": {
-                    "type": "string"
-                },
-                "fullName": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "givenName",
-                "familyName",
-                "fullName"
-            ]
-        },
-        "isAdmin": {
-            "type": "boolean"
-        },
-        "isDelegatedAdmin": {
-            "type": "boolean"
-        },
-        "lastLoginTime": {
-            "type": "string"
-        },
-        "creationTime": {
-            "type": "string"
-        },
-        "agreedToTerms": {
-            "type": "boolean"
-        },
-        "suspended": {
-            "type": "boolean"
-        },
-        "archived": {
-            "type": "boolean"
-        },
-        "changePasswordAtNextLogin": {
-            "type": "boolean"
-        },
-        "ipWhitelisted": {
-            "type": "boolean"
-        },
-        "emails": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "address": {
-                        "type": "string"
-                    },
-                    "primary": {
-                        "type": "boolean"
-                    }
-                },
-                "required": [
-                    "address"
-                ]
-            }
-        },
-        "languages": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "languageCode": {
-                        "type": "string"
-                    },
-                    "preference": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "languageCode",
-                    "preference"
-                ]
-            }
-        },
-        "customerId": {
-            "type": "string"
-        },
-        "orgUnitPath": {
-            "type": "string"
-        },
-        "isMailboxSetup": {
-            "type": "boolean"
-        },
-        "isEnrolledIn2Sv": {
-            "type": "boolean"
-        },
-        "isEnforcedIn2Sv": {
-            "type": "boolean"
-        },
-        "includeInGlobalAddressList": {
-            "type": "boolean"
-        }
-    }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Google/GSuiteAdmin/__schema__/v1.0.0/user/get.json",
+    "sha": "c40337c7e60ad775fdf2fc8fe2e29f02a0225657",
+    "size": 2762,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/GSuiteAdmin/__schema__/v1.0.0/user/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/GSuiteAdmin/__schema__/v1.0.0/user/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/c40337c7e60ad775fdf2fc8fe2e29f02a0225657",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/GSuiteAdmin/__schema__/v1.0.0/user/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJraW5kIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAiaWQiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJldGFnIjogewogICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAi\ncHJpbWFyeUVtYWlsIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAibmFtZSI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAg\nICAgICAgICAgICAgICAiZ2l2ZW5OYW1lIjogewogICAgICAgICAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAg\nICAgICAgICAgICAiZmFtaWx5TmFtZSI6IHsKICAgICAgICAgICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAg\nICAgICAgICAgImZ1bGxOYW1lIjogewogICAgICAgICAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAg\nfSwKICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAg\nImdpdmVuTmFtZSIsCiAgICAgICAgICAgICAgICAiZmFtaWx5TmFtZSIsCiAg\nICAgICAgICAgICAgICAiZnVsbE5hbWUiCiAgICAgICAgICAgIF0KICAgICAg\nICB9LAogICAgICAgICJpc0FkbWluIjogewogICAgICAgICAgICAidHlwZSI6\nICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgImlzRGVsZWdhdGVkQWRt\naW4iOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAg\nfSwKICAgICAgICAibGFzdExvZ2luVGltZSI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImNyZWF0aW9uVGlt\nZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0s\nCiAgICAgICAgImFncmVlZFRvVGVybXMiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAic3VzcGVuZGVkIjog\newogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAg\nICAgICAgImFyY2hpdmVkIjogewogICAgICAgICAgICAidHlwZSI6ICJib29s\nZWFuIgogICAgICAgIH0sCiAgICAgICAgImNoYW5nZVBhc3N3b3JkQXROZXh0\nTG9naW4iOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAg\nICAgfSwKICAgICAgICAiaXBXaGl0ZWxpc3RlZCI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9LAogICAgICAgICJlbWFpbHMi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogImFycmF5IiwKICAgICAgICAgICAg\nIml0ZW1zIjogewogICAgICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwK\nICAgICAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAg\nICAgICAgICJhZGRyZXNzIjogewogICAgICAgICAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgfSwKICAgICAg\nICAgICAgICAgICAgICAicHJpbWFyeSI6IHsKICAgICAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICAgICAgICAgICAgICB9\nCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInJlcXVpcmVk\nIjogWwogICAgICAgICAgICAgICAgICAgICJhZGRyZXNzIgogICAgICAgICAg\nICAgICAgXQogICAgICAgICAgICB9CiAgICAgICAgfSwKICAgICAgICAibGFu\nZ3VhZ2VzIjogewogICAgICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAg\nICAgICAgICJpdGVtcyI6IHsKICAgICAgICAgICAgICAgICJ0eXBlIjogIm9i\namVjdCIsCiAgICAgICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAg\nICAgICAgICAgICAgICAibGFuZ3VhZ2VDb2RlIjogewogICAgICAgICAgICAg\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAg\nICAgfSwKICAgICAgICAgICAgICAgICAgICAicHJlZmVyZW5jZSI6IHsKICAg\nICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAg\nICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAgICAgImxhbmd1\nYWdlQ29kZSIsCiAgICAgICAgICAgICAgICAgICAgInByZWZlcmVuY2UiCiAg\nICAgICAgICAgICAgICBdCiAgICAgICAgICAgIH0KICAgICAgICB9LAogICAg\nICAgICJjdXN0b21lcklkIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgfSwKICAgICAgICAib3JnVW5pdFBhdGgiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJp\nc01haWxib3hTZXR1cCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVh\nbiIKICAgICAgICB9LAogICAgICAgICJpc0Vucm9sbGVkSW4yU3YiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAg\nICAiaXNFbmZvcmNlZEluMlN2IjogewogICAgICAgICAgICAidHlwZSI6ICJi\nb29sZWFuIgogICAgICAgIH0sCiAgICAgICAgImluY2x1ZGVJbkdsb2JhbEFk\nZHJlc3NMaXN0IjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgog\nICAgICAgIH0KICAgIH0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/GSuiteAdmin/__schema__/v1.0.0/user/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/c40337c7e60ad775fdf2fc8fe2e29f02a0225657",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/GSuiteAdmin/__schema__/v1.0.0/user/get.json"
+    },
+    "version": 1
 }

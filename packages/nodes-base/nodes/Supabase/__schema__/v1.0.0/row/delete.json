@@ -1,47 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "content": {
-            "type": "string"
-        },
-        "metadata": {
-            "type": "object",
-            "properties": {
-                "loc": {
-                    "type": "object",
-                    "properties": {
-                        "lines": {
-                            "type": "object",
-                            "properties": {
-                                "to": {
-                                    "type": "integer"
-                                },
-                                "from": {
-                                    "type": "integer"
-                                }
-                            },
-                            "required": [
-                                "to",
-                                "from"
-                            ]
-                        }
-                    },
-                    "required": [
-                        "lines"
-                    ]
-                },
-                "source": {
-                    "type": "string"
-                },
-                "blobType": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "loc",
-                "source",
-                "blobType"
-            ]
-        }
-    }
+    "name": "delete.json",
+    "path": "packages/nodes-base/nodes/Supabase/__schema__/v1.0.0/row/delete.json",
+    "sha": "c5cfa5775d96851360ca7a4e8d9c9e7d0a2a1ac0",
+    "size": 1322,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Supabase/__schema__/v1.0.0/row/delete.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Supabase/__schema__/v1.0.0/row/delete.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/c5cfa5775d96851360ca7a4e8d9c9e7d0a2a1ac0",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Supabase/__schema__/v1.0.0/row/delete.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJjb250ZW50IjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgfSwKICAgICAgICAibWV0YWRhdGEiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVz\nIjogewogICAgICAgICAgICAgICAgImxvYyI6IHsKICAgICAgICAgICAgICAg\nICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAgICAgICJw\ncm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgICAgICAgICAibGluZXMi\nOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJvYmpl\nY3QiLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgInByb3BlcnRpZXMi\nOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInRvIjogewog\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJp\nbnRlZ2VyIgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgImZyb20iOiB7CiAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImludGVn\nZXIiCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfQogICAgICAg\nICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAidG8iLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICJmcm9tIgogICAgICAgICAgICAgICAgICAgICAgICAgICAgXQogICAgICAg\nICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAg\nICAgICAgICAgICJsaW5lcyIKICAgICAgICAgICAgICAgICAgICBdCiAgICAg\nICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInNvdXJjZSI6IHsKICAg\nICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAg\nICAgICB9LAogICAgICAgICAgICAgICAgImJsb2JUeXBlIjogewogICAgICAg\nICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAg\nIH0KICAgICAgICAgICAgfSwKICAgICAgICAgICAgInJlcXVpcmVkIjogWwog\nICAgICAgICAgICAgICAgImxvYyIsCiAgICAgICAgICAgICAgICAic291cmNl\nIiwKICAgICAgICAgICAgICAgICJibG9iVHlwZSIKICAgICAgICAgICAgXQog\nICAgICAgIH0KICAgIH0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Supabase/__schema__/v1.0.0/row/delete.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/c5cfa5775d96851360ca7a4e8d9c9e7d0a2a1ac0",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Supabase/__schema__/v1.0.0/row/delete.json"
+    },
+    "version": 1
 }

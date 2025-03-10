@@ -1,8 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "requestId": {
-            "type": "string"
-        }
-    }
+    "name": "send.json",
+    "path": "packages/nodes-base/nodes/PostBin/__schema__/v1.0.0/request/send.json",
+    "sha": "8d9474c24a69ee20ac49dd558e6a1058e38af84e",
+    "size": 114,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/PostBin/__schema__/v1.0.0/request/send.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/PostBin/__schema__/v1.0.0/request/send.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/8d9474c24a69ee20ac49dd558e6a1058e38af84e",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/PostBin/__schema__/v1.0.0/request/send.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJyZXF1ZXN0SWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9CiAgICB9Cn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/PostBin/__schema__/v1.0.0/request/send.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/8d9474c24a69ee20ac49dd558e6a1058e38af84e",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/PostBin/__schema__/v1.0.0/request/send.json"
+    },
+    "version": 1
 }

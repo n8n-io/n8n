@@ -1,28 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "CreationTime": {
-            "type": "number"
-        },
-        "IdentifyLanguage": {
-            "type": "boolean"
-        },
-        "Media": {
-            "type": "object",
-            "properties": {
-                "MediaFileUri": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "MediaFileUri"
-            ]
-        },
-        "TranscriptionJobName": {
-            "type": "string"
-        },
-        "TranscriptionJobStatus": {
-            "type": "string"
-        }
-    }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/Aws/Transcribe/__schema__/v1.0.0/transcriptionJob/create.json",
+    "sha": "59ddbb1a872a90e7db54b414c4a44405378adcf3",
+    "size": 601,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Aws/Transcribe/__schema__/v1.0.0/transcriptionJob/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Aws/Transcribe/__schema__/v1.0.0/transcriptionJob/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/59ddbb1a872a90e7db54b414c4a44405378adcf3",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Aws/Transcribe/__schema__/v1.0.0/transcriptionJob/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJDcmVhdGlvblRpbWUiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nIm51bWJlciIKICAgICAgICB9LAogICAgICAgICJJZGVudGlmeUxhbmd1YWdl\nIjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0s\nCiAgICAgICAgIk1lZGlhIjogewogICAgICAgICAgICAidHlwZSI6ICJvYmpl\nY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAg\nICAgICJNZWRpYUZpbGVVcmkiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9\nLAogICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAi\nTWVkaWFGaWxlVXJpIgogICAgICAgICAgICBdCiAgICAgICAgfSwKICAgICAg\nICAiVHJhbnNjcmlwdGlvbkpvYk5hbWUiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJUcmFuc2NyaXB0aW9u\nSm9iU3RhdHVzIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgfQogICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Aws/Transcribe/__schema__/v1.0.0/transcriptionJob/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/59ddbb1a872a90e7db54b414c4a44405378adcf3",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Aws/Transcribe/__schema__/v1.0.0/transcriptionJob/create.json"
+    },
+    "version": 1
 }

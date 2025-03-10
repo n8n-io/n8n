@@ -1,135 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"id": {
-			"type": "string"
-		},
-		"name": {
-			"type": "string"
-		},
-		"clientId": {
-			"type": "string"
-		},
-		"workspaceId": {
-			"type": "string"
-		},
-		"billable": {
-			"type": "boolean"
-		},
-		"memberships": {
-			"type": "array",
-			"items": {
-				"type": "object",
-				"properties": {
-					"userId": {
-						"type": "string"
-					},
-					"costRate": {
-						"type": "null"
-					},
-					"targetId": {
-						"type": "string"
-					},
-					"membershipType": {
-						"type": "string"
-					},
-					"membershipStatus": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"userId",
-					"hourlyRate",
-					"costRate",
-					"targetId",
-					"membershipType",
-					"membershipStatus"
-				]
-			}
-		},
-		"color": {
-			"type": "string"
-		},
-		"estimate": {
-			"type": "object",
-			"properties": {
-				"estimate": {
-					"type": "string"
-				},
-				"type": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"estimate",
-				"type"
-			]
-		},
-		"archived": {
-			"type": "boolean"
-		},
-		"duration": {
-			"type": "string"
-		},
-		"clientName": {
-			"type": "string"
-		},
-		"note": {
-			"type": "string"
-		},
-		"costRate": {
-			"type": "null"
-		},
-		"timeEstimate": {
-			"type": "object",
-			"properties": {
-				"estimate": {
-					"type": "string"
-				},
-				"type": {
-					"type": "string"
-				},
-				"active": {
-					"type": "boolean"
-				},
-				"includeNonBillable": {
-					"type": "boolean"
-				}
-			},
-			"required": [
-				"estimate",
-				"type",
-				"resetOption",
-				"active",
-				"includeNonBillable"
-			]
-		},
-		"template": {
-			"type": "boolean"
-		},
-		"public": {
-			"type": "boolean"
-		}
-	},
-	"required": [
-		"id",
-		"name",
-		"hourlyRate",
-		"clientId",
-		"workspaceId",
-		"billable",
-		"memberships",
-		"color",
-		"estimate",
-		"archived",
-		"duration",
-		"clientName",
-		"note",
-		"costRate",
-		"timeEstimate",
-		"budgetEstimate",
-		"estimateReset",
-		"template",
-		"public"
-	]
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Clockify/__schema__/v1.0.0/project/get.json",
+    "sha": "b2638c43bdaa78079c697d72fe4c1fdcac432720",
+    "size": 1940,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Clockify/__schema__/v1.0.0/project/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Clockify/__schema__/v1.0.0/project/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/b2638c43bdaa78079c697d72fe4c1fdcac432720",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Clockify/__schema__/v1.0.0/project/get.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJpZCI6\nIHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJIm5hbWUiOiB7CgkJCSJ0\neXBlIjogInN0cmluZyIKCQl9LAoJCSJjbGllbnRJZCI6IHsKCQkJInR5cGUi\nOiAic3RyaW5nIgoJCX0sCgkJIndvcmtzcGFjZUlkIjogewoJCQkidHlwZSI6\nICJzdHJpbmciCgkJfSwKCQkiYmlsbGFibGUiOiB7CgkJCSJ0eXBlIjogImJv\nb2xlYW4iCgkJfSwKCQkibWVtYmVyc2hpcHMiOiB7CgkJCSJ0eXBlIjogImFy\ncmF5IiwKCQkJIml0ZW1zIjogewoJCQkJInR5cGUiOiAib2JqZWN0IiwKCQkJ\nCSJwcm9wZXJ0aWVzIjogewoJCQkJCSJ1c2VySWQiOiB7CgkJCQkJCSJ0eXBl\nIjogInN0cmluZyIKCQkJCQl9LAoJCQkJCSJjb3N0UmF0ZSI6IHsKCQkJCQkJ\nInR5cGUiOiAibnVsbCIKCQkJCQl9LAoJCQkJCSJ0YXJnZXRJZCI6IHsKCQkJ\nCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJCX0sCgkJCQkJIm1lbWJlcnNoaXBU\neXBlIjogewoJCQkJCQkidHlwZSI6ICJzdHJpbmciCgkJCQkJfSwKCQkJCQki\nbWVtYmVyc2hpcFN0YXR1cyI6IHsKCQkJCQkJInR5cGUiOiAic3RyaW5nIgoJ\nCQkJCX0KCQkJCX0sCgkJCQkicmVxdWlyZWQiOiBbCgkJCQkJInVzZXJJZCIs\nCgkJCQkJImhvdXJseVJhdGUiLAoJCQkJCSJjb3N0UmF0ZSIsCgkJCQkJInRh\ncmdldElkIiwKCQkJCQkibWVtYmVyc2hpcFR5cGUiLAoJCQkJCSJtZW1iZXJz\naGlwU3RhdHVzIgoJCQkJXQoJCQl9CgkJfSwKCQkiY29sb3IiOiB7CgkJCSJ0\neXBlIjogInN0cmluZyIKCQl9LAoJCSJlc3RpbWF0ZSI6IHsKCQkJInR5cGUi\nOiAib2JqZWN0IiwKCQkJInByb3BlcnRpZXMiOiB7CgkJCQkiZXN0aW1hdGUi\nOiB7CgkJCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJfSwKCQkJCSJ0eXBlIjog\newoJCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJCX0KCQkJfSwKCQkJInJlcXVp\ncmVkIjogWwoJCQkJImVzdGltYXRlIiwKCQkJCSJ0eXBlIgoJCQldCgkJfSwK\nCQkiYXJjaGl2ZWQiOiB7CgkJCSJ0eXBlIjogImJvb2xlYW4iCgkJfSwKCQki\nZHVyYXRpb24iOiB7CgkJCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJCSJjbGll\nbnROYW1lIjogewoJCQkidHlwZSI6ICJzdHJpbmciCgkJfSwKCQkibm90ZSI6\nIHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJImNvc3RSYXRlIjogewoJ\nCQkidHlwZSI6ICJudWxsIgoJCX0sCgkJInRpbWVFc3RpbWF0ZSI6IHsKCQkJ\nInR5cGUiOiAib2JqZWN0IiwKCQkJInByb3BlcnRpZXMiOiB7CgkJCQkiZXN0\naW1hdGUiOiB7CgkJCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJfSwKCQkJCSJ0\neXBlIjogewoJCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJCX0sCgkJCQkiYWN0\naXZlIjogewoJCQkJCSJ0eXBlIjogImJvb2xlYW4iCgkJCQl9LAoJCQkJImlu\nY2x1ZGVOb25CaWxsYWJsZSI6IHsKCQkJCQkidHlwZSI6ICJib29sZWFuIgoJ\nCQkJfQoJCQl9LAoJCQkicmVxdWlyZWQiOiBbCgkJCQkiZXN0aW1hdGUiLAoJ\nCQkJInR5cGUiLAoJCQkJInJlc2V0T3B0aW9uIiwKCQkJCSJhY3RpdmUiLAoJ\nCQkJImluY2x1ZGVOb25CaWxsYWJsZSIKCQkJXQoJCX0sCgkJInRlbXBsYXRl\nIjogewoJCQkidHlwZSI6ICJib29sZWFuIgoJCX0sCgkJInB1YmxpYyI6IHsK\nCQkJInR5cGUiOiAiYm9vbGVhbiIKCQl9Cgl9LAoJInJlcXVpcmVkIjogWwoJ\nCSJpZCIsCgkJIm5hbWUiLAoJCSJob3VybHlSYXRlIiwKCQkiY2xpZW50SWQi\nLAoJCSJ3b3Jrc3BhY2VJZCIsCgkJImJpbGxhYmxlIiwKCQkibWVtYmVyc2hp\ncHMiLAoJCSJjb2xvciIsCgkJImVzdGltYXRlIiwKCQkiYXJjaGl2ZWQiLAoJ\nCSJkdXJhdGlvbiIsCgkJImNsaWVudE5hbWUiLAoJCSJub3RlIiwKCQkiY29z\ndFJhdGUiLAoJCSJ0aW1lRXN0aW1hdGUiLAoJCSJidWRnZXRFc3RpbWF0ZSIs\nCgkJImVzdGltYXRlUmVzZXQiLAoJCSJ0ZW1wbGF0ZSIsCgkJInB1YmxpYyIK\nCV0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Clockify/__schema__/v1.0.0/project/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/b2638c43bdaa78079c697d72fe4c1fdcac432720",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Clockify/__schema__/v1.0.0/project/get.json"
+    },
+    "version": 1
 }

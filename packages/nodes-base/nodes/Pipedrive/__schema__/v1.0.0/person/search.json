@@ -1,58 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "result_score": {
-            "type": "number"
-        },
-        "id": {
-            "type": "integer"
-        },
-        "type": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "phones": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "emails": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "visible_to": {
-            "type": "integer"
-        },
-        "owner": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "id"
-            ]
-        },
-        "custom_fields": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "notes": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "update_time": {
-            "type": "string"
-        }
-    }
+    "name": "search.json",
+    "path": "packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/person/search.json",
+    "sha": "1b5730acd5d0436868deb1a6e7d719403a7f2c6d",
+    "size": 1190,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/person/search.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/person/search.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/1b5730acd5d0436868deb1a6e7d719403a7f2c6d",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/person/search.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJyZXN1bHRfc2NvcmUiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nIm51bWJlciIKICAgICAgICB9LAogICAgICAgICJpZCI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJ0eXBl\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwK\nICAgICAgICAibmFtZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgIH0sCiAgICAgICAgInBob25lcyI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAiYXJyYXkiLAogICAgICAgICAgICAiaXRlbXMiOiB7CiAgICAg\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgIH0KICAg\nICAgICB9LAogICAgICAgICJlbWFpbHMiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogImFycmF5IiwKICAgICAgICAgICAgIml0ZW1zIjogewogICAgICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICB9CiAgICAgICAg\nfSwKICAgICAgICAidmlzaWJsZV90byI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJvd25lciI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgInByb3Bl\ncnRpZXMiOiB7CiAgICAgICAgICAgICAgICAiaWQiOiB7CiAgICAgICAgICAg\nICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICAgICAgICAgIH0K\nICAgICAgICAgICAgfSwKICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAg\nICAgICAgICAgICAgImlkIgogICAgICAgICAgICBdCiAgICAgICAgfSwKICAg\nICAgICAiY3VzdG9tX2ZpZWxkcyI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nYXJyYXkiLAogICAgICAgICAgICAiaXRlbXMiOiB7CiAgICAgICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgIH0KICAgICAgICB9LAog\nICAgICAgICJub3RlcyI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYXJyYXki\nLAogICAgICAgICAgICAiaXRlbXMiOiB7CiAgICAgICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgICAgIH0KICAgICAgICB9LAogICAgICAg\nICJ1cGRhdGVfdGltZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgIH0KICAgIH0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/person/search.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/1b5730acd5d0436868deb1a6e7d719403a7f2c6d",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/person/search.json"
+    },
+    "version": 1
 }

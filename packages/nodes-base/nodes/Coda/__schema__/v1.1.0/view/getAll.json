@@ -1,0 +1,59 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "tableType": {
+            "type": "string"
+        },
+        "href": {
+            "type": "string"
+        },
+        "browserLink": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "parent": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "href": {
+                    "type": "string"
+                },
+                "browserLink": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "type",
+                "href",
+                "browserLink",
+                "name"
+            ]
+        }
+    },
+    "required": [
+        "id",
+        "type",
+        "tableType",
+        "href",
+        "browserLink",
+        "name"
+    ],
+    "version": 1
+}

@@ -1,8 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "deleted": {
-            "type": "boolean"
-        }
-    }
+    "name": "delete.json",
+    "path": "packages/nodes-base/nodes/Twitter/__schema__/v2.0.0/tweet/delete.json",
+    "sha": "1820d94a98796fe9992285f30eca587852c1b68c",
+    "size": 113,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Twitter/__schema__/v2.0.0/tweet/delete.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Twitter/__schema__/v2.0.0/tweet/delete.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/1820d94a98796fe9992285f30eca587852c1b68c",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Twitter/__schema__/v2.0.0/tweet/delete.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJkZWxldGVkIjogewogICAgICAgICAgICAidHlwZSI6ICJib29s\nZWFuIgogICAgICAgIH0KICAgIH0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Twitter/__schema__/v2.0.0/tweet/delete.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/1820d94a98796fe9992285f30eca587852c1b68c",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Twitter/__schema__/v2.0.0/tweet/delete.json"
+    },
+    "version": 1
 }

@@ -1,181 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "_id": {
-            "type": "integer"
-        },
-        "formhub/uuid": {
-            "type": "string"
-        },
-        "start": {
-            "type": "string"
-        },
-        "end": {
-            "type": "string"
-        },
-        "today": {
-            "type": "string"
-        },
-        "username": {
-            "type": "string"
-        },
-        "deviceid": {
-            "type": "string"
-        },
-        "personal_QR_code": {
-            "type": "string"
-        },
-        "infra_categ": {
-            "type": "string"
-        },
-        "location": {
-            "type": "string"
-        },
-        "gps_note": {
-            "type": "string"
-        },
-        "__version__": {
-            "type": "string"
-        },
-        "meta/instanceID": {
-            "type": "string"
-        },
-        "_xform_id_string": {
-            "type": "string"
-        },
-        "_uuid": {
-            "type": "string"
-        },
-        "_attachments": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "download_url": {
-                        "type": "string"
-                    },
-                    "download_large_url": {
-                        "type": "string"
-                    },
-                    "download_medium_url": {
-                        "type": "string"
-                    },
-                    "download_small_url": {
-                        "type": "string"
-                    },
-                    "mimetype": {
-                        "type": "string"
-                    },
-                    "filename": {
-                        "type": "string"
-                    },
-                    "instance": {
-                        "type": "integer"
-                    },
-                    "xform": {
-                        "type": "integer"
-                    },
-                    "id": {
-                        "type": "integer"
-                    },
-                    "question_xpath": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "download_url",
-                    "download_large_url",
-                    "download_medium_url",
-                    "download_small_url",
-                    "mimetype",
-                    "filename",
-                    "instance",
-                    "xform",
-                    "id",
-                    "question_xpath"
-                ]
-            }
-        },
-        "_status": {
-            "type": "string"
-        },
-        "_submission_time": {
-            "type": "string"
-        },
-        "_validation_status": {
-            "type": "object",
-            "properties": {
-                "timestamp": {
-                    "type": "integer"
-                },
-                "uid": {
-                    "type": "string"
-                },
-                "by_whom": {
-                    "type": "string"
-                },
-                "color": {
-                    "type": "string"
-                },
-                "label": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "timestamp",
-                "uid",
-                "by_whom",
-                "color",
-                "label"
-            ]
-        },
-        "infra_subtype": {
-            "type": "string"
-        },
-        "pic1": {
-            "type": "string"
-        },
-        "description": {
-            "type": "string"
-        },
-        "q2nd_pic": {
-            "type": "string"
-        },
-        "pic2": {
-            "type": "string"
-        },
-        "Validation_comments": {
-            "type": "string"
-        },
-        "meta/deprecatedID": {
-            "type": "string"
-        },
-        "_version_": {
-            "type": "string"
-        },
-        "_version__001": {
-            "type": "string"
-        },
-        "_version__002": {
-            "type": "string"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/KoBoToolbox/__schema__/v1.0.0/submission/getAll.json",
+    "sha": "98f46759de510ee1d5e4d24bcc3dd228561fc2eb",
+    "size": 4457,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/KoBoToolbox/__schema__/v1.0.0/submission/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/KoBoToolbox/__schema__/v1.0.0/submission/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/98f46759de510ee1d5e4d24bcc3dd228561fc2eb",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/KoBoToolbox/__schema__/v1.0.0/submission/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJfaWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIi\nCiAgICAgICAgfSwKICAgICAgICAiZm9ybWh1Yi91dWlkIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAic3Rh\ncnQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9\nLAogICAgICAgICJlbmQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJ0b2RheSI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInVzZXJuYW1l\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwK\nICAgICAgICAiZGV2aWNlaWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJwZXJzb25hbF9RUl9jb2RlIjog\newogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAg\nICAgICAiaW5mcmFfY2F0ZWciOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJsb2NhdGlvbiI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImdw\nc19ub3RlIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgfSwKICAgICAgICAiX192ZXJzaW9uX18iOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJtZXRhL2luc3Rh\nbmNlSUQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICB9LAogICAgICAgICJfeGZvcm1faWRfc3RyaW5nIjogewogICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiX3V1aWQi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAog\nICAgICAgICJfYXR0YWNobWVudHMiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nImFycmF5IiwKICAgICAgICAgICAgIml0ZW1zIjogewogICAgICAgICAgICAg\nICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgICAgICJwcm9wZXJ0\naWVzIjogewogICAgICAgICAgICAgICAgICAgICJkb3dubG9hZF91cmwiOiB7\nCiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICJkb3du\nbG9hZF9sYXJnZV91cmwiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICB9LAogICAgICAg\nICAgICAgICAgICAgICJkb3dubG9hZF9tZWRpdW1fdXJsIjogewogICAgICAg\nICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAg\nICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAiZG93bmxvYWRfc21h\nbGxfdXJsIjogewogICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAg\nICAgICAibWltZXR5cGUiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICB9LAogICAgICAg\nICAgICAgICAgICAgICJmaWxlbmFtZSI6IHsKICAgICAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAgIH0s\nCiAgICAgICAgICAgICAgICAgICAgImluc3RhbmNlIjogewogICAgICAgICAg\nICAgICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgICAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgInhmb3JtIjogewogICAg\nICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAg\nICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgImlkIjogewog\nICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAg\nICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgInF1ZXN0\naW9uX3hwYXRoIjogewogICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAg\nICAgfSwKICAgICAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAg\nICAgICAgICAgICAiZG93bmxvYWRfdXJsIiwKICAgICAgICAgICAgICAgICAg\nICAiZG93bmxvYWRfbGFyZ2VfdXJsIiwKICAgICAgICAgICAgICAgICAgICAi\nZG93bmxvYWRfbWVkaXVtX3VybCIsCiAgICAgICAgICAgICAgICAgICAgImRv\nd25sb2FkX3NtYWxsX3VybCIsCiAgICAgICAgICAgICAgICAgICAgIm1pbWV0\neXBlIiwKICAgICAgICAgICAgICAgICAgICAiZmlsZW5hbWUiLAogICAgICAg\nICAgICAgICAgICAgICJpbnN0YW5jZSIsCiAgICAgICAgICAgICAgICAgICAg\nInhmb3JtIiwKICAgICAgICAgICAgICAgICAgICAiaWQiLAogICAgICAgICAg\nICAgICAgICAgICJxdWVzdGlvbl94cGF0aCIKICAgICAgICAgICAgICAgIF0K\nICAgICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAgIl9zdGF0dXMiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAg\nICAgICJfc3VibWlzc2lvbl90aW1lIjogewogICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiX3ZhbGlkYXRpb25fc3Rh\ndHVzIjogewogICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAg\nICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICJ0aW1lc3Rh\nbXAiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIK\nICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAidWlkIjogewog\nICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICAgICAiYnlfd2hvbSI6IHsKICAgICAg\nICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAg\nICB9LAogICAgICAgICAgICAgICAgImNvbG9yIjogewogICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAg\nICAgICAgICAgICAgICAibGFiZWwiOiB7CiAgICAgICAgICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfQogICAgICAgICAg\nICB9LAogICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAg\nICAidGltZXN0YW1wIiwKICAgICAgICAgICAgICAgICJ1aWQiLAogICAgICAg\nICAgICAgICAgImJ5X3dob20iLAogICAgICAgICAgICAgICAgImNvbG9yIiwK\nICAgICAgICAgICAgICAgICJsYWJlbCIKICAgICAgICAgICAgXQogICAgICAg\nIH0sCiAgICAgICAgImluZnJhX3N1YnR5cGUiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJwaWMxIjogewog\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAg\nICAiZGVzY3JpcHRpb24iOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJxMm5kX3BpYyI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInBpYzIi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAog\nICAgICAgICJWYWxpZGF0aW9uX2NvbW1lbnRzIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAibWV0YS9kZXBy\nZWNhdGVkSUQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICB9LAogICAgICAgICJfdmVyc2lvbl8iOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJfdmVyc2lvbl9f\nMDAxIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nfSwKICAgICAgICAiX3ZlcnNpb25fXzAwMiI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0KICAgIH0sCiAgICAicmVxdWlyZWQi\nOiBbCiAgICAgICAgIl9pZCIsCiAgICAgICAgImZvcm1odWIvdXVpZCIsCiAg\nICAgICAgInN0YXJ0IiwKICAgICAgICAiZW5kIiwKICAgICAgICAiX192ZXJz\naW9uX18iLAogICAgICAgICJtZXRhL2luc3RhbmNlSUQiLAogICAgICAgICJf\neGZvcm1faWRfc3RyaW5nIiwKICAgICAgICAiX3V1aWQiLAogICAgICAgICJf\nYXR0YWNobWVudHMiLAogICAgICAgICJfc3RhdHVzIiwKICAgICAgICAiX2dl\nb2xvY2F0aW9uIiwKICAgICAgICAiX3N1Ym1pc3Npb25fdGltZSIsCiAgICAg\nICAgIl90YWdzIiwKICAgICAgICAiX25vdGVzIiwKICAgICAgICAiX3ZhbGlk\nYXRpb25fc3RhdHVzIiwKICAgICAgICAiX3N1Ym1pdHRlZF9ieSIKICAgIF0K\nfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/KoBoToolbox/__schema__/v1.0.0/submission/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/98f46759de510ee1d5e4d24bcc3dd228561fc2eb",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/KoBoToolbox/__schema__/v1.0.0/submission/getAll.json"
     },
-    "required": [
-        "_id",
-        "formhub/uuid",
-        "start",
-        "end",
-        "__version__",
-        "meta/instanceID",
-        "_xform_id_string",
-        "_uuid",
-        "_attachments",
-        "_status",
-        "_geolocation",
-        "_submission_time",
-        "_tags",
-        "_notes",
-        "_validation_status",
-        "_submitted_by"
-    ]
+    "version": 1
 }

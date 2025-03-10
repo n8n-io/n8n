@@ -1,8 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "ok": {
-            "type": "boolean"
-        }
-    }
+    "name": "add.json",
+    "path": "packages/nodes-base/nodes/Slack/__schema__/v2.3.0/reaction/add.json",
+    "sha": "8c80c7e5a49b611f62f992b3ba5b4eb4d54512eb",
+    "size": 108,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/reaction/add.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/reaction/add.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/8c80c7e5a49b611f62f992b3ba5b4eb4d54512eb",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/reaction/add.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJvayI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIK\nICAgICAgICB9CiAgICB9Cn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/reaction/add.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/8c80c7e5a49b611f62f992b3ba5b4eb4d54512eb",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/reaction/add.json"
+    },
+    "version": 1
 }
