@@ -315,7 +315,7 @@ export async function prepareFormReturnItem(
 
 		if (field.fieldType === 'html') {
 			if (field.elementName) {
-				returnItem.json[field.elementName as string] = value;
+				returnItem.json[field.elementName] = value;
 			}
 			continue;
 		}

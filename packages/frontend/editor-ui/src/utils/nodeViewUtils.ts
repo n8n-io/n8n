@@ -284,7 +284,7 @@ export function getGenericHints({
 	if (hasNodeRun && workflowNode.parameters.limit) {
 		if (nodeOutputData.length === workflowNode.parameters.limit) {
 			nodeHints.push({
-				message: `Limit of ${workflowNode.parameters.limit as number} items reached. There may be more items that aren't being returned. Tweak the 'Return All' or 'Limit' parameters to access more items.`,
+				message: `Limit of ${workflowNode.parameters.limit} items reached. There may be more items that aren't being returned. Tweak the 'Return All' or 'Limit' parameters to access more items.`,
 				location: 'outputPane',
 				whenToDisplay: 'afterExecution',
 			});

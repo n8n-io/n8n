@@ -145,8 +145,6 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 
 		<template v-if="isCommunityNode" #tooltip>
 			<p
-				:class="$style.communityNodeIcon"
-				@click="onCommunityNodeTooltipClick"
 				v-n8n-html="
 					i18n.baseText('generic.communityNode.tooltip', {
 						interpolate: {
@@ -155,12 +153,14 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 						},
 					})
 				"
+				:class="$style.communityNodeIcon"
+				@click="onCommunityNodeTooltipClick"
 			/>
 		</template>
 		<template #dragContent>
 			<div
-				ref="draggableDataTransfer"
 				v-show="dragging"
+				ref="draggableDataTransfer"
 				:class="$style.draggable"
 				:style="draggableStyle"
 			>

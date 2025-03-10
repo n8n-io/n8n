@@ -741,6 +741,30 @@ function onBlur() {
 	isFocused.value = false;
 }
 
+function onPaste(event: ClipboardEvent) {
+	const pastedText = event.clipboardData?.getData('text');
+	const input = event.target;
+
+	if (!(input instanceof HTMLInputElement)) return;
+
+	const start = input.selectionStart ?? 0;
+
+	// When a value starting with `=` is pasted that does not contain expression syntax ({{}})
+	// Add an extra `=` to go into expression mode and preserve the original pasted text
+	if (pastedText && pastedText.startsWith('=') && !pastedText.match(/{{.*?}}/g) && start === 0) {
+		event.preventDefault();
+
+		const end = input.selectionEnd ?? start;
+		const text = input.value;
+		const withExpressionPrefix = '=' + pastedText;
+
+		input.value = text.substring(0, start) + withExpressionPrefix + text.substring(end);
+		input.selectionStart = input.selectionEnd = start + withExpressionPrefix.length;
+
+		valueChanged(input.value);
+	}
+}
+
 function onResourceLocatorDrop(data: string) {
 	emit('drop', data);
 }
@@ -951,7 +975,9 @@ async function optionSelected(command: string) {
 
 			if (props.parameter.type === 'string') {
 				// Strip the '=' from the beginning
-				newValue = modelValueString.value ? modelValueString.value.toString().substring(1) : null;
+				newValue = modelValueString.value
+					? modelValueString.value.toString().replace(/^=+/, '')
+					: null;
 			} else if (newValue === null) {
 				// Invalid expressions land here
 				if (['number', 'boolean'].includes(props.parameter.type)) {
@@ -987,7 +1013,7 @@ async function optionSelected(command: string) {
 onMounted(() => {
 	props.eventBus.on('optionSelected', optionSelected);
 
-	tempValue.value = displayValue.value as string;
+	tempValue.value = displayValue.value;
 
 	if (node.value) {
 		nodeName.value = node.value.name;
@@ -1003,7 +1029,7 @@ onMounted(() => {
 		displayValue.value !== null &&
 		displayValue.value.toString().charAt(0) !== '#'
 	) {
-		const newValue = rgbaToHex(displayValue.value as string);
+		const newValue = rgbaToHex(displayValue.value);
 		if (newValue !== null) {
 			tempValue.value = newValue;
 		}
@@ -1074,12 +1100,12 @@ watch(
 			// Do not set for color with alpha else wrong value gets displayed in field
 			return;
 		}
-		tempValue.value = displayValue.value as string;
+		tempValue.value = displayValue.value;
 	},
 );
 
 watch(remoteParameterOptionsLoading, () => {
-	tempValue.value = displayValue.value as string;
+	tempValue.value = displayValue.value;
 });
 
 // Focus input field when changing between fixed and expression
@@ -1460,6 +1486,7 @@ onUpdated(async () => {
 					@keydown.stop
 					@focus="setFocus"
 					@blur="onBlur"
+					@paste="onPaste"
 				>
 					<template #suffix>
 						<N8nIcon
@@ -1598,8 +1625,8 @@ onUpdated(async () => {
 						</div>
 						<div
 							v-if="option.description"
-							class="option-description"
 							v-n8n-html="getOptionsOptionDescription(option)"
+							class="option-description"
 						></div>
 					</div>
 				</N8nOption>
@@ -1631,8 +1658,8 @@ onUpdated(async () => {
 						<div class="option-headline">{{ getOptionsOptionDisplayName(option) }}</div>
 						<div
 							v-if="option.description"
-							class="option-description"
 							v-n8n-html="getOptionsOptionDescription(option)"
+							class="option-description"
 						></div>
 					</div>
 				</N8nOption>
