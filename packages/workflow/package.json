@@ -1,6 +1,6 @@
 {
   "name": "n8n-workflow",
-  "version": "1.79.0",
+  "version": "1.80.0",
   "description": "Workflow base code of n8n",
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -37,7 +37,7 @@
     "@types/express": "catalog:",
     "@types/jmespath": "^0.15.0",
     "@types/lodash": "catalog:",
-    "@types/luxon": "^3.2.0",
+    "@types/luxon": "3.2.0",
     "@types/md5": "^2.3.5",
     "@types/xml2js": "catalog:"
   },

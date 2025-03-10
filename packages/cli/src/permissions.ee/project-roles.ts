@@ -28,6 +28,7 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'folder:create',
 	'folder:read',
 	'folder:update',
+	'folder:delete',
 ];
 
 export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
@@ -51,6 +52,7 @@ export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
 	'folder:create',
 	'folder:read',
 	'folder:update',
+	'folder:delete',
 ];
 
 export const PROJECT_EDITOR_SCOPES: Scope[] = [
@@ -70,6 +72,7 @@ export const PROJECT_EDITOR_SCOPES: Scope[] = [
 	'folder:create',
 	'folder:read',
 	'folder:update',
+	'folder:delete',
 ];
 
 export const PROJECT_VIEWER_SCOPES: Scope[] = [

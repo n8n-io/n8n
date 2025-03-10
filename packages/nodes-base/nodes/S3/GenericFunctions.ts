@@ -51,7 +51,7 @@ export async function s3ApiRequest(
 		}
 	}
 
-	endpoint.pathname = path;
+	endpoint.pathname = `${endpoint.pathname === '/' ? '' : endpoint.pathname}${path}`;
 
 	// Sign AWS API request with the user credentials
 	const signOpts = {
@@ -59,7 +59,7 @@ export async function s3ApiRequest(
 		region: region || credentials.region,
 		host: endpoint.host,
 		method,
-		path: `${path}?${queryToString(query).replace(/\+/g, '%2B')}`,
+		path: `${endpoint.pathname}?${queryToString(query).replace(/\+/g, '%2B')}`,
 		service: 's3',
 		body,
 	} as Request;

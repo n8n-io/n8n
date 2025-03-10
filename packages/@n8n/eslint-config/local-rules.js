@@ -320,7 +320,7 @@ module.exports = {
 			const LOCALE_NAMESPACE = '$locale';
 			const LOCALE_FILEPATH = cwd.endsWith('editor-ui')
 				? path.join(cwd, locale)
-				: path.join(cwd, 'packages/editor-ui', locale);
+				: path.join(cwd, 'packages/frontend/editor-ui', locale);
 
 			let LOCALE_MAP;
 

@@ -5,7 +5,7 @@ import {
 	type IWebhookResponseData,
 } from 'n8n-workflow';
 
-import { sanitizeHtml } from './utils';
+import { sanitizeCustomCss, sanitizeHtml } from './utils';
 
 export const renderFormCompletion = async (
 	context: IWebhookFunctions,
@@ -15,7 +15,10 @@ export const renderFormCompletion = async (
 	const completionTitle = context.getNodeParameter('completionTitle', '') as string;
 	const completionMessage = context.getNodeParameter('completionMessage', '') as string;
 	const redirectUrl = context.getNodeParameter('redirectUrl', '') as string;
-	const options = context.getNodeParameter('options', {}) as { formTitle: string };
+	const options = context.getNodeParameter('options', {}) as {
+		formTitle: string;
+		customCss?: string;
+	};
 	const responseText = context.getNodeParameter('responseText', '') as string;
 
 	let title = options.formTitle;
@@ -32,6 +35,7 @@ export const renderFormCompletion = async (
 		formTitle: title,
 		appendAttribution,
 		responseText: sanitizeHtml(responseText),
+		dangerousCustomCss: sanitizeCustomCss(options.customCss),
 		redirectUrl,
 	});
 

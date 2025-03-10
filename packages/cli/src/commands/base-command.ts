@@ -14,7 +14,13 @@ import { ensureError, sleep, UserError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
 import config from '@/config';
-import { LICENSE_FEATURES, inDevelopment, inTest } from '@/constants';
+import {
+	LICENSE_FEATURES,
+	N8N_VERSION,
+	N8N_RELEASE_DATE,
+	inDevelopment,
+	inTest,
+} from '@/constants';
 import * as CrashJournal from '@/crash-journal';
 import * as Db from '@/db';
 import { getDataDeduplicationService } from '@/deduplication';
@@ -63,15 +69,14 @@ export abstract class BaseCommand extends Command {
 	async init(): Promise<void> {
 		this.errorReporter = Container.get(ErrorReporter);
 
-		const { releaseDate } = this.globalConfig.generic;
-		const { backendDsn, n8nVersion, environment, deploymentName } = this.globalConfig.sentry;
+		const { backendDsn, environment, deploymentName } = this.globalConfig.sentry;
 		await this.errorReporter.init({
 			serverType: this.instanceSettings.instanceType,
 			dsn: backendDsn,
 			environment,
-			release: n8nVersion,
+			release: N8N_VERSION,
 			serverName: deploymentName,
-			releaseDate,
+			releaseDate: N8N_RELEASE_DATE,
 		});
 		initExpressionEvaluator();
 
