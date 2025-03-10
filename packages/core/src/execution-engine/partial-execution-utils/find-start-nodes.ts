@@ -111,7 +111,7 @@ function findStartNodesRecursive(
 		// If the node has multiple outputs, only follow the outputs that have run data.
 		const hasNoRunData =
 			nodeRunData === null || nodeRunData === undefined || nodeRunData.data.length === 0;
-		const hasNoPinnedData = !(pinData[outGoingConnection.from.name] !== undefined);
+		const hasNoPinnedData = pinData[outGoingConnection.from.name] === undefined;
 		if (hasNoRunData && hasNoPinnedData) {
 			continue;
 		}
