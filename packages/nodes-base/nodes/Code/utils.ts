@@ -27,8 +27,8 @@ export function standardizeOutput(output: IDataObject) {
 			}
 
 			obj[key] =
-				value.constructor.name !== 'Object'
-					? JSON.stringify(value) // Date, RegExp, etc.
+				value.constructor.name !== 'Object' && typeof value !== 'string'
+					? JSON.stringify(value) // Date, RegExp, etc. but NOT strings
 					: standardizeOutputRecursive(value, knownObjects);
 		}
 		return obj;
