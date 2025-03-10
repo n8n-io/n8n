@@ -8,7 +8,7 @@ import {
 	jsonParse,
 } from 'n8n-workflow';
 
-import { makeAwsRequest } from './awsRequest';
+import { makeAwsRequest } from './makeAwsRequest';
 import { getUserPoolConfigurationData, validateEmail, validatePhoneNumber } from './helpers';
 
 export async function presendStringifyBody(
@@ -77,10 +77,8 @@ export async function presendUserFields(
 	requestOptions: IHttpRequestOptions,
 	paginationToken?: string,
 ): Promise<IHttpRequestOptions> {
-	const userName = (this.getNodeParameter('userName') as IDataObject).value;
+	const operation = this.getNodeParameter('operation') as string;
 	const userPoolId = (this.getNodeParameter('userPoolId') as IDataObject).value;
-	console.log('Username', userName);
-	console.log('Pool ID', userPoolId);
 
 	if (!userPoolId) {
 		throw new NodeApiError(this.getNode(), {
@@ -106,46 +104,52 @@ export async function presendUserFields(
 		this as unknown as ILoadOptionsFunctions,
 		userPoolId as string,
 	);
-	const userPool = userAttributes?.UserPool as { UsernameAttributes?: string[] } | undefined;
-	const usernameAttributes = userPool?.UsernameAttributes ?? [];
+	const userPoolDetails = userAttributes?.UserPool as { UsernameAttributes?: string[] } | undefined;
+	const allowedUsernameAttributes = userPoolDetails?.UsernameAttributes ?? [];
 
-	const responseData: IDataObject = await makeAwsRequest.call(
-		this as unknown as ILoadOptionsFunctions,
-		opts,
-	);
-	const users = responseData.Users as IDataObject[] | undefined;
+	let formattedUsername;
 
-	let finalUsernameNew;
-	let currentUser = '';
+	if (operation !== 'create') {
+		const userName = (this.getNodeParameter('userName') as IDataObject).value;
+		const responseData: IDataObject = await makeAwsRequest.call(
+			this as unknown as ILoadOptionsFunctions,
+			opts,
+		);
+		const usersList = responseData.Users as IDataObject[] | undefined;
 
-	if (users) {
-		users.forEach((user) => {
-			const username = user.Username as string;
-			const attributes = user.Attributes as Array<{ Name: string; Value: string }> | undefined;
-			const sub = attributes?.find((attr) => attr.Name === 'sub')?.Value ?? '';
+		let currentUser = '';
 
-			finalUsernameNew =
-				usernameAttributes.includes('email') || usernameAttributes.includes('phone_number')
-					? sub
-					: username;
+		if (usersList) {
+			usersList.forEach((user) => {
+				const storedUsername = user.Username as string;
+				const storedUserAttributes = user.Attributes as
+					| Array<{ Name: string; Value: string }>
+					| undefined;
+				const sub = storedUserAttributes?.find((attr) => attr.Name === 'sub')?.Value ?? '';
 
-			if (sub === userName) {
-				currentUser = username;
-			}
-		});
-	}
+				if (sub === userName) {
+					currentUser = storedUsername;
+				}
+			});
+		}
 
-	if (this.getNodeParameter('operation') === 'create') {
-		const newUsername = this.getNodeParameter('newUsername') as string;
-		if (usernameAttributes.includes('email')) {
+		formattedUsername =
+			allowedUsernameAttributes.includes('email') ||
+			allowedUsernameAttributes.includes('phone_number')
+				? userName
+				: currentUser;
+	} else {
+		const newUsername = this.getNodeParameter('newUserName') as string;
+
+		if (allowedUsernameAttributes.includes('email')) {
 			if (!validateEmail(newUsername)) {
 				throw new NodeApiError(this.getNode(), {
 					message: 'Invalid format for User Name',
 					description: 'Please provide a valid email address (e.g., name@gmail.com)',
 				});
 			}
-			finalUsernameNew = newUsername;
-		} else if (usernameAttributes.includes('phone_number')) {
+			formattedUsername = newUsername;
+		} else if (allowedUsernameAttributes.includes('phone_number')) {
 			if (!validatePhoneNumber(newUsername)) {
 				throw new NodeApiError(this.getNode(), {
 					message: 'Invalid format for User Name',
@@ -153,15 +157,10 @@ export async function presendUserFields(
 						'Use an international phone number format, starting with + and followed by 2 to 15 digits (e.g., +14155552671)',
 				});
 			}
-			finalUsernameNew = newUsername;
+			formattedUsername = newUsername;
 		} else {
-			finalUsernameNew = userName;
+			formattedUsername = newUsername;
 		}
-	} else {
-		finalUsernameNew =
-			usernameAttributes.includes('email') || usernameAttributes.includes('phone_number')
-				? userName
-				: currentUser;
 	}
 
 	let body;
@@ -175,8 +174,8 @@ export async function presendUserFields(
 		body = requestOptions.body;
 	}
 
-	if (finalUsernameNew) {
-		requestOptions.body = JSON.stringify({ ...body, Username: finalUsernameNew });
+	if (formattedUsername) {
+		requestOptions.body = JSON.stringify({ ...body, Username: formattedUsername });
 	}
 
 	return requestOptions;

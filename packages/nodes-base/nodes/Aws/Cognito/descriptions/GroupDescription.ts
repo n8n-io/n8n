@@ -113,7 +113,16 @@ export const groupOperations: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [processGroupsResponse, handleErrorPostReceive],
+						postReceive: [
+							processGroupsResponse,
+							handleErrorPostReceive,
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'Groups',
+								},
+							},
+						],
 					},
 				},
 				action: 'Get many groups',

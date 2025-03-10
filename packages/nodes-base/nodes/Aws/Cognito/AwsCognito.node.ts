@@ -14,7 +14,7 @@ import {
 	searchGroups,
 	searchUsers,
 	searchGroupsForUser,
-} from './generalFunctions/dataHandling';
+} from './generalFunctions/dataFetching';
 import { presendStringifyBody } from './generalFunctions/presendFunctions';
 
 export class AwsCognito implements INodeType {
@@ -31,17 +31,9 @@ export class AwsCognito implements INodeType {
 		outputs: [NodeConnectionType.Main],
 		hints: [
 			{
-				message: 'Select at least one user field to update',
+				message: 'Select at least one field to update',
 				displayCondition:
-					'={{$parameter["resource"] === "user" && $parameter["operation"] === "update" && Object.keys($parameter["UserAttributes"].attributes).length === 0}}',
-				whenToDisplay: 'always',
-				location: 'outputPane',
-				type: 'warning',
-			},
-			{
-				message: 'Select at least one group field to update',
-				displayCondition:
-					'={{$parameter["resource"] === "group" && $parameter["operation"] === "update" && Object.keys($parameter["additionalFields"]).length === 0}}',
+					'={{($parameter["resource"] === "user" && $parameter["operation"] === "update" && Object.keys($parameter["userAttributes"].attributes).length === 0) || ($parameter["resource"] === "group" && $parameter["operation"] === "update" && Object.keys($parameter["additionalFields"]).length === 0)}}',
 				whenToDisplay: 'always',
 				location: 'outputPane',
 				type: 'warning',

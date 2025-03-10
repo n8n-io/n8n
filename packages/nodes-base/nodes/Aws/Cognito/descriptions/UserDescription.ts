@@ -151,7 +151,16 @@ export const userOperations: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [simplifyData, handleErrorPostReceive],
+						postReceive: [
+							simplifyData,
+							handleErrorPostReceive,
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'Users',
+								},
+							},
+						],
 					},
 				},
 				action: 'Get many users',

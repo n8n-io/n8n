@@ -7,19 +7,18 @@ import {
 	type IN8nHttpFullResponse,
 	type INodeExecutionData,
 } from 'n8n-workflow';
+import { makeAwsRequest } from './makeAwsRequest';
 
-import { makeAwsRequest } from './awsRequest';
-
-export function mapUserAttributes(
-	userAttributes?: Array<{ Name: string; Value: string }>,
-): IDataObject {
+export function mapUserAttributes(userAttributes?: IDataObject[]): IDataObject {
 	if (!userAttributes) {
 		return {};
 	}
 
 	// If the attribute name is 'sub', we map it to 'Sub' in the result
 	return userAttributes.reduce<IDataObject>((acc, { Name, Value }) => {
-		acc[Name === 'sub' ? 'Sub' : Name] = Value;
+		if (typeof Name === 'string' && Name.trim() !== '') {
+			acc[Name === 'sub' ? 'Sub' : Name] = Value ?? '';
+		}
 		return acc;
 	}, {});
 }
@@ -170,9 +169,11 @@ export async function listUsersInGroup(
 	const results = users
 		.map((user) => {
 			const userAttributes = Object.fromEntries(
-				(user.Attributes as Array<{ Name: string; Value: string }> | undefined)?.map(
-					({ Name, Value }) => (Name === 'sub' ? ['Sub', Value] : [Name, Value]),
-				) ?? [],
+				Array.isArray(user.Attributes)
+					? user.Attributes.map(({ Name, Value }) =>
+							Name === 'sub' ? ['Sub', Value] : [Name, Value],
+						)
+					: [],
 			);
 
 			const username = user.Username as string;
@@ -188,7 +189,7 @@ export async function listUsersInGroup(
 		})
 		.sort((a, b) => a.Username.toLowerCase().localeCompare(b.Username.toLowerCase()));
 
-	return { results, paginationToken: responseData.NextToken as string | undefined };
+	return { results, paginationToken: responseData.NextToken };
 }
 
 export async function searchUsersForGroup(
@@ -198,5 +199,5 @@ export async function searchUsersForGroup(
 ): Promise<IDataObject[]> {
 	const users = await listUsersInGroup.call(this, groupName, userPoolId);
 
-	return users.results && Array.isArray(users.results) ? users.results : [];
+	return (users.results && Array.isArray(users.results) ? users.results : []) as IDataObject[];
 }

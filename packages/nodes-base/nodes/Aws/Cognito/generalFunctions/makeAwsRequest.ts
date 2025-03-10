@@ -11,12 +11,15 @@ export async function makeAwsRequest(
 	this: ILoadOptionsFunctions | IPollFunctions | IExecuteSingleFunctions,
 	opts: IHttpRequestOptions,
 ): Promise<IDataObject> {
+	const region = (await this.getCredentials('aws')).region as string;
+
 	const requestOptions: IHttpRequestOptions = {
 		...opts,
-		baseURL: 'https://iam.amazonaws.com',
+		baseURL: `https://cognito-idp.${region}.amazonaws.com`,
 		json: true,
 		headers: {
-			'Content-Type': 'application/x-www-form-urlencoded',
+			'Content-Type': 'application/x-amz-json-1.1',
+			...opts.headers,
 		},
 	};
 
