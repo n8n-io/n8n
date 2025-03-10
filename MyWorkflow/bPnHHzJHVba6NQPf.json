@@ -1,0 +1,179 @@
+{
+  "active": false,
+  "connections": {
+    "Set Params": {
+      "main": [
+        [
+          {
+            "node": "Perplexity Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Perplexity Request": {
+      "main": [
+        [
+          {
+            "node": "Clean Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Test workflow’": {
+      "main": [
+        [
+          {
+            "node": "Set Params",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2025-02-24T21:16:22.977Z",
+  "id": "bPnHHzJHVba6NQPf",
+  "meta": null,
+  "name": "My workflow 5",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "b6e8aee4-59e3-46d0-90f8-175754041cc9",
+      "name": "When clicking ‘Test workflow’",
+      "type": "n8n-nodes-base.manualTrigger",
+      "position": [
+        -320,
+        520
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8b5c6ca0-5ca8-4f67-abc1-44341cf419bc",
+              "name": "system_prompt",
+              "type": "string",
+              "value": "You are an n8n fanboy."
+            },
+            {
+              "id": "7c36c362-6269-4564-b6fe-f82126bc8f5e",
+              "name": "user_prompt",
+              "type": "string",
+              "value": "What are the differences between n8n and Make?"
+            },
+            {
+              "id": "4366d2b5-ad22-445a-8589-fddab1caa1ab",
+              "name": "domains",
+              "type": "string",
+              "value": "n8n.io, make.com"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "adc09beb-c898-48a9-b653-993fab6a80ad",
+      "name": "Set Params",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        -20,
+        380
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5859093c-6b22-41db-ac6c-9a9f6f18b7e3",
+              "name": "output",
+              "type": "string",
+              "value": "={{ $json.choices[0].message.content }}"
+            },
+            {
+              "id": "13208fff-5153-45a7-a1cb-fe49e32d9a03",
+              "name": "citations",
+              "type": "array",
+              "value": "={{ $json.citations }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "052ae09c-6b85-45fa-b86b-6c09cf0f84bb",
+      "name": "Clean Output",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        720,
+        340
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.perplexity.ai/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"sonar\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"{{ $json.system_prompt }}\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $json.user_prompt }}\"\n    }\n  ],\n  \"temperature\": 0.2,\n  \"top_p\": 0.9,\n  \"search_domain_filter\": {{ (JSON.stringify($json.domains.split(','))) }},\n  \"return_images\": false,\n  \"return_related_questions\": false,\n  \"search_recency_filter\": \"month\",\n  \"top_k\": 0,\n  \"stream\": false,\n  \"presence_penalty\": 0,\n  \"frequency_penalty\": 1,\n  \"response_format\": null\n}",
+        "options": {}
+      },
+      "id": "7ca254fd-1831-416d-96ab-4ec2d12ad2a7",
+      "name": "Perplexity Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        380,
+        480
+      ],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "content": "## Credentials Setup\n\n1/ Go to the perplexity dashboard, purchase some credits and create an API Key\n\nhttps://www.perplexity.ai/settings/api\n\n2/ In the perplexity Request node, use Generic Credentials, Header Auth. \n\nFor the name, use the value \"Authorization\"\nAnd for the value \"Bearer pplx-e4...59ea\" (Your Perplexity Api Key)\n\n",
+        "height": 300,
+        "width": 480
+      },
+      "id": "36399cc6-a4e6-4cae-bf2c-c2e511aa7a28",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        0,
+        0
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "**Sonar Pro** is the current top model used by perplexity. \nIf you want to use a different one, check this page: \n\nhttps://docs.perplexity.ai/guides/model-cards",
+        "height": 120,
+        "width": 480,
+        "color": 5
+      },
+      "id": "be2d7873-6f2b-4ac9-8023-73aa39e1df9a",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        240,
+        700
+      ],
+      "typeVersion": 1
+    }
+  ],
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-02-24T21:16:22.977Z",
+  "versionId": "3e3a7a3f-2d30-4795-bac1-8d0826c838d2"
+}
