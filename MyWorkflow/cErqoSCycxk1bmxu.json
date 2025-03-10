@@ -1,0 +1,632 @@
+{
+  "active": false,
+  "connections": {
+    "Obsidian Webhook": {
+      "main": [
+        [
+          {
+            "node": "Separate Attachments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Separate Attachments": {
+      "main": [
+        [
+          {
+            "node": "Fix Base64 String",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fix Base64 String": {
+      "main": [
+        [
+          {
+            "node": "Process Each Attachment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Each Attachment": {
+      "main": [
+        [
+          {
+            "node": "Convert Attachment to File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Upload to Google Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert Attachment to File": {
+      "main": [
+        [
+          {
+            "node": "Process Each Attachment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload to Google Drive": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Attachment Links",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Attachment Links": {
+      "main": [
+        [
+          {
+            "node": "Prepare Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Data": {
+      "main": [
+        [
+          {
+            "node": "Insert Basic Metadata (SQL)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Basic Metadata (SQL)": {
+      "main": [
+        [
+          {
+            "node": "Split Note for Embedding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2025-01-30T22:44:54.986Z",
+  "id": "cErqoSCycxk1bmxu",
+  "meta": null,
+  "name": "My workflow 2",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "obsidian-to-n8n",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "3a441d04-e849-4990-97e5-c36b2cdfaa7f",
+      "name": "Obsidian Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        160
+      ],
+      "webhookId": "custom-webhook-id"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "body.attachments",
+        "options": {}
+      },
+      "id": "7330d4ee-b34f-4994-a272-1a532fd3a586",
+      "name": "Separate Attachments",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        120,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "data",
+              "type": "string",
+              "value": "=\n            {{$json.data.replace(^data:.*?, ,'')}}\n            "
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "73558986-913b-4fe4-bcc5-ef94c6fc8653",
+      "name": "Fix Base64 String",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        280,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "6796f1dc-c66a-474e-b480-f19694c96177",
+      "name": "Process Each Attachment",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        460,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "data",
+        "options": {
+          "fileName": "={{$json[\"name\"]}}"
+        }
+      },
+      "id": "6a2ef38a-96e4-49b5-8755-71c87239ff9b",
+      "name": "Convert Attachment to File",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        660,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "name": "={{$json[\"name\"]}}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "YOUR_GDRIVE_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "blockchain-attachments"
+        },
+        "options": {}
+      },
+      "id": "0bd53f5d-4194-41d2-bbb3-1adab68bc46b",
+      "name": "Upload to Google Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        880,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "webContentLink"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "78d07f31-0920-4ee5-86ed-0349c28451dc",
+      "name": "Aggregate Attachment Links",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "title",
+              "type": "string",
+              "value": "={{ $('Obsidian Webhook').item.json.body.title }}"
+            },
+            {
+              "name": "author",
+              "type": "string",
+              "value": "={{ $('Obsidian Webhook').item.json.body.author }}"
+            },
+            {
+              "name": "category",
+              "type": "string",
+              "value": "={{ $('Obsidian Webhook').item.json.body.category }}"
+            },
+            {
+              "name": "content",
+              "type": "string",
+              "value": "={{ $('Obsidian Webhook').item.json.body.content }}"
+            },
+            {
+              "name": "tags",
+              "type": "array",
+              "value": "={{ $('Obsidian Webhook').item.json.body.tags }}"
+            },
+            {
+              "name": "attachmentLinks",
+              "type": "array",
+              "value": "={{ $json[\"webContentLink\"] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "30497417-bad7-4f04-9b20-c02c6bb73887",
+      "name": "Prepare Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1320,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{`INSERT INTO note_metadata (title, author, category, content, tags, attachments) VALUES ('${$json.title}', '${$json.author}', '${$json.category}', '${$json.content}', '${JSON.stringify($json.tags)}', '${JSON.stringify($json.attachmentLinks)}')`}}"
+      },
+      "id": "9bf8c4de-73fb-4e89-85cf-3e17a4d5b6ed",
+      "name": "Insert Basic Metadata (SQL)",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        1540,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = $json.content || '';\nconst chunkSize = 1000;\nconst chunks = [];\nfor (let i = 0; i < content.length; i += chunkSize) {\n  chunks.push(content.slice(i, i + chunkSize));\n}\n\nreturn chunks.map((ck, idx) => {\n  return {\n    json: {\n      noteTitle: $json.title,\n      chunkIndex: idx,\n      chunk: ck,\n      category: $json.category\n    }\n  };\n});"
+      },
+      "id": "5310e9e3-ce10-4690-ba7b-54e181983703",
+      "name": "Split Note for Embedding",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1740,
+        260
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "f1042022-fd7d-44ae-9b44-86124df4807f",
+      "name": "Summarize Chunk",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 2,
+      "position": [
+        1940,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "summary",
+              "type": "string",
+              "value": "={{$json[\"choices\"][0].text}}"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "9ef428ff-b6f1-44f5-b36f-218c520d4fb1",
+      "name": "Set Summary",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1940,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "389b0fa9-1900-4a3b-bc22-63f32ad52405",
+      "name": "Create Embeddings (OpenAI)",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1,
+      "position": [
+        2160,
+        360
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "0dc64ce4-d06b-44ab-877d-1974ee8bf156",
+      "name": "Upsert to Qdrant",
+      "type": "@n8n/n8n-nodes-langchain.code",
+      "typeVersion": 1,
+      "position": [
+        2360,
+        360
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "7afe45a3-8b1e-4ed1-9c24-ad780c1e769a",
+      "name": "Finish Workflow",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2560,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 主要流程：\n1. Obsidian Webhook：接收筆記與附件\n2. 分離附件 & Base64處理\n3. 上傳附件至Google Drive\n4. 寫入SQL（元數據）\n5. 分塊（Chunk）\n6. Summarize Chunk（OpenAI）\n7. Create Embeddings (OpenAI)\n8. Upsert至Qdrant\n9. 完成工作流\n\n※ 請自行配置相關API Key (OpenAI/Google Drive/MySQL/Qdrant)",
+        "height": 380,
+        "width": 980
+      },
+      "id": "b769e391-1374-41e9-9fa6-51092a2b13d4",
+      "name": "Sticky Note: Explanation",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -440,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "body.attachments",
+        "options": {}
+      },
+      "id": "ab8c9e47-816a-4a98-8fea-1e743c467a18",
+      "name": "Split Attachments",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        320,
+        -440
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "5ffc3196-5c6a-4ac9-aaf6-2fd4613d8c92",
+      "name": "Process Attachments",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        660,
+        -440
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "data",
+        "options": {
+          "fileName": "={{$json['name']}}"
+        }
+      },
+      "id": "39d578e9-4231-4c0b-84c6-cdfbc2251fab",
+      "name": "Convert to File",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        860,
+        -340
+      ]
+    },
+    {
+      "parameters": {
+        "name": "={{$json['name']}}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "YOUR_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "blockchain-docs"
+        },
+        "options": {}
+      },
+      "id": "ad295241-e907-4ca4-a748-f363f7e085ed",
+      "name": "Upload to GDrive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1080,
+        -340
+      ]
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "webContentLink"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f5652425-3946-4d09-b94c-c9ff861d8b63",
+      "name": "Aggregate Links",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1300,
+        -340
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{`INSERT INTO knowledge_metadata (title, category, content, attachments) VALUES ('${$json.title}', '${$json.category}', '${$json.content}', '${JSON.stringify($json.attachmentLinks)}')`}}"
+      },
+      "id": "56c3cbf1-6af1-4745-b9a7-34dcbf651571",
+      "name": "Insert Metadata",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        1740,
+        -340
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = $json.content || '';\nconst chunkSize = 1000;\nconst chunks = [];\n\nfor (let i = 0; i < content.length; i += chunkSize) {\n  chunks.push(content.slice(i, i + chunkSize));\n}\n\nreturn chunks.map((chunk, idx) => ({\n  json: {\n    noteTitle: $json.title,\n    chunkIndex: idx,\n    chunk,\n    category: $json.category\n  }\n}));"
+      },
+      "id": "dce7257f-7147-4514-ac90-9f335ae980d0",
+      "name": "Split Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1940,
+        -340
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "b1f140f4-89d1-491f-aa68-5b2ccabbd884",
+      "name": "Create Embeddings",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1,
+      "position": [
+        2140,
+        -340
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "d6ba24ea-eb88-471c-aafb-761d5c16a791",
+      "name": "Upload to Qdrant",
+      "type": "@n8n/n8n-nodes-langchain.code",
+      "typeVersion": 1,
+      "position": [
+        2340,
+        -340
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "obsidian-to-n8n",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "24e2b806-5360-4fb0-8b78-077e728e6ac7",
+      "name": "Obsidian Webhook1",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        100,
+        -440
+      ],
+      "webhookId": "custom-webhook-id"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "data",
+              "type": "string",
+              "value": "={{$json.data.replace(/^data:.*?,/, '')}}"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "6ae3d674-be10-4c86-9f8c-6a400958e813",
+      "name": "Fix Base64 String1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        480,
+        -440
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "title",
+              "type": "string",
+              "value": "={{$('Obsidian Webhook1').item.json.body.title}}"
+            },
+            {
+              "name": "content",
+              "type": "string",
+              "value": "={{$('Obsidian Webhook1').item.json.body.content}}"
+            },
+            {
+              "name": "category",
+              "type": "string",
+              "value": "={{$('Obsidian Webhook1').item.json.body.category}}"
+            },
+            {
+              "name": "attachmentLinks",
+              "type": "array",
+              "value": "={{$json['webContentLink']}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "18b97f73-1b24-40c7-9089-a77bf06cc807",
+      "name": "Prepare Data1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1520,
+        -340
+      ]
+    }
+  ],
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-01-30T22:44:54.986Z",
+  "versionId": "3c6b2de2-17f7-4247-88a9-41a210c27f42"
+}
