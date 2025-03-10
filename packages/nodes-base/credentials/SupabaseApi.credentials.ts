@@ -29,6 +29,12 @@ export class SupabaseApi implements ICredentialType {
 				password: true,
 			},
 		},
+		{
+			displayName: 'Schema',
+			name: 'schema',
+			type: 'string',
+			default: 'public',
+		},
 	];
 
 	authenticate: IAuthenticateGeneric = {
@@ -37,6 +43,7 @@ export class SupabaseApi implements ICredentialType {
 			headers: {
 				apikey: '={{$credentials.serviceRole}}',
 				Authorization: '=Bearer {{$credentials.serviceRole}}',
+				'Accept-Profile': '={{$credentials.schema}}',
 			},
 		},
 	};
