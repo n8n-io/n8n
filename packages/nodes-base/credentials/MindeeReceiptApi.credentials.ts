@@ -27,8 +27,8 @@ export class MindeeReceiptApi implements ICredentialType {
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
 		// @ts-ignore
-		const url = requestOptions.url ? requestOptions.url : requestOptions.uri;
-		if (url.includes('https://api.mindee.net/v1/')) {
+		const url = new URL(requestOptions.url ? requestOptions.url : requestOptions.uri);
+		if (url.hostname === 'api.mindee.net' && url.pathname.startsWith('/v1/')) {
 			requestOptions.headers!.Authorization = `Token ${credentials.apiKey}`;
 		} else {
 			requestOptions.headers!['X-Inferuser-Token'] = `${credentials.apiKey}`;
