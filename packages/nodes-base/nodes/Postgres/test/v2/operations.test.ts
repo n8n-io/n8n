@@ -713,6 +713,51 @@ describe('Test PostgresV2, insert operation', () => {
 			expect(hasJsonDataTypeInSchemaSpy).toHaveBeenCalledWith(columnsInfo);
 		});
 	});
+
+	it('should insert default values if no values are provided', async () => {
+		const nodeParameters: IDataObject = {
+			schema: {
+				__rl: true,
+				mode: 'list',
+				value: 'public',
+			},
+			table: {
+				__rl: true,
+				value: 'my_table',
+				mode: 'list',
+			},
+			dataMode: 'defineBelow',
+			valuesToSend: {
+				values: [],
+			},
+			options: { nodeVersion: 2.6 },
+		};
+		const columnsInfo: ColumnInfo[] = [
+			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO', udt_name: '' },
+		];
+
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		await insert.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			items,
+			nodeOptions,
+			createMockDb(columnsInfo),
+			pgPromise(),
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[
+				{
+					query: 'INSERT INTO $1:name.$2:name DEFAULT VALUES RETURNING *',
+					values: ['public', 'my_table', {}],
+				},
+			],
+			items,
+			nodeOptions,
+		);
+	});
 });
 
 describe('Test PostgresV2, select operation', () => {

@@ -146,15 +146,15 @@ describe('Test PostgresV2, parsePostgresError', () => {
 
 	it('should update message with syntax error', () => {
 		// eslint-disable-next-line n8n-local-rules/no-unneeded-backticks
-		const errorMessage = String.raw`syntax error at or near "seelect"`;
+		const errorMessage = String.raw`syntax error at or near "select"`;
 		const error = new Error();
 		error.message = errorMessage;
 
 		const parsedError = parsePostgresError(node, error, [
-			{ query: 'seelect * from my_table', values: [] },
+			{ query: 'select * from my_table', values: [] },
 		]);
 		expect(parsedError).toBeDefined();
-		expect(parsedError.message).toEqual('Syntax error at line 1 near "seelect"');
+		expect(parsedError.message).toEqual('Syntax error at line 1 near "select"');
 		expect(parsedError instanceof NodeOperationError).toEqual(true);
 	});
 });
@@ -201,7 +201,7 @@ describe('Test PostgresV2, addWhereClauses', () => {
 		expect(updatedValues).toEqual(['public', 'my_table', 'id', '1', 'foo', 'select 2']);
 	});
 
-	it('should ignore incorect combine conition ad use AND', () => {
+	it('should ignore incorrect combine condition ad use AND', () => {
 		const query = 'SELECT * FROM $1:name.$2:name';
 		const values = ['public', 'my_table'];
 		const whereClauses = [
@@ -246,7 +246,7 @@ describe('Test PostgresV2, addSortRules', () => {
 		expect(updatedQuery).toEqual('SELECT * FROM $1:name.$2:name ORDER BY $3:name DESC');
 		expect(updatedValues).toEqual(['public', 'my_table', 'id']);
 	});
-	it('should ignore incorect direction', () => {
+	it('should ignore incorrect direction', () => {
 		const query = 'SELECT * FROM $1:name.$2:name';
 		const values = ['public', 'my_table'];
 		const sortRules = [{ column: 'id', direction: 'SELECT * FROM my_table' }];
@@ -340,7 +340,7 @@ describe('Test PostgresV2, replaceEmptyStringsByNulls', () => {
 });
 
 describe('Test PostgresV2, prepareItem', () => {
-	it('should convert fixedColections values to object', () => {
+	it('should convert fixedCollection values to object', () => {
 		const values = [
 			{
 				column: 'id',
