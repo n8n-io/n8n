@@ -42,18 +42,7 @@ class WebhookRequestHandler {
 		}
 
 		try {
-			const response = await this.webhookManager.executeWebhook(req, res);
-
-			// Don't respond, if already responded
-			if (response.noWebhookResponse !== true) {
-				ResponseHelper.sendSuccessResponse(
-					res,
-					response.data,
-					true,
-					response.responseCode,
-					response.headers,
-				);
-			}
+			await this.webhookManager.executeWebhook(req, res);
 		} catch (e) {
 			const error = ensureError(e);
 			Container.get(Logger).debug(

@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
 import { Logger } from 'n8n-core';
-import { Workflow, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import { Workflow, CHAT_TRIGGER_NODE_TYPE, createDeferredPromise } from 'n8n-workflow';
 import type { INode, IWebhookData, IHttpRequestMethods } from 'n8n-workflow';
 
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
@@ -14,7 +14,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 import type {
-	IWebhookResponseCallbackData,
+	IWebhookResponsePromiseData,
 	IWebhookManager,
 	WebhookAccessControlOptions,
 	WebhookRequest,
@@ -66,10 +66,7 @@ export class LiveWebhooks implements IWebhookManager {
 	/**
 	 * Checks if a webhook for the given method and path exists and executes the workflow.
 	 */
-	async executeWebhook(
-		request: WebhookRequest,
-		response: Response,
-	): Promise<IWebhookResponseCallbackData> {
+	async executeWebhook(request: WebhookRequest, response: Response): Promise<void> {
 		const httpMethod = request.method;
 		const path = request.params.path;
 
@@ -126,29 +123,24 @@ export class LiveWebhooks implements IWebhookManager {
 			throw new NotFoundError('Could not find node to process webhook.');
 		}
 
-		return await new Promise((resolve, reject) => {
-			const executionMode = 'webhook';
-			void WebhookHelpers.executeWebhook(
-				workflow,
-				webhookData,
-				workflowData,
-				workflowStartNode,
-				executionMode,
-				undefined,
-				undefined,
-				undefined,
-				request,
-				response,
-				async (error: Error | null, data: object) => {
-					if (error !== null) {
-						return reject(error);
-					}
-					// Save static data if it changed
-					await this.workflowStaticDataService.saveStaticData(workflow);
-					resolve(data);
-				},
-			);
-		});
+		const executionMode = 'webhook';
+		const responsePromise = createDeferredPromise<IWebhookResponsePromiseData>();
+		await WebhookHelpers.executeWebhook(
+			workflow,
+			webhookData,
+			workflowData,
+			workflowStartNode,
+			executionMode,
+			undefined,
+			undefined,
+			undefined,
+			request,
+			response,
+			responsePromise,
+		);
+
+		// Save static data if it changed
+		await this.workflowStaticDataService.saveStaticData(workflow);
 	}
 
 	private async findWebhook(path: string, httpMethod: IHttpRequestMethods) {

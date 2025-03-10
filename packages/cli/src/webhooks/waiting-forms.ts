@@ -13,7 +13,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { IExecutionResponse } from '@/interfaces';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 
-import type { IWebhookResponseCallbackData, WaitingWebhookRequest } from './webhook.types';
+import type { WaitingWebhookRequest } from './webhook.types';
 
 @Service()
 export class WaitingForms extends WaitingWebhooks {
@@ -66,10 +66,7 @@ export class WaitingForms extends WaitingWebhooks {
 		}
 	}
 
-	async executeWebhook(
-		req: WaitingWebhookRequest,
-		res: express.Response,
-	): Promise<IWebhookResponseCallbackData> {
+	async executeWebhook(req: WaitingWebhookRequest, res: express.Response): Promise<void> {
 		const { path: executionId, suffix } = req.params;
 
 		this.logReceivedWebhook(req.method, executionId);
@@ -128,10 +125,7 @@ export class WaitingForms extends WaitingWebhooks {
 					message: 'Your response has been recorded',
 					formTitle: 'Form Submitted',
 				});
-
-				return {
-					noWebhookResponse: true,
-				};
+				return;
 			} else {
 				lastNodeExecuted = completionPage;
 			}
@@ -143,7 +137,7 @@ export class WaitingForms extends WaitingWebhooks {
 		 */
 		if (execution.mode === 'manual') execution.data.isTestWebhook = true;
 
-		return await this.getWebhookExecutionData({
+		await this.getWebhookExecutionData({
 			execution,
 			req,
 			res,

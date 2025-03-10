@@ -6,7 +6,7 @@ import type { ExecutionRepository } from '@/databases/repositories/execution.rep
 import { WaitingForms } from '@/webhooks/waiting-forms';
 
 import type { IExecutionResponse } from '../../interfaces';
-import type { WaitingWebhookRequest } from '../webhook.types';
+import type { IWebhookResponsePromiseData, WaitingWebhookRequest } from '../webhook.types';
 
 describe('WaitingForms', () => {
 	const executionRepository = mock<ExecutionRepository>();
@@ -205,7 +205,7 @@ describe('WaitingForms', () => {
 				// @ts-expect-error Protected method
 				.spyOn(waitingForms, 'getWebhookExecutionData')
 				// @ts-expect-error Protected method
-				.mockResolvedValue(mock<IWebhookResponseCallbackData>());
+				.mockResolvedValue(mock<IWebhookResponsePromiseData>());
 
 			const execution = mock<IExecutionResponse>({
 				finished: false,
