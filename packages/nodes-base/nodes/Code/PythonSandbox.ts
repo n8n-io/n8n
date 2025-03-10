@@ -1,7 +1,8 @@
+import * as fs from 'fs';
 import { ApplicationError, type IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
-import type { PyDict } from 'pyodide/ffi';
+import * as path from 'path';
+import { Worker } from 'worker_threads';
 
-import { LoadPyodide } from './Pyodide';
 import type { SandboxContext } from './Sandbox';
 import { Sandbox } from './Sandbox';
 
@@ -53,46 +54,173 @@ export class PythonSandbox extends Sandbox {
 	}
 
 	private async runCodeInPython<T>() {
-		const packageCacheDir = this.helpers.getStoragePath();
-		const pyodide = await LoadPyodide(packageCacheDir);
+		const workerFilePath = await this.createWorkerFile();
 
-		let executionResult;
 		try {
-			await pyodide.runPythonAsync('jsproxy_typedict[0] = type(Object.new().as_object_map())');
-
-			await pyodide.loadPackagesFromImports(this.pythonCode);
-
-			const dict = pyodide.globals.get('dict');
-			const globalsDict: PyDict = dict();
-			for (const key of Object.keys(this.context)) {
-				if ((key === '_env' && envAccessBlocked) || key === '_node') continue;
-				const value = this.context[key];
-				globalsDict.set(key, value);
-			}
-
-			pyodide.setStdout({ batched: (str) => this.emit('output', str) });
-
-			const runCode = `
-async def __main():
-${this.pythonCode
-	.split('\n')
-	.map((line) => '  ' + line)
-	.join('\n')}
-await __main()`;
-			executionResult = await pyodide.runPythonAsync(runCode, { globals: globalsDict });
-			globalsDict.destroy();
+			return await this.executePythonInWorker<T>(workerFilePath);
 		} catch (error) {
 			throw this.getPrettyError(error as PyodideError);
+		} finally {
+			// Clean up the temporary worker file
+			try {
+				fs.unlinkSync(workerFilePath);
+			} catch (e) {
+				console.error('Failed to delete temporary worker file:', e);
+			}
+		}
+	}
+
+	/**
+	 * Creates a temporary worker file for Python code execution
+	 */
+	private async createWorkerFile(): Promise<string> {
+		const packageCacheDir = this.helpers.getStoragePath();
+		const tempDir = path.join(packageCacheDir, 'workers');
+
+		if (!fs.existsSync(tempDir)) {
+			fs.mkdirSync(tempDir, { recursive: true });
 		}
 
-		if (executionResult?.toJs) {
-			return executionResult.toJs({
-				dict_converter: Object.fromEntries,
-				create_proxies: false,
-			}) as T;
-		}
+		const workerFilePath = path.join(tempDir, `python-worker-${Date.now()}.js`);
 
-		return executionResult as T;
+		fs.writeFileSync(workerFilePath, this.generateWorkerCode());
+
+		return workerFilePath;
+	}
+
+	/**
+	 * Generates the worker thread code for Python execution
+	 */
+	private generateWorkerCode(): string {
+		return `
+			const { parentPort, workerData } = require('worker_threads');
+			const { pythonCode, context, packageCacheDir } = workerData;
+
+			async function runPython() {
+				try {
+					const { LoadPyodide } = require('${path.resolve(__dirname, './Pyodide.js')}');
+					const pyodide = await LoadPyodide(packageCacheDir);
+
+					await pyodide.runPythonAsync('jsproxy_typedict[0] = type(Object.new().as_object_map())');
+					await pyodide.loadPackagesFromImports(pythonCode);
+
+					const globalsDict = pyodide.globals.get('dict')();
+					for (const [key, value] of Object.entries(context)) {
+						if ((key === '_env' && ${envAccessBlocked}) || key === '_node') continue;
+						globalsDict.set(key, value);
+					}
+
+					const indentedCode = pythonCode.split('\\n').map(line => '  ' + line).join('\\n');
+					const result = await pyodide.runPythonAsync(
+						\`async def __main():\n\${indentedCode}\nawait __main()\`,
+						{ globals: globalsDict }
+					);
+
+					const jsResult = result?.toJs ?
+						result.toJs({ dict_converter: Object.fromEntries, create_proxies: false }) :
+						result;
+					// Clean up
+					globalsDict.destroy();
+
+					// Send result back to main thread
+					parentPort.postMessage({ success: true, result: jsResult });
+				} catch (error) {
+					// Send error back to main thread
+					parentPort.postMessage({
+						success: false,
+						error: error.message,
+						type: error.type || 'Error'
+					});
+				}
+			}
+
+			runPython();
+		`;
+	}
+
+	private async executePythonInWorker<T>(workerFilePath: string): Promise<T> {
+		return await new Promise((resolve, reject) => {
+			try {
+				function sanitizeForWorker(input: any, seen = new WeakMap()) {
+					if (typeof input !== 'object' || input === null) {
+						if (typeof input === 'function' || typeof input === 'symbol') {
+							return undefined;
+						}
+						return input;
+					}
+
+					// Handle circular references: if we've seen this object, return the same reference
+					if (seen.has(input)) {
+						return seen.get(input);
+					}
+
+					let output: any;
+
+					if (Array.isArray(input)) {
+						output = [];
+						// Mark the object as seen before recursing
+						seen.set(input, output);
+						for (const item of input) {
+							const sanitizedItem = sanitizeForWorker(item, seen);
+							if (sanitizedItem !== undefined) {
+								output.push(sanitizedItem);
+							}
+						}
+						return output;
+					}
+
+					output = {};
+					seen.set(input, output);
+					for (const key in input) {
+						if (Object.prototype.hasOwnProperty.call(input, key)) {
+							const value = input[key];
+							// If the value is non-cloneable, skip it
+							if (typeof value === 'function' || typeof value === 'symbol') {
+								continue;
+							}
+							const sanitizedValue = sanitizeForWorker(value, seen);
+							if (sanitizedValue !== undefined) {
+								output[key] = sanitizedValue;
+							}
+						}
+					}
+
+					return output;
+				}
+
+				const worker = new Worker(workerFilePath, {
+					workerData: {
+						pythonCode: this.pythonCode,
+						context: sanitizeForWorker(this.context),
+						packageCacheDir: this.helpers.getStoragePath(),
+					},
+				});
+
+				console.log('before on message');
+				worker.on('message', (data) => {
+					console.log('on message', data);
+					if (data.success) {
+						resolve(data.result as T);
+					} else {
+						const error = new Error(data.error);
+						(error as PyodideError).type = data.type;
+						reject(error);
+					}
+				});
+
+				worker.on('error', (error) => {
+					reject(error);
+				});
+
+				worker.on('exit', (code) => {
+					if (code !== 0 && code !== null) {
+						reject(new Error(`Worker stopped with exit code ${code}`));
+					}
+				});
+			} catch (error) {
+				reject(error);
+			}
+		});
 	}
 
 	private getPrettyError(error: PyodideError): Error {
