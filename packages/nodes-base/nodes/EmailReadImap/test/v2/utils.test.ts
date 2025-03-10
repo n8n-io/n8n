@@ -42,6 +42,9 @@ describe('Test IMap V2 utils', () => {
 							headers: { '': 'Body content' },
 							headerLines: undefined,
 							html: false,
+							attributes: {
+								uid: undefined,
+							},
 						},
 						binary: undefined,
 					},
@@ -54,6 +57,9 @@ describe('Test IMap V2 utils', () => {
 							textPlain: 'text',
 							metadata: {
 								'0': 'h',
+							},
+							attributes: {
+								uid: undefined,
 							},
 						},
 					},
