@@ -52,13 +52,6 @@ export const typescriptCompletionSource: CompletionSource = async (context) => {
 	if (isGlobal) {
 		options = options
 			.flatMap((opt) => {
-				let word = context.matchBefore(START_CHARACTERS_REGEX);
-				if (!word?.text) {
-					word = context.matchBefore(/[\"\'].*/);
-				}
-				if (!word?.text) {
-					word = context.matchBefore(/[\$\w]+/);
-				}
 				if (opt.label === '$()') {
 					return [
 						opt,

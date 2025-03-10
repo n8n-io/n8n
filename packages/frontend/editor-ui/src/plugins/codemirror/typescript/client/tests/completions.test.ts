@@ -8,32 +8,28 @@ describe('matchText', () => {
 		vi.resetAllMocks();
 	});
 
-	it('should match on previous nodes', () => {
-		const previousNodes = [
-			{ doc: '$(|)', expected: '(' },
-			{ doc: '$("|', expected: '"' },
-			{ doc: "$('|", expected: "'" },
-			{ doc: '$(""|', expected: '"' },
-			{ doc: "$('|", expected: "'" },
-			{ doc: '$("|")', expected: '"' },
-			{ doc: "$('|')", expected: "'" },
-			{ doc: '$("|)', expected: '"' },
-			{ doc: '$("No|")', expected: 'No' },
-			{ doc: "$('No|')", expected: 'No' },
-			{ doc: '$("N|")', expected: 'N' },
-			{ doc: "$('N|')", expected: 'N' },
-		];
-
-		previousNodes.forEach((node) => {
-			const cursorPosition = node.doc.indexOf('|');
-			const state = EditorState.create({
-				doc: node.doc.replace('|', ''),
-				selection: { anchor: cursorPosition },
-				extensions: [n8nLang()],
-			});
-			const context = new CompletionContext(state, cursorPosition, false);
-
-			expect(matchText(context)?.text).toEqual(node.expected);
+	it.each([
+		{ node: '$(|)', expected: '(' },
+		{ node: '$("|', expected: '"' },
+		{ node: "$('|", expected: "'" },
+		{ node: '$(""|', expected: '"' },
+		{ node: "$('|", expected: "'" },
+		{ node: '$("|")', expected: '"' },
+		{ node: "$('|')", expected: "'" },
+		{ node: '$("|)', expected: '"' },
+		{ node: '$("No|")', expected: 'No' },
+		{ node: "$('No|')", expected: 'No' },
+		{ node: '$("N|")', expected: 'N' },
+		{ node: "$('N|')", expected: 'N' },
+	])('should match on previous node: $node', ({ node, expected }) => {
+		const cursorPosition = node.indexOf('|');
+		const state = EditorState.create({
+			doc: node.replace('|', ''),
+			selection: { anchor: cursorPosition },
+			extensions: [n8nLang()],
 		});
+		const context = new CompletionContext(state, cursorPosition, false);
+
+		expect(matchText(context)?.text).toEqual(expected);
 	});
 });
