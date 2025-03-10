@@ -114,12 +114,9 @@ export class Workflow {
 			);
 			node.parameters = nodeParameters !== null ? nodeParameters : {};
 		}
-		this.connectionsBySourceNode = parameters.connections;
 
-		// Save also the connections by the destination nodes
-		this.connectionsByDestinationNode = Workflow.getConnectionsByDestination(
-			parameters.connections,
-		);
+		this.connectionsBySourceNode = this.getConnectionsBySourceNode(parameters.connections);
+		this.connectionsByDestinationNode = this.getConnectionsByDestination();
 
 		this.active = parameters.active || false;
 
@@ -140,12 +137,30 @@ export class Workflow {
 		this.staticData.__dataChanged = true;
 	}
 
+	/** This method removes any ghost connections/nodes */
+	getConnectionsBySourceNode(connections: IConnections) {
+		const returnConnection: IConnections = {};
+		for (const sourceNode in connections) {
+			if (sourceNode in this.nodes) {
+				returnConnection[sourceNode] = connections[sourceNode];
+				for (const inputConnections of Object.values(returnConnection[sourceNode])) {
+					inputConnections.forEach((innerConnections, index) => {
+						if (innerConnections?.length) {
+							inputConnections[index] = innerConnections?.filter(({ node }) => node in this.nodes);
+						}
+					});
+				}
+			}
+		}
+		return returnConnection;
+	}
+
 	/**
-	 * The default connections are by source node. This function rewrites them by destination nodes
-	 * to easily find parent nodes.
-	 *
+	 * The default connections are by source node.
+	 * This function rewrites them by destination nodes to easily find parent nodes.
 	 */
-	static getConnectionsByDestination(connections: IConnections): IConnections {
+	getConnectionsByDestination(): IConnections {
+		const connections = this.connectionsBySourceNode;
 		const returnConnection: IConnections = {};
 
 		let connectionInfo;
@@ -469,9 +484,7 @@ export class Workflow {
 		}
 
 		// Use the updated connections to create updated connections by destination nodes
-		this.connectionsByDestinationNode = Workflow.getConnectionsByDestination(
-			this.connectionsBySourceNode,
-		);
+		this.connectionsByDestinationNode = this.getConnectionsByDestination();
 	}
 
 	/**
@@ -530,9 +543,6 @@ export class Workflow {
 					// Node got checked already before
 					return;
 				}
-
-				// Ignore connections for nodes that don't exist in this workflow
-				if (!(connection.node in this.nodes)) return;
 
 				addNodes = this.getHighestNode(connection.node, undefined, checkedNodes);
 
