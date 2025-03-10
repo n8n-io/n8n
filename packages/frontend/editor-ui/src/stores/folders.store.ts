@@ -100,6 +100,10 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		await workflowsApi.deleteFolder(rootStore.restApiContext, projectId, folderId);
 	}
 
+	async function renameFolder(projectId: string, folderId: string, name: string) {
+		await workflowsApi.renameFolder(rootStore.restApiContext, projectId, folderId, name);
+	}
+
 	return {
 		fetchTotalWorkflowsAndFoldersCount,
 		breadcrumbsCache,
@@ -110,5 +114,6 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		totalWorkflowCount,
 		deleteFolder,
 		deleteFoldersFromCache,
+		renameFolder,
 	};
 });

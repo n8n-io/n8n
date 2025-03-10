@@ -145,7 +145,7 @@ const folderActions = ref<Array<UserAction & { onlyAvailableOn?: 'mainBreadcrumb
 	{
 		label: 'Rename',
 		value: FOLDER_LIST_ITEM_ACTIONS.RENAME,
-		disabled: true,
+		disabled: false,
 	},
 	{
 		label: 'Move to Folder',
@@ -373,41 +373,52 @@ const fetchWorkflows = async () => {
 	const homeProjectFilter = filters.value.homeProject || undefined;
 	const parentFolder = (route.params?.folderId as string) || undefined;
 
-	const fetchedResources = await workflowsStore.fetchWorkflowsPage(
-		routeProjectId ?? homeProjectFilter,
-		currentPage.value,
-		pageSize.value,
-		currentSort.value,
-		{
-			name: filters.value.search || undefined,
-			active:
-				filters.value.status === StatusFilter.ALL
-					? undefined
-					: filters.value.status === StatusFilter.ACTIVE,
-			tags: filters.value.tags.map((tagId) => tagsStore.tagsById[tagId]?.name),
-			parentFolderId: parentFolder ?? '0', // 0 is the root folder in the API
-		},
-		showFolders.value,
-	);
-	foldersStore.cacheFolders(
-		fetchedResources
-			.filter((resource) => resource.resource === 'folder')
-			.map((r) => ({ id: r.id, name: r.name, parentFolder: r.parentFolder?.id })),
-	);
-	const isCurrentFolderCached = foldersStore.breadcrumbsCache[parentFolder ?? ''] !== undefined;
-	const needToFetchFolderPath = parentFolder && !isCurrentFolderCached && routeProjectId;
-	if (needToFetchFolderPath) {
-		breadcrumbsLoading.value = true;
-		await foldersStore.getFolderPath(routeProjectId, parentFolder);
-		currentFolderId.value = parentFolder;
-		breadcrumbsLoading.value = false;
-	}
-	await foldersStore.fetchTotalWorkflowsAndFoldersCount(routeProjectId);
+	try {
+		const fetchedResources = await workflowsStore.fetchWorkflowsPage(
+			routeProjectId ?? homeProjectFilter,
+			currentPage.value,
+			pageSize.value,
+			currentSort.value,
+			{
+				name: filters.value.search || undefined,
+				active: filters.value.status ? Boolean(filters.value.status) : undefined,
+				tags: filters.value.tags.map((tagId) => tagsStore.tagsById[tagId]?.name),
+				parentFolderId: parentFolder ?? '0', // 0 is the root folder in the API
+			},
+			showFolders.value,
+		);
 
-	delayedLoading.cancel();
-	workflowsAndFolders.value = fetchedResources;
-	loading.value = false;
-	return fetchedResources;
+		foldersStore.cacheFolders(
+			fetchedResources
+				.filter((resource) => resource.resource === 'folder')
+				.map((r) => ({ id: r.id, name: r.name, parentFolder: r.parentFolder?.id })),
+		);
+
+		const isCurrentFolderCached = foldersStore.breadcrumbsCache[parentFolder ?? ''] !== undefined;
+		const needToFetchFolderPath = parentFolder && !isCurrentFolderCached && routeProjectId;
+
+		if (needToFetchFolderPath) {
+			breadcrumbsLoading.value = true;
+			await foldersStore.getFolderPath(routeProjectId, parentFolder);
+			breadcrumbsLoading.value = false;
+		}
+
+		await foldersStore.fetchTotalWorkflowsAndFoldersCount(routeProjectId);
+
+		workflowsAndFolders.value = fetchedResources;
+		return fetchedResources;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('workflows.list.error.fetching'));
+		// redirect to the project page if the folder is not found
+		void router.push({ name: VIEWS.PROJECTS_FOLDERS, params: { projectId: routeProjectId } });
+		return [];
+	} finally {
+		delayedLoading.cancel();
+		loading.value = false;
+		if (breadcrumbsLoading.value) {
+			breadcrumbsLoading.value = false;
+		}
+	}
 };
 
 // Filter and sort methods
@@ -638,12 +649,14 @@ const getCurrentFolderWorkflowCount = () => {
 	);
 	return workflows.length;
 };
+
 const getCurrentFolderSubFolderCount = () => {
 	const folders = workflowsAndFolders.value.filter(
 		(resource): resource is FolderListItem => resource.resource === 'folder',
 	);
 	return folders.length;
 };
+
 const getFolderContent = (folderId: string) => {
 	const folderListItem = getFolderListItem(folderId);
 	if (!folderListItem) {
@@ -781,6 +794,10 @@ const onBreadCrumbsAction = async (action: string) => {
 				workflowCount,
 			});
 			break;
+		case FOLDER_LIST_ITEM_ACTIONS.RENAME:
+			if (!route.params.folderId) return;
+			await renameFolder(route.params.folderId as string);
+			break;
 		default:
 			break;
 	}
@@ -820,6 +837,9 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 			}
 			break;
 		}
+		case FOLDER_LIST_ITEM_ACTIONS.RENAME:
+			await renameFolder(clickedFolder.id);
+			break;
 		default:
 			break;
 	}
@@ -833,7 +853,7 @@ const createFolder = async (parent: { id: string; name: string; type: 'project' 
 		{
 			confirmButtonText: i18n.baseText('generic.create'),
 			cancelButtonText: i18n.baseText('generic.cancel'),
-			inputErrorMessage: i18n.baseText('folders.add.invalidName.message'),
+			inputErrorMessage: i18n.baseText('folders.invalidName.message'),
 			inputValue: '',
 			inputPattern: /^[a-zA-Z0-9-_ ]{1,100}$/,
 			customClass: 'add-folder-modal',
@@ -884,6 +904,39 @@ const createFolder = async (parent: { id: string; name: string; type: 'project' 
 			}
 		} catch (error) {
 			toast.showError(error, 'Error creating folder');
+		}
+	}
+};
+
+const renameFolder = async (folderId: string) => {
+	const folder = foldersStore.getCachedFolder(folderId);
+	if (!folder || !currentProject.value) return;
+	const promptResponsePromise = message.prompt(
+		i18n.baseText('folders.rename.message', { interpolate: { folderName: folder.name } }),
+		{
+			confirmButtonText: i18n.baseText('generic.rename'),
+			cancelButtonText: i18n.baseText('generic.cancel'),
+			inputErrorMessage: i18n.baseText('folders.invalidName.message'),
+			inputValue: folder.name,
+			inputPattern: /^[a-zA-Z0-9-_ ]{1,100}$/,
+			customClass: 'rename-folder-modal',
+		},
+	);
+	const promptResponse = await promptResponsePromise;
+	if (promptResponse.action === MODAL_CONFIRM) {
+		const newFolderName = promptResponse.value;
+		try {
+			await foldersStore.renameFolder(currentProject.value?.id, folderId, newFolderName);
+			foldersStore.breadcrumbsCache[folderId].name = newFolderName;
+			toast.showMessage({
+				title: i18n.baseText('folders.rename.success.message', {
+					interpolate: { folderName: newFolderName },
+				}),
+				type: 'success',
+			});
+			await fetchWorkflows();
+		} catch (error) {
+			toast.showError(error, i18n.baseText('folders.rename.error.title'));
 		}
 	}
 };

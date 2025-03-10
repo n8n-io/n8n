@@ -114,3 +114,14 @@ export async function getFolderPath(
 export async function deleteFolder(context: IRestApiContext, projectId: string, folderId: string) {
 	return await makeRestApiRequest(context, 'DELETE', `/projects/${projectId}/folders/${folderId}`);
 }
+
+export async function renameFolder(
+	context: IRestApiContext,
+	projectId: string,
+	folderId: string,
+	name: string,
+): Promise<void> {
+	return await makeRestApiRequest(context, 'PATCH', `/projects/${projectId}/folders/${folderId}`, {
+		name,
+	});
+}
