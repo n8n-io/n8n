@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Ref } from 'vue';
-import { provide, watch, computed, ref, watchEffect } from 'vue';
+import { provide, watch, computed, ref, watchEffect, useTemplateRef } from 'vue';
 import { ChatOptionsSymbol, ChatSymbol } from '@n8n/chat/constants';
 import type { Router } from 'vue-router';
 import { useRouter } from 'vue-router';
@@ -26,6 +26,8 @@ import type { RunWorkflowChatPayload } from './composables/useChatMessaging';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { usePiPWindow } from '@/components/CanvasChat/composables/usePiPWindow';
+import { N8nResizeWrapper } from '@n8n/design-system';
 
 const workflowsStore = useWorkflowsStore();
 const canvasStore = useCanvasStore();
@@ -38,6 +40,8 @@ const messages = ref<ChatMessage[]>([]);
 const currentSessionId = ref<string>(uuid().replace(/-/g, ''));
 const isDisabled = ref(false);
 const container = ref<HTMLElement>();
+const pipContainer = useTemplateRef('pipContainer');
+const pipContent = useTemplateRef('pipContent');
 
 // Computed properties
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
@@ -96,6 +100,8 @@ const {
 	onResizeChatDebounced,
 	onWindowResize,
 } = useResize(container);
+
+const { canPopOut, isPoppedOut, pipWindow, onPopOut } = usePiPWindow(pipContainer, pipContent);
 
 // Extracted pure functions for better testability
 function createChatConfig(params: {
@@ -267,54 +273,73 @@ watchEffect(() => {
 </script>
 
 <template>
-	<N8nResizeWrapper
-		v-if="chatTriggerNode"
-		:is-resizing-enabled="isChatOpen || isLogsOpen"
-		:supported-directions="['top']"
-		:class="[$style.resizeWrapper, !isChatOpen && !isLogsOpen && $style.empty]"
-		:height="height"
-		:style="rootStyles"
-		@resize="onResizeDebounced"
-	>
-		<div ref="container" :class="[$style.container, 'ignore-key-press-canvas']" tabindex="0">
-			<div v-if="isChatOpen || isLogsOpen" :class="$style.chatResizer">
-				<n8n-resize-wrapper
-					v-if="isChatOpen"
-					:supported-directions="['right']"
-					:width="chatWidth"
-					:class="$style.chat"
-					@resize="onResizeChatDebounced"
-				>
-					<div :class="$style.inner">
-						<ChatMessagesPanel
-							data-test-id="canvas-chat"
-							:messages="messages"
-							:session-id="currentSessionId"
-							:past-chat-messages="previousChatMessages"
-							:show-close-button="!connectedNode"
-							@close="closePanel"
-							@refresh-session="handleRefreshSession"
-							@display-execution="handleDisplayExecution"
-							@send-message="sendMessage"
-						/>
+	<div ref="pipContainer">
+		<div ref="pipContent" :class="$style.pipContent">
+			<N8nResizeWrapper
+				v-if="chatTriggerNode"
+				:is-resizing-enabled="!isPoppedOut && (isChatOpen || isLogsOpen)"
+				:supported-directions="['top']"
+				:class="[$style.resizeWrapper, !isChatOpen && !isLogsOpen && $style.empty]"
+				:height="height"
+				:style="rootStyles"
+				@resize="onResizeDebounced"
+			>
+				<div ref="container" :class="[$style.container, 'ignore-key-press-canvas']" tabindex="0">
+					<div v-if="isChatOpen || isLogsOpen" :class="$style.chatResizer">
+						<N8nResizeWrapper
+							v-if="isChatOpen"
+							:supported-directions="['right']"
+							:width="chatWidth"
+							:class="$style.chat"
+							:window-obj="pipWindow"
+							@resize="onResizeChatDebounced"
+						>
+							<div :class="$style.inner">
+								<ChatMessagesPanel
+									data-test-id="canvas-chat"
+									:messages="messages"
+									:session-id="currentSessionId"
+									:past-chat-messages="previousChatMessages"
+									:show-close-button="!isPoppedOut && !connectedNode"
+									@close="closePanel"
+									@refresh-session="handleRefreshSession"
+									@display-execution="handleDisplayExecution"
+									@send-message="sendMessage"
+								/>
+							</div>
+						</N8nResizeWrapper>
+						<div v-if="isLogsOpen && connectedNode" :class="$style.logs">
+							<ChatLogsPanel
+								:key="`${resultData?.length ?? messages?.length}`"
+								:workflow="workflow"
+								:is-popped-out="isPoppedOut"
+								:can-pop-out="canPopOut"
+								data-test-id="canvas-chat-logs"
+								:node="connectedNode"
+								:slim="logsWidth < 700"
+								@close="closePanel"
+								@request-pop-out="onPopOut"
+							/>
+						</div>
 					</div>
-				</n8n-resize-wrapper>
-				<div v-if="isLogsOpen && connectedNode" :class="$style.logs">
-					<ChatLogsPanel
-						:key="`${resultData?.length ?? messages?.length}`"
-						:workflow="workflow"
-						data-test-id="canvas-chat-logs"
-						:node="connectedNode"
-						:slim="logsWidth < 700"
-						@close="closePanel"
-					/>
 				</div>
-			</div>
+			</N8nResizeWrapper>
 		</div>
-	</N8nResizeWrapper>
+	</div>
 </template>
 
 <style lang="scss" module>
+@media all and (display-mode: picture-in-picture) {
+	.resizeWrapper {
+		height: 100% !important;
+		max-height: 100vh !important;
+	}
+}
+
+.pipContent {
+	height: 100%;
+}
+
 .resizeWrapper {
 	height: var(--panel-height);
 	min-height: 4rem;
