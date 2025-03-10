@@ -368,7 +368,10 @@ const fetchWorkflows = async () => {
 	const tags = filters.value.tags.length
 		? filters.value.tags.map((tagId) => tagsStore.tagsById[tagId]?.name)
 		: [];
-	const activeFilter = filters.value.status ? Boolean(filters.value.status) : undefined;
+	const activeFilter =
+		filters.value.status === StatusFilter.ALL
+			? undefined
+			: filters.value.status === StatusFilter.ACTIVE;
 
 	// Only fetch folders if showFolders is enabled and there are not tags or active filter applied
 	const fetchFolders = showFolders.value && !tags.length && activeFilter === undefined;

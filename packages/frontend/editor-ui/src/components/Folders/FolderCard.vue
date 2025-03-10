@@ -103,7 +103,7 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 							size="small"
 							color="text-light"
 							:class="[$style['info-cell'], $style['info-cell--workflow-count']]"
-							data-test-id="folder-card-workflow-count"
+							data-test-id="folder-card-folder-count"
 						>
 							{{
 								i18n.baseText('generic.workflow', { interpolate: { count: data.workflowCount } })
