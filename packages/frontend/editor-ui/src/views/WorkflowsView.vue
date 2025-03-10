@@ -299,7 +299,8 @@ const onFolderDeleted = async (payload: { folderId: string }) => {
 	const folderInfo = foldersStore.getCachedFolder(payload.folderId);
 	foldersStore.deleteFoldersFromCache([payload.folderId, folderInfo?.parentFolder ?? '']);
 	// If the deleted folder is the current folder, navigate to the parent folder
-	if (route.params.folderId === payload.folderId) {
+
+	if (currentFolderId.value === payload.folderId) {
 		void router.push({
 			name: VIEWS.PROJECTS_FOLDERS,
 			params: { projectId: route.params.projectId, folderId: folderInfo?.parentFolder ?? '' },
@@ -336,9 +337,8 @@ onBeforeUnmount(() => {
 const initialize = async () => {
 	loading.value = true;
 	await setFiltersFromQueryString();
-	if (!route.params.folderId) {
-		currentFolderId.value = null;
-	}
+
+	currentFolderId.value = route.params.folderId as string | null;
 	const [, resourcesPage] = await Promise.all([
 		usersStore.fetchUsers(),
 		fetchWorkflows(),
@@ -874,8 +874,8 @@ const createFolder = async (parent: { id: string; name: string; type: 'project' 
 				}),
 				type: 'success',
 			});
-			// If we are on an empty list or the first page is not yet filled, just add the new folder to the list
-			if (!workflowsAndFolders.value.length || workflowsAndFolders.value.length < pageSize.value) {
+			// If we are on an empty list, just add the new folder to the list
+			if (!workflowsAndFolders.value.length) {
 				workflowsAndFolders.value = [
 					{
 						id: newFolder.id,
@@ -958,7 +958,7 @@ const deleteFolder = async (folderId: string, workflowCount: number, subFolderCo
 			title: i18n.baseText('folders.delete.success.message'),
 			type: 'success',
 		});
-		await fetchWorkflows();
+		await onFolderDeleted({ folderId });
 	}
 };
 </script>
