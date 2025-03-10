@@ -1,3 +1,4 @@
+import isbot from 'isbot';
 import {
 	NodeOperationError,
 	SEND_AND_WAIT_OPERATION,
@@ -324,10 +325,17 @@ const getFormResponseCustomizations = (context: IWebhookFunctions) => {
 export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 	const method = this.getRequestObject().method;
 	const res = this.getResponseObject();
+	const req = this.getRequestObject();
+
 	const responseType = this.getNodeParameter('responseType', 'approval') as
 		| 'approval'
 		| 'freeText'
 		| 'customForm';
+
+	if (responseType === 'approval' && isbot(req.headers['user-agent'])) {
+		res.send('');
+		return { noWebhookResponse: true };
+	}
 
 	if (responseType === 'freeText') {
 		if (method === 'GET') {
@@ -424,7 +432,7 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 		}
 	}
 
-	const query = this.getRequestObject().query as { approved: 'false' | 'true' };
+	const query = req.query as { approved: 'false' | 'true' };
 	const approved = query.approved === 'true';
 	return {
 		webhookResponse: ACTION_RECORDED_PAGE,
