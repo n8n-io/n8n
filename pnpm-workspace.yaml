@@ -11,7 +11,7 @@ catalog:
   '@types/lodash': ^4.14.195
   '@types/uuid': ^10.0.0
   '@types/xml2js': ^0.4.14
-  axios: 1.7.4
+  axios: 1.8.2
   basic-auth: 2.0.1
   callsites: 3.1.0
   chokidar: 4.0.1

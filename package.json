@@ -87,7 +87,11 @@
       "tsconfig-paths": "^4.2.0",
       "typescript": "^5.7.2",
       "vue-tsc": "^2.1.10",
-      "ws": ">=8.17.1"
+      "ws": ">=8.17.1",
+      "@rudderstack/rudder-sdk-node>axios": "1.8.2",
+      "ibm-cloud-sdk-core>axios": "1.8.2",
+      "langchain>axios": "1.8.2",
+      "snowflake-sdk>axios": "1.8.2"
     },
     "patchedDependencies": {
       "bull@4.12.1": "patches/bull@4.12.1.patch",
