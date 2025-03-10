@@ -1,0 +1,18 @@
+{
+  "active": false,
+  "connections": {},
+  "createdAt": "2025-02-09T04:34:21.353Z",
+  "id": "O4AvAxD2FUuusGOG",
+  "meta": null,
+  "name": "代碼知識庫",
+  "nodes": [],
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-02-09T04:34:21.353Z",
+  "versionId": "cbf00f5e-e482-48be-89b3-81be46f83e8b"
+}
