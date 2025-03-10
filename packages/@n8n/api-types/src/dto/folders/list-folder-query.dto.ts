@@ -51,13 +51,12 @@ const isArrayOfStrings = (val: unknown): val is string[] => {
 const filterValidator = z
 	.string()
 	.optional()
-	.superRefine((val, ctx) => {
-		if (!val) return;
-
+	.transform((val, ctx) => {
+		if (!val) return undefined;
 		try {
-			const parsed = jsonParse(val);
+			const parsed: unknown = jsonParse(val);
 			try {
-				filterSchema.parse(parsed);
+				return filterSchema.parse(parsed);
 			} catch (e) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
@@ -74,10 +73,6 @@ const filterValidator = z
 			});
 			return z.NEVER;
 		}
-	})
-	.transform((val) => {
-		if (!val) return undefined;
-		return filterSchema.parse(jsonParse(val));
 	});
 
 // Skip parameter validation
