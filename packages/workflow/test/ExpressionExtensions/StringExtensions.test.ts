@@ -313,6 +313,14 @@ describe('Data Transformation Functions', () => {
 			expect(() => evaluate('={{ "No JSON here".parseJson() }}')).toThrowError('Parsing failed');
 		});
 
+		test('.toJsonString should work on a string', () => {
+			expect(evaluate('={{ "test".toJsonString() }}')).toEqual(JSON.stringify('test'));
+			expect(evaluate('={{ "The \\"best\\" colours: red\\nbrown".toJsonString() }}')).toEqual(
+				JSON.stringify('The "best" colours: red\nbrown'),
+			);
+			expect(evaluate('={{ "".toJsonString() }}')).toEqual(JSON.stringify(''));
+		});
+
 		test('.toBoolean should work on a string', () => {
 			expect(evaluate('={{ "False".toBoolean() }}')).toBe(false);
 			expect(evaluate('={{ "".toBoolean() }}')).toBe(false);
