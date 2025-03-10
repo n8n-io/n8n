@@ -1,15 +1,6 @@
 <script setup lang="ts">
 import type { Ref } from 'vue';
-import {
-	provide,
-	watch,
-	computed,
-	ref,
-	watchEffect,
-	useTemplateRef,
-	onMounted,
-	onBeforeUnmount,
-} from 'vue';
+import { provide, watch, computed, ref, watchEffect, useTemplateRef } from 'vue';
 import { ChatOptionsSymbol, ChatSymbol } from '@n8n/chat/constants';
 import type { Router } from 'vue-router';
 import { useRouter } from 'vue-router';
@@ -35,6 +26,7 @@ import type { RunWorkflowChatPayload } from './composables/useChatMessaging';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { usePiPWindow } from '@/components/CanvasChat/composables/usePiPWindow';
 
 const workflowsStore = useWorkflowsStore();
 const canvasStore = useCanvasStore();
@@ -47,6 +39,8 @@ const messages = ref<ChatMessage[]>([]);
 const currentSessionId = ref<string>(uuid().replace(/-/g, ''));
 const isDisabled = ref(false);
 const container = ref<HTMLElement>();
+const pipContainer = useTemplateRef('pipContainer');
+const pipContent = useTemplateRef('pipContent');
 
 // Computed properties
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
@@ -105,6 +99,8 @@ const {
 	onResizeChatDebounced,
 	onWindowResize,
 } = useResize(container);
+
+const { canPopOut, isPoppedOut, onPopOut } = usePiPWindow(pipContainer, pipContent);
 
 // Extracted pure functions for better testability
 function createChatConfig(params: {
@@ -235,64 +231,6 @@ const { chatConfig, chatOptions } = createChatConfig({
 provide(ChatSymbol, chatConfig);
 provide(ChatOptionsSymbol, chatOptions);
 
-const outerEl = useTemplateRef('outer');
-const logsEl = useTemplateRef('logs');
-const pipWindow = ref<Window>();
-
-function showPip() {
-	if (!logsEl.value) {
-		return;
-	}
-
-	// Copy style sheets over from the initial document
-	// so that the player looks the same.
-	[...document.styleSheets].forEach((styleSheet) => {
-		try {
-			const cssRules = [...styleSheet.cssRules].map((rule) => rule.cssText).join('');
-			const style = document.createElement('style');
-
-			style.textContent = cssRules;
-			pipWindow.value?.document.head.appendChild(style);
-		} catch (e) {
-			const link = document.createElement('link');
-
-			link.rel = 'stylesheet';
-			link.type = styleSheet.type;
-			pipWindow.value?.document.head.appendChild(link);
-		}
-	});
-
-	// Move the player to the Picture-in-Picture window.
-	pipWindow.value?.document.body.append(logsEl.value);
-	pipWindow.value?.addEventListener('pagehide', () => {
-		pipWindow.value = undefined;
-
-		if (logsEl.value) {
-			outerEl.value?.appendChild(logsEl.value);
-		}
-	});
-}
-
-async function handleClickPopOut() {
-	pipWindow.value = await (window as any).documentPictureInPicture.requestWindow();
-	showPip();
-}
-
-onMounted(() => {
-	// If PiP window is already open, render in PiP
-	if ((window as any).documentPictureInPicture.window) {
-		pipWindow.value = (window as any).documentPictureInPicture.window;
-		showPip();
-	}
-});
-
-onBeforeUnmount(() => {
-	if (logsEl.value) {
-		// Make the PiP window blank but keep it open
-		pipWindow.value?.document.body.removeChild(logsEl.value);
-	}
-});
-
 // Watchers
 watch(
 	() => isChatOpen.value,
@@ -334,8 +272,8 @@ watchEffect(() => {
 </script>
 
 <template>
-	<div ref="outer">
-		<div ref="logs" :class="$style.wrapper">
+	<div ref="pipContainer">
+		<div ref="pipContent" :class="$style.wrapper">
 			<N8nResizeWrapper
 				v-if="chatTriggerNode"
 				:is-resizing-enabled="isChatOpen || isLogsOpen"
@@ -360,7 +298,7 @@ watchEffect(() => {
 									:messages="messages"
 									:session-id="currentSessionId"
 									:past-chat-messages="previousChatMessages"
-									:show-close-button="!connectedNode"
+									:show-close-button="!isPoppedOut && !connectedNode"
 									@close="closePanel"
 									@refresh-session="handleRefreshSession"
 									@display-execution="handleDisplayExecution"
@@ -372,12 +310,13 @@ watchEffect(() => {
 							<ChatLogsPanel
 								:key="`${resultData?.length ?? messages?.length}`"
 								:workflow="workflow"
-								:is-popped-out="!!pipWindow"
+								:is-popped-out="isPoppedOut"
+								:can-pop-out="canPopOut"
 								data-test-id="canvas-chat-logs"
 								:node="connectedNode"
 								:slim="logsWidth < 700"
 								@close="closePanel"
-								@request-pop-out="handleClickPopOut"
+								@request-pop-out="onPopOut"
 							/>
 						</div>
 					</div>

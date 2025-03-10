@@ -12,6 +12,7 @@ defineProps<{
 	node: INode | null;
 	slim?: boolean;
 	workflow: Workflow;
+	canPopOut: boolean;
 	isPoppedOut: boolean;
 }>();
 
@@ -30,7 +31,7 @@ const locale = useI18n();
 				</span>
 			</div>
 			<div :class="$style.buttons">
-				<button v-if="!isPoppedOut" @click="emit('requestPopOut')">Pop out</button>
+				<button v-if="canPopOut && !isPoppedOut" @click="emit('requestPopOut')">Pop out</button>
 				<n8n-icon-button
 					v-if="!isPoppedOut"
 					:class="$style.close"
