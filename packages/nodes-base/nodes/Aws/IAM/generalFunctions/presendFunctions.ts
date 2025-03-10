@@ -6,6 +6,16 @@ import {
 } from 'n8n-workflow';
 import { fetchAndValidateUserPaths } from './dataHandling';
 
+export async function presendStringifyBody(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	if (requestOptions.body) {
+		requestOptions.body = JSON.stringify(requestOptions.body);
+	}
+	return requestOptions;
+}
+
 export async function presendUserFields(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
@@ -98,7 +108,7 @@ export async function presendUserFields(
 			}
 		}
 	} else if (url.includes('User')) {
-		userName = (this.getNodeParameter('userName') as IDataObject).value as string; // Use the correct node for userName
+		userName = (this.getNodeParameter('userName') as IDataObject).value as string;
 		url += `&UserName=${userName}`;
 
 		if (url.includes('AddUserToGroup') || url.includes('RemoveUserFromGroup')) {

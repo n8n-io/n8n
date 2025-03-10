@@ -1,4 +1,4 @@
-import { presendStringifyBody } from '../generalFunctions/dataHandling';
+import { presendStringifyBody } from '../generalFunctions/presendFunctions';
 
 describe('presendStringifyBody', () => {
 	let mockContext: any;

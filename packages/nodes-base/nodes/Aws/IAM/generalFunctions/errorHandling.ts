@@ -23,17 +23,15 @@ export async function handleErrorPostReceive(
 	if (error) {
 		const errorCode = error.Code;
 		const errorMessage = error.Message as string;
-
 		let specificError: IDataObject | undefined;
 		switch (errorCode) {
 			case 'EntityAlreadyExists':
-				if (errorMessage.includes('user')) {
+				if (errorMessage.includes('User')) {
 					specificError = {
 						message: 'User already exists',
 						description: 'Users must have unique names. Enter a different name for the new user.',
 					};
-				} else if (errorMessage.includes('group')) {
-					console.log('Got here for error in group');
+				} else if (errorMessage.includes('Group')) {
 					specificError = {
 						message: 'Group already exists',
 						description: 'Groups must have unique names. Enter a different name for the new group.',

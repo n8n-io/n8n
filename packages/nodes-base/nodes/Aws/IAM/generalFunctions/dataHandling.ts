@@ -7,7 +7,7 @@ import {
 	type IN8nHttpFullResponse,
 	type INodeExecutionData,
 } from 'n8n-workflow';
-
+import { makeAwsRequest } from './awsRequest';
 import { searchUsersForGroup } from './dataFetching';
 import type {
 	GetAllGroupsResponseBody,
@@ -16,7 +16,6 @@ import type {
 	GetUserResponseBody,
 	User,
 } from './types';
-import { makeAwsRequest } from './awsRequest';
 
 export async function processGroupsResponse(
 	this: IExecuteSingleFunctions,
@@ -50,7 +49,7 @@ export async function processGroupsResponse(
 
 		if (!includeUsers) {
 			for (const group of groups) {
-				processedItems.push({ json: group });
+				processedItems.push({ ...group } as INodeExecutionData);
 			}
 			return processedItems;
 		}
@@ -59,14 +58,9 @@ export async function processGroupsResponse(
 			const groupName = group.GroupName as string;
 			if (!groupName) continue;
 
-			let users: IDataObject[] = [];
-			try {
-				users = await searchUsersForGroup.call(this, groupName);
-			} catch (error) {
-				console.error(`⚠️ Failed to fetch users for group "${groupName}":`, error);
-			}
+			const users = await searchUsersForGroup.call(this, groupName);
 
-			processedItems.push({ json: { ...group, Users: users } });
+			processedItems.push({ ...group, Users: users } as unknown as INodeExecutionData);
 		}
 
 		return processedItems;
@@ -127,7 +121,7 @@ export async function fetchAndValidateUserPaths(
 			{},
 			{
 				message: 'No users found',
-				description: 'The user list is empty',
+				description: 'No users found in the group. Please try again.',
 			},
 		);
 	}
@@ -146,14 +140,4 @@ export async function fetchAndValidateUserPaths(
 			},
 		);
 	}
-}
-
-export async function presendStringifyBody(
-	this: IExecuteSingleFunctions,
-	requestOptions: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
-	if (requestOptions.body) {
-		requestOptions.body = JSON.stringify(requestOptions.body);
-	}
-	return requestOptions;
 }

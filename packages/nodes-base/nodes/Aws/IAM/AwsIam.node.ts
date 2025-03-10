@@ -16,16 +16,6 @@ export class AwsIam implements INodeType {
 		defaults: { name: 'AWS IAM' },
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
-		hints: [
-			{
-				message: 'Please select a parameter in the additional fields to update the user',
-				displayCondition:
-					'={{$parameter["resource"] === "user" && $parameter["operation"] === "update" && Object.keys($parameter["additionalOptions"]).length === 0}}',
-				whenToDisplay: 'always',
-				location: 'outputPane',
-				type: 'warning',
-			},
-		],
 		credentials: [
 			{
 				name: 'aws',

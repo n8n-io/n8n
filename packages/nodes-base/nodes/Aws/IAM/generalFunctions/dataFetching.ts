@@ -117,7 +117,7 @@ export async function searchUsersForGroup(
 
 	const users = responseBody?.GetGroupResponse?.GetGroupResult?.Users ?? [];
 
-	return Array.isArray(users) ? users : [];
+	return users;
 }
 
 export async function isUserInGroup(
@@ -224,7 +224,7 @@ export async function preDeleteUser(
 			{},
 			{
 				message: 'User is required',
-				description: 'You must provide a valid User to delete.',
+				description: 'Please provide a value in User field to delete a user.',
 			},
 		);
 	}
@@ -261,7 +261,7 @@ export async function preDeleteGroup(
 			{},
 			{
 				message: 'Group is required',
-				description: 'You must provide a valid Group to delete.',
+				description: 'Please provide a value in Group field to delete a group.',
 			},
 		);
 	}
