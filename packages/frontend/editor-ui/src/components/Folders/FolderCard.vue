@@ -80,7 +80,7 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 </script>
 
 <template>
-	<div>
+	<div data-test-id="folder-card">
 		<router-link :to="cardUrl" @click="() => emit('folderOpened', { folder: props.data })">
 			<n8n-card :class="$style.card">
 				<template #prepend>
@@ -99,12 +99,24 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 				<template #footer>
 					<div :class="$style['card-footer']">
 						<n8n-text
+							v-if="data.workflowCount > 0"
+							size="small"
+							color="text-light"
+							:class="[$style['info-cell'], $style['info-cell--workflow-count']]"
+							data-test-id="folder-card-folder-count"
+						>
+							{{
+								i18n.baseText('generic.workflow', { interpolate: { count: data.workflowCount } })
+							}}
+						</n8n-text>
+						<n8n-text
+							v-if="data.subFolderCount > 0"
 							size="small"
 							color="text-light"
 							:class="[$style['info-cell'], $style['info-cell--workflow-count']]"
 							data-test-id="folder-card-workflow-count"
 						>
-							{{ data.workflowCount }} {{ i18n.baseText('generic.workflows') }}
+							{{ i18n.baseText('generic.folder', { interpolate: { count: data.subFolderCount } }) }}
 						</n8n-text>
 						<n8n-text
 							size="small"
@@ -207,7 +219,7 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-3xs);
-	color: var(--color-text-dark);
+	color: var(—color-text-base);
 }
 
 @include mixins.breakpoint('sm-and-down') {
