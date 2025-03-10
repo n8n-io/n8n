@@ -5,11 +5,9 @@ import type {
 	INodeCredentialsDetails,
 	IRun,
 	ITaskData,
-	NodeApiError,
 	WorkflowExecuteMode,
-	WorkflowOperationError,
-	NodeOperationError,
 	IWorkflowBase,
+	ExecutionError,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -18,41 +16,20 @@ import { VariablesService } from '@/environments.ee/variables/variables.service.
 
 export function generateFailedExecutionFromError(
 	mode: WorkflowExecuteMode,
-	error: NodeApiError | NodeOperationError | WorkflowOperationError,
-	node: INode,
+	error: ExecutionError,
+	node: INode | undefined,
+	startTime = Date.now(),
 ): IRun {
-	return {
+	const executionError = {
+		...error,
+		message: error.message,
+		stack: error.stack,
+	};
+	const returnData: IRun = {
 		data: {
-			startData: {
-				destinationNode: node.name,
-				runNodeFilter: [node.name],
-			},
 			resultData: {
-				error,
-				runData: {
-					[node.name]: [
-						{
-							startTime: 0,
-							executionTime: 0,
-							error,
-							source: [],
-						},
-					],
-				},
-				lastNodeExecuted: node.name,
-			},
-			executionData: {
-				contextData: {},
-				metadata: {},
-				nodeExecutionStack: [
-					{
-						node,
-						data: {},
-						source: null,
-					},
-				],
-				waitingExecution: {},
-				waitingExecutionSource: {},
+				error: executionError,
+				runData: {},
 			},
 		},
 		finished: false,
@@ -61,6 +38,37 @@ export function generateFailedExecutionFromError(
 		stoppedAt: new Date(),
 		status: 'error',
 	};
+
+	if (node) {
+		returnData.data.startData = {
+			destinationNode: node.name,
+			runNodeFilter: [node.name],
+		};
+		returnData.data.resultData.lastNodeExecuted = node.name;
+		returnData.data.resultData.runData[node.name] = [
+			{
+				startTime,
+				executionTime: 0,
+				executionStatus: 'error',
+				error: executionError,
+				source: [],
+			},
+		];
+		returnData.data.executionData = {
+			contextData: {},
+			metadata: {},
+			waitingExecution: {},
+			waitingExecutionSource: {},
+			nodeExecutionStack: [
+				{
+					node,
+					data: {},
+					source: null,
+				},
+			],
+		};
+	}
+	return returnData;
 }
 
 /**
