@@ -190,7 +190,7 @@ export class ErrorReporter {
 			'cause' in originalException &&
 			originalException.cause instanceof Error &&
 			'level' in originalException.cause &&
-			originalException.cause.level === 'warning'
+			(originalException.cause.level === 'warning' || originalException.cause.level === 'info')
 		) {
 			// handle underlying errors propagating from dependencies like ai-assistant-sdk
 			return null;

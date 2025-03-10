@@ -14,7 +14,6 @@ import type {
 	INode,
 	INodeExecutionData,
 	INodeParameters,
-	IRun,
 	IRunExecutionData,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
@@ -29,6 +28,7 @@ import type {
 	EnvProviderState,
 	ExecuteWorkflowData,
 	RelatedExecution,
+	NodeError,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -204,6 +204,8 @@ async function startExecution(
 	 */
 	await executionRepository.setRunning(executionId);
 
+	const startTime = Date.now();
+
 	let data;
 	try {
 		await Container.get(PermissionChecker).check(workflowData.id, workflowData.nodes);
@@ -239,7 +241,7 @@ async function startExecution(
 			// If no timeout was given from the parent, then we use our timeout.
 			subworkflowTimeout = Math.min(
 				additionalData.executionTimeoutTimestamp || Number.MAX_SAFE_INTEGER,
-				Date.now() + workflowSettings.executionTimeout * 1000,
+				startTime + workflowSettings.executionTimeout * 1000,
 			);
 		}
 
@@ -257,20 +259,14 @@ async function startExecution(
 		activeExecutions.attachWorkflowExecution(executionId, execution);
 		data = await execution;
 	} catch (error) {
-		const executionError = error ? (error as ExecutionError) : undefined;
-		const fullRunData: IRun = {
-			data: {
-				resultData: {
-					error: executionError,
-					runData: {},
-				},
-			},
-			finished: false,
-			mode: 'integrated',
-			startedAt: new Date(),
-			stoppedAt: new Date(),
-			status: 'error',
-		};
+		const executionError = error as ExecutionError;
+		const fullRunData = WorkflowHelpers.generateFailedExecutionFromError(
+			runData.executionMode,
+			executionError,
+			(error as NodeError).node,
+			startTime,
+		);
+
 		// When failing, we might not have finished the execution
 		// Therefore, database might not contain finished errors.
 		// Force an update to db as there should be no harm doing this

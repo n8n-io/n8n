@@ -5,7 +5,6 @@ export { UnexpectedError, type UnexpectedErrorOptions } from './base/unexpected.
 export { UserError, type UserErrorOptions } from './base/user.error';
 export { ApplicationError } from './application.error';
 export { ExpressionError } from './expression.error';
-export { CredentialAccessError } from './credential-access-error';
 export { ExecutionCancelledError } from './execution-cancelled.error';
 export { NodeApiError } from './node-api.error';
 export { NodeOperationError } from './node-operation.error';
