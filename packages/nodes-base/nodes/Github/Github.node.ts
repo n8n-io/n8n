@@ -606,7 +606,6 @@ export class Github implements INodeType {
 						typeOptions: {
 							searchListMethod: 'getWorkflows',
 							searchable: true,
-							searchFilterRequired: false,
 						},
 					},
 					{
@@ -710,6 +709,7 @@ export class Github implements INodeType {
 					show: {
 						resource: ['workflow'],
 						operation: ['dispatch'],
+						waitForCompletion: [true],
 					},
 				},
 				default: '',
@@ -2572,7 +2572,8 @@ export class Github implements INodeType {
 
 						requestMethod = 'PUT';
 
-						const workflowId = this.getNodeParameter('workflowId', i) as string;
+						const workflowIdObj = this.getNodeParameter('workflowId', i);
+						const workflowId = (workflowIdObj as IDataObject)?.value as string;
 
 						endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}/disable`;
 					}
@@ -2638,7 +2639,8 @@ export class Github implements INodeType {
 
 						requestMethod = 'PUT';
 
-						const workflowId = this.getNodeParameter('workflowId', i) as string;
+						const workflowIdObj = this.getNodeParameter('workflowId', i);
+						const workflowId = (workflowIdObj as IDataObject)?.value as string;
 
 						endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}/enable`;
 					} else if (operation === 'get') {
@@ -2648,7 +2650,8 @@ export class Github implements INodeType {
 
 						requestMethod = 'GET';
 
-						const workflowId = this.getNodeParameter('workflowId', i) as string;
+						const workflowIdObj = this.getNodeParameter('workflowId', i);
+						const workflowId = (workflowIdObj as IDataObject)?.value as string;
 
 						endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}`;
 					} else if (operation === 'getUsage') {
@@ -2658,7 +2661,8 @@ export class Github implements INodeType {
 
 						requestMethod = 'GET';
 
-						const workflowId = this.getNodeParameter('workflowId', i) as string;
+						const workflowIdObj = this.getNodeParameter('workflowId', i);
+						const workflowId = (workflowIdObj as IDataObject)?.value as string;
 
 						endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}/timing`;
 					} else if (operation === 'list') {

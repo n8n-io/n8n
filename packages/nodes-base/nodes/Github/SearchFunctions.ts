@@ -16,38 +16,38 @@ type RepositorySearchItem = {
 	html_url: string;
 };
 
-type UserSearchResponse = {
-	items: UserSearchItem[];
-	total_count: number;
-};
-
-type RepositorySearchResponse = {
-	items: RepositorySearchItem[];
-	total_count: number;
-};
+// Helper function to extract the next page token from GitHub's Link header
+function extractNextPageToken(linkHeader?: string): string | undefined {
+	if (!linkHeader) return undefined;
+	const match = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
+	return match ? match[1] : undefined;
+}
 
 export async function getUsers(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const page = paginationToken ? +paginationToken : 1;
 	const per_page = 100;
-	const responseData: UserSearchResponse = await githubApiRequest.call(
-		this,
-		'GET',
-		'/search/users',
-		{},
-		{ q: filter, page, per_page },
-	);
+	const url = paginationToken ?? `/search/users?q=${filter}&page=1&per_page=${per_page}`;
 
-	const results: INodeListSearchItems[] = responseData.items.map((item: UserSearchItem) => ({
-		name: item.login,
-		value: item.login,
-		url: item.html_url,
+	let nextPaginationToken: string | undefined = undefined;
+	let users: UserSearchItem[] = [];
+
+	try {
+		const response = await githubApiRequest.call(this, 'GET', url, {}, {});
+		users = response.items;
+		nextPaginationToken = extractNextPageToken(response.headers?.link);
+	} catch {
+		// will fail if no users are found
+	}
+
+	const results: INodeListSearchItems[] = users.map((user) => ({
+		name: user.login,
+		value: user.login,
+		url: user.html_url,
 	}));
 
-	const nextPaginationToken = page * per_page < responseData.total_count ? page + 1 : undefined;
 	return { results, paginationToken: nextPaginationToken };
 }
 
@@ -57,33 +57,27 @@ export async function getRepositories(
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
 	const owner = this.getCurrentNodeParameter('owner', { extractValue: true });
-	const page = paginationToken ? +paginationToken : 1;
 	const per_page = 100;
 	const q = `${filter ?? ''} user:${owner} fork:true`;
-	let responseData: RepositorySearchResponse = {
-		items: [],
-		total_count: 0,
-	};
+	const url = paginationToken || `/search/repositories?q=${q}&page=1&per_page=${per_page}`;
+
+	let nextPaginationToken: string | undefined = undefined;
+	let repositories: RepositorySearchItem[] = [];
 
 	try {
-		responseData = await githubApiRequest.call(
-			this,
-			'GET',
-			'/search/repositories',
-			{},
-			{ q, page, per_page },
-		);
+		const response = await githubApiRequest.call(this, 'GET', url, {}, {});
+		repositories = response.items;
+		nextPaginationToken = extractNextPageToken(response.headers?.link);
 	} catch {
 		// will fail if the owner does not have any repositories
 	}
 
-	const results: INodeListSearchItems[] = responseData.items.map((item: RepositorySearchItem) => ({
-		name: item.name,
-		value: item.name,
-		url: item.html_url,
+	const results: INodeListSearchItems[] = repositories.map((repo) => ({
+		name: repo.name,
+		value: repo.name,
+		url: repo.html_url,
 	}));
 
-	const nextPaginationToken = page * per_page < responseData.total_count ? page + 1 : undefined;
 	return { results, paginationToken: nextPaginationToken };
 }
 
@@ -93,16 +87,21 @@ export async function getWorkflows(
 ): Promise<INodeListSearchResult> {
 	const owner = this.getCurrentNodeParameter('owner', { extractValue: true });
 	const repository = this.getCurrentNodeParameter('repository', { extractValue: true });
-	const page = paginationToken ? +paginationToken : 1;
 	const per_page = 100;
 	const endpoint = `/repos/${owner}/${repository}/actions/workflows`;
-	let responseData: { workflows: Array<{ id: string; name: string }>; total_count: number } = {
+	const url = paginationToken ?? `${endpoint}?page=1&per_page=${per_page}`;
+
+	let nextPaginationToken: string | undefined = undefined;
+	const responseData: { workflows: Array<{ id: string; name: string }>; total_count: number } = {
 		workflows: [],
 		total_count: 0,
 	};
 
 	try {
-		responseData = await githubApiRequest.call(this, 'GET', endpoint, {}, { page, per_page });
+		const response = await githubApiRequest.call(this, 'GET', url, {}, {});
+		responseData.workflows = response.workflows;
+		responseData.total_count = response.total_count;
+		nextPaginationToken = extractNextPageToken(response.headers?.link);
 	} catch {
 		// will fail if the repository does not have any workflows
 	}
@@ -112,7 +111,6 @@ export async function getWorkflows(
 		value: workflow.id,
 	}));
 
-	const nextPaginationToken = page * per_page < responseData.total_count ? page + 1 : undefined;
 	return { results, paginationToken: nextPaginationToken };
 }
 
@@ -123,49 +121,48 @@ export async function getRefs(
 ): Promise<INodeListSearchResult> {
 	const owner = this.getCurrentNodeParameter('owner', { extractValue: true });
 	const repository = this.getCurrentNodeParameter('repository', { extractValue: true });
-	const page = paginationToken ? +paginationToken : 1;
 	const per_page = 100;
 
+	let nextPaginationToken: string | undefined = undefined;
 	const refs: INodeListSearchItems[] = [];
 
-	// Fetch branches
-	const branches = await githubApiRequest.call(
-		this,
-		'GET',
-		`/repos/${owner}/${repository}/branches`,
-		{},
-		{ page, per_page },
-	);
-	for (const branch of branches) {
-		refs.push({
-			name: branch.name,
-			value: branch.name,
-			description: `Branch: ${branch.name}`,
-		});
-	}
+	try {
+		// Fetch branches
+		const branchesUrl =
+			paginationToken ?? `/repos/${owner}/${repository}/branches?page=1&per_page=${per_page}`;
+		const branchesResponse = await githubApiRequest.call(this, 'GET', branchesUrl, {}, {});
+		for (const branch of branchesResponse) {
+			refs.push({
+				name: branch.name,
+				value: branch.name,
+				description: `Branch: ${branch.name}`,
+			});
+		}
 
-	// Fetch tags
-	const tags = await githubApiRequest.call(
-		this,
-		'GET',
-		`/repos/${owner}/${repository}/tags`,
-		{},
-		{ page, per_page },
-	);
-	for (const tag of tags) {
-		refs.push({
-			name: tag.name,
-			value: tag.name,
-			description: `Tag: ${tag.name}`,
-		});
+		// Fetch tags
+		const tagsUrl = `/repos/${owner}/${repository}/tags?page=1&per_page=${per_page}`;
+		const tagsResponse = await githubApiRequest.call(this, 'GET', tagsUrl, {}, {});
+
+		for (const tag of tagsResponse) {
+			refs.push({
+				name: tag.name,
+				value: tag.name,
+				description: `Tag: ${tag.name}`,
+			});
+		}
+
+		nextPaginationToken = extractNextPageToken(
+			branchesResponse.headers?.link || tagsResponse.headers?.link,
+		);
+	} catch {
+		// will fail if the repository does not have any branches or tags
 	}
 
 	if (filter) {
 		const filteredRefs = refs.filter((ref) =>
 			ref.name.toLowerCase().includes(filter.toLowerCase()),
 		);
-		return { results: filteredRefs };
+		return { results: filteredRefs, paginationToken: nextPaginationToken };
 	}
-	const nextPaginationToken = page * per_page < refs.length ? page + 1 : undefined;
 	return { results: refs, paginationToken: nextPaginationToken };
 }
