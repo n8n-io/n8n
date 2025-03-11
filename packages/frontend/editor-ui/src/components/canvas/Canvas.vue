@@ -873,6 +873,7 @@ provide(CanvasKey, {
 			:position="controlsPosition"
 			:show-interactive="false"
 			:zoom="viewport.zoom"
+			:read-only="readOnly"
 			@zoom-to-fit="onFitView"
 			@zoom-in="onZoomIn"
 			@zoom-out="onZoomOut"
