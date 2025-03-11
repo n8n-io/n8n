@@ -276,4 +276,21 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 			},
 		);
 	}
+
+	async transferAllFoldersToProject(
+		fromProjectId: string,
+		toProjectId: string,
+		tx?: EntityManager,
+	) {
+		const manager = tx ?? this.manager;
+		return await manager.update(
+			Folder,
+			{
+				homeProject: { id: fromProjectId },
+			},
+			{
+				homeProject: { id: toProjectId },
+			},
+		);
+	}
 }

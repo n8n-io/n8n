@@ -143,7 +143,7 @@ export class ProjectService {
 		// 3. Move folders over to the target project, before deleting the project else cascading will delete workflows
 		if (targetProject) {
 			const folderService = await this.folderService;
-			await folderService.transferFoldersToProject(project.id, targetProject.id);
+			await folderService.transferAllFoldersToProject(project.id, targetProject.id);
 		}
 
 		// 4. delete shared credentials into this project
