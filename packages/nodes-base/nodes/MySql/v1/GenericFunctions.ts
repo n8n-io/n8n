@@ -41,8 +41,8 @@ export async function searchTables(
 	const formattedQuery = connection.format(sql, values);
 	const [rows] = await connection.query(formattedQuery);
 	const results = (rows as IDataObject[]).map((r) => ({
-		name: r.TABLE_NAME as string,
-		value: r.TABLE_NAME as string,
+		name: r.table_name as string,
+		value: r.table_name as string,
 	}));
 	await connection.end();
 	return { results };
