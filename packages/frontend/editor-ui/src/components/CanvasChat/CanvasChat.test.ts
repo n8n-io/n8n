@@ -338,16 +338,11 @@ describe('CanvasChat', () => {
 			});
 		});
 
-		it('should refresh session with confirmation when messages exist', async () => {
-			const { getByTestId, getByRole } = renderComponent();
+		it('should refresh session when messages exist', async () => {
+			const { getByTestId } = renderComponent();
 
 			const originalSessionId = getByTestId('chat-session-id').textContent;
 			await userEvent.click(getByTestId('refresh-session-button'));
-
-			const confirmButton = getByRole('dialog').querySelector('button.btn--confirm');
-
-			if (!confirmButton) throw new Error('Confirm button not found');
-			await userEvent.click(confirmButton);
 
 			expect(getByTestId('chat-session-id').textContent).not.toEqual(originalSessionId);
 		});
