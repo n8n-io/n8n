@@ -7,6 +7,7 @@ import {
 	type IN8nHttpFullResponse,
 	type INodeExecutionData,
 } from 'n8n-workflow';
+
 import { makeAwsRequest } from './makeAwsRequest';
 
 export function mapUserAttributes(userAttributes?: IDataObject[]): IDataObject {

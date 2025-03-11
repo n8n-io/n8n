@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+
 import { handleErrorPostReceive } from '../generalFunctions/errorHandling';
 import { simplifyData } from '../generalFunctions/helpers';
 import { handlePagination } from '../generalFunctions/pagination';

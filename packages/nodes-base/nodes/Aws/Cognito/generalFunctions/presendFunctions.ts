@@ -8,8 +8,8 @@ import {
 	jsonParse,
 } from 'n8n-workflow';
 
-import { makeAwsRequest } from './makeAwsRequest';
 import { validateEmail, validatePhoneNumber } from './helpers';
+import { makeAwsRequest } from './makeAwsRequest';
 
 export async function presendStringifyBody(
 	this: IExecuteSingleFunctions,

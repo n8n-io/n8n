@@ -1,4 +1,5 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
+
 import { searchUsers } from '../generalFunctions/dataFetching';
 
 describe('GenericFunctions - searchUsers', () => {

@@ -6,8 +6,9 @@ import {
 	type ILoadOptionsFunctions,
 	type INodeListSearchResult,
 } from 'n8n-workflow';
-import { makeAwsRequest } from './makeAwsRequest';
+
 import { searchUsersForGroup } from './helpers';
+import { makeAwsRequest } from './makeAwsRequest';
 import type { IUserAttribute, IUserPool } from './types';
 
 export async function searchGroups(
