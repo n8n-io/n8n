@@ -111,8 +111,9 @@ function onArrowKeyDown({ currentInputValue, key }: ArrowKeyDownPayload) {
 		previousMessageIndex.value = 0;
 	}
 }
-function copySessionId() {
-	void clipboard.copy(props.sessionId);
+
+async function copySessionId() {
+	await clipboard.copy(props.sessionId);
 	toast.showMessage({
 		title: locale.baseText('generic.copiedToClipboard'),
 		message: '',
