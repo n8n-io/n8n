@@ -165,6 +165,7 @@ onMounted(async () => {
 					</div>
 					<el-radio
 						v-model="operation"
+						data-test-id="transfer-content-radio"
 						label="transfer"
 						@update:model-value="operation = 'transfer'"
 					>
@@ -193,7 +194,12 @@ onMounted(async () => {
 							</N8nOption>
 						</N8nSelect>
 					</div>
-					<el-radio v-model="operation" label="delete" @update:model-value="operation = 'delete'">
+					<el-radio
+						v-model="operation"
+						data-test-id="delete-content-radio"
+						label="delete"
+						@update:model-value="operation = 'delete'"
+					>
 						<n8n-text color="text-dark">{{ i18n.baseText('folders.delete.action') }}</n8n-text>
 					</el-radio>
 					<div
@@ -210,6 +216,7 @@ onMounted(async () => {
 						>
 							<n8n-input
 								v-model="deleteConfirmText"
+								data-test-id="delete-data-input"
 								:placeholder="
 									i18n.baseText('folders.delete.typeToConfirm', {
 										interpolate: { folderName: folderToDelete?.name ?? '' },

@@ -103,6 +103,22 @@ export function getFolderCardActionItem(name: string) {
 			return cy.get(`#${popperId}`).find(`[data-test-id="action-${name}"]`);
 		});
 }
+
+export function getFolderDeleteModal() {
+	return cy.getByTestId('deleteFolder-modal');
+}
+
+export function getDeleteRadioButton() {
+	return cy.getByTestId('delete-content-radio');
+}
+
+export function getConfirmDeleteInput() {
+	return getFolderDeleteModal().findChildByTestId('delete-data-input').find('input');
+}
+
+export function getDeleteFolderModalConfirmButton() {
+	return getFolderDeleteModal().findChildByTestId('confirm-delete-folder-button');
+}
 /**
  * Actions
  */
@@ -139,6 +155,48 @@ export function createFolderFromCardActions(parentName: string, folderName: stri
 	createNewFolder(folderName);
 }
 
+export function renameFolderFromListActions(folderName: string, newName: string) {
+	getFolderCard(folderName).click();
+	getListActionsToggle().click();
+	getListActionItem('rename').click();
+	renameFolder(newName);
+}
+
+export function renameFolderFromCardActions(folderName: string, newName: string) {
+	getFolderCardActionToggle(folderName).click();
+	getFolderCardActionItem('rename').click();
+	renameFolder(newName);
+}
+
+export function deleteEmptyFolderFromCardDropdown(folderName: string) {
+	cy.intercept('DELETE', '/rest/projects/**').as('deleteFolder');
+	getFolderCard(folderName).click();
+	getListActionsToggle().click();
+	getListActionItem('delete').click();
+	cy.wait('@deleteFolder');
+	successToast().should('contain.text', 'Folder deleted');
+}
+
+export function deleteEmptyFolderFromListDropdown(folderName: string) {
+	cy.intercept('DELETE', '/rest/projects/**').as('deleteFolder');
+	getFolderCard(folderName).click();
+	getListActionsToggle().click();
+	getListActionItem('delete').click();
+	cy.wait('@deleteFolder');
+	successToast().should('contain.text', 'Folder deleted');
+}
+
+export function deleteFolderWithContentsFromListDropdown(folderName: string) {
+	getListActionsToggle().click();
+	getListActionItem('delete').click();
+	confirmFolderDelete(folderName);
+}
+
+export function deleteFolderWithContentsFromCardDropdown(folderName: string) {
+	getFolderCardActionToggle(folderName).click();
+	getFolderCardActionItem('delete').click();
+	confirmFolderDelete(folderName);
+}
 /**
  * Utils
  */
@@ -152,9 +210,33 @@ function createNewFolder(name: string) {
 	cy.get('[role=dialog]')
 		.filter(':visible')
 		.within(() => {
-			cy.get('input.el-input__inner').type(name);
+			cy.get('input.el-input__inner').type(name, { delay: 50 });
 			cy.get('button.btn--confirm').click();
 		});
 	cy.wait('@createFolder');
 	successToast().should('exist');
+}
+
+function renameFolder(newName: string) {
+	cy.intercept('PATCH', '/rest/projects/**').as('renameFolder');
+	cy.get('[role=dialog]')
+		.filter(':visible')
+		.within(() => {
+			cy.get('input.el-input__inner').type('{selectall}');
+			cy.get('input.el-input__inner').type(newName, { delay: 50 });
+			cy.get('button.btn--confirm').click();
+		});
+	cy.wait('@renameFolder');
+	successToast().should('exist');
+}
+
+function confirmFolderDelete(folderName: string) {
+	cy.intercept('DELETE', '/rest/projects/**').as('deleteFolder');
+	getFolderDeleteModal().should('be.visible');
+	getDeleteRadioButton().click();
+	getConfirmDeleteInput().should('be.visible');
+	getConfirmDeleteInput().type(`delete ${folderName}`, { delay: 50 });
+	getDeleteFolderModalConfirmButton().should('be.enabled').click();
+	cy.wait('@deleteFolder');
+	successToast().contains('Folder deleted').should('exist');
 }

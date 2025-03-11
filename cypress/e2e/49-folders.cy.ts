@@ -4,6 +4,10 @@ import {
 	createFolderFromListHeaderButton,
 	createFolderFromProjectHeader,
 	createFolderInsideFolder,
+	deleteEmptyFolderFromCardDropdown,
+	deleteEmptyFolderFromListDropdown,
+	deleteFolderWithContentsFromCardDropdown,
+	deleteFolderWithContentsFromListDropdown,
 	getAddResourceDropdown,
 	getCurrentBreadcrumb,
 	getFolderCard,
@@ -22,6 +26,8 @@ import {
 	getPersonalProjectMenuItem,
 	getVisibleListBreadcrumbs,
 	goToPersonalProject,
+	renameFolderFromCardActions,
+	renameFolderFromListActions,
 } from '../composables/folders';
 import { visitWorkflowsPage } from '../composables/workflowsPage';
 import { successToast } from '../pages/notifications';
@@ -145,6 +151,35 @@ describe('Folders', () => {
 			getOpenHiddenItemsTooltip().should('contain.text', 'Multi-level Test / Child Folder');
 		});
 
+		// Make sure breadcrumbs and folder card show correct info when landing straight on a folder page
+		it('should correctly render all elements when landing on a folder page', () => {
+			// Create a few levels of folders
+			goToPersonalProject();
+			createFolderFromProjectHeader('Landing Test');
+			createFolderInsideFolder('Child Folder', 'Landing Test');
+			createFolderInsideFolder('Child Folder 2', 'Child Folder');
+			createFolderInsideFolder('Child Folder 3', 'Child Folder 2');
+			// Reload page to simulate landing on a folder page
+			cy.reload();
+			// Main list breadcrumbs should show home project, parent, grandparent, with one hidden element
+			getHomeProjectBreadcrumb().should('exist');
+			getCurrentBreadcrumb().should('contain.text', 'Child Folder 2');
+			getVisibleListBreadcrumbs().should('have.length', 1);
+			getVisibleListBreadcrumbs().first().should('contain.text', 'Child Folder');
+			getMainBreadcrumbsEllipsis().should('exist');
+			getMainBreadcrumbsEllipsis().click();
+			getMainBreadcrumbsEllipsisMenuItems().first().should('contain.text', 'Landing Test');
+			// Should load child folder card
+			getFolderCard('Child Folder 3').should('exist');
+			// Card breadcrumbs should show home project and parent, with two hidden elements
+			getFolderCardHomeProjectBreadcrumb('Child Folder 3').should('exist');
+			getFolderCardCurrentBreadcrumb('Child Folder 3').should('contain.text', 'Child Folder 2');
+			getFolderCardBreadCrumbsEllipsis('Child Folder 3').should('exist');
+			getFolderCardBreadCrumbsEllipsis('Child Folder 3').click();
+			getOpenHiddenItemsTooltip().should('be.visible');
+			getOpenHiddenItemsTooltip().should('contain.text', 'Landing Test / Child Folder');
+		});
+
 		it('should show folders only in projects', () => {
 			// No folder cards should be shown in the overview page
 			getOverviewMenuItem().click();
@@ -159,11 +194,62 @@ describe('Folders', () => {
 			createFolderFromProjectHeader('Personal Folder');
 			getFolderCards().should('exist');
 		});
+	});
 
-		// TO TEST:
-		// - Rename folder from main dropdown
-		// - Rename folder from card dropdown
-		// - Delete folder from main dropdown
-		// - Delete folder from card dropdown
+	describe('Rename and delete folders', () => {
+		it('should rename folder from main dropdown', () => {
+			goToPersonalProject();
+			createFolderFromProjectHeader('Rename Me');
+			getFolderCard('Rename Me').should('exist');
+			renameFolderFromListActions('Rename Me', 'Renamed');
+			getCurrentBreadcrumb().should('contain.text', 'Renamed');
+		});
+
+		it('should rename folder from card dropdown', () => {
+			goToPersonalProject();
+			createFolderFromProjectHeader('Rename Me 2');
+			renameFolderFromCardActions('Rename Me 2', 'Renamed 2');
+			getFolderCard('Renamed 2').should('exist');
+		});
+
+		it('should delete empty folder from card dropdown', () => {
+			goToPersonalProject();
+			createFolderFromProjectHeader('Delete Me');
+			getFolderCard('Delete Me').should('exist');
+			deleteEmptyFolderFromCardDropdown('Delete Me');
+		});
+
+		it('should delete empty folder from main dropdown', () => {
+			goToPersonalProject();
+			createFolderFromProjectHeader('Delete Me 2');
+			getFolderCard('Delete Me 2').should('exist');
+			deleteEmptyFolderFromListDropdown('Delete Me 2');
+			// Since we deleted the current folder, we should be back in the home project
+			getListBreadcrumbs().should('not.exist');
+			getPersonalProjectMenuItem().find('li').should('have.class', 'is-active');
+		});
+
+		it('should warn before deleting non-empty folder from list dropdown', () => {
+			goToPersonalProject();
+			createFolderFromProjectHeader('I have children');
+			createFolderInsideFolder('Child 1', 'I have children');
+			deleteFolderWithContentsFromListDropdown('I have children');
+			// Since we deleted the current folder, we should be back in the home project
+			getListBreadcrumbs().should('not.exist');
+			getPersonalProjectMenuItem().find('li').should('have.class', 'is-active');
+		});
+
+		// TODO: Once we have a backend endpoint that returns sub-folder count, enable this
+		it.skip('should warn before deleting non-empty folder from card dropdown', () => {
+			goToPersonalProject();
+			createFolderFromProjectHeader('I also have family');
+			createFolderInsideFolder('Child 1', 'I also have family');
+			// Back to home
+			getHomeProjectBreadcrumb().click();
+			getFolderCard('I also have family').should('exist');
+			deleteFolderWithContentsFromCardDropdown('I also have family');
+		});
+
+		// TODO: Once we have backend endpoint that lists project folders, test transfer when deleting
 	});
 });
