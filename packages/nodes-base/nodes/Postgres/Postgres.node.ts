@@ -24,6 +24,7 @@ export class Postgres extends VersionedNodeType {
 			2.3: new PostgresV2(baseDescription),
 			2.4: new PostgresV2(baseDescription),
 			2.5: new PostgresV2(baseDescription),
+			2.6: new PostgresV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);
