@@ -132,9 +132,12 @@ async function copySessionId() {
 					<template #content>
 						{{ sessionId }}
 					</template>
-					<span :class="$style.sessionId" data-test-id="chat-session-id" @click="copySessionId">{{
-						sessionId
-					}}</span>
+					<span
+						:class="[$style.sessionId, clipboard.isSupported.value ? $style.copyable : '']"
+						data-test-id="chat-session-id"
+						@click="clipboard.isSupported.value ? copySessionId() : null"
+						>{{ sessionId }}</span
+					>
 				</n8n-tooltip>
 				<n8n-icon-button
 					:class="$style.headerButton"
@@ -274,7 +277,9 @@ async function copySessionId() {
 	text-overflow: ellipsis;
 	overflow: hidden;
 
-	cursor: pointer;
+	&.copyable {
+		cursor: pointer;
+	}
 }
 .headerButton {
 	max-height: 1.1rem;

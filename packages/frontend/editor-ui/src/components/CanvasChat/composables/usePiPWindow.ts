@@ -1,10 +1,12 @@
 import { useTelemetry } from '@/composables/useTelemetry';
+import { IsInPiPWindowSymbol } from '@n8n/chat/constants';
 import { useProvideTooltipAppendTo } from '@n8n/design-system/composables/useTooltipAppendTo';
 import {
 	computed,
 	type ComputedRef,
 	onBeforeUnmount,
 	onMounted,
+	provide,
 	type Ref,
 	ref,
 	type ShallowRef,
@@ -30,6 +32,7 @@ export function usePiPWindow(
 		isPoppedOut.value ? (content.value ?? undefined) : undefined,
 	);
 
+	provide(IsInPiPWindowSymbol, isPoppedOut);
 	useProvideTooltipAppendTo(tooltipContainer);
 
 	function showPip() {
