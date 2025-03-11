@@ -184,9 +184,9 @@ async function handleActionItemClick(commandData: Command) {
 				</N8nText>
 			</RouterLink>
 		</td>
-		<td>
+		<td data-test-id="execution-status">
 			<GlobalExecutionsListItemQueuedTooltip
-				v-if="isWaitTillIndefinite"
+				v-if="isWaitTillIndefinite || execution.status === EXECUTION_STATUS.NEW"
 				:status="props.execution.status"
 				:concurrency-cap="props.concurrencyCap"
 				:is-cloud-deployment="props.isCloudDeployment"
