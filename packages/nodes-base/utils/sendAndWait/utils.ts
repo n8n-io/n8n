@@ -17,7 +17,8 @@ import {
 	ACTION_RECORDED_PAGE,
 	BUTTON_STYLE_PRIMARY,
 	BUTTON_STYLE_SECONDARY,
-	createEmailBody,
+	createEmailBodyWithN8nAttribution,
+	createEmailBodyWithoutN8nAttribution,
 } from './email-templates';
 import type { IEmail } from './interfaces';
 import { formFieldsProperties } from '../../nodes/Form/Form.node';
@@ -543,14 +544,19 @@ export function createEmail(context: IExecuteFunctions) {
 	for (const option of config.options) {
 		buttons.push(createButton(config.url, option.label, option.value, option.style));
 	}
-
-	const instanceId = context.getInstanceId();
+	let emailBody: string;
+	if (config.appendAttribution) {
+		const instanceId = context.getInstanceId();
+		emailBody = createEmailBodyWithN8nAttribution(config.message, buttons.join('\n'), instanceId);
+	} else {
+		emailBody = createEmailBodyWithoutN8nAttribution(config.message, buttons.join('\n'));
+	}
 
 	const email: IEmail = {
 		to,
 		subject: config.title,
 		body: '',
-		htmlBody: createEmailBody(config.message, buttons.join('\n'), instanceId),
+		htmlBody: emailBody,
 	};
 
 	return email;
