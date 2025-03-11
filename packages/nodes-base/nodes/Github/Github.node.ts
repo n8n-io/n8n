@@ -413,6 +413,57 @@ export class Github implements INodeType {
 				default: 'create',
 			},
 
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['workflow'],
+					},
+				},
+				options: [
+					{
+						name: 'Disable',
+						value: 'disable',
+						description: 'Disable a workflow',
+						action: 'Disable a workflow',
+					},
+					{
+						name: 'Dispatch Workflow Event',
+						value: 'dispatch',
+						description: 'Dispatch a workflow event',
+						action: 'Dispatch a workflow event',
+					},
+					{
+						name: 'Enable',
+						value: 'enable',
+						description: 'Enable a workflow',
+						action: 'Enable a workflow',
+					},
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get a workflow',
+						action: 'Get a workflow',
+					},
+					{
+						name: 'Get Usage',
+						value: 'getUsage',
+						description: 'Get the usage of a workflow',
+						action: 'Get the usage of a workflow',
+					},
+					{
+						name: 'List',
+						value: 'list',
+						description: 'List workflows',
+						action: 'List workflows',
+					},
+				],
+				default: 'dispatch',
+			},
+
 			// ----------------------------------
 			//         shared
 			// ----------------------------------
@@ -536,74 +587,10 @@ export class Github implements INodeType {
 					},
 				},
 			},
-			{
-				displayName: 'Wait for Workflow Completion',
-				name: 'waitForCompletion',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether to wait for the GitHub action workflow to complete before resuming the n8n workflow',
-				displayOptions: {
-					show: {
-						resource: ['workflow'],
-						operation: ['dispatch'],
-					},
-				},
-			},
 
 			// ----------------------------------
 			//         workflow
 			// ----------------------------------
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				noDataExpression: true,
-				displayOptions: {
-					show: {
-						resource: ['workflow'],
-					},
-				},
-				options: [
-					{
-						name: 'Disable',
-						value: 'disable',
-						description: 'Disable a workflow',
-						action: 'Disable a workflow',
-					},
-					{
-						name: 'Dispatch Workflow Event',
-						value: 'dispatch',
-						description: 'Dispatch a workflow event',
-						action: 'Dispatch a workflow event',
-					},
-					{
-						name: 'Enable',
-						value: 'enable',
-						description: 'Enable a workflow',
-						action: 'Enable a workflow',
-					},
-					{
-						name: 'Get',
-						value: 'get',
-						description: 'Get a workflow',
-						action: 'Get a workflow',
-					},
-					{
-						name: 'Get Usage',
-						value: 'getUsage',
-						description: 'Get the usage of a workflow',
-						action: 'Get the usage of a workflow',
-					},
-					{
-						name: 'List',
-						value: 'list',
-						description: 'List workflows',
-						action: 'List workflows',
-					},
-				],
-				default: 'dispatch',
-			},
 			{
 				displayName: 'Workflow',
 				name: 'workflowId',
@@ -619,7 +606,7 @@ export class Github implements INodeType {
 						typeOptions: {
 							searchListMethod: 'getWorkflows',
 							searchable: true,
-							searchFilterRequired: true,
+							searchFilterRequired: false,
 						},
 					},
 					{
@@ -700,6 +687,34 @@ export class Github implements INodeType {
 				},
 				description: 'JSON object with input parameters for the workflow',
 			},
+			{
+				displayName: 'Wait for Workflow Completion',
+				name: 'waitForCompletion',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to wait for the GitHub action workflow to complete before resuming the n8n workflow',
+				displayOptions: {
+					show: {
+						resource: ['workflow'],
+						operation: ['dispatch'],
+					},
+				},
+			},
+			{
+				displayName:
+					'Your execution will wait until the following webhook URL is called - this can be added as a step to your Github workflow. <a href="https://docs.n8n.io/integrations/creating-nodes/build/reference/ui-elements/#notice" target="_blank">More info</a>',
+				name: 'webhookNotice',
+				type: 'notice',
+				displayOptions: {
+					show: {
+						resource: ['workflow'],
+						operation: ['dispatch'],
+					},
+				},
+				default: '',
+			},
+
 			// ----------------------------------
 			//         file
 			// ----------------------------------
