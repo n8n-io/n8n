@@ -457,14 +457,12 @@ export class Github implements INodeType {
 				required: true,
 				modes: [
 					{
-						displayName: 'Workflow',
+						displayName: 'From List',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a workflow...',
 						typeOptions: {
 							searchListMethod: 'getWorkflows',
-							searchable: true,
-							searchFilterRequired: true,
 						},
 					},
 					{
@@ -478,6 +476,21 @@ export class Github implements INodeType {
 								properties: {
 									regex: '\\d+',
 									errorMessage: 'Not a valid Github Workflow ID',
+								},
+							},
+						],
+					},
+					{
+						displayName: 'By File Name',
+						name: 'filename',
+						type: 'string',
+						placeholder: 'e.g. main.yaml or main.yml',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[a-zA-Z0-9_-]+.(yaml|yml)',
+									errorMessage: 'Not a valid Github Workflow File Name',
 								},
 							},
 						],
@@ -2501,7 +2514,9 @@ export class Github implements INodeType {
 
 						requestMethod = 'POST';
 
-						const workflowId = this.getNodeParameter('workflowId', i) as string;
+						const workflowId = this.getNodeParameter('workflowId', i, undefined, {
+							extractValue: true,
+						}) as string;
 
 						endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}/dispatches`;
 						body.ref = this.getNodeParameter('ref', i) as string;

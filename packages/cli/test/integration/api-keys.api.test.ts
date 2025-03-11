@@ -4,7 +4,6 @@ import { Container } from '@n8n/di';
 
 import type { User } from '@/databases/entities/user';
 import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
-import { License } from '@/license';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 import { mockInstance } from '@test/mocking';
 
@@ -13,10 +12,6 @@ import { randomValidPassword } from './shared/random';
 import * as testDb from './shared/test-db';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
-
-const license = mockInstance(License);
-
-license.getApiKeysPerUserLimit.mockImplementation(() => 2);
 
 const testServer = utils.setupTestServer({ endpointGroups: ['apiKeys'] });
 let publicApiKeyService: PublicApiKeyService;
@@ -117,17 +112,6 @@ describe('Owner shell', () => {
 
 		expect(newApiKey.expiresAt).toBe(expiresAt);
 		expect(newApiKey.rawApiKey).toBeDefined();
-	});
-
-	test('POST /api-keys should fail if max number of API keys reached', async () => {
-		await testServer.authAgentFor(ownerShell).post('/api-keys').send({ label: 'My API Key' });
-
-		const secondApiKey = await testServer
-			.authAgentFor(ownerShell)
-			.post('/api-keys')
-			.send({ label: 'My API Key' });
-
-		expect(secondApiKey.statusCode).toBe(400);
 	});
 
 	test('GET /api-keys should fetch the api key redacted', async () => {

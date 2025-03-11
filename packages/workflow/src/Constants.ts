@@ -103,3 +103,5 @@ export const FREE_AI_CREDITS_USED_ALL_CREDITS_ERROR_CODE = 400;
 export const FROM_AI_AUTO_GENERATED_MARKER = '/*n8n-auto-generated-fromAI-override*/';
 
 export const PROJECT_ROOT = '0';
+
+export const WAITING_FORMS_EXECUTION_STATUS = 'n8n-execution-status';
