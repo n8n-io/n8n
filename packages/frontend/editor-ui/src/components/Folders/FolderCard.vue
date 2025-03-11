@@ -152,7 +152,7 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 								@item-selected="onBreadcrumbsItemClick"
 							>
 								<template v-if="data.homeProject" #prepend>
-									<div :class="$style['home-project']">
+									<div :class="$style['home-project']" data-test-id="folder-card-home-project">
 										<n8n-link :to="`/projects/${data.homeProject.id}`">
 											<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" />
 											<n8n-text size="small" :compact="true" :bold="true" color="text-base">

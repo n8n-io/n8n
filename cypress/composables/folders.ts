@@ -55,6 +55,54 @@ export function getMainBreadcrumbsEllipsisMenuItems() {
 			return cy.get(`#${popperId}`).find('li');
 		});
 }
+
+export function getFolderCardBreadCrumbs(folderName: string) {
+	return getFolderCard(folderName).find('[data-test-id="folder-card-breadcrumbs"]');
+}
+
+export function getFolderCardBreadCrumbsEllipsis(folderName: string) {
+	return getFolderCardBreadCrumbs(folderName).find('[data-test-id="ellipsis"]');
+}
+
+export function getFolderCardHomeProjectBreadcrumb(folderName: string) {
+	return getFolderCardBreadCrumbs(folderName).find('[data-test-id="folder-card-home-project"]');
+}
+
+export function getFolderCardCurrentBreadcrumb(folderName: string) {
+	return getFolderCardBreadCrumbs(folderName).find('[data-test-id="breadcrumbs-item-current"]');
+}
+
+export function getOpenHiddenItemsTooltip() {
+	return cy.getByTestId('hidden-items-tooltip').filter(':visible');
+}
+
+export function getListActionsToggle() {
+	return cy.getByTestId('folder-breadcrumbs-actions');
+}
+
+export function getListActionItem(name: string) {
+	return cy
+		.getByTestId('folder-breadcrumbs-actions')
+		.find('span[aria-controls]')
+		.invoke('attr', 'aria-controls')
+		.then((popperId) => {
+			return cy.get(`#${popperId}`).find(`[data-test-id="action-${name}"]`);
+		});
+}
+
+export function getFolderCardActionToggle(folderName: string) {
+	return getFolderCard(folderName).find('[data-test-id="folder-card-actions"]');
+}
+
+export function getFolderCardActionItem(name: string) {
+	return cy
+		.getByTestId('folder-card-actions')
+		.find('span[aria-controls]')
+		.invoke('attr', 'aria-controls')
+		.then((popperId) => {
+			return cy.get(`#${popperId}`).find(`[data-test-id="action-${name}"]`);
+		});
+}
 /**
  * Actions
  */
@@ -76,6 +124,18 @@ export function createFolderFromProjectHeader(folderName: string) {
 	getPersonalProjectMenuItem().click();
 	getAddResourceDropdown().click();
 	cy.getByTestId('action-folder').click();
+	createNewFolder(folderName);
+}
+
+export function createFolderFromListDropdown(folderName: string) {
+	getListActionsToggle().click();
+	getListActionItem('create').click();
+	createNewFolder(folderName);
+}
+
+export function createFolderFromCardActions(parentName: string, folderName: string) {
+	getFolderCardActionToggle(parentName).click();
+	getFolderCardActionItem('create').click();
 	createNewFolder(folderName);
 }
 
