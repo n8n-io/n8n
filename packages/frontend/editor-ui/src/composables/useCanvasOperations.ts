@@ -1684,9 +1684,9 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 							nodeHelpers.assignWebhookId(node);
 
 							if (node.parameters.path) {
-								node.parameters.path = node.webhookId as string;
+								node.parameters.path = node.webhookId;
 							} else if ((node.parameters.options as IDataObject).path) {
-								(node.parameters.options as IDataObject).path = node.webhookId as string;
+								(node.parameters.options as IDataObject).path = node.webhookId;
 							}
 						}
 					}

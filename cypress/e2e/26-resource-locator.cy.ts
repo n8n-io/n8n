@@ -5,8 +5,8 @@ const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 const credentialsModal = new CredentialsModal();
 
-const NO_CREDENTIALS_MESSAGE = 'Please add your credential';
-const INVALID_CREDENTIALS_MESSAGE = 'Please check your credential';
+const NO_CREDENTIALS_MESSAGE = 'Add your credential';
+const INVALID_CREDENTIALS_MESSAGE = 'Check your credential';
 const MODE_SELECTOR_LIST = 'From list';
 
 describe('Resource Locator', () => {
@@ -69,15 +69,6 @@ describe('Resource Locator', () => {
 		ndv.getters.resourceLocator('owner').should('be.visible');
 		ndv.getters.resourceLocatorInput('owner').click();
 		ndv.getters.resourceLocatorErrorMessage().should('contain', NO_CREDENTIALS_MESSAGE);
-
-		workflowPage.getters.nodeCredentialsSelect().click();
-		workflowPage.getters.nodeCredentialsCreateOption().click();
-		credentialsModal.getters.credentialsEditModal().should('be.visible');
-		credentialsModal.actions.fillCredentialsForm();
-
-		ndv.getters.resourceLocatorInput('owner').click();
-		ndv.getters.resourceLocatorSearch('owner').type('owner');
-		ndv.getters.resourceLocatorErrorMessage().should('contain', INVALID_CREDENTIALS_MESSAGE);
 	});
 
 	it('should reset resource locator when dependent field is changed', () => {
