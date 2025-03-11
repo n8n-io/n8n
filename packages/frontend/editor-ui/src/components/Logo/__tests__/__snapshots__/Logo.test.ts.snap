@@ -44,6 +44,6 @@ exports[`Logo > renders the releaseChannelTag for non-stable releaseChannel 1`] 
       <path d="M18.367 21.2h1.624v-3.442c0-1.131.685-1.627 1.46-1.627.76 0 1.357.509 1.357 1.55v3.52h1.624V17.35c0-1.664-.964-2.63-2.474-2.63-.952 0-1.485.381-1.865.877h-.102l-.14-.75h-1.484zm-14.376 0H2.367v-6.352h1.485l.14.75h.1c.381-.496.914-.877 1.866-.877 1.51 0 2.474.966 2.474 2.63v3.85H6.808V17.68c0-1.041-.596-1.55-1.358-1.55-.774 0-1.459.496-1.459 1.627z"></path>
     </g>
   </svg>
-  <div size="small" round="" class="releaseChannelTag">dev</div>
+  <div class="releaseChannelTag">dev</div>
 </div>"
 `;

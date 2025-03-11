@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom';
+import 'fake-indexeddb/auto';
 import { configure } from '@testing-library/vue';
 import 'core-js/proposals/set-methods-v2';
 
@@ -64,23 +65,42 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 class Worker {
-	onmessage: (message: string) => void;
+	onmessage = vi.fn();
 
 	url: string;
 
 	constructor(url: string) {
 		this.url = url;
-		this.onmessage = () => {};
 	}
 
-	postMessage(message: string) {
+	postMessage = vi.fn((message: string) => {
 		this.onmessage(message);
-	}
+	});
 
-	addEventListener() {}
+	addEventListener = vi.fn();
+
+	terminate = vi.fn();
+}
+
+class DataTransfer {
+	private data: Record<string, unknown> = {};
+
+	setData = vi.fn((type: string, data) => {
+		this.data[type] = data;
+	});
+
+	getData = vi.fn((type) => {
+		if (type.startsWith('text')) type = 'text';
+		return this.data[type] ?? null;
+	});
 }
 
 Object.defineProperty(window, 'Worker', {
 	writable: true,
 	value: Worker,
+});
+
+Object.defineProperty(window, 'DataTransfer', {
+	writable: true,
+	value: DataTransfer,
 });

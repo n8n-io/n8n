@@ -462,10 +462,15 @@ export class WorkflowExecute {
 			let metaRunData: ITaskMetadata;
 			for (const nodeName of Object.keys(metadata)) {
 				for ([index, metaRunData] of metadata[nodeName].entries()) {
-					runData[nodeName][index].metadata = {
-						...(runData[nodeName][index].metadata ?? {}),
-						...metaRunData,
-					};
+					const taskData = runData[nodeName]?.[index];
+					if (taskData) {
+						taskData.metadata = { ...taskData.metadata, ...metaRunData };
+					} else {
+						Container.get(ErrorReporter).error(
+							new UnexpectedError('Taskdata missing at the end of an execution'),
+							{ extra: { nodeName, index } },
+						);
+					}
 				}
 			}
 		}
@@ -904,6 +909,10 @@ export class WorkflowExecute {
 
 		if (stillDataMissing) {
 			waitingNodeIndex = waitingNodeIndex!;
+			const waitingExecutionSource =
+				this.runExecutionData.executionData!.waitingExecutionSource![connectionData.node][
+					waitingNodeIndex
+				].main;
 
 			// Additional data is needed to run node so add it to waiting
 			this.prepareWaitingToExecution(
@@ -919,11 +928,7 @@ export class WorkflowExecute {
 
 			this.runExecutionData.executionData!.waitingExecutionSource![connectionData.node][
 				waitingNodeIndex
-			].main[connectionData.index] = {
-				previousNode: parentNodeName,
-				previousNodeOutput: outputIndex || undefined,
-				previousNodeRun: runIndex || undefined,
-			};
+			].main = waitingExecutionSource;
 		} else {
 			// All data is there so add it directly to stack
 			this.runExecutionData.executionData!.nodeExecutionStack[enqueueFn]({
