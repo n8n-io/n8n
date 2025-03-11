@@ -378,8 +378,10 @@ describe('Send and Wait utils tests', () => {
 				query: { approved: 'false' },
 			} as any);
 
+			const send = jest.fn();
+
 			mockWebhookFunctions.getResponseObject.mockReturnValue({
-				send: jest.fn(),
+				send,
 			} as any);
 
 			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
@@ -391,6 +393,7 @@ describe('Send and Wait utils tests', () => {
 
 			const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
 
+			expect(send).toHaveBeenCalledWith('');
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
 	});
