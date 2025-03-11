@@ -240,6 +240,7 @@ describe('Folders', () => {
 		});
 
 		// TODO: Once we have a backend endpoint that returns sub-folder count, enable this
+		// eslint-disable-next-line n8n-local-rules/no-skipped-tests
 		it.skip('should warn before deleting non-empty folder from card dropdown', () => {
 			goToPersonalProject();
 			createFolderFromProjectHeader('I also have family');
