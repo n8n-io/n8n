@@ -1,7 +1,7 @@
 import { computed, inject, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useClipboard as useClipboardCore } from '@vueuse/core';
 import { useDebounce } from '@/composables/useDebounce';
-import { IsInPiPWindowSymbol } from '@n8n/chat/constants';
+import { IsInPiPWindowSymbol } from '@/constants';
 
 type ClipboardEventFn = (data: string, event?: ClipboardEvent) => void;
 
@@ -13,10 +13,8 @@ export function useClipboard(
 	},
 ) {
 	const { debounce } = useDebounce();
-	const isInPiPWindow = inject(
-		IsInPiPWindowSymbol,
-		computed(() => false),
-	);
+	const alwaysFalse = computed(() => false);
+	const isInPiPWindow = inject(IsInPiPWindowSymbol, alwaysFalse);
 	const { copy, copied, isSupported, text } = useClipboardCore({ legacy: true });
 
 	const ignoreClasses = ['el-messsage-box', 'ignore-key-press-canvas'];

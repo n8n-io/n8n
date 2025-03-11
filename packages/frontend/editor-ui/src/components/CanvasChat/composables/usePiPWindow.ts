@@ -1,5 +1,5 @@
 import { useTelemetry } from '@/composables/useTelemetry';
-import { IsInPiPWindowSymbol } from '@n8n/chat/constants';
+import { IsInPiPWindowSymbol } from '@/constants';
 import { useProvideTooltipAppendTo } from '@n8n/design-system/composables/useTooltipAppendTo';
 import {
 	computed,
