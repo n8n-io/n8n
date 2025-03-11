@@ -34,13 +34,12 @@ export async function searchTables(
 ): Promise<INodeListSearchResult> {
 	const credentials = await this.getCredentials('mySql');
 	const connection = await createConnection(credentials);
-	const sql = `
-	SELECT table_name FROM information_schema.tables
-	WHERE table_schema = '${credentials.database}'
-		and table_name like '%${query || ''}%'
-	ORDER BY table_name
-	`;
-	const [rows] = await connection.query(sql);
+	const sql =
+		'SELECT table_name FROM INFORMATION_SCHEMA.TABLES WHERE table_schema = ? and table_name like ? ORDER BY table_name';
+
+	const values = [credentials.database, `%${query ?? ''}%`];
+	const formattedQuery = connection.format(sql, values);
+	const [rows] = await connection.query(formattedQuery);
 	const results = (rows as IDataObject[]).map((r) => ({
 		name: r.TABLE_NAME as string,
 		value: r.TABLE_NAME as string,
