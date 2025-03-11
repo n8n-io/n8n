@@ -6,7 +6,7 @@ import glob from 'fast-glob';
 import fs from 'fs';
 import { Cipher } from 'n8n-core';
 import type { ICredentialsEncrypted } from 'n8n-workflow';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { jsonParse, UserError } from 'n8n-workflow';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
 import { CredentialsEntity } from '@/databases/entities/credentials-entity';
@@ -66,7 +66,7 @@ export class ImportCredentialsCommand extends BaseCommand {
 		}
 
 		if (flags.projectId && flags.userId) {
-			throw new ApplicationError(
+			throw new UserError(
 				'You cannot use `--userId` and `--projectId` together. Use one or the other.',
 			);
 		}
@@ -81,7 +81,7 @@ export class ImportCredentialsCommand extends BaseCommand {
 			const result = await this.checkRelations(credentials, flags.projectId, flags.userId);
 
 			if (!result.success) {
-				throw new ApplicationError(result.message);
+				throw new UserError(result.message);
 			}
 
 			for (const credential of credentials) {
@@ -202,7 +202,7 @@ export class ImportCredentialsCommand extends BaseCommand {
 			);
 
 			if (!Array.isArray(credentialsUnchecked)) {
-				throw new ApplicationError(
+				throw new UserError(
 					'File does not seem to contain credentials. Make sure the credentials are contained in an array.',
 				);
 			}
@@ -252,7 +252,7 @@ export class ImportCredentialsCommand extends BaseCommand {
 		if (!userId) {
 			const owner = await this.transactionManager.findOneBy(User, { role: 'global:owner' });
 			if (!owner) {
-				throw new ApplicationError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
+				throw new UserError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
 			}
 			userId = owner.id;
 		}

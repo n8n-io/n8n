@@ -8,13 +8,15 @@ import type {
 	FindOptionsSelect,
 	FindManyOptions,
 	FindOptionsRelations,
+	EntityManager,
 } from '@n8n/typeorm';
+import { PROJECT_ROOT } from 'n8n-workflow';
 
 import type { ListQuery } from '@/requests';
 import { isStringArray } from '@/utils';
 
 import { FolderRepository } from './folder.repository';
-import type { Folder, FolderWithWorkflowsCount } from '../entities/folder';
+import type { Folder, FolderWithWorkflowCount } from '../entities/folder';
 import { TagEntity } from '../entities/tag-entity';
 import { WebhookEntity } from '../entities/webhook-entity';
 import { WorkflowEntity } from '../entities/workflow-entity';
@@ -34,7 +36,7 @@ type WorkflowFolderUnionRow = {
 export type WorkflowFolderUnionFull = (
 	| ListQuery.Workflow.Plain
 	| ListQuery.Workflow.WithSharing
-	| FolderWithWorkflowsCount
+	| FolderWithWorkflowCount
 ) & {
 	resource: ResourceType;
 };
@@ -77,6 +79,12 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			...(maxResults ? { take: maxResults, order: { createdAt: 'ASC' } } : {}),
 		});
 		return activeWorkflows.map((workflow) => workflow.id);
+	}
+
+	async getActiveCount() {
+		return await this.count({
+			where: { active: true },
+		});
 	}
 
 	async findById(workflowId: string) {
@@ -388,7 +396,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		qb: SelectQueryBuilder<WorkflowEntity>,
 		filter: ListQuery.Options['filter'],
 	): void {
-		if (filter?.parentFolderId === '0') {
+		if (filter?.parentFolderId === PROJECT_ROOT) {
 			qb.andWhere('workflow.parentFolderId IS NULL');
 		} else if (filter?.parentFolderId) {
 			qb.andWhere('workflow.parentFolderId = :parentFolderId', {
@@ -604,5 +612,17 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 	async findByActiveState(activeState: boolean) {
 		return await this.findBy({ active: activeState });
+	}
+
+	async moveAllToFolder(fromFolderId: string, toFolderId: string, tx: EntityManager) {
+		await tx.update(
+			WorkflowEntity,
+			{ parentFolder: { id: fromFolderId } },
+			{
+				parentFolder: {
+					id: toFolderId,
+				},
+			},
+		);
 	}
 }

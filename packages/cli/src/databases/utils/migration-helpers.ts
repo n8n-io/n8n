@@ -4,7 +4,7 @@ import type { ObjectLiteral } from '@n8n/typeorm';
 import type { QueryRunner } from '@n8n/typeorm/query-runner/QueryRunner';
 import { readFileSync, rmSync } from 'fs';
 import { InstanceSettings, Logger } from 'n8n-core';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
 import { inTest } from '@/constants';
 import { createSchemaBuilder } from '@/databases/dsl';
@@ -23,7 +23,7 @@ function loadSurveyFromDisk(): string | null {
 		const personalizationSurvey = JSON.parse(surveyFile) as object;
 		const kvPairs = Object.entries(personalizationSurvey);
 		if (!kvPairs.length) {
-			throw new ApplicationError('personalizationSurvey is empty');
+			throw new UnexpectedError('personalizationSurvey is empty');
 		} else {
 			const emptyKeys = kvPairs.reduce((acc, [, value]) => {
 				if (!value || (Array.isArray(value) && !value.length)) {
@@ -32,7 +32,7 @@ function loadSurveyFromDisk(): string | null {
 				return acc;
 			}, 0);
 			if (emptyKeys === kvPairs.length) {
-				throw new ApplicationError('incomplete personalizationSurvey');
+				throw new UnexpectedError('incomplete personalizationSurvey');
 			}
 		}
 		return surveyFile;
@@ -69,7 +69,7 @@ const runDisablingForeignKeys = async (
 ) => {
 	const { dbType, queryRunner } = context;
 	if (dbType !== 'sqlite')
-		throw new ApplicationError('Disabling transactions only available in sqlite');
+		throw new UnexpectedError('Disabling transactions only available in sqlite');
 	await queryRunner.query('PRAGMA foreign_keys=OFF');
 	await queryRunner.startTransaction();
 	try {
@@ -195,7 +195,7 @@ export const wrapMigration = (migration: Migration) => {
 			},
 		});
 	} else {
-		throw new ApplicationError(`Migration "${migration.name}" is missing the method \`up\`.`);
+		throw new UnexpectedError(`Migration "${migration.name}" is missing the method \`up\`.`);
 	}
 	if (down) {
 		Object.assign(migration.prototype, {

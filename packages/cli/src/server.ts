@@ -395,9 +395,9 @@ export class Server extends AbstractServer {
 					!req.path.endsWith('.wasm') &&
 					!nonUIRoutesRegex.test(req.path)
 				) {
-					res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+					res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, proxy-revalidate');
 					securityHeadersMiddleware(req, res, () => {
-						res.sendFile('index.html', { root: staticCacheDir, maxAge, lastModified: true });
+						res.sendFile('index.html', { root: staticCacheDir, maxAge: 0, lastModified: false });
 					});
 				} else {
 					next();

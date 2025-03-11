@@ -117,7 +117,9 @@ export class Workflow {
 		this.connectionsBySourceNode = parameters.connections;
 
 		// Save also the connections by the destination nodes
-		this.connectionsByDestinationNode = this.__getConnectionsByDestination(parameters.connections);
+		this.connectionsByDestinationNode = Workflow.getConnectionsByDestination(
+			parameters.connections,
+		);
 
 		this.active = parameters.active || false;
 
@@ -143,7 +145,7 @@ export class Workflow {
 	 * to easily find parent nodes.
 	 *
 	 */
-	__getConnectionsByDestination(connections: IConnections): IConnections {
+	static getConnectionsByDestination(connections: IConnections): IConnections {
 		const returnConnection: IConnections = {};
 
 		let connectionInfo;
@@ -446,7 +448,7 @@ export class Workflow {
 		}
 
 		// Use the updated connections to create updated connections by destination nodes
-		this.connectionsByDestinationNode = this.__getConnectionsByDestination(
+		this.connectionsByDestinationNode = Workflow.getConnectionsByDestination(
 			this.connectionsBySourceNode,
 		);
 	}

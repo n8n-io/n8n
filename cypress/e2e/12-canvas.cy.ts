@@ -17,6 +17,7 @@ import {
 	openContextMenu,
 } from '../composables/workflow';
 import { NDV, WorkflowExecutionsTab } from '../pages';
+import { clearNotifications, successToast } from '../pages/notifications';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
 const WorkflowPage = new WorkflowPageClass();
@@ -383,6 +384,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 			WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 			WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 			WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+			WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 			// At this point last added node should be off-screen
 			WorkflowPage.getters.canvasNodes().last().should('not.be.visible');
 			WorkflowPage.getters.zoomToFitButton().click();
@@ -488,6 +490,9 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.actions.executeWorkflow();
+
+		successToast().should('contain.text', 'Workflow executed successfully');
+		clearNotifications();
 
 		ExecutionsTab.actions.switchToExecutionsTab();
 		ExecutionsTab.getters.successfulExecutionListItems().should('have.length', 1);

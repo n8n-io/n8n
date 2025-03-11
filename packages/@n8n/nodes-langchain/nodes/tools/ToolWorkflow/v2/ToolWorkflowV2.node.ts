@@ -25,7 +25,9 @@ export class ToolWorkflowV2 implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const workflowToolService = new WorkflowToolService(this);
+		const returnAllItems = this.getNode().typeVersion > 2;
+
+		const workflowToolService = new WorkflowToolService(this, { returnAllItems });
 		const name = this.getNodeParameter('name', itemIndex) as string;
 		const description = this.getNodeParameter('description', itemIndex) as string;
 

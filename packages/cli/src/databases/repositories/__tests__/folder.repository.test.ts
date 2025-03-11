@@ -348,21 +348,21 @@ describe('FolderRepository', () => {
 				});
 			});
 
-			it('should return id, name and workflowsCount when specified', async () => {
+			it('should return id, name and workflowCount when specified', async () => {
 				const [folders] = await folderRepository.getManyAndCount({
 					select: {
 						id: true,
 						name: true,
-						workflowsCount: true,
+						workflowCount: true,
 					},
 				});
 
 				expect(folders).toHaveLength(2);
 				folders.forEach((folder) => {
-					expect(Object.keys(folder).sort()).toEqual(['id', 'name', 'workflowsCount']);
+					expect(Object.keys(folder).sort()).toEqual(['id', 'name', 'workflowCount']);
 					expect(folder.id).toBeDefined();
 					expect(folder.name).toBeDefined();
-					expect(folder.workflowsCount).toBeDefined();
+					expect(folder.workflowCount).toBeDefined();
 				});
 			});
 
@@ -399,7 +399,7 @@ describe('FolderRepository', () => {
 							type: expect.any(String),
 							icon: null,
 						},
-						workflowsCount: expect.any(Number),
+						workflowCount: expect.any(Number),
 						tags: expect.any(Array),
 					});
 				});
