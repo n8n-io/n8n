@@ -93,6 +93,17 @@ export const chatCompletionsFields: INodeProperties[] = [
 				name: 'message',
 				values: [
 					{
+						displayName: 'Text',
+						name: 'content',
+						required: true,
+						type: 'string',
+						default: '',
+						description: 'The content of the message to be sent',
+						typeOptions: {
+							rows: 2,
+						},
+					},
+					{
 						displayName: 'Role',
 						name: 'role',
 						required: true,
@@ -105,17 +116,6 @@ export const chatCompletionsFields: INodeProperties[] = [
 						default: 'user',
 						description:
 							"Role in shaping the model's response, it tells the model how it should behave and interact with the user",
-					},
-					{
-						displayName: 'Text',
-						name: 'content',
-						required: true,
-						type: 'string',
-						default: '',
-						description: 'The content of the message to be sent',
-						typeOptions: {
-							rows: 2,
-						},
 					},
 				],
 			},
@@ -232,7 +232,7 @@ export const chatCompletionsFields: INodeProperties[] = [
 				type: 'number',
 				default: 0,
 				description:
-					"A value between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics. A value between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
+					"A value between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
 				typeOptions: {
 					minValue: -2.0,
 					maxValue: 2.0,
