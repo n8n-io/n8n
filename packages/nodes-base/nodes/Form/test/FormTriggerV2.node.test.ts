@@ -241,6 +241,33 @@ describe('FormTrigger', () => {
 		);
 	});
 
+	it('should apply customCss property to form render', async () => {
+		const formFields = [{ fieldLabel: 'Name', fieldType: 'text', requiredField: true }];
+
+		const { response } = await testVersionedWebhookTriggerNode(FormTrigger, 2.2, {
+			mode: 'manual',
+			node: {
+				typeVersion: 2.2,
+				parameters: {
+					formTitle: 'Custom CSS Test',
+					formDescription: 'Testing custom CSS',
+					responseMode: 'onReceived',
+					formFields: { values: formFields },
+					options: {
+						customCss: '.form-input { border-color: red; }',
+					},
+				},
+			},
+		});
+
+		expect(response.render).toHaveBeenCalledWith(
+			'form-trigger',
+			expect.objectContaining({
+				dangerousCustomCss: '.form-input { border-color: red; }',
+			}),
+		);
+	});
+
 	it('should handle files', async () => {
 		const formFields = [
 			{

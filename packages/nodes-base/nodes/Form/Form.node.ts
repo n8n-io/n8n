@@ -18,6 +18,7 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
+import { cssVariables } from './cssVariables';
 import { renderFormCompletion } from './formCompletionUtils';
 import { renderFormNode } from './formNodeUtils';
 import { configureWaitTillDate } from '../../utils/sendAndWait/configureWaitTillDate.util';
@@ -106,6 +107,17 @@ const pageProperties = updateDisplayOptions(
 					name: 'buttonLabel',
 					type: 'string',
 					default: 'Submit',
+				},
+				{
+					displayName: 'Custom Form Styling',
+					name: 'customCss',
+					type: 'string',
+					typeOptions: {
+						rows: 10,
+						editor: 'cssEditor',
+					},
+					default: cssVariables.trim(),
+					description: 'Override default styling of the public form interface with CSS',
 				},
 			],
 		},
@@ -205,7 +217,20 @@ const completionProperties = updateDisplayOptions(
 			type: 'collection',
 			placeholder: 'Add option',
 			default: {},
-			options: [{ ...formTitle, required: false, displayName: 'Completion Page Title' }],
+			options: [
+				{ ...formTitle, required: false, displayName: 'Completion Page Title' },
+				{
+					displayName: 'Custom Form Styling',
+					name: 'customCss',
+					type: 'string',
+					typeOptions: {
+						rows: 10,
+						editor: 'cssEditor',
+					},
+					default: cssVariables.trim(),
+					description: 'Override default styling of the public form interface with CSS',
+				},
+			],
 			displayOptions: {
 				show: {
 					respondWith: ['text'],
@@ -311,15 +336,7 @@ export class Form extends Node {
 				});
 			}
 		} else {
-			fields = (context.getNodeParameter('formFields.values', []) as FormFieldsParameter).map(
-				(field) => {
-					if (field.fieldType === 'hiddenField') {
-						field.fieldLabel = field.fieldName as string;
-					}
-
-					return field;
-				},
-			);
+			fields = context.getNodeParameter('formFields.values', []) as FormFieldsParameter;
 		}
 
 		const method = context.getRequestObject().method;
