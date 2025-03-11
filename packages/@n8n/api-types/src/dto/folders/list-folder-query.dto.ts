@@ -1,4 +1,4 @@
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
@@ -32,18 +32,6 @@ export const filterSchema = z
 	})
 	.strict();
 
-// Common transformers
-const parseJsonArray = (val: string): unknown => {
-	if (!val.trim().startsWith('[')) {
-		throw new ApplicationError('Expected a JSON array starting with [');
-	}
-	return jsonParse(val);
-};
-
-const isArrayOfStrings = (val: unknown): val is string[] => {
-	return Array.isArray(val) && val.every((item) => typeof item === 'string');
-};
-
 // ---------------------
 // Parameter Validators
 // ---------------------
@@ -52,13 +40,12 @@ const isArrayOfStrings = (val: unknown): val is string[] => {
 const filterValidator = z
 	.string()
 	.optional()
-	.superRefine((val, ctx) => {
-		if (!val) return;
-
+	.transform((val, ctx) => {
+		if (!val) return undefined;
 		try {
-			const parsed = jsonParse(val);
+			const parsed: unknown = jsonParse(val);
 			try {
-				filterSchema.parse(parsed);
+				return filterSchema.parse(parsed);
 			} catch (e) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
@@ -75,10 +62,6 @@ const filterValidator = z
 			});
 			return z.NEVER;
 		}
-	})
-	.transform((val) => {
-		if (!val) return undefined;
-		return filterSchema.parse(jsonParse(val));
 	});
 
 // Skip parameter validation
@@ -86,7 +69,7 @@ const skipValidator = z
 	.string()
 	.optional()
 	.transform((val) => (val ? parseInt(val, 10) : 0))
-	.refine((val) => val === undefined || !isNaN(val), {
+	.refine((val) => !isNaN(val), {
 		message: 'Skip must be a valid number',
 	});
 
@@ -95,41 +78,34 @@ const takeValidator = z
 	.string()
 	.optional()
 	.transform((val) => (val ? parseInt(val, 10) : 10))
-	.refine((val) => val === undefined || !isNaN(val), {
+	.refine((val) => !isNaN(val), {
 		message: 'Take must be a valid number',
 	});
 
 // Select parameter validation
+const selectFieldsValidator = z.array(z.enum(VALID_SELECT_FIELDS));
 const selectValidator = z
 	.string()
 	.optional()
-	.superRefine((val, ctx) => {
-		if (!val) return;
-
+	.transform((val, ctx) => {
+		if (!val) return undefined;
 		try {
-			// Parse as JSON array
-			const parsed = parseJsonArray(val);
-
-			// Validate it's an array of strings
-			if (!isArrayOfStrings(parsed)) {
+			const parsed: unknown = JSON.parse(val);
+			try {
+				const selectFields = selectFieldsValidator.parse(parsed);
+				if (selectFields.length === 0) return undefined;
+				type SelectField = (typeof VALID_SELECT_FIELDS)[number];
+				return selectFields.reduce<Record<SelectField, true>>(
+					(acc, field) => ({ ...acc, [field]: true }),
+					{} as Record<SelectField, true>,
+				);
+			} catch (e) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
-					message: 'Select must be an array of strings',
+					message: `Invalid select fields. Valid fields are: ${VALID_SELECT_FIELDS.join(', ')}`,
 					path: ['select'],
 				});
 				return z.NEVER;
-			}
-
-			// Validate each field
-			for (const field of parsed) {
-				if (!VALID_SELECT_FIELDS.includes(field as (typeof VALID_SELECT_FIELDS)[number])) {
-					ctx.addIssue({
-						code: z.ZodIssueCode.custom,
-						message: `Invalid select field: ${field}. Valid fields are: ${VALID_SELECT_FIELDS.join(', ')}`,
-						path: ['select'],
-					});
-					return z.NEVER;
-				}
 			}
 		} catch (e) {
 			ctx.addIssue({
@@ -139,39 +115,12 @@ const selectValidator = z
 			});
 			return z.NEVER;
 		}
-	})
-	.transform((val) => {
-		if (!val) return undefined;
-
-		try {
-			const parsed = parseJsonArray(val) as string[];
-			const selectObject: Record<string, true> = {};
-
-			for (const field of parsed) {
-				if (VALID_SELECT_FIELDS.includes(field as (typeof VALID_SELECT_FIELDS)[number])) {
-					selectObject[field] = true;
-				}
-			}
-
-			return Object.keys(selectObject).length > 0 ? selectObject : undefined;
-		} catch (e) {
-			return undefined;
-		}
 	});
 
 // SortBy parameter validation
 const sortByValidator = z
-	.string()
-	.optional()
-	.refine(
-		(val) => {
-			if (!val) return true;
-			return VALID_SORT_OPTIONS.includes(val as (typeof VALID_SORT_OPTIONS)[number]);
-		},
-		{
-			message: `sortBy must be one of: ${VALID_SORT_OPTIONS.join(', ')}`,
-		},
-	);
+	.enum(VALID_SORT_OPTIONS, { message: `sortBy must be one of: ${VALID_SORT_OPTIONS.join(', ')}` })
+	.optional();
 
 export class ListFolderQueryDto extends Z.class({
 	filter: filterValidator,

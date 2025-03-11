@@ -6,7 +6,7 @@ import type * as express from 'express';
 import type FormData from 'form-data';
 import type { PathLike } from 'fs';
 import type { IncomingHttpHeaders } from 'http';
-import type { RequestBodyMatcher } from 'nock';
+import type { ReplyHeaders, RequestBodyMatcher, RequestHeaderMatcher } from 'nock';
 import type { Client as SSHClient } from 'ssh2';
 import type { Readable } from 'stream';
 import type { SecureContextOptions } from 'tls';
@@ -1242,7 +1242,7 @@ export type NodePropertyTypes =
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
-export type EditorType = 'codeNodeEditor' | 'jsEditor' | 'htmlEditor' | 'sqlEditor';
+export type EditorType = 'codeNodeEditor' | 'jsEditor' | 'htmlEditor' | 'sqlEditor' | 'cssEditor';
 export type CodeNodeEditorLanguage = (typeof CODE_LANGUAGES)[number];
 export type CodeExecutionMode = (typeof CODE_EXECUTION_MODES)[number];
 export type SQLDialect =
@@ -2047,7 +2047,7 @@ export interface IWebhookResponseData {
 }
 
 export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryBinary' | 'noData';
-export type WebhookResponseMode = 'onReceived' | 'lastNode' | 'responseNode';
+export type WebhookResponseMode = 'onReceived' | 'lastNode' | 'responseNode' | 'formPage';
 
 export interface INodeTypes {
 	getByName(nodeType: string): INodeType | IVersionedNodeType;
@@ -2412,8 +2412,10 @@ export interface WorkflowTestData {
 			method: 'delete' | 'get' | 'patch' | 'post' | 'put';
 			path: string;
 			requestBody?: RequestBodyMatcher;
+			requestHeaders?: Record<string, RequestHeaderMatcher>;
 			statusCode: number;
 			responseBody: string | object;
+			responseHeaders?: ReplyHeaders;
 		}>;
 	};
 	trigger?: {

@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.80.0",
+  "version": "1.81.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -39,6 +39,8 @@
       "dist/credentials/AutomizyApi.credentials.js",
       "dist/credentials/AutopilotApi.credentials.js",
       "dist/credentials/Aws.credentials.js",
+      "dist/credentials/AzureStorageOAuth2Api.credentials.js",
+      "dist/credentials/AzureStorageSharedKeyApi.credentials.js",
       "dist/credentials/BambooHrApi.credentials.js",
       "dist/credentials/BannerbearApi.credentials.js",
       "dist/credentials/BaserowApi.credentials.js",
@@ -640,6 +642,7 @@
       "dist/nodes/Microsoft/Outlook/MicrosoftOutlook.node.js",
       "dist/nodes/Microsoft/Outlook/MicrosoftOutlookTrigger.node.js",
       "dist/nodes/Microsoft/Sql/MicrosoftSql.node.js",
+      "dist/nodes/Microsoft/Storage/AzureStorage.node.js",
       "dist/nodes/Microsoft/Teams/MicrosoftTeams.node.js",
       "dist/nodes/Microsoft/ToDo/MicrosoftToDo.node.js",
       "dist/nodes/Mindee/Mindee.node.js",

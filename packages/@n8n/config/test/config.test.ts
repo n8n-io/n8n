@@ -243,7 +243,6 @@ describe('GlobalConfig', () => {
 		sentry: {
 			backendDsn: '',
 			frontendDsn: '',
-			n8nVersion: '',
 			environment: '',
 			deploymentName: '',
 		},
@@ -326,7 +325,6 @@ describe('GlobalConfig', () => {
 			DB_LOGGING_MAX_EXECUTION_TIME: '0',
 			N8N_METRICS: 'TRUE',
 			N8N_TEMPLATES_ENABLED: '0',
-			N8N_RELEASE_DATE: '2025-02-17T13:54:15Z',
 		};
 		const config = Container.get(GlobalConfig);
 		expect(structuredClone(config)).toEqual({
@@ -357,10 +355,6 @@ describe('GlobalConfig', () => {
 			templates: {
 				...defaultConfig.templates,
 				enabled: false,
-			},
-			generic: {
-				...defaultConfig.generic,
-				releaseDate: new Date('2025-02-17T13:54:15.000Z'),
 			},
 		});
 		expect(mockFs.readFileSync).not.toHaveBeenCalled();
@@ -395,17 +389,6 @@ describe('GlobalConfig', () => {
 		expect(config.database.logging.maxQueryExecutionTime).toEqual(0);
 		expect(consoleWarnMock).toHaveBeenCalledWith(
 			'Invalid number value for DB_LOGGING_MAX_EXECUTION_TIME: abcd',
-		);
-	});
-
-	it('should handle invalid timestamps', () => {
-		process.env = {
-			N8N_RELEASE_DATE: 'abcd',
-		};
-		const config = Container.get(GlobalConfig);
-		expect(config.generic.releaseDate).toBeUndefined();
-		expect(consoleWarnMock).toHaveBeenCalledWith(
-			'Invalid timestamp value for N8N_RELEASE_DATE: abcd',
 		);
 	});
 });

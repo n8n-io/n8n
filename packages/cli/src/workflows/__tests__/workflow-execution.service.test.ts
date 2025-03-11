@@ -65,6 +65,7 @@ describe('WorkflowExecutionService', () => {
 		workflowRunner,
 		mock(),
 		mock(),
+		mock(),
 	);
 
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({});
