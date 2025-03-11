@@ -30,18 +30,21 @@ export async function createConnection(
 
 export async function searchTables(
 	this: ILoadOptionsFunctions,
-	query?: string,
+	tableName?: string,
 ): Promise<INodeListSearchResult> {
 	const credentials = await this.getCredentials('mySql');
 	const connection = await createConnection(credentials);
-	const sql =
-		'SELECT table_name FROM INFORMATION_SCHEMA.TABLES WHERE table_schema = ? and table_name like ? ORDER BY table_name';
+	const sql = `SELECT table_name
+FROM   information_schema.tables
+WHERE  table_schema = ?
+AND table_name LIKE ?
+ORDER  BY table_name`;
 
-	const values = [credentials.database, `%${query ?? ''}%`];
+	const values = [credentials.database, `%${tableName ?? ''}%`];
 	const [rows] = await connection.query(sql, values);
-	const results = (rows as IDataObject[]).map((r) => ({
-		name: r.table_name as string,
-		value: r.table_name as string,
+	const results = (rows as IDataObject[]).map((table) => ({
+		name: (table.table_name as string) || (table.TABLE_NAME as string),
+		value: (table.table_name as string) || (table.TABLE_NAME as string),
 	}));
 	await connection.end();
 	return { results };

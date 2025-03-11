@@ -44,7 +44,11 @@ describe('MySQL / v1 / Generic Functions', () => {
 			});
 
 			expect(mockQuery).toHaveBeenCalledWith(
-				'SELECT table_name FROM INFORMATION_SCHEMA.TABLES WHERE table_schema = ? and table_name like ? ORDER BY table_name',
+				`SELECT table_name
+FROM   information_schema.tables
+WHERE  table_schema = ?
+AND table_name LIKE ?
+ORDER  BY table_name`,
 				['test_db', '%user%'],
 			);
 
@@ -66,7 +70,11 @@ describe('MySQL / v1 / Generic Functions', () => {
 
 			expect(result).toEqual({ results: [] });
 			expect(mockQuery).toHaveBeenCalledWith(
-				'SELECT table_name FROM INFORMATION_SCHEMA.TABLES WHERE table_schema = ? and table_name like ? ORDER BY table_name',
+				`SELECT table_name
+FROM   information_schema.tables
+WHERE  table_schema = ?
+AND table_name LIKE ?
+ORDER  BY table_name`,
 				['test_db', '%%'],
 			);
 
