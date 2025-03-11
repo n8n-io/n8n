@@ -23,6 +23,14 @@ const timestampSyntax = {
 
 export const jsonColumnType = dbType === 'sqlite' ? 'simple-json' : 'json';
 export const datetimeColumnType = dbType === 'postgresdb' ? 'timestamptz' : 'datetime';
+export const timestampColumnType = dbType === 'postgresdb' ? 'timestamp' : 'datetime';
+export const timestampColumnDefault =
+	dbType === 'sqlite'
+		? () => 'unixepoch()'
+		: dbType === 'postgresdb'
+			? () => 'EXTRACT(EPOCH FROM NOW())'
+			: // for mysql and mariadb
+				() => 'UNIX_TIMESTAMP()';
 
 const tsColumnOptions: ColumnOptions = {
 	precision: 3,
