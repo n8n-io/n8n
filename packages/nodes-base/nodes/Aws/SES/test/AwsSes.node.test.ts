@@ -7,6 +7,10 @@ import * as Helpers from '@test/nodes/Helpers';
 import type { WorkflowTestData } from '@test/nodes/types';
 
 describe('AwsSes Node', () => {
+	const email = 'test+user@example.com';
+	const templateData = {
+		Name: 'Special. Characters @#$%^&*()_-',
+	};
 	const tests: WorkflowTestData[] = [
 		{
 			description: 'should create customVerificationEmail',
@@ -86,6 +90,80 @@ describe('AwsSes Node', () => {
 						statusCode: 200,
 						responseBody:
 							'<CreateCustomVerificationEmailTemplateResponse><success>true</success></CreateCustomVerificationEmailTemplateResponse>',
+					},
+				],
+			},
+		},
+		{
+			description: 'should URIencode params for sending email with template',
+			input: {
+				workflowData: {
+					nodes: [
+						{
+							parameters: {},
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [-180, 520],
+							id: '363e874a-9054-4a64-bc3f-786719dde626',
+							name: "When clicking 'Test workflow'",
+						},
+						{
+							parameters: {
+								operation: 'sendTemplate',
+								templateName: '=Template11',
+								fromEmail: 'test+user@example.com',
+								toAddresses: ['test+user@example.com'],
+								templateDataUi: {
+									templateDataValues: [
+										{
+											key: 'Name',
+											value: '=Special. Characters @#$%^&*()_-',
+										},
+									],
+								},
+								additionalFields: {},
+							},
+							type: 'n8n-nodes-base.awsSes',
+							typeVersion: 1,
+							position: [60, 520],
+							id: '13bbf4ef-8320-45d1-9210-61b62794a108',
+							name: 'AWS SES',
+							credentials: {
+								aws: {
+									id: 'Nz0QZhzu3MvfK4TQ',
+									name: 'AWS account',
+								},
+							},
+						},
+					],
+					connections: {
+						"When clicking 'Test workflow'": {
+							main: [
+								[
+									{
+										node: 'AWS SES',
+										type: NodeConnectionType.Main,
+										index: 0,
+									},
+								],
+							],
+						},
+					},
+				},
+			},
+			output: {
+				nodeExecutionOrder: ['Start'],
+				nodeData: { 'AWS SES': [[{ json: { success: 'true' } }]] },
+			},
+			nock: {
+				baseUrl: 'https://email.eu-central-1.amazonaws.com',
+				mocks: [
+					{
+						method: 'post',
+						path: `/?Action=SendTemplatedEmail&Template=Template11&Source=${encodeURIComponent(email)}&Destination.ToAddresses.member.1=${encodeURIComponent(email)}&TemplateData=${encodeURIComponent(JSON.stringify(templateData))}`,
+						statusCode: 200,
+						responseBody:
+							'<SendTemplatedEmailResponse><success>true</success></SendTemplatedEmailResponse>',
 					},
 				],
 			},
