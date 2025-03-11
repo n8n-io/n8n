@@ -17,20 +17,23 @@ import {
 } from './GenericFunctions';
 import type { WhatsAppPageEvent } from './types';
 
-export const filterStatuses = (events: IDataObject[], allowedStatuses: string[] | undefined) => {
-	if (!allowedStatuses) {
-		return events;
-	}
+export const filterStatuses = (
+	events: Array<{ statuses?: Array<{ status: string }> }>,
+	allowedStatuses: string[] | undefined,
+) => {
+	if (!allowedStatuses) return events;
 
+	// If allowedStatuses is empty filter out events with statuses
 	if (!allowedStatuses.length) {
-		return events.filter((event) => !event.statuses);
+		return events.filter((event) => (event?.statuses ? false : true));
 	}
 
+	// If 'all' is not in allowedStatuses, return only events with allowed status
 	if (!allowedStatuses.includes('all')) {
 		return events.filter((event) => {
-			const statuses = event.statuses as IDataObject[] | undefined;
+			const statuses = event.statuses;
 			if (statuses?.length) {
-				return statuses.some((status) => allowedStatuses.includes(status.status as string));
+				return statuses.some((status) => allowedStatuses.includes(status.status));
 			}
 			return true;
 		});
@@ -144,7 +147,7 @@ export class WhatsAppTrigger implements INodeType {
 						type: 'multiOptions',
 						default: ['all'],
 						description:
-							'The WhatsApp sends notifications to inform you of the status of the messages. Select the types of notifications you want to receive.',
+							'WhatsApp sends notifications to the Trigger when the status of a message changes (for example from Sent to Delivered and from Delivered to Read). To avoid multiple executions for one WhatsApp message, you can set the Trigger to execute only on selected message status updates.',
 						options: [
 							{
 								name: 'All',
@@ -291,7 +294,7 @@ export class WhatsAppTrigger implements INodeType {
 
 		const options = this.getNodeParameter('options', {}) as { messageStatusUpdates?: string[] };
 
-		const returnData = filterStatuses(events as IDataObject[], options.messageStatusUpdates);
+		const returnData = filterStatuses(events, options.messageStatusUpdates);
 
 		if (returnData.length === 0) return {};
 
