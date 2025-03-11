@@ -38,8 +38,7 @@ export async function searchTables(
 		'SELECT table_name FROM INFORMATION_SCHEMA.TABLES WHERE table_schema = ? and table_name like ? ORDER BY table_name';
 
 	const values = [credentials.database, `%${query ?? ''}%`];
-	const formattedQuery = connection.format(sql, values);
-	const [rows] = await connection.query(formattedQuery);
+	const [rows] = await connection.query(sql, values);
 	const results = (rows as IDataObject[]).map((r) => ({
 		name: r.table_name as string,
 		value: r.table_name as string,
