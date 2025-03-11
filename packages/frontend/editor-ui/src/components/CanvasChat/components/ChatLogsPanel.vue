@@ -31,10 +31,15 @@ const locale = useI18n();
 				</span>
 			</div>
 			<div :class="$style.buttons">
-				<button v-if="canPopOut && !isPoppedOut" @click="emit('requestPopOut')">Pop out</button>
+				<n8n-icon-button
+					v-if="canPopOut && !isPoppedOut"
+					icon="external-link-alt"
+					type="secondary"
+					size="mini"
+					@click="emit('requestPopOut')"
+				/>
 				<n8n-icon-button
 					v-if="!isPoppedOut"
-					:class="$style.close"
 					outline
 					icon="times"
 					type="secondary"
@@ -69,10 +74,6 @@ const locale = useI18n();
 	justify-content: space-between;
 	align-items: center;
 
-	.close {
-		border: none;
-	}
-
 	span {
 		font-weight: 100;
 	}
@@ -99,6 +100,10 @@ const locale = useI18n();
 .buttons {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-s);
+	gap: var(--spacing-3xs);
+
+	& button {
+		border: none;
+	}
 }
 </style>
