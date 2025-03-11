@@ -80,7 +80,6 @@ export function addAdditionalFields(
 	const additionalFields = this.getNodeParameter('additionalFields', index);
 
 	if (operation === 'sendMessage') {
-		// [ria] && SEND_AND_WAIT ?
 		const attributionText = 'This message was sent automatically with ';
 		const link = createUtmCampaignLink('n8n-nodes-base.telegram', instanceId);
 
