@@ -65,7 +65,10 @@ export function usePiPWindow(
 	async function onPopOut() {
 		telemetry.track('User toggled log view', { new_state: 'floating' });
 
-		pipWindow.value = await window.documentPictureInPicture?.requestWindow();
+		pipWindow.value = await window.documentPictureInPicture?.requestWindow({
+			width: window.document.body.offsetWidth * 0.8,
+			height: 400,
+		});
 
 		showPip();
 	}
