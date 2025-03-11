@@ -79,6 +79,7 @@ export function usePiPWindow(
 		pipWindow.value = await window.documentPictureInPicture?.requestWindow({
 			width: window.document.body.offsetWidth * 0.8,
 			height: 400,
+			disallowReturnToOpener: true,
 		});
 
 		showPip();
