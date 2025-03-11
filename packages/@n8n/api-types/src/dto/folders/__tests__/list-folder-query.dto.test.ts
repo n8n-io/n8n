@@ -1,16 +1,23 @@
 import { ListFolderQueryDto } from '../list-folder-query.dto';
 
+const DEFAULT_PAGINATION = { skip: 0, take: 10 };
+
 describe('ListFolderQueryDto', () => {
 	describe('Valid requests', () => {
 		test.each([
 			{
 				name: 'empty object (no filters)',
 				request: {},
+				parsedResult: DEFAULT_PAGINATION,
 			},
 			{
 				name: 'valid filter',
 				request: {
 					filter: '{"name":"test"}',
+				},
+				parsedResult: {
+					...DEFAULT_PAGINATION,
+					filter: { name: 'test' },
 				},
 			},
 			{
@@ -18,11 +25,19 @@ describe('ListFolderQueryDto', () => {
 				request: {
 					filter: '{"parentFolderId":"abc123"}',
 				},
+				parsedResult: {
+					...DEFAULT_PAGINATION,
+					filter: { parentFolderId: 'abc123' },
+				},
 			},
 			{
 				name: 'filter with name and parentFolderId',
 				request: {
 					filter: '{"name":"test","parentFolderId":"abc123"}',
+				},
+				parsedResult: {
+					...DEFAULT_PAGINATION,
+					filter: { parentFolderId: 'abc123', name: 'test' },
 				},
 			},
 			{
@@ -30,11 +45,19 @@ describe('ListFolderQueryDto', () => {
 				request: {
 					filter: '{"tags":["important","archived"]}',
 				},
+				parsedResult: {
+					...DEFAULT_PAGINATION,
+					filter: { tags: ['important', 'archived'] },
+				},
 			},
 			{
 				name: 'filter with empty tags array',
 				request: {
 					filter: '{"tags":[]}',
+				},
+				parsedResult: {
+					...DEFAULT_PAGINATION,
+					filter: { tags: [] },
 				},
 			},
 			{
@@ -42,11 +65,19 @@ describe('ListFolderQueryDto', () => {
 				request: {
 					filter: '{"name":"test","parentFolderId":"abc123","tags":["important"]}',
 				},
+				parsedResult: {
+					...DEFAULT_PAGINATION,
+					filter: { tags: ['important'], name: 'test', parentFolderId: 'abc123' },
+				},
 			},
 			{
 				name: 'valid select',
 				request: {
 					select: '["id","name"]',
+				},
+				parsedResult: {
+					...DEFAULT_PAGINATION,
+					select: { id: true, name: true },
 				},
 			},
 			{
@@ -54,12 +85,20 @@ describe('ListFolderQueryDto', () => {
 				request: {
 					sortBy: 'name:asc',
 				},
+				parsedResult: {
+					...DEFAULT_PAGINATION,
+					sortBy: 'name:asc',
+				},
 			},
 			{
 				name: 'valid skip and take',
 				request: {
 					skip: '0',
-					take: '10',
+					take: '20',
+				},
+				parsedResult: {
+					skip: 0,
+					take: 20,
 				},
 			},
 			{
@@ -71,10 +110,20 @@ describe('ListFolderQueryDto', () => {
 					take: '10',
 					sortBy: 'createdAt:desc',
 				},
+				parsedResult: {
+					filter: { name: 'test', tags: ['important'] },
+					select: { id: true, name: true, createdAt: true, tags: true },
+					skip: 0,
+					take: 10,
+					sortBy: 'createdAt:desc',
+				},
 			},
-		])('should validate $name', ({ request }) => {
+		])('should validate $name', ({ request, parsedResult }) => {
 			const result = ListFolderQueryDto.safeParse(request);
 			expect(result.success).toBe(true);
+			if (parsedResult) {
+				expect(result.data).toMatchObject(parsedResult);
+			}
 		});
 	});
 

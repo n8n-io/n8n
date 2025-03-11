@@ -15,7 +15,7 @@ import { microsoftEntraApiResponse, microsoftEntraNodeResponse } from './mocks';
 import { FAKE_CREDENTIALS_DATA } from '../../../../test/nodes/FakeCredentialsMap';
 import { MicrosoftEntra } from '../MicrosoftEntra.node';
 
-describe('Gong Node', () => {
+describe('Microsoft Entra Node', () => {
 	const baseUrl = 'https://graph.microsoft.com/v1.0';
 
 	beforeEach(() => {

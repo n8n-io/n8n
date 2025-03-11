@@ -37,10 +37,10 @@ const config = {
 	collectCoverage: isCoverageEnabled,
 	coverageReporters: ['text-summary', 'lcov', 'html-spa'],
 	collectCoverageFrom: ['src/**/*.ts'],
+	workerIdleMemoryLimit: '1MB',
 };
 
 if (process.env.CI === 'true') {
-	config.workerIdleMemoryLimit = 1024;
 	config.coverageReporters = ['cobertura'];
 }
 

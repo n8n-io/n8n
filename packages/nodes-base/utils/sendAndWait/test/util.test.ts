@@ -368,6 +368,34 @@ describe('Send and Wait utils tests', () => {
 
 			expect(result.workflowData).toEqual([[{ json: { data: { 'test 1': 'test value' } } }]]);
 		});
+
+		it('should return noWebhookResponse if method GET and user-agent is bot', async () => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue({
+				method: 'GET',
+				headers: {
+					'user-agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+				},
+				query: { approved: 'false' },
+			} as any);
+
+			const send = jest.fn();
+
+			mockWebhookFunctions.getResponseObject.mockReturnValue({
+				send,
+			} as any);
+
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					responseType: 'approval',
+				};
+				return params[parameterName];
+			});
+
+			const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+			expect(send).toHaveBeenCalledWith('');
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
 	});
 });
 

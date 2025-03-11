@@ -35,6 +35,7 @@ export class WorkflowsPage extends BasePage {
 			this.getters.workflowActivator(workflowName).findChildByTestId('workflow-activator-status'),
 		workflowCardActions: (workflowName: string) =>
 			this.getters.workflowCard(workflowName).findChildByTestId('workflow-card-actions'),
+		workflowActionItem: (action: string) => cy.getByTestId(`action-${action}`).filter(':visible'),
 		workflowDeleteButton: () =>
 			cy.getByTestId('action-toggle-dropdown').filter(':visible').contains('Delete'),
 		workflowMoveButton: () =>

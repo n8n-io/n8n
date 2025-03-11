@@ -1,67 +1,15 @@
 import { Container } from '@n8n/di';
 import type {
 	IDataObject,
-	INode,
 	INodeCredentialsDetails,
 	IRun,
 	ITaskData,
-	NodeApiError,
-	WorkflowExecuteMode,
-	WorkflowOperationError,
-	NodeOperationError,
 	IWorkflowBase,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-
-export function generateFailedExecutionFromError(
-	mode: WorkflowExecuteMode,
-	error: NodeApiError | NodeOperationError | WorkflowOperationError,
-	node: INode,
-): IRun {
-	return {
-		data: {
-			startData: {
-				destinationNode: node.name,
-				runNodeFilter: [node.name],
-			},
-			resultData: {
-				error,
-				runData: {
-					[node.name]: [
-						{
-							startTime: 0,
-							executionTime: 0,
-							error,
-							source: [],
-						},
-					],
-				},
-				lastNodeExecuted: node.name,
-			},
-			executionData: {
-				contextData: {},
-				metadata: {},
-				nodeExecutionStack: [
-					{
-						node,
-						data: {},
-						source: null,
-					},
-				],
-				waitingExecution: {},
-				waitingExecutionSource: {},
-			},
-		},
-		finished: false,
-		mode,
-		startedAt: new Date(),
-		stoppedAt: new Date(),
-		status: 'error',
-	};
-}
 
 /**
  * Returns the data of the last executed node
