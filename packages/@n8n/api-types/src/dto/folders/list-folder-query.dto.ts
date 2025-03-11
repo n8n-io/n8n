@@ -31,18 +31,6 @@ export const filterSchema = z
 	})
 	.strict();
 
-// Common transformers
-const parseJsonArray = (val: string): unknown => {
-	if (!val.trim().startsWith('[')) {
-		throw new ApplicationError('Expected a JSON array starting with [');
-	}
-	return jsonParse(val);
-};
-
-const isArrayOfStrings = (val: unknown): val is string[] => {
-	return Array.isArray(val) && val.every((item) => typeof item === 'string');
-};
-
 // ---------------------
 // Parameter Validators
 // ---------------------
@@ -94,36 +82,29 @@ const takeValidator = z
 	});
 
 // Select parameter validation
+const selectFieldsValidator = z.array(z.enum(VALID_SELECT_FIELDS));
 const selectValidator = z
 	.string()
 	.optional()
-	.superRefine((val, ctx) => {
-		if (!val) return;
-
+	.transform((val, ctx) => {
+		if (!val) return undefined;
 		try {
-			// Parse as JSON array
-			const parsed = parseJsonArray(val);
-
-			// Validate it's an array of strings
-			if (!isArrayOfStrings(parsed)) {
+			const parsed: unknown = JSON.parse(val);
+			try {
+				const selectFields = selectFieldsValidator.parse(parsed);
+				if (selectFields.length === 0) return undefined;
+				type SelectField = (typeof VALID_SELECT_FIELDS)[number];
+				return selectFields.reduce<Record<SelectField, true>>(
+					(acc, field) => ({ ...acc, [field]: true }),
+					{} as Record<SelectField, true>,
+				);
+			} catch (e) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
-					message: 'Select must be an array of strings',
+					message: `Invalid select fields. Valid fields are: ${VALID_SELECT_FIELDS.join(', ')}`,
 					path: ['select'],
 				});
 				return z.NEVER;
-			}
-
-			// Validate each field
-			for (const field of parsed) {
-				if (!VALID_SELECT_FIELDS.includes(field as (typeof VALID_SELECT_FIELDS)[number])) {
-					ctx.addIssue({
-						code: z.ZodIssueCode.custom,
-						message: `Invalid select field: ${field}. Valid fields are: ${VALID_SELECT_FIELDS.join(', ')}`,
-						path: ['select'],
-					});
-					return z.NEVER;
-				}
 			}
 		} catch (e) {
 			ctx.addIssue({
@@ -132,24 +113,6 @@ const selectValidator = z
 				path: ['select'],
 			});
 			return z.NEVER;
-		}
-	})
-	.transform((val) => {
-		if (!val) return undefined;
-
-		try {
-			const parsed = parseJsonArray(val) as string[];
-			const selectObject: Record<string, true> = {};
-
-			for (const field of parsed) {
-				if (VALID_SELECT_FIELDS.includes(field as (typeof VALID_SELECT_FIELDS)[number])) {
-					selectObject[field] = true;
-				}
-			}
-
-			return Object.keys(selectObject).length > 0 ? selectObject : undefined;
-		} catch (e) {
-			return undefined;
 		}
 	});
 
