@@ -4,6 +4,7 @@ import { v4 as uuid } from 'uuid';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UsersController } from '@/controllers/users.controller';
 import type { User } from '@/databases/entities/user';
+import { FolderRepository } from '@/databases/repositories/folder.repository';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
@@ -12,6 +13,7 @@ import { UserRepository } from '@/databases/repositories/user.repository';
 import { ExecutionService } from '@/executions/execution.service';
 import { CacheService } from '@/services/cache/cache.service';
 import { Telemetry } from '@/telemetry';
+import { createFolder } from '@test-integration/db/folders';
 
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import {
@@ -28,8 +30,6 @@ import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 import { validateUser } from './shared/utils/users';
 import { mockInstance } from '../shared/mocking';
-import { createFolder } from '@test-integration/db/folders';
-import { FolderRepository } from '@/databases/repositories/folder.repository';
 
 mockInstance(Telemetry);
 mockInstance(ExecutionService);
