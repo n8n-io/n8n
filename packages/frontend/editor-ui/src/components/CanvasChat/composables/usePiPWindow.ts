@@ -1,4 +1,5 @@
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useProvideTooltipAppendTo } from '@n8n/design-system/composables/useTooltipAppendTo';
 import {
 	computed,
 	type ComputedRef,
@@ -25,6 +26,11 @@ export function usePiPWindow(
 	const canPopOut = computed(() => !!window.documentPictureInPicture);
 	const isPoppedOut = computed(() => !!pipWindow.value);
 	const telemetry = useTelemetry();
+	const tooltipContainer = computed(() =>
+		isPoppedOut.value ? (content.value ?? undefined) : undefined,
+	);
+
+	useProvideTooltipAppendTo(tooltipContainer);
 
 	function showPip() {
 		if (!content.value) {
@@ -45,6 +51,8 @@ export function usePiPWindow(
 
 				link.rel = 'stylesheet';
 				link.type = styleSheet.type;
+				link.media = styleSheet.media as unknown as string;
+				link.href = styleSheet.href as string;
 				pipWindow.value?.document.head.appendChild(link);
 			}
 		});
