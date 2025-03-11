@@ -11,8 +11,8 @@ export class Perplexity implements INodeType {
 		icon: { light: 'file:perplexity.svg', dark: 'file:perplexity.dark.svg' },
 		group: ['transform'],
 		version: 1,
-		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Interact with the Perplexity API to generate AI responses with citations.',
+		subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
+		description: 'Interact with the Perplexity API to generate AI responses with citations',
 		defaults: {
 			name: 'Perplexity',
 		},

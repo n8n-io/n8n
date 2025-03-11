@@ -54,16 +54,6 @@ export const chatCompletionsFields: INodeProperties[] = [
 				name: 'id',
 				type: 'string',
 				placeholder: 'e.g. sonar-deep-research',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '^[a-zA-Z0-9-]+$',
-							errorMessage:
-								'Not a valid Perplexity model ID. Model IDs must contain only alphanumeric characters and hyphens.',
-						},
-					},
-				],
 			},
 		],
 		description: 'The model which will generate the completion',
@@ -103,26 +93,29 @@ export const chatCompletionsFields: INodeProperties[] = [
 				name: 'message',
 				values: [
 					{
+						displayName: 'Role',
+						name: 'role',
+						required: true,
+						type: 'options',
+						options: [
+							{ name: 'Assistant', value: 'assistant' },
+							{ name: 'System', value: 'system' },
+							{ name: 'User', value: 'user' },
+						],
+						default: 'user',
+						description:
+							"Role in shaping the model's response, it tells the model how it should behave and interact with the user",
+					},
+					{
 						displayName: 'Text',
 						name: 'content',
 						required: true,
 						type: 'string',
 						default: '',
 						description: 'The content of the message to be sent',
-					},
-					{
-						displayName: 'Role',
-						name: 'role',
-						required: true,
-						type: 'options',
-						options: [
-							{ name: 'User', value: 'user' },
-							{ name: 'System', value: 'system' },
-							{ name: 'Assistant', value: 'assistant' },
-						],
-						default: 'user',
-						description:
-							"Role in shaping the model's response, it tells the model how it should behave and interact with the user",
+						typeOptions: {
+							rows: 2,
+						},
 					},
 				],
 			},
@@ -150,7 +143,7 @@ export const chatCompletionsFields: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'Frequency Penalty',
-				name: 'frequency_penalty',
+				name: 'frequencyPenalty',
 				type: 'number',
 				default: 1,
 				typeOptions: {
@@ -167,7 +160,7 @@ export const chatCompletionsFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Maximum Number of Tokens',
-				name: 'max_tokens',
+				name: 'maxTokens',
 				type: 'number',
 				default: 0,
 				description:
@@ -176,43 +169,6 @@ export const chatCompletionsFields: INodeProperties[] = [
 					send: {
 						type: 'body',
 						property: 'max_tokens',
-					},
-				},
-			},
-			{
-				displayName: 'Presence Penalty',
-				name: 'presence_penalty',
-				type: 'number',
-				default: 0,
-				description:
-					"A value between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics. A value between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
-				typeOptions: {
-					minValue: -2.0,
-					maxValue: 2.0,
-				},
-				routing: {
-					send: {
-						type: 'body',
-						property: 'presence_penalty',
-					},
-				},
-			},
-			{
-				displayName: 'Search Recency Filter',
-				name: 'search_recency',
-				type: 'options',
-				options: [
-					{ name: 'Hour', value: 'hour' },
-					{ name: 'Day', value: 'day' },
-					{ name: 'Week', value: 'week' },
-					{ name: 'Month', value: 'month' },
-				],
-				default: 'month',
-				description: 'Returns search results within the specified time interval',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'search_recency',
 					},
 				},
 			},
@@ -236,11 +192,11 @@ export const chatCompletionsFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Output Randomness (Top K)',
-				name: 'top_k',
+				name: 'topK',
 				type: 'number',
 				default: 0,
 				description:
-					'The number of tokens to keep for highest top-k filtering, specified as an integer between 0 and 2048 inclusive. If set to 0, top-k filtering is disabled. We recommend either altering Top K or Top P, but not both.',
+					'The number of tokens to keep for highest Top-K filtering, specified as an integer between 0 and 2048 inclusive. If set to 0, top-k filtering is disabled. We recommend either altering Top K or Top P, but not both.',
 				typeOptions: {
 					minValue: 0,
 					maxValue: 2048,
@@ -254,11 +210,11 @@ export const chatCompletionsFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Output Randomness (Top P)',
-				name: 'top_p',
+				name: 'topP',
 				type: 'number',
 				default: 0.9,
 				description:
-					'The nucleus sampling threshold, valued between 0 and 1 inclusive. For each subsequent token, the model considers the results of the tokens with top_p probability mass. We recommend either altering top_k or top_p, but not both.',
+					'The nucleus sampling threshold, valued between 0 and 1 inclusive. For each subsequent token, the model considers the results of the tokens with Top_P probability mass. We recommend either altering top_k or top_p, but not both.',
 				typeOptions: {
 					minValue: 0,
 					maxValue: 1,
@@ -271,12 +227,30 @@ export const chatCompletionsFields: INodeProperties[] = [
 				},
 			},
 			{
+				displayName: 'Presence Penalty',
+				name: 'presencePenalty',
+				type: 'number',
+				default: 0,
+				description:
+					"A value between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics. A value between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
+				typeOptions: {
+					minValue: -2.0,
+					maxValue: 2.0,
+				},
+				routing: {
+					send: {
+						type: 'body',
+						property: 'presence_penalty',
+					},
+				},
+			},
+			{
 				displayName: 'Return Images',
-				name: 'return_images',
+				name: 'returnImages',
 				type: 'boolean',
 				default: false,
 				description:
-					'Whether determines or not a request to an online model should return images. Requires Perplexity API usage Tier-2.',
+					'Whether or not a request to an online model should return images. Requires Perplexity API usage Tier-2.',
 				routing: {
 					send: {
 						type: 'body',
@@ -286,11 +260,11 @@ export const chatCompletionsFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Return Related Questions',
-				name: 'return_related_questions',
+				name: 'returnRelatedQuestions',
 				type: 'boolean',
 				default: false,
 				description:
-					'Whether determines or not a request to an online model should return related questions. Requires Perplexity API usage Tier-2.',
+					'Whether or not a request to an online model should return related questions. Requires Perplexity API usage Tier-2.',
 				routing: {
 					send: {
 						type: 'body',
@@ -300,17 +274,36 @@ export const chatCompletionsFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Search Domain Filter',
-				name: 'search_domain_filter',
+				name: 'searchDomainFilter',
 				type: 'string',
 				default: '',
 				description:
-					'Limit the citations used by the online model to URLs from the specified domains. For blacklisting, add a - to the beginning of the domain string (e.g., -domain1). Currently limited to 3 domains. Requires Perplexity API usage Tier-3.',
+					'Limit the citations used by the online model to URLs from the specified domains. For blacklisting, add a <code>-</code> to the beginning of the domain string (e.g., <code>-domain1</code>). Currently limited to 3 domains. Requires Perplexity API usage Tier-3.',
 				placeholder: 'e.g. domain1,domain2,-domain3',
 				routing: {
 					send: {
 						type: 'body',
 						property: 'search_domain_filter',
-						value: '={{ $value.split(",").map(domain => domain.trim()) }}',
+						value: '={{$value.split(",").map(domain => domain.trim())}}',
+					},
+				},
+			},
+			{
+				displayName: 'Search Recency Filter',
+				name: 'searchRecency',
+				type: 'options',
+				options: [
+					{ name: 'Day', value: 'day' },
+					{ name: 'Hour', value: 'hour' },
+					{ name: 'Month', value: 'month' },
+					{ name: 'Week', value: 'week' },
+				],
+				default: 'month',
+				description: 'Returns search results within the specified time interval',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'search_recency',
 					},
 				},
 			},
@@ -327,7 +320,7 @@ export const chatCompletionsFields: INodeProperties[] = [
 				postReceive: [
 					{
 						type: 'set',
-						enabled: '={{$value}}',
+						enabled: '={{ $value }}',
 						properties: {
 							value:
 								'={{ { "id": $response.body?.id, "created": $response.body?.created, "citations": $response.body?.citations, "message": $response.body?.choices?.[0]?.message?.content } }}',
