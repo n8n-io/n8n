@@ -301,7 +301,7 @@ describe('ExecutionService', () => {
 			expect(result.data.resultData.error?.message).toBe(error.message);
 
 			const taskData = result.data.resultData.runData[node.name][0];
-			expect(taskData.error?.message).toEqual(error.message);
+			expect(taskData.error?.message).toBe(error.message);
 			expect(taskData.startTime).toBe(startTime);
 			expect(taskData.executionStatus).toBe('error');
 			expect(result.data.resultData.lastNodeExecuted).toBe(node.name);
