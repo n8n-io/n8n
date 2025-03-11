@@ -7,7 +7,7 @@ import { useExecutionsStore } from '@/stores/executions.store';
 import { useRootStore } from '@/stores/root.store';
 import { useAnnotationTagsStore } from '@/stores/tags.store';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
-import { N8nLoading } from 'n8n-design-system';
+import { N8nLoading } from '@n8n/design-system';
 import { useRoute, useRouter } from 'vue-router';
 
 const props = defineProps<{

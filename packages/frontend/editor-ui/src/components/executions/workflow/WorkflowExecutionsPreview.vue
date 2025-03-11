@@ -14,7 +14,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
-import { N8nButton, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from 'n8n-design-system';
+import { N8nButton, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { computed, h, onMounted, ref } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
