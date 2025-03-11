@@ -23,14 +23,14 @@ class InaccessibleCredentialError extends UserError {
 
 	constructor(
 		readonly node: INode,
-		private project: Project,
+		private readonly project: Project,
 	) {
 		super(`Node "${node.name}" does not have access to the credential`);
 	}
 }
 
 @Service()
-export class PermissionChecker {
+export class CredentialsPermissionChecker {
 	constructor(
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly ownershipService: OwnershipService,

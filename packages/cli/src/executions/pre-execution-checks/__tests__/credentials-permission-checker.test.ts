@@ -7,13 +7,13 @@ import type { SharedCredentialsRepository } from '@/databases/repositories/share
 import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
 
-import { PermissionChecker } from '../permission-checker';
+import { CredentialsPermissionChecker } from '../credentials-permission-checker';
 
-describe('PermissionChecker', () => {
+describe('CredentialsPermissionChecker', () => {
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const ownershipService = mock<OwnershipService>();
 	const projectService = mock<ProjectService>();
-	const permissionChecker = new PermissionChecker(
+	const permissionChecker = new CredentialsPermissionChecker(
 		sharedCredentialsRepository,
 		ownershipService,
 		projectService,
