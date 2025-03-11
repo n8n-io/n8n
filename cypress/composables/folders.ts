@@ -20,14 +20,7 @@ export function getFolderCards() {
 }
 
 export function getFolderCard(name: string) {
-	return cy.getByTestId('folder-card').then(($cards) => {
-		const card = $cards.filter((index, el) => {
-			const folderText = Cypress.$(el).find('[data-test-id="card-content"] h2').text().trim();
-			return folderText === name;
-		});
-
-		return cy.wrap(card);
-	});
+	return cy.getByTestId('folder-card-name').contains(name).closest('[data-test-id="folder-card"]');
 }
 export function getAddFolderButton() {
 	return cy.getByTestId('add-folder-button');
