@@ -7,6 +7,10 @@ import * as Helpers from '@test/nodes/Helpers';
 import type { WorkflowTestData } from '@test/nodes/types';
 
 describe('AwsSes Node', () => {
+	const email = 'test+user@example.com';
+	const templateData = {
+		Name: 'Special. Characters @#$%^&*()_-',
+	};
 	const tests: WorkflowTestData[] = [
 		{
 			description: 'should create customVerificationEmail',
@@ -123,7 +127,7 @@ describe('AwsSes Node', () => {
 							typeVersion: 1,
 							position: [60, 520],
 							id: '13bbf4ef-8320-45d1-9210-61b62794a108',
-							name: 'AWS SES4',
+							name: 'AWS SES',
 							credentials: {
 								aws: {
 									id: 'Nz0QZhzu3MvfK4TQ',
@@ -137,7 +141,7 @@ describe('AwsSes Node', () => {
 							main: [
 								[
 									{
-										node: 'AWS SES4',
+										node: 'AWS SES',
 										type: NodeConnectionType.Main,
 										index: 0,
 									},
@@ -156,23 +160,7 @@ describe('AwsSes Node', () => {
 				mocks: [
 					{
 						method: 'post',
-						path: '/',
-						requestBody: (body: any) => {
-							assert.deepEqual(qs.parse(body), {
-								Action: 'SendTemplatedEmail',
-								TemplateName: '=Template11',
-								Source: encodeURIComponent('test+user@example.com'),
-								Destination: {
-									ToAddresses: [encodeURIComponent('test+user@example.com')],
-								},
-								TemplateData: encodeURIComponent(
-									JSON.stringify({
-										Name: '=Special. Characters @#$%^&*()_-',
-									}),
-								),
-							});
-							return true;
-						},
+						path: `/?Action=SendTemplatedEmail&Template=Template11&Source=${encodeURIComponent(email)}&Destination.ToAddresses.member.1=${encodeURIComponent(email)}&TemplateData=${encodeURIComponent(JSON.stringify(templateData))}`,
 						statusCode: 200,
 						responseBody:
 							'<SendTemplatedEmailResponse><success>true</success></SendTemplatedEmailResponse>',
