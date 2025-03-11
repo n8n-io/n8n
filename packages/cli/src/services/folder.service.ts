@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
-import { PROJECT_ROOT } from 'n8n-workflow/src/Constants';
+import { PROJECT_ROOT } from 'n8n-workflow';
 
 import { Folder } from '@/databases/entities/folder';
 import { FolderTagMappingRepository } from '@/databases/repositories/folder-tag-mapping.repository';
