@@ -5,7 +5,6 @@
 import { Container } from '@n8n/di';
 import * as assert from 'assert/strict';
 import { setMaxListeners } from 'events';
-import { omit } from 'lodash';
 import get from 'lodash/get';
 import type {
 	ExecutionBaseError,
@@ -354,6 +353,18 @@ export class WorkflowExecute {
 			`Could not find a node with the name ${destinationNodeName} in the workflow.`,
 		);
 
+		const dirtyNodes: Set<INode> = new Set();
+		for (const name of dirtyNodeNames) {
+			const node = workflow.getNode(name);
+			if (!node) {
+				console.warn(
+					`Could not find a node with the name ${name} in the workflow. This was passed in as a dirty node name.`,
+				);
+				continue;
+			}
+			dirtyNodes.add(node);
+		}
+
 		let graph = DirectedGraph.fromWorkflow(workflow);
 
 		// Edge Case 1:
@@ -404,7 +415,7 @@ export class WorkflowExecute {
 		const filteredNodes = graph.getNodes();
 
 		// 3. Find the Start Nodes
-		runData = omit(runData, dirtyNodeNames);
+		runData = cleanRunData(runData, graph, dirtyNodes);
 		let startNodes = findStartNodes({ graph, trigger, destination, runData, pinData });
 
 		// 4. Detect Cycles
