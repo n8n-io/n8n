@@ -80,7 +80,7 @@ const skipValidator = z
 	.string()
 	.optional()
 	.transform((val) => (val ? parseInt(val, 10) : 0))
-	.refine((val) => val === undefined || !isNaN(val), {
+	.refine((val) => !isNaN(val), {
 		message: 'Skip must be a valid number',
 	});
 
@@ -89,7 +89,7 @@ const takeValidator = z
 	.string()
 	.optional()
 	.transform((val) => (val ? parseInt(val, 10) : 10))
-	.refine((val) => val === undefined || !isNaN(val), {
+	.refine((val) => !isNaN(val), {
 		message: 'Take must be a valid number',
 	});
 
