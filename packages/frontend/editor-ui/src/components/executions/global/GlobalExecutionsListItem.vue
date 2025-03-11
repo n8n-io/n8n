@@ -1,11 +1,19 @@
 <script lang="ts" setup>
+import AnimatedSpinner from '@/components/AnimatedSpinner.vue';
 import ExecutionsTime from '@/components/executions/ExecutionsTime.vue';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import { useI18n } from '@/composables/useI18n';
 import { VIEWS } from '@/constants';
 import type { PermissionsRecord } from '@/permissions';
 import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
-import { N8nCheckbox, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCheckbox,
+	N8nIcon,
+	N8nIconButton,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import type { IconColor } from '@n8n/design-system/types/icon';
 import type { ExecutionStatus, ExecutionSummary } from 'n8n-workflow';
 import { WAIT_INDEFINITELY } from 'n8n-workflow';
@@ -68,36 +76,36 @@ const EXECUTION_STATUS = {
 
 const executionIconStatusDictionary: Record<ExecutionStatus, { icon: string; color: IconColor }> = {
 	[EXECUTION_STATUS.CRASHED]: {
-		icon: 'exclamation-triangle',
+		icon: 'status-error',
 		color: 'danger',
 	},
 	[EXECUTION_STATUS.ERROR]: {
-		icon: 'exclamation-triangle',
+		icon: 'status-error',
 		color: 'danger',
 	},
 	[EXECUTION_STATUS.WAITING]: {
-		icon: 'circle',
-		color: 'foreground-dark',
+		icon: 'status-waiting',
+		color: 'secondary',
 	},
 	[EXECUTION_STATUS.SUCCESS]: {
-		icon: 'check-circle',
+		icon: 'status-completed',
 		color: 'success',
 	},
 	[EXECUTION_STATUS.NEW]: {
-		icon: 'circle',
-		color: 'foreground-dark',
+		icon: 'status-new',
+		color: 'foreground-xdark',
 	},
 	[EXECUTION_STATUS.RUNNING]: {
 		icon: 'spinner',
 		color: 'secondary',
 	},
 	[EXECUTION_STATUS.UNKNOWN]: {
-		icon: 'question-circle',
-		color: 'secondary',
+		icon: 'status-unknown',
+		color: 'foreground-xdark',
 	},
 	[EXECUTION_STATUS.CANCELED]: {
-		icon: 'minus-circle',
-		color: 'danger',
+		icon: 'status-canceled',
+		color: 'foreground-xdark',
 	},
 };
 
@@ -241,18 +249,19 @@ async function handleActionItemClick(commandData: Command) {
 				</small>
 			</span>
 		</td>
-		<td>{{ execution.mode }}</td>
 		<td>
-			<N8nIconButton
+			<span :class="$style.capitalize">{{ execution.mode }}</span>
+		</td>
+		<td>
+			<N8nButton
 				v-if="!execution.stoppedAt || execution.waitTill"
 				data-test-id="stop-execution-button"
-				icon="stop"
-				size="mini"
-				type="secondary"
 				:loading="isStopping"
 				:disabled="isStopping"
 				@click.stop="onStopExecution"
-			/>
+			>
+				{{ locale.baseText('executionsList.stop') }}
+			</N8nButton>
 		</td>
 		<td>
 			<ElDropdown v-if="!isRunning" trigger="click" @command="handleActionItemClick">
@@ -300,5 +309,9 @@ async function handleActionItemClick(commandData: Command) {
 <style lang="scss" module>
 tr.dangerBg {
 	background-color: rgba(215, 56, 58, 0.1);
+}
+
+.capitalize {
+	text-transform: capitalize;
 }
 </style>

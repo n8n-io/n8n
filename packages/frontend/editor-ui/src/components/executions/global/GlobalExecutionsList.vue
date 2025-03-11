@@ -406,7 +406,7 @@ const goToUpgrade = () => {
 							<th>
 								{{ i18n.baseText('executionsList.trigger') }}
 							</th>
-							<th style="width: 50px"></th>
+							<th style="width: 69px"></th>
 							<th style="width: 50px"></th>
 						</tr>
 					</thead>
