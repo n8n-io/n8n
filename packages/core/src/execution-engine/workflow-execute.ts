@@ -909,6 +909,10 @@ export class WorkflowExecute {
 
 		if (stillDataMissing) {
 			waitingNodeIndex = waitingNodeIndex!;
+			const waitingExecutionSource =
+				this.runExecutionData.executionData!.waitingExecutionSource![connectionData.node][
+					waitingNodeIndex
+				].main;
 
 			// Additional data is needed to run node so add it to waiting
 			this.prepareWaitingToExecution(
@@ -924,11 +928,7 @@ export class WorkflowExecute {
 
 			this.runExecutionData.executionData!.waitingExecutionSource![connectionData.node][
 				waitingNodeIndex
-			].main[connectionData.index] = {
-				previousNode: parentNodeName,
-				previousNodeOutput: outputIndex || undefined,
-				previousNodeRun: runIndex || undefined,
-			};
+			].main = waitingExecutionSource;
 		} else {
 			// All data is there so add it directly to stack
 			this.runExecutionData.executionData!.nodeExecutionStack[enqueueFn]({
