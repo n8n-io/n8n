@@ -33,7 +33,6 @@
     "tsup": "catalog:frontend",
     "typescript": "catalog:frontend",
     "vite": "catalog:frontend",
-    "vite-plugin-dts": "catalog:frontend",
     "vitest": "catalog:frontend"
   },
   "license": "See LICENSE.md file in the root of the repository"
