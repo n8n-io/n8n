@@ -1,95 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "integer"
-        },
-        "deal_id": {
-            "type": "integer"
-        },
-        "product_id": {
-            "type": "integer"
-        },
-        "product_variation_id": {
-            "type": "null"
-        },
-        "name": {
-            "type": "string"
-        },
-        "order_nr": {
-            "type": "integer"
-        },
-        "quantity": {
-            "type": "integer"
-        },
-        "currency": {
-            "type": "string"
-        },
-        "active_flag": {
-            "type": "boolean"
-        },
-        "enabled_flag": {
-            "type": "boolean"
-        },
-        "add_time": {
-            "type": "string"
-        },
-        "last_edit": {
-            "type": "string"
-        },
-        "tax": {
-            "type": "integer"
-        },
-        "quantity_formatted": {
-            "type": "string"
-        },
-        "sum_formatted": {
-            "type": "string"
-        },
-        "tax_method": {
-            "type": "string"
-        },
-        "discount": {
-            "type": "integer"
-        },
-        "discount_type": {
-            "type": "string"
-        },
-        "billing_frequency": {
-            "type": "string"
-        },
-        "billing_frequency_cycles": {
-            "type": "null"
-        },
-        "product": {
-            "type": "null"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/dealProduct/getAll.json",
+    "sha": "f44415850cebb91b9fd36d6895619f06256e74c7",
+    "size": 1991,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/dealProduct/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/dealProduct/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/f44415850cebb91b9fd36d6895619f06256e74c7",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/dealProduct/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIK\nICAgICAgICB9LAogICAgICAgICJkZWFsX2lkIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgInByb2R1Y3Rf\naWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAg\nfSwKICAgICAgICAicHJvZHVjdF92YXJpYXRpb25faWQiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAibmFtZSI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAg\nICAgICAgIm9yZGVyX25yIjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRl\nZ2VyIgogICAgICAgIH0sCiAgICAgICAgInF1YW50aXR5IjogewogICAgICAg\nICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgImN1\ncnJlbmN5IjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgfSwKICAgICAgICAiYWN0aXZlX2ZsYWciOiB7CiAgICAgICAgICAgICJ0\neXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAiZW5hYmxlZF9m\nbGFnIjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAg\nIH0sCiAgICAgICAgImFkZF90aW1lIjogewogICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAibGFzdF9lZGl0Ijogewog\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAg\nICAidGF4IjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAg\nICAgIH0sCiAgICAgICAgInF1YW50aXR5X2Zvcm1hdHRlZCI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInN1\nbV9mb3JtYXR0ZWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJ0YXhfbWV0aG9kIjogewogICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiZGlzY291\nbnQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAg\nfSwKICAgICAgICAiZGlzY291bnRfdHlwZSI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImJpbGxpbmdfZnJl\ncXVlbmN5IjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgfSwKICAgICAgICAiYmlsbGluZ19mcmVxdWVuY3lfY3ljbGVzIjogewog\nICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAg\nInByb2R1Y3QiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAg\nICAgfQogICAgfSwKICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAiaWQiLAog\nICAgICAgICJkZWFsX2lkIiwKICAgICAgICAicHJvZHVjdF9pZCIsCiAgICAg\nICAgInByb2R1Y3RfdmFyaWF0aW9uX2lkIiwKICAgICAgICAibmFtZSIsCiAg\nICAgICAgIm9yZGVyX25yIiwKICAgICAgICAiaXRlbV9wcmljZSIsCiAgICAg\nICAgInF1YW50aXR5IiwKICAgICAgICAic3VtIiwKICAgICAgICAiY3VycmVu\nY3kiLAogICAgICAgICJhY3RpdmVfZmxhZyIsCiAgICAgICAgImVuYWJsZWRf\nZmxhZyIsCiAgICAgICAgImFkZF90aW1lIiwKICAgICAgICAibGFzdF9lZGl0\nIiwKICAgICAgICAiY29tbWVudHMiLAogICAgICAgICJ0YXgiLAogICAgICAg\nICJxdWFudGl0eV9mb3JtYXR0ZWQiLAogICAgICAgICJzdW1fZm9ybWF0dGVk\nIiwKICAgICAgICAidGF4X21ldGhvZCIsCiAgICAgICAgImRpc2NvdW50IiwK\nICAgICAgICAiZGlzY291bnRfdHlwZSIsCiAgICAgICAgImJpbGxpbmdfZnJl\ncXVlbmN5IiwKICAgICAgICAiYmlsbGluZ19mcmVxdWVuY3lfY3ljbGVzIiwK\nICAgICAgICAiYmlsbGluZ19zdGFydF9kYXRlIiwKICAgICAgICAicHJvZHVj\ndCIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/dealProduct/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/f44415850cebb91b9fd36d6895619f06256e74c7",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/dealProduct/getAll.json"
     },
-    "required": [
-        "id",
-        "deal_id",
-        "product_id",
-        "product_variation_id",
-        "name",
-        "order_nr",
-        "item_price",
-        "quantity",
-        "sum",
-        "currency",
-        "active_flag",
-        "enabled_flag",
-        "add_time",
-        "last_edit",
-        "comments",
-        "tax",
-        "quantity_formatted",
-        "sum_formatted",
-        "tax_method",
-        "discount",
-        "discount_type",
-        "billing_frequency",
-        "billing_frequency_cycles",
-        "billing_start_date",
-        "product"
-    ]
+    "version": 1
 }
