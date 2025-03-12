@@ -209,6 +209,7 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	padding-right: var(--spacing-xs);
 }
 
 .card-footer {

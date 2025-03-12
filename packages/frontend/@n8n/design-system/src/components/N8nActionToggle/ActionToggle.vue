@@ -20,6 +20,7 @@ interface ActionToggleProps {
 	loading?: boolean;
 	loadingRowCount?: number;
 	disabled?: boolean;
+	popperClass?: string;
 }
 
 defineOptions({ name: 'N8nActionToggle' });
@@ -33,6 +34,7 @@ withDefaults(defineProps<ActionToggleProps>(), {
 	loading: false,
 	loadingRowCount: 3,
 	disabled: false,
+	popperClass: '',
 });
 
 const actionToggleRef = ref<InstanceType<typeof ElDropdown> | null>(null);
@@ -62,6 +64,7 @@ defineExpose({
 			:placement="placement"
 			:size="size"
 			:disabled="disabled"
+			:popper-class="popperClass"
 			trigger="click"
 			@command="onCommand"
 			@visible-change="onVisibleChange"

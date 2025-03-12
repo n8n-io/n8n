@@ -153,6 +153,7 @@ const handleTooltipClose = () => {
 						:loading-row-count="loadingSkeletonRows"
 						:disabled="dropdownDisabled"
 						:class="$style['action-toggle']"
+						:popper-class="$style['hidden-items-menu-popper']"
 						theme="dark"
 						placement="bottom"
 						size="small"
@@ -199,6 +200,7 @@ const handleTooltipClose = () => {
 						[$style.item]: true,
 						[$style.current]: props.highlightLastItem && index === items.length - 1,
 					}"
+					:title="item.label"
 					:data-test-id="
 						index === items.length - 1 ? 'breadcrumbs-item-current' : 'breadcrumbs-item'
 					"
@@ -238,6 +240,13 @@ const handleTooltipClose = () => {
 	align-items: center;
 }
 
+.item * {
+	display: block;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
 .item.current span {
 	color: var(--color-text-dark);
 }
@@ -270,6 +279,16 @@ const handleTooltipClose = () => {
 	position: relative;
 	top: var(--spacing-5xs);
 	color: var(--color-text-base);
+}
+
+.hidden-items-menu-popper {
+	li {
+		max-width: var(--spacing-5xl);
+		display: block;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
 }
 
 .tooltip-loading {
@@ -319,6 +338,10 @@ const handleTooltipClose = () => {
 		gap: var(--spacing-5xs);
 	}
 
+	.item {
+		max-width: var(--spacing-3xl);
+	}
+
 	.item,
 	.item * {
 		color: var(--color-text-base);
@@ -346,6 +369,10 @@ const handleTooltipClose = () => {
 	.item * {
 		color: var(--color-text-base);
 		font-size: var(--font-size-m);
+	}
+
+	.item {
+		max-width: var(--spacing-5xl);
 	}
 
 	.item a:hover * {
