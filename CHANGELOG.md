@@ -1,3 +1,13 @@
+## [1.82.2](https://github.com/n8n-io/n8n/compare/n8n@1.82.1...n8n@1.82.2) (2025-03-12)
+
+
+### Bug Fixes
+
+* **core:** Clean run data for dirty nodes properly, including their children ([#13821](https://github.com/n8n-io/n8n/issues/13821)) ([30edaea](https://github.com/n8n-io/n8n/commit/30edaeae159fcc496a5d1a1dffce12c637a83af0))
+* **core:** Find correct start nodes when the first node after that has no run data has pinned data ([#13784](https://github.com/n8n-io/n8n/issues/13784)) ([beb84be](https://github.com/n8n-io/n8n/commit/beb84be33a7e71019791cd79b7456d11119c7903))
+
+
+
 ## [1.82.1](https://github.com/n8n-io/n8n/compare/n8n@1.82.0...n8n@1.82.1) (2025-03-04)
 
 
