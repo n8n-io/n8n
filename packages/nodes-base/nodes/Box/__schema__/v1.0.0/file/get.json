@@ -215,5 +215,6 @@
         "shared_link",
         "parent",
         "item_status"
-    ]
+    ],
+    "version": 1
 }
