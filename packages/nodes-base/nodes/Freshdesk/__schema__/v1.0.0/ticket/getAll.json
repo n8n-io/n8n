@@ -1,102 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "cc_emails": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "reply_cc_emails": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "ticket_cc_emails": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "fr_escalated": {
-            "type": "boolean"
-        },
-        "spam": {
-            "type": "boolean"
-        },
-        "priority": {
-            "type": "integer"
-        },
-        "requester_id": {
-            "type": "integer"
-        },
-        "source": {
-            "type": "integer"
-        },
-        "status": {
-            "type": "integer"
-        },
-        "subject": {
-            "type": "string"
-        },
-        "id": {
-            "type": "integer"
-        },
-        "due_by": {
-            "type": "string"
-        },
-        "fr_due_by": {
-            "type": "string"
-        },
-        "is_escalated": {
-            "type": "boolean"
-        },
-        "created_at": {
-            "type": "string"
-        },
-        "updated_at": {
-            "type": "string"
-        },
-        "associated_tickets_count": {
-            "type": "null"
-        },
-        "tags": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Freshdesk/__schema__/v1.0.0/ticket/getAll.json",
+    "sha": "04c3a86d3db8a81ae34bb4b4a76941f4b9661e19",
+    "size": 2145,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Freshdesk/__schema__/v1.0.0/ticket/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Freshdesk/__schema__/v1.0.0/ticket/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/04c3a86d3db8a81ae34bb4b4a76941f4b9661e19",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Freshdesk/__schema__/v1.0.0/ticket/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJjY19lbWFpbHMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImFy\ncmF5IiwKICAgICAgICAgICAgIml0ZW1zIjogewogICAgICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICB9CiAgICAgICAgfSwKICAg\nICAgICAicmVwbHlfY2NfZW1haWxzIjogewogICAgICAgICAgICAidHlwZSI6\nICJhcnJheSIsCiAgICAgICAgICAgICJpdGVtcyI6IHsKICAgICAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgfQogICAgICAgIH0s\nCiAgICAgICAgInRpY2tldF9jY19lbWFpbHMiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogImFycmF5IiwKICAgICAgICAgICAgIml0ZW1zIjogewogICAgICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICB9CiAgICAg\nICAgfSwKICAgICAgICAiZnJfZXNjYWxhdGVkIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgInNwYW0iOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAg\nICAgICAicHJpb3JpdHkiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImludGVn\nZXIiCiAgICAgICAgfSwKICAgICAgICAicmVxdWVzdGVyX2lkIjogewogICAg\nICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAg\nInNvdXJjZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAg\nICAgICB9LAogICAgICAgICJzdGF0dXMiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAgICAic3ViamVjdCI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAg\nICAgImlkIjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAg\nICAgIH0sCiAgICAgICAgImR1ZV9ieSI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImZyX2R1ZV9ieSI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAg\nICAgImlzX2VzY2FsYXRlZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9v\nbGVhbiIKICAgICAgICB9LAogICAgICAgICJjcmVhdGVkX2F0IjogewogICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAi\ndXBkYXRlZF9hdCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgImFzc29jaWF0ZWRfdGlja2V0c19jb3VudCI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAg\nICAgICJ0YWdzIjogewogICAgICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAg\nICAgICAgICAgICJpdGVtcyI6IHsKICAgICAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICAgICAgfQogICAgICAgIH0KICAgIH0sCiAgICAi\ncmVxdWlyZWQiOiBbCiAgICAgICAgImNjX2VtYWlscyIsCiAgICAgICAgImZ3\nZF9lbWFpbHMiLAogICAgICAgICJyZXBseV9jY19lbWFpbHMiLAogICAgICAg\nICJ0aWNrZXRfY2NfZW1haWxzIiwKICAgICAgICAiZnJfZXNjYWxhdGVkIiwK\nICAgICAgICAic3BhbSIsCiAgICAgICAgImVtYWlsX2NvbmZpZ19pZCIsCiAg\nICAgICAgImdyb3VwX2lkIiwKICAgICAgICAicHJpb3JpdHkiLAogICAgICAg\nICJyZXF1ZXN0ZXJfaWQiLAogICAgICAgICJyZXNwb25kZXJfaWQiLAogICAg\nICAgICJzb3VyY2UiLAogICAgICAgICJjb21wYW55X2lkIiwKICAgICAgICAi\nc3RhdHVzIiwKICAgICAgICAic3ViamVjdCIsCiAgICAgICAgImFzc29jaWF0\naW9uX3R5cGUiLAogICAgICAgICJzdXBwb3J0X2VtYWlsIiwKICAgICAgICAi\ndG9fZW1haWxzIiwKICAgICAgICAicHJvZHVjdF9pZCIsCiAgICAgICAgImlk\nIiwKICAgICAgICAidHlwZSIsCiAgICAgICAgImR1ZV9ieSIsCiAgICAgICAg\nImZyX2R1ZV9ieSIsCiAgICAgICAgImlzX2VzY2FsYXRlZCIsCiAgICAgICAg\nImN1c3RvbV9maWVsZHMiLAogICAgICAgICJjcmVhdGVkX2F0IiwKICAgICAg\nICAidXBkYXRlZF9hdCIsCiAgICAgICAgImFzc29jaWF0ZWRfdGlja2V0c19j\nb3VudCIsCiAgICAgICAgInRhZ3MiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Freshdesk/__schema__/v1.0.0/ticket/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/04c3a86d3db8a81ae34bb4b4a76941f4b9661e19",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Freshdesk/__schema__/v1.0.0/ticket/getAll.json"
     },
-    "required": [
-        "cc_emails",
-        "fwd_emails",
-        "reply_cc_emails",
-        "ticket_cc_emails",
-        "fr_escalated",
-        "spam",
-        "email_config_id",
-        "group_id",
-        "priority",
-        "requester_id",
-        "responder_id",
-        "source",
-        "company_id",
-        "status",
-        "subject",
-        "association_type",
-        "support_email",
-        "to_emails",
-        "product_id",
-        "id",
-        "type",
-        "due_by",
-        "fr_due_by",
-        "is_escalated",
-        "custom_fields",
-        "created_at",
-        "updated_at",
-        "associated_tickets_count",
-        "tags"
-    ]
+    "version": 1
 }
