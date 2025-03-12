@@ -1,164 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "url": {
-            "type": "string"
-        },
-        "id": {
-            "type": "integer"
-        },
-        "via": {
-            "type": "object",
-            "properties": {
-                "channel": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "channel",
-                "source"
-            ]
-        },
-        "created_at": {
-            "type": "string"
-        },
-        "updated_at": {
-            "type": "string"
-        },
-        "generated_timestamp": {
-            "type": "integer"
-        },
-        "subject": {
-            "type": "string"
-        },
-        "raw_subject": {
-            "type": "string"
-        },
-        "description": {
-            "type": "string"
-        },
-        "status": {
-            "type": "string"
-        },
-        "requester_id": {
-            "type": "integer"
-        },
-        "submitter_id": {
-            "type": "integer"
-        },
-        "collaborator_ids": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
-        },
-        "follower_ids": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
-        },
-        "email_cc_ids": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
-        },
-        "forum_topic_id": {
-            "type": "null"
-        },
-        "problem_id": {
-            "type": "null"
-        },
-        "has_incidents": {
-            "type": "boolean"
-        },
-        "is_public": {
-            "type": "boolean"
-        },
-        "tags": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "custom_fields": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "integer"
-                    }
-                },
-                "required": [
-                    "id",
-                    "value"
-                ]
-            }
-        },
-        "satisfaction_rating": {
-            "type": "object",
-            "properties": {
-                "score": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "score"
-            ]
-        },
-        "custom_status_id": {
-            "type": "integer"
-        },
-        "encoded_id": {
-            "type": "string"
-        },
-        "fields": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "integer"
-                    }
-                },
-                "required": [
-                    "id",
-                    "value"
-                ]
-            }
-        },
-        "followup_ids": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
-        },
-        "brand_id": {
-            "type": "integer"
-        },
-        "allow_channelback": {
-            "type": "boolean"
-        },
-        "allow_attachments": {
-            "type": "boolean"
-        },
-        "from_messaging_channel": {
-            "type": "boolean"
-        },
-        "result_type": {
-            "type": "string"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Zendesk/__schema__/v1.0.0/ticket/getAll.json",
+    "sha": "cb12b9535fd50cfaa56f3f0a9493120ca485b942",
+    "size": 3647,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Zendesk/__schema__/v1.0.0/ticket/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Zendesk/__schema__/v1.0.0/ticket/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/cb12b9535fd50cfaa56f3f0a9493120ca485b942",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Zendesk/__schema__/v1.0.0/ticket/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJ1cmwiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJ2aWEiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJwcm9wZXJ0\naWVzIjogewogICAgICAgICAgICAgICAgImNoYW5uZWwiOiB7CiAgICAgICAg\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAg\nfQogICAgICAgICAgICB9LAogICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAg\nICAgICAgICAgICAgICAiY2hhbm5lbCIsCiAgICAgICAgICAgICAgICAic291\ncmNlIgogICAgICAgICAgICBdCiAgICAgICAgfSwKICAgICAgICAiY3JlYXRl\nZF9hdCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nIH0sCiAgICAgICAgInVwZGF0ZWRfYXQiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJnZW5lcmF0ZWRfdGlt\nZXN0YW1wIjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAg\nICAgIH0sCiAgICAgICAgInN1YmplY3QiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJyYXdfc3ViamVjdCI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAg\nICAgICAgImRlc2NyaXB0aW9uIjogewogICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgfSwKICAgICAgICAic3RhdHVzIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAicmVx\ndWVzdGVyX2lkIjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgog\nICAgICAgIH0sCiAgICAgICAgInN1Ym1pdHRlcl9pZCI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJjb2xs\nYWJvcmF0b3JfaWRzIjogewogICAgICAgICAgICAidHlwZSI6ICJhcnJheSIs\nCiAgICAgICAgICAgICJpdGVtcyI6IHsKICAgICAgICAgICAgICAgICJ0eXBl\nIjogImludGVnZXIiCiAgICAgICAgICAgIH0KICAgICAgICB9LAogICAgICAg\nICJmb2xsb3dlcl9pZHMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImFycmF5\nIiwKICAgICAgICAgICAgIml0ZW1zIjogewogICAgICAgICAgICAgICAgInR5\ncGUiOiAiaW50ZWdlciIKICAgICAgICAgICAgfQogICAgICAgIH0sCiAgICAg\nICAgImVtYWlsX2NjX2lkcyI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYXJy\nYXkiLAogICAgICAgICAgICAiaXRlbXMiOiB7CiAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJpbnRlZ2VyIgogICAgICAgICAgICB9CiAgICAgICAgfSwKICAg\nICAgICAiZm9ydW1fdG9waWNfaWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nIm51bGwiCiAgICAgICAgfSwKICAgICAgICAicHJvYmxlbV9pZCI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAgICAgICJo\nYXNfaW5jaWRlbnRzIjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFu\nIgogICAgICAgIH0sCiAgICAgICAgImlzX3B1YmxpYyI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9LAogICAgICAgICJ0YWdz\nIjogewogICAgICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAg\nICJpdGVtcyI6IHsKICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAgImN1c3RvbV9maWVs\nZHMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImFycmF5IiwKICAgICAgICAg\nICAgIml0ZW1zIjogewogICAgICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0\nIiwKICAgICAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAg\nICAgICAgICAgICJpZCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgInR5\ncGUiOiAiaW50ZWdlciIKICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAg\nICAgICAgICB9LAogICAgICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAg\nICAgICAgICAgICAgICAgICJpZCIsCiAgICAgICAgICAgICAgICAgICAgInZh\nbHVlIgogICAgICAgICAgICAgICAgXQogICAgICAgICAgICB9CiAgICAgICAg\nfSwKICAgICAgICAic2F0aXNmYWN0aW9uX3JhdGluZyI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMi\nOiB7CiAgICAgICAgICAgICAgICAic2NvcmUiOiB7CiAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfQogICAg\nICAgICAgICB9LAogICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAg\nICAgICAgICAic2NvcmUiCiAgICAgICAgICAgIF0KICAgICAgICB9LAogICAg\nICAgICJjdXN0b21fc3RhdHVzX2lkIjogewogICAgICAgICAgICAidHlwZSI6\nICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgImVuY29kZWRfaWQiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAg\nICAgICJmaWVsZHMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImFycmF5IiwK\nICAgICAgICAgICAgIml0ZW1zIjogewogICAgICAgICAgICAgICAgInR5cGUi\nOiAib2JqZWN0IiwKICAgICAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICAgICAgICAgICAgICJpZCI6IHsKICAgICAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICAgICAgICAgICAgICB9\nCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInJlcXVpcmVk\nIjogWwogICAgICAgICAgICAgICAgICAgICJpZCIsCiAgICAgICAgICAgICAg\nICAgICAgInZhbHVlIgogICAgICAgICAgICAgICAgXQogICAgICAgICAgICB9\nCiAgICAgICAgfSwKICAgICAgICAiZm9sbG93dXBfaWRzIjogewogICAgICAg\nICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAgICJpdGVtcyI6IHsK\nICAgICAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgICAg\nIH0KICAgICAgICB9LAogICAgICAgICJicmFuZF9pZCI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJhbGxv\nd19jaGFubmVsYmFjayI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVh\nbiIKICAgICAgICB9LAogICAgICAgICJhbGxvd19hdHRhY2htZW50cyI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9LAogICAg\nICAgICJmcm9tX21lc3NhZ2luZ19jaGFubmVsIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgInJlc3VsdF90\neXBlIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nfQogICAgfSwKICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAidXJsIiwKICAg\nICAgICAiaWQiLAogICAgICAgICJ2aWEiLAogICAgICAgICJjcmVhdGVkX2F0\nIiwKICAgICAgICAidXBkYXRlZF9hdCIsCiAgICAgICAgInN1YmplY3QiLAog\nICAgICAgICJyZWNpcGllbnQiLAogICAgICAgICJicmFuZF9pZCIKICAgIF0K\nfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Zendesk/__schema__/v1.0.0/ticket/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/cb12b9535fd50cfaa56f3f0a9493120ca485b942",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Zendesk/__schema__/v1.0.0/ticket/getAll.json"
     },
-    "required": [
-        "url",
-        "id",
-        "via",
-        "created_at",
-        "updated_at",
-        "subject",
-        "recipient",
-        "brand_id"
-    ]
+    "version": 1
 }
