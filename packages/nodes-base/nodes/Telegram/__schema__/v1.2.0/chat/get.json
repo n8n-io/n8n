@@ -1,47 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "ok": {
-            "type": "boolean"
-        },
-        "result": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "first_name": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "active_usernames": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "max_reaction_count": {
-                    "type": "integer"
-                },
-                "accent_color_id": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "id",
-                "type",
-                "max_reaction_count",
-                "accent_color_id"
-            ]
-        }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/chat/get.json",
+    "sha": "1a30407a18a3086d6796dbbd8e834101508d3d0e",
+    "size": 1141,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/chat/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/chat/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/1a30407a18a3086d6796dbbd8e834101508d3d0e",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/chat/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJvayI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIK\nICAgICAgICB9LAogICAgICAgICJyZXN1bHQiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICAgICAgICAgImlkIjogewogICAgICAgICAgICAgICAgICAgICJ0\neXBlIjogImludGVnZXIiCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAg\nICAgICAgImZpcnN0X25hbWUiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nICAgICJ1c2VybmFtZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAg\nInR5cGUiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJhY3RpdmVf\ndXNlcm5hbWVzIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImFy\ncmF5IiwKICAgICAgICAgICAgICAgICAgICAiaXRlbXMiOiB7CiAgICAgICAg\nICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAg\nICAgICAgICB9CiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAg\nIm1heF9yZWFjdGlvbl9jb3VudCI6IHsKICAgICAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJpbnRlZ2VyIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAg\nICAgICAgICJhY2NlbnRfY29sb3JfaWQiOiB7CiAgICAgICAgICAgICAgICAg\nICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICAgICAgICAgIH0KICAgICAg\nICAgICAgfSwKICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAg\nICAgICAgImlkIiwKICAgICAgICAgICAgICAgICJ0eXBlIiwKICAgICAgICAg\nICAgICAgICJtYXhfcmVhY3Rpb25fY291bnQiLAogICAgICAgICAgICAgICAg\nImFjY2VudF9jb2xvcl9pZCIKICAgICAgICAgICAgXQogICAgICAgIH0KICAg\nIH0sCiAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgIm9rIiwKICAgICAgICAi\ncmVzdWx0IgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/chat/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/1a30407a18a3086d6796dbbd8e834101508d3d0e",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/chat/get.json"
     },
-    "required": [
-        "ok",
-        "result"
-    ]
+    "version": 1
 }
