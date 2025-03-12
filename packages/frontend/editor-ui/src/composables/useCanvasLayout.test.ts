@@ -2,13 +2,13 @@ import { useVueFlow, type GraphNode, type VueFlowStore } from '@vue-flow/core';
 import { ref } from 'vue';
 import { createCanvasGraphEdge, createCanvasGraphNode } from '../__tests__/data';
 import { CanvasNodeRenderType, type CanvasNodeData } from '../types';
-import { useCanvasLayout, type LayoutResult } from './useCanvasLayout';
+import { useCanvasLayout, type CanvasLayoutResult } from './useCanvasLayout';
 import { STICKY_NODE_TYPE } from '../constants';
 import { GRID_SIZE } from '../utils/nodeViewUtils';
 
 vi.mock('@vue-flow/core');
 
-function matchesGrid(result: LayoutResult) {
+function matchesGrid(result: CanvasLayoutResult) {
 	return result.nodes.every((node) => node.x % GRID_SIZE === 0 && node.y % GRID_SIZE === 0);
 }
 
