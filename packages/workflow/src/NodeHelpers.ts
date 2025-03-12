@@ -1718,3 +1718,13 @@ export function getVersionedNodeType(
 	}
 	return object;
 }
+
+export function isTriggerNode(nodeTypeData: INodeTypeDescription) {
+	return nodeTypeData.group.includes('trigger');
+}
+
+export function isExecutable(workflow: Workflow, node: INode, nodeTypeData: INodeTypeDescription) {
+	const outputs = getNodeOutputs(workflow, node, nodeTypeData);
+	const outputNames = getConnectionTypes(outputs);
+	return outputNames.includes(NodeConnectionType.Main) || isTriggerNode(nodeTypeData);
+}
