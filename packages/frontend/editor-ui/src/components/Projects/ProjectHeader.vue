@@ -89,7 +89,9 @@ const menu = computed(() => {
 		items.push({
 			value: ACTION_TYPES.FOLDER,
 			label: i18n.baseText('projects.header.create.folder'),
-			disabled: false,
+			disabled:
+				sourceControlStore.preferences.branchReadOnly ||
+				!getResourcePermissions(homeProject.value?.scopes).folder.create,
 		});
 	}
 	return items;

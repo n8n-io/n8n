@@ -12,6 +12,7 @@ import type { FolderPathItem, UserAction } from '@/Interface';
 type Props = {
 	data: FolderResource;
 	actions: UserAction[];
+	readOnly?: boolean;
 	breadcrumbs: {
 		visibleItems: FolderPathItem[];
 		hiddenItems: FolderPathItem[];
@@ -20,6 +21,7 @@ type Props = {
 
 const props = withDefaults(defineProps<Props>(), {
 	actions: () => [],
+	readOnly: true,
 });
 
 const i18n = useI18n();
@@ -92,9 +94,14 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 					/>
 				</template>
 				<template #header>
-					<n8n-heading tag="h2" bold size="small" data-test-id="folder-card-name">
-						{{ data.name }}
-					</n8n-heading>
+					<div :class="$style['card-header']">
+						<n8n-heading tag="h2" bold size="small" data-test-id="folder-card-name">
+							{{ data.name }}
+						</n8n-heading>
+						<N8nBadge v-if="readOnly" class="ml-3xs" theme="tertiary" bold>
+							{{ i18n.baseText('workflows.item.readonly') }}
+						</N8nBadge>
+					</div>
 				</template>
 				<template #footer>
 					<div :class="$style['card-footer']">
@@ -186,6 +193,7 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 		box-shadow: 0 2px 8px rgba(#441c17, 0.1);
 	}
 }
+
 .folder-icon {
 	width: var(--spacing-xl);
 	height: var(--spacing-xl);
@@ -195,6 +203,12 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 	border-radius: 50%;
 	align-content: center;
 	text-align: center;
+}
+
+.card-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
 }
 
 .card-footer {

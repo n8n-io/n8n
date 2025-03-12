@@ -125,7 +125,9 @@ const currentFolderId = ref<string | null>(null);
  * or on each folder card, and then they are applied to the clicked folder
  * 'onlyAvailableOn' is used to specify where the action should be available, if not specified it will be available on both
  */
-const folderActions = ref<Array<UserAction & { onlyAvailableOn?: 'mainBreadcrumbs' | 'card' }>>([
+const folderActions = computed<
+	Array<UserAction & { onlyAvailableOn?: 'mainBreadcrumbs' | 'card' }>
+>(() => [
 	{
 		label: i18n.baseText('generic.open'),
 		value: FOLDER_LIST_ITEM_ACTIONS.OPEN,
@@ -135,39 +137,42 @@ const folderActions = ref<Array<UserAction & { onlyAvailableOn?: 'mainBreadcrumb
 	{
 		label: i18n.baseText('folders.actions.create'),
 		value: FOLDER_LIST_ITEM_ACTIONS.CREATE,
-		disabled: false,
+		disabled: readOnlyEnv.value || !hasPermissionToCreateFolders.value,
 	},
 	{
 		label: i18n.baseText('folders.actions.create.workflow'),
 		value: FOLDER_LIST_ITEM_ACTIONS.CREATE_WORKFLOW,
-		disabled: false,
+		disabled: readOnlyEnv.value || !hasPermissionToCreateWorkflows.value,
 	},
 	{
 		label: i18n.baseText('generic.rename'),
 		value: FOLDER_LIST_ITEM_ACTIONS.RENAME,
-		disabled: false,
+		disabled: readOnlyEnv.value || !hasPermissionToUpdateFolders.value,
 	},
 	{
 		label: i18n.baseText('folders.actions.moveToFolder'),
 		value: FOLDER_LIST_ITEM_ACTIONS.MOVE,
-		disabled: true,
+		disabled: readOnlyEnv.value || !hasPermissionToUpdateFolders.value,
 	},
 	{
 		label: i18n.baseText('generic.delete'),
 		value: FOLDER_LIST_ITEM_ACTIONS.DELETE,
-		disabled: false,
+		disabled: readOnlyEnv.value || !hasPermissionToDeleteFolders.value,
 	},
 ]);
+
 const folderCardActions = computed(() =>
 	folderActions.value.filter(
 		(action) => !action.onlyAvailableOn || action.onlyAvailableOn === 'card',
 	),
 );
+
 const mainBreadcrumbsActions = computed(() =>
 	folderActions.value.filter(
 		(action) => !action.onlyAvailableOn || action.onlyAvailableOn === 'mainBreadcrumbs',
 	),
 );
+
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 const foldersEnabled = computed(() => settingsStore.settings.folders.enabled);
 const isOverviewPage = computed(() => route.name === VIEWS.WORKFLOWS);
@@ -179,6 +184,26 @@ const showFolders = computed(() => foldersEnabled.value && !isOverviewPage.value
 
 const currentFolder = computed(() => {
 	return currentFolderId.value ? foldersStore.breadcrumbsCache[currentFolderId.value] : null;
+});
+
+const hasPermissionToCreateFolders = computed(() => {
+	if (!currentProject.value) return false;
+	return getResourcePermissions(currentProject.value.scopes).folder.create === true;
+});
+
+const hasPermissionToUpdateFolders = computed(() => {
+	if (!currentProject.value) return false;
+	return getResourcePermissions(currentProject.value.scopes).folder.update === true;
+});
+
+const hasPermissionToDeleteFolders = computed(() => {
+	if (!currentProject.value) return false;
+	return getResourcePermissions(currentProject.value.scopes).folder.delete === true;
+});
+
+const hasPermissionToCreateWorkflows = computed(() => {
+	if (!currentProject.value) return false;
+	return getResourcePermissions(currentProject.value.scopes).workflow.create === true;
 });
 
 const currentProject = computed(() => projectsStore.currentProject);
@@ -455,6 +480,7 @@ const onSearchUpdated = async (search: string) => {
 };
 
 const setCurrentPage = async (page: number) => {
+	currentPage.value = page;
 	await callDebounced(fetchWorkflows, { debounceTime: 100, trailing: true });
 };
 
@@ -989,7 +1015,7 @@ const deleteFolder = async (folderId: string, workflowCount: number, subFolderCo
 			<ProjectHeader @create-folder="createFolderInCurrent" />
 		</template>
 		<template v-if="showFolders" #add-button>
-			<N8nTooltip placement="top">
+			<N8nTooltip placement="top" :disabled="readOnlyEnv || !hasPermissionToCreateFolders">
 				<template #content>
 					{{
 						currentParentName
@@ -1005,6 +1031,7 @@ const deleteFolder = async (folderId: string, workflowCount: number, subFolderCo
 					type="tertiary"
 					data-test-id="add-folder-button"
 					:class="$style['add-folder-button']"
+					:disabled="readOnlyEnv || !hasPermissionToCreateFolders"
 					@click="createFolderInCurrent"
 				/>
 			</N8nTooltip>
@@ -1061,6 +1088,7 @@ const deleteFolder = async (folderId: string, workflowCount: number, subFolderCo
 				:data="data as FolderResource"
 				:actions="folderCardActions"
 				:breadcrumbs="cardBreadcrumbs"
+				:read-only="readOnlyEnv || (!hasPermissionToDeleteFolders && !hasPermissionToCreateFolders)"
 				class="mb-2xs"
 				@action="onFolderCardAction"
 			/>
