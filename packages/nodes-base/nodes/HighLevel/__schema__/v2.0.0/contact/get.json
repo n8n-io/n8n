@@ -4,12 +4,6 @@
         "id": {
             "type": "string"
         },
-        "tags": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
         "dateAdded": {
             "type": "string"
         },
@@ -32,15 +26,6 @@
             "type": "string"
         },
         "lastNameLowerCase": {
-            "type": "string"
-        },
-        "email": {
-            "type": "string"
-        },
-        "emailLowerCase": {
-            "type": "string"
-        },
-        "phone": {
             "type": "string"
         },
         "country": {
@@ -84,6 +69,39 @@
                 "timestamp"
             ]
         },
+        "emailLowerCase": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "phone": {
+            "type": "string"
+        },
+        "additionalPhones": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "phone": {
+                        "type": "string"
+                    },
+                    "phoneLabel": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "phone",
+                    "phoneLabel"
+                ]
+            }
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
         "dateUpdated": {
             "type": "string"
         },
@@ -101,24 +119,7 @@
                     "value"
                 ]
             }
-        },
-        "additionalPhones": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "phone": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "phone",
-                    "phoneLabel"
-                ]
-            }
-        },
-        "state": {
-            "type": "string"
         }
-    }
+    },
+    "version": 1
 }
