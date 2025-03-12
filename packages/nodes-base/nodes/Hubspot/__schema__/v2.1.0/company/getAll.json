@@ -1,95 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "portalId": {
-            "type": "integer"
-        },
-        "companyId": {
-            "type": "integer"
-        },
-        "isDeleted": {
-            "type": "boolean"
-        },
-        "properties": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "object",
-                    "properties": {
-                        "value": {
-                            "type": "string"
-                        },
-                        "timestamp": {
-                            "type": "integer"
-                        },
-                        "source": {
-                            "type": "string"
-                        },
-                        "versions": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "name": {
-                                        "type": "string"
-                                    },
-                                    "value": {
-                                        "type": "string"
-                                    },
-                                    "timestamp": {
-                                        "type": "integer"
-                                    },
-                                    "sourceId": {
-                                        "type": "string"
-                                    },
-                                    "source": {
-                                        "type": "string"
-                                    },
-                                    "updatedByUserId": {
-                                        "type": "integer"
-                                    },
-                                    "useTimestampAsPersistenceTimestamp": {
-                                        "type": "boolean"
-                                    }
-                                },
-                                "required": [
-                                    "name",
-                                    "value",
-                                    "timestamp",
-                                    "source",
-                                    "sourceVid"
-                                ]
-                            }
-                        }
-                    },
-                    "required": [
-                        "value",
-                        "timestamp",
-                        "source",
-                        "sourceId",
-                        "updatedByUserId",
-                        "versions"
-                    ]
-                }
-            }
-        },
-        "stateChanges": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "changeFlag": {
-                        "type": "string"
-                    },
-                    "timestamp": {
-                        "type": "integer"
-                    }
-                },
-                "required": [
-                    "changeFlag",
-                    "timestamp"
-                ]
-            }
-        }
-    }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/company/getAll.json",
+    "sha": "06f50aeb417404fc50cb1a02b5494238f710dae6",
+    "size": 3264,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/company/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/company/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/06f50aeb417404fc50cb1a02b5494238f710dae6",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/company/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJwb3J0YWxJZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50\nZWdlciIKICAgICAgICB9LAogICAgICAgICJjb21wYW55SWQiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAgICAi\naXNEZWxldGVkIjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgog\nICAgICAgIH0sCiAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjog\newogICAgICAgICAgICAgICAgIm5hbWUiOiB7CiAgICAgICAgICAgICAgICAg\nICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgICAgICAgICAicHJv\ncGVydGllcyI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgInZhbHVlIjog\newogICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAg\nICAgICAgICAidGltZXN0YW1wIjogewogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICAgICAgICAgICAgICAg\nICAgfSwKICAgICAgICAgICAgICAgICAgICAgICAgInNvdXJjZSI6IHsKICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAg\nICAgInZlcnNpb25zIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAg\nInR5cGUiOiAiYXJyYXkiLAogICAgICAgICAgICAgICAgICAgICAgICAgICAg\nIml0ZW1zIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0\neXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICJuYW1lIjogewogICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAidmFsdWUiOiB7CiAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICJ0aW1lc3RhbXAiOiB7CiAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJp\nbnRlZ2VyIgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9\nLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAic291cmNl\nSWQiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICJzb3VyY2UiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICJ1cGRhdGVkQnlVc2VySWQiOiB7CiAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2Vy\nIgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9LAogICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidXNlVGltZXN0YW1w\nQXNQZXJzaXN0ZW5jZVRpbWVzdGFtcCI6IHsKICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgIm5hbWUiLAogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAidmFsdWUiLAogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAidGltZXN0YW1wIiwKICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgInNvdXJjZSIsCiAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICJzb3VyY2VWaWQiCiAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgXQogICAgICAgICAgICAgICAgICAgICAgICAg\nICAgfQogICAgICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAg\nICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAg\nICAgICAgICAgICAgICAgICAgICAgICJ2YWx1ZSIsCiAgICAgICAgICAgICAg\nICAgICAgICAgICJ0aW1lc3RhbXAiLAogICAgICAgICAgICAgICAgICAgICAg\nICAic291cmNlIiwKICAgICAgICAgICAgICAgICAgICAgICAgInNvdXJjZUlk\nIiwKICAgICAgICAgICAgICAgICAgICAgICAgInVwZGF0ZWRCeVVzZXJJZCIs\nCiAgICAgICAgICAgICAgICAgICAgICAgICJ2ZXJzaW9ucyIKICAgICAgICAg\nICAgICAgICAgICBdCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0K\nICAgICAgICB9LAogICAgICAgICJzdGF0ZUNoYW5nZXMiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogImFycmF5IiwKICAgICAgICAgICAgIml0ZW1zIjogewog\nICAgICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAg\nICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgICAgICJjaGFu\nZ2VGbGFnIjogewogICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAg\nICAgICAidGltZXN0YW1wIjogewogICAgICAgICAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJpbnRlZ2VyIgogICAgICAgICAgICAgICAgICAgIH0KICAgICAg\nICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAg\nICAgICAgICAgICAgICAgICAgImNoYW5nZUZsYWciLAogICAgICAgICAgICAg\nICAgICAgICJ0aW1lc3RhbXAiCiAgICAgICAgICAgICAgICBdCiAgICAgICAg\nICAgIH0KICAgICAgICB9CiAgICB9Cn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/company/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/06f50aeb417404fc50cb1a02b5494238f710dae6",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/company/getAll.json"
+    },
+    "version": 1
 }
