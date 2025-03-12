@@ -1,78 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "color": {
-            "type": "string"
-        },
-        "hexColor": {
-            "type": "string"
-        },
-        "isDefaultCalendar": {
-            "type": "boolean"
-        },
-        "changeKey": {
-            "type": "string"
-        },
-        "canShare": {
-            "type": "boolean"
-        },
-        "canViewPrivateItems": {
-            "type": "boolean"
-        },
-        "canEdit": {
-            "type": "boolean"
-        },
-        "allowedOnlineMeetingProviders": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "defaultOnlineMeetingProvider": {
-            "type": "string"
-        },
-        "isTallyingResponses": {
-            "type": "boolean"
-        },
-        "isRemovable": {
-            "type": "boolean"
-        },
-        "owner": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "address": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "name",
-                "address"
-            ]
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/calendar/getAll.json",
+    "sha": "ce0c25248bf12f549c60db3cfbb498e733fcc44a",
+    "size": 1717,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/calendar/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/calendar/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/ce0c25248bf12f549c60db3cfbb498e733fcc44a",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/calendar/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgIm5hbWUiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJjb2xvciI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAg\nImhleENvbG9yIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgfSwKICAgICAgICAiaXNEZWZhdWx0Q2FsZW5kYXIiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAi\nY2hhbmdlS2V5IjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgfSwKICAgICAgICAiY2FuU2hhcmUiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAiY2FuVmlld1By\naXZhdGVJdGVtcyI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIK\nICAgICAgICB9LAogICAgICAgICJjYW5FZGl0IjogewogICAgICAgICAgICAi\ndHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgImFsbG93ZWRP\nbmxpbmVNZWV0aW5nUHJvdmlkZXJzIjogewogICAgICAgICAgICAidHlwZSI6\nICJhcnJheSIsCiAgICAgICAgICAgICJpdGVtcyI6IHsKICAgICAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgfQogICAgICAgIH0s\nCiAgICAgICAgImRlZmF1bHRPbmxpbmVNZWV0aW5nUHJvdmlkZXIiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAg\nICJpc1RhbGx5aW5nUmVzcG9uc2VzIjogewogICAgICAgICAgICAidHlwZSI6\nICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgImlzUmVtb3ZhYmxlIjog\newogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAg\nICAgICAgIm93bmVyIjogewogICAgICAgICAgICAidHlwZSI6ICJvYmplY3Qi\nLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAg\nICJuYW1lIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiYWRkcmVz\ncyI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0sCiAgICAgICAgICAgICJy\nZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICJuYW1lIiwKICAgICAgICAg\nICAgICAgICJhZGRyZXNzIgogICAgICAgICAgICBdCiAgICAgICAgfQogICAg\nfSwKICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAiaWQiLAogICAgICAgICJu\nYW1lIiwKICAgICAgICAiY29sb3IiLAogICAgICAgICJoZXhDb2xvciIsCiAg\nICAgICAgImlzRGVmYXVsdENhbGVuZGFyIiwKICAgICAgICAiY2hhbmdlS2V5\nIiwKICAgICAgICAiY2FuU2hhcmUiLAogICAgICAgICJjYW5WaWV3UHJpdmF0\nZUl0ZW1zIiwKICAgICAgICAiY2FuRWRpdCIsCiAgICAgICAgImFsbG93ZWRP\nbmxpbmVNZWV0aW5nUHJvdmlkZXJzIiwKICAgICAgICAiZGVmYXVsdE9ubGlu\nZU1lZXRpbmdQcm92aWRlciIsCiAgICAgICAgImlzVGFsbHlpbmdSZXNwb25z\nZXMiLAogICAgICAgICJpc1JlbW92YWJsZSIsCiAgICAgICAgIm93bmVyIgog\nICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/calendar/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/ce0c25248bf12f549c60db3cfbb498e733fcc44a",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/calendar/getAll.json"
     },
-    "required": [
-        "id",
-        "name",
-        "color",
-        "hexColor",
-        "isDefaultCalendar",
-        "changeKey",
-        "canShare",
-        "canViewPrivateItems",
-        "canEdit",
-        "allowedOnlineMeetingProviders",
-        "defaultOnlineMeetingProvider",
-        "isTallyingResponses",
-        "isRemovable",
-        "owner"
-    ]
+    "version": 1
 }
