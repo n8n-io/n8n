@@ -1,27 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "Key": {
-            "type": "string"
-        },
-        "LastModified": {
-            "type": "string"
-        },
-        "ETag": {
-            "type": "string"
-        },
-        "Size": {
-            "type": "string"
-        },
-        "StorageClass": {
-            "type": "string"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Aws/S3/__schema__/v2.0.0/file/getAll.json",
+    "sha": "15e857a34cd1cbb5ea878bf6d8afa243daed4276",
+    "size": 475,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Aws/S3/__schema__/v2.0.0/file/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Aws/S3/__schema__/v2.0.0/file/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/15e857a34cd1cbb5ea878bf6d8afa243daed4276",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Aws/S3/__schema__/v2.0.0/file/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJLZXkiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJMYXN0TW9kaWZpZWQiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJFVGFn\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwK\nICAgICAgICAiU2l6ZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgIH0sCiAgICAgICAgIlN0b3JhZ2VDbGFzcyI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0KICAgIH0sCiAgICAi\ncmVxdWlyZWQiOiBbCiAgICAgICAgIktleSIsCiAgICAgICAgIkxhc3RNb2Rp\nZmllZCIsCiAgICAgICAgIkVUYWciLAogICAgICAgICJTaXplIiwKICAgICAg\nICAiU3RvcmFnZUNsYXNzIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Aws/S3/__schema__/v2.0.0/file/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/15e857a34cd1cbb5ea878bf6d8afa243daed4276",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Aws/S3/__schema__/v2.0.0/file/getAll.json"
     },
-    "required": [
-        "Key",
-        "LastModified",
-        "ETag",
-        "Size",
-        "StorageClass"
-    ]
+    "version": 1
 }
