@@ -1,69 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "status": {
-            "type": "string"
-        },
-        "settings": {
-            "type": "object",
-            "properties": {
-                "title": {
-                    "type": "string"
-                },
-                "from_name": {
-                    "type": "string"
-                },
-                "reply_to": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "title"
-            ]
-        },
-        "tracking": {
-            "type": "object",
-            "properties": {
-                "opens": {
-                    "type": "boolean"
-                },
-                "html_clicks": {
-                    "type": "boolean"
-                },
-                "text_clicks": {
-                    "type": "boolean"
-                },
-                "goal_tracking": {
-                    "type": "boolean"
-                },
-                "ecomm360": {
-                    "type": "boolean"
-                },
-                "google_analytics": {
-                    "type": "string"
-                },
-                "clicktale": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "opens",
-                "html_clicks",
-                "text_clicks",
-                "goal_tracking",
-                "ecomm360",
-                "google_analytics",
-                "clicktale"
-            ]
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Mailchimp/__schema__/v1.0.0/campaign/getAll.json",
+    "sha": "87a0ccb339395ef9932b8ce412d4e4188103e5fa",
+    "size": 1669,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Mailchimp/__schema__/v1.0.0/campaign/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Mailchimp/__schema__/v1.0.0/campaign/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/87a0ccb339395ef9932b8ce412d4e4188103e5fa",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Mailchimp/__schema__/v1.0.0/campaign/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInN0YXR1cyI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInNldHRpbmdzIjog\newogICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAi\ncHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICJ0aXRsZSI6IHsKICAg\nICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAg\nICAgICB9LAogICAgICAgICAgICAgICAgImZyb21fbmFtZSI6IHsKICAgICAg\nICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAg\nICB9LAogICAgICAgICAgICAgICAgInJlcGx5X3RvIjogewogICAgICAgICAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0K\nICAgICAgICAgICAgfSwKICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAg\nICAgICAgICAgICAgInRpdGxlIgogICAgICAgICAgICBdCiAgICAgICAgfSwK\nICAgICAgICAidHJhY2tpbmciOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9i\namVjdCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAg\nICAgICAgIm9wZW5zIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nImJvb2xlYW4iCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAg\nImh0bWxfY2xpY2tzIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nImJvb2xlYW4iCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAg\nInRleHRfY2xpY2tzIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nImJvb2xlYW4iCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAg\nImdvYWxfdHJhY2tpbmciOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUi\nOiAiYm9vbGVhbiIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAg\nICAiZWNvbW0zNjAiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAi\nYm9vbGVhbiIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAi\nZ29vZ2xlX2FuYWx5dGljcyI6IHsKICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAg\nICAgImNsaWNrdGFsZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0sCiAg\nICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICJvcGVu\ncyIsCiAgICAgICAgICAgICAgICAiaHRtbF9jbGlja3MiLAogICAgICAgICAg\nICAgICAgInRleHRfY2xpY2tzIiwKICAgICAgICAgICAgICAgICJnb2FsX3Ry\nYWNraW5nIiwKICAgICAgICAgICAgICAgICJlY29tbTM2MCIsCiAgICAgICAg\nICAgICAgICAiZ29vZ2xlX2FuYWx5dGljcyIsCiAgICAgICAgICAgICAgICAi\nY2xpY2t0YWxlIgogICAgICAgICAgICBdCiAgICAgICAgfQogICAgfSwKICAg\nICJyZXF1aXJlZCI6IFsKICAgICAgICAiaWQiLAogICAgICAgICJzdGF0dXMi\nLAogICAgICAgICJzZXR0aW5ncyIsCiAgICAgICAgInRyYWNraW5nIgogICAg\nXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Mailchimp/__schema__/v1.0.0/campaign/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/87a0ccb339395ef9932b8ce412d4e4188103e5fa",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Mailchimp/__schema__/v1.0.0/campaign/getAll.json"
     },
-    "required": [
-        "id",
-        "status",
-        "settings",
-        "tracking"
-    ]
+    "version": 1
 }
