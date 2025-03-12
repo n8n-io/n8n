@@ -1,116 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"hash": {
-			"type": "string"
-		},
-		"owner": {
-			"type": "string"
-		},
-		"group": {
-			"type": "string"
-		},
-		"stage": {
-			"type": "string"
-		},
-		"title": {
-			"type": "string"
-		},
-		"description": {
-			"type": "string"
-		},
-		"percent": {
-			"type": "string"
-		},
-		"cdate": {
-			"type": "string"
-		},
-		"mdate": {
-			"type": "string"
-		},
-		"value": {
-			"type": "string"
-		},
-		"currency": {
-			"type": "string"
-		},
-		"status": {
-			"type": "string"
-		},
-		"activitycount": {
-			"type": "string"
-		},
-		"nextdealid": {
-			"type": "string"
-		},
-		"links": {
-			"type": "object",
-			"properties": {
-				"dealActivities": {
-					"type": "string"
-				},
-				"contact": {
-					"type": "string"
-				},
-				"contactDeals": {
-					"type": "string"
-				},
-				"group": {
-					"type": "string"
-				},
-				"nextTask": {
-					"type": "string"
-				},
-				"notes": {
-					"type": "string"
-				},
-				"account": {
-					"type": "string"
-				},
-				"customerAccount": {
-					"type": "string"
-				},
-				"organization": {
-					"type": "string"
-				},
-				"owner": {
-					"type": "string"
-				},
-				"scoreValues": {
-					"type": "string"
-				},
-				"stage": {
-					"type": "string"
-				},
-				"tasks": {
-					"type": "string"
-				},
-				"dealCustomFieldData": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"dealActivities",
-				"contact",
-				"contactDeals",
-				"group",
-				"nextTask",
-				"notes",
-				"account",
-				"customerAccount",
-				"organization",
-				"owner",
-				"scoreValues",
-				"stage",
-				"tasks",
-				"dealCustomFieldData"
-			]
-		},
-		"id": {
-			"type": "string"
-		},
-		"isDisabled": {
-			"type": "boolean"
-		}
-	}
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/deal/getAll.json",
+    "sha": "7330a41e42c6633a42d82c452fcedfe12a38b569",
+    "size": 1679,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/deal/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/deal/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/7330a41e42c6633a42d82c452fcedfe12a38b569",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/deal/getAll.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJoYXNo\nIjogewoJCQkidHlwZSI6ICJzdHJpbmciCgkJfSwKCQkib3duZXIiOiB7CgkJ\nCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJCSJncm91cCI6IHsKCQkJInR5cGUi\nOiAic3RyaW5nIgoJCX0sCgkJInN0YWdlIjogewoJCQkidHlwZSI6ICJzdHJp\nbmciCgkJfSwKCQkidGl0bGUiOiB7CgkJCSJ0eXBlIjogInN0cmluZyIKCQl9\nLAoJCSJkZXNjcmlwdGlvbiI6IHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0s\nCgkJInBlcmNlbnQiOiB7CgkJCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJCSJj\nZGF0ZSI6IHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJIm1kYXRlIjog\newoJCQkidHlwZSI6ICJzdHJpbmciCgkJfSwKCQkidmFsdWUiOiB7CgkJCSJ0\neXBlIjogInN0cmluZyIKCQl9LAoJCSJjdXJyZW5jeSI6IHsKCQkJInR5cGUi\nOiAic3RyaW5nIgoJCX0sCgkJInN0YXR1cyI6IHsKCQkJInR5cGUiOiAic3Ry\naW5nIgoJCX0sCgkJImFjdGl2aXR5Y291bnQiOiB7CgkJCSJ0eXBlIjogInN0\ncmluZyIKCQl9LAoJCSJuZXh0ZGVhbGlkIjogewoJCQkidHlwZSI6ICJzdHJp\nbmciCgkJfSwKCQkibGlua3MiOiB7CgkJCSJ0eXBlIjogIm9iamVjdCIsCgkJ\nCSJwcm9wZXJ0aWVzIjogewoJCQkJImRlYWxBY3Rpdml0aWVzIjogewoJCQkJ\nCSJ0eXBlIjogInN0cmluZyIKCQkJCX0sCgkJCQkiY29udGFjdCI6IHsKCQkJ\nCQkidHlwZSI6ICJzdHJpbmciCgkJCQl9LAoJCQkJImNvbnRhY3REZWFscyI6\nIHsKCQkJCQkidHlwZSI6ICJzdHJpbmciCgkJCQl9LAoJCQkJImdyb3VwIjog\newoJCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJCX0sCgkJCQkibmV4dFRhc2si\nOiB7CgkJCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJfSwKCQkJCSJub3RlcyI6\nIHsKCQkJCQkidHlwZSI6ICJzdHJpbmciCgkJCQl9LAoJCQkJImFjY291bnQi\nOiB7CgkJCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJfSwKCQkJCSJjdXN0b21l\nckFjY291bnQiOiB7CgkJCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJfSwKCQkJ\nCSJvcmdhbml6YXRpb24iOiB7CgkJCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJ\nfSwKCQkJCSJvd25lciI6IHsKCQkJCQkidHlwZSI6ICJzdHJpbmciCgkJCQl9\nLAoJCQkJInNjb3JlVmFsdWVzIjogewoJCQkJCSJ0eXBlIjogInN0cmluZyIK\nCQkJCX0sCgkJCQkic3RhZ2UiOiB7CgkJCQkJInR5cGUiOiAic3RyaW5nIgoJ\nCQkJfSwKCQkJCSJ0YXNrcyI6IHsKCQkJCQkidHlwZSI6ICJzdHJpbmciCgkJ\nCQl9LAoJCQkJImRlYWxDdXN0b21GaWVsZERhdGEiOiB7CgkJCQkJInR5cGUi\nOiAic3RyaW5nIgoJCQkJfQoJCQl9LAoJCQkicmVxdWlyZWQiOiBbCgkJCQki\nZGVhbEFjdGl2aXRpZXMiLAoJCQkJImNvbnRhY3QiLAoJCQkJImNvbnRhY3RE\nZWFscyIsCgkJCQkiZ3JvdXAiLAoJCQkJIm5leHRUYXNrIiwKCQkJCSJub3Rl\ncyIsCgkJCQkiYWNjb3VudCIsCgkJCQkiY3VzdG9tZXJBY2NvdW50IiwKCQkJ\nCSJvcmdhbml6YXRpb24iLAoJCQkJIm93bmVyIiwKCQkJCSJzY29yZVZhbHVl\ncyIsCgkJCQkic3RhZ2UiLAoJCQkJInRhc2tzIiwKCQkJCSJkZWFsQ3VzdG9t\nRmllbGREYXRhIgoJCQldCgkJfSwKCQkiaWQiOiB7CgkJCSJ0eXBlIjogInN0\ncmluZyIKCQl9LAoJCSJpc0Rpc2FibGVkIjogewoJCQkidHlwZSI6ICJib29s\nZWFuIgoJCX0KCX0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/deal/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/7330a41e42c6633a42d82c452fcedfe12a38b569",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/deal/getAll.json"
+    },
+    "version": 1
 }
