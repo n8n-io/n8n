@@ -5,7 +5,6 @@
 import { Container } from '@n8n/di';
 import * as assert from 'assert/strict';
 import { setMaxListeners } from 'events';
-import { omit } from 'lodash';
 import get from 'lodash/get';
 import type {
 	ExecutionBaseError,
@@ -51,6 +50,7 @@ import {
 	ExecutionCancelledError,
 	Node,
 	UnexpectedError,
+	UserError,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
@@ -396,7 +396,7 @@ export class WorkflowExecute {
 		// 1. Find the Trigger
 		const trigger = findTriggerForPartialExecution(workflow, destinationNodeName);
 		if (trigger === undefined) {
-			throw new ApplicationError('Connect a trigger to run this node');
+			throw new UserError('Connect a trigger to run this node');
 		}
 
 		// 2. Find the Subgraph
@@ -404,7 +404,8 @@ export class WorkflowExecute {
 		const filteredNodes = graph.getNodes();
 
 		// 3. Find the Start Nodes
-		runData = omit(runData, dirtyNodeNames);
+		const dirtyNodes = new Set(workflow.getNodes(dirtyNodeNames));
+		runData = cleanRunData(runData, graph, dirtyNodes);
 		let startNodes = findStartNodes({ graph, trigger, destination, runData, pinData });
 
 		// 4. Detect Cycles
