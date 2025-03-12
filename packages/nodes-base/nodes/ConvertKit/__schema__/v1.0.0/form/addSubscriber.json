@@ -1,58 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"id": {
-			"type": "integer"
-		},
-		"state": {
-			"type": "string"
-		},
-		"created_at": {
-			"type": "string"
-		},
-		"referrer": {
-			"type": "null"
-		},
-		"subscribable_id": {
-			"type": "integer"
-		},
-		"subscribable_type": {
-			"type": "string"
-		},
-		"subscriber": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "integer"
-				},
-				"email_address": {
-					"type": "string"
-				},
-				"state": {
-					"type": "string"
-				},
-				"created_at": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"id",
-				"first_name",
-				"email_address",
-				"state",
-				"created_at",
-				"fields"
-			]
-		}
-	},
-	"required": [
-		"id",
-		"state",
-		"created_at",
-		"source",
-		"referrer",
-		"subscribable_id",
-		"subscribable_type",
-		"subscriber"
-	]
+    "name": "addSubscriber.json",
+    "path": "packages/nodes-base/nodes/ConvertKit/__schema__/v1.0.0/form/addSubscriber.json",
+    "sha": "9bcd72f87229cc884b8ef96f61dbf3e5e2323859",
+    "size": 806,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ConvertKit/__schema__/v1.0.0/form/addSubscriber.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ConvertKit/__schema__/v1.0.0/form/addSubscriber.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/9bcd72f87229cc884b8ef96f61dbf3e5e2323859",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/ConvertKit/__schema__/v1.0.0/form/addSubscriber.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJpZCI6\nIHsKCQkJInR5cGUiOiAiaW50ZWdlciIKCQl9LAoJCSJzdGF0ZSI6IHsKCQkJ\nInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJImNyZWF0ZWRfYXQiOiB7CgkJCSJ0\neXBlIjogInN0cmluZyIKCQl9LAoJCSJyZWZlcnJlciI6IHsKCQkJInR5cGUi\nOiAibnVsbCIKCQl9LAoJCSJzdWJzY3JpYmFibGVfaWQiOiB7CgkJCSJ0eXBl\nIjogImludGVnZXIiCgkJfSwKCQkic3Vic2NyaWJhYmxlX3R5cGUiOiB7CgkJ\nCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJCSJzdWJzY3JpYmVyIjogewoJCQki\ndHlwZSI6ICJvYmplY3QiLAoJCQkicHJvcGVydGllcyI6IHsKCQkJCSJpZCI6\nIHsKCQkJCQkidHlwZSI6ICJpbnRlZ2VyIgoJCQkJfSwKCQkJCSJlbWFpbF9h\nZGRyZXNzIjogewoJCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJCX0sCgkJCQki\nc3RhdGUiOiB7CgkJCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJfSwKCQkJCSJj\ncmVhdGVkX2F0IjogewoJCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJCX0KCQkJ\nfSwKCQkJInJlcXVpcmVkIjogWwoJCQkJImlkIiwKCQkJCSJmaXJzdF9uYW1l\nIiwKCQkJCSJlbWFpbF9hZGRyZXNzIiwKCQkJCSJzdGF0ZSIsCgkJCQkiY3Jl\nYXRlZF9hdCIsCgkJCQkiZmllbGRzIgoJCQldCgkJfQoJfSwKCSJyZXF1aXJl\nZCI6IFsKCQkiaWQiLAoJCSJzdGF0ZSIsCgkJImNyZWF0ZWRfYXQiLAoJCSJz\nb3VyY2UiLAoJCSJyZWZlcnJlciIsCgkJInN1YnNjcmliYWJsZV9pZCIsCgkJ\nInN1YnNjcmliYWJsZV90eXBlIiwKCQkic3Vic2NyaWJlciIKCV0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ConvertKit/__schema__/v1.0.0/form/addSubscriber.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/9bcd72f87229cc884b8ef96f61dbf3e5e2323859",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ConvertKit/__schema__/v1.0.0/form/addSubscriber.json"
+    },
+    "version": 1
 }
