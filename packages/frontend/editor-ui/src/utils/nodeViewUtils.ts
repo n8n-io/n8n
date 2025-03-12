@@ -286,7 +286,7 @@ export function getGenericHints({
 		if (!stringifiedParameters.includes('$fromAI')) {
 			nodeHints.push({
 				message:
-					"No parameters are set up to be filled by AI. To enable AI-generated values, click the button on the left of the relevant parameter or add the expression: <code>{{ $fromAI('placeholder_name') }}</code>.",
+					'No parameters are set up to be filled by AI. Click on the ✨ button next to a parameter to allow AI to set its value.',
 				location: 'outputPane',
 				whenToDisplay: 'afterExecution',
 			});
