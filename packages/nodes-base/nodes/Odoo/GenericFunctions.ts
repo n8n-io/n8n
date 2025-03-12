@@ -2,9 +2,9 @@ import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	JsonObject,
-	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError, randomInt } from 'n8n-workflow';
 
@@ -108,7 +108,7 @@ export async function odooJSONRPCRequest(
 	url: string,
 ): Promise<IDataObject | IDataObject[]> {
 	try {
-		const options: IRequestOptions = {
+		const options: IHttpRequestOptions = {
 			headers: {
 				'User-Agent': 'n8n',
 				Connection: 'keep-alive',
@@ -117,7 +117,7 @@ export async function odooJSONRPCRequest(
 			},
 			method: 'POST',
 			body,
-			uri: `${url}/jsonrpc`,
+			url: `${url}/jsonrpc`,
 			json: true,
 		};
 

@@ -1,18 +1,18 @@
 import { capitalCase } from 'change-case';
 import type {
-	IExecuteFunctions,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	IExecuteFunctions,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	IRequestOptions,
 } from 'n8n-workflow';
-import { NodeConnectionType, deepCopy, randomInt } from 'n8n-workflow';
+import { deepCopy, NodeConnectionType, randomInt } from 'n8n-workflow';
 
 import {
 	contactDescription,
@@ -246,7 +246,7 @@ export class Odoo implements INodeType {
 						id: randomInt(100),
 					};
 
-					const options: IRequestOptions = {
+					const options: IHttpRequestOptions = {
 						headers: {
 							'User-Agent': 'n8n',
 							Connection: 'keep-alive',
@@ -255,7 +255,7 @@ export class Odoo implements INodeType {
 						},
 						method: 'POST',
 						body,
-						uri: `${(credentials?.url as string).replace(/\/$/, '')}/jsonrpc`,
+						url: `${(credentials?.url as string).replace(/\/$/, '')}/jsonrpc`,
 						json: true,
 					};
 					const result = await this.helpers.request(options);
