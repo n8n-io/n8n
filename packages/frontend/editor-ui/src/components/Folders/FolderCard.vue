@@ -90,7 +90,7 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 						data-test-id="folder-card-icon"
 						:class="$style['folder-icon']"
 						icon="folder"
-						size="large"
+						size="xlarge"
 					/>
 				</template>
 				<template #header>
@@ -198,9 +198,7 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 	width: var(--spacing-xl);
 	height: var(--spacing-xl);
 	flex-shrink: 0;
-	background-color: var(--color-background-dark);
-	color: var(--color-background-light-base);
-	border-radius: 50%;
+	color: var(--color-text-base);
 	align-content: center;
 	text-align: center;
 }

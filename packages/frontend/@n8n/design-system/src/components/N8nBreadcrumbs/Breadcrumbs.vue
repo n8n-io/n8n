@@ -282,6 +282,11 @@ const handleTooltipClose = () => {
 }
 
 .hidden-items-menu-popper {
+	& > div ul {
+		max-height: 250px;
+		overflow: auto;
+	}
+
 	li {
 		max-width: var(--spacing-5xl);
 		display: block;
@@ -354,7 +359,7 @@ const handleTooltipClose = () => {
 	}
 
 	.separator {
-		font-size: var(--font-size-m);
+		font-size: var(--font-size-s);
 		color: var(--color-text-base);
 	}
 }
@@ -368,7 +373,7 @@ const handleTooltipClose = () => {
 	.item,
 	.item * {
 		color: var(--color-text-base);
-		font-size: var(--font-size-m);
+		font-size: var(--font-size-s);
 	}
 
 	.item {

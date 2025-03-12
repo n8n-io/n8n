@@ -1257,6 +1257,7 @@ const deleteFolder = async (folderId: string, workflowCount: number, subFolderCo
 .breadcrumbs-container {
 	display: flex;
 	align-items: center;
+	align-self: flex-end;
 }
 
 .breadcrumbs-loading {
