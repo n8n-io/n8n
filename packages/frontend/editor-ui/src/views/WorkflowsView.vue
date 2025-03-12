@@ -864,6 +864,11 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 // Reusable action handlers
 // Both action handlers ultimately call these methods once folder to apply action to is determined
 const createFolder = async (parent: { id: string; name: string; type: 'project' | 'folder' }) => {
+	// Rules for folder name:
+	// - Invalid characters: \/:*?"<>|
+	// - Invalid name: empty or only dots
+	const validFolderNameRegex = /^(?!\.+$)[^\\/:*?"<>|]{1,100}$/;
+
 	const promptResponsePromise = message.prompt(
 		i18n.baseText('folders.add.to.parent.message', { interpolate: { parent: parent.name } }),
 		{
@@ -871,7 +876,7 @@ const createFolder = async (parent: { id: string; name: string; type: 'project' 
 			cancelButtonText: i18n.baseText('generic.cancel'),
 			inputErrorMessage: i18n.baseText('folders.invalidName.message'),
 			inputValue: '',
-			inputPattern: /^[a-zA-Z0-9-_ ]{1,100}$/,
+			inputPattern: validFolderNameRegex,
 			customClass: 'add-folder-modal',
 		},
 	);
