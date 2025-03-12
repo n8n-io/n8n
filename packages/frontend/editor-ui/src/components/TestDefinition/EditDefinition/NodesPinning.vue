@@ -1,15 +1,16 @@
 <script setup lang="ts">
+import Canvas from '@/components/canvas/Canvas.vue';
+import CanvasNode from '@/components/canvas/elements/nodes/CanvasNode.vue';
 import { useCanvasMapping } from '@/composables/useCanvasMapping';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { CanvasConnectionPort, CanvasEventBusEvents, CanvasNodeData } from '@/types';
-import { useVueFlow } from '@vue-flow/core';
+import type { CanvasConnectionPort, CanvasNodeData } from '@/types';
 import { N8nTooltip } from '@n8n/design-system';
-import { createEventBus } from '@n8n/utils/event-bus';
-import { computed, onMounted, ref, useCssModule } from 'vue';
+import { useVueFlow } from '@vue-flow/core';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const workflowsStore = useWorkflowsStore();
@@ -21,8 +22,6 @@ const telemetry = useTelemetry();
 
 const { resetWorkspace, initializeWorkspace } = useCanvasOperations({ router });
 
-const eventBus = createEventBus<CanvasEventBusEvents>();
-const style = useCssModule();
 const uuid = crypto.randomUUID();
 const props = defineProps<{
 	modelValue: Array<{ name: string; id: string }>;
@@ -60,38 +59,10 @@ async function loadData() {
 	]);
 	await loadingPromise;
 	initializeWorkspace(workflow.value);
-	disableAllNodes();
 }
+
 function getNodeNameById(id: string) {
 	return mappedNodes.value.find((node) => node.id === id)?.data?.name;
-}
-function updateNodeClasses(nodeIds: string[], isPinned: boolean) {
-	eventBus.emit('nodes:action', {
-		ids: nodeIds,
-		action: 'update:node:class',
-		payload: {
-			className: style.pinnedNode,
-			add: isPinned,
-		},
-	});
-	eventBus.emit('nodes:action', {
-		ids: nodeIds,
-		action: 'update:node:class',
-		payload: {
-			className: style.notPinnedNode,
-			add: !isPinned,
-		},
-	});
-}
-function disableAllNodes() {
-	const ids = mappedNodes.value.map((node) => node.id);
-	updateNodeClasses(ids, false);
-
-	const pinnedNodes = props.modelValue.map((node) => node.id).filter((id) => id !== null);
-
-	if (pinnedNodes.length > 0) {
-		updateNodeClasses(pinnedNodes, true);
-	}
 }
 function onPinButtonClick(data: CanvasNodeData) {
 	const nodeName = getNodeNameById(data.id);
@@ -103,7 +74,6 @@ function onPinButtonClick(data: CanvasNodeData) {
 		: [...props.modelValue, { name: nodeName, id: data.id }];
 
 	emit('update:modelValue', updatedNodes);
-	updateNodeClasses([data.id], !isPinned);
 
 	if (!isPinned) {
 		telemetry.track('User selected node to be mocked', {
@@ -128,9 +98,9 @@ onMounted(loadData);
 
 <template>
 	<div v-if="mappedNodes.length === 0" :class="$style.noNodes">
-		<N8nHeading size="large" :bold="true" :class="$style.noNodesTitle">{{
-			locale.baseText('testDefinition.edit.pinNodes.noNodes.title')
-		}}</N8nHeading>
+		<N8nHeading size="large" :bold="true" :class="$style.noNodesTitle">
+			{{ locale.baseText('testDefinition.edit.pinNodes.noNodes.title') }}
+		</N8nHeading>
 		<N8nText>{{ locale.baseText('testDefinition.edit.pinNodes.noNodes.description') }}</N8nText>
 	</div>
 	<div v-else :class="$style.container">
@@ -138,54 +108,61 @@ onMounted(loadData);
 		<Canvas
 			:id="canvasId"
 			:loading="isLoading"
-			:class="{ [$style.canvas]: true }"
 			:nodes="mappedNodes"
 			:connections="mappedConnections"
 			:show-bug-reporting-button="false"
 			:read-only="true"
-			:event-bus="eventBus"
 		>
-			<template #nodeToolbar="{ data, outputs, inputs }">
-				<div
-					v-if="isPinButtonVisible(outputs, inputs)"
-					:class="{
-						[$style.pinButtonContainer]: true,
-						[$style.pinButtonContainerPinned]: isPinned(data),
-					}"
+			<template #node="{ nodeProps }">
+				<N8nTooltip
+					:content="locale.baseText('testDefinition.edit.nodesPinning.triggerTooltip')"
+					:disabled="!nodeTypesStore.isTriggerNode(nodeProps.data.type)"
+					placement="top"
 				>
-					<N8nTooltip placement="left">
-						<template #content>
-							{{ locale.baseText('testDefinition.edit.nodesPinning.pinButtonTooltip') }}
+					<CanvasNode
+						v-bind="nodeProps"
+						:class="{
+							[$style.isTrigger]: nodeTypesStore.isTriggerNode(nodeProps.data.type),
+						}"
+					>
+						<template #toolbar="{ data, outputs, inputs }">
+							<div
+								v-if="isPinButtonVisible(outputs, inputs)"
+								:class="{
+									[$style.pinButtonContainer]: true,
+									[$style.pinButtonContainerPinned]: isPinned(data),
+								}"
+							>
+								<N8nTooltip
+									placement="top"
+									:content="locale.baseText('testDefinition.edit.nodesPinning.pinButtonTooltip')"
+								>
+									<N8nButton
+										icon="thumbtack"
+										block
+										type="secondary"
+										:class="{ [$style.customSecondary]: isPinned(data) }"
+										data-test-id="node-pin-button"
+										@click="onPinButtonClick(data)"
+									>
+										<template v-if="isPinned(data)"> Unpin </template>
+										<template v-else> Pin </template>
+									</N8nButton>
+								</N8nTooltip>
+							</div>
 						</template>
-						<N8nButton
-							v-if="isPinned(data)"
-							icon="thumbtack"
-							block
-							type="secondary"
-							:class="$style.customSecondary"
-							data-test-id="node-pin-button"
-							@click="onPinButtonClick(data)"
-						>
-							Un Mock
-						</N8nButton>
-						<N8nButton
-							v-else
-							icon="thumbtack"
-							block
-							type="secondary"
-							data-test-id="node-pin-button"
-							@click="onPinButtonClick(data)"
-						>
-							Mock
-						</N8nButton>
-					</N8nTooltip>
-				</div>
+					</CanvasNode>
+				</N8nTooltip>
 			</template>
 		</Canvas>
 	</div>
 </template>
 
 <style lang="scss" module>
+.isTrigger {
+	--canvas-node--border-color: var(--color-secondary);
+}
+
 .container {
 	width: 100vw;
 	height: 100%;
@@ -202,16 +179,16 @@ onMounted(loadData);
 	transform: translateX(50%);
 
 	&.pinButtonContainerPinned {
-		background-color: hsla(247, 49%, 55%, 1);
+		background-color: var(--color-secondary);
 	}
 }
 
 .customSecondary {
-	--button-background-color: hsla(247, 49%, 55%, 1);
+	--button-background-color: var(--color-secondary);
 	--button-font-color: var(--color-button-primary-font);
-	--button-border-color: hsla(247, 49%, 55%, 1);
+	--button-border-color: var(--color-secondary);
 
-	--button-hover-background-color: hsla(247, 49%, 55%, 1);
+	--button-hover-background-color: var(--color-secondary);
 	--button-hover-border-color: var(--color-button-primary-font);
 	--button-hover-font-color: var(--color-button-primary-font);
 }

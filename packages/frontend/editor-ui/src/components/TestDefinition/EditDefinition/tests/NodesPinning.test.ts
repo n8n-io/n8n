@@ -1,4 +1,4 @@
-import { waitFor } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import NodesPinning from '../NodesPinning.vue';
@@ -94,21 +94,18 @@ describe('NodesPinning', () => {
 		expect(container.querySelector('[data-node-name="Node 2"]')).toBeInTheDocument();
 	});
 
-	it('should update node classes when pinning/unpinning nodes', async () => {
-		const { container } = renderComponent();
+	it('should update UI when pinning/unpinning nodes', async () => {
+		const { container, getAllByTestId } = renderComponent();
 
 		await waitFor(() => {
 			expect(container.querySelector('[data-node-name="Node 1"]')).toBeInTheDocument();
 		});
 
-		await waitFor(() => {
-			expect(container.querySelector('[data-node-name="Node 1"]')).toHaveClass(
-				'canvasNode pinnedNode',
-			);
-			expect(container.querySelector('[data-node-name="Node 2"]')).toHaveClass(
-				'canvasNode notPinnedNode',
-			);
-		});
+		const buttons = getAllByTestId('node-pin-button');
+		expect(buttons.length).toBe(2);
+
+		expect(buttons[0]).toHaveTextContent('Unpin');
+		expect(buttons[1]).toHaveTextContent('Pin');
 	});
 
 	it('should emit update:modelValue when pinning nodes', async () => {
