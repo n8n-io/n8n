@@ -42,8 +42,7 @@
                 }
             },
             "required": [
-                "id",
-                "name"
+                "id"
             ]
         }
     },
@@ -55,5 +54,6 @@
         "entity_type",
         "created_at",
         "entity"
-    ]
+    ],
+    "version": 1
 }
