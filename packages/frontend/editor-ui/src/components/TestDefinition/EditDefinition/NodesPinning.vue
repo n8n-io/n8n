@@ -40,9 +40,7 @@ const workflowObject = computed(() => workflowsStore.getCurrentWorkflow(true));
 const canvasId = computed(() => `${uuid}-${testId.value}`);
 
 const { onNodesInitialized, fitView, zoomTo } = useVueFlow({ id: canvasId.value });
-const nodes = computed(() => {
-	return workflow.value.nodes ?? [];
-});
+const nodes = computed(() => workflow.value.nodes ?? []);
 const connections = computed(() => workflow.value.connections);
 
 const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping({
@@ -90,8 +88,8 @@ const isPinned = (data: CanvasNodeData) => props.modelValue.some((node) => node.
 
 onNodesInitialized(async () => {
 	await fitView();
-	isLoading.value = false;
 	await zoomTo(0.7, { duration: 400 });
+	isLoading.value = false;
 });
 onMounted(loadData);
 </script>
