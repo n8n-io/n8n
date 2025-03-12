@@ -980,6 +980,7 @@
 	"ndv.execute.requiredFieldsMissing": "Complete required fields first",
 	"ndv.execute.stopWaitingForWebhook.error": "Problem deleting test webhook",
 	"ndv.execute.workflowAlreadyRunning": "Workflow is already running",
+	"ndv.execute.deactivated": "This node is deactivated and can't be run",
 	"ndv.featureRequest": "I wish this node would...",
 	"ndv.input": "Input",
 	"ndv.input.nodeDistance": "{count} node back | {count} nodes back",
