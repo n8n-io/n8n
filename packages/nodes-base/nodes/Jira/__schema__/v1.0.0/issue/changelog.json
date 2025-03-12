@@ -13,6 +13,9 @@
                 "accountId": {
                     "type": "string"
                 },
+                "emailAddress": {
+                    "type": "string"
+                },
                 "avatarUrls": {
                     "type": "object",
                     "properties": {
@@ -46,9 +49,6 @@
                     "type": "string"
                 },
                 "accountType": {
-                    "type": "string"
-                },
-                "emailAddress": {
                     "type": "string"
                 }
             },
@@ -95,5 +95,6 @@
         "author",
         "created",
         "items"
-    ]
+    ],
+    "version": 1
 }
