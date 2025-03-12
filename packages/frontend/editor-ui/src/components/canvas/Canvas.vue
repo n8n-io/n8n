@@ -47,7 +47,11 @@ import CanvasBackground from './elements/background/CanvasBackground.vue';
 import { useCanvasTraversal } from '@/composables/useCanvasTraversal';
 import { NodeConnectionType } from 'n8n-workflow';
 import { useCanvasNodeHover } from '@/composables/useCanvasNodeHover';
-import { useCanvasLayout } from '@/composables/useCanvasLayout';
+import {
+	type CanvasLayoutEvent,
+	type CanvasLayoutSource,
+	useCanvasLayout,
+} from '@/composables/useCanvasLayout';
 
 const $style = useCssModule();
 
@@ -90,6 +94,7 @@ const emit = defineEmits<{
 	'save:workflow': [];
 	'create:workflow': [];
 	'drag-and-drop': [position: XYPosition, event: DragEvent];
+	'tidy-up': [CanvasLayoutEvent];
 }>();
 
 const props = withDefaults(
@@ -290,7 +295,7 @@ const keyMap = computed(() => {
 		ctrl_alt_n: () => emit('create:workflow'),
 		ctrl_enter: () => emit('run:workflow'),
 		ctrl_s: () => emit('save:workflow'),
-		shift_alt_t: onTidyUp,
+		shift_alt_t: async () => await onTidyUp('keyboard-shortcut'),
 	};
 	return fullKeymap;
 });
@@ -635,15 +640,16 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 		case 'change_color':
 			return props.eventBus.emit('nodes:action', { ids: nodeIds, action: 'update:sticky:color' });
 		case 'tidy_up':
-			return await onTidyUp();
+			return await onTidyUp('context-menu');
 	}
 }
 
-async function onTidyUp() {
+async function onTidyUp(source: CanvasLayoutSource) {
 	const applyOnSelection = selectedNodes.value.length > 1;
-	const { nodes } = layout(applyOnSelection ? 'selection' : 'all');
+	const target = applyOnSelection ? 'selection' : 'all';
+	const result = layout(target);
 
-	onUpdateNodesPosition(nodes.map((node) => ({ id: node.id, position: { x: node.x, y: node.y } })));
+	emit('tidy-up', { result, target, source });
 
 	if (!applyOnSelection) {
 		await nextTick();
@@ -867,11 +873,12 @@ provide(CanvasKey, {
 			:position="controlsPosition"
 			:show-interactive="false"
 			:zoom="viewport.zoom"
+			:read-only="readOnly"
 			@zoom-to-fit="onFitView"
 			@zoom-in="onZoomIn"
 			@zoom-out="onZoomOut"
 			@reset-zoom="onResetZoom"
-			@tidy-up="onTidyUp"
+			@tidy-up="onTidyUp('canvas-button')"
 		/>
 
 		<Suspense>
