@@ -1,17 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "text": {
-            "type": "string"
-        },
-        "edit_history_tweet_ids": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "id": {
-            "type": "string"
-        }
-    }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/Twitter/__schema__/v2.0.0/tweet/create.json",
+    "sha": "9877268148f94674b657d06b362be7c2918f2a6b",
+    "size": 311,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Twitter/__schema__/v2.0.0/tweet/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Twitter/__schema__/v2.0.0/tweet/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/9877268148f94674b657d06b362be7c2918f2a6b",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Twitter/__schema__/v2.0.0/tweet/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJ0ZXh0IjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAiZWRpdF9oaXN0b3J5X3R3ZWV0X2lkcyI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAiYXJyYXkiLAogICAgICAgICAgICAi\naXRlbXMiOiB7CiAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgICAgIH0KICAgICAgICB9LAogICAgICAgICJpZCI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0KICAgIH0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Twitter/__schema__/v2.0.0/tweet/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/9877268148f94674b657d06b362be7c2918f2a6b",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Twitter/__schema__/v2.0.0/tweet/create.json"
+    },
+    "version": 1
 }
