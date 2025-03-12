@@ -1,37 +1,47 @@
 <script lang="ts" setup>
-import { computed, watch, ref } from 'vue';
 import type { INodeUi } from '@/Interface';
-import VirtualSchemaItem from '@/components/VirtualSchemaItem.vue';
-import VirtualSchemaHeader from '@/components/VirtualSchemaHeader.vue';
-import { N8nText } from '@n8n/design-system';
 import Draggable from '@/components/Draggable.vue';
-import { useNDVStore } from '@/stores/ndv.store';
+import VirtualSchemaHeader from '@/components/VirtualSchemaHeader.vue';
+import VirtualSchemaItem from '@/components/VirtualSchemaItem.vue';
+import {
+	type RenderHeader,
+	type RenderNotice,
+	type Renders,
+	useDataSchema,
+	useFlattenSchema,
+	type SchemaNode,
+} from '@/composables/useDataSchema';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useI18n } from '@/composables/useI18n';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { executionDataToJson } from '@/utils/nodeTypesUtils';
+import { N8nText } from '@n8n/design-system';
 import {
 	createResultError,
 	NodeConnectionType,
 	type IConnectedNode,
 	type IDataObject,
 } from 'n8n-workflow';
-import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useI18n } from '@/composables/useI18n';
-import MappingPill from './MappingPill.vue';
-import { useDataSchema, useFlattenSchema, type SchemaNode } from '@/composables/useDataSchema';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { executionDataToJson } from '@/utils/nodeTypesUtils';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { computed, ref, watch } from 'vue';
 import {
 	DynamicScroller,
 	DynamicScrollerItem,
 	type RecycleScrollerInstance,
 } from 'vue-virtual-scroller';
+import MappingPill from './MappingPill.vue';
 
-import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
-import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
-import { asyncComputed } from '@vueuse/core';
+import { resolveParameter } from '@/composables/useWorkflowHelpers';
+import { EnterpriseEditionFeature, SCHEMA_PREVIEW_EXPERIMENT } from '@/constants';
+import useEnvironmentsStore from '@/stores/environments.ee.store';
 import { usePostHog } from '@/stores/posthog.store';
-import { SCHEMA_PREVIEW_EXPERIMENT } from '@/constants';
+import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { asyncComputed } from '@vueuse/core';
+import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 
 type Props = {
 	nodes?: IConnectedNode[];
@@ -65,8 +75,11 @@ const ndvStore = useNDVStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 const schemaPreviewStore = useSchemaPreviewStore();
+const environmentsStore = useEnvironmentsStore();
+const settingsStore = useSettingsStore();
 const posthogStore = usePostHog();
-const { getSchemaForExecutionData, getSchemaForJsonSchema, filterSchema } = useDataSchema();
+const { getSchemaForExecutionData, getSchemaForJsonSchema, getSchema, filterSchema } =
+	useDataSchema();
 const { closedNodes, flattenSchema, flattenMultipleSchemas, toggleLeaf, toggleNode } =
 	useFlattenSchema();
 const { getNodeInputData } = useNodeHelpers();
@@ -81,14 +94,6 @@ const toggleNodeAndScrollTop = (id: string) => {
 	toggleNode(id);
 	scroller.value?.scrollToItem(0);
 };
-
-watch(
-	() => props.search,
-	(newSearch) => {
-		if (!newSearch) return;
-		closedNodes.value.clear();
-	},
-);
 
 const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) => {
 	const pinData = workflowsStore.pinDataByNodeName(connectedNode.name);
@@ -131,6 +136,69 @@ const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) =
 const isSchemaPreviewEnabled = computed(() =>
 	posthogStore.isFeatureEnabled(SCHEMA_PREVIEW_EXPERIMENT),
 );
+
+const isVariablesEnabled = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables],
+);
+
+const contextSchema = computed(() => {
+	const variables = environmentsStore.variablesAsObject;
+	const schemaSource: Record<string, unknown> = {
+		$now: resolveParameter('={{$now.toISO()}}'),
+		$today: resolveParameter('={{$today.toISO()}}'),
+		$vars: variables,
+		$execution: resolveParameter('={{$execution}}'),
+		$workflow: resolveParameter('={{$workflow}}'),
+	};
+
+	return getSchema(schemaSource);
+});
+
+const contextItems = computed(() => {
+	const header: RenderHeader = {
+		id: 'variables',
+		type: 'header',
+		title: i18n.baseText('dataMapping.schemaView.variablesContextTitle'),
+		collapsable: true,
+		itemCount: null,
+	};
+
+	if (closedNodes.value.has(header.id)) return [header];
+
+	const fields: Renders[] = flattenSchema({
+		schema: contextSchema.value,
+		depth: 1,
+	}).flatMap((renderItem) => {
+		const isVars =
+			renderItem.type === 'item' && renderItem.depth === 1 && renderItem.title === '$vars';
+
+		if (isVars) {
+			const isVarsOpen = !closedNodes.value.has(renderItem.id);
+
+			if (!isVariablesEnabled.value) {
+				renderItem.collapsable = false;
+				renderItem.locked = true;
+				renderItem.lockedTooltip = i18n.baseText('dataMapping.schemaView.variablesUpgrade');
+
+				return renderItem;
+			}
+
+			if (isVarsOpen && environmentsStore.variables.length === 0) {
+				const variablesEmptyNotice: RenderNotice = {
+					type: 'notice',
+					id: 'notice-variablesEmpty',
+					level: renderItem.level ?? 0,
+					message: i18n.baseText('dataMapping.schemaView.variablesEmpty'),
+				};
+				return [renderItem, variablesEmptyNotice];
+			}
+		}
+
+		return renderItem;
+	});
+
+	return [header as Renders].concat(fields);
+});
 
 const nodeSchema = asyncComputed(async () => {
 	if (props.data.length === 0 && isSchemaPreviewEnabled.value) {
@@ -228,12 +296,33 @@ const items = computed(() => {
 		return flattenNodeSchema.value;
 	}
 
-	return flattenedNodes.value;
+	return flattenedNodes.value.concat(contextItems.value);
 });
 
 const noSearchResults = computed(() => {
 	return Boolean(props.search.trim()) && !Boolean(items.value.length);
 });
+
+watch(
+	() => props.search,
+	(newSearch) => {
+		if (!newSearch) return;
+		closedNodes.value.clear();
+	},
+);
+
+// Context items should be collapsed by default
+watch(
+	contextItems,
+	(currentContextItems) => {
+		for (const item of currentContextItems) {
+			if (item.type === 'item' && item.depth === 1) {
+				closedNodes.value.add(item.id);
+			}
+		}
+	},
+	{ once: true, immediate: true },
+);
 
 const onDragStart = () => {
 	ndvStore.resetMappingTelemetry();
@@ -327,6 +416,13 @@ const onDragEnd = (el: HTMLElement) => {
 						<N8nTooltip v-else-if="item.type === 'icon'" :content="item.tooltip" placement="top">
 							<N8nIcon :size="14" :icon="item.icon" class="icon" />
 						</N8nTooltip>
+
+						<div
+							v-else-if="item.type === 'notice'"
+							v-n8n-html="item.message"
+							class="notice"
+							:style="{ marginLeft: `calc(var(--spacing-l) + var(--spacing-l) * ${item.level})` }"
+						/>
 					</DynamicScrollerItem>
 				</template>
 			</DynamicScroller>
@@ -357,5 +453,12 @@ const onDragEnd = (el: HTMLElement) => {
 	margin-left: var(--spacing-xl);
 	color: var(--color-text-light);
 	margin-bottom: var(--spacing-s);
+}
+
+.notice {
+	padding-bottom: var(--spacing-xs);
+	color: var(--color-text-base);
+	font-size: var(--font-size-2xs);
+	line-height: var(--font-line-height-loose);
 }
 </style>
