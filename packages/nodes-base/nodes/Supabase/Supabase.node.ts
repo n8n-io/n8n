@@ -58,7 +58,8 @@ export class Supabase implements INodeType {
 				default: false,
 				noDataExpression: true,
 				description:
-					'Whether to use another database schema than the default "public" schema (requires schema exposure in the <a href="https://supabase.com/docs/guides/api/using-custom-schemas?queryGroups=language&language=curl#exposing-custom-schemas">Supabase API</a>)',
+					'Toggle to use a database schema different from the default "public" schema (requires schema exposure in the <a href="https://supabase.com/docs/guides/api/using-custom-schemas?queryGroups=language&language=curl#exposing-custom-schemas">Supabase API</a>)',
+
 			},
 			{
 				displayName: 'Schema',
