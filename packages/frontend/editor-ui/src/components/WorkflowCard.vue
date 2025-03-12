@@ -25,7 +25,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { ResourceType } from '@/utils/projects.utils';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { WorkflowResource } from './layouts/ResourcesListLayout.vue';
-import { IUser } from 'n8n-workflow';
+import type { IUser } from 'n8n-workflow';
 
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
