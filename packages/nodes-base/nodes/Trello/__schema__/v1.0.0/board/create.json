@@ -55,6 +55,9 @@
                 "cardCovers": {
                     "type": "boolean"
                 },
+                "showCompleteStatus": {
+                    "type": "boolean"
+                },
                 "cardCounts": {
                     "type": "boolean"
                 },
@@ -87,6 +90,9 @@
                 },
                 "background": {
                     "type": "string"
+                },
+                "backgroundDarkImage": {
+                    "type": "null"
                 },
                 "backgroundTile": {
                     "type": "boolean"
@@ -133,10 +139,10 @@
                 "background",
                 "backgroundColor",
                 "backgroundImage",
+                "backgroundImageScaled",
                 "backgroundTile",
                 "backgroundBrightness",
                 "sharedSourceUrl",
-                "backgroundImageScaled",
                 "backgroundBottomColor",
                 "backgroundTopColor",
                 "canBePublic",
@@ -288,5 +294,6 @@
         "prefs",
         "labelNames",
         "limits"
-    ]
+    ],
+    "version": 1
 }
