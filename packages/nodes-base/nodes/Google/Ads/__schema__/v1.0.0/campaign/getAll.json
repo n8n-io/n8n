@@ -33,12 +33,21 @@
         },
         "amountMicros": {
             "type": "string"
-        },
-        "interactionRate": {
-            "type": "number"
-        },
-        "optimizationScore": {
-            "type": "number"
         }
-    }
+    },
+    "required": [
+        "resourceName",
+        "status",
+        "advertisingChannelType",
+        "name",
+        "id",
+        "videoViews",
+        "conversions",
+        "costMicros",
+        "impressions",
+        "interactions",
+        "period",
+        "amountMicros"
+    ],
+    "version": 1
 }
