@@ -4,7 +4,7 @@ import { Response } from 'express';
 import omit from 'lodash/omit';
 import set from 'lodash/set';
 import split from 'lodash/split';
-import { jsonStringify } from 'n8n-workflow';
+import { type ICredentialDataDecryptedObject, jsonStringify } from 'n8n-workflow';
 import pkceChallenge from 'pkce-challenge';
 import * as qs from 'querystring';
 
@@ -23,7 +23,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 	async getAuthUri(req: OAuthRequest.OAuth2Credential.Auth): Promise<string> {
 		const credential = await this.getCredential(req);
 		const additionalData = await this.getAdditionalData();
-		const decryptedDataOriginal = await this.getDecryptedData(credential, additionalData);
+		const decryptedDataOriginal = await this.getDecryptedDataForAuthUri(credential, additionalData);
 
 		// At some point in the past we saved hidden scopes to credentials (but shouldn't)
 		// Delete scope before applying defaults to make sure new scopes are present on reconnect
@@ -60,7 +60,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 
 		await this.externalHooks.run('oauth2.authenticate', [oAuthOptions]);
 
-		decryptedDataOriginal.csrfSecret = csrfSecret;
+		const toUpdate: ICredentialDataDecryptedObject = { csrfSecret };
 		if (oauthCredentials.grantType === 'pkce') {
 			const { code_verifier, code_challenge } = pkceChallenge();
 			oAuthOptions.query = {
@@ -68,10 +68,10 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 				code_challenge,
 				code_challenge_method: 'S256',
 			};
-			decryptedDataOriginal.codeVerifier = code_verifier;
+			toUpdate.codeVerifier = code_verifier;
 		}
 
-		await this.encryptAndSaveData(credential, decryptedDataOriginal);
+		await this.encryptAndSaveData(credential, toUpdate);
 
 		const oAuthObj = new ClientOAuth2(oAuthOptions);
 		const returnUri = oAuthObj.code.getUri();
@@ -133,17 +133,15 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 				set(oauthToken.data, 'callbackQueryString', omit(req.query, 'state', 'code'));
 			}
 
-			if (decryptedDataOriginal.oauthTokenData) {
-				// Only overwrite supplied data as some providers do for example just return the
-				// refresh_token on the very first request and not on subsequent ones.
-				Object.assign(decryptedDataOriginal.oauthTokenData, oauthToken.data);
-			} else {
-				// No data exists so simply set
-				decryptedDataOriginal.oauthTokenData = oauthToken.data;
-			}
+			// Only overwrite supplied data as some providers do for example just return the
+			// refresh_token on the very first request and not on subsequent ones.
+			let { oauthTokenData } = decryptedDataOriginal;
+			oauthTokenData = {
+				...(typeof oauthTokenData === 'object' ? oauthTokenData : {}),
+				...oauthToken.data,
+			};
 
-			delete decryptedDataOriginal.csrfSecret;
-			await this.encryptAndSaveData(credential, decryptedDataOriginal);
+			await this.encryptAndSaveData(credential, { oauthTokenData }, ['csrfSecret']);
 
 			this.logger.debug('OAuth2 callback successful for credential', {
 				credentialId: credential.id,

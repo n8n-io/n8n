@@ -28,6 +28,7 @@ export class CrateDb implements INodeType {
 		defaults: {
 			name: 'CrateDB',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

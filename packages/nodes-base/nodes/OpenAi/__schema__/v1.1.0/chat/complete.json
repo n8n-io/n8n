@@ -1,0 +1,32 @@
+{
+    "type": "object",
+    "properties": {
+        "index": {
+            "type": "integer"
+        },
+        "message": {
+            "type": "object",
+            "properties": {
+                "role": {
+                    "type": "string"
+                },
+                "content": {
+                    "type": "string"
+                },
+                "refusal": {
+                    "type": "null"
+                }
+            },
+            "required": [
+                "role",
+                "content"
+            ]
+        },
+        "logprobs": {
+            "type": "null"
+        },
+        "finish_reason": {
+            "type": "string"
+        }
+    }
+}

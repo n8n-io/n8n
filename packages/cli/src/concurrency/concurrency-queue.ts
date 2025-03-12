@@ -58,6 +58,10 @@ export class ConcurrencyQueue extends TypedEmitter<ConcurrencyEvents> {
 		return new Set(this.queue.map((item) => item.executionId));
 	}
 
+	has(executionId: string) {
+		return this.queue.some((item) => item.executionId === executionId);
+	}
+
 	private resolveNext() {
 		const item = this.queue.shift();
 

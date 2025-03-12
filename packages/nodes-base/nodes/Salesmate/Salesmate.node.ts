@@ -35,6 +35,7 @@ export class Salesmate implements INodeType {
 		defaults: {
 			name: 'Salesmate',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

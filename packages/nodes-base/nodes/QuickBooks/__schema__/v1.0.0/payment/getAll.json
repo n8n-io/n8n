@@ -1,0 +1,211 @@
+{
+    "type": "object",
+    "properties": {
+        "CustomerRef": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "value",
+                "name"
+            ]
+        },
+        "DepositToAccountRef": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "value"
+            ]
+        },
+        "ProcessPayment": {
+            "type": "boolean"
+        },
+        "domain": {
+            "type": "string"
+        },
+        "sparse": {
+            "type": "boolean"
+        },
+        "Id": {
+            "type": "string"
+        },
+        "SyncToken": {
+            "type": "string"
+        },
+        "MetaData": {
+            "type": "object",
+            "properties": {
+                "CreateTime": {
+                    "type": "string"
+                },
+                "LastUpdatedTime": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "CreateTime",
+                "LastUpdatedTime"
+            ]
+        },
+        "TxnDate": {
+            "type": "string"
+        },
+        "CurrencyRef": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "value",
+                "name"
+            ]
+        },
+        "Line": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "LinkedTxn": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "TxnId": {
+                                    "type": "string"
+                                },
+                                "TxnType": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "TxnId",
+                                "TxnType"
+                            ]
+                        }
+                    },
+                    "LineEx": {
+                        "type": "object",
+                        "properties": {
+                            "any": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "name": {
+                                            "type": "string"
+                                        },
+                                        "declaredType": {
+                                            "type": "string"
+                                        },
+                                        "scope": {
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "type": "object",
+                                            "properties": {
+                                                "Name": {
+                                                    "type": "string"
+                                                },
+                                                "Value": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "Name",
+                                                "Value"
+                                            ]
+                                        },
+                                        "nil": {
+                                            "type": "boolean"
+                                        },
+                                        "globalScope": {
+                                            "type": "boolean"
+                                        },
+                                        "typeSubstituted": {
+                                            "type": "boolean"
+                                        }
+                                    },
+                                    "required": [
+                                        "name",
+                                        "declaredType",
+                                        "scope",
+                                        "value",
+                                        "nil",
+                                        "globalScope",
+                                        "typeSubstituted"
+                                    ]
+                                }
+                            }
+                        },
+                        "required": [
+                            "any"
+                        ]
+                    }
+                },
+                "required": [
+                    "Amount",
+                    "LinkedTxn",
+                    "LineEx"
+                ]
+            }
+        },
+        "LinkedTxn": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "TxnId": {
+                        "type": "string"
+                    },
+                    "TxnType": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "TxnId",
+                    "TxnType"
+                ]
+            }
+        },
+        "PaymentMethodRef": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "value"
+            ]
+        }
+    },
+    "required": [
+        "CustomerRef",
+        "TotalAmt",
+        "UnappliedAmt",
+        "ProcessPayment",
+        "domain",
+        "sparse",
+        "Id",
+        "SyncToken",
+        "MetaData",
+        "TxnDate",
+        "CurrencyRef",
+        "Line"
+    ]
+}

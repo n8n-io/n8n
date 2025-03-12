@@ -34,6 +34,7 @@ export class Raindrop implements INodeType {
 		defaults: {
 			name: 'Raindrop',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

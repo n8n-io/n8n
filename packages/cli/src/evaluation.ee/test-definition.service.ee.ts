@@ -7,6 +7,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { validateEntity } from '@/generic-helpers';
 import type { ListQuery } from '@/requests';
+import { Telemetry } from '@/telemetry';
 
 type TestDefinitionLike = Omit<
 	Partial<TestDefinition>,
@@ -22,6 +23,7 @@ export class TestDefinitionService {
 	constructor(
 		private testDefinitionRepository: TestDefinitionRepository,
 		private annotationTagRepository: AnnotationTagRepository,
+		private telemetry: Telemetry,
 	) {}
 
 	private toEntityLike(attrs: {
@@ -94,6 +96,13 @@ export class TestDefinitionService {
 	}
 
 	async update(id: string, attrs: TestDefinitionLike) {
+		const existingTestDefinition = await this.testDefinitionRepository.findOneOrFail({
+			where: {
+				id,
+			},
+			relations: ['workflow'],
+		});
+
 		if (attrs.name) {
 			const updatedTest = this.toEntity(attrs);
 			await validateEntity(updatedTest);
@@ -114,25 +123,15 @@ export class TestDefinitionService {
 
 		// If there are mocked nodes, validate them
 		if (attrs.mockedNodes && attrs.mockedNodes.length > 0) {
-			const existingTestDefinition = await this.testDefinitionRepository.findOneOrFail({
-				where: {
-					id,
-				},
-				relations: ['workflow'],
-			});
-
 			const existingNodeNames = new Map(
 				existingTestDefinition.workflow.nodes.map((n) => [n.name, n]),
 			);
 			const existingNodeIds = new Map(existingTestDefinition.workflow.nodes.map((n) => [n.id, n]));
 
-			attrs.mockedNodes.forEach((node) => {
-				if (!existingNodeIds.has(node.id) || (node.name && !existingNodeNames.has(node.name))) {
-					throw new BadRequestError(
-						`Pinned node not found in the workflow: ${node.id} (${node.name})`,
-					);
-				}
-			});
+			// If some node was previously mocked and then removed from the workflow, it should be removed from the mocked nodes
+			attrs.mockedNodes = attrs.mockedNodes.filter(
+				(node) => existingNodeIds.has(node.id) || (node.name && existingNodeNames.has(node.name)),
+			);
 
 			// Update the node names OR node ids if they are not provided
 			attrs.mockedNodes = attrs.mockedNodes.map((node) => {
@@ -149,6 +148,24 @@ export class TestDefinitionService {
 		if (queryResult.affected === 0) {
 			throw new NotFoundError('Test definition not found');
 		}
+
+		// Send the telemetry events
+		if (attrs.annotationTagId && attrs.annotationTagId !== existingTestDefinition.annotationTagId) {
+			this.telemetry.track('User added tag to test', {
+				test_id: id,
+				tag_id: attrs.annotationTagId,
+			});
+		}
+
+		if (
+			attrs.evaluationWorkflowId &&
+			existingTestDefinition.evaluationWorkflowId !== attrs.evaluationWorkflowId
+		) {
+			this.telemetry.track('User added evaluation workflow to test', {
+				test_id: id,
+				subworkflow_id: attrs.evaluationWorkflowId,
+			});
+		}
 	}
 
 	async delete(id: string, accessibleWorkflowIds: string[]) {
@@ -157,6 +174,8 @@ export class TestDefinitionService {
 		if (deleteResult.affected === 0) {
 			throw new NotFoundError('Test definition not found');
 		}
+
+		this.telemetry.track('User deleted a test', { test_id: id });
 	}
 
 	async getMany(options: ListQuery.Options, accessibleWorkflowIds: string[] = []) {

@@ -27,6 +27,7 @@ export class Reddit implements INodeType {
 		defaults: {
 			name: 'Reddit',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

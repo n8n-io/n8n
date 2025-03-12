@@ -29,6 +29,7 @@ export class GoogleTranslate implements INodeType {
 		defaults: {
 			name: 'Google Translate',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

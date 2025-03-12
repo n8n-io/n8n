@@ -43,7 +43,6 @@ describe('Execute iCalendar Node', () => {
 			},
 		},
 	];
-
 	const nodeTypes = setup(tests);
 
 	for (const testData of tests) {

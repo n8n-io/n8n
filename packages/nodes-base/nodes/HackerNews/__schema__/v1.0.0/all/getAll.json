@@ -1,0 +1,122 @@
+{
+    "type": "object",
+    "properties": {
+        "_highlightResult": {
+            "type": "object",
+            "properties": {
+                "author": {
+                    "type": "object",
+                    "properties": {
+                        "matchLevel": {
+                            "type": "string"
+                        },
+                        "value": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "matchLevel",
+                        "matchedWords",
+                        "value"
+                    ]
+                },
+                "title": {
+                    "type": "object",
+                    "properties": {
+                        "matchLevel": {
+                            "type": "string"
+                        },
+                        "matchedWords": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "value": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "matchLevel",
+                        "matchedWords",
+                        "value"
+                    ]
+                },
+                "url": {
+                    "type": "object",
+                    "properties": {
+                        "matchLevel": {
+                            "type": "string"
+                        },
+                        "matchedWords": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "value": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "matchLevel",
+                        "matchedWords",
+                        "value"
+                    ]
+                }
+            },
+            "required": [
+                "author"
+            ]
+        },
+        "_tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "author": {
+            "type": "string"
+        },
+        "children": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "created_at_i": {
+            "type": "integer"
+        },
+        "num_comments": {
+            "type": "integer"
+        },
+        "objectID": {
+            "type": "string"
+        },
+        "story_id": {
+            "type": "integer"
+        },
+        "title": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "_highlightResult",
+        "_tags",
+        "author",
+        "created_at",
+        "created_at_i",
+        "objectID",
+        "story_id",
+        "updated_at"
+    ]
+}

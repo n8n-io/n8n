@@ -75,7 +75,7 @@ class MemoryChatBufferSingleton {
 
 export class MemoryBufferWindow implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Window Buffer Memory (easiest)',
+		displayName: 'Simple Memory',
 		name: 'memoryBufferWindow',
 		icon: 'fa:database',
 		iconColor: 'black',
@@ -83,7 +83,7 @@ export class MemoryBufferWindow implements INodeType {
 		version: [1, 1.1, 1.2, 1.3],
 		description: 'Stores in n8n memory, so no credentials required',
 		defaults: {
-			name: 'Window Buffer Memory',
+			name: 'Simple Memory',
 		},
 		codex: {
 			categories: ['AI'],

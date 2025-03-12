@@ -288,6 +288,9 @@ export const setupTestServer = ({
 
 					case 'ai':
 						await import('@/controllers/ai.controller');
+
+					case 'folder':
+						await import('@/controllers/folder.controller');
 				}
 			}
 

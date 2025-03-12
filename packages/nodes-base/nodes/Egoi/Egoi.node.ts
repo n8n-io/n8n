@@ -26,6 +26,7 @@ export class Egoi implements INodeType {
 		defaults: {
 			name: 'E-goi',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

@@ -23,6 +23,7 @@ export class CircleCi implements INodeType {
 		defaults: {
 			name: 'CircleCI',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

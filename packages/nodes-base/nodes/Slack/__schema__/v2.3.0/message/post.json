@@ -1,0 +1,164 @@
+{
+    "type": "object",
+    "properties": {
+        "ok": {
+            "type": "boolean"
+        },
+        "channel": {
+            "type": "string"
+        },
+        "message": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "ts": {
+                    "type": "string"
+                },
+                "bot_id": {
+                    "type": "string"
+                },
+                "app_id": {
+                    "type": "string"
+                },
+                "text": {
+                    "type": "string"
+                },
+                "team": {
+                    "type": "string"
+                },
+                "bot_profile": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "string"
+                        },
+                        "app_id": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "icons": {
+                            "type": "object",
+                            "properties": {
+                                "image_36": {
+                                    "type": "string"
+                                },
+                                "image_48": {
+                                    "type": "string"
+                                },
+                                "image_72": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "image_36",
+                                "image_48",
+                                "image_72"
+                            ]
+                        },
+                        "deleted": {
+                            "type": "boolean"
+                        },
+                        "updated": {
+                            "type": "integer"
+                        },
+                        "team_id": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "id",
+                        "app_id",
+                        "name",
+                        "icons",
+                        "deleted",
+                        "updated",
+                        "team_id"
+                    ]
+                },
+                "blocks": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "type": {
+                                "type": "string"
+                            },
+                            "block_id": {
+                                "type": "string"
+                            },
+                            "elements": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "type": {
+                                            "type": "string"
+                                        },
+                                        "elements": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "type": {
+                                                        "type": "string"
+                                                    },
+                                                    "text": {
+                                                        "type": "string"
+                                                    },
+                                                    "url": {
+                                                        "type": "string"
+                                                    },
+                                                    "style": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "italic": {
+                                                                "type": "boolean"
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                "required": [
+                                                    "type"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "type"
+                                    ]
+                                }
+                            }
+                        },
+                        "required": [
+                            "type",
+                            "block_id"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "type",
+                "ts",
+                "bot_id",
+                "app_id",
+                "text"
+            ]
+        },
+        "message_timestamp": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "ok",
+        "channel",
+        "message",
+        "message_timestamp"
+    ]
+}

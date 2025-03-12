@@ -27,6 +27,7 @@ export class Contentful implements INodeType {
 		defaults: {
 			name: 'Contentful',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

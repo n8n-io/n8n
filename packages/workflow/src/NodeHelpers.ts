@@ -1404,7 +1404,7 @@ function addToIssuesIfMissing(
 	if (
 		(nodeProperties.type === 'string' && (value === '' || value === undefined)) ||
 		(nodeProperties.type === 'multiOptions' && Array.isArray(value) && value.length === 0) ||
-		(nodeProperties.type === 'dateTime' && value === undefined) ||
+		(nodeProperties.type === 'dateTime' && (value === '' || value === undefined)) ||
 		(nodeProperties.type === 'options' && (value === '' || value === undefined)) ||
 		((nodeProperties.type === 'resourceLocator' || nodeProperties.type === 'workflowSelector') &&
 			!isValidResourceLocatorParameterValue(value as INodeParameterResourceLocator))
@@ -1717,4 +1717,14 @@ export function getVersionedNodeType(
 		return object.getNodeType(version);
 	}
 	return object;
+}
+
+export function isTriggerNode(nodeTypeData: INodeTypeDescription) {
+	return nodeTypeData.group.includes('trigger');
+}
+
+export function isExecutable(workflow: Workflow, node: INode, nodeTypeData: INodeTypeDescription) {
+	const outputs = getNodeOutputs(workflow, node, nodeTypeData);
+	const outputNames = getConnectionTypes(outputs);
+	return outputNames.includes(NodeConnectionType.Main) || isTriggerNode(nodeTypeData);
 }

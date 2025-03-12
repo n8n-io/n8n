@@ -61,11 +61,15 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 				totalTokens: completionTokens + promptTokens,
 			};
 		},
+		errorDescriptionMapper: (error: NodeError) => error.description,
 	};
 
 	constructor(
 		private executionFunctions: ISupplyDataFunctions,
-		options?: { tokensUsageParser: TokensUsageParser },
+		options?: {
+			tokensUsageParser?: TokensUsageParser;
+			errorDescriptionMapper?: (error: NodeError) => string;
+		},
 	) {
 		super();
 		this.options = { ...this.options, ...options };
@@ -192,6 +196,10 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		}
 
 		if (error instanceof NodeError) {
+			if (this.options.errorDescriptionMapper) {
+				error.description = this.options.errorDescriptionMapper(error);
+			}
+
 			this.executionFunctions.addOutputData(this.connectionType, runDetails.index, error);
 		} else {
 			// If the error is not a NodeError, we wrap it in a NodeOperationError

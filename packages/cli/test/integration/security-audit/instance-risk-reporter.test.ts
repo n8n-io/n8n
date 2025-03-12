@@ -240,6 +240,7 @@ test('should not report outdated instance when up to date', async () => {
 
 test('should report security settings', async () => {
 	Container.get(GlobalConfig).diagnostics.enabled = true;
+
 	const testAudit = await securityAuditService.run(['instance']);
 
 	const section = getRiskSection(

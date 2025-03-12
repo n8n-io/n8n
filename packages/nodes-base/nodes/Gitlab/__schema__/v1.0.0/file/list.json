@@ -1,0 +1,27 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "path": {
+            "type": "string"
+        },
+        "mode": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "id",
+        "name",
+        "type",
+        "path",
+        "mode"
+    ]
+}

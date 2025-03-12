@@ -23,7 +23,7 @@ import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import { parse, stringify } from 'flatted';
 import pick from 'lodash/pick';
 import { BinaryDataService, ErrorReporter, Logger } from 'n8n-core';
-import { ExecutionCancelledError, ApplicationError } from 'n8n-workflow';
+import { ExecutionCancelledError, UnexpectedError } from 'n8n-workflow';
 import type {
 	AnnotationVote,
 	ExecutionStatus,
@@ -45,7 +45,7 @@ import type {
 import { separate } from '@/utils';
 
 import { ExecutionDataRepository } from './execution-data.repository';
-import type { ExecutionData } from '../entities/execution-data';
+import { ExecutionData } from '../entities/execution-data';
 import { ExecutionEntity } from '../entities/execution-entity';
 import { ExecutionMetadata } from '../entities/execution-metadata';
 import { SharedWorkflow } from '../entities/shared-workflow';
@@ -206,7 +206,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		if (executions.length === 0) return;
 
 		this.errorReporter.error(
-			new ApplicationError('Found executions without executionData', {
+			new UnexpectedError('Found executions without executionData', {
 				extra: { executionIds: executions.map(({ id }) => id) },
 			}),
 		);
@@ -286,6 +286,15 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		const { executionData, metadata, annotation, ...rest } = execution;
 		const serializedAnnotation = this.serializeAnnotation(annotation);
+
+		if (execution.status === 'success' && executionData?.data === '[]') {
+			this.errorReporter.error('Found successful execution where data is empty stringified array', {
+				extra: {
+					executionId: execution.id,
+					workflowId: executionData?.workflowData.id,
+				},
+			});
+		}
 
 		return {
 			...rest,
@@ -378,21 +387,42 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			customData,
 			...executionInformation
 		} = execution;
-		if (Object.keys(executionInformation).length > 0) {
-			await this.update({ id: executionId }, executionInformation);
+
+		const executionData: Partial<ExecutionData> = {};
+
+		if (workflowData) executionData.workflowData = workflowData;
+		if (data) executionData.data = stringify(data);
+
+		const { type: dbType, sqlite: sqliteConfig } = this.globalConfig.database;
+
+		if (dbType === 'sqlite' && sqliteConfig.poolSize === 0) {
+			// TODO: Delete this block of code once the sqlite legacy (non-pooling) driver is dropped.
+			// In the non-pooling sqlite driver we can't use transactions, because that creates nested transactions under highly concurrent loads, leading to errors in the database
+
+			if (Object.keys(executionInformation).length > 0) {
+				await this.update({ id: executionId }, executionInformation);
+			}
+
+			if (Object.keys(executionData).length > 0) {
+				// @ts-expect-error Fix typing
+				await this.executionDataRepository.update({ executionId }, executionData);
+			}
+
+			return;
 		}
 
-		if (data || workflowData) {
-			const executionData: Partial<ExecutionData> = {};
-			if (workflowData) {
-				executionData.workflowData = workflowData;
+		// All other database drivers should update executions and execution-data atomically
+
+		await this.manager.transaction(async (tx) => {
+			if (Object.keys(executionInformation).length > 0) {
+				await tx.update(ExecutionEntity, { id: executionId }, executionInformation);
 			}
-			if (data) {
-				executionData.data = stringify(data);
+
+			if (Object.keys(executionData).length > 0) {
+				// @ts-expect-error Fix typing
+				await tx.update(ExecutionData, { executionId }, executionData);
 			}
-			// @ts-ignore
-			await this.executionDataRepository.update({ executionId }, executionData);
-		}
+		});
 	}
 
 	async deleteExecutionsByFilter(
@@ -404,7 +434,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		},
 	) {
 		if (!deleteConditions?.deleteBefore && !deleteConditions?.ids) {
-			throw new ApplicationError(
+			throw new UnexpectedError(
 				'Either "deleteBefore" or "ids" must be present in the request body',
 			);
 		}
@@ -806,7 +836,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	async findManyByRangeQuery(query: ExecutionSummaries.RangeQuery): Promise<ExecutionSummary[]> {
 		if (query?.accessibleWorkflowIds?.length === 0) {
-			throw new ApplicationError('Expected accessible workflow IDs');
+			throw new UnexpectedError('Expected accessible workflow IDs');
 		}
 
 		// Due to performance reasons, we use custom query builder with raw SQL.

@@ -50,6 +50,7 @@ export class FreshworksCrm implements INodeType {
 		defaults: {
 			name: 'Freshworks CRM',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

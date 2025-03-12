@@ -24,6 +24,7 @@ export class MicrosoftEntra implements INodeType {
 		defaults: {
 			name: 'Micosoft Entra ID',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

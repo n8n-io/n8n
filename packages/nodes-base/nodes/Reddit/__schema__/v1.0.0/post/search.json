@@ -1,0 +1,266 @@
+{
+    "type": "object",
+    "properties": {
+        "approved_at_utc": {
+            "type": "null"
+        },
+        "subreddit": {
+            "type": "string"
+        },
+        "selftext": {
+            "type": "string"
+        },
+        "author_fullname": {
+            "type": "string"
+        },
+        "saved": {
+            "type": "boolean"
+        },
+        "mod_reason_title": {
+            "type": "null"
+        },
+        "gilded": {
+            "type": "integer"
+        },
+        "clicked": {
+            "type": "boolean"
+        },
+        "title": {
+            "type": "string"
+        },
+        "link_flair_richtext": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "e": {
+                        "type": "string"
+                    },
+                    "t": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "e"
+                ]
+            }
+        },
+        "subreddit_name_prefixed": {
+            "type": "string"
+        },
+        "hidden": {
+            "type": "boolean"
+        },
+        "downs": {
+            "type": "integer"
+        },
+        "top_awarded_type": {
+            "type": "null"
+        },
+        "hide_score": {
+            "type": "boolean"
+        },
+        "name": {
+            "type": "string"
+        },
+        "quarantine": {
+            "type": "boolean"
+        },
+        "subreddit_type": {
+            "type": "string"
+        },
+        "ups": {
+            "type": "integer"
+        },
+        "total_awards_received": {
+            "type": "integer"
+        },
+        "is_original_content": {
+            "type": "boolean"
+        },
+        "is_reddit_media_domain": {
+            "type": "boolean"
+        },
+        "is_meta": {
+            "type": "boolean"
+        },
+        "category": {
+            "type": "null"
+        },
+        "can_mod_post": {
+            "type": "boolean"
+        },
+        "score": {
+            "type": "integer"
+        },
+        "approved_by": {
+            "type": "null"
+        },
+        "is_created_from_ads_ui": {
+            "type": "boolean"
+        },
+        "author_premium": {
+            "type": "boolean"
+        },
+        "thumbnail": {
+            "type": "string"
+        },
+        "author_flair_richtext": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "e": {
+                        "type": "string"
+                    },
+                    "t": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "e"
+                ]
+            }
+        },
+        "is_self": {
+            "type": "boolean"
+        },
+        "mod_note": {
+            "type": "null"
+        },
+        "created": {
+            "type": "integer"
+        },
+        "link_flair_type": {
+            "type": "string"
+        },
+        "removed_by_category": {
+            "type": "null"
+        },
+        "banned_by": {
+            "type": "null"
+        },
+        "author_flair_type": {
+            "type": "string"
+        },
+        "domain": {
+            "type": "string"
+        },
+        "allow_live_comments": {
+            "type": "boolean"
+        },
+        "banned_at_utc": {
+            "type": "null"
+        },
+        "view_count": {
+            "type": "null"
+        },
+        "archived": {
+            "type": "boolean"
+        },
+        "no_follow": {
+            "type": "boolean"
+        },
+        "is_crosspostable": {
+            "type": "boolean"
+        },
+        "pinned": {
+            "type": "boolean"
+        },
+        "over_18": {
+            "type": "boolean"
+        },
+        "media_only": {
+            "type": "boolean"
+        },
+        "can_gild": {
+            "type": "boolean"
+        },
+        "spoiler": {
+            "type": "boolean"
+        },
+        "locked": {
+            "type": "boolean"
+        },
+        "visited": {
+            "type": "boolean"
+        },
+        "removed_by": {
+            "type": "null"
+        },
+        "num_reports": {
+            "type": "null"
+        },
+        "subreddit_id": {
+            "type": "string"
+        },
+        "author_is_blocked": {
+            "type": "boolean"
+        },
+        "mod_reason_by": {
+            "type": "null"
+        },
+        "removal_reason": {
+            "type": "null"
+        },
+        "id": {
+            "type": "string"
+        },
+        "is_robot_indexable": {
+            "type": "boolean"
+        },
+        "report_reasons": {
+            "type": "null"
+        },
+        "author": {
+            "type": "string"
+        },
+        "discussion_type": {
+            "type": "null"
+        },
+        "num_comments": {
+            "type": "integer"
+        },
+        "send_replies": {
+            "type": "boolean"
+        },
+        "contest_mode": {
+            "type": "boolean"
+        },
+        "author_patreon_flair": {
+            "type": "boolean"
+        },
+        "permalink": {
+            "type": "string"
+        },
+        "stickied": {
+            "type": "boolean"
+        },
+        "url": {
+            "type": "string"
+        },
+        "subreddit_subscribers": {
+            "type": "integer"
+        },
+        "created_utc": {
+            "type": "integer"
+        },
+        "num_crossposts": {
+            "type": "integer"
+        },
+        "is_video": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "title",
+        "name",
+        "quarantine",
+        "subreddit_type",
+        "created",
+        "wls",
+        "id",
+        "url",
+        "created_utc"
+    ]
+}

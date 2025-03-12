@@ -25,6 +25,7 @@ export class PhilipsHue implements INodeType {
 		defaults: {
 			name: 'Philips Hue',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

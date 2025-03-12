@@ -1,0 +1,84 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "orderindex": {
+            "type": "integer"
+        },
+        "content": {
+            "type": "string"
+        },
+        "task_count": {
+            "type": "integer"
+        },
+        "folder": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "hidden": {
+                    "type": "boolean"
+                },
+                "access": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "hidden",
+                "access"
+            ]
+        },
+        "space": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "access": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "access"
+            ]
+        },
+        "archived": {
+            "type": "boolean"
+        },
+        "permission_level": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "id",
+        "name",
+        "orderindex",
+        "status",
+        "priority",
+        "assignee",
+        "task_count",
+        "due_date",
+        "start_date",
+        "folder",
+        "space",
+        "archived",
+        "override_statuses",
+        "permission_level"
+    ]
+}

@@ -3,7 +3,7 @@ import { mock } from 'jest-mock-extended';
 import { Logger } from 'n8n-core';
 import type { ChildProcess, SpawnOptions } from 'node:child_process';
 
-import type { TaskRunnerAuthService } from '@/task-runners/auth/task-runner-auth.service';
+import type { TaskBrokerAuthService } from '@/task-runners/task-broker/auth/task-broker-auth.service';
 import { TaskRunnerProcess } from '@/task-runners/task-runner-process';
 import { mockInstance } from '@test/mocking';
 
@@ -26,7 +26,7 @@ describe('TaskRunnerProcess', () => {
 	const runnerConfig = mockInstance(TaskRunnersConfig);
 	runnerConfig.enabled = true;
 	runnerConfig.mode = 'internal';
-	const authService = mock<TaskRunnerAuthService>();
+	const authService = mock<TaskBrokerAuthService>();
 	let taskRunnerProcess = new TaskRunnerProcess(logger, runnerConfig, authService, mock());
 
 	afterEach(async () => {
@@ -76,6 +76,7 @@ describe('TaskRunnerProcess', () => {
 			'N8N_VERSION',
 			'ENVIRONMENT',
 			'DEPLOYMENT_NAME',
+			'NODE_PATH',
 			'GENERIC_TIMEZONE',
 		])('should propagate %s from env as is', async (envVar) => {
 			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
@@ -116,6 +117,18 @@ describe('TaskRunnerProcess', () => {
 			// @ts-expect-error The type is not correct
 			const options = spawnMock.mock.calls[0][2] as SpawnOptions;
 			expect(options.env).not.toHaveProperty('NODE_OPTIONS');
+		});
+
+		it('should use --disallow-code-generation-from-strings and --disable-proto=delete flags', async () => {
+			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
+
+			await taskRunnerProcess.start();
+
+			expect(spawnMock.mock.calls[0].at(1)).toEqual([
+				'--disallow-code-generation-from-strings',
+				'--disable-proto=delete',
+				expect.stringContaining('/packages/@n8n/task-runner/dist/start.js'),
+			]);
 		});
 	});
 });

@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
 import glob from 'fast-glob';
@@ -21,7 +20,6 @@ import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
-import { License } from '@/license';
 import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { Server } from '@/server';
@@ -69,11 +67,13 @@ export class Start extends BaseCommand {
 
 	override needsCommunityPackages = true;
 
+	private getEditorUrl = () => Container.get(UrlService).getInstanceBaseUrl();
+
 	/**
 	 * Opens the UI in browser
 	 */
 	private openBrowser() {
-		const editorUrl = Container.get(UrlService).baseUrl;
+		const editorUrl = this.getEditorUrl();
 
 		open(editorUrl, { wait: true }).catch(() => {
 			this.logger.info(
@@ -96,7 +96,7 @@ export class Start extends BaseCommand {
 
 			Container.get(WaitTracker).stopTracking();
 
-			await this.externalHooks?.run('n8n.stop', []);
+			await this.externalHooks?.run('n8n.stop');
 
 			await this.activeWorkflowManager.removeAllTriggerAndPollerBasedWorkflows();
 
@@ -192,18 +192,23 @@ export class Start extends BaseCommand {
 		await super.init();
 		this.activeWorkflowManager = Container.get(ActiveWorkflowManager);
 
-		this.instanceSettings.setMultiMainEnabled(
-			config.getEnv('executions.mode') === 'queue' && this.globalConfig.multiMainSetup.enabled,
-		);
-		await this.initLicense();
+		const isMultiMainEnabled =
+			config.getEnv('executions.mode') === 'queue' && this.globalConfig.multiMainSetup.enabled;
+
+		this.instanceSettings.setMultiMainEnabled(isMultiMainEnabled);
+
+		/**
+		 * We temporarily license multi-main to allow orchestration to set instance
+		 * role, which is needed by license init. Once the license is initialized,
+		 * the actual value will be used for the license check.
+		 */
+		if (isMultiMainEnabled) this.instanceSettings.setMultiMainLicensed(true);
 
 		await this.initOrchestration();
-		this.logger.debug('Orchestration init complete');
+		await this.initLicense();
 
-		if (!this.globalConfig.license.autoRenewalEnabled && this.instanceSettings.isLeader) {
-			this.logger.warn(
-				'Automatic license renewal is disabled. The license will not renew automatically, and access to licensed features may be lost!',
-			);
+		if (isMultiMainEnabled && !this.license.isMultiMainLicensed()) {
+			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
 		}
 
 		Container.get(WaitTracker).init();
@@ -218,6 +223,11 @@ export class Start extends BaseCommand {
 		this.logger.debug('External secrets init complete');
 		this.initWorkflowHistory();
 		this.logger.debug('Workflow history init complete');
+
+		if (!isMultiMainEnabled) {
+			await this.cleanupTestRunner();
+			this.logger.debug('Test runner cleanup complete');
+		}
 
 		if (!this.globalConfig.endpoints.disableUi) {
 			await this.generateStaticAssets();
@@ -237,13 +247,6 @@ export class Start extends BaseCommand {
 			return;
 		}
 
-		if (
-			Container.get(GlobalConfig).multiMainSetup.enabled &&
-			!Container.get(License).isMultipleMainInstancesLicensed()
-		) {
-			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
-		}
-
 		const orchestrationService = Container.get(OrchestrationService);
 
 		await orchestrationService.init();
@@ -260,11 +263,11 @@ export class Start extends BaseCommand {
 
 		orchestrationService.multiMainSetup
 			.on('leader-stepdown', async () => {
-				await this.license.reinit(); // to disable renewal
+				this.license.disableAutoRenewals();
 				await this.activeWorkflowManager.removeAllTriggerAndPollerBasedWorkflows();
 			})
 			.on('leader-takeover', async () => {
-				await this.license.reinit(); // to enable renewal
+				this.license.enableAutoRenewals();
 				await this.activeWorkflowManager.addAllTriggerAndPollerBasedWorkflows();
 			});
 	}
@@ -327,7 +330,8 @@ export class Start extends BaseCommand {
 		// Start to get active workflows and run their triggers
 		await this.activeWorkflowManager.init();
 
-		const editorUrl = Container.get(UrlService).baseUrl;
+		const editorUrl = this.getEditorUrl();
+
 		this.log(`\nEditor is now accessible via:\n${editorUrl}`);
 
 		// Allow to open n8n editor by pressing "o"

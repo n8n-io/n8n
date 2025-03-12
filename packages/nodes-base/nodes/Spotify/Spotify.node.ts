@@ -24,6 +24,7 @@ export class Spotify implements INodeType {
 		defaults: {
 			name: 'Spotify',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [
@@ -1308,6 +1309,10 @@ export class Spotify implements INodeType {
 					);
 				}
 
+				// Remove null values from the response
+				if (operation === 'getUserPlaylists') {
+					responseData = responseData.filter((item: IDataObject) => item !== null);
+				}
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },

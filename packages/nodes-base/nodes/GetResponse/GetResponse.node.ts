@@ -26,6 +26,7 @@ export class GetResponse implements INodeType {
 		defaults: {
 			name: 'GetResponse',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

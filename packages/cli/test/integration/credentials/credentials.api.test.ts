@@ -1,9 +1,13 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { Scope } from '@sentry/node';
+import * as a from 'assert';
+import { mock } from 'jest-mock-extended';
 import { Credentials } from 'n8n-core';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { randomString } from 'n8n-workflow';
 
+import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
@@ -11,8 +15,11 @@ import { CredentialsRepository } from '@/databases/repositories/credentials.repo
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import type { ListQuery } from '@/requests';
+import { CredentialsTester } from '@/services/credentials-tester.service';
 
 import {
+	decryptCredentialData,
+	getCredentialById,
 	saveCredential,
 	shareCredentialWithProjects,
 	shareCredentialWithUsers,
@@ -22,6 +29,7 @@ import { createManyUsers, createMember, createOwner } from '../shared/db/users';
 import {
 	randomCredentialPayload as payload,
 	randomCredentialPayload,
+	randomCredentialPayloadWithOauthTokenData,
 	randomName,
 } from '../shared/random';
 import * as testDb from '../shared/test-db';
@@ -318,7 +326,7 @@ describe('GET /credentials', () => {
 		] = await Promise.all([
 			saveCredential(randomCredentialPayload(), { user: owner, role: 'credential:owner' }),
 			saveCredential(randomCredentialPayload(), { user: member, role: 'credential:owner' }),
-			saveCredential(randomCredentialPayload(), {
+			saveCredential(randomCredentialPayloadWithOauthTokenData(), {
 				project: teamProjectViewer,
 				role: 'credential:owner',
 			}),
@@ -369,6 +377,9 @@ describe('GET /credentials', () => {
 
 		expect(teamCredAsViewer.id).toBe(teamCredentialAsViewer.id);
 		expect(teamCredAsViewer.data).toBeDefined();
+		expect(
+			(teamCredAsViewer.data as unknown as ICredentialDataDecryptedObject).oauthTokenData,
+		).toBe(true);
 		expect(teamCredAsViewer.scopes).toEqual(
 			[
 				'credential:move',
@@ -632,25 +643,25 @@ describe('GET /credentials', () => {
 			expect(response.body.data.map((credential) => credential.id)).toContain(memberCredential.id);
 		});
 
-		test('should return all credentials to instance owners when working on their own personal project', async () => {
+		test('should not ignore the project filter when the request is done by an owner and also includes the scopes', async () => {
 			const ownerCredential = await saveCredential(payload(), {
 				user: owner,
 				role: 'credential:owner',
 			});
-			const memberCredential = await saveCredential(payload(), {
-				user: member,
-				role: 'credential:owner',
-			});
+			// should not show up
+			await saveCredential(payload(), { user: member, role: 'credential:owner' });
 
 			const response: GetAllResponse = await testServer
 				.authAgentFor(owner)
 				.get('/credentials')
-				.query(`filter={ "projectId": "${ownerPersonalProject.id}" }&includeScopes=true`)
+				.query({
+					filter: JSON.stringify({ projectId: ownerPersonalProject.id }),
+					includeScopes: true,
+				})
 				.expect(200);
 
-			expect(response.body.data).toHaveLength(2);
-			expect(response.body.data.map((credential) => credential.id)).toContain(ownerCredential.id);
-			expect(response.body.data.map((credential) => credential.id)).toContain(memberCredential.id);
+			expect(response.body.data).toHaveLength(1);
+			expect(response.body.data[0].id).toBe(ownerCredential.id);
 		});
 	});
 
@@ -768,11 +779,12 @@ describe('POST /credentials', () => {
 			].sort(),
 		);
 
-		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
+		const credential = await getCredentialById(id);
+		a.ok(credential);
 
 		expect(credential.name).toBe(payload.name);
 		expect(credential.type).toBe(payload.type);
-		expect(credential.data).not.toBe(payload.data);
+		expect(await decryptCredentialData(credential)).toStrictEqual(payload.data);
 
 		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
 			relations: { project: true, credentials: true },
@@ -1164,6 +1176,39 @@ describe('PATCH /credentials/:id', () => {
 		expect(shellCredential.name).toBe(patchPayload.name); // updated
 	});
 
+	test('should not allow to overwrite oauthTokenData', async () => {
+		// ARRANGE
+		const credential = randomCredentialPayload();
+		credential.data.oauthTokenData = { access_token: 'foo' };
+		const savedCredential = await saveCredential(credential, {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		// ACT
+		const patchPayload = {
+			...credential,
+			data: { accessToken: 'new', oauthTokenData: { access_token: 'bar' } },
+		};
+		await authOwnerAgent.patch(`/credentials/${savedCredential.id}`).send(patchPayload).expect(200);
+
+		// ASSERT
+		const response = await authOwnerAgent
+			.get(`/credentials/${savedCredential.id}`)
+			.query({ includeData: true })
+			.expect(200);
+
+		const { id, data } = response.body.data;
+
+		expect(id).toBe(savedCredential.id);
+		// was overwritten
+		expect(data.accessToken).toBe(patchPayload.data.accessToken);
+		// was not overwritten
+		const dbCredential = await getCredentialById(savedCredential.id);
+		const unencryptedData = Container.get(CredentialsService).decrypt(dbCredential!);
+		expect(unencryptedData.oauthTokenData).toEqual(credential.data.oauthTokenData);
+	});
+
 	test('should fail with invalid inputs', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), {
 			user: owner,
@@ -1273,7 +1318,7 @@ describe('GET /credentials/:id', () => {
 		expect(secondResponse.body.data.data).toBeDefined();
 	});
 
-	test('should not redact the data when `includeData:true` is passed', async () => {
+	test('should redact the data when `includeData:true` is passed', async () => {
 		const credentialService = Container.get(CredentialsService);
 		const redactSpy = jest.spyOn(credentialService, 'redact');
 		const savedCredential = await saveCredential(randomCredentialPayload(), {
@@ -1287,7 +1332,23 @@ describe('GET /credentials/:id', () => {
 
 		validateMainCredentialData(response.body.data);
 		expect(response.body.data.data).toBeDefined();
-		expect(redactSpy).not.toHaveBeenCalled();
+		expect(redactSpy).toHaveBeenCalled();
+	});
+
+	test('should omit oauth data when `includeData:true` is passed', async () => {
+		const credential = randomCredentialPayloadWithOauthTokenData();
+		const savedCredential = await saveCredential(credential, {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		const response = await authOwnerAgent
+			.get(`/credentials/${savedCredential.id}`)
+			.query({ includeData: true });
+
+		validateMainCredentialData(response.body.data);
+		expect(response.body.data.data).toBeDefined();
+		expect(response.body.data.data.oauthTokenData).toBe(true);
 	});
 
 	test('should retrieve owned cred for member', async () => {
@@ -1354,6 +1415,73 @@ describe('GET /credentials/:id', () => {
 
 		const responseAbc = await authOwnerAgent.get('/credentials/abc');
 		expect(responseAbc.statusCode).toBe(404);
+	});
+});
+
+describe('POST /credentials/test', () => {
+	const mockCredentialsTester = mock<CredentialsTester>();
+	Container.set(CredentialsTester, mockCredentialsTester);
+
+	afterEach(() => {
+		mockCredentialsTester.testCredentials.mockClear();
+	});
+
+	test('should test a credential with unredacted data', async () => {
+		mockCredentialsTester.testCredentials.mockResolvedValue({
+			status: 'OK',
+			message: 'Credential tested successfully',
+		});
+		const credential = randomCredentialPayload();
+		const savedCredential = await saveCredential(credential, {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		const response = await authOwnerAgent.post('/credentials/test').send({
+			credentials: {
+				id: savedCredential.id,
+				type: savedCredential.type,
+				data: credential.data,
+			},
+		});
+		expect(response.statusCode).toBe(200);
+		expect(mockCredentialsTester.testCredentials.mock.calls[0][0]).toEqual(owner.id);
+		expect(mockCredentialsTester.testCredentials.mock.calls[0][1]).toBe(savedCredential.type);
+		expect(mockCredentialsTester.testCredentials.mock.calls[0][2]).toEqual({
+			id: savedCredential.id,
+			type: savedCredential.type,
+			data: credential.data,
+		});
+	});
+
+	test('should test a credential with redacted data', async () => {
+		mockCredentialsTester.testCredentials.mockResolvedValue({
+			status: 'OK',
+			message: 'Credential tested successfully',
+		});
+		const credential = randomCredentialPayload();
+		const savedCredential = await saveCredential(credential, {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		const response = await authOwnerAgent.post('/credentials/test').send({
+			credentials: {
+				id: savedCredential.id,
+				type: savedCredential.type,
+				data: {
+					accessToken: CREDENTIAL_BLANKING_VALUE,
+				},
+			},
+		});
+		expect(response.statusCode).toBe(200);
+		expect(mockCredentialsTester.testCredentials.mock.calls[0][0]).toEqual(owner.id);
+		expect(mockCredentialsTester.testCredentials.mock.calls[0][1]).toBe(savedCredential.type);
+		expect(mockCredentialsTester.testCredentials.mock.calls[0][2]).toEqual({
+			id: savedCredential.id,
+			type: savedCredential.type,
+			data: credential.data,
+		});
 	});
 });
 

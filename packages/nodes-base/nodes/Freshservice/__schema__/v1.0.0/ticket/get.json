@@ -1,0 +1,199 @@
+{
+	"type": "object",
+	"properties": {
+		"subject": {
+			"type": "string"
+		},
+		"requester_id": {
+			"type": "integer"
+		},
+		"due_by": {
+			"type": "string"
+		},
+		"fr_escalated": {
+			"type": "boolean"
+		},
+		"deleted": {
+			"type": "boolean"
+		},
+		"spam": {
+			"type": "boolean"
+		},
+		"reply_cc_emails": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			}
+		},
+		"cc_emails": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			}
+		},
+		"is_escalated": {
+			"type": "boolean"
+		},
+		"fr_due_by": {
+			"type": "string"
+		},
+		"id": {
+			"type": "integer"
+		},
+		"priority": {
+			"type": "integer"
+		},
+		"status": {
+			"type": "integer"
+		},
+		"source": {
+			"type": "integer"
+		},
+		"created_at": {
+			"type": "string"
+		},
+		"updated_at": {
+			"type": "string"
+		},
+		"workspace_id": {
+			"type": "integer"
+		},
+		"requested_for_id": {
+			"type": "integer"
+		},
+		"type": {
+			"type": "string"
+		},
+		"description": {
+			"type": "string"
+		},
+		"description_text": {
+			"type": "string"
+		},
+		"custom_fields": {
+			"type": "object",
+			"properties": {
+				"major_incident_type": {
+					"type": "null"
+				},
+				"business_impact": {
+					"type": "null"
+				},
+				"impacted_locations": {
+					"type": "null"
+				},
+				"no_of_customers_impacted": {
+					"type": "null"
+				},
+				"ticket_has_been_triaged": {
+					"type": "null"
+				}
+			}
+		},
+		"tasks_dependency_type": {
+			"type": "integer"
+		},
+		"sla_policy_id": {
+			"type": "integer"
+		},
+		"impact": {
+			"type": "integer"
+		},
+		"urgency": {
+			"type": "integer"
+		},
+		"applied_business_hours": {
+			"type": "integer"
+		},
+		"created_within_business_hours": {
+			"type": "boolean"
+		},
+		"resolution_notes": {
+			"type": "null"
+		},
+		"resolution_notes_html": {
+			"type": "null"
+		},
+		"attachments": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"attachment_url": {
+						"type": "string"
+					},
+					"content_type": {
+						"type": "string"
+					},
+					"created_at": {
+						"type": "string"
+					},
+					"id": {
+						"type": "integer"
+					},
+					"name": {
+						"type": "string"
+					},
+					"size": {
+						"type": "integer"
+					},
+					"updated_at": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"attachment_url",
+					"content_type",
+					"created_at",
+					"id",
+					"name",
+					"size",
+					"updated_at"
+				]
+			}
+		}
+	},
+	"required": [
+		"subject",
+		"group_id",
+		"department_id",
+		"category",
+		"sub_category",
+		"item_category",
+		"requester_id",
+		"responder_id",
+		"due_by",
+		"fr_escalated",
+		"deleted",
+		"spam",
+		"email_config_id",
+		"fwd_emails",
+		"reply_cc_emails",
+		"cc_emails",
+		"is_escalated",
+		"fr_due_by",
+		"id",
+		"priority",
+		"status",
+		"source",
+		"created_at",
+		"updated_at",
+		"workspace_id",
+		"requested_for_id",
+		"to_emails",
+		"type",
+		"description",
+		"description_text",
+		"custom_fields",
+		"tasks_dependency_type",
+		"sla_policy_id",
+		"impact",
+		"urgency",
+		"bcc_emails",
+		"applied_business_hours",
+		"created_within_business_hours",
+		"resolution_notes",
+		"resolution_notes_html",
+		"attachments"
+	]
+}

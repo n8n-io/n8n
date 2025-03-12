@@ -28,6 +28,7 @@ export class ApiTemplateIo implements INodeType {
 		defaults: {
 			name: 'APITemplate.io',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

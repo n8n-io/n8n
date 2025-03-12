@@ -39,6 +39,7 @@ export class Github implements INodeType {
 		defaults: {
 			name: 'GitHub',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		webhooks: [

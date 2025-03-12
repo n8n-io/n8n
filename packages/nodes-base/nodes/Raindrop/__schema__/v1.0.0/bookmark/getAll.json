@@ -1,0 +1,198 @@
+{
+    "type": "object",
+    "properties": {
+        "_id": {
+            "type": "integer"
+        },
+        "link": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "excerpt": {
+            "type": "string"
+        },
+        "note": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "user": {
+            "type": "object",
+            "properties": {
+                "$ref": {
+                    "type": "string"
+                },
+                "$id": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "$ref",
+                "$id"
+            ]
+        },
+        "cover": {
+            "type": "string"
+        },
+        "media": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string"
+                    },
+                    "link": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "type",
+                    "link"
+                ]
+            }
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "highlights": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "text": {
+                        "type": "string"
+                    },
+                    "note": {
+                        "type": "string"
+                    },
+                    "color": {
+                        "type": "string"
+                    },
+                    "created": {
+                        "type": "string"
+                    },
+                    "lastUpdate": {
+                        "type": "string"
+                    },
+                    "creatorRef": {
+                        "type": "integer"
+                    },
+                    "_id": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "text",
+                    "note",
+                    "color",
+                    "created",
+                    "lastUpdate",
+                    "creatorRef",
+                    "_id"
+                ]
+            }
+        },
+        "important": {
+            "type": "boolean"
+        },
+        "removed": {
+            "type": "boolean"
+        },
+        "created": {
+            "type": "string"
+        },
+        "collection": {
+            "type": "object",
+            "properties": {
+                "$ref": {
+                    "type": "string"
+                },
+                "$id": {
+                    "type": "integer"
+                },
+                "oid": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "$ref",
+                "$id",
+                "oid"
+            ]
+        },
+        "lastUpdate": {
+            "type": "string"
+        },
+        "domain": {
+            "type": "string"
+        },
+        "creatorRef": {
+            "type": "object",
+            "properties": {
+                "_id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "avatar": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "_id",
+                "name",
+                "avatar",
+                "email"
+            ]
+        },
+        "sort": {
+            "type": "integer"
+        },
+        "collectionId": {
+            "type": "integer"
+        },
+        "reminder": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "null"
+                }
+            },
+            "required": [
+                "date"
+            ]
+        }
+    },
+    "required": [
+        "_id",
+        "link",
+        "title",
+        "excerpt",
+        "note",
+        "type",
+        "user",
+        "cover",
+        "media",
+        "tags",
+        "highlights",
+        "removed",
+        "created",
+        "collection",
+        "lastUpdate",
+        "domain",
+        "creatorRef",
+        "sort",
+        "collectionId"
+    ]
+}

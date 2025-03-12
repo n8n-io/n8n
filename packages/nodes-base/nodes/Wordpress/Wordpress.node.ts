@@ -29,6 +29,7 @@ export class Wordpress implements INodeType {
 		defaults: {
 			name: 'Wordpress',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

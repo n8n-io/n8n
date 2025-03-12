@@ -33,6 +33,7 @@ export class Cockpit implements INodeType {
 		defaults: {
 			name: 'Cockpit',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

@@ -23,6 +23,7 @@ export class HumanticAi implements INodeType {
 		defaults: {
 			name: 'Humantic AI',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

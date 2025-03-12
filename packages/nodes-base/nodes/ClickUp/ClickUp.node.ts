@@ -40,6 +40,7 @@ export class ClickUp implements INodeType {
 		defaults: {
 			name: 'ClickUp',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

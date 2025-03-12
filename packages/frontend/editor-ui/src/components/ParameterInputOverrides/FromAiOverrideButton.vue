@@ -1,0 +1,43 @@
+<script setup lang="ts">
+import { useI18n } from '@/composables/useI18n';
+
+const i18n = useI18n();
+
+const emit = defineEmits<{
+	click: [];
+}>();
+</script>
+
+<template>
+	<N8nTooltip>
+		<template #content>
+			<div>{{ i18n.baseText('parameterOverride.applyOverrideButtonTooltip') }}</div>
+		</template>
+
+		<N8nButton
+			:class="[$style.overrideButton]"
+			type="tertiary"
+			data-test-id="from-ai-override-button"
+			@click="emit('click')"
+		>
+			<AiStarsIcon size="large" :class="$style.aiStarsIcon" />
+		</N8nButton>
+	</N8nTooltip>
+</template>
+
+<style lang="scss" module>
+.overrideButton {
+	display: flex;
+	justify-content: center;
+	border: 0px;
+	height: 30px;
+	width: 30px;
+	background-color: var(--color-foreground-base);
+	color: var(--color-foreground-xdark);
+
+	&:hover {
+		color: var(--color-foreground-xdark);
+		background-color: var(--color-secondary);
+	}
+}
+</style>

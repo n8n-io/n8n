@@ -38,6 +38,7 @@ export class TwitterV2 implements INodeType {
 			defaults: {
 				name: 'X',
 			},
+			usableAsTool: true,
 			inputs: [NodeConnectionType.Main],
 			outputs: [NodeConnectionType.Main],
 			credentials: [

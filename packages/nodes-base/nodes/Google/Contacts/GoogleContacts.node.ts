@@ -31,6 +31,7 @@ export class GoogleContacts implements INodeType {
 		defaults: {
 			name: 'Google Contacts',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

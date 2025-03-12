@@ -1,0 +1,41 @@
+{
+    "type": "object",
+    "properties": {
+        "kind": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "etag": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "updated": {
+            "type": "string"
+        },
+        "selfLink": {
+            "type": "string"
+        },
+        "position": {
+            "type": "string"
+        },
+        "notes": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "due": {
+            "type": "string"
+        },
+        "webViewLink": {
+            "type": "string"
+        },
+        "completed": {
+            "type": "string"
+        }
+    }
+}

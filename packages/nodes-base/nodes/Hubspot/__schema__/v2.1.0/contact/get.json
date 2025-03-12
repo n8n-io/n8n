@@ -1,0 +1,431 @@
+{
+    "type": "object",
+    "properties": {
+        "vid": {
+            "type": "integer"
+        },
+        "canonical-vid": {
+            "type": "integer"
+        },
+        "portal-id": {
+            "type": "integer"
+        },
+        "is-contact": {
+            "type": "boolean"
+        },
+        "properties": {
+            "type": "object",
+            "properties": {
+                "hs_is_contact": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        },
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "value": {
+                                        "type": "string"
+                                    },
+                                    "source-type": {
+                                        "type": "string"
+                                    },
+                                    "source-id": {
+                                        "type": "null"
+                                    },
+                                    "source-label": {
+                                        "type": "null"
+                                    },
+                                    "updated-by-user-id": {
+                                        "type": "null"
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "selected": {
+                                        "type": "boolean"
+                                    },
+                                    "data-sensitivity": {
+                                        "type": "null"
+                                    },
+                                    "is-encrypted": {
+                                        "type": "null"
+                                    }
+                                },
+                                "required": [
+                                    "value",
+                                    "source-type",
+                                    "source-id",
+                                    "source-label",
+                                    "updated-by-user-id",
+                                    "timestamp",
+                                    "selected",
+                                    "data-sensitivity",
+                                    "is-encrypted"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "value"
+                    ]
+                },
+                "lastmodifieddate": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        },
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "value": {
+                                        "type": "string"
+                                    },
+                                    "source-type": {
+                                        "type": "string"
+                                    },
+                                    "source-label": {
+                                        "type": "null"
+                                    },
+                                    "updated-by-user-id": {
+                                        "type": "null"
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "selected": {
+                                        "type": "boolean"
+                                    },
+                                    "data-sensitivity": {
+                                        "type": "null"
+                                    },
+                                    "is-encrypted": {
+                                        "type": "null"
+                                    }
+                                },
+                                "required": [
+                                    "value",
+                                    "source-type",
+                                    "source-id",
+                                    "source-label",
+                                    "updated-by-user-id",
+                                    "timestamp",
+                                    "selected",
+                                    "data-sensitivity",
+                                    "is-encrypted"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "value"
+                    ]
+                },
+                "ip_country_code": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        },
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "value": {
+                                        "type": "string"
+                                    },
+                                    "source-type": {
+                                        "type": "string"
+                                    },
+                                    "source-id": {
+                                        "type": "string"
+                                    },
+                                    "source-label": {
+                                        "type": "null"
+                                    },
+                                    "updated-by-user-id": {
+                                        "type": "null"
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "selected": {
+                                        "type": "boolean"
+                                    },
+                                    "data-sensitivity": {
+                                        "type": "null"
+                                    },
+                                    "is-encrypted": {
+                                        "type": "null"
+                                    }
+                                },
+                                "required": [
+                                    "value",
+                                    "source-type",
+                                    "source-id",
+                                    "source-label",
+                                    "updated-by-user-id",
+                                    "timestamp",
+                                    "selected",
+                                    "data-sensitivity",
+                                    "is-encrypted"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "value",
+                        "versions"
+                    ]
+                },
+                "ip_country": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        },
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "value": {
+                                        "type": "string"
+                                    },
+                                    "source-type": {
+                                        "type": "string"
+                                    },
+                                    "source-id": {
+                                        "type": "string"
+                                    },
+                                    "source-label": {
+                                        "type": "null"
+                                    },
+                                    "updated-by-user-id": {
+                                        "type": "null"
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "selected": {
+                                        "type": "boolean"
+                                    },
+                                    "data-sensitivity": {
+                                        "type": "null"
+                                    },
+                                    "is-encrypted": {
+                                        "type": "null"
+                                    }
+                                },
+                                "required": [
+                                    "value",
+                                    "source-type",
+                                    "source-id",
+                                    "source-label",
+                                    "updated-by-user-id",
+                                    "timestamp",
+                                    "selected",
+                                    "data-sensitivity",
+                                    "is-encrypted"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "value",
+                        "versions"
+                    ]
+                },
+                "hs_ip_timezone": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        },
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "value": {
+                                        "type": "string"
+                                    },
+                                    "source-type": {
+                                        "type": "string"
+                                    },
+                                    "source-id": {
+                                        "type": "string"
+                                    },
+                                    "source-label": {
+                                        "type": "null"
+                                    },
+                                    "updated-by-user-id": {
+                                        "type": "null"
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "selected": {
+                                        "type": "boolean"
+                                    },
+                                    "data-sensitivity": {
+                                        "type": "null"
+                                    },
+                                    "is-encrypted": {
+                                        "type": "null"
+                                    }
+                                },
+                                "required": [
+                                    "value",
+                                    "source-type",
+                                    "source-id",
+                                    "source-label",
+                                    "updated-by-user-id",
+                                    "timestamp",
+                                    "selected",
+                                    "data-sensitivity",
+                                    "is-encrypted"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "value",
+                        "versions"
+                    ]
+                }
+            },
+            "required": [
+                "hs_is_contact"
+            ]
+        },
+        "form-submissions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "conversion-id": {
+                        "type": "string"
+                    },
+                    "timestamp": {
+                        "type": "integer"
+                    },
+                    "form-id": {
+                        "type": "string"
+                    },
+                    "portal-id": {
+                        "type": "integer"
+                    },
+                    "page-url": {
+                        "type": "string"
+                    },
+                    "page-title": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "form-type": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "conversion-id",
+                    "timestamp",
+                    "form-id",
+                    "portal-id",
+                    "page-url",
+                    "page-title",
+                    "title",
+                    "form-type",
+                    "meta-data"
+                ]
+            }
+        },
+        "list-memberships": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "static-list-id": {
+                        "type": "integer"
+                    },
+                    "internal-list-id": {
+                        "type": "integer"
+                    },
+                    "timestamp": {
+                        "type": "integer"
+                    },
+                    "vid": {
+                        "type": "integer"
+                    },
+                    "is-member": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "static-list-id",
+                    "internal-list-id",
+                    "timestamp",
+                    "vid",
+                    "is-member"
+                ]
+            }
+        },
+        "identity-profiles": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "vid": {
+                        "type": "integer"
+                    },
+                    "saved-at-timestamp": {
+                        "type": "integer"
+                    },
+                    "deleted-changed-timestamp": {
+                        "type": "integer"
+                    },
+                    "identities": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "type": {
+                                    "type": "string"
+                                },
+                                "value": {
+                                    "type": "string"
+                                },
+                                "timestamp": {
+                                    "type": "integer"
+                                },
+                                "is-primary": {
+                                    "type": "boolean"
+                                }
+                            },
+                            "required": [
+                                "type",
+                                "value",
+                                "timestamp"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "vid",
+                    "saved-at-timestamp",
+                    "deleted-changed-timestamp",
+                    "identities"
+                ]
+            }
+        }
+    }
+}

@@ -1,0 +1,47 @@
+{
+    "type": "object",
+    "properties": {
+        "content": {
+            "type": "string"
+        },
+        "metadata": {
+            "type": "object",
+            "properties": {
+                "loc": {
+                    "type": "object",
+                    "properties": {
+                        "lines": {
+                            "type": "object",
+                            "properties": {
+                                "to": {
+                                    "type": "integer"
+                                },
+                                "from": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "to",
+                                "from"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "lines"
+                    ]
+                },
+                "source": {
+                    "type": "string"
+                },
+                "blobType": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "loc",
+                "source",
+                "blobType"
+            ]
+        }
+    }
+}

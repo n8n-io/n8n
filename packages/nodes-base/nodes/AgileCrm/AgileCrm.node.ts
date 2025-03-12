@@ -35,6 +35,7 @@ export class AgileCrm implements INodeType {
 		defaults: {
 			name: 'Agile CRM',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

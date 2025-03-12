@@ -1,0 +1,137 @@
+{
+    "type": "object",
+    "properties": {
+        "_id": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "createdAt": {
+            "type": "string"
+        },
+        "isFirst": {
+            "type": "boolean"
+        },
+        "stopped": {
+            "type": "boolean"
+        },
+        "bot": {
+            "type": "boolean"
+        },
+        "teamId": {
+            "type": "string"
+        },
+        "leadId": {
+            "type": "string"
+        },
+        "campaignId": {
+            "type": "string"
+        },
+        "sequenceId": {
+            "type": "string"
+        },
+        "sequenceStep": {
+            "type": "integer"
+        },
+        "emailTemplateId": {
+            "type": "string"
+        },
+        "createdBy": {
+            "type": "string"
+        },
+        "totalSequenceStep": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "sendUserName": {
+            "type": "string"
+        },
+        "leadFirstName": {
+            "type": "string"
+        },
+        "leadLastName": {
+            "type": "string"
+        },
+        "leadEmail": {
+            "type": "string"
+        },
+        "leadCompanyName": {
+            "type": "string"
+        },
+        "contactId": {
+            "type": "string"
+        },
+        "metaData": {
+            "type": "object",
+            "properties": {
+                "teamId": {
+                    "type": "string"
+                },
+                "campaignId": {
+                    "type": "string"
+                },
+                "leadId": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "createdBy": {
+                    "type": "string"
+                },
+                "taskId": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "teamId",
+                "campaignId",
+                "leadId",
+                "type",
+                "createdBy"
+            ]
+        },
+        "firstName": {
+            "type": "string"
+        },
+        "lastName": {
+            "type": "string"
+        },
+        "linkedinUrl": {
+            "type": "string"
+        },
+        "companyName": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "campaignName": {
+            "type": "string"
+        },
+        "sequenceTested": {
+            "type": "string"
+        },
+        "emailTemplateName": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "_id",
+        "type",
+        "createdAt",
+        "bot",
+        "teamId",
+        "leadId",
+        "campaignId",
+        "createdBy",
+        "sendUserId",
+        "name",
+        "contactId",
+        "metaData",
+        "campaignName"
+    ]
+}

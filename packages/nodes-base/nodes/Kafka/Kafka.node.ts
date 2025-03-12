@@ -27,6 +27,7 @@ export class Kafka implements INodeType {
 		defaults: {
 			name: 'Kafka',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

@@ -55,6 +55,7 @@ export class ExecuteCommand implements INodeType {
 			name: 'Execute Command',
 			color: '#886644',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		properties: [

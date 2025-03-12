@@ -25,6 +25,7 @@ export class UProc implements INodeType {
 		defaults: {
 			name: 'uProc',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

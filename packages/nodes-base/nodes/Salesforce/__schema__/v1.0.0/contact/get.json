@@ -1,0 +1,110 @@
+{
+    "type": "object",
+    "properties": {
+        "attributes": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "type",
+                "url"
+            ]
+        },
+        "Id": {
+            "type": "string"
+        },
+        "IsDeleted": {
+            "type": "boolean"
+        },
+        "MasterRecordId": {
+            "type": "null"
+        },
+        "LastName": {
+            "type": "string"
+        },
+        "Name": {
+            "type": "string"
+        },
+        "MailingLatitude": {
+            "type": "null"
+        },
+        "MailingLongitude": {
+            "type": "null"
+        },
+        "MailingGeocodeAccuracy": {
+            "type": "null"
+        },
+        "ReportsToId": {
+            "type": "null"
+        },
+        "Department": {
+            "type": "null"
+        },
+        "OwnerId": {
+            "type": "string"
+        },
+        "CreatedDate": {
+            "type": "string"
+        },
+        "CreatedById": {
+            "type": "string"
+        },
+        "LastModifiedDate": {
+            "type": "string"
+        },
+        "LastModifiedById": {
+            "type": "string"
+        },
+        "SystemModstamp": {
+            "type": "string"
+        },
+        "LastCURequestDate": {
+            "type": "null"
+        },
+        "LastCUUpdateDate": {
+            "type": "null"
+        },
+        "IsEmailBounced": {
+            "type": "boolean"
+        },
+        "Jigsaw": {
+            "type": "null"
+        },
+        "JigsawContactId": {
+            "type": "null"
+        },
+        "MiddleName": {
+            "type": "null"
+        },
+        "Suffix": {
+            "type": "null"
+        },
+        "MailingStateCode": {
+            "type": "null"
+        },
+        "IsPriorityRecord": {
+            "type": "boolean"
+        },
+        "LID__Level__c": {
+            "type": "null"
+        },
+        "LID__LinkedIn_Company_Id__c": {
+            "type": "null"
+        },
+        "LID__LinkedIn_Member_Token__c": {
+            "type": "null"
+        },
+        "LID__No_longer_at_Company__c": {
+            "type": "null"
+        },
+        "LID__Session_Id__c": {
+            "type": "string"
+        }
+    }
+}

@@ -28,6 +28,7 @@ export class Xero implements INodeType {
 		defaults: {
 			name: 'Xero',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

@@ -1,0 +1,17 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "expected_revenue": {
+            "type": "integer"
+        }
+    },
+    "required": [
+        "id"
+    ]
+}

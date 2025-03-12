@@ -10,8 +10,29 @@ export async function executeWorkflow(testData: WorkflowTestData, nodeTypes: INo
 	if (testData.nock) {
 		const { baseUrl, mocks } = testData.nock;
 		const agent = nock(baseUrl);
-		mocks.forEach(({ method, path, statusCode, requestBody, responseBody }) =>
-			agent[method](path, requestBody).reply(statusCode, responseBody),
+		mocks.forEach(
+			({
+				method,
+				path,
+				statusCode,
+				requestBody,
+				requestHeaders,
+				responseBody,
+				responseHeaders,
+			}) => {
+				let mock = agent[method](path, requestBody);
+
+				// nock interceptor reqheaders option is ignored, so we chain matchHeader()
+				// agent[method](path, requestBody, { reqheaders: requestHeaders }).reply(statusCode, responseBody, responseHeaders)
+				// https://github.com/nock/nock/issues/2545
+				if (requestHeaders && Object.keys(requestHeaders).length > 0) {
+					Object.entries(requestHeaders).forEach(([key, value]) => {
+						mock = mock.matchHeader(key, value);
+					});
+				}
+
+				mock.reply(statusCode, responseBody, responseHeaders);
+			},
 		);
 	}
 	const executionMode = testData.trigger?.mode ?? 'manual';

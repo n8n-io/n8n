@@ -1,0 +1,28 @@
+{
+    "type": "object",
+    "properties": {
+        "$": {
+            "type": "object",
+            "properties": {
+                "xmlns": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "xmlns"
+            ]
+        },
+        "Location": {
+            "type": "string"
+        },
+        "Bucket": {
+            "type": "string"
+        },
+        "Key": {
+            "type": "string"
+        },
+        "ETag": {
+            "type": "string"
+        }
+    }
+}

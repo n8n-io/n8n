@@ -17,6 +17,7 @@ import {
 	isJSON,
 	convertValuesToJsonWithPgp,
 	hasJsonDataTypeInSchema,
+	evaluateExpression,
 } from '../../v2/helpers/utils';
 
 const node: INode = {
@@ -36,6 +37,25 @@ describe('Test PostgresV2, isJSON', () => {
 	});
 	it('should return false for invalid JSON', () => {
 		expect(isJSON('{"key": "value"')).toEqual(false);
+	});
+});
+
+describe('Test PostgresV2, evaluateExpression', () => {
+	it('should evaluate undefined to an empty string', () => {
+		expect(evaluateExpression(undefined)).toEqual('');
+	});
+	it('should evaluate null to a string with value null', () => {
+		expect(evaluateExpression(null)).toEqual('null');
+	});
+	it('should evaluate object to a string', () => {
+		expect(evaluateExpression({ key: '' })).toEqual('{"key":""}');
+		expect(evaluateExpression([])).toEqual('[]');
+		expect(evaluateExpression([1, 2, 4])).toEqual('[1,2,4]');
+	});
+	it('should evaluate everything else to a string', () => {
+		expect(evaluateExpression(1)).toEqual('1');
+		expect(evaluateExpression('string')).toEqual('string');
+		expect(evaluateExpression(true)).toEqual('true');
 	});
 });
 

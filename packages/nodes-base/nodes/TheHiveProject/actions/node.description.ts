@@ -21,6 +21,7 @@ export const description: INodeTypeDescription = {
 	defaults: {
 		name: 'TheHive 5',
 	},
+	usableAsTool: true,
 	inputs: [NodeConnectionType.Main],
 	outputs: [NodeConnectionType.Main],
 	credentials: [

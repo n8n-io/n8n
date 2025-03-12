@@ -38,6 +38,7 @@ export async function reActAgentAgentExecute(
 		prefix?: string;
 		suffix?: string;
 		suffixChat?: string;
+		maxIterations?: number;
 		humanMessageTemplate?: string;
 		returnIntermediateSteps?: boolean;
 	};
@@ -60,6 +61,7 @@ export async function reActAgentAgentExecute(
 		agent,
 		tools,
 		returnIntermediateSteps: options?.returnIntermediateSteps === true,
+		maxIterations: options.maxIterations ?? 10,
 	});
 
 	const returnData: INodeExecutionData[] = [];

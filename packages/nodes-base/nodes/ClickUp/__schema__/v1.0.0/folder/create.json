@@ -1,0 +1,61 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "orderindex": {
+            "type": "integer"
+        },
+        "override_statuses": {
+            "type": "boolean"
+        },
+        "hidden": {
+            "type": "boolean"
+        },
+        "space": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "access": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "access"
+            ]
+        },
+        "task_count": {
+            "type": "string"
+        },
+        "archived": {
+            "type": "boolean"
+        },
+        "permission_level": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "id",
+        "name",
+        "orderindex",
+        "override_statuses",
+        "hidden",
+        "space",
+        "task_count",
+        "archived",
+        "statuses",
+        "lists",
+        "permission_level"
+    ]
+}

@@ -79,7 +79,7 @@ const retrieveFields: INodeProperties[] = [
 	},
 ];
 
-export class VectorStoreQdrant extends createVectorStoreNode({
+export class VectorStoreQdrant extends createVectorStoreNode<ExtendedQdrantVectorStore>({
 	meta: {
 		displayName: 'Qdrant Vector Store',
 		name: 'vectorStoreQdrant',

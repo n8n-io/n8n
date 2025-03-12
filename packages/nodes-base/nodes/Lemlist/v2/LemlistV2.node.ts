@@ -37,6 +37,7 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Lemlist',
 	},
+	usableAsTool: true,
 	inputs: [NodeConnectionType.Main],
 	outputs: [NodeConnectionType.Main],
 	credentials: [

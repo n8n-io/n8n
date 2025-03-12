@@ -1,0 +1,32 @@
+{
+    "type": "object",
+    "properties": {
+        "@odata.context": {
+            "type": "string"
+        },
+        "@odata.type": {
+            "type": "string"
+        },
+        "@odata.mediaContentType": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "lastModifiedDateTime": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "size": {
+            "type": "integer"
+        },
+        "isInline": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "@odata.context"
+    ]
+}

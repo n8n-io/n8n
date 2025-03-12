@@ -14,9 +14,9 @@ import path, { basename } from 'node:path';
 import pc from 'picocolors';
 import winston from 'winston';
 
-import { inDevelopment, inProduction } from '@/Constants';
-import { InstanceSettingsConfig } from '@/InstanceSettingsConfig';
-import { isObjectLiteral } from '@/utils';
+import { inDevelopment, inProduction } from '@/constants';
+import { InstanceSettingsConfig } from '@/instance-settings/instance-settings-config';
+import { isObjectLiteral } from '@/utils/is-object-literal';
 
 const noOp = () => {};
 

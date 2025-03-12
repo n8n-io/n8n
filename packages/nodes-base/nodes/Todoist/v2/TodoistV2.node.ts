@@ -41,6 +41,7 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Todoist',
 	},
+	usableAsTool: true,
 	inputs: [NodeConnectionType.Main],
 	outputs: [NodeConnectionType.Main],
 	credentials: [

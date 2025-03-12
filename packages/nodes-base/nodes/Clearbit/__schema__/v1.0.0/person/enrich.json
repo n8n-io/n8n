@@ -1,0 +1,187 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "object",
+            "properties": {
+                "fullName": {
+                    "type": "string"
+                },
+                "givenName": {
+                    "type": "string"
+                },
+                "familyName": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "fullName",
+                "givenName",
+                "familyName"
+            ]
+        },
+        "email": {
+            "type": "string"
+        },
+        "bio": {
+            "type": "null"
+        },
+        "site": {
+            "type": "null"
+        },
+        "employment": {
+            "type": "object",
+            "properties": {
+                "domain": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "domain",
+                "name",
+                "title",
+                "role",
+                "seniority"
+            ]
+        },
+        "facebook": {
+            "type": "object",
+            "properties": {
+                "handle": {
+                    "type": "null"
+                }
+            },
+            "required": [
+                "handle"
+            ]
+        },
+        "twitter": {
+            "type": "object",
+            "properties": {
+                "handle": {
+                    "type": "null"
+                },
+                "id": {
+                    "type": "null"
+                },
+                "bio": {
+                    "type": "null"
+                },
+                "followers": {
+                    "type": "null"
+                },
+                "following": {
+                    "type": "null"
+                },
+                "statuses": {
+                    "type": "null"
+                },
+                "favorites": {
+                    "type": "null"
+                },
+                "location": {
+                    "type": "null"
+                },
+                "site": {
+                    "type": "null"
+                },
+                "avatar": {
+                    "type": "null"
+                }
+            },
+            "required": [
+                "handle",
+                "id",
+                "bio",
+                "followers",
+                "following",
+                "statuses",
+                "favorites",
+                "location",
+                "site",
+                "avatar"
+            ]
+        },
+        "googleplus": {
+            "type": "object",
+            "properties": {
+                "handle": {
+                    "type": "null"
+                }
+            },
+            "required": [
+                "handle"
+            ]
+        },
+        "gravatar": {
+            "type": "object",
+            "properties": {
+                "avatars": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "url": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "url",
+                            "type"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "handle",
+                "urls",
+                "avatar",
+                "avatars"
+            ]
+        },
+        "fuzzy": {
+            "type": "boolean"
+        },
+        "emailProvider": {
+            "type": "boolean"
+        },
+        "indexedAt": {
+            "type": "string"
+        },
+        "inactiveAt": {
+            "type": "null"
+        }
+    },
+    "required": [
+        "id",
+        "name",
+        "email",
+        "location",
+        "timeZone",
+        "utcOffset",
+        "geo",
+        "bio",
+        "site",
+        "avatar",
+        "employment",
+        "facebook",
+        "github",
+        "twitter",
+        "linkedin",
+        "googleplus",
+        "gravatar",
+        "fuzzy",
+        "emailProvider",
+        "indexedAt",
+        "phone"
+    ]
+}
