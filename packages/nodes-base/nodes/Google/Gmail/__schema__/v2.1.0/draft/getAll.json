@@ -34,16 +34,10 @@
                 "from": {
                     "type": "string"
                 },
-                "to": {
-                    "type": "string"
-                },
                 "content-type": {
                     "type": "string"
                 },
-                "received": {
-                    "type": "string"
-                },
-                "content-transfer-encoding": {
+                "to": {
                     "type": "string"
                 }
             },
@@ -64,40 +58,6 @@
         },
         "date": {
             "type": "string"
-        },
-        "to": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "address": {
-                                "type": "string"
-                            },
-                            "name": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "address",
-                            "name"
-                        ]
-                    }
-                },
-                "html": {
-                    "type": "string"
-                },
-                "text": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "value",
-                "html",
-                "text"
-            ]
         },
         "from": {
             "type": "object",
@@ -135,6 +95,40 @@
         },
         "messageId": {
             "type": "string"
+        },
+        "to": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "address",
+                            "name"
+                        ]
+                    }
+                },
+                "html": {
+                    "type": "string"
+                },
+                "text": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "value",
+                "html",
+                "text"
+            ]
         }
     },
     "required": [
@@ -147,5 +141,6 @@
         "date",
         "from",
         "messageId"
-    ]
+    ],
+    "version": 1
 }
