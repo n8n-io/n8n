@@ -1,169 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "email_address": {
-            "type": "string"
-        },
-        "unique_email_id": {
-            "type": "string"
-        },
-        "contact_id": {
-            "type": "string"
-        },
-        "full_name": {
-            "type": "string"
-        },
-        "web_id": {
-            "type": "integer"
-        },
-        "email_type": {
-            "type": "string"
-        },
-        "status": {
-            "type": "string"
-        },
-        "consents_to_one_to_one_messaging": {
-            "type": "boolean"
-        },
-        "sms_phone_number": {
-            "type": "string"
-        },
-        "sms_subscription_status": {
-            "type": "string"
-        },
-        "sms_subscription_last_updated": {
-            "type": "string"
-        },
-        "merge_fields": {
-            "type": "object",
-            "properties": {
-                "FNAME": {
-                    "type": "string"
-                },
-                "LNAME": {
-                    "type": "string"
-                },
-                "PHONE": {
-                    "type": "string"
-                },
-                "BIRTHDAY": {
-                    "type": "string"
-                }
-            }
-        },
-        "ip_signup": {
-            "type": "string"
-        },
-        "timestamp_signup": {
-            "type": "string"
-        },
-        "ip_opt": {
-            "type": "string"
-        },
-        "timestamp_opt": {
-            "type": "string"
-        },
-        "member_rating": {
-            "type": "integer"
-        },
-        "last_changed": {
-            "type": "string"
-        },
-        "language": {
-            "type": "string"
-        },
-        "vip": {
-            "type": "boolean"
-        },
-        "email_client": {
-            "type": "string"
-        },
-        "location": {
-            "type": "object",
-            "properties": {
-                "gmtoff": {
-                    "type": "integer"
-                },
-                "dstoff": {
-                    "type": "integer"
-                },
-                "country_code": {
-                    "type": "string"
-                },
-                "timezone": {
-                    "type": "string"
-                },
-                "region": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "latitude",
-                "longitude",
-                "gmtoff",
-                "dstoff",
-                "country_code",
-                "timezone",
-                "region"
-            ]
-        },
-        "source": {
-            "type": "string"
-        },
-        "tags_count": {
-            "type": "integer"
-        },
-        "tags": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "integer"
-                    },
-                    "name": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "id",
-                    "name"
-                ]
-            }
-        },
-        "list_id": {
-            "type": "string"
-        },
-        "_links": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "rel": {
-                        "type": "string"
-                    },
-                    "href": {
-                        "type": "string"
-                    },
-                    "method": {
-                        "type": "string"
-                    },
-                    "targetSchema": {
-                        "type": "string"
-                    },
-                    "schema": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "rel",
-                    "href",
-                    "method"
-                ]
-            }
-        }
-    }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Mailchimp/__schema__/v1.0.0/member/get.json",
+    "sha": "5b3f592bbb0d0ad7cc13d5447d1816530d94c262",
+    "size": 4111,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Mailchimp/__schema__/v1.0.0/member/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Mailchimp/__schema__/v1.0.0/member/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5b3f592bbb0d0ad7cc13d5447d1816530d94c262",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Mailchimp/__schema__/v1.0.0/member/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgImVtYWlsX2FkZHJlc3MiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJ1bmlx\ndWVfZW1haWxfaWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJjb250YWN0X2lkIjogewogICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiZnVsbF9u\nYW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nfSwKICAgICAgICAid2ViX2lkIjogewogICAgICAgICAgICAidHlwZSI6ICJp\nbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgImVtYWlsX3R5cGUiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAg\nICJzdGF0dXMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICB9LAogICAgICAgICJjb25zZW50c190b19vbmVfdG9fb25lX21lc3Nh\nZ2luZyI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAg\nICB9LAogICAgICAgICJzbXNfcGhvbmVfbnVtYmVyIjogewogICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAic21zX3N1\nYnNjcmlwdGlvbl9zdGF0dXMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJzbXNfc3Vic2NyaXB0aW9uX2xh\nc3RfdXBkYXRlZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgIm1lcmdlX2ZpZWxkcyI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMi\nOiB7CiAgICAgICAgICAgICAgICAiRk5BTUUiOiB7CiAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgICAgICJMTkFNRSI6IHsKICAgICAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAg\nICAgICAgIlBIT05FIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAi\nQklSVEhEQVkiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9CiAgICAgICAg\nfSwKICAgICAgICAiaXBfc2lnbnVwIjogewogICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAidGltZXN0YW1wX3NpZ251\ncCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0s\nCiAgICAgICAgImlwX29wdCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgIH0sCiAgICAgICAgInRpbWVzdGFtcF9vcHQiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAg\nICJtZW1iZXJfcmF0aW5nIjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRl\nZ2VyIgogICAgICAgIH0sCiAgICAgICAgImxhc3RfY2hhbmdlZCI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAg\nImxhbmd1YWdlIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgfSwKICAgICAgICAidmlwIjogewogICAgICAgICAgICAidHlwZSI6\nICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgImVtYWlsX2NsaWVudCI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAg\nICAgICAgImxvY2F0aW9uIjogewogICAgICAgICAgICAidHlwZSI6ICJvYmpl\nY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAg\nICAgICJnbXRvZmYiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAi\naW50ZWdlciIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAi\nZHN0b2ZmIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImludGVn\nZXIiCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImNvdW50\ncnlfY29kZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInRpbWV6\nb25lIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAicmVnaW9uIjog\newogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICAgICAgICAgIH0KICAgICAgICAgICAgfSwKICAgICAgICAgICAgInJlcXVp\ncmVkIjogWwogICAgICAgICAgICAgICAgImxhdGl0dWRlIiwKICAgICAgICAg\nICAgICAgICJsb25naXR1ZGUiLAogICAgICAgICAgICAgICAgImdtdG9mZiIs\nCiAgICAgICAgICAgICAgICAiZHN0b2ZmIiwKICAgICAgICAgICAgICAgICJj\nb3VudHJ5X2NvZGUiLAogICAgICAgICAgICAgICAgInRpbWV6b25lIiwKICAg\nICAgICAgICAgICAgICJyZWdpb24iCiAgICAgICAgICAgIF0KICAgICAgICB9\nLAogICAgICAgICJzb3VyY2UiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJ0YWdzX2NvdW50IjogewogICAg\nICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAg\nInRhZ3MiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImFycmF5IiwKICAgICAg\nICAgICAgIml0ZW1zIjogewogICAgICAgICAgICAgICAgInR5cGUiOiAib2Jq\nZWN0IiwKICAgICAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAg\nICAgICAgICAgICAgICJpZCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAg\nInR5cGUiOiAiaW50ZWdlciIKICAgICAgICAgICAgICAgICAgICB9LAogICAg\nICAgICAgICAgICAgICAgICJuYW1lIjogewogICAgICAgICAgICAgICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgfQog\nICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJyZXF1aXJlZCI6\nIFsKICAgICAgICAgICAgICAgICAgICAiaWQiLAogICAgICAgICAgICAgICAg\nICAgICJuYW1lIgogICAgICAgICAgICAgICAgXQogICAgICAgICAgICB9CiAg\nICAgICAgfSwKICAgICAgICAibGlzdF9pZCI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIl9saW5rcyI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAiYXJyYXkiLAogICAgICAgICAgICAiaXRl\nbXMiOiB7CiAgICAgICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAg\nICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAg\nICAgInJlbCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAg\nICAgICAgImhyZWYiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAg\nICAgICAgICAgICJtZXRob2QiOiB7CiAgICAgICAgICAgICAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICB9LAogICAg\nICAgICAgICAgICAgICAgICJ0YXJnZXRTY2hlbWEiOiB7CiAgICAgICAgICAg\nICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAg\nICAgICB9LAogICAgICAgICAgICAgICAgICAgICJzY2hlbWEiOiB7CiAgICAg\nICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAg\nICAgICAgICAgICB9CiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAg\nICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgICAgICJyZWwiLAog\nICAgICAgICAgICAgICAgICAgICJocmVmIiwKICAgICAgICAgICAgICAgICAg\nICAibWV0aG9kIgogICAgICAgICAgICAgICAgXQogICAgICAgICAgICB9CiAg\nICAgICAgfQogICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Mailchimp/__schema__/v1.0.0/member/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5b3f592bbb0d0ad7cc13d5447d1816530d94c262",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Mailchimp/__schema__/v1.0.0/member/get.json"
+    },
+    "version": 1
 }
