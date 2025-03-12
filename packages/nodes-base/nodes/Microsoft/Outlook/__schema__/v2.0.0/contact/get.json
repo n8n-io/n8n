@@ -1,44 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"@odata.context": {
-			"type": "string"
-		},
-		"@odata.etag": {
-			"type": "string"
-		},
-		"id": {
-			"type": "string"
-		},
-		"emailAddresses": {
-			"type": "array",
-			"items": {
-				"type": "object",
-				"properties": {
-					"name": {
-						"type": "string"
-					},
-					"address": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"name",
-					"address"
-				]
-			}
-		},
-		"displayName": {
-			"type": "string"
-		},
-		"businessPhones": {
-			"type": "array",
-			"items": {
-				"type": "string"
-			}
-		}
-	},
-	"required": [
-		"@odata.context"
-	]
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/contact/get.json",
+    "sha": "edc5f34d9b74b56dc90d6bfe0652b25fad65c22d",
+    "size": 598,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/contact/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/contact/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/edc5f34d9b74b56dc90d6bfe0652b25fad65c22d",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/contact/get.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJAb2Rh\ndGEuY29udGV4dCI6IHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJIkBv\nZGF0YS5ldGFnIjogewoJCQkidHlwZSI6ICJzdHJpbmciCgkJfSwKCQkiaWQi\nOiB7CgkJCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJCSJlbWFpbEFkZHJlc3Nl\ncyI6IHsKCQkJInR5cGUiOiAiYXJyYXkiLAoJCQkiaXRlbXMiOiB7CgkJCQki\ndHlwZSI6ICJvYmplY3QiLAoJCQkJInByb3BlcnRpZXMiOiB7CgkJCQkJIm5h\nbWUiOiB7CgkJCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJCQl9LAoJCQkJCSJh\nZGRyZXNzIjogewoJCQkJCQkidHlwZSI6ICJzdHJpbmciCgkJCQkJfQoJCQkJ\nfSwKCQkJCSJyZXF1aXJlZCI6IFsKCQkJCQkibmFtZSIsCgkJCQkJImFkZHJl\nc3MiCgkJCQldCgkJCX0KCQl9LAoJCSJkaXNwbGF5TmFtZSI6IHsKCQkJInR5\ncGUiOiAic3RyaW5nIgoJCX0sCgkJImJ1c2luZXNzUGhvbmVzIjogewoJCQki\ndHlwZSI6ICJhcnJheSIsCgkJCSJpdGVtcyI6IHsKCQkJCSJ0eXBlIjogInN0\ncmluZyIKCQkJfQoJCX0KCX0sCgkicmVxdWlyZWQiOiBbCgkJIkBvZGF0YS5j\nb250ZXh0IgoJXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/contact/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/edc5f34d9b74b56dc90d6bfe0652b25fad65c22d",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/contact/get.json"
+    },
+    "version": 1
 }
