@@ -1,23 +1,42 @@
 <script lang="ts" setup>
+import ContextMenu from '@/components/ContextMenu/ContextMenu.vue';
+import {
+	type CanvasLayoutEvent,
+	type CanvasLayoutSource,
+	useCanvasLayout,
+} from '@/composables/useCanvasLayout';
+import { useCanvasNodeHover } from '@/composables/useCanvasNodeHover';
+import { useCanvasTraversal } from '@/composables/useCanvasTraversal';
+import { type ContextMenuAction, useContextMenu } from '@/composables/useContextMenu';
+import { useKeybindings } from '@/composables/useKeybindings';
+import type { PinDataSource } from '@/composables/usePinnedData';
+import { CanvasKey } from '@/constants';
+import type { NodeCreatorOpenSource } from '@/Interface';
 import {
 	type CanvasConnection,
+	type CanvasEventBusEvents,
 	type CanvasNode,
 	type CanvasNodeMoveEvent,
-	type CanvasEventBusEvents,
 	type ConnectStartEvent,
 	CanvasNodeRenderType,
 } from '@/types';
+import { GRID_SIZE } from '@/utils/nodeViewUtils';
+import { isPresent } from '@/utils/typesUtils';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
+import { useShortKeyPress } from '@n8n/composables/useShortKeyPress';
+import type { EventBus } from '@n8n/utils/event-bus';
+import { createEventBus } from '@n8n/utils/event-bus';
 import type {
 	Connection,
-	XYPosition,
+	GraphNode,
 	NodeDragEvent,
 	NodeMouseEvent,
-	GraphNode,
+	XYPosition,
 } from '@vue-flow/core';
-import { useVueFlow, VueFlow, PanelPosition, MarkerType } from '@vue-flow/core';
+import { MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
 import { MiniMap } from '@vue-flow/minimap';
-import Node from './elements/nodes/CanvasNode.vue';
-import Edge from './elements/edges/CanvasEdge.vue';
+import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
+import { NodeConnectionType } from 'n8n-workflow';
 import {
 	computed,
 	nextTick,
@@ -29,29 +48,10 @@ import {
 	useCssModule,
 	watch,
 } from 'vue';
-import type { EventBus } from '@n8n/utils/event-bus';
-import { createEventBus } from '@n8n/utils/event-bus';
-import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
-import { useShortKeyPress } from '@n8n/composables/useShortKeyPress';
-import { useContextMenu, type ContextMenuAction } from '@/composables/useContextMenu';
-import { useKeybindings } from '@/composables/useKeybindings';
-import ContextMenu from '@/components/ContextMenu/ContextMenu.vue';
-import type { NodeCreatorOpenSource } from '@/Interface';
-import type { PinDataSource } from '@/composables/usePinnedData';
-import { isPresent } from '@/utils/typesUtils';
-import { GRID_SIZE } from '@/utils/nodeViewUtils';
-import { CanvasKey } from '@/constants';
-import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
-import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
 import CanvasBackground from './elements/background/CanvasBackground.vue';
-import { useCanvasTraversal } from '@/composables/useCanvasTraversal';
-import { NodeConnectionType } from 'n8n-workflow';
-import { useCanvasNodeHover } from '@/composables/useCanvasNodeHover';
-import {
-	type CanvasLayoutEvent,
-	type CanvasLayoutSource,
-	useCanvasLayout,
-} from '@/composables/useCanvasLayout';
+import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
+import Edge from './elements/edges/CanvasEdge.vue';
+import Node from './elements/nodes/CanvasNode.vue';
 
 const $style = useCssModule();
 
@@ -804,29 +804,31 @@ provide(CanvasKey, {
 		@drop="onDrop"
 	>
 		<template #node-canvas-node="nodeProps">
-			<Node
-				v-bind="nodeProps"
-				:read-only="readOnly"
-				:event-bus="eventBus"
-				:hovered="nodesHoveredById[nodeProps.id]"
-				:nearby-hovered="nodeProps.id === hoveredTriggerNode.id.value"
-				@delete="onDeleteNode"
-				@run="onRunNode"
-				@select="onSelectNode"
-				@toggle="onToggleNodeEnabled"
-				@activate="onSetNodeActivated"
-				@deactivate="onSetNodeDeactivated"
-				@open:contextmenu="onOpenNodeContextMenu"
-				@update="onUpdateNodeParameters"
-				@update:inputs="onUpdateNodeInputs"
-				@update:outputs="onUpdateNodeOutputs"
-				@move="onUpdateNodePosition"
-				@add="onClickNodeAdd"
-			>
-				<template v-if="$slots.nodeToolbar" #toolbar="toolbarProps">
-					<slot name="nodeToolbar" v-bind="toolbarProps" />
-				</template>
-			</Node>
+			<slot name="node" v-bind="{ nodeProps }">
+				<Node
+					v-bind="nodeProps"
+					:read-only="readOnly"
+					:event-bus="eventBus"
+					:hovered="nodesHoveredById[nodeProps.id]"
+					:nearby-hovered="nodeProps.id === hoveredTriggerNode.id.value"
+					@delete="onDeleteNode"
+					@run="onRunNode"
+					@select="onSelectNode"
+					@toggle="onToggleNodeEnabled"
+					@activate="onSetNodeActivated"
+					@deactivate="onSetNodeDeactivated"
+					@open:contextmenu="onOpenNodeContextMenu"
+					@update="onUpdateNodeParameters"
+					@update:inputs="onUpdateNodeInputs"
+					@update:outputs="onUpdateNodeOutputs"
+					@move="onUpdateNodePosition"
+					@add="onClickNodeAdd"
+				>
+					<template v-if="$slots.nodeToolbar" #toolbar="toolbarProps">
+						<slot name="nodeToolbar" v-bind="toolbarProps" />
+					</template>
+				</Node>
+			</slot>
 		</template>
 
 		<template #edge-canvas-edge="edgeProps">
