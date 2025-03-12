@@ -164,8 +164,10 @@ onMounted(loadData);
 }
 
 .container {
-	width: 100vw;
+	width: 100%;
 	height: 100%;
+	border: 1px solid var(--color-foreground-light);
+	border-radius: 8px;
 }
 .pinButtonContainer {
 	position: absolute;
