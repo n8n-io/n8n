@@ -294,6 +294,7 @@ const {
 	createCredentialsAppendSlotName,
 	projectsLimitReachedMessage,
 	upgradeLabel,
+	hasPermissionToCreateProjects,
 } = useGlobalEntityCreation();
 onClickOutside(createBtn as Ref<VueInstance>, () => {
 	createBtn.value?.close();
@@ -385,7 +386,14 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 						placement="right"
 						:content="projectsLimitReachedMessage"
 					>
+						<N8nIcon
+							v-if="!hasPermissionToCreateProjects"
+							style="margin-left: auto; margin-right: 5px"
+							icon="lock"
+							size="xsmall"
+						/>
 						<N8nButton
+							v-else
 							:size="'mini'"
 							style="margin-left: auto"
 							type="tertiary"

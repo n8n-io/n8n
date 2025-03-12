@@ -195,4 +195,22 @@ describe('ProjectsNavigation', () => {
 		expect(getByTestId('project-plus-button')).toBeVisible();
 		expect(getByTestId('add-first-project-button')).toBeVisible();
 	});
+
+	it('should show project plus button and add first project button in disabled state if user does not have permission', async () => {
+		projectsStore.teamProjectsLimit = -1;
+		projectsStore.hasPermissionToCreateProjects = false;
+
+		const { getByTestId } = renderComponent({
+			props: {
+				collapsed: false,
+			},
+		});
+		const plusButton = getByTestId('project-plus-button');
+		const addFirstProjectButton = getByTestId('add-first-project-button');
+
+		expect(plusButton).toBeVisible();
+		expect(plusButton).toBeDisabled();
+		expect(addFirstProjectButton).toBeVisible();
+		expect(addFirstProjectButton).toBeDisabled();
+	});
 });
