@@ -44,25 +44,6 @@ const DEFAULT_FOLDER: FolderResource = {
 	},
 } as const satisfies FolderResource;
 
-const PARENT_FOLDER: FolderResource = {
-	id: '2',
-	name: 'Folder 2',
-	createdAt: new Date().toISOString(),
-	updatedAt: new Date().toISOString(),
-	resourceType: 'folder',
-	readOnly: false,
-	workflowCount: 0,
-	subFolderCount: 0,
-	homeProject: {
-		id: '1',
-		name: 'Project 1',
-		icon: null,
-		type: 'team',
-		createdAt: new Date().toISOString(),
-		updatedAt: new Date().toISOString(),
-	},
-} as const satisfies FolderResource;
-
 const DEFAULT_BREADCRUMBS: { visibleItems: FolderPathItem[]; hiddenItems: FolderPathItem[] } = {
 	visibleItems: [{ id: '1', label: 'Parent 2' }],
 	hiddenItems: [{ id: '2', label: 'Parent 1', parentFolder: '1' }],

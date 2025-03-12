@@ -1080,6 +1080,7 @@ const deleteFolder = async (folderId: string, workflowCount: number, subFolderCo
 				:actions="folderCardActions"
 				:read-only="readOnlyEnv || (!hasPermissionToDeleteFolders && !hasPermissionToCreateFolders)"
 				class="mb-2xs"
+				@action="onFolderCardAction"
 			/>
 			<WorkflowCard
 				v-else
