@@ -1,37 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "email": {
-            "type": "string"
-        },
-        "id": {
-            "type": "integer"
-        },
-        "emailBlacklisted": {
-            "type": "boolean"
-        },
-        "smsBlacklisted": {
-            "type": "boolean"
-        },
-        "createdAt": {
-            "type": "string"
-        },
-        "modifiedAt": {
-            "type": "string"
-        },
-        "attributes": {
-            "type": "object",
-            "properties": {
-                "FIRSTNAME": {
-                    "type": "string"
-                }
-            }
-        },
-        "listIds": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
-        }
-    }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Brevo/__schema__/v1.0.0/contact/get.json",
+    "sha": "70e59aca4555b9ea09d5839c389d1e1f6ce5a8a6",
+    "size": 759,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Brevo/__schema__/v1.0.0/contact/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Brevo/__schema__/v1.0.0/contact/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/70e59aca4555b9ea09d5839c389d1e1f6ce5a8a6",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Brevo/__schema__/v1.0.0/contact/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJlbWFpbCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgIH0sCiAgICAgICAgImlkIjogewogICAgICAgICAgICAidHlw\nZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgImVtYWlsQmxhY2ts\naXN0ZWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAg\nICAgfSwKICAgICAgICAic21zQmxhY2tsaXN0ZWQiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAiY3JlYXRl\nZEF0IjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nfSwKICAgICAgICAibW9kaWZpZWRBdCI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImF0dHJpYnV0ZXMiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJw\ncm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgIkZJUlNUTkFNRSI6IHsK\nICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nICAgICAgICB9CiAgICAgICAgICAgIH0KICAgICAgICB9LAogICAgICAgICJs\naXN0SWRzIjogewogICAgICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAg\nICAgICAgICJpdGVtcyI6IHsKICAgICAgICAgICAgICAgICJ0eXBlIjogImlu\ndGVnZXIiCiAgICAgICAgICAgIH0KICAgICAgICB9CiAgICB9Cn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Brevo/__schema__/v1.0.0/contact/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/70e59aca4555b9ea09d5839c389d1e1f6ce5a8a6",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Brevo/__schema__/v1.0.0/contact/get.json"
+    },
+    "version": 1
 }
