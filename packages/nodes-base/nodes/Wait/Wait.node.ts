@@ -223,6 +223,11 @@ const onWebhookCallProperties = updateDisplayOptions(displayOnWebhook, [
 ]);
 
 const webhookPath = '={{$parameter["options"]["webhookSuffix"] || ""}}';
+/**
+ * If wait time is shorter than 65 seconds leave execution active because
+	 we just check the database every 60 seconds.
+ */
+const SHORT_WAIT_THRESHOLD = 65 * 1000;
 
 export class Wait extends Webhook {
 	authPropertyName = 'incomingAuthentication';
@@ -504,7 +509,7 @@ export class Wait extends Webhook {
 
 			// Timezone does not change relative dates, since they are just
 			// a number of seconds added to the current timestamp
-			waitTill = new Date(new Date().getTime() + waitAmount);
+			waitTill = new Date(Date.now() + waitAmount);
 		} else {
 			const dateTimeStr = context.getNodeParameter('dateTime', 0) as string;
 
@@ -522,15 +527,9 @@ export class Wait extends Webhook {
 				.toJSDate();
 		}
 
-		const waitValue = Math.max(waitTill.getTime() - new Date().getTime(), 0);
-
-		if (waitValue < 65000) {
-			// If wait time is shorter than 65 seconds leave execution active because
-			// we just check the database every 60 seconds.
-			return await new Promise((resolve) => {
-				const timer = setTimeout(() => resolve([context.getInputData()]), waitValue);
-				context.onExecutionCancellation(() => clearTimeout(timer));
-			});
+		const executionData = await this.generateShortWaitExecutionData(context, waitTill);
+		if (executionData) {
+			return executionData;
 		}
 
 		// If longer than 65 seconds put execution to wait
@@ -559,9 +558,14 @@ export class Wait extends Webhook {
 				}
 
 				waitAmount *= 1000;
-				waitTill = new Date(new Date().getTime() + waitAmount);
+				waitTill = new Date(Date.now() + waitAmount);
 			} else {
 				waitTill = new Date(context.getNodeParameter('maxDateAndTime', 0) as string);
+			}
+
+			const executionData = await this.generateShortWaitExecutionData(context, waitTill);
+			if (executionData) {
+				return executionData;
 			}
 		}
 
@@ -571,5 +575,21 @@ export class Wait extends Webhook {
 	private async putToWait(context: IExecuteFunctions, waitTill: Date) {
 		await context.putExecutionToWait(waitTill);
 		return [context.getInputData()];
+	}
+
+	private async generateShortWaitExecutionData(
+		context: IExecuteFunctions,
+		waitTill: Date,
+	): Promise<INodeExecutionData[][] | null> {
+		const waitValue = Math.max(waitTill.getTime() - Date.now(), 0);
+
+		if (waitValue >= SHORT_WAIT_THRESHOLD) {
+			return null;
+		}
+
+		return new Promise<INodeExecutionData[][]>((resolve) => {
+			const timer = setTimeout(() => resolve([context.getInputData()]), waitValue);
+			context.onExecutionCancellation(() => clearTimeout(timer));
+		});
 	}
 }
