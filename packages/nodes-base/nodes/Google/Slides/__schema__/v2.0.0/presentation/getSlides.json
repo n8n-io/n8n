@@ -65,9 +65,6 @@
                             }
                         },
                         "required": [
-                            "scaleX",
-                            "scaleY",
-                            "translateX",
                             "unit"
                         ]
                     },
@@ -77,23 +74,150 @@
                             "shapeType": {
                                 "type": "string"
                             },
+                            "text": {
+                                "type": "object",
+                                "properties": {
+                                    "textElements": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "endIndex": {
+                                                    "type": "integer"
+                                                },
+                                                "paragraphMarker": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "style": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "direction": {
+                                                                    "type": "string"
+                                                                },
+                                                                "indentStart": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "unit": {
+                                                                            "type": "string"
+                                                                        }
+                                                                    },
+                                                                    "required": [
+                                                                        "unit"
+                                                                    ]
+                                                                },
+                                                                "indentFirstLine": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "unit": {
+                                                                            "type": "string"
+                                                                        }
+                                                                    },
+                                                                    "required": [
+                                                                        "unit"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "direction"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "style"
+                                                    ]
+                                                },
+                                                "textRun": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "content": {
+                                                            "type": "string"
+                                                        },
+                                                        "style": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "foregroundColor": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "opaqueColor": {
+                                                                            "type": "object",
+                                                                            "properties": {
+                                                                                "themeColor": {
+                                                                                    "type": "string"
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    },
+                                                                    "required": [
+                                                                        "opaqueColor"
+                                                                    ]
+                                                                },
+                                                                "bold": {
+                                                                    "type": "boolean"
+                                                                },
+                                                                "fontFamily": {
+                                                                    "type": "string"
+                                                                },
+                                                                "fontSize": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "unit": {
+                                                                            "type": "string"
+                                                                        }
+                                                                    },
+                                                                    "required": [
+                                                                        "magnitude",
+                                                                        "unit"
+                                                                    ]
+                                                                },
+                                                                "weightedFontFamily": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "fontFamily": {
+                                                                            "type": "string"
+                                                                        },
+                                                                        "weight": {
+                                                                            "type": "integer"
+                                                                        }
+                                                                    },
+                                                                    "required": [
+                                                                        "fontFamily",
+                                                                        "weight"
+                                                                    ]
+                                                                }
+                                                            }
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "content",
+                                                        "style"
+                                                    ]
+                                                },
+                                                "startIndex": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "endIndex"
+                                            ]
+                                        }
+                                    }
+                                },
+                                "required": [
+                                    "textElements"
+                                ]
+                            },
                             "shapeProperties": {
                                 "type": "object",
                                 "properties": {
                                     "shapeBackgroundFill": {
                                         "type": "object",
                                         "properties": {
+                                            "propertyState": {
+                                                "type": "string"
+                                            },
                                             "solidFill": {
                                                 "type": "object",
                                                 "properties": {
-                                                    "color": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "themeColor": {
-                                                                "type": "string"
-                                                            }
-                                                        }
-                                                    },
                                                     "alpha": {
                                                         "type": "integer"
                                                     }
@@ -108,27 +232,21 @@
                                     "outline": {
                                         "type": "object",
                                         "properties": {
+                                            "propertyState": {
+                                                "type": "string"
+                                            },
                                             "outlineFill": {
                                                 "type": "object",
                                                 "properties": {
                                                     "solidFill": {
                                                         "type": "object",
                                                         "properties": {
-                                                            "color": {
-                                                                "type": "object",
-                                                                "properties": {
-                                                                    "themeColor": {
-                                                                        "type": "string"
-                                                                    }
-                                                                }
-                                                            },
                                                             "alpha": {
                                                                 "type": "integer"
                                                             }
                                                         },
                                                         "required": [
-                                                            "color",
-                                                            "alpha"
+                                                            "color"
                                                         ]
                                                     }
                                                 },
@@ -227,10 +345,27 @@
                                     "shadow",
                                     "autofit"
                                 ]
+                            },
+                            "placeholder": {
+                                "type": "object",
+                                "properties": {
+                                    "type": {
+                                        "type": "string"
+                                    },
+                                    "parentObjectId": {
+                                        "type": "string"
+                                    },
+                                    "index": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "required": [
+                                    "type",
+                                    "parentObjectId"
+                                ]
                             }
                         },
                         "required": [
-                            "shapeType",
                             "shapeProperties"
                         ]
                     },
@@ -246,123 +381,22 @@
                                     "outline": {
                                         "type": "object",
                                         "properties": {
-                                            "outlineFill": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "solidFill": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "color": {
-                                                                "type": "object",
-                                                                "properties": {
-                                                                    "themeColor": {
-                                                                        "type": "string"
-                                                                    }
-                                                                },
-                                                                "required": [
-                                                                    "themeColor"
-                                                                ]
-                                                            },
-                                                            "alpha": {
-                                                                "type": "integer"
-                                                            }
-                                                        },
-                                                        "required": [
-                                                            "color",
-                                                            "alpha"
-                                                        ]
-                                                    }
-                                                },
-                                                "required": [
-                                                    "solidFill"
-                                                ]
-                                            },
-                                            "weight": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "magnitude": {
-                                                        "type": "integer"
-                                                    },
-                                                    "unit": {
-                                                        "type": "string"
-                                                    }
-                                                },
-                                                "required": [
-                                                    "magnitude",
-                                                    "unit"
-                                                ]
-                                            },
-                                            "dashStyle": {
-                                                "type": "string"
-                                            },
                                             "propertyState": {
                                                 "type": "string"
                                             }
                                         },
                                         "required": [
-                                            "outlineFill",
-                                            "weight",
-                                            "dashStyle",
                                             "propertyState"
                                         ]
                                     },
                                     "shadow": {
                                         "type": "object",
                                         "properties": {
-                                            "type": {
-                                                "type": "string"
-                                            },
-                                            "transform": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "scaleX": {
-                                                        "type": "integer"
-                                                    },
-                                                    "scaleY": {
-                                                        "type": "integer"
-                                                    },
-                                                    "unit": {
-                                                        "type": "string"
-                                                    }
-                                                },
-                                                "required": [
-                                                    "scaleX",
-                                                    "scaleY",
-                                                    "unit"
-                                                ]
-                                            },
-                                            "alignment": {
-                                                "type": "string"
-                                            },
-                                            "blurRadius": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "unit": {
-                                                        "type": "string"
-                                                    }
-                                                },
-                                                "required": [
-                                                    "unit"
-                                                ]
-                                            },
-                                            "alpha": {
-                                                "type": "integer"
-                                            },
-                                            "rotateWithShape": {
-                                                "type": "boolean"
-                                            },
                                             "propertyState": {
                                                 "type": "string"
                                             }
                                         },
                                         "required": [
-                                            "type",
-                                            "transform",
-                                            "alignment",
-                                            "blurRadius",
-                                            "color",
-                                            "alpha",
-                                            "rotateWithShape",
                                             "propertyState"
                                         ]
                                     }
@@ -371,10 +405,27 @@
                                     "outline",
                                     "shadow"
                                 ]
+                            },
+                            "placeholder": {
+                                "type": "object",
+                                "properties": {
+                                    "type": {
+                                        "type": "string"
+                                    },
+                                    "parentObjectId": {
+                                        "type": "string"
+                                    },
+                                    "index": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "required": [
+                                    "type",
+                                    "parentObjectId"
+                                ]
                             }
                         },
                         "required": [
-                            "contentUrl",
                             "imageProperties"
                         ]
                     }
@@ -459,12 +510,6 @@
                                             },
                                             "scaleY": {
                                                 "type": "number"
-                                            },
-                                            "translateX": {
-                                                "type": "integer"
-                                            },
-                                            "translateY": {
-                                                "type": "integer"
                                             },
                                             "unit": {
                                                 "type": "string"
@@ -624,10 +669,7 @@
                         "propertyState": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "propertyState"
-                    ]
+                    }
                 }
             },
             "required": [
@@ -637,8 +679,8 @@
     },
     "required": [
         "objectId",
-        "pageElements",
         "slideProperties",
         "pageProperties"
-    ]
+    ],
+    "version": 1
 }
