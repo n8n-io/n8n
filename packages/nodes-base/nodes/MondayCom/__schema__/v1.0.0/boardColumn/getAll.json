@@ -1,27 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "title": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
-        },
-        "settings_str": {
-            "type": "string"
-        },
-        "archived": {
-            "type": "boolean"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/MondayCom/__schema__/v1.0.0/boardColumn/getAll.json",
+    "sha": "c7aca6e502d47680153fa541ff447c59d511ad06",
+    "size": 468,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/MondayCom/__schema__/v1.0.0/boardColumn/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/MondayCom/__schema__/v1.0.0/boardColumn/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/c7aca6e502d47680153fa541ff447c59d511ad06",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/MondayCom/__schema__/v1.0.0/boardColumn/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInRpdGxlIjogewogICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAidHlwZSI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAg\nInNldHRpbmdzX3N0ciI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgIH0sCiAgICAgICAgImFyY2hpdmVkIjogewogICAgICAgICAg\nICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0KICAgIH0sCiAgICAicmVx\ndWlyZWQiOiBbCiAgICAgICAgImlkIiwKICAgICAgICAidGl0bGUiLAogICAg\nICAgICJ0eXBlIiwKICAgICAgICAic2V0dGluZ3Nfc3RyIiwKICAgICAgICAi\nYXJjaGl2ZWQiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/MondayCom/__schema__/v1.0.0/boardColumn/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/c7aca6e502d47680153fa541ff447c59d511ad06",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/MondayCom/__schema__/v1.0.0/boardColumn/getAll.json"
     },
-    "required": [
-        "id",
-        "title",
-        "type",
-        "settings_str",
-        "archived"
-    ]
+    "version": 1
 }
