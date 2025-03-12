@@ -1,27 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
-        },
-        "path": {
-            "type": "string"
-        },
-        "mode": {
-            "type": "string"
-        }
+    "name": "list.json",
+    "path": "packages/nodes-base/nodes/Gitlab/__schema__/v1.0.0/file/list.json",
+    "sha": "ad92d5bb6393939d1576c0993964fcf04faa09c9",
+    "size": 441,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Gitlab/__schema__/v1.0.0/file/list.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Gitlab/__schema__/v1.0.0/file/list.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/ad92d5bb6393939d1576c0993964fcf04faa09c9",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Gitlab/__schema__/v1.0.0/file/list.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgIm5hbWUiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJ0eXBlIjogewogICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAi\ncGF0aCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nIH0sCiAgICAgICAgIm1vZGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9CiAgICB9LAogICAgInJlcXVpcmVkIjogWwogICAg\nICAgICJpZCIsCiAgICAgICAgIm5hbWUiLAogICAgICAgICJ0eXBlIiwKICAg\nICAgICAicGF0aCIsCiAgICAgICAgIm1vZGUiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Gitlab/__schema__/v1.0.0/file/list.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/ad92d5bb6393939d1576c0993964fcf04faa09c9",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Gitlab/__schema__/v1.0.0/file/list.json"
     },
-    "required": [
-        "id",
-        "name",
-        "type",
-        "path",
-        "mode"
-    ]
+    "version": 1
 }
