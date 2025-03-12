@@ -10,6 +10,9 @@
         "createdDateTime": {
             "type": "string"
         },
+        "cTag": {
+            "type": "string"
+        },
         "eTag": {
             "type": "string"
         },
@@ -22,49 +25,46 @@
         "name": {
             "type": "string"
         },
-        "webUrl": {
-            "type": "string"
-        },
-        "cTag": {
-            "type": "string"
-        },
         "size": {
             "type": "integer"
+        },
+        "webUrl": {
+            "type": "string"
         },
         "createdBy": {
             "type": "object",
             "properties": {
-                "user": {
-                    "type": "object",
-                    "properties": {
-                        "email": {
-                            "type": "string"
-                        },
-                        "id": {
-                            "type": "string"
-                        },
-                        "displayName": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "id",
-                        "displayName"
-                    ]
-                },
                 "application": {
                     "type": "object",
                     "properties": {
-                        "id": {
+                        "displayName": {
                             "type": "string"
                         },
-                        "displayName": {
+                        "id": {
                             "type": "string"
                         }
                     },
                     "required": [
-                        "id",
-                        "displayName"
+                        "displayName",
+                        "id"
+                    ]
+                },
+                "user": {
+                    "type": "object",
+                    "properties": {
+                        "displayName": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "email": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "displayName",
+                        "id"
                     ]
                 }
             },
@@ -75,37 +75,37 @@
         "lastModifiedBy": {
             "type": "object",
             "properties": {
-                "user": {
-                    "type": "object",
-                    "properties": {
-                        "email": {
-                            "type": "string"
-                        },
-                        "id": {
-                            "type": "string"
-                        },
-                        "displayName": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "id",
-                        "displayName"
-                    ]
-                },
                 "application": {
                     "type": "object",
                     "properties": {
-                        "id": {
+                        "displayName": {
                             "type": "string"
                         },
-                        "displayName": {
+                        "id": {
                             "type": "string"
                         }
                     },
                     "required": [
-                        "id",
-                        "displayName"
+                        "displayName",
+                        "id"
+                    ]
+                },
+                "user": {
+                    "type": "object",
+                    "properties": {
+                        "displayName": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "email": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "displayName",
+                        "id"
                     ]
                 }
             },
@@ -116,10 +116,10 @@
         "parentReference": {
             "type": "object",
             "properties": {
-                "driveType": {
+                "driveId": {
                     "type": "string"
                 },
-                "driveId": {
+                "driveType": {
                     "type": "string"
                 },
                 "id": {
@@ -136,8 +136,8 @@
                 }
             },
             "required": [
-                "driveType",
                 "driveId",
+                "driveType",
                 "id",
                 "name",
                 "path"
@@ -181,5 +181,6 @@
                 "lastModifiedDateTime"
             ]
         }
-    }
+    },
+    "version": 1
 }
