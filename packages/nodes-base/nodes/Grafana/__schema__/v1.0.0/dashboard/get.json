@@ -1,918 +1,887 @@
 {
-	"type": "object",
-	"properties": {
-		"meta": {
-			"type": "object",
-			"properties": {
-				"type": {
-					"type": "string"
-				},
-				"canSave": {
-					"type": "boolean"
-				},
-				"canEdit": {
-					"type": "boolean"
-				},
-				"canAdmin": {
-					"type": "boolean"
-				},
-				"canStar": {
-					"type": "boolean"
-				},
-				"canDelete": {
-					"type": "boolean"
-				},
-				"slug": {
-					"type": "string"
-				},
-				"url": {
-					"type": "string"
-				},
-				"expires": {
-					"type": "string"
-				},
-				"created": {
-					"type": "string"
-				},
-				"updated": {
-					"type": "string"
-				},
-				"updatedBy": {
-					"type": "string"
-				},
-				"createdBy": {
-					"type": "string"
-				},
-				"version": {
-					"type": "integer"
-				},
-				"hasAcl": {
-					"type": "boolean"
-				},
-				"isFolder": {
-					"type": "boolean"
-				},
-				"folderId": {
-					"type": "integer"
-				},
-				"folderUid": {
-					"type": "string"
-				},
-				"folderTitle": {
-					"type": "string"
-				},
-				"folderUrl": {
-					"type": "string"
-				},
-				"provisioned": {
-					"type": "boolean"
-				},
-				"provisionedExternalId": {
-					"type": "string"
-				},
-				"annotationsPermissions": {
-					"type": "object",
-					"properties": {
-						"dashboard": {
-							"type": "object",
-							"properties": {
-								"canAdd": {
-									"type": "boolean"
-								},
-								"canEdit": {
-									"type": "boolean"
-								},
-								"canDelete": {
-									"type": "boolean"
-								}
-							},
-							"required": [
-								"canAdd",
-								"canEdit",
-								"canDelete"
-							]
-						},
-						"organization": {
-							"type": "object",
-							"properties": {
-								"canAdd": {
-									"type": "boolean"
-								},
-								"canEdit": {
-									"type": "boolean"
-								},
-								"canDelete": {
-									"type": "boolean"
-								}
-							},
-							"required": [
-								"canAdd",
-								"canEdit",
-								"canDelete"
-							]
-						}
-					},
-					"required": [
-						"dashboard",
-						"organization"
-					]
-				}
-			},
-			"required": [
-				"type",
-				"canSave",
-				"canEdit",
-				"canAdmin",
-				"canStar",
-				"canDelete",
-				"slug",
-				"url",
-				"expires",
-				"created",
-				"updated",
-				"updatedBy",
-				"createdBy",
-				"version",
-				"hasAcl",
-				"isFolder",
-				"folderId",
-				"folderUid",
-				"folderTitle",
-				"folderUrl",
-				"provisioned",
-				"provisionedExternalId",
-				"annotationsPermissions"
-			]
-		},
-		"dashboard": {
-			"type": "object",
-			"properties": {
-				"annotations": {
-					"type": "object",
-					"properties": {
-						"list": {
-							"type": "array",
-							"items": {
-								"type": "object",
-								"properties": {
-									"builtIn": {
-										"type": "integer"
-									},
-									"datasource": {
-										"type": "object",
-										"properties": {
-											"type": {
-												"type": "string"
-											},
-											"uid": {
-												"type": "string"
-											}
-										},
-										"required": [
-											"type",
-											"uid"
-										]
-									},
-									"enable": {
-										"type": "boolean"
-									},
-									"hide": {
-										"type": "boolean"
-									},
-									"iconColor": {
-										"type": "string"
-									},
-									"name": {
-										"type": "string"
-									},
-									"target": {
-										"type": "object",
-										"properties": {
-											"limit": {
-												"type": "integer"
-											},
-											"matchAny": {
-												"type": "boolean"
-											},
-											"type": {
-												"type": "string"
-											}
-										},
-										"required": [
-											"limit",
-											"matchAny",
-											"tags",
-											"type"
-										]
-									},
-									"type": {
-										"type": "string"
-									}
-								},
-								"required": [
-									"builtIn",
-									"datasource",
-									"enable",
-									"hide",
-									"iconColor",
-									"name",
-									"target",
-									"type"
-								]
-							}
-						}
-					},
-					"required": [
-						"list"
-					]
-				},
-				"editable": {
-					"type": "boolean"
-				},
-				"fiscalYearStartMonth": {
-					"type": "integer"
-				},
-				"graphTooltip": {
-					"type": "integer"
-				},
-				"id": {
-					"type": "integer"
-				},
-				"links": {
-					"type": "array",
-					"items": {
-						"type": "object",
-						"properties": {
-							"asDropdown": {
-								"type": "boolean"
-							},
-							"icon": {
-								"type": "string"
-							},
-							"includeVars": {
-								"type": "boolean"
-							},
-							"keepTime": {
-								"type": "boolean"
-							},
-							"targetBlank": {
-								"type": "boolean"
-							},
-							"title": {
-								"type": "string"
-							},
-							"tooltip": {
-								"type": "string"
-							},
-							"type": {
-								"type": "string"
-							},
-							"url": {
-								"type": "string"
-							}
-						},
-						"required": [
-							"asDropdown",
-							"icon",
-							"includeVars",
-							"keepTime",
-							"tags",
-							"targetBlank",
-							"title",
-							"tooltip",
-							"type",
-							"url"
-						]
-					}
-				},
-				"panels": {
-					"type": "array",
-					"items": {
-						"type": "object",
-						"properties": {
-							"fieldConfig": {
-								"type": "object",
-								"properties": {
-									"defaults": {
-										"type": "object",
-										"properties": {
-											"color": {
-												"type": "object",
-												"properties": {
-													"mode": {
-														"type": "string"
-													},
-													"fixedColor": {
-														"type": "string"
-													}
-												},
-												"required": [
-													"mode"
-												]
-											},
-											"custom": {
-												"type": "object",
-												"properties": {
-													"axisCenteredZero": {
-														"type": "boolean"
-													},
-													"axisColorMode": {
-														"type": "string"
-													},
-													"axisLabel": {
-														"type": "string"
-													},
-													"axisPlacement": {
-														"type": "string"
-													},
-													"barAlignment": {
-														"type": "integer"
-													},
-													"drawStyle": {
-														"type": "string"
-													},
-													"fillOpacity": {
-														"type": "integer"
-													},
-													"gradientMode": {
-														"type": "string"
-													},
-													"hideFrom": {
-														"type": "object",
-														"properties": {
-															"legend": {
-																"type": "boolean"
-															},
-															"tooltip": {
-																"type": "boolean"
-															},
-															"viz": {
-																"type": "boolean"
-															}
-														},
-														"required": [
-															"legend",
-															"tooltip",
-															"viz"
-														]
-													},
-													"lineInterpolation": {
-														"type": "string"
-													},
-													"lineWidth": {
-														"type": "integer"
-													},
-													"pointSize": {
-														"type": "integer"
-													},
-													"scaleDistribution": {
-														"type": "object",
-														"properties": {
-															"type": {
-																"type": "string"
-															}
-														},
-														"required": [
-															"type"
-														]
-													},
-													"showPoints": {
-														"type": "string"
-													},
-													"spanNulls": {
-														"type": "boolean"
-													},
-													"stacking": {
-														"type": "object",
-														"properties": {
-															"group": {
-																"type": "string"
-															},
-															"mode": {
-																"type": "string"
-															}
-														},
-														"required": [
-															"group",
-															"mode"
-														]
-													},
-													"thresholdsStyle": {
-														"type": "object",
-														"properties": {
-															"mode": {
-																"type": "string"
-															}
-														},
-														"required": [
-															"mode"
-														]
-													},
-													"axisBorderShow": {
-														"type": "boolean"
-													},
-													"axisGridShow": {
-														"type": "boolean"
-													},
-													"barWidthFactor": {
-														"type": "number"
-													},
-													"insertNulls": {
-														"type": "boolean"
-													},
-													"lineStyle": {
-														"type": "object",
-														"properties": {
-															"fill": {
-																"type": "string"
-															}
-														},
-														"required": [
-															"fill"
-														]
-													}
-												},
-												"required": [
-													"axisCenteredZero",
-													"axisColorMode",
-													"axisLabel",
-													"axisPlacement",
-													"barAlignment",
-													"drawStyle",
-													"fillOpacity",
-													"gradientMode",
-													"hideFrom",
-													"lineInterpolation",
-													"lineWidth",
-													"pointSize",
-													"scaleDistribution",
-													"showPoints",
-													"spanNulls",
-													"stacking",
-													"thresholdsStyle"
-												]
-											},
-											"thresholds": {
-												"type": "object",
-												"properties": {
-													"mode": {
-														"type": "string"
-													},
-													"steps": {
-														"type": "array",
-														"items": {
-															"type": "object",
-															"properties": {
-																"color": {
-																	"type": "string"
-																}
-															},
-															"required": [
-																"color"
-															]
-														}
-													}
-												},
-												"required": [
-													"mode",
-													"steps"
-												]
-											},
-											"unit": {
-												"type": "string"
-											},
-											"min": {
-												"type": "integer"
-											}
-										},
-										"required": [
-											"color",
-											"custom",
-											"mappings",
-											"thresholds"
-										]
-									},
-									"overrides": {
-										"type": "array",
-										"items": {
-											"type": "object",
-											"properties": {
-												"matcher": {
-													"type": "object",
-													"properties": {
-														"id": {
-															"type": "string"
-														},
-														"options": {
-															"type": "string"
-														}
-													},
-													"required": [
-														"id",
-														"options"
-													]
-												},
-												"properties": {
-													"type": "array",
-													"items": {
-														"type": "object",
-														"properties": {
-															"id": {
-																"type": "string"
-															}
-														},
-														"required": [
-															"id",
-															"value"
-														]
-													}
-												}
-											},
-											"required": [
-												"matcher",
-												"properties"
-											]
-										}
-									}
-								},
-								"required": [
-									"defaults",
-									"overrides"
-								]
-							},
-							"gridPos": {
-								"type": "object",
-								"properties": {
-									"h": {
-										"type": "integer"
-									},
-									"w": {
-										"type": "integer"
-									},
-									"x": {
-										"type": "integer"
-									},
-									"y": {
-										"type": "integer"
-									}
-								},
-								"required": [
-									"h",
-									"w",
-									"x",
-									"y"
-								]
-							},
-							"id": {
-								"type": "integer"
-							},
-							"options": {
-								"type": "object",
-								"properties": {
-									"legend": {
-										"type": "object",
-										"properties": {
-											"calcs": {
-												"type": "array",
-												"items": {
-													"type": "string"
-												}
-											},
-											"displayMode": {
-												"type": "string"
-											},
-											"placement": {
-												"type": "string"
-											},
-											"showLegend": {
-												"type": "boolean"
-											}
-										},
-										"required": [
-											"calcs",
-											"displayMode",
-											"placement",
-											"showLegend"
-										]
-									},
-									"tooltip": {
-										"type": "object",
-										"properties": {
-											"mode": {
-												"type": "string"
-											},
-											"sort": {
-												"type": "string"
-											}
-										},
-										"required": [
-											"mode",
-											"sort"
-										]
-									}
-								},
-								"required": [
-									"legend",
-									"tooltip"
-								]
-							},
-							"title": {
-								"type": "string"
-							},
-							"type": {
-								"type": "string"
-							},
-							"datasource": {
-								"type": "object",
-								"properties": {
-									"type": {
-										"type": "string"
-									},
-									"uid": {
-										"type": "string"
-									}
-								},
-								"required": [
-									"type",
-									"uid"
-								]
-							},
-							"pluginVersion": {
-								"type": "string"
-							},
-							"targets": {
-								"type": "array",
-								"items": {
-									"type": "object",
-									"properties": {
-										"datasource": {
-											"type": "object",
-											"properties": {
-												"type": {
-													"type": "string"
-												},
-												"uid": {
-													"type": "string"
-												}
-											},
-											"required": [
-												"type",
-												"uid"
-											]
-										},
-										"disableTextWrap": {
-											"type": "boolean"
-										},
-										"editorMode": {
-											"type": "string"
-										},
-										"expr": {
-											"type": "string"
-										},
-										"fullMetaSearch": {
-											"type": "boolean"
-										},
-										"includeNullMetadata": {
-											"type": "boolean"
-										},
-										"instant": {
-											"type": "boolean"
-										},
-										"legendFormat": {
-											"type": "string"
-										},
-										"range": {
-											"type": "boolean"
-										},
-										"refId": {
-											"type": "string"
-										},
-										"useBackend": {
-											"type": "boolean"
-										},
-										"hide": {
-											"type": "boolean"
-										},
-										"format": {
-											"type": "string"
-										},
-										"interval": {
-											"type": "string"
-										},
-										"intervalFactor": {
-											"type": "integer"
-										}
-									},
-									"required": [
-										"datasource",
-										"editorMode",
-										"refId"
-									]
-								}
-							},
-							"transparent": {
-								"type": "boolean"
-							},
-							"description": {
-								"type": "string"
-							},
-							"interval": {
-								"type": "string"
-							}
-						},
-						"required": [
-							"gridPos",
-							"id",
-							"title",
-							"type"
-						]
-					}
-				},
-				"schemaVersion": {
-					"type": "integer"
-				},
-				"tags": {
-					"type": "array",
-					"items": {
-						"type": "string"
-					}
-				},
-				"templating": {
-					"type": "object",
-					"properties": {
-						"list": {
-							"type": "array",
-							"items": {
-								"type": "object",
-								"properties": {
-									"current": {
-										"type": "object",
-										"properties": {
-											"selected": {
-												"type": "boolean"
-											}
-										},
-										"required": [
-											"selected",
-											"text",
-											"value"
-										]
-									},
-									"hide": {
-										"type": "integer"
-									},
-									"includeAll": {
-										"type": "boolean"
-									},
-									"label": {
-										"type": "string"
-									},
-									"multi": {
-										"type": "boolean"
-									},
-									"name": {
-										"type": "string"
-									},
-									"options": {
-										"type": "array",
-										"items": {
-											"type": "object",
-											"properties": {
-												"selected": {
-													"type": "boolean"
-												},
-												"text": {
-													"type": "string"
-												},
-												"value": {
-													"type": "string"
-												}
-											},
-											"required": [
-												"selected",
-												"text",
-												"value"
-											]
-										}
-									},
-									"query": {
-										"type": "string"
-									},
-									"queryValue": {
-										"type": "string"
-									},
-									"skipUrlSync": {
-										"type": "boolean"
-									},
-									"type": {
-										"type": "string"
-									},
-									"datasource": {
-										"type": "object",
-										"properties": {
-											"type": {
-												"type": "string"
-											},
-											"uid": {
-												"type": "string"
-											}
-										},
-										"required": [
-											"type",
-											"uid"
-										]
-									},
-									"definition": {
-										"type": "string"
-									},
-									"refresh": {
-										"type": "integer"
-									},
-									"regex": {
-										"type": "string"
-									},
-									"sort": {
-										"type": "integer"
-									},
-									"description": {
-										"type": "string"
-									}
-								},
-								"required": [
-									"current",
-									"hide",
-									"includeAll",
-									"multi",
-									"name",
-									"options",
-									"query",
-									"skipUrlSync",
-									"type"
-								]
-							}
-						}
-					},
-					"required": [
-						"list"
-					]
-				},
-				"time": {
-					"type": "object",
-					"properties": {
-						"from": {
-							"type": "string"
-						},
-						"to": {
-							"type": "string"
-						}
-					},
-					"required": [
-						"from",
-						"to"
-					]
-				},
-				"timezone": {
-					"type": "string"
-				},
-				"title": {
-					"type": "string"
-				},
-				"uid": {
-					"type": "string"
-				},
-				"version": {
-					"type": "integer"
-				},
-				"weekStart": {
-					"type": "string"
-				},
-				"preload": {
-					"type": "boolean"
-				}
-			},
-			"required": [
-				"annotations",
-				"editable",
-				"fiscalYearStartMonth",
-				"graphTooltip",
-				"id",
-				"links",
-				"panels",
-				"schemaVersion",
-				"tags",
-				"templating",
-				"time",
-				"timepicker",
-				"timezone",
-				"title",
-				"uid",
-				"version",
-				"weekStart"
-			]
-		}
-	},
-	"required": [
-		"meta",
-		"dashboard"
-	]
+    "type": "object",
+    "properties": {
+        "meta": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "canSave": {
+                    "type": "boolean"
+                },
+                "canEdit": {
+                    "type": "boolean"
+                },
+                "canAdmin": {
+                    "type": "boolean"
+                },
+                "canStar": {
+                    "type": "boolean"
+                },
+                "canDelete": {
+                    "type": "boolean"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                },
+                "expires": {
+                    "type": "string"
+                },
+                "created": {
+                    "type": "string"
+                },
+                "updated": {
+                    "type": "string"
+                },
+                "updatedBy": {
+                    "type": "string"
+                },
+                "createdBy": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "integer"
+                },
+                "hasAcl": {
+                    "type": "boolean"
+                },
+                "isFolder": {
+                    "type": "boolean"
+                },
+                "folderId": {
+                    "type": "integer"
+                },
+                "folderUid": {
+                    "type": "string"
+                },
+                "folderTitle": {
+                    "type": "string"
+                },
+                "folderUrl": {
+                    "type": "string"
+                },
+                "provisioned": {
+                    "type": "boolean"
+                },
+                "provisionedExternalId": {
+                    "type": "string"
+                },
+                "annotationsPermissions": {
+                    "type": "object",
+                    "properties": {
+                        "dashboard": {
+                            "type": "object",
+                            "properties": {
+                                "canAdd": {
+                                    "type": "boolean"
+                                },
+                                "canEdit": {
+                                    "type": "boolean"
+                                },
+                                "canDelete": {
+                                    "type": "boolean"
+                                }
+                            },
+                            "required": [
+                                "canAdd",
+                                "canEdit",
+                                "canDelete"
+                            ]
+                        },
+                        "organization": {
+                            "type": "object",
+                            "properties": {
+                                "canAdd": {
+                                    "type": "boolean"
+                                },
+                                "canEdit": {
+                                    "type": "boolean"
+                                },
+                                "canDelete": {
+                                    "type": "boolean"
+                                }
+                            },
+                            "required": [
+                                "canAdd",
+                                "canEdit",
+                                "canDelete"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "dashboard",
+                        "organization"
+                    ]
+                }
+            },
+            "required": [
+                "type",
+                "canSave",
+                "canEdit",
+                "canAdmin",
+                "canStar",
+                "canDelete",
+                "slug",
+                "url",
+                "expires",
+                "created",
+                "updated",
+                "updatedBy",
+                "createdBy",
+                "version",
+                "hasAcl",
+                "isFolder",
+                "folderId",
+                "folderUid",
+                "folderTitle",
+                "folderUrl",
+                "provisioned",
+                "provisionedExternalId",
+                "annotationsPermissions"
+            ]
+        },
+        "dashboard": {
+            "type": "object",
+            "properties": {
+                "annotations": {
+                    "type": "object",
+                    "properties": {
+                        "list": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "builtIn": {
+                                        "type": "integer"
+                                    },
+                                    "datasource": {
+                                        "type": "object",
+                                        "properties": {
+                                            "type": {
+                                                "type": "string"
+                                            },
+                                            "uid": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "type",
+                                            "uid"
+                                        ]
+                                    },
+                                    "enable": {
+                                        "type": "boolean"
+                                    },
+                                    "hide": {
+                                        "type": "boolean"
+                                    },
+                                    "iconColor": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "type": {
+                                        "type": "string"
+                                    },
+                                    "target": {
+                                        "type": "object",
+                                        "properties": {
+                                            "limit": {
+                                                "type": "integer"
+                                            },
+                                            "matchAny": {
+                                                "type": "boolean"
+                                            },
+                                            "type": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "limit",
+                                            "matchAny",
+                                            "tags",
+                                            "type"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "builtIn",
+                                    "datasource",
+                                    "enable",
+                                    "hide",
+                                    "iconColor",
+                                    "name",
+                                    "type"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "list"
+                    ]
+                },
+                "editable": {
+                    "type": "boolean"
+                },
+                "fiscalYearStartMonth": {
+                    "type": "integer"
+                },
+                "graphTooltip": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "links": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "asDropdown": {
+                                "type": "boolean"
+                            },
+                            "icon": {
+                                "type": "string"
+                            },
+                            "includeVars": {
+                                "type": "boolean"
+                            },
+                            "keepTime": {
+                                "type": "boolean"
+                            },
+                            "targetBlank": {
+                                "type": "boolean"
+                            },
+                            "title": {
+                                "type": "string"
+                            },
+                            "tooltip": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            },
+                            "url": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "asDropdown",
+                            "icon",
+                            "includeVars",
+                            "keepTime",
+                            "tags",
+                            "targetBlank",
+                            "title",
+                            "tooltip",
+                            "type",
+                            "url"
+                        ]
+                    }
+                },
+                "panels": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "datasource": {
+                                "type": "object",
+                                "properties": {
+                                    "type": {
+                                        "type": "string"
+                                    },
+                                    "uid": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "type",
+                                    "uid"
+                                ]
+                            },
+                            "description": {
+                                "type": "string"
+                            },
+                            "fieldConfig": {
+                                "type": "object",
+                                "properties": {
+                                    "defaults": {
+                                        "type": "object",
+                                        "properties": {
+                                            "color": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "mode": {
+                                                        "type": "string"
+                                                    },
+                                                    "fixedColor": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "mode"
+                                                ]
+                                            },
+                                            "thresholds": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "mode": {
+                                                        "type": "string"
+                                                    },
+                                                    "steps": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "color": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "color"
+                                                            ]
+                                                        }
+                                                    }
+                                                },
+                                                "required": [
+                                                    "mode",
+                                                    "steps"
+                                                ]
+                                            },
+                                            "unit": {
+                                                "type": "string"
+                                            },
+                                            "custom": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "axisCenteredZero": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "axisColorMode": {
+                                                        "type": "string"
+                                                    },
+                                                    "axisLabel": {
+                                                        "type": "string"
+                                                    },
+                                                    "axisPlacement": {
+                                                        "type": "string"
+                                                    },
+                                                    "barAlignment": {
+                                                        "type": "integer"
+                                                    },
+                                                    "drawStyle": {
+                                                        "type": "string"
+                                                    },
+                                                    "fillOpacity": {
+                                                        "type": "integer"
+                                                    },
+                                                    "gradientMode": {
+                                                        "type": "string"
+                                                    },
+                                                    "hideFrom": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "legend": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "tooltip": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "viz": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "legend",
+                                                            "tooltip",
+                                                            "viz"
+                                                        ]
+                                                    },
+                                                    "lineInterpolation": {
+                                                        "type": "string"
+                                                    },
+                                                    "lineWidth": {
+                                                        "type": "integer"
+                                                    },
+                                                    "pointSize": {
+                                                        "type": "integer"
+                                                    },
+                                                    "scaleDistribution": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "type": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "type"
+                                                        ]
+                                                    },
+                                                    "showPoints": {
+                                                        "type": "string"
+                                                    },
+                                                    "spanNulls": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "stacking": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "group": {
+                                                                "type": "string"
+                                                            },
+                                                            "mode": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "group",
+                                                            "mode"
+                                                        ]
+                                                    },
+                                                    "thresholdsStyle": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "mode": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "mode"
+                                                        ]
+                                                    },
+                                                    "axisBorderShow": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "axisGridShow": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "barWidthFactor": {
+                                                        "type": "number"
+                                                    },
+                                                    "insertNulls": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "lineStyle": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "fill": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "fill"
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "min": {
+                                                "type": "integer"
+                                            }
+                                        },
+                                        "required": [
+                                            "color",
+                                            "mappings",
+                                            "thresholds"
+                                        ]
+                                    },
+                                    "overrides": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "matcher": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string"
+                                                        },
+                                                        "options": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "options"
+                                                    ]
+                                                },
+                                                "properties": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "value"
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "matcher",
+                                                "properties"
+                                            ]
+                                        }
+                                    }
+                                },
+                                "required": [
+                                    "defaults",
+                                    "overrides"
+                                ]
+                            },
+                            "gridPos": {
+                                "type": "object",
+                                "properties": {
+                                    "h": {
+                                        "type": "integer"
+                                    },
+                                    "w": {
+                                        "type": "integer"
+                                    },
+                                    "x": {
+                                        "type": "integer"
+                                    },
+                                    "y": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "required": [
+                                    "h",
+                                    "w",
+                                    "x",
+                                    "y"
+                                ]
+                            },
+                            "id": {
+                                "type": "integer"
+                            },
+                            "options": {
+                                "type": "object",
+                                "properties": {
+                                    "legend": {
+                                        "type": "object",
+                                        "properties": {
+                                            "calcs": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "displayMode": {
+                                                "type": "string"
+                                            },
+                                            "placement": {
+                                                "type": "string"
+                                            },
+                                            "showLegend": {
+                                                "type": "boolean"
+                                            }
+                                        },
+                                        "required": [
+                                            "calcs",
+                                            "displayMode",
+                                            "placement",
+                                            "showLegend"
+                                        ]
+                                    },
+                                    "tooltip": {
+                                        "type": "object",
+                                        "properties": {
+                                            "mode": {
+                                                "type": "string"
+                                            },
+                                            "sort": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "mode",
+                                            "sort"
+                                        ]
+                                    }
+                                }
+                            },
+                            "pluginVersion": {
+                                "type": "string"
+                            },
+                            "targets": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "datasource": {
+                                            "type": "object",
+                                            "properties": {
+                                                "type": {
+                                                    "type": "string"
+                                                },
+                                                "uid": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "type",
+                                                "uid"
+                                            ]
+                                        },
+                                        "refId": {
+                                            "type": "string"
+                                        },
+                                        "hide": {
+                                            "type": "boolean"
+                                        },
+                                        "disableTextWrap": {
+                                            "type": "boolean"
+                                        },
+                                        "editorMode": {
+                                            "type": "string"
+                                        },
+                                        "expr": {
+                                            "type": "string"
+                                        },
+                                        "fullMetaSearch": {
+                                            "type": "boolean"
+                                        },
+                                        "includeNullMetadata": {
+                                            "type": "boolean"
+                                        },
+                                        "instant": {
+                                            "type": "boolean"
+                                        },
+                                        "legendFormat": {
+                                            "type": "string"
+                                        },
+                                        "useBackend": {
+                                            "type": "boolean"
+                                        },
+                                        "format": {
+                                            "type": "string"
+                                        },
+                                        "interval": {
+                                            "type": "string"
+                                        },
+                                        "intervalFactor": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "required": [
+                                        "datasource",
+                                        "refId"
+                                    ]
+                                }
+                            },
+                            "title": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            },
+                            "transparent": {
+                                "type": "boolean"
+                            },
+                            "interval": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "gridPos",
+                            "id",
+                            "title",
+                            "type"
+                        ]
+                    }
+                },
+                "schemaVersion": {
+                    "type": "integer"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "templating": {
+                    "type": "object",
+                    "properties": {
+                        "list": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "current": {
+                                        "type": "object",
+                                        "properties": {
+                                            "selected": {
+                                                "type": "boolean"
+                                            }
+                                        },
+                                        "required": [
+                                            "text",
+                                            "value"
+                                        ]
+                                    },
+                                    "datasource": {
+                                        "type": "object",
+                                        "properties": {
+                                            "type": {
+                                                "type": "string"
+                                            },
+                                            "uid": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "type",
+                                            "uid"
+                                        ]
+                                    },
+                                    "definition": {
+                                        "type": "string"
+                                    },
+                                    "hide": {
+                                        "type": "integer"
+                                    },
+                                    "includeAll": {
+                                        "type": "boolean"
+                                    },
+                                    "label": {
+                                        "type": "string"
+                                    },
+                                    "multi": {
+                                        "type": "boolean"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "options": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "selected": {
+                                                    "type": "boolean"
+                                                },
+                                                "text": {
+                                                    "type": "string"
+                                                },
+                                                "value": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "selected",
+                                                "text",
+                                                "value"
+                                            ]
+                                        }
+                                    },
+                                    "query": {
+                                        "type": "object",
+                                        "properties": {
+                                            "query": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "query"
+                                        ]
+                                    },
+                                    "refresh": {
+                                        "type": "integer"
+                                    },
+                                    "regex": {
+                                        "type": "string"
+                                    },
+                                    "skipUrlSync": {
+                                        "type": "boolean"
+                                    },
+                                    "sort": {
+                                        "type": "integer"
+                                    },
+                                    "type": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "current",
+                                    "name",
+                                    "options",
+                                    "query",
+                                    "type"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "list"
+                    ]
+                },
+                "time": {
+                    "type": "object",
+                    "properties": {
+                        "from": {
+                            "type": "string"
+                        },
+                        "to": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "from",
+                        "to"
+                    ]
+                },
+                "timezone": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "integer"
+                },
+                "weekStart": {
+                    "type": "string"
+                },
+                "preload": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "annotations",
+                "editable",
+                "fiscalYearStartMonth",
+                "graphTooltip",
+                "id",
+                "links",
+                "panels",
+                "schemaVersion",
+                "tags",
+                "templating",
+                "time",
+                "timepicker",
+                "timezone",
+                "title",
+                "uid",
+                "version",
+                "weekStart"
+            ]
+        }
+    },
+    "required": [
+        "meta",
+        "dashboard"
+    ],
+    "version": 1
 }
