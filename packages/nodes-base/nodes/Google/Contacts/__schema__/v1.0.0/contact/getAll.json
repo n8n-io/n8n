@@ -7,33 +7,13 @@
         "etag": {
             "type": "string"
         },
-        "names": {
-            "type": "object",
-            "properties": {
-                "displayName": {
-                    "type": "string"
-                },
-                "familyName": {
-                    "type": "string"
-                },
-                "givenName": {
-                    "type": "string"
-                },
-                "displayNameLastFirst": {
-                    "type": "string"
-                },
-                "unstructuredName": {
-                    "type": "string"
-                }
-            }
-        },
         "contactId": {
             "type": "string"
         },
-        "phoneNumbers": {
+        "emailAddresses": {
             "type": "object",
             "properties": {
-                "mobile": {
+                "undefined": {
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -46,5 +26,6 @@
         "resourceName",
         "etag",
         "contactId"
-    ]
+    ],
+    "version": 1
 }
