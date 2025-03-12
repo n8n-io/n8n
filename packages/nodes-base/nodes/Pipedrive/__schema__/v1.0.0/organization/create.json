@@ -1,181 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "integer"
-        },
-        "company_id": {
-            "type": "integer"
-        },
-        "owner_id": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "has_pic": {
-                    "type": "integer"
-                },
-                "active_flag": {
-                    "type": "boolean"
-                },
-                "value": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "id",
-                "name",
-                "email",
-                "has_pic",
-                "pic_hash",
-                "active_flag",
-                "value"
-            ]
-        },
-        "name": {
-            "type": "string"
-        },
-        "open_deals_count": {
-            "type": "integer"
-        },
-        "related_open_deals_count": {
-            "type": "integer"
-        },
-        "closed_deals_count": {
-            "type": "integer"
-        },
-        "related_closed_deals_count": {
-            "type": "integer"
-        },
-        "email_messages_count": {
-            "type": "integer"
-        },
-        "people_count": {
-            "type": "integer"
-        },
-        "activities_count": {
-            "type": "integer"
-        },
-        "done_activities_count": {
-            "type": "integer"
-        },
-        "undone_activities_count": {
-            "type": "integer"
-        },
-        "files_count": {
-            "type": "integer"
-        },
-        "notes_count": {
-            "type": "integer"
-        },
-        "followers_count": {
-            "type": "integer"
-        },
-        "won_deals_count": {
-            "type": "integer"
-        },
-        "related_won_deals_count": {
-            "type": "integer"
-        },
-        "lost_deals_count": {
-            "type": "integer"
-        },
-        "related_lost_deals_count": {
-            "type": "integer"
-        },
-        "active_flag": {
-            "type": "boolean"
-        },
-        "picture_id": {
-            "type": "null"
-        },
-        "country_code": {
-            "type": "null"
-        },
-        "first_char": {
-            "type": "string"
-        },
-        "update_time": {
-            "type": "string"
-        },
-        "delete_time": {
-            "type": "null"
-        },
-        "add_time": {
-            "type": "string"
-        },
-        "visible_to": {
-            "type": "string"
-        },
-        "next_activity_date": {
-            "type": "null"
-        },
-        "next_activity_time": {
-            "type": "null"
-        },
-        "next_activity_id": {
-            "type": "null"
-        },
-        "last_activity_id": {
-            "type": "null"
-        },
-        "last_activity_date": {
-            "type": "null"
-        },
-        "label_ids": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
-        },
-        "address_subpremise": {
-            "type": "null"
-        },
-        "address_street_number": {
-            "type": "null"
-        },
-        "address_route": {
-            "type": "null"
-        },
-        "address_sublocality": {
-            "type": "null"
-        },
-        "address_locality": {
-            "type": "null"
-        },
-        "address_admin_area_level_1": {
-            "type": "null"
-        },
-        "address_admin_area_level_2": {
-            "type": "null"
-        },
-        "address_country": {
-            "type": "null"
-        },
-        "address_postal_code": {
-            "type": "null"
-        },
-        "address_formatted_address": {
-            "type": "null"
-        },
-        "cc_email": {
-            "type": "string"
-        },
-        "owner_name": {
-            "type": "string"
-        },
-        "edit_name": {
-            "type": "boolean"
-        },
-        "category_id": {
-            "type": "null"
-        }
-    }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/organization/create.json",
+    "sha": "b5fca53692b293fad676c7c181d874499ab698c1",
+    "size": 4195,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/organization/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/organization/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/b5fca53692b293fad676c7c181d874499ab698c1",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/organization/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIK\nICAgICAgICB9LAogICAgICAgICJjb21wYW55X2lkIjogewogICAgICAgICAg\nICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgIm93bmVy\nX2lkIjogewogICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAg\nICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICJpZCI6IHsK\nICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAg\nICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJuYW1lIjogewogICAgICAg\nICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAg\nIH0sCiAgICAgICAgICAgICAgICAiZW1haWwiOiB7CiAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgICAgICJoYXNfcGljIjogewogICAgICAgICAgICAgICAgICAg\nICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgICAgICAgICB9LAogICAgICAg\nICAgICAgICAgImFjdGl2ZV9mbGFnIjogewogICAgICAgICAgICAgICAgICAg\nICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgICAgICAgICB9LAogICAgICAg\nICAgICAgICAgInZhbHVlIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogImludGVnZXIiCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0s\nCiAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICJp\nZCIsCiAgICAgICAgICAgICAgICAibmFtZSIsCiAgICAgICAgICAgICAgICAi\nZW1haWwiLAogICAgICAgICAgICAgICAgImhhc19waWMiLAogICAgICAgICAg\nICAgICAgInBpY19oYXNoIiwKICAgICAgICAgICAgICAgICJhY3RpdmVfZmxh\nZyIsCiAgICAgICAgICAgICAgICAidmFsdWUiCiAgICAgICAgICAgIF0KICAg\nICAgICB9LAogICAgICAgICJuYW1lIjogewogICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAib3Blbl9kZWFsc19jb3Vu\ndCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9\nLAogICAgICAgICJyZWxhdGVkX29wZW5fZGVhbHNfY291bnQiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAgICAi\nY2xvc2VkX2RlYWxzX2NvdW50IjogewogICAgICAgICAgICAidHlwZSI6ICJp\nbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgInJlbGF0ZWRfY2xvc2VkX2Rl\nYWxzX2NvdW50IjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgog\nICAgICAgIH0sCiAgICAgICAgImVtYWlsX21lc3NhZ2VzX2NvdW50Ijogewog\nICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAg\nICAgInBlb3BsZV9jb3VudCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50\nZWdlciIKICAgICAgICB9LAogICAgICAgICJhY3Rpdml0aWVzX2NvdW50Ijog\newogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAg\nICAgICAgImRvbmVfYWN0aXZpdGllc19jb3VudCI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJ1bmRvbmVf\nYWN0aXZpdGllc19jb3VudCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50\nZWdlciIKICAgICAgICB9LAogICAgICAgICJmaWxlc19jb3VudCI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAg\nICJub3Rlc19jb3VudCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdl\nciIKICAgICAgICB9LAogICAgICAgICJmb2xsb3dlcnNfY291bnQiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAg\nICAid29uX2RlYWxzX2NvdW50IjogewogICAgICAgICAgICAidHlwZSI6ICJp\nbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgInJlbGF0ZWRfd29uX2RlYWxz\nX2NvdW50IjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAg\nICAgIH0sCiAgICAgICAgImxvc3RfZGVhbHNfY291bnQiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAgICAicmVs\nYXRlZF9sb3N0X2RlYWxzX2NvdW50IjogewogICAgICAgICAgICAidHlwZSI6\nICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgImFjdGl2ZV9mbGFnIjog\newogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAg\nICAgICAgInBpY3R1cmVfaWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51\nbGwiCiAgICAgICAgfSwKICAgICAgICAiY291bnRyeV9jb2RlIjogewogICAg\nICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAgImZp\ncnN0X2NoYXIiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICB9LAogICAgICAgICJ1cGRhdGVfdGltZSI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImRlbGV0ZV90\naW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0s\nCiAgICAgICAgImFkZF90aW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgfSwKICAgICAgICAidmlzaWJsZV90byI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAg\nIm5leHRfYWN0aXZpdHlfZGF0ZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nbnVsbCIKICAgICAgICB9LAogICAgICAgICJuZXh0X2FjdGl2aXR5X3RpbWUi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwKICAg\nICAgICAibmV4dF9hY3Rpdml0eV9pZCI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAibnVsbCIKICAgICAgICB9LAogICAgICAgICJsYXN0X2FjdGl2aXR5X2lk\nIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAg\nICAgICAgImxhc3RfYWN0aXZpdHlfZGF0ZSI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAibnVsbCIKICAgICAgICB9LAogICAgICAgICJsYWJlbF9pZHMiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogImFycmF5IiwKICAgICAgICAgICAgIml0\nZW1zIjogewogICAgICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAg\nICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAgImFkZHJlc3Nfc3VicHJl\nbWlzZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9\nLAogICAgICAgICJhZGRyZXNzX3N0cmVldF9udW1iZXIiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAiYWRkcmVz\nc19yb3V0ZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAg\nICB9LAogICAgICAgICJhZGRyZXNzX3N1YmxvY2FsaXR5IjogewogICAgICAg\nICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAgImFkZHJl\nc3NfbG9jYWxpdHkiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAg\nICAgICAgfSwKICAgICAgICAiYWRkcmVzc19hZG1pbl9hcmVhX2xldmVsXzEi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwKICAg\nICAgICAiYWRkcmVzc19hZG1pbl9hcmVhX2xldmVsXzIiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAiYWRkcmVz\nc19jb3VudHJ5IjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAg\nICAgIH0sCiAgICAgICAgImFkZHJlc3NfcG9zdGFsX2NvZGUiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAiYWRk\ncmVzc19mb3JtYXR0ZWRfYWRkcmVzcyI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAibnVsbCIKICAgICAgICB9LAogICAgICAgICJjY19lbWFpbCI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAg\nIm93bmVyX25hbWUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJlZGl0X25hbWUiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAiY2F0ZWdv\ncnlfaWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAg\nfQogICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/organization/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/b5fca53692b293fad676c7c181d874499ab698c1",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/organization/create.json"
+    },
+    "version": 1
 }
