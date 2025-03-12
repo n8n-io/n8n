@@ -12,6 +12,10 @@
         },
         "role": {
             "type": "string"
+        },
+        "allowFileDiscovery": {
+            "type": "boolean"
         }
-    }
+    },
+    "version": 1
 }
