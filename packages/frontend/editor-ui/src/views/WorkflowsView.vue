@@ -760,25 +760,6 @@ const mainBreadcrumbs = computed(() => {
 	};
 });
 
-/**
- * Card breadcrumbs items that show on workflow and folder cards
- * These show path to the current folder with up to one parent visible
- */
-const cardBreadcrumbs = computed(() => {
-	const visibleItems = visibleBreadcrumbsItems.value;
-	const hiddenItems = hiddenBreadcrumbsItems.value;
-	if (visibleItems.length > 1) {
-		return {
-			visibleItems: [visibleItems[visibleItems.length - 1]],
-			hiddenItems: [...hiddenItems, ...visibleItems.slice(0, visibleItems.length - 1)],
-		};
-	}
-	return {
-		visibleItems,
-		hiddenItems,
-	};
-});
-
 const onBreadcrumbItemClick = (item: PathItem) => {
 	if (item.href) {
 		loading.value = true;
@@ -1097,17 +1078,14 @@ const deleteFolder = async (folderId: string, workflowCount: number, subFolderCo
 				v-if="(data as FolderResource | WorkflowResource).resourceType === 'folder'"
 				:data="data as FolderResource"
 				:actions="folderCardActions"
-				:breadcrumbs="cardBreadcrumbs"
 				:read-only="readOnlyEnv || (!hasPermissionToDeleteFolders && !hasPermissionToCreateFolders)"
 				class="mb-2xs"
-				@action="onFolderCardAction"
 			/>
 			<WorkflowCard
 				v-else
 				data-test-id="resources-list-item"
 				class="mb-2xs"
 				:data="data as WorkflowResource"
-				:breadcrumbs="cardBreadcrumbs"
 				:workflow-list-event-bus="workflowListEventBus"
 				:read-only="readOnlyEnv"
 				@click:tag="onClickTag"

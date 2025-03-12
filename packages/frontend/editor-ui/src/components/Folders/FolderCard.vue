@@ -6,17 +6,12 @@ import { type ProjectIcon, ProjectTypes } from '@/types/projects.types';
 import { useI18n } from '@/composables/useI18n';
 import { useRoute, useRouter } from 'vue-router';
 import { VIEWS } from '@/constants';
-import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
-import type { FolderPathItem, UserAction } from '@/Interface';
+import type { UserAction } from '@/Interface';
 
 type Props = {
 	data: FolderResource;
 	actions: UserAction[];
 	readOnly?: boolean;
-	breadcrumbs: {
-		visibleItems: FolderPathItem[];
-		hiddenItems: FolderPathItem[];
-	};
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -72,12 +67,6 @@ const onAction = async (action: string) => {
 		return;
 	}
 	emit('action', { action, folderId: props.data.id });
-};
-
-const onBreadcrumbsItemClick = async (item: PathItem) => {
-	if (item.href) {
-		await router.push(item.href);
-	}
 };
 </script>
 
@@ -147,28 +136,15 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 				</template>
 				<template #append>
 					<div :class="$style['card-actions']" @click.prevent>
-						<div :class="$style.breadcrumbs">
-							<n8n-breadcrumbs
-								:items="breadcrumbs.visibleItems"
-								:hidden-items="breadcrumbs.hiddenItems"
-								:path-truncated="breadcrumbs.visibleItems[0]?.parentFolder"
-								:show-border="true"
-								:highlight-last-item="false"
-								theme="small"
-								data-test-id="folder-card-breadcrumbs"
-								@item-selected="onBreadcrumbsItemClick"
-							>
-								<template v-if="data.homeProject" #prepend>
-									<div :class="$style['home-project']" data-test-id="folder-card-home-project">
-										<n8n-link :to="`/projects/${data.homeProject.id}`">
-											<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" />
-											<n8n-text size="small" :compact="true" :bold="true" color="text-base">
-												{{ projectName }}
-											</n8n-text>
-										</n8n-link>
-									</div>
-								</template>
-							</n8n-breadcrumbs>
+						<div v-if="data.homeProject" :class="$style['project-pill']">
+							<div :class="$style['home-project']" data-test-id="folder-card-home-project">
+								<n8n-link :to="`/projects/${data.homeProject.id}`">
+									<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" />
+									<n8n-text size="small" :compact="true" :bold="true" color="text-base">
+										{{ projectName }}
+									</n8n-text>
+								</n8n-link>
+							</div>
 						</div>
 						<n8n-action-toggle
 							v-if="actions.length"
@@ -208,6 +184,7 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 	align-items: center;
 	justify-content: space-between;
 	padding-right: var(--spacing-xs);
+	margin-bottom: var(--spacing-5xs);
 }
 
 .card-footer {
@@ -226,6 +203,14 @@ const onBreadcrumbsItemClick = async (item: PathItem) => {
 .card-actions {
 	display: flex;
 	gap: var(--spacing-xs);
+}
+
+.project-pill {
+	display: flex;
+	align-items: center;
+	padding: var(--spacing-4xs) var(--spacing-2xs);
+	border: var(--border-base);
+	border-radius: var(--border-radius-base);
 }
 
 .home-project span {

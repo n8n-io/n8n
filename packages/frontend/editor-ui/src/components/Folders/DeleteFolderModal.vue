@@ -80,28 +80,6 @@ const enabled = computed(() => {
 	return false;
 });
 
-const folderContentWarningMessage = computed(() => {
-	const folderCount = props.data.content.subFolderCount ?? 0;
-	const workflowCount = props.data.content.workflowCount ?? 0;
-	let folderText = '';
-	let workflowText = '';
-	if (folderCount > 0) {
-		folderText = i18n.baseText('folder.count', { interpolate: { count: folderCount } });
-	}
-	if (workflowCount > 0) {
-		workflowText = i18n.baseText('workflow.count', { interpolate: { count: workflowCount } });
-	}
-	if (folderCount > 0 && workflowCount > 0) {
-		folderText += ` ${i18n.baseText('folder.and.workflow.separator')} `;
-	}
-	return i18n.baseText('folder.delete.modal.confirmation', {
-		interpolate: {
-			folders: folderText,
-			workflows: workflowText,
-		},
-	});
-});
-
 async function onSubmit() {
 	if (!enabled.value) {
 		return;
@@ -161,7 +139,9 @@ onMounted(async () => {
 				</div>
 				<div v-else :class="$style.content">
 					<div>
-						<n8n-text color="text-base">{{ folderContentWarningMessage }}</n8n-text>
+						<n8n-text color="text-base">{{
+							i18n.baseText('folder.delete.modal.confirmation')
+						}}</n8n-text>
 					</div>
 					<el-radio
 						v-model="operation"
