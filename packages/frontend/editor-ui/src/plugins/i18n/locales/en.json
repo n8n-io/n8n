@@ -2689,6 +2689,7 @@
 	"projects.create.limitReached.cloud": "You have reached the {planName} plan limit of {limit}. Upgrade your plan to unlock more projects.",
 	"projects.create.limitReached.self": "Upgrade to unlock projects for more granular control over sharing, access and organisation of workflows",
 	"projects.create.limitReached.link": "View plans",
+	"projects.create.permissionDenied": "Your current role does not allow you to create projects",
 	"projects.move.resource.modal.title": "Choose a project or user to move this {resourceTypeLabel} to",
 	"projects.move.resource.modal.message": "\"{resourceName}\" is currently {inPersonalProject}{inTeamProject}",
 	"projects.move.resource.modal.message.team": "in the \"{resourceHomeProjectName}\" project.",
