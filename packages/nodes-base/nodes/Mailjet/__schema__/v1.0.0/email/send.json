@@ -1,89 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "Status": {
-            "type": "string"
-        },
-        "CustomID": {
-            "type": "string"
-        },
-        "To": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "Email": {
-                        "type": "string"
-                    },
-                    "MessageUUID": {
-                        "type": "string"
-                    },
-                    "MessageID": {
-                        "type": "integer"
-                    },
-                    "MessageHref": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "Email",
-                    "MessageUUID",
-                    "MessageID",
-                    "MessageHref"
-                ]
-            }
-        },
-        "Cc": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "Email": {
-                        "type": "string"
-                    },
-                    "MessageUUID": {
-                        "type": "string"
-                    },
-                    "MessageID": {
-                        "type": "integer"
-                    },
-                    "MessageHref": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "Email",
-                    "MessageUUID",
-                    "MessageID",
-                    "MessageHref"
-                ]
-            }
-        },
-        "Bcc": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "Email": {
-                        "type": "string"
-                    },
-                    "MessageUUID": {
-                        "type": "string"
-                    },
-                    "MessageID": {
-                        "type": "integer"
-                    },
-                    "MessageHref": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "Email",
-                    "MessageUUID",
-                    "MessageID",
-                    "MessageHref"
-                ]
-            }
-        }
-    }
+    "name": "send.json",
+    "path": "packages/nodes-base/nodes/Mailjet/__schema__/v1.0.0/email/send.json",
+    "sha": "88a6ee59e11f2519e627c2bf04a612da1ccd4b26",
+    "size": 2433,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Mailjet/__schema__/v1.0.0/email/send.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Mailjet/__schema__/v1.0.0/email/send.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/88a6ee59e11f2519e627c2bf04a612da1ccd4b26",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Mailjet/__schema__/v1.0.0/email/send.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJTdGF0dXMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJDdXN0b21JRCI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIlRvIjog\newogICAgICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAgICJp\ndGVtcyI6IHsKICAgICAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAg\nICAgICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAg\nICAgICAiRW1haWwiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAg\nICAgICAgICAgICJNZXNzYWdlVVVJRCI6IHsKICAgICAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAgIH0s\nCiAgICAgICAgICAgICAgICAgICAgIk1lc3NhZ2VJRCI6IHsKICAgICAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICAgICAg\nICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICJNZXNzYWdlSHJlZiI6\nIHsKICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgIH0sCiAgICAg\nICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAgICAg\nIkVtYWlsIiwKICAgICAgICAgICAgICAgICAgICAiTWVzc2FnZVVVSUQiLAog\nICAgICAgICAgICAgICAgICAgICJNZXNzYWdlSUQiLAogICAgICAgICAgICAg\nICAgICAgICJNZXNzYWdlSHJlZiIKICAgICAgICAgICAgICAgIF0KICAgICAg\nICAgICAgfQogICAgICAgIH0sCiAgICAgICAgIkNjIjogewogICAgICAgICAg\nICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAgICJpdGVtcyI6IHsKICAg\nICAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICAg\nICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICAgICAiRW1haWwi\nOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICJN\nZXNzYWdlVVVJRCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAg\nICAgICAgICAgIk1lc3NhZ2VJRCI6IHsKICAgICAgICAgICAgICAgICAgICAg\nICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICAgICAgICAgICAgICB9LAog\nICAgICAgICAgICAgICAgICAgICJNZXNzYWdlSHJlZiI6IHsKICAgICAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAg\nICAgICAgIH0KICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAi\ncmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAgICAgIkVtYWlsIiwKICAg\nICAgICAgICAgICAgICAgICAiTWVzc2FnZVVVSUQiLAogICAgICAgICAgICAg\nICAgICAgICJNZXNzYWdlSUQiLAogICAgICAgICAgICAgICAgICAgICJNZXNz\nYWdlSHJlZiIKICAgICAgICAgICAgICAgIF0KICAgICAgICAgICAgfQogICAg\nICAgIH0sCiAgICAgICAgIkJjYyI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nYXJyYXkiLAogICAgICAgICAgICAiaXRlbXMiOiB7CiAgICAgICAgICAgICAg\nICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAgInByb3BlcnRp\nZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgIkVtYWlsIjogewogICAgICAg\nICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAg\nICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAiTWVzc2FnZVVVSUQi\nOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICJN\nZXNzYWdlSUQiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nImludGVnZXIiCiAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nICAgICAgICAiTWVzc2FnZUhyZWYiOiB7CiAgICAgICAgICAgICAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICB9CiAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInJlcXVpcmVkIjog\nWwogICAgICAgICAgICAgICAgICAgICJFbWFpbCIsCiAgICAgICAgICAgICAg\nICAgICAgIk1lc3NhZ2VVVUlEIiwKICAgICAgICAgICAgICAgICAgICAiTWVz\nc2FnZUlEIiwKICAgICAgICAgICAgICAgICAgICAiTWVzc2FnZUhyZWYiCiAg\nICAgICAgICAgICAgICBdCiAgICAgICAgICAgIH0KICAgICAgICB9CiAgICB9\nCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Mailjet/__schema__/v1.0.0/email/send.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/88a6ee59e11f2519e627c2bf04a612da1ccd4b26",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Mailjet/__schema__/v1.0.0/email/send.json"
+    },
+    "version": 1
 }
