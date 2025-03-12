@@ -9,7 +9,7 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'merge',
 	group: ['transform'],
 	description: 'Merges data of multiple streams once data from both is available',
-	version: [3],
+	version: [3, 3.1],
 	defaults: {
 		name: 'Merge',
 	},
