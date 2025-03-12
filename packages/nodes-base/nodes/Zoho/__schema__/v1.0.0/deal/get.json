@@ -1,0 +1,225 @@
+{
+    "type": "object",
+    "properties": {
+        "Owner": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "id",
+                "email"
+            ]
+        },
+        "$currency_symbol": {
+            "type": "string"
+        },
+        "Campaign_Source": {
+            "type": "null"
+        },
+        "$field_states": {
+            "type": "null"
+        },
+        "$review_process": {
+            "type": "object",
+            "properties": {
+                "approve": {
+                    "type": "boolean"
+                },
+                "reject": {
+                    "type": "boolean"
+                },
+                "resubmit": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "approve",
+                "reject",
+                "resubmit"
+            ]
+        },
+        "Modified_By": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "id",
+                "email"
+            ]
+        },
+        "$review": {
+            "type": "null"
+        },
+        "$state": {
+            "type": "string"
+        },
+        "$process_flow": {
+            "type": "boolean"
+        },
+        "Deal_Name": {
+            "type": "string"
+        },
+        "$locked_for_me": {
+            "type": "boolean"
+        },
+        "Account_Name": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "id"
+            ]
+        },
+        "id": {
+            "type": "string"
+        },
+        "$approved": {
+            "type": "boolean"
+        },
+        "$approval": {
+            "type": "object",
+            "properties": {
+                "delegate": {
+                    "type": "boolean"
+                },
+                "takeover": {
+                    "type": "boolean"
+                },
+                "approve": {
+                    "type": "boolean"
+                },
+                "reject": {
+                    "type": "boolean"
+                },
+                "resubmit": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "delegate",
+                "approve",
+                "reject",
+                "resubmit"
+            ]
+        },
+        "Modified_Time": {
+            "type": "string"
+        },
+        "Created_Time": {
+            "type": "string"
+        },
+        "Probability": {
+            "type": "integer"
+        },
+        "$editable": {
+            "type": "boolean"
+        },
+        "$in_merge": {
+            "type": "boolean"
+        },
+        "Locked__s": {
+            "type": "boolean"
+        },
+        "Created_By": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "id",
+                "email"
+            ]
+        },
+        "$approval_state": {
+            "type": "string"
+        },
+        "Tag": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "name",
+                    "id"
+                ]
+            }
+        },
+        "$canvas_id": {
+            "type": "null"
+        }
+    },
+    "required": [
+        "Owner",
+        "$currency_symbol",
+        "$field_states",
+        "$review_process",
+        "Last_Activity_Time",
+        "$review",
+        "Lead_Conversion_Time",
+        "$state",
+        "$process_flow",
+        "Deal_Name",
+        "Overall_Sales_Duration",
+        "Stage",
+        "$locked_for_me",
+        "Account_Name",
+        "id",
+        "$approved",
+        "$approval",
+        "Created_Time",
+        "Amount",
+        "$editable",
+        "$orchestration",
+        "Contact_Name",
+        "Sales_Cycle_Duration",
+        "$in_merge",
+        "Locked__s",
+        "Created_By",
+        "$zia_owner_assignment",
+        "$approval_state"
+    ],
+    "version": 1
+}
