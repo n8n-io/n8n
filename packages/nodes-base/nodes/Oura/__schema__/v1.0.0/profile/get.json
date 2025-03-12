@@ -1,0 +1,32 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "age": {
+            "type": "integer"
+        },
+        "weight": {
+            "type": "number"
+        },
+        "height": {
+            "type": "number"
+        },
+        "biological_sex": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "id",
+        "age",
+        "weight",
+        "height",
+        "biological_sex",
+        "email"
+    ],
+    "version": 1
+}
