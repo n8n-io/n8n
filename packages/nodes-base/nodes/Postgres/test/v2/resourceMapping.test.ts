@@ -49,7 +49,7 @@ describe('Postgres, resourceMapping', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		jest.resetAllMocks();
 	});
 
 	it('should mark id as not required if identity_generation is "BY_DEFAULT"', async () => {
