@@ -162,7 +162,7 @@ export const useGlobalEntityCreation = () => {
 			{
 				id: CREATE_PROJECT_ID,
 				title: 'Project',
-				disabled: !projectsStore.canCreateProjects,
+				disabled: !projectsStore.canCreateProjects || !projectsStore.hasPermissionToCreateProjects,
 			},
 		];
 	});
@@ -192,7 +192,7 @@ export const useGlobalEntityCreation = () => {
 	const handleSelect = (id: string) => {
 		if (id !== CREATE_PROJECT_ID) return;
 
-		if (projectsStore.canCreateProjects) {
+		if (projectsStore.canCreateProjects && projectsStore.hasPermissionToCreateProjects) {
 			void createProject();
 			return;
 		}
@@ -215,6 +215,10 @@ export const useGlobalEntityCreation = () => {
 			return i18n.baseText('projects.create.limitReached.self');
 		}
 
+		if (!projectsStore.hasPermissionToCreateProjects) {
+			return i18n.baseText('projects.create.permissionDenied');
+		}
+
 		return i18n.baseText('projects.create.limitReached', {
 			adjustToNumber: projectsStore.teamProjectsLimit,
 			interpolate: {
@@ -226,6 +230,7 @@ export const useGlobalEntityCreation = () => {
 	const createProjectAppendSlotName = computed(() => `item.append.${CREATE_PROJECT_ID}`);
 	const createWorkflowsAppendSlotName = computed(() => `item.append.${WORKFLOWS_MENU_ID}`);
 	const createCredentialsAppendSlotName = computed(() => `item.append.${CREDENTIALS_MENU_ID}`);
+	const hasPermissionToCreateProjects = projectsStore.hasPermissionToCreateProjects;
 
 	const upgradeLabel = computed(() => {
 		if (settingsStore.isCloudDeployment) {
@@ -246,6 +251,7 @@ export const useGlobalEntityCreation = () => {
 		createWorkflowsAppendSlotName,
 		createCredentialsAppendSlotName,
 		projectsLimitReachedMessage,
+		hasPermissionToCreateProjects,
 		upgradeLabel,
 		createProject,
 		isCreatingProject,
