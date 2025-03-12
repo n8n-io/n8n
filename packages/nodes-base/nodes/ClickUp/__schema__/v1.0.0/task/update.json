@@ -232,9 +232,6 @@
                 ]
             }
         },
-        "points": {
-            "type": "null"
-        },
         "time_spent": {
             "type": "integer"
         },
@@ -255,6 +252,9 @@
                     "type_config": {
                         "type": "object",
                         "properties": {
+                            "sorting": {
+                                "type": "string"
+                            },
                             "options": {
                                 "type": "array",
                                 "items": {
@@ -275,12 +275,6 @@
                                         "color"
                                     ]
                                 }
-                            },
-                            "sorting": {
-                                "type": "string"
-                            },
-                            "new_drop_down": {
-                                "type": "boolean"
                             }
                         }
                     },
@@ -523,15 +517,6 @@
                     "extension": {
                         "type": "string"
                     },
-                    "thumbnail_small": {
-                        "type": "string"
-                    },
-                    "thumbnail_medium": {
-                        "type": "string"
-                    },
-                    "thumbnail_large": {
-                        "type": "string"
-                    },
                     "is_folder": {
                         "type": "null"
                     },
@@ -669,5 +654,6 @@
         "project",
         "folder",
         "space"
-    ]
+    ],
+    "version": 1
 }
