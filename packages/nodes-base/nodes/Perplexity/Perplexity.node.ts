@@ -27,6 +27,7 @@ export class Perplexity implements INodeType {
 		],
 		requestDefaults: {
 			baseURL: '={{ $credentials.baseUrl }}',
+			ignoreHttpStatusErrors: true,
 		},
 		properties: [
 			{
