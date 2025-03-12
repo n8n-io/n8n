@@ -1,85 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"ok": {
-			"type": "boolean"
-		},
-		"result": {
-			"type": "object",
-			"properties": {
-				"message_id": {
-					"type": "integer"
-				},
-				"from": {
-					"type": "object",
-					"properties": {
-						"id": {
-							"type": "integer"
-						},
-						"is_bot": {
-							"type": "boolean"
-						},
-						"first_name": {
-							"type": "string"
-						},
-						"username": {
-							"type": "string"
-						}
-					},
-					"required": [
-						"id",
-						"is_bot",
-						"first_name",
-						"username"
-					]
-				},
-				"chat": {
-					"type": "object",
-					"properties": {
-						"id": {
-							"type": "integer"
-						},
-						"type": {
-							"type": "string"
-						},
-						"first_name": {
-							"type": "string"
-						}
-					},
-					"required": [
-						"id",
-						"type"
-					]
-				},
-				"date": {
-					"type": "integer"
-				},
-				"location": {
-					"type": "object",
-					"properties": {
-						"latitude": {
-							"type": "number"
-						},
-						"longitude": {
-							"type": "number"
-						}
-					},
-					"required": [
-						"latitude",
-						"longitude"
-					]
-				}
-			},
-			"required": [
-				"message_id",
-				"chat",
-				"date",
-				"location"
-			]
-		}
-	},
-	"required": [
-		"ok",
-		"result"
-	]
+    "name": "sendLocation.json",
+    "path": "packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/message/sendLocation.json",
+    "sha": "66f27a32ea3177a382ffa9682a1b7374dff12548",
+    "size": 1244,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/message/sendLocation.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/message/sendLocation.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/66f27a32ea3177a382ffa9682a1b7374dff12548",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/message/sendLocation.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJvayI6\nIHsKCQkJInR5cGUiOiAiYm9vbGVhbiIKCQl9LAoJCSJyZXN1bHQiOiB7CgkJ\nCSJ0eXBlIjogIm9iamVjdCIsCgkJCSJwcm9wZXJ0aWVzIjogewoJCQkJIm1l\nc3NhZ2VfaWQiOiB7CgkJCQkJInR5cGUiOiAiaW50ZWdlciIKCQkJCX0sCgkJ\nCQkiZnJvbSI6IHsKCQkJCQkidHlwZSI6ICJvYmplY3QiLAoJCQkJCSJwcm9w\nZXJ0aWVzIjogewoJCQkJCQkiaWQiOiB7CgkJCQkJCQkidHlwZSI6ICJpbnRl\nZ2VyIgoJCQkJCQl9LAoJCQkJCQkiaXNfYm90IjogewoJCQkJCQkJInR5cGUi\nOiAiYm9vbGVhbiIKCQkJCQkJfSwKCQkJCQkJImZpcnN0X25hbWUiOiB7CgkJ\nCQkJCQkidHlwZSI6ICJzdHJpbmciCgkJCQkJCX0sCgkJCQkJCSJ1c2VybmFt\nZSI6IHsKCQkJCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJCQkJfQoJCQkJCX0s\nCgkJCQkJInJlcXVpcmVkIjogWwoJCQkJCQkiaWQiLAoJCQkJCQkiaXNfYm90\nIiwKCQkJCQkJImZpcnN0X25hbWUiLAoJCQkJCQkidXNlcm5hbWUiCgkJCQkJ\nXQoJCQkJfSwKCQkJCSJjaGF0IjogewoJCQkJCSJ0eXBlIjogIm9iamVjdCIs\nCgkJCQkJInByb3BlcnRpZXMiOiB7CgkJCQkJCSJpZCI6IHsKCQkJCQkJCSJ0\neXBlIjogImludGVnZXIiCgkJCQkJCX0sCgkJCQkJCSJ0eXBlIjogewoJCQkJ\nCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJCQl9LAoJCQkJCQkiZmlyc3RfbmFt\nZSI6IHsKCQkJCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJCQkJfQoJCQkJCX0s\nCgkJCQkJInJlcXVpcmVkIjogWwoJCQkJCQkiaWQiLAoJCQkJCQkidHlwZSIK\nCQkJCQldCgkJCQl9LAoJCQkJImRhdGUiOiB7CgkJCQkJInR5cGUiOiAiaW50\nZWdlciIKCQkJCX0sCgkJCQkibG9jYXRpb24iOiB7CgkJCQkJInR5cGUiOiAi\nb2JqZWN0IiwKCQkJCQkicHJvcGVydGllcyI6IHsKCQkJCQkJImxhdGl0dWRl\nIjogewoJCQkJCQkJInR5cGUiOiAibnVtYmVyIgoJCQkJCQl9LAoJCQkJCQki\nbG9uZ2l0dWRlIjogewoJCQkJCQkJInR5cGUiOiAibnVtYmVyIgoJCQkJCQl9\nCgkJCQkJfSwKCQkJCQkicmVxdWlyZWQiOiBbCgkJCQkJCSJsYXRpdHVkZSIs\nCgkJCQkJCSJsb25naXR1ZGUiCgkJCQkJXQoJCQkJfQoJCQl9LAoJCQkicmVx\ndWlyZWQiOiBbCgkJCQkibWVzc2FnZV9pZCIsCgkJCQkiY2hhdCIsCgkJCQki\nZGF0ZSIsCgkJCQkibG9jYXRpb24iCgkJCV0KCQl9Cgl9LAoJInJlcXVpcmVk\nIjogWwoJCSJvayIsCgkJInJlc3VsdCIKCV0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/message/sendLocation.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/66f27a32ea3177a382ffa9682a1b7374dff12548",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/message/sendLocation.json"
+    },
+    "version": 1
 }
