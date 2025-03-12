@@ -124,40 +124,18 @@
         "recoveryEmail": {
             "type": "string"
         },
-        "recoveryPhone": {
-            "type": "string"
-        },
         "aliases": {
             "type": "array",
             "items": {
                 "type": "string"
             }
         },
-        "organizations": {
+        "nonEditableAliases": {
             "type": "array",
             "items": {
-                "type": "object",
-                "properties": {
-                    "title": {
-                        "type": "string"
-                    },
-                    "primary": {
-                        "type": "boolean"
-                    },
-                    "customType": {
-                        "type": "string"
-                    },
-                    "costCenter": {
-                        "type": "string"
-                    },
-                    "department": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "customType"
-                ]
+                "type": "string"
             }
         }
-    }
+    },
+    "version": 1
 }
