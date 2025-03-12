@@ -410,8 +410,8 @@ const fetchWorkflows = async () => {
 			{
 				name: filters.value.search || undefined,
 				active: activeFilter,
-				tags,
-				parentFolderId: parentFolder ?? '0', // 0 is the root folder in the API
+				tags: tags.length ? tags : undefined,
+				parentFolderId: parentFolder ?? undefined,
 			},
 			fetchFolders,
 		);
