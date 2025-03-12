@@ -1,10 +1,31 @@
-node_modules
+# Exclude environment variables file with sensitive information
+.env
+
+# Ignore node_modules
+node_modules/
+
+# Ignore logs
+logs/
+*.log
+npm-debug.log*
+
+# Ignore runtime data
 .DS_Store
+.idea
+.vscode
+*.swp
+*.swo
+
+# Ignore built outputs
+dist/
+build/
+.output/
+.nuxt/
+
 .tmp
 tmp
 dist
 coverage
-npm-debug.log*
 yarn.lock
 google-generated-credentials.json
 _START_PACKAGE
@@ -18,7 +39,6 @@ nodelinter.config.json
 packages/**/.turbo
 .turbo
 *.tsbuildinfo
-*.swp
 CHANGELOG-*.md
 *.mdx
 build-storybook.log

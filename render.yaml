@@ -1,0 +1,78 @@
+services:
+  - type: web
+    name: n8n
+    env: docker
+    region: oregon # optional (defaults to oregon)
+    plan: standard # optional (defaults to starter)
+    branch: main # optional (defaults to master)
+    numInstances: 1
+    healthCheckPath: /
+    envVars:
+      - key: PGHOST
+        fromDatabase:
+          name: n8nDB
+          property: host
+      - key: PGDATABASE
+        fromDatabase:
+          name: n8nDB
+          property: database
+      - key: PGPORT
+        fromDatabase:
+          name: n8nDB
+          property: port
+      - key: PGUSER
+        fromDatabase:
+          name: n8nDB
+          property: user
+      - key: PGPASSWORD
+        fromDatabase:
+          name: n8nDB
+          property: password
+      - key: PORT
+        value: 5678
+      - key: N8N_ENCRYPTION_KEY
+        generateValue: true
+      - key: DB_TYPE
+        value: postgresdb
+      - key: DB_POSTGRESDB_DATABASE
+        fromDatabase:
+          name: n8nDB
+          property: database
+      - key: DB_POSTGRESDB_HOST
+        fromDatabase:
+          name: n8nDB
+          property: host
+      - key: DB_POSTGRESDB_PORT
+        fromDatabase:
+          name: n8nDB
+          property: port
+      - key: DB_POSTGRESDB_USER
+        fromDatabase:
+          name: n8nDB
+          property: user
+      - key: DB_POSTGRESDB_PASSWORD
+        fromDatabase:
+          name: n8nDB
+          property: password
+      - key: DB_POSTGRESDB_SCHEMA
+        value: public
+      - key: EXECUTIONS_DATA_PRUNE
+        value: true
+      - key: EXECUTIONS_DATA_MAX_AGE
+        value: 72
+      - key: EXECUTIONS_DATA_SAVE_ON_ERROR
+        value: all
+      - key: EXECUTIONS_DATA_SAVE_ON_SUCCESS
+        value: none
+      - key: EXECUTIONS_DATA_SAVE_ON_PROGRESS
+        value: false
+      - key: EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS
+        value: false
+    disk:
+      name: n8nDisk
+      mountPath: /home/node/.n8n
+      sizeGB: 10
+
+databases:
+  - name: n8nDB
+    plan: starter
