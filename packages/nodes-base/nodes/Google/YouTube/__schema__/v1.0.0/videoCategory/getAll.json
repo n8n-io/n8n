@@ -1,39 +1,34 @@
 {
-	"type": "object",
-	"properties": {
-		"kind": {
-			"type": "string"
-		},
-		"etag": {
-			"type": "string"
-		},
-		"id": {
-			"type": "string"
-		},
-		"snippet": {
-			"type": "object",
-			"properties": {
-				"title": {
-					"type": "string"
-				},
-				"assignable": {
-					"type": "boolean"
-				},
-				"channelId": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"title",
-				"assignable",
-				"channelId"
-			]
-		}
-	},
-	"required": [
-		"kind",
-		"etag",
-		"id",
-		"snippet"
-	]
+    "type": "object",
+    "properties": {
+        "kind": {
+            "type": "string"
+        },
+        "etag": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "snippet": {
+            "type": "object",
+            "properties": {
+                "title": {
+                    "type": "string"
+                },
+                "assignable": {
+                    "type": "boolean"
+                },
+                "channelId": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "title",
+                "assignable",
+                "channelId"
+            ]
+        }
+    },
+    "version": 1
 }
