@@ -27,10 +27,10 @@
                     "flags": {
                         "type": "integer"
                     },
-                    "banner": {
+                    "avatar_decoration_data": {
                         "type": "null"
                     },
-                    "avatar_decoration_data": {
+                    "collectibles": {
                         "type": "null"
                     },
                     "clan": {
@@ -51,6 +51,7 @@
                     "accent_color",
                     "global_name",
                     "avatar_decoration_data",
+                    "collectibles",
                     "banner_color",
                     "clan",
                     "primary_guild"
@@ -83,13 +84,13 @@
                     "proxy_url": {
                         "type": "string"
                     },
-                    "content_type": {
-                        "type": "string"
-                    },
                     "content_scan_version": {
                         "type": "integer"
                     },
                     "title": {
+                        "type": "string"
+                    },
+                    "content_type": {
                         "type": "string"
                     }
                 },
@@ -99,7 +100,7 @@
                     "size",
                     "url",
                     "proxy_url",
-                    "content_type",
+                    "content_scan_version",
                     "title"
                 ]
             }
@@ -118,8 +119,8 @@
                     "description": {
                         "type": "string"
                     },
-                    "timestamp": {
-                        "type": "string"
+                    "color": {
+                        "type": "integer"
                     },
                     "author": {
                         "type": "object",
@@ -132,7 +133,7 @@
                             "name"
                         ]
                     },
-                    "image": {
+                    "thumbnail": {
                         "type": "object",
                         "properties": {
                             "url": {
@@ -149,6 +150,12 @@
                             },
                             "flags": {
                                 "type": "integer"
+                            },
+                            "placeholder": {
+                                "type": "string"
+                            },
+                            "placeholder_version": {
+                                "type": "integer"
                             }
                         },
                         "required": [
@@ -158,6 +165,9 @@
                             "height",
                             "flags"
                         ]
+                    },
+                    "url": {
+                        "type": "string"
                     }
                 },
                 "required": [
@@ -210,6 +220,9 @@
                 "avatar_decoration_data": {
                     "type": "null"
                 },
+                "collectibles": {
+                    "type": "null"
+                },
                 "banner_color": {
                     "type": "null"
                 },
@@ -232,6 +245,7 @@
                 "accent_color",
                 "global_name",
                 "avatar_decoration_data",
+                "collectibles",
                 "banner_color",
                 "clan",
                 "primary_guild"
@@ -246,5 +260,6 @@
         "tts": {
             "type": "boolean"
         }
-    }
+    },
+    "version": 1
 }
