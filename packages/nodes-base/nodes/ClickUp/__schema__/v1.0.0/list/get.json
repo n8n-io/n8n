@@ -1,134 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "deleted": {
-            "type": "boolean"
-        },
-        "orderindex": {
-            "type": "integer"
-        },
-        "content": {
-            "type": "string"
-        },
-        "priority": {
-            "type": "null"
-        },
-        "assignee": {
-            "type": "null"
-        },
-        "due_date": {
-            "type": "null"
-        },
-        "start_date": {
-            "type": "null"
-        },
-        "folder": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "hidden": {
-                    "type": "boolean"
-                },
-                "access": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "id",
-                "name",
-                "hidden",
-                "access"
-            ]
-        },
-        "space": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "access": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "id",
-                "name",
-                "access"
-            ]
-        },
-        "inbound_address": {
-            "type": "string"
-        },
-        "archived": {
-            "type": "boolean"
-        },
-        "statuses": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "status": {
-                        "type": "string"
-                    },
-                    "orderindex": {
-                        "type": "integer"
-                    },
-                    "color": {
-                        "type": "string"
-                    },
-                    "type": {
-                        "type": "string"
-                    },
-                    "status_group": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "id",
-                    "status",
-                    "orderindex",
-                    "color",
-                    "type",
-                    "status_group"
-                ]
-            }
-        },
-        "permission_level": {
-            "type": "string"
-        }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/list/get.json",
+    "sha": "a5fec1deea6cb4add8f1e29d143e40bc775bd629",
+    "size": 3158,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/list/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/list/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/a5fec1deea6cb4add8f1e29d143e40bc775bd629",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/list/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgIm5hbWUiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJkZWxldGVkIjogewog\nICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAg\nICAgIm9yZGVyaW5kZXgiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImludGVn\nZXIiCiAgICAgICAgfSwKICAgICAgICAiY29udGVudCI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInByaW9y\naXR5IjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0s\nCiAgICAgICAgImFzc2lnbmVlIjogewogICAgICAgICAgICAidHlwZSI6ICJu\ndWxsIgogICAgICAgIH0sCiAgICAgICAgImR1ZV9kYXRlIjogewogICAgICAg\nICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAgInN0YXJ0\nX2RhdGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAg\nfSwKICAgICAgICAiZm9sZGVyIjogewogICAgICAgICAgICAidHlwZSI6ICJv\nYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAg\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgIm5h\nbWUiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJoaWRkZW4iOiB7\nCiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAg\nICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiYWNjZXNzIjogewogICAg\nICAgICAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgICAg\nICAgICB9CiAgICAgICAgICAgIH0sCiAgICAgICAgICAgICJyZXF1aXJlZCI6\nIFsKICAgICAgICAgICAgICAgICJpZCIsCiAgICAgICAgICAgICAgICAibmFt\nZSIsCiAgICAgICAgICAgICAgICAiaGlkZGVuIiwKICAgICAgICAgICAgICAg\nICJhY2Nlc3MiCiAgICAgICAgICAgIF0KICAgICAgICB9LAogICAgICAgICJz\ncGFjZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAg\nICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAiaWQiOiB7\nCiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJuYW1lIjogewogICAgICAg\nICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAg\nIH0sCiAgICAgICAgICAgICAgICAiYWNjZXNzIjogewogICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgICAgICAgICB9CiAg\nICAgICAgICAgIH0sCiAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAg\nICAgICAgICAgICJpZCIsCiAgICAgICAgICAgICAgICAibmFtZSIsCiAgICAg\nICAgICAgICAgICAiYWNjZXNzIgogICAgICAgICAgICBdCiAgICAgICAgfSwK\nICAgICAgICAiaW5ib3VuZF9hZGRyZXNzIjogewogICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiYXJjaGl2ZWQiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAg\nICAgICAic3RhdHVzZXMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImFycmF5\nIiwKICAgICAgICAgICAgIml0ZW1zIjogewogICAgICAgICAgICAgICAgInR5\ncGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgICAgICJwcm9wZXJ0aWVzIjog\newogICAgICAgICAgICAgICAgICAgICJpZCI6IHsKICAgICAgICAgICAgICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAg\nIH0sCiAgICAgICAgICAgICAgICAgICAgInN0YXR1cyI6IHsKICAgICAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgIm9yZGVyaW5kZXgiOiB7\nCiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAg\nICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAiY29s\nb3IiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAg\nICJ0eXBlIjogewogICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAg\nICAgICAic3RhdHVzX2dyb3VwIjogewogICAgICAgICAgICAgICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgfQogICAg\nICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJyZXF1aXJlZCI6IFsK\nICAgICAgICAgICAgICAgICAgICAiaWQiLAogICAgICAgICAgICAgICAgICAg\nICJzdGF0dXMiLAogICAgICAgICAgICAgICAgICAgICJvcmRlcmluZGV4IiwK\nICAgICAgICAgICAgICAgICAgICAiY29sb3IiLAogICAgICAgICAgICAgICAg\nICAgICJ0eXBlIiwKICAgICAgICAgICAgICAgICAgICAic3RhdHVzX2dyb3Vw\nIgogICAgICAgICAgICAgICAgXQogICAgICAgICAgICB9CiAgICAgICAgfSwK\nICAgICAgICAicGVybWlzc2lvbl9sZXZlbCI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0KICAgIH0sCiAgICAicmVxdWlyZWQi\nOiBbCiAgICAgICAgImlkIiwKICAgICAgICAibmFtZSIsCiAgICAgICAgImRl\nbGV0ZWQiLAogICAgICAgICJvcmRlcmluZGV4IiwKICAgICAgICAicHJpb3Jp\ndHkiLAogICAgICAgICJhc3NpZ25lZSIsCiAgICAgICAgImR1ZV9kYXRlIiwK\nICAgICAgICAic3RhcnRfZGF0ZSIsCiAgICAgICAgImZvbGRlciIsCiAgICAg\nICAgInNwYWNlIiwKICAgICAgICAiaW5ib3VuZF9hZGRyZXNzIiwKICAgICAg\nICAiYXJjaGl2ZWQiLAogICAgICAgICJvdmVycmlkZV9zdGF0dXNlcyIsCiAg\nICAgICAgInN0YXR1c2VzIiwKICAgICAgICAicGVybWlzc2lvbl9sZXZlbCIK\nICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/list/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/a5fec1deea6cb4add8f1e29d143e40bc775bd629",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/list/get.json"
     },
-    "required": [
-        "id",
-        "name",
-        "deleted",
-        "orderindex",
-        "priority",
-        "assignee",
-        "due_date",
-        "start_date",
-        "folder",
-        "space",
-        "inbound_address",
-        "archived",
-        "override_statuses",
-        "statuses",
-        "permission_level"
-    ]
+    "version": 1
 }
