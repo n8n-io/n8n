@@ -4,5 +4,6 @@
         "urn": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
