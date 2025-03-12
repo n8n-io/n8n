@@ -155,9 +155,11 @@ describe('Breadcrumbs', async () => {
 			},
 		});
 		expect(getByTestId('ellipsis')).toBeTruthy();
-		expect(getByTestId('action-toggle')).toBeTruthy();
+		expect(getByTestId('hidden-items-menu')).toBeTruthy();
 		expect(getByTestId('ellipsis')).toHaveClass('disabled');
-		expect(getByTestId('action-toggle').querySelector('.el-dropdown')).toHaveClass('is-disabled');
+		expect(getByTestId('hidden-items-menu').querySelector('.el-dropdown')).toHaveClass(
+			'is-disabled',
+		);
 	});
 
 	it('does not highlight last item for "highlightLastItem = false" ', () => {
