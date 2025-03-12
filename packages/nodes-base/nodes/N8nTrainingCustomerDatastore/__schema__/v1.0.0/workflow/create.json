@@ -1,98 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "name": {
-            "type": "string"
-        },
-        "nodes": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string"
-                    },
-                    "type": {
-                        "type": "string"
-                    },
-                    "position": {
-                        "type": "array",
-                        "items": {
-                            "type": "integer"
-                        }
-                    },
-                    "id": {
-                        "type": "string"
-                    },
-                    "credentials": {
-                        "type": "object",
-                        "properties": {
-                            "googleSheetsOAuth2Api": {
-                                "type": "object",
-                                "properties": {
-                                    "id": {
-                                        "type": "string"
-                                    },
-                                    "name": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "id",
-                                    "name"
-                                ]
-                            }
-                        }
-                    }
-                },
-                "required": [
-                    "parameters",
-                    "name",
-                    "type",
-                    "typeVersion",
-                    "position",
-                    "id"
-                ]
-            }
-        },
-        "active": {
-            "type": "boolean"
-        },
-        "versionId": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "meta": {
-            "type": "null"
-        },
-        "pinData": {
-            "type": "null"
-        },
-        "createdAt": {
-            "type": "string"
-        },
-        "updatedAt": {
-            "type": "string"
-        },
-        "triggerCount": {
-            "type": "integer"
-        }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/N8nTrainingCustomerDatastore/__schema__/v1.0.0/workflow/create.json",
+    "sha": "94d93ece3d45d7a2afc7d6a0c01c7aa011fcfd04",
+    "size": 2600,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/N8nTrainingCustomerDatastore/__schema__/v1.0.0/workflow/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/N8nTrainingCustomerDatastore/__schema__/v1.0.0/workflow/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/94d93ece3d45d7a2afc7d6a0c01c7aa011fcfd04",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/N8nTrainingCustomerDatastore/__schema__/v1.0.0/workflow/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJuYW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAibm9kZXMiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogImFycmF5IiwKICAgICAgICAgICAgIml0ZW1zIjogewogICAgICAg\nICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgICAgICJw\ncm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgICAgICJuYW1lIjogewog\nICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAidHlwZSI6\nIHsKICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgInBv\nc2l0aW9uIjogewogICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJh\ncnJheSIsCiAgICAgICAgICAgICAgICAgICAgICAgICJpdGVtcyI6IHsKICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAg\nICAgICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgICAgICB9\nLAogICAgICAgICAgICAgICAgICAgICJpZCI6IHsKICAgICAgICAgICAgICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAg\nIH0sCiAgICAgICAgICAgICAgICAgICAgImNyZWRlbnRpYWxzIjogewogICAg\nICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAg\nICAgICAgICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICJnb29nbGVTaGVldHNPQXV0aDJBcGkiOiB7CiAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0\nIiwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAicHJvcGVydGll\ncyI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgImlk\nIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAibmFtZSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgIH0sCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInJlcXVp\ncmVkIjogWwogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAi\naWQiLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAibmFt\nZSIKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBdCiAgICAgICAg\nICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICAgICAgICAg\nIH0KICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICB9LAog\nICAgICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAg\nICAgICJwYXJhbWV0ZXJzIiwKICAgICAgICAgICAgICAgICAgICAibmFtZSIs\nCiAgICAgICAgICAgICAgICAgICAgInR5cGUiLAogICAgICAgICAgICAgICAg\nICAgICJ0eXBlVmVyc2lvbiIsCiAgICAgICAgICAgICAgICAgICAgInBvc2l0\naW9uIiwKICAgICAgICAgICAgICAgICAgICAiaWQiCiAgICAgICAgICAgICAg\nICBdCiAgICAgICAgICAgIH0KICAgICAgICB9LAogICAgICAgICJhY3RpdmUi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwK\nICAgICAgICAidmVyc2lvbklkIjogewogICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgfSwKICAgICAgICAiaWQiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJtZXRhIjog\newogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAg\nICAgInBpbkRhdGEiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAg\nICAgICAgfSwKICAgICAgICAiY3JlYXRlZEF0IjogewogICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAidXBkYXRlZEF0\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwK\nICAgICAgICAidHJpZ2dlckNvdW50IjogewogICAgICAgICAgICAidHlwZSI6\nICJpbnRlZ2VyIgogICAgICAgIH0KICAgIH0sCiAgICAicmVxdWlyZWQiOiBb\nCiAgICAgICAgIm5hbWUiLAogICAgICAgICJub2RlcyIsCiAgICAgICAgInNl\ndHRpbmdzIiwKICAgICAgICAiY29ubmVjdGlvbnMiLAogICAgICAgICJzdGF0\naWNEYXRhIiwKICAgICAgICAiYWN0aXZlIiwKICAgICAgICAidmVyc2lvbklk\nIiwKICAgICAgICAiaWQiLAogICAgICAgICJtZXRhIiwKICAgICAgICAicGlu\nRGF0YSIsCiAgICAgICAgImNyZWF0ZWRBdCIsCiAgICAgICAgInVwZGF0ZWRB\ndCIsCiAgICAgICAgInRyaWdnZXJDb3VudCIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/N8nTrainingCustomerDatastore/__schema__/v1.0.0/workflow/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/94d93ece3d45d7a2afc7d6a0c01c7aa011fcfd04",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/N8nTrainingCustomerDatastore/__schema__/v1.0.0/workflow/create.json"
     },
-    "required": [
-        "name",
-        "nodes",
-        "settings",
-        "connections",
-        "staticData",
-        "active",
-        "versionId",
-        "id",
-        "meta",
-        "pinData",
-        "createdAt",
-        "updatedAt",
-        "triggerCount"
-    ]
+    "version": 1
 }
