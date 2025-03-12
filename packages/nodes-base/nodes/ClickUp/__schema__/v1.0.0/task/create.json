@@ -55,7 +55,7 @@
         "date_updated": {
             "type": "string"
         },
-        "date_done": {
+        "date_closed": {
             "type": "null"
         },
         "archived": {
@@ -91,9 +91,6 @@
                         "type": "integer"
                     },
                     "username": {
-                        "type": "string"
-                    },
-                    "color": {
                         "type": "string"
                     },
                     "initials": {
@@ -213,6 +210,9 @@
                                         "color"
                                     ]
                                 }
+                            },
+                            "new_drop_down": {
+                                "type": "boolean"
                             }
                         }
                     },
@@ -384,5 +384,6 @@
         "project",
         "folder",
         "space"
-    ]
+    ],
+    "version": 1
 }
