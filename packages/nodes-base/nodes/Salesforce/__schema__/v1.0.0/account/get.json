@@ -1,77 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "attributes": {
-            "type": "object",
-            "properties": {
-                "type": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "type",
-                "url"
-            ]
-        },
-        "Id": {
-            "type": "string"
-        },
-        "IsDeleted": {
-            "type": "boolean"
-        },
-        "MasterRecordId": {
-            "type": "null"
-        },
-        "Name": {
-            "type": "string"
-        },
-        "ShippingLatitude": {
-            "type": "null"
-        },
-        "ShippingLongitude": {
-            "type": "null"
-        },
-        "ShippingGeocodeAccuracy": {
-            "type": "null"
-        },
-        "Fax": {
-            "type": "null"
-        },
-        "PhotoUrl": {
-            "type": "string"
-        },
-        "OwnerId": {
-            "type": "string"
-        },
-        "CreatedDate": {
-            "type": "string"
-        },
-        "CreatedById": {
-            "type": "string"
-        },
-        "LastModifiedDate": {
-            "type": "string"
-        },
-        "LastModifiedById": {
-            "type": "string"
-        },
-        "SystemModstamp": {
-            "type": "string"
-        },
-        "JigsawCompanyId": {
-            "type": "null"
-        },
-        "SicDesc": {
-            "type": "null"
-        },
-        "Sic": {
-            "type": "null"
-        },
-        "AnnualRevenue": {
-            "type": "null"
-        }
-    }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/account/get.json",
+    "sha": "11abcec87407e285079f4a515242fb46ee5b3232",
+    "size": 1625,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/account/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/account/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/11abcec87407e285079f4a515242fb46ee5b3232",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/account/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJhdHRyaWJ1dGVzIjogewogICAgICAgICAgICAidHlwZSI6ICJv\nYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAg\nICAgICAgICJ0eXBlIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAi\ndXJsIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgInR5cGUiLAogICAgICAg\nICAgICAgICAgInVybCIKICAgICAgICAgICAgXQogICAgICAgIH0sCiAgICAg\nICAgIklkIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgfSwKICAgICAgICAiSXNEZWxldGVkIjogewogICAgICAgICAgICAidHlw\nZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgIk1hc3RlclJlY29y\nZElkIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0s\nCiAgICAgICAgIk5hbWUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJTaGlwcGluZ0xhdGl0dWRlIjogewog\nICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAg\nIlNoaXBwaW5nTG9uZ2l0dWRlIjogewogICAgICAgICAgICAidHlwZSI6ICJu\ndWxsIgogICAgICAgIH0sCiAgICAgICAgIlNoaXBwaW5nR2VvY29kZUFjY3Vy\nYWN5IjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0s\nCiAgICAgICAgIkZheCI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIK\nICAgICAgICB9LAogICAgICAgICJQaG90b1VybCI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIk93bmVySWQi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAog\nICAgICAgICJDcmVhdGVkRGF0ZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIkNyZWF0ZWRCeUlkIjogewog\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAg\nICAiTGFzdE1vZGlmaWVkRGF0ZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIkxhc3RNb2RpZmllZEJ5SWQi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAog\nICAgICAgICJTeXN0ZW1Nb2RzdGFtcCI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIkppZ3Nhd0NvbXBhbnlJ\nZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9LAog\nICAgICAgICJTaWNEZXNjIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxs\nIgogICAgICAgIH0sCiAgICAgICAgIlNpYyI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAibnVsbCIKICAgICAgICB9LAogICAgICAgICJBbm51YWxSZXZlbnVl\nIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0KICAg\nIH0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/account/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/11abcec87407e285079f4a515242fb46ee5b3232",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/account/get.json"
+    },
+    "version": 1
 }
