@@ -1,149 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "opportunity": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "pipelineId": {
-                    "type": "string"
-                },
-                "pipelineStageId": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "lastStatusChangeAt": {
-                    "type": "string"
-                },
-                "lastStageChangeAt": {
-                    "type": "string"
-                },
-                "createdAt": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                },
-                "contactId": {
-                    "type": "string"
-                },
-                "isAttribute": {
-                    "type": "boolean"
-                },
-                "internalSource": {
-                    "type": "object",
-                    "properties": {
-                        "type": {
-                            "type": "string"
-                        },
-                        "id": {
-                            "type": "string"
-                        },
-                        "apiVersion": {
-                            "type": "string"
-                        },
-                        "channel": {
-                            "type": "string"
-                        },
-                        "source": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "type",
-                        "id",
-                        "apiVersion",
-                        "channel",
-                        "source"
-                    ]
-                },
-                "locationId": {
-                    "type": "string"
-                },
-                "lastActionDate": {
-                    "type": "string"
-                },
-                "followers": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "contact": {
-                    "type": "object",
-                    "properties": {
-                        "id": {
-                            "type": "string"
-                        },
-                        "name": {
-                            "type": "string"
-                        },
-                        "email": {
-                            "type": "string"
-                        },
-                        "phone": {
-                            "type": "string"
-                        },
-                        "tags": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
-                        },
-                        "assignedTo": {
-                            "type": "string"
-                        },
-                        "followers": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "required": [
-                        "id",
-                        "name",
-                        "tags",
-                        "followers"
-                    ]
-                },
-                "indexVersion": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "id",
-                "name",
-                "monetaryValue",
-                "pipelineId",
-                "pipelineStageId",
-                "status",
-                "lastStatusChangeAt",
-                "lastStageChangeAt",
-                "createdAt",
-                "updatedAt",
-                "contactId",
-                "isAttribute",
-                "internalSource",
-                "locationId",
-                "lastActionDate",
-                "followers",
-                "contact"
-            ]
-        },
-        "traceId": {
-            "type": "string"
-        }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/HighLevel/__schema__/v2.0.0/opportunity/get.json",
+    "sha": "e82e93cc4c5785a6a0f2ec5ae0ff81ee502dfab3",
+    "size": 4496,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/HighLevel/__schema__/v2.0.0/opportunity/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/HighLevel/__schema__/v2.0.0/opportunity/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/e82e93cc4c5785a6a0f2ec5ae0ff81ee502dfab3",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/HighLevel/__schema__/v2.0.0/opportunity/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJvcHBvcnR1bml0eSI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nb2JqZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAg\nICAgICAgICAiaWQiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJu\nYW1lIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAicGlwZWxpbmVJ\nZCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInBpcGVsaW5lU3Rh\nZ2VJZCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInN0YXR1cyI6\nIHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImxhc3RTdGF0dXNDaGFu\nZ2VBdCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImxhc3RTdGFn\nZUNoYW5nZUF0IjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiY3Jl\nYXRlZEF0IjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAidXBkYXRl\nZEF0IjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiY29udGFjdElk\nIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiaXNBdHRyaWJ1dGUi\nOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAg\nICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiaW50ZXJuYWxTb3Vy\nY2UiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwK\nICAgICAgICAgICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiB7CiAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAg\nICAgIH0sCiAgICAgICAgICAgICAgICAgICAgICAgICJpZCI6IHsKICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAgICAg\nImFwaVZlcnNpb24iOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAg\nICAgICAgICAgICAgICAgICAgICAgICJjaGFubmVsIjogewogICAgICAgICAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAic291\ncmNlIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAg\nICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAicmVxdWlyZWQiOiBb\nCiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIiwKICAgICAgICAgICAg\nICAgICAgICAgICAgImlkIiwKICAgICAgICAgICAgICAgICAgICAgICAgImFw\naVZlcnNpb24iLAogICAgICAgICAgICAgICAgICAgICAgICAiY2hhbm5lbCIs\nCiAgICAgICAgICAgICAgICAgICAgICAgICJzb3VyY2UiCiAgICAgICAgICAg\nICAgICAgICAgXQogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAg\nICJsb2NhdGlvbklkIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAi\nbGFzdEFjdGlvbkRhdGUiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAg\nICJmb2xsb3dlcnMiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAi\nYXJyYXkiLAogICAgICAgICAgICAgICAgICAgICJpdGVtcyI6IHsKICAgICAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAg\nICAgICAgICAgIH0KICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAg\nICAiY29udGFjdCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJv\nYmplY3QiLAogICAgICAgICAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICAgICAgICAgICAgICAgICAiaWQiOiB7CiAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAg\nICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgICAgICJuYW1lIjog\newogICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAg\nICAgICAgICAiZW1haWwiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgICAgIH0s\nCiAgICAgICAgICAgICAgICAgICAgICAgICJwaG9uZSI6IHsKICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAg\nICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAgICAgInRh\nZ3MiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJh\ncnJheSIsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAiaXRlbXMiOiB7\nCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgICAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAiYXNz\naWduZWRUbyI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAg\nICAgICAgICAgICAgICAgICAgImZvbGxvd2VycyI6IHsKICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICJ0eXBlIjogImFycmF5IiwKICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICJpdGVtcyI6IHsKICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAg\nICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICAgICAgICAgIH0KICAg\nICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICJyZXF1\naXJlZCI6IFsKICAgICAgICAgICAgICAgICAgICAgICAgImlkIiwKICAgICAg\nICAgICAgICAgICAgICAgICAgIm5hbWUiLAogICAgICAgICAgICAgICAgICAg\nICAgICAidGFncyIsCiAgICAgICAgICAgICAgICAgICAgICAgICJmb2xsb3dl\ncnMiCiAgICAgICAgICAgICAgICAgICAgXQogICAgICAgICAgICAgICAgfSwK\nICAgICAgICAgICAgICAgICJpbmRleFZlcnNpb24iOiB7CiAgICAgICAgICAg\nICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICAgICAgICAgIH0K\nICAgICAgICAgICAgfSwKICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAg\nICAgICAgICAgICAgImlkIiwKICAgICAgICAgICAgICAgICJuYW1lIiwKICAg\nICAgICAgICAgICAgICJtb25ldGFyeVZhbHVlIiwKICAgICAgICAgICAgICAg\nICJwaXBlbGluZUlkIiwKICAgICAgICAgICAgICAgICJwaXBlbGluZVN0YWdl\nSWQiLAogICAgICAgICAgICAgICAgInN0YXR1cyIsCiAgICAgICAgICAgICAg\nICAibGFzdFN0YXR1c0NoYW5nZUF0IiwKICAgICAgICAgICAgICAgICJsYXN0\nU3RhZ2VDaGFuZ2VBdCIsCiAgICAgICAgICAgICAgICAiY3JlYXRlZEF0IiwK\nICAgICAgICAgICAgICAgICJ1cGRhdGVkQXQiLAogICAgICAgICAgICAgICAg\nImNvbnRhY3RJZCIsCiAgICAgICAgICAgICAgICAiaXNBdHRyaWJ1dGUiLAog\nICAgICAgICAgICAgICAgImludGVybmFsU291cmNlIiwKICAgICAgICAgICAg\nICAgICJsb2NhdGlvbklkIiwKICAgICAgICAgICAgICAgICJsYXN0QWN0aW9u\nRGF0ZSIsCiAgICAgICAgICAgICAgICAiZm9sbG93ZXJzIiwKICAgICAgICAg\nICAgICAgICJjb250YWN0IgogICAgICAgICAgICBdCiAgICAgICAgfSwKICAg\nICAgICAidHJhY2VJZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgIH0KICAgIH0sCiAgICAicmVxdWlyZWQiOiBbCiAgICAgICAg\nIm9wcG9ydHVuaXR5IiwKICAgICAgICAidHJhY2VJZCIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/HighLevel/__schema__/v2.0.0/opportunity/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/e82e93cc4c5785a6a0f2ec5ae0ff81ee502dfab3",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/HighLevel/__schema__/v2.0.0/opportunity/get.json"
     },
-    "required": [
-        "opportunity",
-        "traceId"
-    ]
+    "version": 1
 }
