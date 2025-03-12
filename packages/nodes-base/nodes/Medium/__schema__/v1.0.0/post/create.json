@@ -19,9 +19,6 @@
         "publishStatus": {
             "type": "string"
         },
-        "publishedAt": {
-            "type": "integer"
-        },
         "license": {
             "type": "string"
         },
@@ -33,6 +30,10 @@
             "items": {
                 "type": "string"
             }
+        },
+        "publishedAt": {
+            "type": "integer"
         }
-    }
+    },
+    "version": 1
 }
