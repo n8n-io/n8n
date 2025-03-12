@@ -43,12 +43,6 @@
         "source": {
             "type": "string"
         },
-        "timezone": {
-            "type": "string"
-        },
-        "fingerprint": {
-            "type": "string"
-        },
         "tags": {
             "type": "array",
             "items": {
@@ -70,13 +64,16 @@
                 ]
             }
         },
-        "assignedTo": {
+        "timezone": {
             "type": "string"
         },
-        "address1": {
+        "fingerprint": {
             "type": "string"
         },
         "city": {
+            "type": "string"
+        },
+        "address1": {
             "type": "string"
         },
         "state": {
@@ -84,6 +81,10 @@
         },
         "postalCode": {
             "type": "string"
+        },
+        "assignedTo": {
+            "type": "string"
         }
-    }
+    },
+    "version": 1
 }
