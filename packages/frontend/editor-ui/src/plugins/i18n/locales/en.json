@@ -901,7 +901,7 @@
 	"folders.add.here.message": "Create a new folder here",
 	"folders.add.to.parent.message": "Create folder in \"{parent}\"",
 	"folders.add.success.title": "Folder created",
-	"folders.add.success.message": "<a href=\"{link}\">Open {name}</a> now",
+	"folders.add.success.message": "Created new folder \"{folderName}\"<br><a href=\"{link}\">Open folder</a>",
 	"folders.invalidName.message": "Please provide a valid folder name",
 	"folders.delete.confirm.title": "Delete \"{folderName}\"",
 	"folders.delete.typeToConfirm": "delete {folderName}",

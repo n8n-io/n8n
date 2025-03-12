@@ -889,14 +889,20 @@ const createFolder = async (parent: { id: string; name: string; type: 'project' 
 			if (newFolder.parentFolder) {
 				newFolderURL = `/projects/${route.params.projectId}/folders/${newFolder.id}/workflows`;
 			}
-			toast.showMessage({
+			toast.showToast({
 				title: i18n.baseText('folders.add.success.title'),
 				message: i18n.baseText('folders.add.success.message', {
 					interpolate: {
 						link: newFolderURL,
-						name: newFolder.name,
+						folderName: newFolder.name,
 					},
 				}),
+				onClick: (event: MouseEvent | undefined) => {
+					if (event?.target instanceof HTMLAnchorElement) {
+						event.preventDefault();
+						void router.push(newFolderURL);
+					}
+				},
 				type: 'success',
 			});
 			// If we are on an empty list, just add the new folder to the list
