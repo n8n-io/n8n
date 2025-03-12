@@ -47,5 +47,6 @@
         "_shards",
         "_seq_no",
         "_primary_term"
-    ]
+    ],
+    "version": 1
 }
