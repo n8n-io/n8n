@@ -97,6 +97,12 @@
                                 "type": "string"
                             }
                         },
+                        "followers": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
                         "phone": {
                             "type": "string"
                         }
@@ -132,5 +138,6 @@
         "traceId": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
