@@ -703,6 +703,15 @@ const loadPaginationFromQueryString = async () => {
 }
 
 .search {
+	max-width: 196px;
+	justify-self: end;
+
+	input {
+		height: 42px;
+	}
+}
+
+.search {
 	@include mixins.breakpoint('sm-and-down') {
 		max-width: 100%;
 	}
