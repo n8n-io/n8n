@@ -16,7 +16,37 @@ export async function sendErrorPostReceive(
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
 	if (String(response.statusCode).startsWith('4') || String(response.statusCode).startsWith('5')) {
-		throw new NodeApiError(this.getNode(), response as unknown as JsonObject);
+		const errorBody = response.body as JsonObject;
+		const error = (errorBody?.error ?? {}) as JsonObject;
+
+		const errorMessage =
+			typeof error.message === 'string'
+				? error.message
+				: response.statusMessage || 'An unexpected issue occurred';
+		const errorType = typeof error.type === 'string' ? error.type : 'UnknownError';
+		const itemIndex = typeof error.itemIndex === 'number' ? `[Item ${error.itemIndex}]` : '';
+
+		if (errorType === 'invalid_model') {
+			throw new NodeApiError(this.getNode(), errorBody, {
+				message: 'Invalid model',
+				description:
+					'The model is not valid. Permitted models can be found in the documentation at https://docs.perplexity.ai/guides/model-cards.',
+			});
+		}
+
+		if (errorType === 'invalid_parameter') {
+			throw new NodeApiError(this.getNode(), errorBody, {
+				message: `${errorType} ${errorMessage}`,
+				description:
+					'Please check all input parameters and ensure they are correctly formatted. Valid values can be found in the documentation at https://docs.perplexity.ai/api-reference/chat-completions.',
+			});
+		}
+
+		// Fallback for other errors
+		throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+			message: `${errorMessage} ${itemIndex}.`,
+			description: `Please check the request parameters and ensure they are correct.For more details, refer to the API documentation: https://docs.perplexity.ai/api-reference/chat-completions.`,
+		});
 	}
 	return data;
 }
