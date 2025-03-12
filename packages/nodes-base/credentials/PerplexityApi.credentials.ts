@@ -28,13 +28,6 @@ export class PerplexityApi implements ICredentialType {
 			type: 'string',
 			default: 'https://api.perplexity.ai',
 			description: 'The base URL for the Perplexity API.',
-			routing: {
-				send: {
-					type: 'body',
-					property: 'baseUrl',
-					value: '={{ $value ? $value.replace(//$/, "") : "https://api.perplexity.ai" }}',
-				},
-			},
 		},
 	];
 

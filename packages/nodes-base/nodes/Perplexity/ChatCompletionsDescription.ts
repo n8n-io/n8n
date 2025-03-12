@@ -62,6 +62,7 @@ export const chatCompletionsFields: INodeProperties[] = [
 				type: 'body',
 				property: 'model',
 			},
+			output: { postReceive: [sendErrorPostReceive] },
 		},
 	},
 	{
@@ -181,7 +182,7 @@ export const chatCompletionsFields: INodeProperties[] = [
 					'The amount of randomness in the response, valued between 0 inclusive and 2 exclusive. Higher values are more random, and lower values are more deterministic.',
 				typeOptions: {
 					minValue: 0,
-					maxValue: 2,
+					maxValue: 1.99,
 				},
 				routing: {
 					send: {
@@ -284,7 +285,7 @@ export const chatCompletionsFields: INodeProperties[] = [
 					send: {
 						type: 'body',
 						property: 'search_domain_filter',
-						value: '={{$value.split(",").map(domain => domain.trim())}}',
+						value: '={{ $value.split(",").map(domain => domain.trim()) }}',
 					},
 				},
 			},

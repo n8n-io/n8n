@@ -1,4 +1,5 @@
 import type {
+	ICredentialDataDecryptedObject,
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 	IN8nHttpFullResponse,
@@ -18,6 +19,12 @@ export async function sendErrorPostReceive(
 		throw new NodeApiError(this.getNode(), response as unknown as JsonObject);
 	}
 	return data;
+}
+
+export function getBaseUrl(credentials: ICredentialDataDecryptedObject): string {
+	const baseUrl = credentials.baseUrl as string;
+	console.log('baseUrl', baseUrl);
+	return baseUrl ? baseUrl.replace(/\/$/, '') : 'https://api.perplexity.ai';
 }
 
 export async function getModels(
