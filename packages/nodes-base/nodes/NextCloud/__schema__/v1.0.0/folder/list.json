@@ -1,29 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "path": {
-            "type": "string"
-        },
-        "lastModified": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
-        },
-        "eTag": {
-            "type": "string"
-        },
-        "contentLength": {
-            "type": "string"
-        },
-        "contentType": {
-            "type": "string"
-        }
+    "name": "list.json",
+    "path": "packages/nodes-base/nodes/NextCloud/__schema__/v1.0.0/folder/list.json",
+    "sha": "03e39c6e415f1e1492e7b2fb0b92a418de736afb",
+    "size": 519,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/NextCloud/__schema__/v1.0.0/folder/list.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/NextCloud/__schema__/v1.0.0/folder/list.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/03e39c6e415f1e1492e7b2fb0b92a418de736afb",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/NextCloud/__schema__/v1.0.0/folder/list.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJwYXRoIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAibGFzdE1vZGlmaWVkIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAidHlw\nZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0s\nCiAgICAgICAgImVUYWciOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJjb250ZW50TGVuZ3RoIjogewogICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAi\nY29udGVudFR5cGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9CiAgICB9LAogICAgInJlcXVpcmVkIjogWwogICAgICAgICJw\nYXRoIiwKICAgICAgICAibGFzdE1vZGlmaWVkIiwKICAgICAgICAidHlwZSIs\nCiAgICAgICAgImVUYWciCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/NextCloud/__schema__/v1.0.0/folder/list.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/03e39c6e415f1e1492e7b2fb0b92a418de736afb",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/NextCloud/__schema__/v1.0.0/folder/list.json"
     },
-    "required": [
-        "path",
-        "lastModified",
-        "type",
-        "eTag"
-    ]
+    "version": 1
 }
