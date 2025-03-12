@@ -1,164 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "email": {
-            "type": "string"
-        },
-        "activeWorkspace": {
-            "type": "string"
-        },
-        "defaultWorkspace": {
-            "type": "string"
-        },
-        "settings": {
-            "type": "object",
-            "properties": {
-                "weekStart": {
-                    "type": "string"
-                },
-                "timeZone": {
-                    "type": "string"
-                },
-                "timeFormat": {
-                    "type": "string"
-                },
-                "dateFormat": {
-                    "type": "string"
-                },
-                "sendNewsletter": {
-                    "type": "boolean"
-                },
-                "weeklyUpdates": {
-                    "type": "boolean"
-                },
-                "longRunning": {
-                    "type": "boolean"
-                },
-                "scheduledReports": {
-                    "type": "boolean"
-                },
-                "approval": {
-                    "type": "boolean"
-                },
-                "pto": {
-                    "type": "boolean"
-                },
-                "alerts": {
-                    "type": "boolean"
-                },
-                "reminders": {
-                    "type": "boolean"
-                },
-                "timeTrackingManual": {
-                    "type": "boolean"
-                },
-                "summaryReportSettings": {
-                    "type": "object",
-                    "properties": {
-                        "group": {
-                            "type": "string"
-                        },
-                        "subgroup": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "group",
-                        "subgroup"
-                    ]
-                },
-                "isCompactViewOn": {
-                    "type": "boolean"
-                },
-                "dashboardSelection": {
-                    "type": "string"
-                },
-                "dashboardViewType": {
-                    "type": "string"
-                },
-                "dashboardPinToTop": {
-                    "type": "boolean"
-                },
-                "collapseAllProjectLists": {
-                    "type": "boolean"
-                },
-                "groupSimilarEntriesDisabled": {
-                    "type": "boolean"
-                },
-                "myStartOfDay": {
-                    "type": "string"
-                },
-                "projectPickerTaskFilter": {
-                    "type": "boolean"
-                },
-                "lang": {
-                    "type": "string"
-                },
-                "multiFactorEnabled": {
-                    "type": "boolean"
-                },
-                "theme": {
-                    "type": "string"
-                },
-                "scheduling": {
-                    "type": "boolean"
-                },
-                "onboarding": {
-                    "type": "boolean"
-                },
-                "showOnlyWorkingDays": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "weekStart",
-                "timeZone",
-                "timeFormat",
-                "dateFormat",
-                "sendNewsletter",
-                "weeklyUpdates",
-                "longRunning",
-                "scheduledReports",
-                "approval",
-                "pto",
-                "alerts",
-                "reminders",
-                "timeTrackingManual",
-                "summaryReportSettings",
-                "isCompactViewOn",
-                "dashboardSelection",
-                "dashboardViewType",
-                "dashboardPinToTop",
-                "projectListCollapse",
-                "collapseAllProjectLists",
-                "groupSimilarEntriesDisabled",
-                "myStartOfDay",
-                "projectPickerTaskFilter",
-                "lang",
-                "multiFactorEnabled",
-                "theme",
-                "scheduling",
-                "onboarding",
-                "showOnlyWorkingDays"
-            ]
-        },
-        "status": {
-            "type": "string"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Clockify/__schema__/v1.0.0/user/getAll.json",
+    "sha": "8cf92911e15b4b8fd0c7a172de686ac156cbc1c8",
+    "size": 4695,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Clockify/__schema__/v1.0.0/user/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Clockify/__schema__/v1.0.0/user/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/8cf92911e15b4b8fd0c7a172de686ac156cbc1c8",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Clockify/__schema__/v1.0.0/user/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgImVtYWlsIjogewogICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiYWN0aXZlV29ya3Nw\nYWNlIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nfSwKICAgICAgICAiZGVmYXVsdFdvcmtzcGFjZSI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInNldHRpbmdz\nIjogewogICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAg\nICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICJ3ZWVrU3RhcnQi\nOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJ0aW1lWm9uZSI6IHsK\nICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nICAgICAgICB9LAogICAgICAgICAgICAgICAgInRpbWVGb3JtYXQiOiB7CiAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAg\nICAgICAgfSwKICAgICAgICAgICAgICAgICJkYXRlRm9ybWF0IjogewogICAg\nICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAg\nICAgIH0sCiAgICAgICAgICAgICAgICAic2VuZE5ld3NsZXR0ZXIiOiB7CiAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICAgICAid2Vla2x5VXBkYXRlcyI6IHsK\nICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAg\nICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJsb25nUnVubmluZyI6IHsK\nICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAg\nICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJzY2hlZHVsZWRSZXBvcnRz\nIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImFwcHJvdmFsIjog\newogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAg\nICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInB0byI6IHsKICAgICAg\nICAgICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgICAgICAg\nICAgfSwKICAgICAgICAgICAgICAgICJhbGVydHMiOiB7CiAgICAgICAgICAg\nICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICAgICAgICAgIH0s\nCiAgICAgICAgICAgICAgICAicmVtaW5kZXJzIjogewogICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgICAgICAgICB9LAog\nICAgICAgICAgICAgICAgInRpbWVUcmFja2luZ01hbnVhbCI6IHsKICAgICAg\nICAgICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgICAgICAg\nICAgfSwKICAgICAgICAgICAgICAgICJzdW1tYXJ5UmVwb3J0U2V0dGluZ3Mi\nOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAg\nICAgICAgICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAg\nICAgICAgICAgICAgImdyb3VwIjogewogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAgICAg\nICB9LAogICAgICAgICAgICAgICAgICAgICAgICAic3ViZ3JvdXAiOiB7CiAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgICAgICB9\nLAogICAgICAgICAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAg\nICAgICAgICAgICAgICAgImdyb3VwIiwKICAgICAgICAgICAgICAgICAgICAg\nICAgInN1Ymdyb3VwIgogICAgICAgICAgICAgICAgICAgIF0KICAgICAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICAgICAiaXNDb21wYWN0Vmlld09uIjog\newogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAg\nICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImRhc2hib2FyZFNlbGVj\ndGlvbiI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImRhc2hib2Fy\nZFZpZXdUeXBlIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiZGFz\naGJvYXJkUGluVG9Ub3AiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUi\nOiAiYm9vbGVhbiIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAg\nICAiY29sbGFwc2VBbGxQcm9qZWN0TGlzdHMiOiB7CiAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICAgICAgICAgIH0sCiAg\nICAgICAgICAgICAgICAiZ3JvdXBTaW1pbGFyRW50cmllc0Rpc2FibGVkIjog\newogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAg\nICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgIm15U3RhcnRPZkRheSI6\nIHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInByb2plY3RQaWNrZXJU\nYXNrRmlsdGVyIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImJv\nb2xlYW4iCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImxh\nbmciOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJtdWx0aUZhY3Rv\nckVuYWJsZWQiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiYm9v\nbGVhbiIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAidGhl\nbWUiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJzY2hlZHVsaW5n\nIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgIm9uYm9hcmRpbmci\nOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAg\nICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAic2hvd09ubHlXb3Jr\naW5nRGF5cyI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJib29s\nZWFuIgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9LAogICAgICAg\nICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAid2Vla1N0YXJ0\nIiwKICAgICAgICAgICAgICAgICJ0aW1lWm9uZSIsCiAgICAgICAgICAgICAg\nICAidGltZUZvcm1hdCIsCiAgICAgICAgICAgICAgICAiZGF0ZUZvcm1hdCIs\nCiAgICAgICAgICAgICAgICAic2VuZE5ld3NsZXR0ZXIiLAogICAgICAgICAg\nICAgICAgIndlZWtseVVwZGF0ZXMiLAogICAgICAgICAgICAgICAgImxvbmdS\ndW5uaW5nIiwKICAgICAgICAgICAgICAgICJzY2hlZHVsZWRSZXBvcnRzIiwK\nICAgICAgICAgICAgICAgICJhcHByb3ZhbCIsCiAgICAgICAgICAgICAgICAi\ncHRvIiwKICAgICAgICAgICAgICAgICJhbGVydHMiLAogICAgICAgICAgICAg\nICAgInJlbWluZGVycyIsCiAgICAgICAgICAgICAgICAidGltZVRyYWNraW5n\nTWFudWFsIiwKICAgICAgICAgICAgICAgICJzdW1tYXJ5UmVwb3J0U2V0dGlu\nZ3MiLAogICAgICAgICAgICAgICAgImlzQ29tcGFjdFZpZXdPbiIsCiAgICAg\nICAgICAgICAgICAiZGFzaGJvYXJkU2VsZWN0aW9uIiwKICAgICAgICAgICAg\nICAgICJkYXNoYm9hcmRWaWV3VHlwZSIsCiAgICAgICAgICAgICAgICAiZGFz\naGJvYXJkUGluVG9Ub3AiLAogICAgICAgICAgICAgICAgInByb2plY3RMaXN0\nQ29sbGFwc2UiLAogICAgICAgICAgICAgICAgImNvbGxhcHNlQWxsUHJvamVj\ndExpc3RzIiwKICAgICAgICAgICAgICAgICJncm91cFNpbWlsYXJFbnRyaWVz\nRGlzYWJsZWQiLAogICAgICAgICAgICAgICAgIm15U3RhcnRPZkRheSIsCiAg\nICAgICAgICAgICAgICAicHJvamVjdFBpY2tlclRhc2tGaWx0ZXIiLAogICAg\nICAgICAgICAgICAgImxhbmciLAogICAgICAgICAgICAgICAgIm11bHRpRmFj\ndG9yRW5hYmxlZCIsCiAgICAgICAgICAgICAgICAidGhlbWUiLAogICAgICAg\nICAgICAgICAgInNjaGVkdWxpbmciLAogICAgICAgICAgICAgICAgIm9uYm9h\ncmRpbmciLAogICAgICAgICAgICAgICAgInNob3dPbmx5V29ya2luZ0RheXMi\nCiAgICAgICAgICAgIF0KICAgICAgICB9LAogICAgICAgICJzdGF0dXMiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9CiAgICB9\nLAogICAgInJlcXVpcmVkIjogWwogICAgICAgICJpZCIsCiAgICAgICAgImVt\nYWlsIiwKICAgICAgICAibmFtZSIsCiAgICAgICAgIm1lbWJlcnNoaXBzIiwK\nICAgICAgICAicHJvZmlsZVBpY3R1cmUiLAogICAgICAgICJhY3RpdmVXb3Jr\nc3BhY2UiLAogICAgICAgICJkZWZhdWx0V29ya3NwYWNlIiwKICAgICAgICAi\nc2V0dGluZ3MiLAogICAgICAgICJzdGF0dXMiLAogICAgICAgICJjdXN0b21G\naWVsZHMiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Clockify/__schema__/v1.0.0/user/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/8cf92911e15b4b8fd0c7a172de686ac156cbc1c8",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Clockify/__schema__/v1.0.0/user/getAll.json"
     },
-    "required": [
-        "id",
-        "email",
-        "name",
-        "memberships",
-        "profilePicture",
-        "activeWorkspace",
-        "defaultWorkspace",
-        "settings",
-        "status",
-        "customFields"
-    ]
+    "version": 1
 }
