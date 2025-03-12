@@ -41,7 +41,7 @@ jest.mock('../../v2/helpers/utils', () => {
 	};
 });
 
-describe('Test GoogleChat, message => sendAndWait', () => {
+describe('Postgres, resourceMapping', () => {
 	let loadOptionsFunctions: MockProxy<ILoadOptionsFunctions>;
 
 	beforeEach(() => {
