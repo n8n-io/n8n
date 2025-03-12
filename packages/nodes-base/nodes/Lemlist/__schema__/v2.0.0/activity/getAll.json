@@ -1,137 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "_id": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
-        },
-        "createdAt": {
-            "type": "string"
-        },
-        "isFirst": {
-            "type": "boolean"
-        },
-        "stopped": {
-            "type": "boolean"
-        },
-        "bot": {
-            "type": "boolean"
-        },
-        "teamId": {
-            "type": "string"
-        },
-        "leadId": {
-            "type": "string"
-        },
-        "campaignId": {
-            "type": "string"
-        },
-        "sequenceId": {
-            "type": "string"
-        },
-        "sequenceStep": {
-            "type": "integer"
-        },
-        "emailTemplateId": {
-            "type": "string"
-        },
-        "createdBy": {
-            "type": "string"
-        },
-        "totalSequenceStep": {
-            "type": "integer"
-        },
-        "name": {
-            "type": "string"
-        },
-        "sendUserName": {
-            "type": "string"
-        },
-        "leadFirstName": {
-            "type": "string"
-        },
-        "leadLastName": {
-            "type": "string"
-        },
-        "leadEmail": {
-            "type": "string"
-        },
-        "leadCompanyName": {
-            "type": "string"
-        },
-        "contactId": {
-            "type": "string"
-        },
-        "metaData": {
-            "type": "object",
-            "properties": {
-                "teamId": {
-                    "type": "string"
-                },
-                "campaignId": {
-                    "type": "string"
-                },
-                "leadId": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "createdBy": {
-                    "type": "string"
-                },
-                "taskId": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "teamId",
-                "campaignId",
-                "leadId",
-                "type",
-                "createdBy"
-            ]
-        },
-        "firstName": {
-            "type": "string"
-        },
-        "lastName": {
-            "type": "string"
-        },
-        "linkedinUrl": {
-            "type": "string"
-        },
-        "companyName": {
-            "type": "string"
-        },
-        "email": {
-            "type": "string"
-        },
-        "campaignName": {
-            "type": "string"
-        },
-        "sequenceTested": {
-            "type": "string"
-        },
-        "emailTemplateName": {
-            "type": "string"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Lemlist/__schema__/v2.0.0/activity/getAll.json",
+    "sha": "418377a5f4b4976cc5ac2fd1bbd03cfb3fd37fe1",
+    "size": 2962,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Lemlist/__schema__/v2.0.0/activity/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Lemlist/__schema__/v2.0.0/activity/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/418377a5f4b4976cc5ac2fd1bbd03cfb3fd37fe1",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Lemlist/__schema__/v2.0.0/activity/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJfaWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJ0eXBlIjogewogICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiY3JlYXRlZEF0Ijog\newogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAg\nICAgICAiaXNGaXJzdCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVh\nbiIKICAgICAgICB9LAogICAgICAgICJzdG9wcGVkIjogewogICAgICAgICAg\nICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgImJvdCI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9LAog\nICAgICAgICJ0ZWFtSWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJsZWFkSWQiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJjYW1wYWln\nbklkIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nfSwKICAgICAgICAic2VxdWVuY2VJZCI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInNlcXVlbmNlU3RlcCI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAog\nICAgICAgICJlbWFpbFRlbXBsYXRlSWQiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJjcmVhdGVkQnkiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAg\nICAgICJ0b3RhbFNlcXVlbmNlU3RlcCI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJuYW1lIjogewogICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAi\nc2VuZFVzZXJOYW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAibGVhZEZpcnN0TmFtZSI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImxl\nYWRMYXN0TmFtZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgImxlYWRFbWFpbCI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImxlYWRDb21w\nYW55TmFtZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgIH0sCiAgICAgICAgImNvbnRhY3RJZCI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIm1ldGFEYXRhIjog\newogICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAi\ncHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICJ0ZWFtSWQiOiB7CiAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAg\nICAgICAgfSwKICAgICAgICAgICAgICAgICJjYW1wYWlnbklkIjogewogICAg\nICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAg\nICAgIH0sCiAgICAgICAgICAgICAgICAibGVhZElkIjogewogICAgICAgICAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0s\nCiAgICAgICAgICAgICAgICAidHlwZSI6IHsKICAgICAgICAgICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAg\nICAgICAgICAgImNyZWF0ZWRCeSI6IHsKICAgICAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAg\nICAgICAgInRhc2tJZCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0sCiAg\nICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICJ0ZWFt\nSWQiLAogICAgICAgICAgICAgICAgImNhbXBhaWduSWQiLAogICAgICAgICAg\nICAgICAgImxlYWRJZCIsCiAgICAgICAgICAgICAgICAidHlwZSIsCiAgICAg\nICAgICAgICAgICAiY3JlYXRlZEJ5IgogICAgICAgICAgICBdCiAgICAgICAg\nfSwKICAgICAgICAiZmlyc3ROYW1lIjogewogICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAibGFzdE5hbWUiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAg\nICJsaW5rZWRpblVybCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgIH0sCiAgICAgICAgImNvbXBhbnlOYW1lIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiZW1h\naWwiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9\nLAogICAgICAgICJjYW1wYWlnbk5hbWUiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJzZXF1ZW5jZVRlc3Rl\nZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0s\nCiAgICAgICAgImVtYWlsVGVtcGxhdGVOYW1lIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgfQogICAgfSwKICAgICJyZXF1aXJl\nZCI6IFsKICAgICAgICAiX2lkIiwKICAgICAgICAidHlwZSIsCiAgICAgICAg\nImNyZWF0ZWRBdCIsCiAgICAgICAgImJvdCIsCiAgICAgICAgInRlYW1JZCIs\nCiAgICAgICAgImxlYWRJZCIsCiAgICAgICAgImNhbXBhaWduSWQiLAogICAg\nICAgICJjcmVhdGVkQnkiLAogICAgICAgICJzZW5kVXNlcklkIiwKICAgICAg\nICAibmFtZSIsCiAgICAgICAgImNvbnRhY3RJZCIsCiAgICAgICAgIm1ldGFE\nYXRhIiwKICAgICAgICAiY2FtcGFpZ25OYW1lIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Lemlist/__schema__/v2.0.0/activity/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/418377a5f4b4976cc5ac2fd1bbd03cfb3fd37fe1",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Lemlist/__schema__/v2.0.0/activity/getAll.json"
     },
-    "required": [
-        "_id",
-        "type",
-        "createdAt",
-        "bot",
-        "teamId",
-        "leadId",
-        "campaignId",
-        "createdBy",
-        "sendUserId",
-        "name",
-        "contactId",
-        "metaData",
-        "campaignName"
-    ]
+    "version": 1
 }
