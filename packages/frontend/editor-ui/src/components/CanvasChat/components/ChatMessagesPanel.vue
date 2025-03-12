@@ -267,7 +267,7 @@ function copySessionId() {
 }
 .chatHeader {
 	font-size: var(--font-size-s);
-	font-weight: 400;
+	font-weight: var(--font-weight-regular);
 	line-height: 18px;
 	text-align: left;
 	border-bottom: 1px solid var(--color-foreground-base);
@@ -278,7 +278,7 @@ function copySessionId() {
 	align-items: center;
 }
 .chatTitle {
-	font-weight: 600;
+	font-weight: var(--font-weight-bold);
 }
 .session {
 	display: flex;

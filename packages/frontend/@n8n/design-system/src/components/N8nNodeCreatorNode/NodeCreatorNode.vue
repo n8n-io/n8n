@@ -134,7 +134,7 @@ const { t } = useI18n();
 	margin-top: var(--spacing-5xs);
 	font-size: var(--font-size-2xs);
 	line-height: 1rem;
-	font-weight: 400;
+	font-weight: var(--font-weight-regular);
 	color: var(--node-creator-description-colos, var(--color-text-base));
 }
 

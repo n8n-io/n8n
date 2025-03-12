@@ -169,14 +169,14 @@
 			.el-checkbox__label {
 				font-size: 16px;
 				color: var(--color-text-dark);
-				font-weight: normal;
+				font-weight: var(--font-weight-regular);
 
 				span {
 					position: absolute;
 					right: 15px;
 					color: var(--color-text-light);
 					font-size: 12px;
-					font-weight: normal;
+					font-weight: var(--font-weight-regular);
 				}
 			}
 		}

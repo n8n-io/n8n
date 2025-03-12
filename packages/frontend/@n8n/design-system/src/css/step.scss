@@ -80,13 +80,13 @@
 		display: inline-block;
 		user-select: none;
 		text-align: center;
-		font-weight: bold;
+		font-weight: var(--font-weight-bold);
 		line-height: 1;
 		color: inherit;
 
 		&[class*='el-icon']:not(.is-status) {
 			font-size: 25px;
-			font-weight: normal;
+			font-weight: var(--font-weight-regular);
 		}
 
 		// 组件自身表示状态的图标
@@ -122,7 +122,7 @@
 		line-height: 38px;
 
 		@include mixins.when(process) {
-			font-weight: bold;
+			font-weight: var(--font-weight-bold);
 			color: var(--color-text-dark);
 		}
 
@@ -148,7 +148,7 @@
 		margin-top: -5px;
 		font-size: 12px;
 		line-height: 20px;
-		font-weight: normal;
+		font-weight: var(--font-weight-regular);
 
 		@include mixins.when(process) {
 			color: var(--color-text-dark);

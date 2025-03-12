@@ -592,7 +592,7 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-		font-weight: normal;
+		font-weight: var(--font-weight-regular);
 		text-align: left;
 		padding: 0 10px;
 		margin: 0;

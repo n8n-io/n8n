@@ -118,7 +118,7 @@ onClickOutside(nameInput, disableNameEdit);
 	position: relative;
 	min-height: 22px;
 	max-height: v-bind(maxHeight);
-	font-weight: 400;
+	font-weight: var(--font-weight-regular);
 
 	&.editing {
 		width: 100%;
@@ -158,6 +158,6 @@ onClickOutside(nameInput, disableNameEdit);
 	font-size: var(--font-size-2xs);
 	color: var(--color-text-light);
 	margin-left: 4px;
-	font-weight: 400;
+	font-weight: var(--font-weight-regular);
 }
 </style>

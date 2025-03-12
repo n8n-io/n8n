@@ -147,7 +147,7 @@
 		background-color: var(--color-foreground-base);
 		color: var(--color-text-dark);
 		border-radius: 20px;
-		font-weight: 400;
+		font-weight: var(--font-weight-regular);
 
 		&__close.el-icon-close {
 			background-color: var(--color-text-light);

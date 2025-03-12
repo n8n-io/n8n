@@ -67,7 +67,7 @@ const locale = useI18n();
 	}
 
 	span {
-		font-weight: 100;
+		font-weight: var(--font-weight-regular);
 	}
 }
 .logsWrapper {

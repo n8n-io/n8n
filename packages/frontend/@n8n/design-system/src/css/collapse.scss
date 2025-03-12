@@ -23,13 +23,13 @@
 		cursor: pointer;
 		border-bottom: 1px solid var.$collapse-border-color;
 		font-size: var.$collapse-header-font-size;
-		font-weight: 500;
+		font-weight: var(--font-weight-medium);
 		transition: border-bottom-color 0.3s;
 		outline: none;
 		@include mixins.e(arrow) {
 			margin: 0 8px 0 auto;
 			transition: transform 0.3s;
-			font-weight: 400;
+			font-weight: var(--font-weight-regular);
 			@include mixins.when(active) {
 				transform: rotate(90deg);
 			}

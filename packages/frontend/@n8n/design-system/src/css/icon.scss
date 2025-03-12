@@ -5,7 +5,7 @@
 	src:
 		url('#{var.$font-path}/element-icons.woff') format('woff'),
 		/* chrome, firefox */ url('#{var.$font-path}/element-icons.ttf') format('truetype'); /* chrome, firefox, opera, Safari, Android, iOS 4.2+*/
-	font-weight: normal;
+	font-weight: var(--font-weight-regular);
 	font-display: var.$font-display;
 	font-style: normal;
 }
@@ -16,7 +16,7 @@
 	font-family: 'element-icons' !important;
 	speak: none;
 	font-style: normal;
-	font-weight: normal;
+	font-weight: var(--font-weight-regular);
 	font-variant: normal;
 	text-transform: none;
 	line-height: 1;

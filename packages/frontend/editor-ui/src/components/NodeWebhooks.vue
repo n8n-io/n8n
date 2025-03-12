@@ -228,7 +228,7 @@ watch(
 
 	.headline {
 		color: $color-primary;
-		font-weight: 600;
+		font-weight: var(--font-weight-bold);
 		font-size: var(--font-size-2xs);
 	}
 }
