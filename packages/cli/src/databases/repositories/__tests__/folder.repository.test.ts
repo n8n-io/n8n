@@ -366,6 +366,24 @@ describe('FolderRepository', () => {
 				});
 			});
 
+			it('should return id, name and subFolderCount when specified', async () => {
+				const [folders] = await folderRepository.getManyAndCount({
+					select: {
+						id: true,
+						name: true,
+						subFolderCount: true,
+					},
+				});
+
+				expect(folders).toHaveLength(2);
+				folders.forEach((folder) => {
+					expect(Object.keys(folder).sort()).toEqual(['id', 'name', 'subFolderCount']);
+					expect(folder.id).toBeDefined();
+					expect(folder.name).toBeDefined();
+					expect(folder.subFolderCount).toBeDefined();
+				});
+			});
+
 			it('should return timestamps when specified', async () => {
 				const [folders] = await folderRepository.getManyAndCount({
 					select: {
@@ -400,6 +418,7 @@ describe('FolderRepository', () => {
 							icon: null,
 						},
 						workflowCount: expect.any(Number),
+						subFolderCount: expect.any(Number),
 						tags: expect.any(Array),
 					});
 				});
