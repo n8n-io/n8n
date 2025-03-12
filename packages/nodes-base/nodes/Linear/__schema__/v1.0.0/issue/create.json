@@ -1,73 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "identifier": {
-            "type": "string"
-        },
-        "title": {
-            "type": "string"
-        },
-        "priority": {
-            "type": "integer"
-        },
-        "archivedAt": {
-            "type": "null"
-        },
-        "state": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "id",
-                "name"
-            ]
-        },
-        "createdAt": {
-            "type": "string"
-        },
-        "creator": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "displayName": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "id",
-                "displayName"
-            ]
-        },
-        "dueDate": {
-            "type": "null"
-        },
-        "cycle": {
-            "type": "null"
-        }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/Linear/__schema__/v1.0.0/issue/create.json",
+    "sha": "509a8d3f9a1cc0d5a5a63120ab773957e025da67",
+    "size": 1503,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Linear/__schema__/v1.0.0/issue/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Linear/__schema__/v1.0.0/issue/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/509a8d3f9a1cc0d5a5a63120ab773957e025da67",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Linear/__schema__/v1.0.0/issue/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgImlkZW50aWZpZXIiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJ0aXRsZSI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAg\nICAgICAgInByaW9yaXR5IjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRl\nZ2VyIgogICAgICAgIH0sCiAgICAgICAgImFyY2hpdmVkQXQiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAic3Rh\ndGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAg\nICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgImlkIjogewog\nICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICAgICAibmFtZSI6IHsKICAgICAgICAg\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9\nCiAgICAgICAgICAgIH0sCiAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAg\nICAgICAgICAgICAgICJpZCIsCiAgICAgICAgICAgICAgICAibmFtZSIKICAg\nICAgICAgICAgXQogICAgICAgIH0sCiAgICAgICAgImNyZWF0ZWRBdCI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAg\nICAgImNyZWF0b3IiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIs\nCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAg\nImlkIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiZGlzcGxheU5h\nbWUiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9LAogICAgICAgICAgICAi\ncmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAiaWQiLAogICAgICAgICAg\nICAgICAgImRpc3BsYXlOYW1lIgogICAgICAgICAgICBdCiAgICAgICAgfSwK\nICAgICAgICAiZHVlRGF0ZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVs\nbCIKICAgICAgICB9LAogICAgICAgICJjeWNsZSI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAibnVsbCIKICAgICAgICB9CiAgICB9LAogICAgInJlcXVpcmVk\nIjogWwogICAgICAgICJpZCIsCiAgICAgICAgImlkZW50aWZpZXIiLAogICAg\nICAgICJ0aXRsZSIsCiAgICAgICAgInByaW9yaXR5IiwKICAgICAgICAiYXJj\naGl2ZWRBdCIsCiAgICAgICAgImFzc2lnbmVlIiwKICAgICAgICAic3RhdGUi\nLAogICAgICAgICJjcmVhdGVkQXQiLAogICAgICAgICJjcmVhdG9yIiwKICAg\nICAgICAiZGVzY3JpcHRpb24iLAogICAgICAgICJkdWVEYXRlIiwKICAgICAg\nICAiY3ljbGUiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Linear/__schema__/v1.0.0/issue/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/509a8d3f9a1cc0d5a5a63120ab773957e025da67",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Linear/__schema__/v1.0.0/issue/create.json"
     },
-    "required": [
-        "id",
-        "identifier",
-        "title",
-        "priority",
-        "archivedAt",
-        "assignee",
-        "state",
-        "createdAt",
-        "creator",
-        "description",
-        "dueDate",
-        "cycle"
-    ]
+    "version": 1
 }
