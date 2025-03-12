@@ -148,6 +148,17 @@ export class FolderService {
 		});
 	}
 
+	async transferFoldersToProject(fromProjectId: string, toProjectId: string) {
+		return await this.folderRepository.update(
+			{
+				homeProject: { id: fromProjectId },
+			},
+			{
+				homeProject: { id: toProjectId },
+			},
+		);
+	}
+
 	private transformFolderPathToTree(flatPath: FolderPathRow[]): SimpleFolderNode[] {
 		if (!flatPath || flatPath.length === 0) {
 			return [];
