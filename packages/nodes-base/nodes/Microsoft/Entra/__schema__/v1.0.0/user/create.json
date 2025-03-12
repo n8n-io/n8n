@@ -1,0 +1,52 @@
+{
+    "type": "object",
+    "properties": {
+        "@odata.context": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "displayName": {
+            "type": "string"
+        },
+        "mobilePhone": {
+            "type": "null"
+        },
+        "officeLocation": {
+            "type": "null"
+        },
+        "preferredLanguage": {
+            "type": "null"
+        },
+        "userPrincipalName": {
+            "type": "string"
+        },
+        "passwordProfile": {
+            "type": "object",
+            "properties": {
+                "forceChangePasswordNextSignIn": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "forceChangePasswordNextSignIn"
+            ]
+        }
+    },
+    "required": [
+        "@odata.context",
+        "id",
+        "businessPhones",
+        "displayName",
+        "givenName",
+        "jobTitle",
+        "mail",
+        "mobilePhone",
+        "officeLocation",
+        "preferredLanguage",
+        "surname",
+        "userPrincipalName"
+    ],
+    "version": 1
+}
