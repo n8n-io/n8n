@@ -29,6 +29,7 @@ import { ExternalHooks } from '@/external-hooks';
 import type { PublicUser } from '@/interfaces';
 import { listQueryMiddleware } from '@/middlewares';
 import { AuthenticatedRequest, ListQuery, UserRequest } from '@/requests';
+import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { UserService } from '@/services/user.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -48,6 +49,7 @@ export class UsersController {
 		private readonly credentialsService: CredentialsService,
 		private readonly projectService: ProjectService,
 		private readonly eventService: EventService,
+		private readonly folderService: FolderService,
 	) {}
 
 	static ERROR_MESSAGES = {
@@ -211,6 +213,12 @@ export class UsersController {
 					trx,
 				);
 				await this.credentialsService.transferAll(
+					personalProjectToDelete.id,
+					transfereePersonalProject.id,
+					trx,
+				);
+
+				await this.folderService.transferAllFoldersToProject(
 					personalProjectToDelete.id,
 					transfereePersonalProject.id,
 					trx,
