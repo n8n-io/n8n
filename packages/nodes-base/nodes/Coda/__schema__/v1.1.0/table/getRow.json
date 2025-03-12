@@ -1,146 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "Niche Name": {
-            "type": "string"
-        },
-        "ONB_Response_Guildelines": {
-            "type": "string"
-        },
-        "ONB_Style": {
-            "type": "string"
-        },
-        "Onb_Identity": {
-            "type": "string"
-        },
-        "Onb_Task": {
-            "type": "string"
-        },
-        "Dbr_Identity": {
-            "type": "string"
-        },
-        "Dbr_Task": {
-            "type": "string"
-        },
-        "Onb_Steps": {
-            "type": "string"
-        },
-        "Onb_Notes": {
-            "type": "string"
-        },
-        "DBR_Steps": {
-            "type": "string"
-        },
-        "DBR_Notes": {
-            "type": "string"
-        },
-        "Appointments_Identity": {
-            "type": "string"
-        },
-        "Confirmation_Task": {
-            "type": "string"
-        },
-        "Confirmation_Steps": {
-            "type": "string"
-        },
-        "Reminders_Task": {
-            "type": "string"
-        },
-        "Reminders 1 Steps": {
-            "type": "string"
-        },
-        "Reminders 2 Steps": {
-            "type": "string"
-        },
-        "No Show identity": {
-            "type": "string"
-        },
-        "No Show Task": {
-            "type": "string"
-        },
-        "No Show Steps": {
-            "type": "string"
-        },
-        "Cold Call Identity": {
-            "type": "string"
-        },
-        "Cold Call Task": {
-            "type": "string"
-        },
-        "Cold Calling Steps": {
-            "type": "string"
-        },
-        "Cold Calling Notes": {
-            "type": "string"
-        },
-        "Cold Calling Response Guidelines": {
-            "type": "string"
-        },
-        "Inbound Identity": {
-            "type": "string"
-        },
-        "Inbound Task": {
-            "type": "string"
-        },
-        "Inbound Steps": {
-            "type": "string"
-        },
-        "Inbound Response Guidlines": {
-            "type": "string"
-        },
-        "Inbound Notes": {
-            "type": "string"
-        },
-        "ONB_Specifics": {
-            "type": "string"
-        },
-        "Context": {
-            "type": "string"
-        },
-        "Onb_Example": {
-            "type": "string"
-        },
-        "Call Later Task": {
-            "type": "string"
-        },
-        "Call Later Steps": {
-            "type": "string"
-        },
-        "Call Later Examples": {
-            "type": "string"
-        },
-        "Call Later DBR Steps": {
-            "type": "string"
-        },
-        "DBR_Example": {
-            "type": "string"
-        },
-        "Appointments Example": {
-            "type": "string"
-        },
-        "Appointments_Notes": {
-            "type": "string"
-        },
-        "Inbound Specifics New": {
-            "type": "string"
-        },
-        "Inbound Specifics Past": {
-            "type": "string"
-        },
-        "Inbound Examples": {
-            "type": "string"
-        },
-        "Inbound Context": {
-            "type": "string"
-        },
-        "Voice ID": {
-            "type": "string"
-        }
+    "name": "getRow.json",
+    "path": "packages/nodes-base/nodes/Coda/__schema__/v1.1.0/table/getRow.json",
+    "sha": "9d48cdeef771453ff6228c2dd341d2ecab36081f",
+    "size": 3251,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Coda/__schema__/v1.1.0/table/getRow.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Coda/__schema__/v1.1.0/table/getRow.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/9d48cdeef771453ff6228c2dd341d2ecab36081f",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Coda/__schema__/v1.1.0/table/getRow.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgIk5pY2hlIE5hbWUiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJPTkJfUmVz\ncG9uc2VfR3VpbGRlbGluZXMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJPTkJfU3R5bGUiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJP\nbmJfSWRlbnRpdHkiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJPbmJfVGFzayI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIkRicl9JZGVu\ndGl0eSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nIH0sCiAgICAgICAgIkRicl9UYXNrIjogewogICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiT25iX1N0ZXBzIjogewog\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAg\nICAiT25iX05vdGVzIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAiREJSX1N0ZXBzIjogewogICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiREJSX05v\ndGVzIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nfSwKICAgICAgICAiQXBwb2ludG1lbnRzX0lkZW50aXR5IjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiQ29u\nZmlybWF0aW9uX1Rhc2siOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJDb25maXJtYXRpb25fU3RlcHMiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAg\nICAgICJSZW1pbmRlcnNfVGFzayI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIlJlbWluZGVycyAxIFN0ZXBz\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwK\nICAgICAgICAiUmVtaW5kZXJzIDIgU3RlcHMiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJObyBTaG93IGlk\nZW50aXR5IjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgfSwKICAgICAgICAiTm8gU2hvdyBUYXNrIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiTm8gU2hvdyBT\ndGVwcyI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nIH0sCiAgICAgICAgIkNvbGQgQ2FsbCBJZGVudGl0eSI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIkNvbGQg\nQ2FsbCBUYXNrIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgfSwKICAgICAgICAiQ29sZCBDYWxsaW5nIFN0ZXBzIjogewogICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAi\nQ29sZCBDYWxsaW5nIE5vdGVzIjogewogICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgfSwKICAgICAgICAiQ29sZCBDYWxsaW5nIFJlc3Bv\nbnNlIEd1aWRlbGluZXMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJJbmJvdW5kIElkZW50aXR5Ijogewog\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAg\nICAiSW5ib3VuZCBUYXNrIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgfSwKICAgICAgICAiSW5ib3VuZCBTdGVwcyI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAg\nIkluYm91bmQgUmVzcG9uc2UgR3VpZGxpbmVzIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiSW5ib3VuZCBO\nb3RlcyI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nIH0sCiAgICAgICAgIk9OQl9TcGVjaWZpY3MiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJDb250ZXh0Ijog\newogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAg\nICAgICAiT25iX0V4YW1wbGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJDYWxsIExhdGVyIFRhc2siOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAg\nICAgICJDYWxsIExhdGVyIFN0ZXBzIjogewogICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiQ2FsbCBMYXRlciBFeGFt\ncGxlcyI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nIH0sCiAgICAgICAgIkNhbGwgTGF0ZXIgREJSIFN0ZXBzIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiREJS\nX0V4YW1wbGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICB9LAogICAgICAgICJBcHBvaW50bWVudHMgRXhhbXBsZSI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAg\nIkFwcG9pbnRtZW50c19Ob3RlcyI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIkluYm91bmQgU3BlY2lmaWNz\nIE5ldyI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nIH0sCiAgICAgICAgIkluYm91bmQgU3BlY2lmaWNzIFBhc3QiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJJ\nbmJvdW5kIEV4YW1wbGVzIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgfSwKICAgICAgICAiSW5ib3VuZCBDb250ZXh0Ijogewog\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAg\nICAiVm9pY2UgSUQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9CiAgICB9LAogICAgInJlcXVpcmVkIjogWwogICAgICAgICJp\nZCIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Coda/__schema__/v1.1.0/table/getRow.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/9d48cdeef771453ff6228c2dd341d2ecab36081f",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Coda/__schema__/v1.1.0/table/getRow.json"
     },
-    "required": [
-        "id"
-    ]
+    "version": 1
 }
