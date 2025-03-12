@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "properties": {
+        "campaignId": {
+            "type": "string"
+        },
+        "campaignName": {
+            "type": "string"
+        },
+        "firstName": {
+            "type": "string"
+        },
+        "lastName": {
+            "type": "string"
+        },
+        "linkedinUrl": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "_id": {
+            "type": "string"
+        },
+        "isPaused": {
+            "type": "boolean"
+        }
+    },
+    "version": 1
+}
