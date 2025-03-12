@@ -1,0 +1,95 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "user_id": {
+            "type": "integer"
+        },
+        "project_id": {
+            "type": "null"
+        },
+        "content": {
+            "type": "string"
+        },
+        "add_time": {
+            "type": "string"
+        },
+        "update_time": {
+            "type": "string"
+        },
+        "active_flag": {
+            "type": "boolean"
+        },
+        "pinned_to_deal_flag": {
+            "type": "boolean"
+        },
+        "pinned_to_person_flag": {
+            "type": "boolean"
+        },
+        "pinned_to_organization_flag": {
+            "type": "boolean"
+        },
+        "pinned_to_lead_flag": {
+            "type": "boolean"
+        },
+        "pinned_to_project_flag": {
+            "type": "boolean"
+        },
+        "person": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name"
+            ]
+        },
+        "user": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "is_you": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "email",
+                "name",
+                "icon_url",
+                "is_you"
+            ]
+        }
+    },
+    "required": [
+        "id",
+        "user_id",
+        "deal_id",
+        "person_id",
+        "org_id",
+        "lead_id",
+        "content",
+        "add_time",
+        "update_time",
+        "active_flag",
+        "pinned_to_deal_flag",
+        "pinned_to_person_flag",
+        "pinned_to_organization_flag",
+        "pinned_to_lead_flag",
+        "last_update_user_id",
+        "organization",
+        "person",
+        "deal",
+        "lead",
+        "user"
+    ],
+    "version": 1
+}
