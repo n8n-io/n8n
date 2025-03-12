@@ -383,7 +383,7 @@ const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-3xs);
-	color: var(--color-text-dark);
+	color: var(--color-text-base);
 }
 
 @include mixins.breakpoint('sm-and-down') {
