@@ -1,17 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "_name": {
-            "type": "string"
-        },
-        "_id": {
-            "type": "string"
-        },
-        "_createTime": {
-            "type": "string"
-        },
-        "_updateTime": {
-            "type": "string"
-        }
-    }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__schema__/v1.1.0/document/create.json",
+    "sha": "8e331292962a5a88665f349125f9dc907498e4ee",
+    "size": 297,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__schema__/v1.1.0/document/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__schema__/v1.1.0/document/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/8e331292962a5a88665f349125f9dc907498e4ee",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__schema__/v1.1.0/document/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJfbmFtZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgIH0sCiAgICAgICAgIl9pZCI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIl9jcmVhdGVUaW1l\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwK\nICAgICAgICAiX3VwZGF0ZVRpbWUiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICB9CiAgICB9Cn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__schema__/v1.1.0/document/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/8e331292962a5a88665f349125f9dc907498e4ee",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__schema__/v1.1.0/document/create.json"
+    },
+    "version": 1
 }
