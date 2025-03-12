@@ -22,12 +22,6 @@
         "dc:creator": {
             "type": "string"
         },
-        "content": {
-            "type": "string"
-        },
-        "contentSnippet": {
-            "type": "string"
-        },
         "guid": {
             "type": "string"
         },
@@ -39,6 +33,13 @@
         },
         "isoDate": {
             "type": "string"
+        },
+        "content": {
+            "type": "string"
+        },
+        "contentSnippet": {
+            "type": "string"
         }
-    }
+    },
+    "version": 1
 }
