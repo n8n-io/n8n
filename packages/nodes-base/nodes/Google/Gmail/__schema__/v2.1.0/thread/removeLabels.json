@@ -1,36 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "messages": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "threadId": {
-                        "type": "string"
-                    },
-                    "labelIds": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    }
-                },
-                "required": [
-                    "id",
-                    "threadId"
-                ]
-            }
-        }
+    "name": "removeLabels.json",
+    "path": "packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/thread/removeLabels.json",
+    "sha": "9cd91b3b274146608648b4e42b747145e8cd45df",
+    "size": 847,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/thread/removeLabels.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/thread/removeLabels.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/9cd91b3b274146608648b4e42b747145e8cd45df",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/thread/removeLabels.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgIm1lc3NhZ2VzIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAgICJpdGVtcyI6IHsKICAgICAg\nICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICAgICAi\ncHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICAgICAiaWQiOiB7CiAg\nICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICJ0aHJlYWRJ\nZCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAg\nImxhYmVsSWRzIjogewogICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6\nICJhcnJheSIsCiAgICAgICAgICAgICAgICAgICAgICAgICJpdGVtcyI6IHsK\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgICAg\nIH0KICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAicmVxdWly\nZWQiOiBbCiAgICAgICAgICAgICAgICAgICAgImlkIiwKICAgICAgICAgICAg\nICAgICAgICAidGhyZWFkSWQiCiAgICAgICAgICAgICAgICBdCiAgICAgICAg\nICAgIH0KICAgICAgICB9CiAgICB9LAogICAgInJlcXVpcmVkIjogWwogICAg\nICAgICJpZCIsCiAgICAgICAgIm1lc3NhZ2VzIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/thread/removeLabels.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/9cd91b3b274146608648b4e42b747145e8cd45df",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/thread/removeLabels.json"
     },
-    "required": [
-        "id",
-        "messages"
-    ]
+    "version": 1
 }
