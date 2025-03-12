@@ -1,0 +1,299 @@
+{
+    "type": "object",
+    "properties": {
+        "type": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "workspace_id": {
+            "type": "string"
+        },
+        "external_id": {
+            "type": "null"
+        },
+        "role": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "avatar": {
+            "type": "null"
+        },
+        "owner_id": {
+            "type": "null"
+        },
+        "social_profiles": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "type",
+                "data"
+            ]
+        },
+        "has_hard_bounced": {
+            "type": "boolean"
+        },
+        "marked_email_as_spam": {
+            "type": "boolean"
+        },
+        "unsubscribed_from_emails": {
+            "type": "boolean"
+        },
+        "created_at": {
+            "type": "integer"
+        },
+        "updated_at": {
+            "type": "integer"
+        },
+        "signed_up_at": {
+            "type": "null"
+        },
+        "last_seen_at": {
+            "type": "null"
+        },
+        "last_replied_at": {
+            "type": "null"
+        },
+        "last_contacted_at": {
+            "type": "null"
+        },
+        "last_email_opened_at": {
+            "type": "null"
+        },
+        "last_email_clicked_at": {
+            "type": "null"
+        },
+        "language_override": {
+            "type": "null"
+        },
+        "browser": {
+            "type": "null"
+        },
+        "browser_version": {
+            "type": "null"
+        },
+        "browser_language": {
+            "type": "null"
+        },
+        "os": {
+            "type": "null"
+        },
+        "location": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "country": {
+                    "type": "null"
+                },
+                "region": {
+                    "type": "null"
+                },
+                "city": {
+                    "type": "null"
+                },
+                "country_code": {
+                    "type": "null"
+                },
+                "continent_code": {
+                    "type": "null"
+                }
+            },
+            "required": [
+                "type",
+                "country",
+                "region",
+                "city"
+            ]
+        },
+        "android_app_name": {
+            "type": "null"
+        },
+        "android_app_version": {
+            "type": "null"
+        },
+        "android_device": {
+            "type": "null"
+        },
+        "android_os_version": {
+            "type": "null"
+        },
+        "android_sdk_version": {
+            "type": "null"
+        },
+        "android_last_seen_at": {
+            "type": "null"
+        },
+        "ios_app_name": {
+            "type": "null"
+        },
+        "ios_app_version": {
+            "type": "null"
+        },
+        "ios_device": {
+            "type": "null"
+        },
+        "ios_os_version": {
+            "type": "null"
+        },
+        "ios_sdk_version": {
+            "type": "null"
+        },
+        "ios_last_seen_at": {
+            "type": "null"
+        },
+        "tags": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                },
+                "total_count": {
+                    "type": "integer"
+                },
+                "has_more": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "type",
+                "data",
+                "url",
+                "total_count",
+                "has_more"
+            ]
+        },
+        "notes": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                },
+                "total_count": {
+                    "type": "integer"
+                },
+                "has_more": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "type",
+                "data",
+                "url",
+                "total_count",
+                "has_more"
+            ]
+        },
+        "companies": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                },
+                "total_count": {
+                    "type": "integer"
+                },
+                "has_more": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "type",
+                "data",
+                "url",
+                "total_count",
+                "has_more"
+            ]
+        },
+        "opted_out_subscription_types": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                },
+                "total_count": {
+                    "type": "integer"
+                },
+                "has_more": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "type",
+                "data",
+                "url",
+                "total_count",
+                "has_more"
+            ]
+        },
+        "opted_in_subscription_types": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                },
+                "total_count": {
+                    "type": "integer"
+                },
+                "has_more": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "type",
+                "data",
+                "url",
+                "total_count",
+                "has_more"
+            ]
+        },
+        "utm_campaign": {
+            "type": "null"
+        },
+        "utm_content": {
+            "type": "null"
+        },
+        "utm_medium": {
+            "type": "null"
+        },
+        "utm_source": {
+            "type": "null"
+        },
+        "utm_term": {
+            "type": "null"
+        },
+        "referrer": {
+            "type": "null"
+        },
+        "sms_consent": {
+            "type": "boolean"
+        },
+        "unsubscribed_from_sms": {
+            "type": "boolean"
+        }
+    },
+    "version": 1
+}
