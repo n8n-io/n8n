@@ -1,0 +1,51 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "created": {
+            "type": "string"
+        },
+        "lastUpdated": {
+            "type": "string"
+        },
+        "profile": {
+            "type": "object",
+            "properties": {
+                "firstName": {
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "login": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "firstName",
+                "lastName",
+                "login",
+                "email"
+            ]
+        }
+    },
+    "required": [
+        "id",
+        "status",
+        "created",
+        "activated",
+        "lastLogin",
+        "lastUpdated",
+        "passwordChanged",
+        "profile"
+    ],
+    "version": 1
+}
