@@ -4,9 +4,6 @@
         "id": {
             "type": "integer"
         },
-        "username": {
-            "type": "string"
-        },
         "email": {
             "type": "string"
         },
@@ -16,13 +13,7 @@
         "profileInfo": {
             "type": "object",
             "properties": {
-                "verified_ambassador": {
-                    "type": "null"
-                },
                 "verified_consultant": {
-                    "type": "null"
-                },
-                "viewed_verified_ambassador": {
                     "type": "null"
                 },
                 "viewed_verified_consultant": {
@@ -50,5 +41,6 @@
         "initials",
         "profilePicture",
         "profileInfo"
-    ]
+    ],
+    "version": 1
 }
