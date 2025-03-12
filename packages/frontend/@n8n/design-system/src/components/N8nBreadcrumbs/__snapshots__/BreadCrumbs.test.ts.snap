@@ -7,12 +7,12 @@ exports[`Breadcrumbs > does not highlight last item for "highlightLastItem = fal
     <!--v-if-->
     <!--v-if-->
     <li class="item" data-test-id="breadcrumbs-item"><a href="/folder1" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 1</span></span></a></li>
-    <li class="separator" aria-hidden="true">/</li>
+    <li class="separator">/</li>
     <li class="item" data-test-id="breadcrumbs-item"><a href="/folder2" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 2</span></span></a></li>
-    <li class="separator" aria-hidden="true">/</li>
+    <li class="separator">/</li>
     <li class="item" data-test-id="breadcrumbs-item"><a href="/folder3" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 3</span></span></a></li>
-    <li class="separator" aria-hidden="true">/</li>
-    <li class="item" data-test-id="breadcrumbs-item"><span class="n8n-text size-medium regular">Current</span></li>
+    <li class="separator">/</li>
+    <li class="item" data-test-id="breadcrumbs-item-current"><span class="n8n-text size-medium regular">Current</span></li>
     <!--v-if-->
   </ul>
 </div>"
@@ -25,12 +25,12 @@ exports[`Breadcrumbs > renders custom separator correctly 1`] = `
     <!--v-if-->
     <!--v-if-->
     <li class="item" data-test-id="breadcrumbs-item"><a href="/folder1" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 1</span></span></a></li>
-    <li class="separator" aria-hidden="true">➮</li>
+    <li class="separator">➮</li>
     <li class="item" data-test-id="breadcrumbs-item"><a href="/folder2" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 2</span></span></a></li>
-    <li class="separator" aria-hidden="true">➮</li>
+    <li class="separator">➮</li>
     <li class="item" data-test-id="breadcrumbs-item"><a href="/folder3" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 3</span></span></a></li>
-    <li class="separator" aria-hidden="true">➮</li>
-    <li class="item current" data-test-id="breadcrumbs-item"><span class="n8n-text size-medium regular">Current</span></li>
+    <li class="separator">➮</li>
+    <li class="item current" data-test-id="breadcrumbs-item-current"><span class="n8n-text size-medium regular">Current</span></li>
     <!--v-if-->
   </ul>
 </div>"
@@ -43,12 +43,12 @@ exports[`Breadcrumbs > renders default version correctly 1`] = `
     <!--v-if-->
     <!--v-if-->
     <li class="item" data-test-id="breadcrumbs-item"><a href="/folder1" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 1</span></span></a></li>
-    <li class="separator" aria-hidden="true">/</li>
+    <li class="separator">/</li>
     <li class="item" data-test-id="breadcrumbs-item"><a href="/folder2" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 2</span></span></a></li>
-    <li class="separator" aria-hidden="true">/</li>
+    <li class="separator">/</li>
     <li class="item" data-test-id="breadcrumbs-item"><a href="/folder3" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 3</span></span></a></li>
-    <li class="separator" aria-hidden="true">/</li>
-    <li class="item current" data-test-id="breadcrumbs-item"><span class="n8n-text size-medium regular">Current</span></li>
+    <li class="separator">/</li>
+    <li class="item current" data-test-id="breadcrumbs-item-current"><span class="n8n-text size-medium regular">Current</span></li>
     <!--v-if-->
   </ul>
 </div>"
@@ -58,16 +58,16 @@ exports[`Breadcrumbs > renders slots correctly 1`] = `
 "<div class="container medium">
   <div>[PRE] Custom content</div>
   <ul class="list">
-    <li class="separator" aria-hidden="true">/</li>
+    <li class="separator">/</li>
     <!--v-if-->
     <!--v-if-->
     <li class="item" data-test-id="breadcrumbs-item"><a href="/folder1" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 1</span></span></a></li>
-    <li class="separator" aria-hidden="true">/</li>
+    <li class="separator">/</li>
     <li class="item" data-test-id="breadcrumbs-item"><a href="/folder2" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 2</span></span></a></li>
-    <li class="separator" aria-hidden="true">/</li>
+    <li class="separator">/</li>
     <li class="item" data-test-id="breadcrumbs-item"><a href="/folder3" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 3</span></span></a></li>
-    <li class="separator" aria-hidden="true">/</li>
-    <li class="item current" data-test-id="breadcrumbs-item"><span class="n8n-text size-medium regular">Current</span></li>
+    <li class="separator">/</li>
+    <li class="item current" data-test-id="breadcrumbs-item-current"><span class="n8n-text size-medium regular">Current</span></li>
     <!--v-if-->
   </ul>
   <div>[POST] Custom content</div>
@@ -81,12 +81,12 @@ exports[`Breadcrumbs > renders small version correctly 1`] = `
     <!--v-if-->
     <!--v-if-->
     <li class="item" data-test-id="breadcrumbs-item"><a href="/folder1" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 1</span></span></a></li>
-    <li class="separator" aria-hidden="true">/</li>
+    <li class="separator">/</li>
     <li class="item" data-test-id="breadcrumbs-item"><a href="/folder2" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 2</span></span></a></li>
-    <li class="separator" aria-hidden="true">/</li>
+    <li class="separator">/</li>
     <li class="item" data-test-id="breadcrumbs-item"><a href="/folder3" target="_blank" class="n8n-link"><span class="text"><span class="n8n-text size-medium regular">Folder 3</span></span></a></li>
-    <li class="separator" aria-hidden="true">/</li>
-    <li class="item current" data-test-id="breadcrumbs-item"><span class="n8n-text size-medium regular">Current</span></li>
+    <li class="separator">/</li>
+    <li class="item current" data-test-id="breadcrumbs-item-current"><span class="n8n-text size-medium regular">Current</span></li>
     <!--v-if-->
   </ul>
 </div>"
