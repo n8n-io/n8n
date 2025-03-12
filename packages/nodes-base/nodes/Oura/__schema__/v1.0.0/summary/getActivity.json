@@ -1,158 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"id": {
-			"type": "string"
-		},
-		"class_5_min": {
-			"type": "string"
-		},
-		"score": {
-			"type": "integer"
-		},
-		"active_calories": {
-			"type": "integer"
-		},
-		"average_met_minutes": {
-			"type": "number"
-		},
-		"contributors": {
-			"type": "object",
-			"properties": {
-				"meet_daily_targets": {
-					"type": "integer"
-				},
-				"move_every_hour": {
-					"type": "integer"
-				},
-				"recovery_time": {
-					"type": "integer"
-				},
-				"stay_active": {
-					"type": "integer"
-				},
-				"training_frequency": {
-					"type": "integer"
-				},
-				"training_volume": {
-					"type": "integer"
-				}
-			},
-			"required": [
-				"meet_daily_targets",
-				"move_every_hour",
-				"recovery_time",
-				"stay_active",
-				"training_frequency",
-				"training_volume"
-			]
-		},
-		"equivalent_walking_distance": {
-			"type": "integer"
-		},
-		"high_activity_met_minutes": {
-			"type": "integer"
-		},
-		"high_activity_time": {
-			"type": "integer"
-		},
-		"inactivity_alerts": {
-			"type": "integer"
-		},
-		"low_activity_met_minutes": {
-			"type": "integer"
-		},
-		"low_activity_time": {
-			"type": "integer"
-		},
-		"medium_activity_met_minutes": {
-			"type": "integer"
-		},
-		"medium_activity_time": {
-			"type": "integer"
-		},
-		"met": {
-			"type": "object",
-			"properties": {
-				"interval": {
-					"type": "integer"
-				},
-				"items": {
-					"type": "array",
-					"items": {
-						"type": "number"
-					}
-				},
-				"timestamp": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"interval",
-				"items",
-				"timestamp"
-			]
-		},
-		"meters_to_target": {
-			"type": "integer"
-		},
-		"non_wear_time": {
-			"type": "integer"
-		},
-		"resting_time": {
-			"type": "integer"
-		},
-		"sedentary_met_minutes": {
-			"type": "integer"
-		},
-		"sedentary_time": {
-			"type": "integer"
-		},
-		"steps": {
-			"type": "integer"
-		},
-		"target_calories": {
-			"type": "integer"
-		},
-		"target_meters": {
-			"type": "integer"
-		},
-		"total_calories": {
-			"type": "integer"
-		},
-		"day": {
-			"type": "string"
-		},
-		"timestamp": {
-			"type": "string"
-		}
-	},
-	"required": [
-		"id",
-		"class_5_min",
-		"score",
-		"active_calories",
-		"average_met_minutes",
-		"contributors",
-		"equivalent_walking_distance",
-		"high_activity_met_minutes",
-		"high_activity_time",
-		"inactivity_alerts",
-		"low_activity_met_minutes",
-		"low_activity_time",
-		"medium_activity_met_minutes",
-		"medium_activity_time",
-		"met",
-		"meters_to_target",
-		"non_wear_time",
-		"resting_time",
-		"sedentary_met_minutes",
-		"sedentary_time",
-		"steps",
-		"target_calories",
-		"target_meters",
-		"total_calories",
-		"day",
-		"timestamp"
-	]
+    "name": "getActivity.json",
+    "path": "packages/nodes-base/nodes/Oura/__schema__/v1.0.0/summary/getActivity.json",
+    "sha": "bbe775de1ddab1eae07866588c764a1b4f1ca651",
+    "size": 2639,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Oura/__schema__/v1.0.0/summary/getActivity.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Oura/__schema__/v1.0.0/summary/getActivity.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/bbe775de1ddab1eae07866588c764a1b4f1ca651",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Oura/__schema__/v1.0.0/summary/getActivity.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJpZCI6\nIHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJImNsYXNzXzVfbWluIjog\newoJCQkidHlwZSI6ICJzdHJpbmciCgkJfSwKCQkic2NvcmUiOiB7CgkJCSJ0\neXBlIjogImludGVnZXIiCgkJfSwKCQkiYWN0aXZlX2NhbG9yaWVzIjogewoJ\nCQkidHlwZSI6ICJpbnRlZ2VyIgoJCX0sCgkJImF2ZXJhZ2VfbWV0X21pbnV0\nZXMiOiB7CgkJCSJ0eXBlIjogIm51bWJlciIKCQl9LAoJCSJjb250cmlidXRv\ncnMiOiB7CgkJCSJ0eXBlIjogIm9iamVjdCIsCgkJCSJwcm9wZXJ0aWVzIjog\newoJCQkJIm1lZXRfZGFpbHlfdGFyZ2V0cyI6IHsKCQkJCQkidHlwZSI6ICJp\nbnRlZ2VyIgoJCQkJfSwKCQkJCSJtb3ZlX2V2ZXJ5X2hvdXIiOiB7CgkJCQkJ\nInR5cGUiOiAiaW50ZWdlciIKCQkJCX0sCgkJCQkicmVjb3ZlcnlfdGltZSI6\nIHsKCQkJCQkidHlwZSI6ICJpbnRlZ2VyIgoJCQkJfSwKCQkJCSJzdGF5X2Fj\ndGl2ZSI6IHsKCQkJCQkidHlwZSI6ICJpbnRlZ2VyIgoJCQkJfSwKCQkJCSJ0\ncmFpbmluZ19mcmVxdWVuY3kiOiB7CgkJCQkJInR5cGUiOiAiaW50ZWdlciIK\nCQkJCX0sCgkJCQkidHJhaW5pbmdfdm9sdW1lIjogewoJCQkJCSJ0eXBlIjog\nImludGVnZXIiCgkJCQl9CgkJCX0sCgkJCSJyZXF1aXJlZCI6IFsKCQkJCSJt\nZWV0X2RhaWx5X3RhcmdldHMiLAoJCQkJIm1vdmVfZXZlcnlfaG91ciIsCgkJ\nCQkicmVjb3ZlcnlfdGltZSIsCgkJCQkic3RheV9hY3RpdmUiLAoJCQkJInRy\nYWluaW5nX2ZyZXF1ZW5jeSIsCgkJCQkidHJhaW5pbmdfdm9sdW1lIgoJCQld\nCgkJfSwKCQkiZXF1aXZhbGVudF93YWxraW5nX2Rpc3RhbmNlIjogewoJCQki\ndHlwZSI6ICJpbnRlZ2VyIgoJCX0sCgkJImhpZ2hfYWN0aXZpdHlfbWV0X21p\nbnV0ZXMiOiB7CgkJCSJ0eXBlIjogImludGVnZXIiCgkJfSwKCQkiaGlnaF9h\nY3Rpdml0eV90aW1lIjogewoJCQkidHlwZSI6ICJpbnRlZ2VyIgoJCX0sCgkJ\nImluYWN0aXZpdHlfYWxlcnRzIjogewoJCQkidHlwZSI6ICJpbnRlZ2VyIgoJ\nCX0sCgkJImxvd19hY3Rpdml0eV9tZXRfbWludXRlcyI6IHsKCQkJInR5cGUi\nOiAiaW50ZWdlciIKCQl9LAoJCSJsb3dfYWN0aXZpdHlfdGltZSI6IHsKCQkJ\nInR5cGUiOiAiaW50ZWdlciIKCQl9LAoJCSJtZWRpdW1fYWN0aXZpdHlfbWV0\nX21pbnV0ZXMiOiB7CgkJCSJ0eXBlIjogImludGVnZXIiCgkJfSwKCQkibWVk\naXVtX2FjdGl2aXR5X3RpbWUiOiB7CgkJCSJ0eXBlIjogImludGVnZXIiCgkJ\nfSwKCQkibWV0IjogewoJCQkidHlwZSI6ICJvYmplY3QiLAoJCQkicHJvcGVy\ndGllcyI6IHsKCQkJCSJpbnRlcnZhbCI6IHsKCQkJCQkidHlwZSI6ICJpbnRl\nZ2VyIgoJCQkJfSwKCQkJCSJpdGVtcyI6IHsKCQkJCQkidHlwZSI6ICJhcnJh\neSIsCgkJCQkJIml0ZW1zIjogewoJCQkJCQkidHlwZSI6ICJudW1iZXIiCgkJ\nCQkJfQoJCQkJfSwKCQkJCSJ0aW1lc3RhbXAiOiB7CgkJCQkJInR5cGUiOiAi\nc3RyaW5nIgoJCQkJfQoJCQl9LAoJCQkicmVxdWlyZWQiOiBbCgkJCQkiaW50\nZXJ2YWwiLAoJCQkJIml0ZW1zIiwKCQkJCSJ0aW1lc3RhbXAiCgkJCV0KCQl9\nLAoJCSJtZXRlcnNfdG9fdGFyZ2V0IjogewoJCQkidHlwZSI6ICJpbnRlZ2Vy\nIgoJCX0sCgkJIm5vbl93ZWFyX3RpbWUiOiB7CgkJCSJ0eXBlIjogImludGVn\nZXIiCgkJfSwKCQkicmVzdGluZ190aW1lIjogewoJCQkidHlwZSI6ICJpbnRl\nZ2VyIgoJCX0sCgkJInNlZGVudGFyeV9tZXRfbWludXRlcyI6IHsKCQkJInR5\ncGUiOiAiaW50ZWdlciIKCQl9LAoJCSJzZWRlbnRhcnlfdGltZSI6IHsKCQkJ\nInR5cGUiOiAiaW50ZWdlciIKCQl9LAoJCSJzdGVwcyI6IHsKCQkJInR5cGUi\nOiAiaW50ZWdlciIKCQl9LAoJCSJ0YXJnZXRfY2Fsb3JpZXMiOiB7CgkJCSJ0\neXBlIjogImludGVnZXIiCgkJfSwKCQkidGFyZ2V0X21ldGVycyI6IHsKCQkJ\nInR5cGUiOiAiaW50ZWdlciIKCQl9LAoJCSJ0b3RhbF9jYWxvcmllcyI6IHsK\nCQkJInR5cGUiOiAiaW50ZWdlciIKCQl9LAoJCSJkYXkiOiB7CgkJCSJ0eXBl\nIjogInN0cmluZyIKCQl9LAoJCSJ0aW1lc3RhbXAiOiB7CgkJCSJ0eXBlIjog\nInN0cmluZyIKCQl9Cgl9LAoJInJlcXVpcmVkIjogWwoJCSJpZCIsCgkJImNs\nYXNzXzVfbWluIiwKCQkic2NvcmUiLAoJCSJhY3RpdmVfY2Fsb3JpZXMiLAoJ\nCSJhdmVyYWdlX21ldF9taW51dGVzIiwKCQkiY29udHJpYnV0b3JzIiwKCQki\nZXF1aXZhbGVudF93YWxraW5nX2Rpc3RhbmNlIiwKCQkiaGlnaF9hY3Rpdml0\neV9tZXRfbWludXRlcyIsCgkJImhpZ2hfYWN0aXZpdHlfdGltZSIsCgkJImlu\nYWN0aXZpdHlfYWxlcnRzIiwKCQkibG93X2FjdGl2aXR5X21ldF9taW51dGVz\nIiwKCQkibG93X2FjdGl2aXR5X3RpbWUiLAoJCSJtZWRpdW1fYWN0aXZpdHlf\nbWV0X21pbnV0ZXMiLAoJCSJtZWRpdW1fYWN0aXZpdHlfdGltZSIsCgkJIm1l\ndCIsCgkJIm1ldGVyc190b190YXJnZXQiLAoJCSJub25fd2Vhcl90aW1lIiwK\nCQkicmVzdGluZ190aW1lIiwKCQkic2VkZW50YXJ5X21ldF9taW51dGVzIiwK\nCQkic2VkZW50YXJ5X3RpbWUiLAoJCSJzdGVwcyIsCgkJInRhcmdldF9jYWxv\ncmllcyIsCgkJInRhcmdldF9tZXRlcnMiLAoJCSJ0b3RhbF9jYWxvcmllcyIs\nCgkJImRheSIsCgkJInRpbWVzdGFtcCIKCV0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Oura/__schema__/v1.0.0/summary/getActivity.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/bbe775de1ddab1eae07866588c764a1b4f1ca651",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Oura/__schema__/v1.0.0/summary/getActivity.json"
+    },
+    "version": 1
 }
