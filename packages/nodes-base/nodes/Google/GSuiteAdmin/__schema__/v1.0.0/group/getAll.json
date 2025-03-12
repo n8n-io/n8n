@@ -1,39 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"kind": {
-			"type": "string"
-		},
-		"id": {
-			"type": "string"
-		},
-		"etag": {
-			"type": "string"
-		},
-		"email": {
-			"type": "string"
-		},
-		"name": {
-			"type": "string"
-		},
-		"directMembersCount": {
-			"type": "string"
-		},
-		"description": {
-			"type": "string"
-		},
-		"adminCreated": {
-			"type": "boolean"
-		}
-	},
-	"required": [
-		"kind",
-		"id",
-		"etag",
-		"email",
-		"name",
-		"directMembersCount",
-		"description",
-		"adminCreated"
-	]
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Google/GSuiteAdmin/__schema__/v1.0.0/group/getAll.json",
+    "sha": "5e7708faeb29940ed7e9720d5ebcc5a7e596259c",
+    "size": 493,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/GSuiteAdmin/__schema__/v1.0.0/group/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/GSuiteAdmin/__schema__/v1.0.0/group/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5e7708faeb29940ed7e9720d5ebcc5a7e596259c",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/GSuiteAdmin/__schema__/v1.0.0/group/getAll.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJraW5k\nIjogewoJCQkidHlwZSI6ICJzdHJpbmciCgkJfSwKCQkiaWQiOiB7CgkJCSJ0\neXBlIjogInN0cmluZyIKCQl9LAoJCSJldGFnIjogewoJCQkidHlwZSI6ICJz\ndHJpbmciCgkJfSwKCQkiZW1haWwiOiB7CgkJCSJ0eXBlIjogInN0cmluZyIK\nCQl9LAoJCSJuYW1lIjogewoJCQkidHlwZSI6ICJzdHJpbmciCgkJfSwKCQki\nZGlyZWN0TWVtYmVyc0NvdW50IjogewoJCQkidHlwZSI6ICJzdHJpbmciCgkJ\nfSwKCQkiZGVzY3JpcHRpb24iOiB7CgkJCSJ0eXBlIjogInN0cmluZyIKCQl9\nLAoJCSJhZG1pbkNyZWF0ZWQiOiB7CgkJCSJ0eXBlIjogImJvb2xlYW4iCgkJ\nfQoJfSwKCSJyZXF1aXJlZCI6IFsKCQkia2luZCIsCgkJImlkIiwKCQkiZXRh\nZyIsCgkJImVtYWlsIiwKCQkibmFtZSIsCgkJImRpcmVjdE1lbWJlcnNDb3Vu\ndCIsCgkJImRlc2NyaXB0aW9uIiwKCQkiYWRtaW5DcmVhdGVkIgoJXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/GSuiteAdmin/__schema__/v1.0.0/group/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5e7708faeb29940ed7e9720d5ebcc5a7e596259c",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/GSuiteAdmin/__schema__/v1.0.0/group/getAll.json"
+    },
+    "version": 1
 }
