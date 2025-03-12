@@ -145,32 +145,8 @@
                 "login"
             ]
         },
-        "shared_link": {
-            "type": "null"
-        },
         "folder_upload_email": {
             "type": "null"
-        },
-        "parent": {
-            "type": "object",
-            "properties": {
-                "type": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "type",
-                "id",
-                "sequence_id",
-                "etag",
-                "name"
-            ]
         },
         "item_status": {
             "type": "string"
@@ -180,5 +156,6 @@
         "type",
         "id",
         "etag"
-    ]
+    ],
+    "version": 1
 }
