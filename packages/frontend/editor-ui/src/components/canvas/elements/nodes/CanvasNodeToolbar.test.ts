@@ -1,4 +1,5 @@
-import { fireEvent, waitFor } from '@testing-library/vue';
+import { waitFor } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import CanvasNodeToolbar from '@/components/canvas/elements/nodes/CanvasNodeToolbar.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createCanvasNodeProvide, createCanvasProvide } from '@/__tests__/data';
@@ -35,6 +36,29 @@ describe('CanvasNodeToolbar', () => {
 		expect(getByTestId('execute-node-button')).toBeDisabled();
 	});
 
+	it('should render disabled execute node button when node is deactivated', async () => {
+		const { getByTestId, getByRole } = renderComponent({
+			global: {
+				provide: {
+					...createCanvasNodeProvide({
+						data: {
+							disabled: true,
+						},
+					}),
+					...createCanvasProvide(),
+				},
+			},
+		});
+
+		const button = getByTestId('execute-node-button');
+		expect(button).toBeDisabled();
+
+		await userEvent.hover(button);
+
+		expect(getByRole('tooltip')).toBeVisible();
+		expect(getByRole('tooltip')).toHaveTextContent("This node is deactivated and can't be run");
+	});
+
 	it('should not render execute node button when renderType is configuration', async () => {
 		const { queryByTestId } = renderComponent({
 			global: {
@@ -65,7 +89,7 @@ describe('CanvasNodeToolbar', () => {
 			},
 		});
 
-		await fireEvent.click(getByTestId('execute-node-button'));
+		await userEvent.click(getByTestId('execute-node-button'));
 
 		expect(emitted('run')[0]).toEqual([]);
 	});
@@ -80,7 +104,7 @@ describe('CanvasNodeToolbar', () => {
 			},
 		});
 
-		await fireEvent.click(getByTestId('disable-node-button'));
+		await userEvent.click(getByTestId('disable-node-button'));
 
 		expect(emitted('toggle')[0]).toEqual([]);
 	});
@@ -95,7 +119,7 @@ describe('CanvasNodeToolbar', () => {
 			},
 		});
 
-		await fireEvent.click(getByTestId('delete-node-button'));
+		await userEvent.click(getByTestId('delete-node-button'));
 
 		expect(emitted('delete')[0]).toEqual([]);
 	});
@@ -110,7 +134,7 @@ describe('CanvasNodeToolbar', () => {
 			},
 		});
 
-		await fireEvent.click(getByTestId('overflow-node-button'));
+		await userEvent.click(getByTestId('overflow-node-button'));
 
 		expect(emitted('open:contextmenu')[0]).toEqual([expect.any(MouseEvent)]);
 	});
@@ -132,8 +156,8 @@ describe('CanvasNodeToolbar', () => {
 			},
 		});
 
-		await fireEvent.click(getByTestId('change-sticky-color'));
-		await fireEvent.click(getAllByTestId('color')[0]);
+		await userEvent.click(getByTestId('change-sticky-color'));
+		await userEvent.click(getAllByTestId('color')[0]);
 
 		expect(emitted('update')[0]).toEqual([{ color: 1 }]);
 	});
@@ -150,7 +174,7 @@ describe('CanvasNodeToolbar', () => {
 
 		const toolbar = getByTestId('canvas-node-toolbar');
 
-		await fireEvent.mouseEnter(toolbar);
+		await userEvent.hover(toolbar);
 
 		expect(toolbar).toHaveClass('forceVisible');
 	});
@@ -174,7 +198,7 @@ describe('CanvasNodeToolbar', () => {
 
 		const toolbar = getByTestId('canvas-node-toolbar');
 
-		await fireEvent.click(getByTestId('change-sticky-color'));
+		await userEvent.click(getByTestId('change-sticky-color'));
 
 		await waitFor(() => expect(toolbar).toHaveClass('forceVisible'));
 	});

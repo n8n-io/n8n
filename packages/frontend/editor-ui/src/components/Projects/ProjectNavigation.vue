@@ -6,6 +6,7 @@ import { VIEWS } from '@/constants';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectListItem } from '@/types/projects.types';
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
+import { useSettingsStore } from '@/stores/settings.store';
 
 type Props = {
 	collapsed: boolean;
@@ -15,11 +16,15 @@ type Props = {
 const props = defineProps<Props>();
 
 const locale = useI18n();
-const projectsStore = useProjectsStore();
 const globalEntityCreation = useGlobalEntityCreation();
+
+const projectsStore = useProjectsStore();
+const settingsStore = useSettingsStore();
 
 const isCreatingProject = computed(() => globalEntityCreation.isCreatingProject.value);
 const displayProjects = computed(() => globalEntityCreation.displayProjects.value);
+// TODO: Once we remove the feature flag, we can remove this computed property
+const isFoldersFeatureEnabled = computed(() => settingsStore.isFoldersFeatureEnabled);
 
 const home = computed<IMenuItem>(() => ({
 	id: 'home',
@@ -89,7 +94,7 @@ const showAddFirstProject = computed(
 			/>
 		</N8nText>
 		<ElMenu
-			v-if="projectsStore.isTeamProjectFeatureEnabled"
+			v-if="projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled"
 			:collapse="props.collapsed"
 			:class="$style.projectItems"
 		>
@@ -140,6 +145,7 @@ const showAddFirstProject = computed(
 	width: 100%;
 	overflow: hidden;
 	align-items: start;
+	gap: var(--spacing-3xs);
 	&:hover {
 		.plusBtn {
 			display: block;
