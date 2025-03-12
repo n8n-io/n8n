@@ -4,9 +4,6 @@
         "gid": {
             "type": "string"
         },
-        "actual_time_minutes": {
-            "type": "null"
-        },
         "assignee_status": {
             "type": "string"
         },
@@ -27,6 +24,46 @@
                     "enabled": {
                         "type": "boolean"
                     },
+                    "name": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "created_by": {
+                        "type": "object",
+                        "properties": {
+                            "gid": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "resource_type": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "gid",
+                            "name",
+                            "resource_type"
+                        ]
+                    },
+                    "resource_subtype": {
+                        "type": "string"
+                    },
+                    "resource_type": {
+                        "type": "string"
+                    },
+                    "is_formula_field": {
+                        "type": "boolean"
+                    },
+                    "is_value_read_only": {
+                        "type": "boolean"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
                     "enum_options": {
                         "type": "array",
                         "items": {
@@ -46,9 +83,6 @@
                                 },
                                 "resource_type": {
                                     "type": "string"
-                                },
-                                "completion_state": {
-                                    "type": "string"
                                 }
                             },
                             "required": [
@@ -60,29 +94,38 @@
                             ]
                         }
                     },
-                    "name": {
-                        "type": "string"
-                    },
-                    "description": {
-                        "type": "string"
-                    },
-                    "resource_subtype": {
-                        "type": "string"
-                    },
-                    "resource_type": {
-                        "type": "string"
-                    },
-                    "is_formula_field": {
-                        "type": "boolean"
-                    },
-                    "is_value_read_only": {
-                        "type": "boolean"
-                    },
-                    "type": {
-                        "type": "string"
-                    },
                     "precision": {
                         "type": "integer"
+                    },
+                    "multi_enum_values": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "gid": {
+                                    "type": "string"
+                                },
+                                "color": {
+                                    "type": "string"
+                                },
+                                "enabled": {
+                                    "type": "boolean"
+                                },
+                                "name": {
+                                    "type": "string"
+                                },
+                                "resource_type": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "gid",
+                                "color",
+                                "enabled",
+                                "name",
+                                "resource_type"
+                            ]
+                        }
                     }
                 },
                 "required": [
@@ -99,6 +142,9 @@
                     "type"
                 ]
             }
+        },
+        "due_at": {
+            "type": "null"
         },
         "followers": {
             "type": "array",
@@ -299,5 +345,6 @@
         "tags",
         "resource_subtype",
         "workspace"
-    ]
+    ],
+    "version": 1
 }
