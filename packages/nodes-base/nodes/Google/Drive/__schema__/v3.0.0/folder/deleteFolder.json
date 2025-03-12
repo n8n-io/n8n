@@ -1,15 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "fileId": {
-            "type": "string"
-        },
-        "success": {
-            "type": "boolean"
-        }
+    "name": "deleteFolder.json",
+    "path": "packages/nodes-base/nodes/Google/Drive/__schema__/v3.0.0/folder/deleteFolder.json",
+    "sha": "d6a599936febdc2d4416fc9c11481449b7a83d4c",
+    "size": 234,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Drive/__schema__/v3.0.0/folder/deleteFolder.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Drive/__schema__/v3.0.0/folder/deleteFolder.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/d6a599936febdc2d4416fc9c11481449b7a83d4c",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/Drive/__schema__/v3.0.0/folder/deleteFolder.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJmaWxlSWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJzdWNjZXNzIjogewogICAgICAgICAg\nICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0KICAgIH0sCiAgICAicmVx\ndWlyZWQiOiBbCiAgICAgICAgImZpbGVJZCIsCiAgICAgICAgInN1Y2Nlc3Mi\nCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Drive/__schema__/v3.0.0/folder/deleteFolder.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/d6a599936febdc2d4416fc9c11481449b7a83d4c",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Drive/__schema__/v3.0.0/folder/deleteFolder.json"
     },
-    "required": [
-        "fileId",
-        "success"
-    ]
+    "version": 1
 }
