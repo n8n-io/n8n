@@ -867,7 +867,7 @@ const createFolder = async (parent: { id: string; name: string; type: 'project' 
 	// Rules for folder name:
 	// - Invalid characters: \/:*?"<>|
 	// - Invalid name: empty or only dots
-	const validFolderNameRegex = /^(?!\.+$)[^\\/:*?"<>|]{1,100}$/;
+	const validFolderNameRegex = /^(?!\.+$)(?!\s+$)[^\\/:*?"<>|]{1,100}$/;
 
 	const promptResponsePromise = message.prompt(
 		i18n.baseText('folders.add.to.parent.message', { interpolate: { parent: parent.name } }),
