@@ -140,6 +140,7 @@
                 "driveType",
                 "driveId",
                 "id",
+                "name",
                 "path"
             ]
         },
@@ -181,5 +182,6 @@
                 "lastModifiedDateTime"
             ]
         }
-    }
+    },
+    "version": 1
 }
