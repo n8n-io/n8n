@@ -1014,6 +1014,39 @@ describe('GET /projects/:projectId/folders', () => {
 		expect(response.body.data[0].name).toBe('Folder 3');
 	});
 
+	test('should filter folders by includeFolderIdAndDescendants', async () => {
+		const folder1 = await createFolder(ownerProject, { name: 'folder level 1' });
+		await createFolder(ownerProject, {
+			name: 'folder level 1.1',
+			parentFolder: folder1,
+		});
+		const folder12 = await createFolder(ownerProject, {
+			name: 'folder level 1.2',
+			parentFolder: folder1,
+		});
+		await createFolder(ownerProject, {
+			name: 'folder level 1.2.1',
+			parentFolder: folder12,
+		});
+		const folder122 = await createFolder(ownerProject, {
+			name: 'folder level 1.2.2',
+			parentFolder: folder12,
+		});
+		await createFolder(ownerProject, {
+			name: 'folder level 1.2.2.1',
+			parentFolder: folder122,
+		});
+
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/folders`)
+			.query({ filter: `{ "includeFolderIdAndDescendants": "${folder122.id}" }` });
+
+		expect(response.body.data.length).toBe(4);
+		expect(response.body.data.map((f: any) => f.name).sort()).toEqual(
+			['folder level 1', 'folder level 1.1', 'folder level 1.2.1', 'folder level 1.2'].sort(),
+		);
+	});
+
 	test('should apply pagination with take parameter', async () => {
 		// Create folders with consistent timestamps
 		for (let i = 1; i <= 5; i++) {
