@@ -13,5 +13,6 @@
         "labelListVisibility": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
