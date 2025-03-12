@@ -26,7 +26,7 @@ import type {
 	IExecuteData,
 	IDataObject,
 } from 'n8n-workflow';
-import { ICredentialsHelper, NodeHelpers, Workflow, ApplicationError } from 'n8n-workflow';
+import { ICredentialsHelper, NodeHelpers, Workflow, UnexpectedError } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
@@ -65,7 +65,7 @@ const mockNodeTypes: INodeTypes = {
 	},
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
 		if (!mockNodesData[nodeType]) {
-			throw new ApplicationError(RESPONSE_ERROR_MESSAGES.NO_NODE, {
+			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.NO_NODE, {
 				tags: { nodeType },
 			});
 		}
@@ -245,7 +245,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		type: string,
 	): Promise<Credentials> {
 		if (!nodeCredential.id) {
-			throw new ApplicationError('Found credential with no ID.', {
+			throw new UnexpectedError('Found credential with no ID.', {
 				extra: { credentialName: nodeCredential.name },
 				tags: { credentialType: type },
 			});
@@ -276,7 +276,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		const credentialTypeData = this.credentialTypes.getByName(type);
 
 		if (credentialTypeData === undefined) {
-			throw new ApplicationError('Unknown credential type', { tags: { credentialType: type } });
+			throw new UnexpectedError('Unknown credential type', { tags: { credentialType: type } });
 		}
 
 		if (credentialTypeData.extends === undefined) {
@@ -487,7 +487,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 }
 
 export function createCredentialsFromCredentialsEntity(
-	credential: CredentialsEntity,
+	credential: ICredentialsDb,
 	encrypt = false,
 ): Credentials {
 	const { id, name, type, data } = credential;

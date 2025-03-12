@@ -37,7 +37,6 @@ import '@/controllers/active-workflows.controller';
 import '@/controllers/annotation-tags.controller.ee';
 import '@/controllers/auth.controller';
 import '@/controllers/binary-data.controller';
-import '@/controllers/curl.controller';
 import '@/controllers/ai.controller';
 import '@/controllers/dynamic-node-parameters.controller';
 import '@/controllers/invitation.controller';
@@ -52,6 +51,7 @@ import '@/controllers/project.controller';
 import '@/controllers/role.controller';
 import '@/controllers/tags.controller';
 import '@/controllers/translation.controller';
+import '@/controllers/folder.controller';
 import '@/controllers/users.controller';
 import '@/controllers/user-settings.controller';
 import '@/controllers/workflow-statistics.controller';
@@ -392,11 +392,12 @@ export class Server extends AbstractServer {
 					method === 'GET' &&
 					accept &&
 					(accept.includes('text/html') || accept.includes('*/*')) &&
+					!req.path.endsWith('.wasm') &&
 					!nonUIRoutesRegex.test(req.path)
 				) {
-					res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+					res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, proxy-revalidate');
 					securityHeadersMiddleware(req, res, () => {
-						res.sendFile('index.html', { root: staticCacheDir, maxAge, lastModified: true });
+						res.sendFile('index.html', { root: staticCacheDir, maxAge: 0, lastModified: false });
 					});
 				} else {
 					next();

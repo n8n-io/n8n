@@ -31,10 +31,10 @@ export { Config, Env, Nested } from './decorators';
 export { TaskRunnersConfig } from './configs/runners.config';
 export { SecurityConfig } from './configs/security.config';
 export { ExecutionsConfig } from './configs/executions.config';
-export { FrontendBetaFeatures, FrontendConfig } from './configs/frontend.config';
 export { S3Config } from './configs/external-storage.config';
 export { LOG_SCOPES } from './configs/logging.config';
 export type { LogScope } from './configs/logging.config';
+export { WorkflowsConfig } from './configs/workflows.config';
 
 @Config
 export class GlobalConfig {

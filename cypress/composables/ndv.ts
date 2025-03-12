@@ -4,6 +4,10 @@
 
 import { getVisiblePopper, getVisibleSelect } from '../utils/popper';
 
+export function getNdvContainer() {
+	return cy.getByTestId('ndv');
+}
+
 export function getCredentialSelect(eq = 0) {
 	return cy.getByTestId('node-credentials-select').eq(eq);
 }
@@ -200,6 +204,10 @@ export function selectResourceLocatorItem(
 
 export function clickWorkflowCardContent(workflowName: string) {
 	getWorkflowCardContent(workflowName).click();
+}
+
+export function clickAssignmentCollectionAdd() {
+	cy.getByTestId('assignment-collection-drop-area').click();
 }
 
 export function assertNodeOutputHintExists() {

@@ -1,4 +1,4 @@
-import type { IDataObject, INode, INodeType } from 'n8n-workflow';
+import { ExpressionError, type IDataObject, type INode, type INodeType } from 'n8n-workflow';
 
 import { validateValueAgainstSchema } from '../validate-value-against-schema';
 
@@ -311,8 +311,86 @@ describe('validateValueAgainstSchema', () => {
 			});
 		});
 
-		describe('when attemptToConvertTypes is not set (=default)', () => {
-			test('should correctly validate and convert types', () => {
+		describe('when showTypeConversionOptions is not set (=default)', () => {
+			test('should correctly convert types', () => {
+				const nodeType = {
+					description: {
+						properties: [
+							{
+								displayName: 'Columns',
+								name: 'columns',
+								type: 'resourceMapper',
+								required: true,
+								typeOptions: {
+									loadOptionsDependsOn: ['table.value', 'operation'],
+									resourceMapper: {
+										mode: 'upsert',
+									},
+								},
+							},
+						],
+					},
+				} as unknown as INodeType;
+
+				const node: INode = {
+					parameters: {
+						columns: {
+							mappingMode: 'defineBelow',
+							value: {
+								id: 2,
+								count: '={{ $json.count }}',
+							},
+							matchingColumns: ['id'],
+							attemptToConvertTypes: false,
+							convertFieldsToString: true,
+							schema: [
+								{
+									id: 'id',
+									displayName: 'id',
+									required: false,
+									defaultMatch: true,
+									display: true,
+									type: 'number',
+									canBeUsedToMatch: true,
+								},
+								{
+									id: 'count',
+									displayName: 'count',
+									required: false,
+									defaultMatch: false,
+									display: true,
+									type: 'number',
+									canBeUsedToMatch: false,
+								},
+							],
+						},
+						options: {},
+					},
+					id: '8d6cec63-8db1-440c-8966-4d6311ee69a9',
+					name: 'add products to DB',
+					type: 'n8n-nodes-base.postgres',
+					typeVersion: 2.3,
+					position: [420, 0],
+				};
+
+				const value = {
+					id: 2,
+					count: '23',
+				};
+
+				const parameterName = 'columns.value';
+
+				const result = validateValueAgainstSchema(node, nodeType, value, parameterName, 0, 0);
+
+				expect(result).toEqual({
+					id: 2,
+					count: 23,
+				});
+			});
+		});
+
+		describe('when showTypeConversionOptions is true', () => {
+			test('should throw an error', () => {
 				const nodeType = {
 					description: {
 						properties: [
@@ -321,22 +399,10 @@ describe('validateValueAgainstSchema', () => {
 								name: 'columns',
 								type: 'resourceMapper',
 								noDataExpression: true,
-								default: {
-									mappingMode: 'defineBelow',
-									value: null,
-								},
-								required: true,
 								typeOptions: {
-									loadOptionsDependsOn: ['table.value', 'operation'],
 									resourceMapper: {
-										resourceMapperMethod: 'getMappingColumns',
+										showTypeConversionOptions: true,
 										mode: 'upsert',
-										fieldWords: {
-											singular: 'column',
-											plural: 'columns',
-										},
-										addAllFields: true,
-										multiKeyMatch: true,
 									},
 								},
 							},
@@ -390,12 +456,9 @@ describe('validateValueAgainstSchema', () => {
 
 				const parameterName = 'columns.value';
 
-				const result = validateValueAgainstSchema(node, nodeType, value, parameterName, 0, 0);
-
-				expect(result).toEqual({
-					id: 2,
-					count: 23,
-				});
+				expect(() =>
+					validateValueAgainstSchema(node, nodeType, value, parameterName, 0, 0),
+				).toThrow(new ExpressionError("Invalid input for 'count' [item 0]"));
 			});
 		});
 	});

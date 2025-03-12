@@ -10,12 +10,15 @@ import type {
 import { Workflow } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { NodeTypes } from '@/node-types';
 
 describe('ActiveWorkflowManager', () => {
 	let activeWorkflowManager: ActiveWorkflowManager;
-	const instanceSettings = mock<InstanceSettings>();
+	const instanceSettings = mock<InstanceSettings>({ isMultiMain: false });
 	const nodeTypes = mock<NodeTypes>();
+	const workflowRepository = mock<WorkflowRepository>();
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -27,7 +30,7 @@ describe('ActiveWorkflowManager', () => {
 			mock(),
 			nodeTypes,
 			mock(),
-			mock(),
+			workflowRepository,
 			mock(),
 			mock(),
 			mock(),
@@ -35,6 +38,7 @@ describe('ActiveWorkflowManager', () => {
 			mock(),
 			mock(),
 			instanceSettings,
+			mock(),
 			mock(),
 		);
 	});
@@ -120,6 +124,28 @@ describe('ActiveWorkflowManager', () => {
 					expect(result).toBe(false);
 				}
 			});
+		});
+
+		describe('add', () => {
+			test.each<[WorkflowActivateMode]>([['init'], ['leadershipChange']])(
+				'should skip inactive workflow in `%s` activation mode',
+				async (mode) => {
+					const checkSpy = jest.spyOn(activeWorkflowManager, 'checkIfWorkflowCanBeActivated');
+					const addWebhooksSpy = jest.spyOn(activeWorkflowManager, 'addWebhooks');
+					const addTriggersAndPollersSpy = jest.spyOn(
+						activeWorkflowManager,
+						'addTriggersAndPollers',
+					);
+					workflowRepository.findById.mockResolvedValue(mock<WorkflowEntity>({ active: false }));
+
+					const result = await activeWorkflowManager.add('some-id', mode);
+
+					expect(checkSpy).not.toHaveBeenCalled();
+					expect(addWebhooksSpy).not.toHaveBeenCalled();
+					expect(addTriggersAndPollersSpy).not.toHaveBeenCalled();
+					expect(result).toBe(false);
+				},
+			);
 		});
 	});
 });

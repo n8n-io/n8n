@@ -6,7 +6,7 @@ import type * as express from 'express';
 import type FormData from 'form-data';
 import type { PathLike } from 'fs';
 import type { IncomingHttpHeaders } from 'http';
-import type { RequestBodyMatcher } from 'nock';
+import type { ReplyHeaders, RequestBodyMatcher, RequestHeaderMatcher } from 'nock';
 import type { Client as SSHClient } from 'ssh2';
 import type { Readable } from 'stream';
 import type { SecureContextOptions } from 'tls';
@@ -14,7 +14,7 @@ import type { URLSearchParams } from 'url';
 
 import type { CODE_EXECUTION_MODES, CODE_LANGUAGES, LOG_LEVELS } from './Constants';
 import type { IDeferredPromise } from './DeferredPromise';
-import { ApplicationError, type ExecutionCancelledError } from './errors';
+import type { ExecutionCancelledError } from './errors';
 import type { ExpressionError } from './errors/expression.error';
 import type { NodeApiError } from './errors/node-api.error';
 import type { NodeOperationError } from './errors/node-operation.error';
@@ -24,7 +24,6 @@ import type { ExecutionStatus } from './ExecutionStatus';
 import type { Result } from './result';
 import type { Workflow } from './Workflow';
 import type { EnvProviderState } from './WorkflowDataProxyEnvProvider';
-import type { WorkflowHooks } from './WorkflowHooks';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -398,28 +397,9 @@ export interface INodeTypeNameVersion {
 	version: number;
 }
 
-export interface IGetExecutePollFunctions {
-	(
-		workflow: Workflow,
-		node: INode,
-		additionalData: IWorkflowExecuteAdditionalData,
-		mode: WorkflowExecuteMode,
-		activation: WorkflowActivateMode,
-	): IPollFunctions;
-}
-
-export interface IGetExecuteTriggerFunctions {
-	(
-		workflow: Workflow,
-		node: INode,
-		additionalData: IWorkflowExecuteAdditionalData,
-		mode: WorkflowExecuteMode,
-		activation: WorkflowActivateMode,
-	): ITriggerFunctions;
-}
-
 export interface IRunNodeResponse {
-	data: INodeExecutionData[][] | NodeExecutionOutput | null | undefined;
+	data: INodeExecutionData[][] | null | undefined;
+	hints?: NodeExecutionHint[];
 	closeFunction?: CloseFunction;
 }
 
@@ -759,7 +739,7 @@ export interface DeduplicationHelperFunctions {
 		options: ICheckProcessedOptions,
 	): Promise<number>;
 }
-export interface NodeHelperFunctions {
+interface NodeHelperFunctions {
 	copyBinaryFile(filePath: string, fileName: string, mimeType?: string): Promise<IBinaryData>;
 }
 
@@ -939,6 +919,8 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			metadata?: ITaskMetadata,
 		): void;
 
+		addExecutionHints(...hints: NodeExecutionHint[]): void;
+
 		nodeHelpers: NodeHelperFunctions;
 		helpers: RequestHelperFunctions &
 			BaseHelperFunctions &
@@ -1003,6 +985,10 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getExecutionCancelSignal(): AbortSignal | undefined;
 		onExecutionCancellation(handler: () => unknown): void;
 		logAiEvent(eventName: AiEvent, msg?: string | undefined): void;
+		cloneWith(replacements: {
+			runIndex: number;
+			inputData: INodeExecutionData[][];
+		}): ISupplyDataFunctions;
 	};
 
 export interface IExecutePaginationFunctions extends IExecuteSingleFunctions {
@@ -1196,11 +1182,6 @@ export interface INodeExecutionData {
 	index?: number;
 }
 
-export interface INodeExecuteFunctions {
-	getExecutePollFunctions: IGetExecutePollFunctions;
-	getExecuteTriggerFunctions: IGetExecuteTriggerFunctions;
-}
-
 export type NodeParameterValue = string | number | boolean | undefined | null;
 
 export type ResourceLocatorModes = 'id' | 'url' | 'list' | string;
@@ -1261,7 +1242,7 @@ export type NodePropertyTypes =
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
-export type EditorType = 'codeNodeEditor' | 'jsEditor' | 'htmlEditor' | 'sqlEditor';
+export type EditorType = 'codeNodeEditor' | 'jsEditor' | 'htmlEditor' | 'sqlEditor' | 'cssEditor';
 export type CodeNodeEditorLanguage = (typeof CODE_LANGUAGES)[number];
 export type CodeExecutionMode = (typeof CODE_EXECUTION_MODES)[number];
 export type SQLDialect =
@@ -1579,34 +1560,12 @@ export interface SupplyData {
 	closeFunction?: CloseFunction;
 }
 
-export class NodeExecutionOutput extends Array<INodeExecutionData[]> {
-	constructor(data: INodeExecutionData[][], hints: NodeExecutionHint[] = []) {
-		super();
-		// TODO: This is a temporary solution for NODE-1740, until we move away from extending native Array class
-		Object.defineProperty(data, 'getHints', {
-			value: () => hints,
-			enumerable: false,
-			writable: false,
-			configurable: false,
-		});
-		return data as NodeExecutionOutput;
-	}
-
-	static [Symbol.hasInstance](instance: unknown) {
-		return Array.isArray(instance) && 'getHints' in instance;
-	}
-
-	getHints(): NodeExecutionHint[] {
-		throw new ApplicationError('This should not have been called');
-	}
-}
+type NodeOutput = INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null;
 
 export interface INodeType {
 	description: INodeTypeDescription;
 	supplyData?(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData>;
-	execute?(
-		this: IExecuteFunctions,
-	): Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null>;
+	execute?(this: IExecuteFunctions): Promise<NodeOutput>;
 	poll?(this: IPollFunctions): Promise<INodeExecutionData[][] | null>;
 	trigger?(this: ITriggerFunctions): Promise<ITriggerResponse | undefined>;
 	webhook?(this: IWebhookFunctions): Promise<IWebhookResponseData>;
@@ -1641,6 +1600,18 @@ export interface INodeType {
 	webhookMethods?: {
 		[name in WebhookType]?: {
 			[method in WebhookSetupMethodNames]: (this: IHookFunctions) => Promise<boolean>;
+		};
+	};
+	/**
+	 * Defines custom operations for nodes that do not implement an `execute` method, such as declarative nodes.
+	 * This function will be invoked instead of `execute` for a specific resource and operation.
+	 * Should be either `execute` or `customOperations` defined for a node, but not both.
+	 *
+	 * @property customOperations - Maps specific resource and operation to a custom function
+	 */
+	customOperations?: {
+		[resource: string]: {
+			[operation: string]: (this: IExecuteFunctions) => Promise<NodeOutput>;
 		};
 	};
 }
@@ -2241,6 +2212,8 @@ export interface IWaitingForExecutionSource {
 	};
 }
 
+export type WorkflowId = IWorkflowBase['id'];
+
 export interface IWorkflowBase {
 	id: string;
 	name: string;
@@ -2260,17 +2233,6 @@ export interface IWorkflowCredentials {
 	[credentialType: string]: {
 		[id: string]: ICredentialsEncrypted;
 	};
-}
-
-export interface IWorkflowExecuteHooks {
-	[key: string]: Array<(...args: any[]) => Promise<void>> | undefined;
-	nodeExecuteAfter?: Array<
-		(nodeName: string, data: ITaskData, executionData: IRunExecutionData) => Promise<void>
-	>;
-	nodeExecuteBefore?: Array<(nodeName: string) => Promise<void>>;
-	workflowExecuteAfter?: Array<(data: IRun, newStaticData: IDataObject) => Promise<void>>;
-	workflowExecuteBefore?: Array<(workflow?: Workflow, data?: IRunExecutionData) => Promise<void>>;
-	sendResponse?: Array<(response: IExecuteResponsePromiseData) => Promise<void>>;
 }
 
 export interface IWorkflowExecutionDataProcess {
@@ -2350,7 +2312,6 @@ export interface IWorkflowExecuteAdditionalData {
 	) => Promise<ExecuteWorkflowData>;
 	executionId?: string;
 	restartExecutionId?: string;
-	hooks?: WorkflowHooks;
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;
 	restApiUrl: string;
@@ -2451,8 +2412,10 @@ export interface WorkflowTestData {
 			method: 'delete' | 'get' | 'patch' | 'post' | 'put';
 			path: string;
 			requestBody?: RequestBodyMatcher;
+			requestHeaders?: Record<string, RequestHeaderMatcher>;
 			statusCode: number;
 			responseBody: string | object;
+			responseHeaders?: ReplyHeaders;
 		}>;
 	};
 	trigger?: {
@@ -2723,8 +2686,8 @@ export type ResourceMapperValue = {
 	value: { [key: string]: string | number | boolean | null } | null;
 	matchingColumns: string[];
 	schema: ResourceMapperField[];
-	attemptToConvertTypes?: boolean;
-	convertFieldsToString?: boolean;
+	attemptToConvertTypes: boolean;
+	convertFieldsToString: boolean;
 };
 
 export type FilterOperatorType =

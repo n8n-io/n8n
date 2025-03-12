@@ -12,6 +12,8 @@ const tsJestOptions = {
 
 const { baseUrl, paths } = require('get-tsconfig').getTsconfig().config?.compilerOptions;
 
+const isCoverageEnabled = process.env.COVERAGE_ENABLED === 'true';
+
 /** @type {import('jest').Config} */
 const config = {
 	verbose: true,
@@ -32,13 +34,13 @@ const config = {
 		return acc;
 	}, {}),
 	setupFilesAfterEnv: ['jest-expect-message'],
-	collectCoverage: process.env.COVERAGE_ENABLED === 'true',
-	coverageReporters: ['text-summary'],
+	collectCoverage: isCoverageEnabled,
+	coverageReporters: ['text-summary', 'lcov', 'html-spa'],
 	collectCoverageFrom: ['src/**/*.ts'],
+	workerIdleMemoryLimit: '1MB',
 };
 
 if (process.env.CI === 'true') {
-	config.workerIdleMemoryLimit = 1024;
 	config.coverageReporters = ['cobertura'];
 }
 

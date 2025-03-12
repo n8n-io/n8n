@@ -172,7 +172,7 @@ function aggregate(items: IDataObject[], entry: Aggregation, getValue: ValueGett
 					}
 				}
 			}
-			return min !== undefined ? min : null;
+			return min ?? null;
 		case 'max':
 			let max;
 			for (const item of data) {
@@ -183,15 +183,22 @@ function aggregate(items: IDataObject[], entry: Aggregation, getValue: ValueGett
 					}
 				}
 			}
-			return max !== undefined ? max : null;
+			return max ?? null;
 
 		//count operations
 		case 'countUnique':
-			return new Set(data.map((item) => getValue(item, field)).filter((item) => !isEmpty(item)))
-				.size;
+			if (!entry.includeEmpty) {
+				return new Set(data.map((item) => getValue(item, field)).filter((item) => !isEmpty(item)))
+					.size;
+			}
+			return new Set(data.map((item) => getValue(item, field))).size;
+
 		default:
 			//count by default
-			return data.filter((item) => !isEmpty(getValue(item, field))).length;
+			if (!entry.includeEmpty) {
+				return data.filter((item) => !isEmpty(getValue(item, field))).length;
+			}
+			return data.length;
 	}
 }
 

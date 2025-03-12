@@ -13,6 +13,8 @@ import {
 	isSubNodeType,
 	applyDeclarativeNodeOptionParameters,
 	getParameterIssues,
+	isTriggerNode,
+	isExecutable,
 } from '@/NodeHelpers';
 import type { Workflow } from '@/Workflow';
 
@@ -4247,5 +4249,267 @@ describe('NodeHelpers', () => {
 				},
 			});
 		});
+	});
+
+	describe('isTriggerNode', () => {
+		const tests: Array<{
+			description: string;
+			input: INodeTypeDescription;
+			expected: boolean;
+		}> = [
+			{
+				description: 'Should return true for node with trigger in group',
+				input: {
+					name: 'TriggerNode',
+					displayName: 'Trigger Node',
+					group: ['trigger'],
+					description: 'Trigger node description',
+					version: 1,
+					defaults: {},
+					inputs: [],
+					outputs: [NodeConnectionType.Main],
+					properties: [],
+				},
+				expected: true,
+			},
+			{
+				description: 'Should return true for node with multiple groups including trigger',
+				input: {
+					name: 'MultiGroupTriggerNode',
+					displayName: 'Multi-Group Trigger Node',
+					group: ['trigger', 'input'],
+					description: 'Multi-group trigger node description',
+					version: 1,
+					defaults: {},
+					inputs: [],
+					outputs: [NodeConnectionType.Main],
+					properties: [],
+				},
+				expected: true,
+			},
+			{
+				description: 'Should return false for node without trigger in group',
+				input: {
+					name: 'RegularNode',
+					displayName: 'Regular Node',
+					group: ['input'],
+					description: 'Regular node description',
+					version: 1,
+					defaults: {},
+					inputs: [NodeConnectionType.Main],
+					outputs: [NodeConnectionType.Main],
+					properties: [],
+				},
+				expected: false,
+			},
+			{
+				description: 'Should return false for node with empty group array',
+				input: {
+					name: 'EmptyGroupNode',
+					displayName: 'Empty Group Node',
+					group: [],
+					description: 'Empty group node description',
+					version: 1,
+					defaults: {},
+					inputs: [NodeConnectionType.Main],
+					outputs: [NodeConnectionType.Main],
+					properties: [],
+				},
+				expected: false,
+			},
+			{
+				description:
+					'Should return false when trigger is called Trigger, but does not have a trigger group',
+				input: {
+					name: 'AlmostTriggerNode',
+					displayName: 'Almost Trigger Node',
+					group: ['transform'],
+					description: 'Almost trigger node description',
+					version: 1,
+					defaults: {},
+					inputs: [NodeConnectionType.Main],
+					outputs: [NodeConnectionType.Main],
+					properties: [],
+				},
+				expected: false,
+			},
+		];
+
+		for (const testData of tests) {
+			test(testData.description, () => {
+				const result = isTriggerNode(testData.input);
+				expect(result).toEqual(testData.expected);
+			});
+		}
+	});
+
+	describe('isExecutable', () => {
+		const workflowMock = {
+			expression: {
+				getSimpleParameterValue: jest.fn().mockReturnValue([NodeConnectionType.Main]),
+			},
+		} as unknown as Workflow;
+
+		const tests: Array<{
+			description: string;
+			node: INode;
+			nodeTypeData: INodeTypeDescription;
+			expected: boolean;
+			mockReturnValue?: NodeConnectionType[];
+		}> = [
+			{
+				description: 'Should return true for trigger node',
+				node: {
+					id: 'triggerNodeId',
+					name: 'TriggerNode',
+					position: [0, 0],
+					type: 'n8n-nodes-base.TriggerNode',
+					typeVersion: 1,
+					parameters: {},
+				},
+				nodeTypeData: {
+					name: 'TriggerNode',
+					displayName: 'Trigger Node',
+					group: ['trigger'],
+					description: 'Trigger node description',
+					version: 1,
+					defaults: {},
+					inputs: [],
+					outputs: [NodeConnectionType.Main],
+					properties: [],
+				},
+				expected: true,
+			},
+			{
+				description: 'Should return true for node with Main output',
+				node: {
+					id: 'mainOutputNodeId',
+					name: 'MainOutputNode',
+					position: [0, 0],
+					type: 'n8n-nodes-base.MainOutputNode',
+					typeVersion: 1,
+					parameters: {},
+				},
+				nodeTypeData: {
+					name: 'MainOutputNode',
+					displayName: 'Main Output Node',
+					group: ['transform'],
+					description: 'Node with Main output',
+					version: 1,
+					defaults: {},
+					inputs: [NodeConnectionType.Main],
+					outputs: [NodeConnectionType.Main],
+					properties: [],
+				},
+				expected: true,
+			},
+			{
+				description: 'Should return false for node without Main output and not a trigger',
+				node: {
+					id: 'nonExecutableNodeId',
+					name: 'NonExecutableNode',
+					position: [0, 0],
+					type: 'n8n-nodes-base.NonExecutableNode',
+					typeVersion: 1,
+					parameters: {},
+				},
+				nodeTypeData: {
+					name: 'NonExecutableNode',
+					displayName: 'Non-Executable Node',
+					group: ['output'],
+					description: 'Node without Main output and not a trigger',
+					version: 1,
+					defaults: {},
+					inputs: [NodeConnectionType.Main],
+					outputs: [NodeConnectionType.AiAgent],
+					properties: [],
+				},
+				expected: false,
+			},
+			{
+				description: 'Should return true for node with mixed outputs including Main',
+				node: {
+					id: 'mixedOutputNodeId',
+					name: 'MixedOutputNode',
+					position: [0, 0],
+					type: 'n8n-nodes-base.MixedOutputNode',
+					typeVersion: 1,
+					parameters: {},
+				},
+				nodeTypeData: {
+					name: 'MixedOutputNode',
+					displayName: 'Mixed Output Node',
+					group: ['transform'],
+					description: 'Node with multiple output types including Main',
+					version: 1,
+					defaults: {},
+					inputs: [NodeConnectionType.Main],
+					outputs: [NodeConnectionType.Main, NodeConnectionType.AiAgent],
+					properties: [],
+				},
+				expected: true,
+			},
+			{
+				description: 'Should return false for node with only AiTool output and not a trigger',
+				node: {
+					id: 'aiToolOutputNodeId',
+					name: 'AiToolOutputNode',
+					position: [0, 0],
+					type: 'n8n-nodes-base.AiToolOutputNode',
+					typeVersion: 1,
+					parameters: {},
+				},
+				nodeTypeData: {
+					name: 'AiToolOutputNode',
+					displayName: 'AI Tool Output Node',
+					group: ['output'],
+					description: 'Node with only AiTool output and not a trigger',
+					version: 1,
+					defaults: {},
+					inputs: [],
+					outputs: [NodeConnectionType.AiTool], // Only AiTool output, no Main
+					properties: [],
+				},
+				expected: false,
+			},
+			{
+				description: 'Should return false for node with dynamic outputs set to AiTool only',
+				node: {
+					id: 'dynamicAiToolNodeId',
+					name: 'DynamicAiToolNode',
+					position: [0, 0],
+					type: 'n8n-nodes-base.DynamicAiToolNode',
+					typeVersion: 1,
+					parameters: {},
+				},
+				nodeTypeData: {
+					name: 'DynamicAiToolNode',
+					displayName: 'Dynamic AiTool Node',
+					group: ['output'],
+					description: 'Node with dynamic outputs that resolve to only AiTool',
+					version: 1,
+					defaults: {},
+					inputs: [NodeConnectionType.Main],
+					outputs: '={{["ai_tool"]}}', // Dynamic expression that resolves to AiTool only
+					properties: [],
+				},
+				expected: false,
+				mockReturnValue: [NodeConnectionType.AiTool],
+			},
+		];
+
+		for (const testData of tests) {
+			test(testData.description, () => {
+				// If this test has a custom mock return value, configure it
+				if (testData.mockReturnValue) {
+					(workflowMock.expression.getSimpleParameterValue as jest.Mock).mockReturnValueOnce(
+						testData.mockReturnValue,
+					);
+				}
+
+				const result = isExecutable(workflowMock, testData.node, testData.nodeTypeData);
+				expect(result).toEqual(testData.expected);
+			});
+		}
 	});
 });

@@ -1,7 +1,7 @@
 import { DynamicTool, type Tool } from '@langchain/core/tools';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import { NodeOperationError } from 'n8n-workflow';
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { ISupplyDataFunctions, IExecuteFunctions, INode } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { escapeSingleCurlyBrackets, getConnectedTools } from '../helpers';
@@ -171,7 +171,7 @@ describe('getConnectedTools', () => {
 
 		mockExecuteFunctions = createMockExecuteFunction({}, mockNode);
 
-		mockN8nTool = new N8nTool(mockExecuteFunctions, {
+		mockN8nTool = new N8nTool(mockExecuteFunctions as unknown as ISupplyDataFunctions, {
 			name: 'Dummy Tool',
 			description: 'A dummy tool for testing',
 			func: jest.fn(),

@@ -11,10 +11,10 @@ on:
         description: 'Release channel'
         required: true
         type: choice
-        default: 'next'
+        default: 'beta'
         options:
-          - next
-          - latest
+          - beta
+          - stable
 
 jobs:
   release-to-npm:
@@ -25,9 +25,18 @@ jobs:
       - uses: actions/setup-node@v4.2.0
         with:
           node-version: 20.x
-      - run: |
-          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
-          npm dist-tag add n8n@${{ github.event.inputs.version }} ${{ github.event.inputs.release-channel }}
+
+      - run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+
+      - if: github.event.inputs.release-channel == 'beta'
+        run: |
+          npm dist-tag add n8n@${{ github.event.inputs.version }} next
+          npm dist-tag add n8n@${{ github.event.inputs.version }} beta
+
+      - if: github.event.inputs.release-channel == 'stable'
+        run: |
+          npm dist-tag add n8n@${{ github.event.inputs.version }} latest
+          npm dist-tag add n8n@${{ github.event.inputs.version }} stable
 
   release-to-docker-hub:
     name: Release to DockerHub
@@ -39,7 +48,15 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - run: docker buildx imagetools create -t ${{ secrets.DOCKER_USERNAME }}/n8n:${{ github.event.inputs.release-channel }} ${{ secrets.DOCKER_USERNAME }}/n8n:${{ github.event.inputs.version }}
+      - if: github.event.inputs.release-channel == 'stable'
+        run: |
+          docker buildx imagetools create -t ${{ secrets.DOCKER_USERNAME }}/n8n:stable ${{ secrets.DOCKER_USERNAME }}/n8n:${{ github.event.inputs.version }}
+          docker buildx imagetools create -t ${{ secrets.DOCKER_USERNAME }}/n8n:latest ${{ secrets.DOCKER_USERNAME }}/n8n:${{ github.event.inputs.version }}
+
+      - if: github.event.inputs.release-channel == 'beta'
+        run: |
+          docker buildx imagetools create -t ${{ secrets.DOCKER_USERNAME }}/n8n:beta ${{ secrets.DOCKER_USERNAME }}/n8n:${{ github.event.inputs.version }}
+          docker buildx imagetools create -t ${{ secrets.DOCKER_USERNAME }}/n8n:next ${{ secrets.DOCKER_USERNAME }}/n8n:${{ github.event.inputs.version }}
 
   release-to-github-container-registry:
     name: Release to GitHub Container Registry
@@ -52,7 +69,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: docker buildx imagetools create -t ghcr.io/${{ github.repository_owner }}/n8n:${{ github.event.inputs.release-channel }} ghcr.io/${{ github.repository_owner }}/n8n:${{ github.event.inputs.version }}
+      - if: github.event.inputs.release-channel == 'stable'
+        run: |
+          docker buildx imagetools create -t ghcr.io/${{ github.repository_owner }}/n8n:stable ghcr.io/${{ github.repository_owner }}/n8n:${{ github.event.inputs.version }}
+          docker buildx imagetools create -t ghcr.io/${{ github.repository_owner }}/n8n:latest ghcr.io/${{ github.repository_owner }}/n8n:${{ github.event.inputs.version }}
+
+      - if: github.event.inputs.release-channel == 'beta'
+        run: |
+          docker buildx imagetools create -t ghcr.io/${{ github.repository_owner }}/n8n:beta ghcr.io/${{ github.repository_owner }}/n8n:${{ github.event.inputs.version }}
+          docker buildx imagetools create -t ghcr.io/${{ github.repository_owner }}/n8n:next ghcr.io/${{ github.repository_owner }}/n8n:${{ github.event.inputs.version }}
 
   update-docs:
     name: Update latest and next in the docs

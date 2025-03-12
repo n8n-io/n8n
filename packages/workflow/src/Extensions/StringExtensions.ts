@@ -159,6 +159,10 @@ function length(value: string): number {
 	return value.length;
 }
 
+export function toJsonString(value: string): string {
+	return JSON.stringify(value);
+}
+
 function removeMarkdown(value: string): string {
 	let output = value;
 	try {
@@ -700,6 +704,23 @@ isNotEmpty.doc = {
 	],
 };
 
+toJsonString.doc = {
+	name: 'toJsonString',
+	description:
+		'Prepares the string to be inserted into a JSON object. Escapes any quotes and special characters (e.g. new lines), and wraps the string in quotes.The same as JavaScript’s JSON.stringify().',
+	section: 'edit',
+	returnType: 'string',
+	docURL:
+		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toJsonString',
+	examples: [
+		{
+			example: 'The "best" colours: red\nbrown.toJsonString()',
+			evaluated: '"The \\"best\\" colours: red\\nbrown"',
+		},
+		{ example: 'foo.toJsonString()', evaluated: '"foo"' },
+	],
+};
+
 extractEmail.doc = {
 	name: 'extractEmail',
 	description:
@@ -877,6 +898,7 @@ export const stringExtensions: ExtensionMap = {
 		isUrl,
 		isEmpty,
 		isNotEmpty,
+		toJsonString,
 		extractEmail,
 		extractDomain,
 		extractUrl,

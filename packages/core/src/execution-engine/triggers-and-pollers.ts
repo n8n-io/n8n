@@ -5,7 +5,6 @@ import type {
 	INode,
 	INodeExecutionData,
 	IPollFunctions,
-	IGetExecuteTriggerFunctions,
 	IWorkflowExecuteAdditionalData,
 	WorkflowExecuteMode,
 	WorkflowActivateMode,
@@ -14,6 +13,9 @@ import type {
 	IExecuteResponsePromiseData,
 	IRun,
 } from 'n8n-workflow';
+import assert from 'node:assert';
+
+import type { IGetExecuteTriggerFunctions } from './interfaces';
 
 @Service()
 export class TriggersAndPollers {
@@ -46,46 +48,34 @@ export class TriggersAndPollers {
 
 			// Add the manual trigger response which resolves when the first time data got emitted
 			triggerResponse!.manualTriggerResponse = new Promise((resolve, reject) => {
+				const { hooks } = additionalData;
+				assert.ok(hooks, 'Execution lifecycle hooks are not defined');
+
 				triggerFunctions.emit = (
-					(resolveEmit) =>
-					(
-						data: INodeExecutionData[][],
-						responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
-						donePromise?: IDeferredPromise<IRun>,
-					) => {
-						additionalData.hooks!.hookFunctions.sendResponse = [
-							async (response: IExecuteResponsePromiseData): Promise<void> => {
-								if (responsePromise) {
-									responsePromise.resolve(response);
-								}
-							},
-						];
-
-						if (donePromise) {
-							additionalData.hooks!.hookFunctions.workflowExecuteAfter?.unshift(
-								async (runData: IRun): Promise<void> => {
-									return donePromise.resolve(runData);
-								},
-							);
-						}
-
-						resolveEmit(data);
+					data: INodeExecutionData[][],
+					responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+					donePromise?: IDeferredPromise<IRun>,
+				) => {
+					if (responsePromise) {
+						hooks.addHandler('sendResponse', (response) => responsePromise.resolve(response));
 					}
-				)(resolve);
+
+					if (donePromise) {
+						hooks.addHandler('workflowExecuteAfter', (runData) => donePromise.resolve(runData));
+					}
+
+					resolve(data);
+				};
+
 				triggerFunctions.emitError = (
-					(rejectEmit) =>
-					(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>) => {
-						additionalData.hooks!.hookFunctions.sendResponse = [
-							async (): Promise<void> => {
-								if (responsePromise) {
-									responsePromise.reject(error);
-								}
-							},
-						];
-
-						rejectEmit(error);
+					error: Error,
+					responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+				) => {
+					if (responsePromise) {
+						hooks.addHandler('sendResponse', () => responsePromise.reject(error));
 					}
-				)(reject);
+					reject(error);
+				};
 			});
 
 			return triggerResponse;

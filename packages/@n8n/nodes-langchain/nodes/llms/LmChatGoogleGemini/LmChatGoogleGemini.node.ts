@@ -1,12 +1,13 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { SafetySetting } from '@google/generative-ai';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
-import {
-	NodeConnectionType,
-	type INodeType,
-	type INodeTypeDescription,
-	type ISupplyDataFunctions,
-	type SupplyData,
+import { NodeConnectionType } from 'n8n-workflow';
+import type {
+	NodeError,
+	INodeType,
+	INodeTypeDescription,
+	ISupplyDataFunctions,
+	SupplyData,
 } from 'n8n-workflow';
 
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
@@ -15,6 +16,13 @@ import { additionalOptions } from '../gemini-common/additional-options';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 
+function errorDescriptionMapper(error: NodeError) {
+	if (error.description?.includes('properties: should be non-empty for OBJECT type')) {
+		return 'Google Gemini requires at least one <a href="https://docs.n8n.io/advanced-ai/examples/using-the-fromai-function/" target="_blank">dynamic parameter</a> when using tools';
+	}
+
+	return error.description ?? 'Unknown error';
+}
 export class LmChatGoogleGemini implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Gemini Chat Model',
@@ -147,7 +155,7 @@ export class LmChatGoogleGemini implements INodeType {
 			temperature: options.temperature,
 			maxOutputTokens: options.maxOutputTokens,
 			safetySettings,
-			callbacks: [new N8nLlmTracing(this)],
+			callbacks: [new N8nLlmTracing(this, { errorDescriptionMapper })],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 

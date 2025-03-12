@@ -23,6 +23,13 @@ export class ManualExecutionService {
 
 	getExecutionStartNode(data: IWorkflowExecutionDataProcess, workflow: Workflow) {
 		let startNode;
+
+		// If the user chose a trigger to start from we honor this.
+		if (data.triggerToStartFrom?.name) {
+			startNode = workflow.getNode(data.triggerToStartFrom.name) ?? undefined;
+		}
+
+		// Old logic for partial executions v1
 		if (
 			data.startNodes?.length === 1 &&
 			Object.keys(data.pinData ?? {}).includes(data.startNodes[0].name)
@@ -41,7 +48,7 @@ export class ManualExecutionService {
 		executionId: string,
 		pinData?: IPinData,
 	): PCancelable<IRun> {
-		if (data.triggerToStartFrom?.data && data.startNodes && !data.destinationNode) {
+		if (data.triggerToStartFrom?.data && data.startNodes) {
 			this.logger.debug(
 				`Execution ID ${executionId} had triggerToStartFrom. Starting from that trigger.`,
 				{ executionId },
@@ -71,6 +78,10 @@ export class ManualExecutionService {
 				},
 			};
 
+			if (data.destinationNode) {
+				executionData.startData = { destinationNode: data.destinationNode };
+			}
+
 			const workflowExecute = new WorkflowExecute(
 				additionalData,
 				data.executionMode,
@@ -98,6 +109,7 @@ export class ManualExecutionService {
 
 			// Can execute without webhook so go on
 			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
+
 			return workflowExecute.run(workflow, startNode, data.destinationNode, data.pinData);
 		} else {
 			// Partial Execution

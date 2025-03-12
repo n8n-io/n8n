@@ -19,6 +19,7 @@ import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
+import type { WorkflowFolderUnionFull } from '@/databases/repositories/workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -58,45 +59,118 @@ export class WorkflowService {
 		private readonly globalConfig: GlobalConfig,
 	) {}
 
-	async getMany(user: User, options?: ListQuery.Options, includeScopes?: boolean) {
+	async getMany(
+		user: User,
+		options?: ListQuery.Options,
+		includeScopes?: boolean,
+		includeFolders?: boolean,
+	) {
+		let count;
+		let workflows;
+		let workflowsAndFolders: WorkflowFolderUnionFull[] = [];
+
 		const sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(user, {
 			scopes: ['workflow:read'],
 		});
 
-		// eslint-disable-next-line prefer-const
-		let { workflows, count } = await this.workflowRepository.getMany(sharedWorkflowIds, options);
+		if (includeFolders) {
+			[workflowsAndFolders, count] = await this.workflowRepository.getWorkflowsAndFoldersWithCount(
+				sharedWorkflowIds,
+				options,
+			);
 
+			workflows = workflowsAndFolders.filter((wf) => wf.resource === 'workflow');
+		} else {
+			({ workflows, count } = await this.workflowRepository.getManyAndCount(
+				sharedWorkflowIds,
+				options,
+			));
+		}
+
+		/*
+			Since we're filtering using project ID as part of the relation,
+			we end up filtering out all the other relations, meaning that if
+			it's shared to a project, it won't be able to find the home project.
+			To solve this, we have to get all the relation now, even though
+			we're deleting them later.
+		*/
 		if (hasSharing(workflows)) {
-			// Since we're filtering using project ID as part of the relation,
-			// we end up filtering out all the other relations, meaning that if
-			// it's shared to a project, it won't be able to find the home project.
-			// To solve this, we have to get all the relation now, even though
-			// we're deleting them later.
-			if (typeof options?.filter?.projectId === 'string' && options.filter.projectId !== '') {
-				const relations = await this.sharedWorkflowRepository.getAllRelationsForWorkflows(
-					workflows.map((c) => c.id),
-				);
-				workflows.forEach((c) => {
-					c.shared = relations.filter((r) => r.workflowId === c.id);
-				});
-			}
-
-			workflows = workflows.map((w) => this.ownershipService.addOwnedByAndSharedWith(w));
+			workflows = await this.processSharedWorkflows(workflows, options);
 		}
 
 		if (includeScopes) {
-			const projectRelations = await this.projectService.getProjectRelationsForUser(user);
-			workflows = workflows.map((w) => this.roleService.addScopes(w, user, projectRelations));
+			workflows = await this.addUserScopes(workflows, user);
 		}
 
-		workflows.forEach((w) => {
-			// This is to emulate the old behaviour of removing the shared field as
-			// part of `addOwnedByAndSharedWith`. We need this field in `addScopes`
-			// though. So to avoid leaking the information we just delete it.
-			delete w.shared;
-		});
+		this.cleanupSharedField(workflows);
 
-		return { workflows, count };
+		if (includeFolders) {
+			workflows = this.mergeProcessedWorkflows(workflowsAndFolders, workflows);
+		}
+
+		return {
+			workflows,
+			count,
+		};
+	}
+
+	private async processSharedWorkflows(
+		workflows: ListQuery.Workflow.WithSharing[],
+		options?: ListQuery.Options,
+	) {
+		const projectId = options?.filter?.projectId;
+
+		const shouldAddProjectRelations = typeof projectId === 'string' && projectId !== '';
+
+		if (shouldAddProjectRelations) {
+			await this.addSharedRelation(workflows);
+		}
+
+		return workflows.map((workflow) => this.ownershipService.addOwnedByAndSharedWith(workflow));
+	}
+
+	private async addSharedRelation(workflows: ListQuery.Workflow.WithSharing[]): Promise<void> {
+		const workflowIds = workflows.map((workflow) => workflow.id);
+		const relations = await this.sharedWorkflowRepository.getAllRelationsForWorkflows(workflowIds);
+
+		workflows.forEach((workflow) => {
+			workflow.shared = relations.filter((relation) => relation.workflowId === workflow.id);
+		});
+	}
+
+	private async addUserScopes(
+		workflows: ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
+		user: User,
+	) {
+		const projectRelations = await this.projectService.getProjectRelationsForUser(user);
+
+		return workflows.map((workflow) =>
+			this.roleService.addScopes(workflow, user, projectRelations),
+		);
+	}
+
+	private cleanupSharedField(
+		workflows: ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
+	): void {
+		/*
+			This is to emulate the old behavior of removing the shared field as
+			part of `addOwnedByAndSharedWith`. We need this field in `addScopes`
+			though. So to avoid leaking the information we just delete it.
+		*/
+		workflows.forEach((workflow) => {
+			delete workflow.shared;
+		});
+	}
+
+	private mergeProcessedWorkflows(
+		workflowsAndFolders: WorkflowFolderUnionFull[],
+		processedWorkflows: ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
+	) {
+		const workflowMap = new Map(processedWorkflows.map((workflow) => [workflow.id, workflow]));
+
+		return workflowsAndFolders.map((item) =>
+			item.resource === 'workflow' ? (workflowMap.get(item.id) ?? item) : item,
+		);
 	}
 
 	// eslint-disable-next-line complexity

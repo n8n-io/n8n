@@ -6,7 +6,7 @@ import type {
 import { Service } from '@n8n/di';
 import { writeFileSync } from 'fs';
 import { Logger } from 'n8n-core';
-import { ApplicationError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 import path from 'path';
 import type { PushResult } from 'simple-git';
 
@@ -90,7 +90,7 @@ export class SourceControlService {
 				false,
 			);
 			if (!foldersExisted) {
-				throw new ApplicationError('No folders exist');
+				throw new UserError('No folders exist');
 			}
 			if (!this.gitService.git) {
 				await this.initGitService();
@@ -101,7 +101,7 @@ export class SourceControlService {
 				branches.current !==
 					this.sourceControlPreferencesService.sourceControlPreferences.branchName
 			) {
-				throw new ApplicationError('Branch is not set up correctly');
+				throw new UserError('Branch is not set up correctly');
 			}
 		} catch (error) {
 			throw new BadRequestError(
@@ -123,7 +123,7 @@ export class SourceControlService {
 			this.gitService.resetService();
 			return this.sourceControlPreferencesService.sourceControlPreferences;
 		} catch (error) {
-			throw new ApplicationError('Failed to disconnect from source control', { cause: error });
+			throw new UnexpectedError('Failed to disconnect from source control', { cause: error });
 		}
 	}
 
@@ -202,7 +202,7 @@ export class SourceControlService {
 			await this.gitService.pull();
 		} catch (error) {
 			this.logger.error(`Failed to reset workfolder: ${(error as Error).message}`);
-			throw new ApplicationError(
+			throw new UserError(
 				'Unable to fetch updates from git - your folder might be out of sync. Try reconnecting from the Source Control settings page.',
 			);
 		}

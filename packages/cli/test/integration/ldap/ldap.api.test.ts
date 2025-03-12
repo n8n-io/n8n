@@ -470,7 +470,7 @@ describe('POST /login', () => {
 
 		const response = await testServer.authlessAgent
 			.post('/login')
-			.send({ email: ldapUser.mail, password: 'password' });
+			.send({ emailOrLdapLoginId: ldapUser.mail, password: 'password' });
 
 		expect(response.statusCode).toBe(200);
 		expect(response.headers['set-cookie']).toBeDefined();
@@ -529,7 +529,7 @@ describe('POST /login', () => {
 
 		const response = await testServer.authlessAgent
 			.post('/login')
-			.send({ email: owner.email, password: 'password' });
+			.send({ emailOrLdapLoginId: owner.email, password: 'password' });
 
 		expect(response.status).toBe(200);
 		expect(response.body.data?.signInType).toBeDefined();

@@ -5,7 +5,7 @@ import { OutputParserException } from '@langchain/core/output_parsers';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import { normalizeItems } from 'n8n-core';
-import type { IExecuteFunctions, IWorkflowDataProxyData } from 'n8n-workflow';
+import type { ISupplyDataFunctions, IWorkflowDataProxyData } from 'n8n-workflow';
 import { ApplicationError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import type {
@@ -18,13 +18,13 @@ import { NAIVE_FIX_PROMPT } from '../prompt';
 
 describe('OutputParserAutofixing', () => {
 	let outputParser: OutputParserAutofixing;
-	let thisArg: MockProxy<IExecuteFunctions>;
+	let thisArg: MockProxy<ISupplyDataFunctions>;
 	let mockModel: MockProxy<BaseLanguageModel>;
 	let mockStructuredOutputParser: MockProxy<N8nStructuredOutputParser>;
 
 	beforeEach(() => {
 		outputParser = new OutputParserAutofixing();
-		thisArg = mock<IExecuteFunctions>({
+		thisArg = mock<ISupplyDataFunctions>({
 			helpers: { normalizeItems },
 		});
 		mockModel = mock<BaseLanguageModel>();

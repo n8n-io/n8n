@@ -306,8 +306,8 @@ export class WorkflowPage extends BasePage {
 			this.actions.openContextMenu(nodeTypeName);
 			clickContextMenuAction('duplicate');
 		},
-		deleteNodeFromContextMenu: (nodeTypeName: string) => {
-			this.actions.openContextMenu(nodeTypeName);
+		deleteNodeFromContextMenu: (nodeTypeName: string, options?: OpenContextMenuOptions) => {
+			this.actions.openContextMenu(nodeTypeName, options);
 			clickContextMenuAction('delete');
 		},
 		executeNode: (nodeTypeName: string, options?: OpenContextMenuOptions) => {

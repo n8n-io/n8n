@@ -33,6 +33,7 @@ import type { TagEntity } from '@/databases/entities/tag-entity';
 import type { AssignableRole, GlobalRole, User } from '@/databases/entities/user';
 
 import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
+import type { Folder } from './databases/entities/folder';
 import type { ExternalHooks } from './external-hooks';
 import type { WorkflowWithSharingsAndCredentials } from './workflows/workflows.types';
 
@@ -90,7 +91,9 @@ export type IAnnotationTagWithCountDb = IAnnotationTagDb & UsageCount;
 
 // Almost identical to editor-ui.Interfaces.ts
 export interface IWorkflowDb extends IWorkflowBase {
+	triggerCount: number;
 	tags?: TagEntity[];
+	parentFolder?: Folder | null;
 }
 
 export interface IWorkflowToImport extends IWorkflowBase {

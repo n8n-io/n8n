@@ -11,6 +11,7 @@ import { TestRunsRequest } from '@/evaluation.ee/test-definitions.types.ee';
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { listQueryMiddleware } from '@/middlewares';
 import { getSharedWorkflowIds } from '@/public-api/v1/handlers/workflows/workflows.service';
+import { Telemetry } from '@/telemetry';
 
 import { TestDefinitionService } from './test-definition.service.ee';
 
@@ -22,6 +23,7 @@ export class TestRunsController {
 		private readonly testCaseExecutionRepository: TestCaseExecutionRepository,
 		private readonly testRunnerService: TestRunnerService,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly telemetry: Telemetry,
 	) {}
 
 	/**
@@ -73,9 +75,11 @@ export class TestRunsController {
 
 	@Get('/:testDefinitionId/runs/:id')
 	async getOne(req: TestRunsRequest.GetOne) {
+		const { testDefinitionId, id } = req.params;
+
 		await this.getTestDefinition(req);
 
-		return await this.getTestRun(req);
+		return await this.testRunRepository.getTestRunSummaryById(testDefinitionId, id);
 	}
 
 	@Get('/:testDefinitionId/runs/:id/cases')
@@ -90,13 +94,15 @@ export class TestRunsController {
 
 	@Delete('/:testDefinitionId/runs/:id')
 	async delete(req: TestRunsRequest.Delete) {
-		const { id: testRunId } = req.params;
+		const { id: testRunId, testDefinitionId } = req.params;
 
 		// Check test definition and test run exist
 		await this.getTestDefinition(req);
 		await this.getTestRun(req);
 
 		await this.testRunRepository.delete({ id: testRunId });
+
+		this.telemetry.track('User deleted a run', { run_id: testRunId, test_id: testDefinitionId });
 
 		return { success: true };
 	}
