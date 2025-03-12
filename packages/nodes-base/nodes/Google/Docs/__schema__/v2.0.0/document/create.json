@@ -19,5 +19,6 @@
         "id",
         "name",
         "mimeType"
-    ]
+    ],
+    "version": 1
 }
