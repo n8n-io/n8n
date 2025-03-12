@@ -1,40 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "author": {
-            "type": "string"
-        },
-        "created_at": {
-            "type": "string"
-        },
-        "created_at_i": {
-            "type": "integer"
-        },
-        "id": {
-            "type": "integer"
-        },
-        "options": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
-        },
-        "type": {
-            "type": "string"
-        }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/HackerNews/__schema__/v1.0.0/article/get.json",
+    "sha": "82ab15ff76a9a504a08c69d104308906e268ead2",
+    "size": 733,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/HackerNews/__schema__/v1.0.0/article/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/HackerNews/__schema__/v1.0.0/article/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/82ab15ff76a9a504a08c69d104308906e268ead2",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/HackerNews/__schema__/v1.0.0/article/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJhdXRob3IiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJjcmVhdGVkX2F0IjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiY3Jl\nYXRlZF9hdF9pIjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgog\nICAgICAgIH0sCiAgICAgICAgImlkIjogewogICAgICAgICAgICAidHlwZSI6\nICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgIm9wdGlvbnMiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogImFycmF5IiwKICAgICAgICAgICAgIml0ZW1z\nIjogewogICAgICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAg\nICAgICAgfQogICAgICAgIH0sCiAgICAgICAgInR5cGUiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9CiAgICB9LAogICAgInJl\ncXVpcmVkIjogWwogICAgICAgICJhdXRob3IiLAogICAgICAgICJjcmVhdGVk\nX2F0IiwKICAgICAgICAiY3JlYXRlZF9hdF9pIiwKICAgICAgICAiaWQiLAog\nICAgICAgICJvcHRpb25zIiwKICAgICAgICAicGFyZW50X2lkIiwKICAgICAg\nICAicG9pbnRzIiwKICAgICAgICAic3RvcnlfaWQiLAogICAgICAgICJ0ZXh0\nIiwKICAgICAgICAidGl0bGUiLAogICAgICAgICJ0eXBlIiwKICAgICAgICAi\ndXJsIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/HackerNews/__schema__/v1.0.0/article/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/82ab15ff76a9a504a08c69d104308906e268ead2",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/HackerNews/__schema__/v1.0.0/article/get.json"
     },
-    "required": [
-        "author",
-        "created_at",
-        "created_at_i",
-        "id",
-        "options",
-        "parent_id",
-        "points",
-        "story_id",
-        "text",
-        "title",
-        "type",
-        "url"
-    ]
+    "version": 1
 }
