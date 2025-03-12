@@ -114,29 +114,5 @@
             ]
         }
     },
-    "required": [
-        "@odata.context",
-        "id",
-        "replyToId",
-        "etag",
-        "messageType",
-        "createdDateTime",
-        "lastModifiedDateTime",
-        "lastEditedDateTime",
-        "deletedDateTime",
-        "subject",
-        "summary",
-        "chatId",
-        "importance",
-        "locale",
-        "webUrl",
-        "channelIdentity",
-        "policyViolation",
-        "eventDetail",
-        "from",
-        "body",
-        "attachments",
-        "mentions",
-        "reactions"
-    ]
+    "version": 1
 }
