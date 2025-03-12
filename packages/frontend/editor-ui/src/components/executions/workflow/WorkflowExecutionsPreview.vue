@@ -116,7 +116,7 @@ const addExecutionTag = async (annotationTagId: string) => {
 				color: 'primary',
 				style: { cursor: 'pointer ' },
 			},
-			() => 'Close this tab',
+			() => locale.baseText('testDefinition.executions.toast.closeTab'),
 		),
 		closeOnClick: false,
 		onClick() {
@@ -406,7 +406,8 @@ onMounted(async () => {
 									data-test-id="test-execution-create"
 								>
 									<N8nText :class="$style.fontMedium">
-										<N8nIcon icon="plus" /> Add to new test
+										<N8nIcon icon="plus" />
+										{{ locale.baseText('testDefinition.executions.tooltip.addTo') }}
 									</N8nText>
 								</ElDropdownItem>
 							</ElDropdownMenu>
