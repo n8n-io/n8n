@@ -8,7 +8,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { CanvasConnectionPort, CanvasNodeData } from '@/types';
-import { N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nSpinner, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useVueFlow } from '@vue-flow/core';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -23,15 +23,11 @@ const telemetry = useTelemetry();
 const { resetWorkspace, initializeWorkspace } = useCanvasOperations({ router });
 
 const uuid = crypto.randomUUID();
-const props = defineProps<{
-	modelValue: Array<{ name: string; id: string }>;
-}>();
 
-const emit = defineEmits<{
-	'update:modelValue': [value: Array<{ name: string; id: string }>];
-}>();
+type PinnedNode = { name: string; id: string };
+const model = defineModel<PinnedNode[]>({ required: true });
 
-const isLoading = ref(true);
+const isLoading = ref(false);
 
 const workflowId = computed(() => route.params.name as string);
 const testId = computed(() => route.params.testId as string);
@@ -39,7 +35,7 @@ const workflow = computed(() => workflowsStore.getWorkflowById(workflowId.value)
 const workflowObject = computed(() => workflowsStore.getCurrentWorkflow(true));
 const canvasId = computed(() => `${uuid}-${testId.value}`);
 
-const { onNodesInitialized, fitView, zoomTo } = useVueFlow({ id: canvasId.value });
+const { onNodesInitialized, fitView, zoomTo, onNodeClick } = useVueFlow({ id: canvasId.value });
 const nodes = computed(() => workflow.value.nodes ?? []);
 const connections = computed(() => workflow.value.connections);
 
@@ -48,43 +44,49 @@ const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping(
 	connections,
 	workflowObject,
 });
+
 async function loadData() {
+	isLoading.value = true;
 	workflowsStore.resetState();
 	resetWorkspace();
-	const loadingPromise = Promise.all([
+	await Promise.all([
 		nodeTypesStore.getNodeTypes(),
 		workflowsStore.fetchWorkflow(workflowId.value),
 	]);
-	await loadingPromise;
 	initializeWorkspace(workflow.value);
 }
 
 function getNodeNameById(id: string) {
 	return mappedNodes.value.find((node) => node.id === id)?.data?.name;
 }
-function onPinButtonClick(data: CanvasNodeData) {
+
+function isMocked(data: CanvasNodeData) {
+	return model.value.some((node) => node.id === data.id);
+}
+
+function canBeMocked(outputs: CanvasConnectionPort[], inputs: CanvasConnectionPort[]) {
+	return outputs.length === 1 && inputs.length >= 1;
+}
+
+function handleNodeClick(data: CanvasNodeData) {
 	const nodeName = getNodeNameById(data.id);
-	if (!nodeName) return;
+	if (!nodeName || !canBeMocked(data.outputs, data.inputs)) return;
 
-	const isPinned = props.modelValue.some((node) => node.id === data.id);
-	const updatedNodes = isPinned
-		? props.modelValue.filter((node) => node.id !== data.id)
-		: [...props.modelValue, { name: nodeName, id: data.id }];
+	const mocked = isMocked(data);
 
-	emit('update:modelValue', updatedNodes);
+	model.value = mocked
+		? model.value.filter((node) => node.id !== data.id)
+		: model.value.concat({ name: nodeName, id: data.id });
 
-	if (!isPinned) {
+	if (!mocked) {
 		telemetry.track('User selected node to be mocked', {
 			node_id: data.id,
 			test_id: testId.value,
 		});
 	}
 }
-function isPinButtonVisible(outputs: CanvasConnectionPort[], inputs: CanvasConnectionPort[]) {
-	return outputs.length === 1 && inputs.length >= 1;
-}
 
-const isPinned = (data: CanvasNodeData) => props.modelValue.some((node) => node.id === data.id);
+onNodeClick(({ node }) => handleNodeClick(node.data));
 
 onNodesInitialized(async () => {
 	await fitView();
@@ -102,7 +104,7 @@ onMounted(loadData);
 		<N8nText>{{ locale.baseText('testDefinition.edit.pinNodes.noNodes.description') }}</N8nText>
 	</div>
 	<div v-else :class="$style.container">
-		<N8nSpinner v-if="isLoading" size="xlarge" type="dots" :class="$style.spinner" />
+		<N8nSpinner v-if="isLoading" size="large" type="dots" :class="$style.spinner" />
 		<Canvas
 			:id="canvasId"
 			:loading="isLoading"
@@ -121,14 +123,15 @@ onMounted(loadData);
 						v-bind="nodeProps"
 						:class="{
 							[$style.isTrigger]: nodeTypesStore.isTriggerNode(nodeProps.data.type),
+							[$style.mockNode]: true,
 						}"
 					>
 						<template #toolbar="{ data, outputs, inputs }">
 							<div
-								v-if="isPinButtonVisible(outputs, inputs)"
+								v-if="canBeMocked(outputs, inputs)"
 								:class="{
 									[$style.pinButtonContainer]: true,
-									[$style.pinButtonContainerPinned]: isPinned(data),
+									[$style.pinButtonContainerPinned]: isMocked(data),
 								}"
 							>
 								<N8nTooltip
@@ -139,11 +142,10 @@ onMounted(loadData);
 										icon="thumbtack"
 										block
 										type="secondary"
-										:class="{ [$style.customSecondary]: isPinned(data) }"
+										:class="{ [$style.customSecondary]: isMocked(data) }"
 										data-test-id="node-pin-button"
-										@click="onPinButtonClick(data)"
 									>
-										<template v-if="isPinned(data)"> Unpin </template>
+										<template v-if="isMocked(data)"> Unpin </template>
 										<template v-else> Pin </template>
 									</N8nButton>
 								</N8nTooltip>
@@ -157,6 +159,16 @@ onMounted(loadData);
 </template>
 
 <style lang="scss" module>
+.mockNode {
+	--color-canvas-node-pinned-border-color: var(
+		--canvas-node--border-color,
+		var(--color-foreground-xdark)
+	);
+
+	// remove selection outline
+	--color-canvas-selected-transparent: transparent;
+}
+
 .isTrigger {
 	--canvas-node--border-color: var(--color-secondary);
 }
