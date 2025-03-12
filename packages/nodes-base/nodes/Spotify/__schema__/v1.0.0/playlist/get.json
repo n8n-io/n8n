@@ -175,15 +175,6 @@
                                             "type": {
                                                 "type": "string"
                                             },
-                                            "album_type": {
-                                                "type": "string"
-                                            },
-                                            "href": {
-                                                "type": "string"
-                                            },
-                                            "id": {
-                                                "type": "string"
-                                            },
                                             "images": {
                                                 "type": "array",
                                                 "items": {
@@ -209,15 +200,6 @@
                                             "name": {
                                                 "type": "string"
                                             },
-                                            "release_date": {
-                                                "type": "string"
-                                            },
-                                            "release_date_precision": {
-                                                "type": "string"
-                                            },
-                                            "uri": {
-                                                "type": "string"
-                                            },
                                             "artists": {
                                                 "type": "array",
                                                 "items": {
@@ -238,9 +220,6 @@
                                                             "type": "string"
                                                         },
                                                         "id": {
-                                                            "type": "string"
-                                                        },
-                                                        "name": {
                                                             "type": "string"
                                                         },
                                                         "type": {
@@ -287,8 +266,7 @@
                                             "release_date_precision",
                                             "uri",
                                             "artists",
-                                            "external_urls",
-                                            "total_tracks"
+                                            "external_urls"
                                         ]
                                     },
                                     "artists": {
@@ -307,19 +285,7 @@
                                                         "spotify"
                                                     ]
                                                 },
-                                                "href": {
-                                                    "type": "string"
-                                                },
-                                                "id": {
-                                                    "type": "string"
-                                                },
-                                                "name": {
-                                                    "type": "string"
-                                                },
                                                 "type": {
-                                                    "type": "string"
-                                                },
-                                                "uri": {
                                                     "type": "string"
                                                 }
                                             },
@@ -348,10 +314,7 @@
                                             "isrc": {
                                                 "type": "string"
                                             }
-                                        },
-                                        "required": [
-                                            "isrc"
-                                        ]
+                                        }
                                     },
                                     "external_urls": {
                                         "type": "object",
@@ -363,12 +326,6 @@
                                         "required": [
                                             "spotify"
                                         ]
-                                    },
-                                    "href": {
-                                        "type": "string"
-                                    },
-                                    "id": {
-                                        "type": "string"
                                     },
                                     "name": {
                                         "type": "string"
@@ -388,8 +345,6 @@
                                     "available_markets",
                                     "explicit",
                                     "type",
-                                    "episode",
-                                    "track",
                                     "album",
                                     "artists",
                                     "disc_number",
@@ -473,5 +428,6 @@
         "tracks",
         "type",
         "uri"
-    ]
+    ],
+    "version": 1
 }
