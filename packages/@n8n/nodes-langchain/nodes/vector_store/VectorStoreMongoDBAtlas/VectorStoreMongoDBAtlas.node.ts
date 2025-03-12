@@ -3,6 +3,8 @@ import { MongoClient } from 'mongodb';
 import { NodeOperationError, type INodeProperties } from 'n8n-workflow';
 
 import { metadataFilterField } from '@utils/sharedFields';
+
+import { createVectorStoreNode } from '../shared/createVectorStoreNode';
 import {
 	mongoCollectionRLC,
 	embeddingField,
@@ -10,8 +12,6 @@ import {
 	vectorIndexName,
 } from '../shared/descriptions';
 import { mongoCollectionSearch } from '../shared/methods/listSearch';
-
-import { createVectorStoreNode } from '../shared/createVectorStoreNode';
 
 const sharedFields: INodeProperties[] = [
 	mongoCollectionRLC,
