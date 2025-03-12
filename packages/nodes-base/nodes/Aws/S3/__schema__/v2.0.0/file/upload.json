@@ -23,6 +23,13 @@
         },
         "ETag": {
             "type": "string"
+        },
+        "ChecksumCRC64NVME": {
+            "type": "string"
+        },
+        "ChecksumType": {
+            "type": "string"
         }
-    }
+    },
+    "version": 1
 }
