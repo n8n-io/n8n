@@ -1,128 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"_id": {
-			"type": "integer"
-		},
-		"title": {
-			"type": "string"
-		},
-		"description": {
-			"type": "string"
-		},
-		"user": {
-			"type": "object",
-			"properties": {
-				"$ref": {
-					"type": "string"
-				},
-				"$id": {
-					"type": "integer"
-				}
-			},
-			"required": [
-				"$ref",
-				"$id"
-			]
-		},
-		"public": {
-			"type": "boolean"
-		},
-		"view": {
-			"type": "string"
-		},
-		"count": {
-			"type": "integer"
-		},
-		"cover": {
-			"type": "array",
-			"items": {
-				"type": "string"
-			}
-		},
-		"expanded": {
-			"type": "boolean"
-		},
-		"creatorRef": {
-			"type": "object",
-			"properties": {
-				"_id": {
-					"type": "integer"
-				},
-				"name": {
-					"type": "string"
-				},
-				"email": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"_id",
-				"name",
-				"email"
-			]
-		},
-		"lastAction": {
-			"type": "string"
-		},
-		"created": {
-			"type": "string"
-		},
-		"lastUpdate": {
-			"type": "string"
-		},
-		"sort": {
-			"type": "integer"
-		},
-		"slug": {
-			"type": "string"
-		},
-		"color": {
-			"type": "string"
-		},
-		"access": {
-			"type": "object",
-			"properties": {
-				"for": {
-					"type": "integer"
-				},
-				"level": {
-					"type": "integer"
-				},
-				"root": {
-					"type": "boolean"
-				},
-				"draggable": {
-					"type": "boolean"
-				}
-			},
-			"required": [
-				"for",
-				"level",
-				"root",
-				"draggable"
-			]
-		},
-		"author": {
-			"type": "boolean"
-		}
-	},
-	"required": [
-		"_id",
-		"title",
-		"description",
-		"user",
-		"public",
-		"view",
-		"count",
-		"cover",
-		"expanded",
-		"lastAction",
-		"created",
-		"lastUpdate",
-		"sort",
-		"slug",
-		"access",
-		"author"
-	]
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Raindrop/__schema__/v1.0.0/collection/getAll.json",
+    "sha": "914e2e1a1da64ecf8eedec088497f63e140cecb5",
+    "size": 1654,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Raindrop/__schema__/v1.0.0/collection/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Raindrop/__schema__/v1.0.0/collection/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/914e2e1a1da64ecf8eedec088497f63e140cecb5",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Raindrop/__schema__/v1.0.0/collection/getAll.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJfaWQi\nOiB7CgkJCSJ0eXBlIjogImludGVnZXIiCgkJfSwKCQkidGl0bGUiOiB7CgkJ\nCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJCSJkZXNjcmlwdGlvbiI6IHsKCQkJ\nInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJInVzZXIiOiB7CgkJCSJ0eXBlIjog\nIm9iamVjdCIsCgkJCSJwcm9wZXJ0aWVzIjogewoJCQkJIiRyZWYiOiB7CgkJ\nCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJfSwKCQkJCSIkaWQiOiB7CgkJCQkJ\nInR5cGUiOiAiaW50ZWdlciIKCQkJCX0KCQkJfSwKCQkJInJlcXVpcmVkIjog\nWwoJCQkJIiRyZWYiLAoJCQkJIiRpZCIKCQkJXQoJCX0sCgkJInB1YmxpYyI6\nIHsKCQkJInR5cGUiOiAiYm9vbGVhbiIKCQl9LAoJCSJ2aWV3IjogewoJCQki\ndHlwZSI6ICJzdHJpbmciCgkJfSwKCQkiY291bnQiOiB7CgkJCSJ0eXBlIjog\nImludGVnZXIiCgkJfSwKCQkiY292ZXIiOiB7CgkJCSJ0eXBlIjogImFycmF5\nIiwKCQkJIml0ZW1zIjogewoJCQkJInR5cGUiOiAic3RyaW5nIgoJCQl9CgkJ\nfSwKCQkiZXhwYW5kZWQiOiB7CgkJCSJ0eXBlIjogImJvb2xlYW4iCgkJfSwK\nCQkiY3JlYXRvclJlZiI6IHsKCQkJInR5cGUiOiAib2JqZWN0IiwKCQkJInBy\nb3BlcnRpZXMiOiB7CgkJCQkiX2lkIjogewoJCQkJCSJ0eXBlIjogImludGVn\nZXIiCgkJCQl9LAoJCQkJIm5hbWUiOiB7CgkJCQkJInR5cGUiOiAic3RyaW5n\nIgoJCQkJfSwKCQkJCSJlbWFpbCI6IHsKCQkJCQkidHlwZSI6ICJzdHJpbmci\nCgkJCQl9CgkJCX0sCgkJCSJyZXF1aXJlZCI6IFsKCQkJCSJfaWQiLAoJCQkJ\nIm5hbWUiLAoJCQkJImVtYWlsIgoJCQldCgkJfSwKCQkibGFzdEFjdGlvbiI6\nIHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJImNyZWF0ZWQiOiB7CgkJ\nCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJCSJsYXN0VXBkYXRlIjogewoJCQki\ndHlwZSI6ICJzdHJpbmciCgkJfSwKCQkic29ydCI6IHsKCQkJInR5cGUiOiAi\naW50ZWdlciIKCQl9LAoJCSJzbHVnIjogewoJCQkidHlwZSI6ICJzdHJpbmci\nCgkJfSwKCQkiY29sb3IiOiB7CgkJCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJ\nCSJhY2Nlc3MiOiB7CgkJCSJ0eXBlIjogIm9iamVjdCIsCgkJCSJwcm9wZXJ0\naWVzIjogewoJCQkJImZvciI6IHsKCQkJCQkidHlwZSI6ICJpbnRlZ2VyIgoJ\nCQkJfSwKCQkJCSJsZXZlbCI6IHsKCQkJCQkidHlwZSI6ICJpbnRlZ2VyIgoJ\nCQkJfSwKCQkJCSJyb290IjogewoJCQkJCSJ0eXBlIjogImJvb2xlYW4iCgkJ\nCQl9LAoJCQkJImRyYWdnYWJsZSI6IHsKCQkJCQkidHlwZSI6ICJib29sZWFu\nIgoJCQkJfQoJCQl9LAoJCQkicmVxdWlyZWQiOiBbCgkJCQkiZm9yIiwKCQkJ\nCSJsZXZlbCIsCgkJCQkicm9vdCIsCgkJCQkiZHJhZ2dhYmxlIgoJCQldCgkJ\nfSwKCQkiYXV0aG9yIjogewoJCQkidHlwZSI6ICJib29sZWFuIgoJCX0KCX0s\nCgkicmVxdWlyZWQiOiBbCgkJIl9pZCIsCgkJInRpdGxlIiwKCQkiZGVzY3Jp\ncHRpb24iLAoJCSJ1c2VyIiwKCQkicHVibGljIiwKCQkidmlldyIsCgkJImNv\ndW50IiwKCQkiY292ZXIiLAoJCSJleHBhbmRlZCIsCgkJImxhc3RBY3Rpb24i\nLAoJCSJjcmVhdGVkIiwKCQkibGFzdFVwZGF0ZSIsCgkJInNvcnQiLAoJCSJz\nbHVnIiwKCQkiYWNjZXNzIiwKCQkiYXV0aG9yIgoJXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Raindrop/__schema__/v1.0.0/collection/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/914e2e1a1da64ecf8eedec088497f63e140cecb5",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Raindrop/__schema__/v1.0.0/collection/getAll.json"
+    },
+    "version": 1
 }
