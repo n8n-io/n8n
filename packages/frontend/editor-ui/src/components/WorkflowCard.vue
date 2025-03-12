@@ -96,7 +96,7 @@ const actions = computed(() => {
 
 	if (workflowPermissions.value.move && projectsStore.isTeamProjectFeatureEnabled) {
 		items.push({
-			label: locale.baseText('workflows.item.move'),
+			label: locale.baseText('workflows.item.changeOwner'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.MOVE,
 		});
 	}
