@@ -440,14 +440,14 @@ const onSortUpdated = async (sort: string) => {
 const onFiltersUpdated = async () => {
 	currentPage.value = 1;
 	saveFiltersOnQueryString();
-	await fetchWorkflows();
+	await callDebounced(fetchWorkflows, { debounceTime: 100, trailing: true });
 };
 
 const onSearchUpdated = async (search: string) => {
 	currentPage.value = 1;
 	saveFiltersOnQueryString();
 	if (search) {
-		await callDebounced(fetchWorkflows, { debounceTime: 500, trailing: true });
+		await callDebounced(fetchWorkflows, { debounceTime: 100, trailing: true });
 	} else {
 		// No need to debounce when clearing search
 		await fetchWorkflows();
@@ -455,13 +455,12 @@ const onSearchUpdated = async (search: string) => {
 };
 
 const setCurrentPage = async (page: number) => {
-	currentPage.value = page;
-	await fetchWorkflows();
+	await callDebounced(fetchWorkflows, { debounceTime: 100, trailing: true });
 };
 
 const setPageSize = async (size: number) => {
 	pageSize.value = size;
-	await fetchWorkflows();
+	await callDebounced(fetchWorkflows, { debounceTime: 100, trailing: true });
 };
 
 const onClickTag = async (tagId: string) => {
@@ -978,6 +977,7 @@ const deleteFolder = async (folderId: string, workflowCount: number, subFolderCo
 		:custom-page-size="DEFAULT_WORKFLOW_PAGE_SIZE"
 		:total-items="workflowsStore.totalWorkflowCount"
 		:dont-perform-sorting-and-filtering="true"
+		:has-empty-state="foldersStore.totalWorkflowCount === 0 && !currentFolderId"
 		@click:add="addWorkflow"
 		@update:search="onSearchUpdated"
 		@update:current-page="setCurrentPage"

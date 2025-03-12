@@ -917,7 +917,7 @@
 	"folders.delete.confirmation.message": "Type \"delete {folderName}\" to confirm",
 	"folders.transfer.confirm.message": "Data transferred to \"{folderName}\"",
 	"folders.transfer.action": "Transfer workflows and subfolders to another folder",
-	"folders.transfer.selectFolder": "Folder to to transfer to",
+	"folders.transfer.selectFolder": "Folder to transfer to",
 	"folders.transfer.select.placeholder": "Select folder",
 	"folders.rename.message": "Rename \"{folderName}\"",
 	"folders.rename.error.title": "Problem renaming folder",
