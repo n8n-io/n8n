@@ -88,7 +88,7 @@ export async function execute(
 		this,
 		{},
 		'POST',
-		'/dtable-db/api/v1/base/{{dtable_uuid}}/links/',
+		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/links/',
 		body,
 	);
 

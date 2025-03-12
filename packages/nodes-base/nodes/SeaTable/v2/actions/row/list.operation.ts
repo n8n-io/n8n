@@ -51,6 +51,13 @@ export const properties: INodeProperties[] = [
 		default: true,
 		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
+	{
+		displayName: 'Return Column Names',
+		name: 'convert',
+		type: 'boolean',
+		default: true,
+		description: 'Whether to return the column keys (false) or the column names (true)',
+	},
 ];
 
 const displayOptions = {
@@ -70,6 +77,7 @@ export async function execute(
 	const tableName = this.getNodeParameter('tableName', index) as string;
 	const viewName = this.getNodeParameter('viewName', index) as string;
 	const simple = this.getNodeParameter('simple', index) as boolean;
+	const convert = this.getNodeParameter('convert', index) as boolean;
 
 	// get collaborators
 	const collaborators = await getBaseCollaborators.call(this);
@@ -79,19 +87,20 @@ export async function execute(
 		this,
 		{},
 		'GET',
-		'/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata/',
+		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/metadata/',
 	);
 
 	const requestRows = await seaTableApiRequest.call(
 		this,
 		{},
 		'GET',
-		'/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/',
+		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/rows/',
 		{},
 		{
 			table_name: tableName,
 			view_name: viewName,
 			limit: 1000,
+			convert_keys: convert,
 		},
 	);
 

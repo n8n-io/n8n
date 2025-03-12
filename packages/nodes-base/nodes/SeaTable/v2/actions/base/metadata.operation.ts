@@ -24,7 +24,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		this,
 		{},
 		'GET',
-		'/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata/',
+		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/metadata/',
 	);
 	return this.helpers.returnJsonArray(responseData.metadata as IDataObject[]);
 }

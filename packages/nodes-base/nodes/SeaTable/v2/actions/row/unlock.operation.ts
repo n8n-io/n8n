@@ -30,7 +30,7 @@ export const properties: INodeProperties[] = [
 		name: 'rowId',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsDependsOn: ['tableName'],
@@ -60,7 +60,7 @@ export async function execute(
 		this,
 		{},
 		'PUT',
-		'/dtable-server/api/v1/dtables/{{dtable_uuid}}/unlock-rows/',
+		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/unlock-rows/',
 		{
 			table_name: tableName,
 			row_ids: [rowId],

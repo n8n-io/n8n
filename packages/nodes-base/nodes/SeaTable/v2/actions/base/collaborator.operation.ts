@@ -41,7 +41,7 @@ export async function execute(
 		this,
 		{},
 		'GET',
-		'/dtable-server/api/v1/dtables/{{dtable_uuid}}/related-users/',
+		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/related-users/',
 	);
 	const collaborators = collaboratorsResult.user_list || [];
 

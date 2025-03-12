@@ -24,7 +24,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		this,
 		{},
 		'POST',
-		'/dtable-server/api/v1/dtables/{{dtable_uuid}}/snapshot/',
+		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/snapshot/',
 		{ dtable_name: 'snapshot' },
 	);
 

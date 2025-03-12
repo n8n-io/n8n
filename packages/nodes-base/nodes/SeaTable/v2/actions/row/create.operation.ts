@@ -53,6 +53,19 @@ export const properties: INodeProperties[] = [
 		description: 'Whether to insert the input data this node receives in the new row',
 	},
 	{
+		displayName: 'Apply Column Default Values',
+		name: 'apply_default',
+		type: 'boolean',
+		default: false,
+		description:
+			'Whether to use the column default values to populate new rows during creation (only available for normal backend)',
+		displayOptions: {
+			show: {
+				bigdata: [false],
+			},
+		},
+	},
+	{
 		displayName:
 			'In this mode, make sure the incoming data fields are named the same as the columns in SeaTable. (Use an "Edit Fields" node before this node to change them if required.)',
 		name: 'notice',
@@ -159,11 +172,12 @@ export async function execute(
 	const fieldsToSend = this.getNodeParameter('fieldsToSend', index) as
 		| 'defineBelow'
 		| 'autoMapInputData';
-	const bigdata = this.getNodeParameter('bigdata', index) as string;
+	const bigdata = this.getNodeParameter('bigdata', index) as boolean;
+	const apply_default = this.getNodeParameter('apply_default', index, false) as boolean;
 
 	const body = {
 		table_name: tableName,
-		row: {},
+		rows: {},
 	} as IDataObject;
 	let rowInput = {} as IRowObject;
 
@@ -196,21 +210,27 @@ export async function execute(
 			this,
 			{},
 			'POST',
-			'/dtable-db/api/v1/insert-rows/{{dtable_uuid}}/',
+			'/api-gateway/api/v2/dtables/{{dtable_uuid}}/add-archived-rows/',
 			body,
 		);
 		return this.helpers.returnJsonArray(responseData as IDataObject[]);
 	}
 	// save to normal backend
 	else {
-		body.row = rowInput;
+		body.rows = [rowInput];
+		if (apply_default) {
+			body.apply_default = true;
+		}
 		const responseData = await seaTableApiRequest.call(
 			this,
 			{},
 			'POST',
-			'/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/',
+			'/api-gateway/api/v2/dtables/{{dtable_uuid}}/rows/',
 			body,
 		);
+		if (responseData.first_row) {
+			return this.helpers.returnJsonArray(responseData.first_row as IDataObject[]);
+		}
 		return this.helpers.returnJsonArray(responseData as IDataObject[]);
 	}
 }
