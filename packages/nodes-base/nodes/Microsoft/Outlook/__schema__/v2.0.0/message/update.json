@@ -183,32 +183,6 @@
                 ]
             }
         },
-        "bccRecipients": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "emailAddress": {
-                        "type": "object",
-                        "properties": {
-                            "name": {
-                                "type": "string"
-                            },
-                            "address": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "name",
-                            "address"
-                        ]
-                    }
-                },
-                "required": [
-                    "emailAddress"
-                ]
-            }
-        },
         "replyTo": {
             "type": "array",
             "items": {
@@ -247,35 +221,5 @@
             ]
         }
     },
-    "required": [
-        "@odata.context",
-        "@odata.etag",
-        "id",
-        "createdDateTime",
-        "lastModifiedDateTime",
-        "changeKey",
-        "categories",
-        "receivedDateTime",
-        "sentDateTime",
-        "hasAttachments",
-        "internetMessageId",
-        "subject",
-        "bodyPreview",
-        "importance",
-        "parentFolderId",
-        "conversationId",
-        "conversationIndex",
-        "isDeliveryReceiptRequested",
-        "isReadReceiptRequested",
-        "isRead",
-        "isDraft",
-        "webLink",
-        "inferenceClassification",
-        "body",
-        "toRecipients",
-        "ccRecipients",
-        "bccRecipients",
-        "replyTo",
-        "flag"
-    ]
+    "version": 1
 }
