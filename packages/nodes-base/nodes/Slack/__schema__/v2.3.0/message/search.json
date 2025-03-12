@@ -1,152 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "iid": {
-            "type": "string"
-        },
-        "team": {
-            "type": "string"
-        },
-        "score": {
-            "type": "integer"
-        },
-        "channel": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "is_channel": {
-                    "type": "boolean"
-                },
-                "is_group": {
-                    "type": "boolean"
-                },
-                "is_im": {
-                    "type": "boolean"
-                },
-                "is_mpim": {
-                    "type": "boolean"
-                },
-                "is_shared": {
-                    "type": "boolean"
-                },
-                "is_org_shared": {
-                    "type": "boolean"
-                },
-                "is_ext_shared": {
-                    "type": "boolean"
-                },
-                "is_private": {
-                    "type": "boolean"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "is_pending_ext_shared": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "id",
-                "is_channel",
-                "is_group",
-                "is_im",
-                "is_mpim",
-                "is_shared",
-                "is_org_shared",
-                "is_ext_shared",
-                "is_private",
-                "name"
-            ]
-        },
-        "type": {
-            "type": "string"
-        },
-        "username": {
-            "type": "string"
-        },
-        "ts": {
-            "type": "string"
-        },
-        "blocks": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "type": {
-                        "type": "string"
-                    },
-                    "block_id": {
-                        "type": "string"
-                    },
-                    "elements": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "type": {
-                                    "type": "string"
-                                },
-                                "elements": {
-                                    "type": "array",
-                                    "items": {
-                                        "type": "object",
-                                        "properties": {
-                                            "type": {
-                                                "type": "string"
-                                            },
-                                            "user_id": {
-                                                "type": "string"
-                                            },
-                                            "text": {
-                                                "type": "string"
-                                            },
-                                            "name": {
-                                                "type": "string"
-                                            },
-                                            "unicode": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "required": [
-                                            "type"
-                                        ]
-                                    }
-                                }
-                            },
-                            "required": [
-                                "type"
-                            ]
-                        }
-                    }
-                },
-                "required": [
-                    "type",
-                    "block_id"
-                ]
-            }
-        },
-        "text": {
-            "type": "string"
-        },
-        "permalink": {
-            "type": "string"
-        },
-        "no_reactions": {
-            "type": "boolean"
-        }
+    "name": "search.json",
+    "path": "packages/nodes-base/nodes/Slack/__schema__/v2.3.0/message/search.json",
+    "sha": "399acb33a74d535b8b94dba4cdeeb2259844fef3",
+    "size": 4535,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/message/search.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/message/search.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/399acb33a74d535b8b94dba4cdeeb2259844fef3",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/message/search.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpaWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJ0ZWFtIjogewogICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAic2NvcmUiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAg\nICAiY2hhbm5lbCI6IHsKICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwK\nICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAi\naWQiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJpc19jaGFubmVs\nIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImlzX2dyb3VwIjog\newogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAg\nICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImlzX2ltIjogewogICAg\nICAgICAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgICAg\nICAgICB9LAogICAgICAgICAgICAgICAgImlzX21waW0iOiB7CiAgICAgICAg\nICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICAgICAgICAg\nIH0sCiAgICAgICAgICAgICAgICAiaXNfc2hhcmVkIjogewogICAgICAgICAg\nICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgICAgICAgICB9\nLAogICAgICAgICAgICAgICAgImlzX29yZ19zaGFyZWQiOiB7CiAgICAgICAg\nICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICAgICAgICAg\nIH0sCiAgICAgICAgICAgICAgICAiaXNfZXh0X3NoYXJlZCI6IHsKICAgICAg\nICAgICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgICAgICAg\nICAgfSwKICAgICAgICAgICAgICAgICJpc19wcml2YXRlIjogewogICAgICAg\nICAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgICAgICAg\nICB9LAogICAgICAgICAgICAgICAgIm5hbWUiOiB7CiAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgICAgICJpc19wZW5kaW5nX2V4dF9zaGFyZWQiOiB7CiAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICAgICAg\nICAgIH0KICAgICAgICAgICAgfSwKICAgICAgICAgICAgInJlcXVpcmVkIjog\nWwogICAgICAgICAgICAgICAgImlkIiwKICAgICAgICAgICAgICAgICJpc19j\naGFubmVsIiwKICAgICAgICAgICAgICAgICJpc19ncm91cCIsCiAgICAgICAg\nICAgICAgICAiaXNfaW0iLAogICAgICAgICAgICAgICAgImlzX21waW0iLAog\nICAgICAgICAgICAgICAgImlzX3NoYXJlZCIsCiAgICAgICAgICAgICAgICAi\naXNfb3JnX3NoYXJlZCIsCiAgICAgICAgICAgICAgICAiaXNfZXh0X3NoYXJl\nZCIsCiAgICAgICAgICAgICAgICAiaXNfcHJpdmF0ZSIsCiAgICAgICAgICAg\nICAgICAibmFtZSIKICAgICAgICAgICAgXQogICAgICAgIH0sCiAgICAgICAg\nInR5cGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICB9LAogICAgICAgICJ1c2VybmFtZSI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInRzIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiYmxv\nY2tzIjogewogICAgICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAg\nICAgICJpdGVtcyI6IHsKICAgICAgICAgICAgICAgICJ0eXBlIjogIm9iamVj\ndCIsCiAgICAgICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAg\nICAgICAgICAgICAidHlwZSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAgIH0sCiAgICAg\nICAgICAgICAgICAgICAgImJsb2NrX2lkIjogewogICAgICAgICAgICAgICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAg\nfSwKICAgICAgICAgICAgICAgICAgICAiZWxlbWVudHMiOiB7CiAgICAgICAg\nICAgICAgICAgICAgICAgICJ0eXBlIjogImFycmF5IiwKICAgICAgICAgICAg\nICAgICAgICAgICAgIml0ZW1zIjogewogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICJ0eXBlIjogewogICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAiZWxlbWVudHMiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICJ0eXBlIjogImFycmF5IiwKICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgIml0ZW1zIjogewogICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJwcm9wZXJ0\naWVzIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidXNlcl9p\nZCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgInRleHQiOiB7CiAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICJuYW1lIjogewogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwK\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAi\ndW5pY29kZSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUi\nCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBdCiAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICAgICAg\nICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAgICAgInJlcXVp\ncmVkIjogWwogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBl\nIgogICAgICAgICAgICAgICAgICAgICAgICAgICAgXQogICAgICAgICAgICAg\nICAgICAgICAgICB9CiAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAg\nICAgICAgfSwKICAgICAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAg\nICAgICAgICAgICAgICAidHlwZSIsCiAgICAgICAgICAgICAgICAgICAgImJs\nb2NrX2lkIgogICAgICAgICAgICAgICAgXQogICAgICAgICAgICB9CiAgICAg\nICAgfSwKICAgICAgICAidGV4dCI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInBlcm1hbGluayI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAg\nIm5vX3JlYWN0aW9ucyI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVh\nbiIKICAgICAgICB9CiAgICB9LAogICAgInJlcXVpcmVkIjogWwogICAgICAg\nICJpaWQiLAogICAgICAgICJ0ZWFtIiwKICAgICAgICAic2NvcmUiLAogICAg\nICAgICJjaGFubmVsIiwKICAgICAgICAidHlwZSIsCiAgICAgICAgInVzZXIi\nLAogICAgICAgICJ1c2VybmFtZSIsCiAgICAgICAgInRzIiwKICAgICAgICAi\ndGV4dCIsCiAgICAgICAgInBlcm1hbGluayIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/message/search.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/399acb33a74d535b8b94dba4cdeeb2259844fef3",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/message/search.json"
     },
-    "required": [
-        "iid",
-        "team",
-        "score",
-        "channel",
-        "type",
-        "user",
-        "username",
-        "ts",
-        "text",
-        "permalink"
-    ]
+    "version": 1
 }
