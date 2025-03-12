@@ -127,8 +127,7 @@
                     "required": [
                         "default",
                         "medium",
-                        "high",
-                        "standard"
+                        "high"
                     ]
                 },
                 "channelTitle": {
@@ -156,8 +155,7 @@
                 "title",
                 "description",
                 "thumbnails",
-                "channelTitle",
-                "localized"
+                "channelTitle"
             ]
         },
         "status": {
@@ -177,10 +175,7 @@
                 "itemCount": {
                     "type": "integer"
                 }
-            },
-            "required": [
-                "itemCount"
-            ]
+            }
         },
         "player": {
             "type": "object",
@@ -198,5 +193,6 @@
         "kind",
         "etag",
         "id"
-    ]
+    ],
+    "version": 1
 }
