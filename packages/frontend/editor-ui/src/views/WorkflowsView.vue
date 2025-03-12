@@ -875,7 +875,6 @@ const createFolder = async (parent: { id: string; name: string; type: 'project' 
 			confirmButtonText: i18n.baseText('generic.create'),
 			cancelButtonText: i18n.baseText('generic.cancel'),
 			inputErrorMessage: i18n.baseText('folders.invalidName.message'),
-			inputValue: '',
 			inputPattern: validFolderNameRegex,
 			customClass: 'add-folder-modal',
 		},
