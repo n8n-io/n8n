@@ -1,149 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "url": {
-            "type": "string"
-        },
-        "assets_url": {
-            "type": "string"
-        },
-        "upload_url": {
-            "type": "string"
-        },
-        "html_url": {
-            "type": "string"
-        },
-        "id": {
-            "type": "integer"
-        },
-        "author": {
-            "type": "object",
-            "properties": {
-                "login": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "node_id": {
-                    "type": "string"
-                },
-                "avatar_url": {
-                    "type": "string"
-                },
-                "gravatar_id": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                },
-                "html_url": {
-                    "type": "string"
-                },
-                "followers_url": {
-                    "type": "string"
-                },
-                "following_url": {
-                    "type": "string"
-                },
-                "gists_url": {
-                    "type": "string"
-                },
-                "starred_url": {
-                    "type": "string"
-                },
-                "subscriptions_url": {
-                    "type": "string"
-                },
-                "organizations_url": {
-                    "type": "string"
-                },
-                "repos_url": {
-                    "type": "string"
-                },
-                "events_url": {
-                    "type": "string"
-                },
-                "received_events_url": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "user_view_type": {
-                    "type": "string"
-                },
-                "site_admin": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "login",
-                "id",
-                "node_id",
-                "avatar_url",
-                "gravatar_id",
-                "url",
-                "html_url",
-                "followers_url",
-                "following_url",
-                "gists_url",
-                "starred_url",
-                "subscriptions_url",
-                "organizations_url",
-                "repos_url",
-                "events_url",
-                "received_events_url",
-                "type",
-                "site_admin"
-            ]
-        },
-        "node_id": {
-            "type": "string"
-        },
-        "tag_name": {
-            "type": "string"
-        },
-        "target_commitish": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "draft": {
-            "type": "boolean"
-        },
-        "prerelease": {
-            "type": "boolean"
-        },
-        "created_at": {
-            "type": "string"
-        },
-        "body": {
-            "type": "string"
-        },
-        "mentions_count": {
-            "type": "integer"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Github/__schema__/v1.0.0/release/getAll.json",
+    "sha": "b16ddd09c37208837c6ca272a756a583471a8bb1",
+    "size": 3661,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Github/__schema__/v1.0.0/release/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Github/__schema__/v1.0.0/release/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/b16ddd09c37208837c6ca272a756a583471a8bb1",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Github/__schema__/v1.0.0/release/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJ1cmwiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJhc3NldHNfdXJsIjogewogICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAidXBsb2Fk\nX3VybCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nIH0sCiAgICAgICAgImh0bWxfdXJsIjogewogICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiaWQiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAgICAiYXV0\naG9yIjogewogICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAg\nICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICJsb2dpbiI6\nIHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImlkIjogewogICAgICAg\nICAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgICAgICAg\nICB9LAogICAgICAgICAgICAgICAgIm5vZGVfaWQiOiB7CiAgICAgICAgICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwK\nICAgICAgICAgICAgICAgICJhdmF0YXJfdXJsIjogewogICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAg\nICAgICAgICAgICAgICAiZ3JhdmF0YXJfaWQiOiB7CiAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgICAgICJ1cmwiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nICAgICJodG1sX3VybCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAg\nImZvbGxvd2Vyc191cmwiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAg\nICJmb2xsb3dpbmdfdXJsIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAg\nICAiZ2lzdHNfdXJsIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAi\nc3RhcnJlZF91cmwiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJz\ndWJzY3JpcHRpb25zX3VybCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAg\nICAgIm9yZ2FuaXphdGlvbnNfdXJsIjogewogICAgICAgICAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAg\nICAgICAgICAicmVwb3NfdXJsIjogewogICAgICAgICAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAg\nICAgICAiZXZlbnRzX3VybCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAg\nICAgInJlY2VpdmVkX2V2ZW50c191cmwiOiB7CiAgICAgICAgICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAg\nICAgICAgICAgICJ0eXBlIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAg\nICAidXNlcl92aWV3X3R5cGUiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nICAgICJzaXRlX2FkbWluIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogImJvb2xlYW4iCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0s\nCiAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICJs\nb2dpbiIsCiAgICAgICAgICAgICAgICAiaWQiLAogICAgICAgICAgICAgICAg\nIm5vZGVfaWQiLAogICAgICAgICAgICAgICAgImF2YXRhcl91cmwiLAogICAg\nICAgICAgICAgICAgImdyYXZhdGFyX2lkIiwKICAgICAgICAgICAgICAgICJ1\ncmwiLAogICAgICAgICAgICAgICAgImh0bWxfdXJsIiwKICAgICAgICAgICAg\nICAgICJmb2xsb3dlcnNfdXJsIiwKICAgICAgICAgICAgICAgICJmb2xsb3dp\nbmdfdXJsIiwKICAgICAgICAgICAgICAgICJnaXN0c191cmwiLAogICAgICAg\nICAgICAgICAgInN0YXJyZWRfdXJsIiwKICAgICAgICAgICAgICAgICJzdWJz\nY3JpcHRpb25zX3VybCIsCiAgICAgICAgICAgICAgICAib3JnYW5pemF0aW9u\nc191cmwiLAogICAgICAgICAgICAgICAgInJlcG9zX3VybCIsCiAgICAgICAg\nICAgICAgICAiZXZlbnRzX3VybCIsCiAgICAgICAgICAgICAgICAicmVjZWl2\nZWRfZXZlbnRzX3VybCIsCiAgICAgICAgICAgICAgICAidHlwZSIsCiAgICAg\nICAgICAgICAgICAic2l0ZV9hZG1pbiIKICAgICAgICAgICAgXQogICAgICAg\nIH0sCiAgICAgICAgIm5vZGVfaWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJ0YWdfbmFtZSI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAg\nInRhcmdldF9jb21taXRpc2giOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJuYW1lIjogewogICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiZHJhZnQi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwK\nICAgICAgICAicHJlcmVsZWFzZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nYm9vbGVhbiIKICAgICAgICB9LAogICAgICAgICJjcmVhdGVkX2F0Ijogewog\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAg\nICAiYm9keSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgIH0sCiAgICAgICAgIm1lbnRpb25zX2NvdW50IjogewogICAgICAgICAg\nICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0KICAgIH0sCiAgICAicmVx\ndWlyZWQiOiBbCiAgICAgICAgInVybCIsCiAgICAgICAgImFzc2V0c191cmwi\nLAogICAgICAgICJ1cGxvYWRfdXJsIiwKICAgICAgICAiaHRtbF91cmwiLAog\nICAgICAgICJpZCIsCiAgICAgICAgImF1dGhvciIsCiAgICAgICAgIm5vZGVf\naWQiLAogICAgICAgICJ0YWdfbmFtZSIsCiAgICAgICAgInRhcmdldF9jb21t\naXRpc2giLAogICAgICAgICJuYW1lIiwKICAgICAgICAiZHJhZnQiLAogICAg\nICAgICJwcmVyZWxlYXNlIiwKICAgICAgICAiY3JlYXRlZF9hdCIsCiAgICAg\nICAgInB1Ymxpc2hlZF9hdCIsCiAgICAgICAgImFzc2V0cyIsCiAgICAgICAg\nInRhcmJhbGxfdXJsIiwKICAgICAgICAiemlwYmFsbF91cmwiLAogICAgICAg\nICJib2R5IgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Github/__schema__/v1.0.0/release/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/b16ddd09c37208837c6ca272a756a583471a8bb1",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Github/__schema__/v1.0.0/release/getAll.json"
     },
-    "required": [
-        "url",
-        "assets_url",
-        "upload_url",
-        "html_url",
-        "id",
-        "author",
-        "node_id",
-        "tag_name",
-        "target_commitish",
-        "name",
-        "draft",
-        "prerelease",
-        "created_at",
-        "published_at",
-        "assets",
-        "tarball_url",
-        "zipball_url",
-        "body"
-    ]
+    "version": 1
 }
