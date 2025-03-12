@@ -22,7 +22,7 @@
         "properties": {
             "type": "object",
             "properties": {
-                "lastmodifieddate": {
+                "firstname": {
                     "type": "object",
                     "properties": {
                         "value": {
@@ -33,7 +33,7 @@
                         "value"
                     ]
                 },
-                "firstname": {
+                "lastmodifieddate": {
                     "type": "object",
                     "properties": {
                         "value": {
@@ -190,15 +190,6 @@
                             "source-label": {
                                 "type": "null"
                             },
-                            "source-vids": {
-                                "type": "array",
-                                "items": {
-                                    "type": "integer"
-                                }
-                            },
-                            "updated-by-user-id": {
-                                "type": "null"
-                            },
                             "timestamp": {
                                 "type": "integer"
                             },
@@ -233,13 +224,7 @@
                             "source-type": {
                                 "type": "string"
                             },
-                            "source-id": {
-                                "type": "string"
-                            },
                             "source-label": {
-                                "type": "null"
-                            },
-                            "updated-by-user-id": {
                                 "type": "null"
                             },
                             "timestamp": {
@@ -283,9 +268,8 @@
                     "vid-to-merge",
                     "timestamp",
                     "entity-id",
-                    "user-id",
                     "num-properties-moved",
-                    "first-name"
+                    "is-reverted"
                 ]
             }
         },
@@ -300,9 +284,9 @@
         "portal-id",
         "is-contact",
         "properties",
-        "form-submissions",
         "identity-profiles",
         "merge-audits",
         "addedAt"
-    ]
+    ],
+    "version": 1
 }
