@@ -1,46 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "uuid": {
-            "type": "string"
-        },
-        "id": {
-            "type": "integer"
-        },
-        "host_id": {
-            "type": "string"
-        },
-        "topic": {
-            "type": "string"
-        },
-        "type": {
-            "type": "integer"
-        },
-        "start_time": {
-            "type": "string"
-        },
-        "duration": {
-            "type": "integer"
-        },
-        "timezone": {
-            "type": "string"
-        },
-        "created_at": {
-            "type": "string"
-        },
-        "join_url": {
-            "type": "string"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Zoom/__schema__/v1.0.0/meeting/getAll.json",
+    "sha": "5dd22a0e76f4b5c66bc01d36132b4fa6d16f708d",
+    "size": 848,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Zoom/__schema__/v1.0.0/meeting/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Zoom/__schema__/v1.0.0/meeting/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5dd22a0e76f4b5c66bc01d36132b4fa6d16f708d",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Zoom/__schema__/v1.0.0/meeting/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJ1dWlkIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAiaWQiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAgICAiaG9zdF9pZCI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAg\nICAgInRvcGljIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgfSwKICAgICAgICAidHlwZSI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJzdGFydF90aW1lIjog\newogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAg\nICAgICAiZHVyYXRpb24iOiB7CiAgICAgICAgICAgICJ0eXBlIjogImludGVn\nZXIiCiAgICAgICAgfSwKICAgICAgICAidGltZXpvbmUiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJjcmVh\ndGVkX2F0IjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgfSwKICAgICAgICAiam9pbl91cmwiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9CiAgICB9LAogICAgInJlcXVpcmVkIjog\nWwogICAgICAgICJ1dWlkIiwKICAgICAgICAiaWQiLAogICAgICAgICJob3N0\nX2lkIiwKICAgICAgICAidG9waWMiLAogICAgICAgICJ0eXBlIiwKICAgICAg\nICAiZHVyYXRpb24iLAogICAgICAgICJ0aW1lem9uZSIsCiAgICAgICAgImNy\nZWF0ZWRfYXQiLAogICAgICAgICJqb2luX3VybCIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Zoom/__schema__/v1.0.0/meeting/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5dd22a0e76f4b5c66bc01d36132b4fa6d16f708d",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Zoom/__schema__/v1.0.0/meeting/getAll.json"
     },
-    "required": [
-        "uuid",
-        "id",
-        "host_id",
-        "topic",
-        "type",
-        "duration",
-        "timezone",
-        "created_at",
-        "join_url"
-    ]
+    "version": 1
 }
