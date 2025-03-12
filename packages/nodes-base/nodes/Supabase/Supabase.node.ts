@@ -52,7 +52,7 @@ export class Supabase implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Use custom schema',
+				displayName: 'Use Custom Schema',
 				name: 'useCustomSchema',
 				type: 'boolean',
 				default: false,
