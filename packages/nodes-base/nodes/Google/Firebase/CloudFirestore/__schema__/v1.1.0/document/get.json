@@ -1,48 +1,18 @@
 {
     "type": "object",
     "properties": {
-        "readTime": {
+        "_name": {
             "type": "string"
         },
-        "found": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "fields": {
-                    "type": "object",
-                    "properties": {
-                        "nome": {
-                            "type": "object",
-                            "properties": {
-                                "stringValue": {
-                                    "type": "string"
-                                }
-                            },
-                            "required": [
-                                "stringValue"
-                            ]
-                        }
-                    }
-                },
-                "createTime": {
-                    "type": "string"
-                },
-                "updateTime": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "name",
-                "fields",
-                "createTime",
-                "updateTime",
-                "id"
-            ]
+        "_id": {
+            "type": "string"
+        },
+        "_createTime": {
+            "type": "string"
+        },
+        "_updateTime": {
+            "type": "string"
         }
-    }
+    },
+    "version": 1
 }
