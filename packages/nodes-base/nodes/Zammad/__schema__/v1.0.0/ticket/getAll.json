@@ -1,122 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "integer"
-        },
-        "group_id": {
-            "type": "integer"
-        },
-        "priority_id": {
-            "type": "integer"
-        },
-        "state_id": {
-            "type": "integer"
-        },
-        "number": {
-            "type": "string"
-        },
-        "title": {
-            "type": "string"
-        },
-        "owner_id": {
-            "type": "integer"
-        },
-        "customer_id": {
-            "type": "integer"
-        },
-        "note": {
-            "type": "null"
-        },
-        "first_response_escalation_at": {
-            "type": "null"
-        },
-        "first_response_in_min": {
-            "type": "null"
-        },
-        "first_response_diff_in_min": {
-            "type": "null"
-        },
-        "close_escalation_at": {
-            "type": "null"
-        },
-        "update_escalation_at": {
-            "type": "null"
-        },
-        "update_in_min": {
-            "type": "null"
-        },
-        "update_diff_in_min": {
-            "type": "null"
-        },
-        "create_article_type_id": {
-            "type": "integer"
-        },
-        "create_article_sender_id": {
-            "type": "integer"
-        },
-        "article_count": {
-            "type": "integer"
-        },
-        "escalation_at": {
-            "type": "null"
-        },
-        "pending_time": {
-            "type": "null"
-        },
-        "type": {
-            "type": "null"
-        },
-        "updated_by_id": {
-            "type": "integer"
-        },
-        "created_by_id": {
-            "type": "integer"
-        },
-        "created_at": {
-            "type": "string"
-        },
-        "updated_at": {
-            "type": "string"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Zammad/__schema__/v1.0.0/ticket/getAll.json",
+    "sha": "47abb1eeb25c008ef7104b7d59e2b6ed5fa48f50",
+    "size": 2765,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Zammad/__schema__/v1.0.0/ticket/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Zammad/__schema__/v1.0.0/ticket/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/47abb1eeb25c008ef7104b7d59e2b6ed5fa48f50",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Zammad/__schema__/v1.0.0/ticket/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIK\nICAgICAgICB9LAogICAgICAgICJncm91cF9pZCI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJwcmlvcml0\neV9pZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAg\nICB9LAogICAgICAgICJzdGF0ZV9pZCI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJudW1iZXIiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAg\nICJ0aXRsZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgIH0sCiAgICAgICAgIm93bmVyX2lkIjogewogICAgICAgICAgICAidHlw\nZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgImN1c3RvbWVyX2lk\nIjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0s\nCiAgICAgICAgIm5vdGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwi\nCiAgICAgICAgfSwKICAgICAgICAiZmlyc3RfcmVzcG9uc2VfZXNjYWxhdGlv\nbl9hdCI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9\nLAogICAgICAgICJmaXJzdF9yZXNwb25zZV9pbl9taW4iOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAiZmlyc3Rf\ncmVzcG9uc2VfZGlmZl9pbl9taW4iOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nIm51bGwiCiAgICAgICAgfSwKICAgICAgICAiY2xvc2VfZXNjYWxhdGlvbl9h\ndCI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9LAog\nICAgICAgICJ1cGRhdGVfZXNjYWxhdGlvbl9hdCI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAgICAgICJ1cGRhdGVfaW5f\nbWluIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0s\nCiAgICAgICAgInVwZGF0ZV9kaWZmX2luX21pbiI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAgICAgICJjcmVhdGVfYXJ0\naWNsZV90eXBlX2lkIjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2Vy\nIgogICAgICAgIH0sCiAgICAgICAgImNyZWF0ZV9hcnRpY2xlX3NlbmRlcl9p\nZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9\nLAogICAgICAgICJhcnRpY2xlX2NvdW50IjogewogICAgICAgICAgICAidHlw\nZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgImVzY2FsYXRpb25f\nYXQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwK\nICAgICAgICAicGVuZGluZ190aW1lIjogewogICAgICAgICAgICAidHlwZSI6\nICJudWxsIgogICAgICAgIH0sCiAgICAgICAgInR5cGUiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAidXBkYXRl\nZF9ieV9pZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAg\nICAgICB9LAogICAgICAgICJjcmVhdGVkX2J5X2lkIjogewogICAgICAgICAg\nICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgImNyZWF0\nZWRfYXQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICB9LAogICAgICAgICJ1cGRhdGVkX2F0IjogewogICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgfQogICAgfSwKICAgICJyZXF1aXJlZCI6\nIFsKICAgICAgICAiaWQiLAogICAgICAgICJncm91cF9pZCIsCiAgICAgICAg\nInByaW9yaXR5X2lkIiwKICAgICAgICAic3RhdGVfaWQiLAogICAgICAgICJv\ncmdhbml6YXRpb25faWQiLAogICAgICAgICJudW1iZXIiLAogICAgICAgICJ0\naXRsZSIsCiAgICAgICAgIm93bmVyX2lkIiwKICAgICAgICAiY3VzdG9tZXJf\naWQiLAogICAgICAgICJub3RlIiwKICAgICAgICAiZmlyc3RfcmVzcG9uc2Vf\nYXQiLAogICAgICAgICJmaXJzdF9yZXNwb25zZV9lc2NhbGF0aW9uX2F0IiwK\nICAgICAgICAiZmlyc3RfcmVzcG9uc2VfaW5fbWluIiwKICAgICAgICAiZmly\nc3RfcmVzcG9uc2VfZGlmZl9pbl9taW4iLAogICAgICAgICJjbG9zZV9hdCIs\nCiAgICAgICAgImNsb3NlX2VzY2FsYXRpb25fYXQiLAogICAgICAgICJjbG9z\nZV9pbl9taW4iLAogICAgICAgICJjbG9zZV9kaWZmX2luX21pbiIsCiAgICAg\nICAgInVwZGF0ZV9lc2NhbGF0aW9uX2F0IiwKICAgICAgICAidXBkYXRlX2lu\nX21pbiIsCiAgICAgICAgInVwZGF0ZV9kaWZmX2luX21pbiIsCiAgICAgICAg\nImxhc3RfY29udGFjdF9hdCIsCiAgICAgICAgImxhc3RfY29udGFjdF9hZ2Vu\ndF9hdCIsCiAgICAgICAgImxhc3RfY29udGFjdF9jdXN0b21lcl9hdCIsCiAg\nICAgICAgImxhc3Rfb3duZXJfdXBkYXRlX2F0IiwKICAgICAgICAiY3JlYXRl\nX2FydGljbGVfdHlwZV9pZCIsCiAgICAgICAgImNyZWF0ZV9hcnRpY2xlX3Nl\nbmRlcl9pZCIsCiAgICAgICAgImFydGljbGVfY291bnQiLAogICAgICAgICJl\nc2NhbGF0aW9uX2F0IiwKICAgICAgICAicGVuZGluZ190aW1lIiwKICAgICAg\nICAidHlwZSIsCiAgICAgICAgInRpbWVfdW5pdCIsCiAgICAgICAgInByZWZl\ncmVuY2VzIiwKICAgICAgICAidXBkYXRlZF9ieV9pZCIsCiAgICAgICAgImNy\nZWF0ZWRfYnlfaWQiLAogICAgICAgICJjcmVhdGVkX2F0IiwKICAgICAgICAi\ndXBkYXRlZF9hdCIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Zammad/__schema__/v1.0.0/ticket/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/47abb1eeb25c008ef7104b7d59e2b6ed5fa48f50",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Zammad/__schema__/v1.0.0/ticket/getAll.json"
     },
-    "required": [
-        "id",
-        "group_id",
-        "priority_id",
-        "state_id",
-        "organization_id",
-        "number",
-        "title",
-        "owner_id",
-        "customer_id",
-        "note",
-        "first_response_at",
-        "first_response_escalation_at",
-        "first_response_in_min",
-        "first_response_diff_in_min",
-        "close_at",
-        "close_escalation_at",
-        "close_in_min",
-        "close_diff_in_min",
-        "update_escalation_at",
-        "update_in_min",
-        "update_diff_in_min",
-        "last_contact_at",
-        "last_contact_agent_at",
-        "last_contact_customer_at",
-        "last_owner_update_at",
-        "create_article_type_id",
-        "create_article_sender_id",
-        "article_count",
-        "escalation_at",
-        "pending_time",
-        "type",
-        "time_unit",
-        "preferences",
-        "updated_by_id",
-        "created_by_id",
-        "created_at",
-        "updated_at"
-    ]
+    "version": 1
 }
