@@ -194,5 +194,6 @@
         "tags",
         "list_id",
         "_links"
-    ]
+    ],
+    "version": 1
 }
