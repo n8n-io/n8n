@@ -1,130 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "ok": {
-            "type": "boolean"
-        },
-        "result": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "message_id": {
-                        "type": "integer"
-                    },
-                    "from": {
-                        "type": "object",
-                        "properties": {
-                            "id": {
-                                "type": "integer"
-                            },
-                            "is_bot": {
-                                "type": "boolean"
-                            },
-                            "first_name": {
-                                "type": "string"
-                            },
-                            "username": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "id",
-                            "is_bot",
-                            "first_name",
-                            "username"
-                        ]
-                    },
-                    "chat": {
-                        "type": "object",
-                        "properties": {
-                            "id": {
-                                "type": "integer"
-                            },
-                            "type": {
-                                "type": "string"
-                            },
-                            "first_name": {
-                                "type": "string"
-                            },
-                            "username": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "id",
-                            "type"
-                        ]
-                    },
-                    "date": {
-                        "type": "integer"
-                    },
-                    "photo": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "file_id": {
-                                    "type": "string"
-                                },
-                                "file_unique_id": {
-                                    "type": "string"
-                                },
-                                "file_size": {
-                                    "type": "integer"
-                                },
-                                "width": {
-                                    "type": "integer"
-                                },
-                                "height": {
-                                    "type": "integer"
-                                }
-                            },
-                            "required": [
-                                "file_id",
-                                "file_unique_id",
-                                "file_size",
-                                "width",
-                                "height"
-                            ]
-                        }
-                    },
-                    "caption": {
-                        "type": "string"
-                    },
-                    "caption_entities": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "offset": {
-                                    "type": "integer"
-                                },
-                                "length": {
-                                    "type": "integer"
-                                },
-                                "type": {
-                                    "type": "string"
-                                }
-                            },
-                            "required": [
-                                "offset",
-                                "length",
-                                "type"
-                            ]
-                        }
-                    }
-                },
-                "required": [
-                    "message_id",
-                    "chat",
-                    "date"
-                ]
-            }
-        }
+    "name": "sendMediaGroup.json",
+    "path": "packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/message/sendMediaGroup.json",
+    "sha": "4201ad646e4a639e045564e527b7f6120d1076f3",
+    "size": 4532,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/message/sendMediaGroup.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/message/sendMediaGroup.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/4201ad646e4a639e045564e527b7f6120d1076f3",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/message/sendMediaGroup.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJvayI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIK\nICAgICAgICB9LAogICAgICAgICJyZXN1bHQiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogImFycmF5IiwKICAgICAgICAgICAgIml0ZW1zIjogewogICAgICAg\nICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgICAgICJw\ncm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgICAgICJtZXNzYWdlX2lk\nIjogewogICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2Vy\nIgogICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAg\nImZyb20iOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogIm9i\namVjdCIsCiAgICAgICAgICAgICAgICAgICAgICAgICJwcm9wZXJ0aWVzIjog\newogICAgICAgICAgICAgICAgICAgICAgICAgICAgImlkIjogewogICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAg\nICAgICAgICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAg\nICAgICAgICAgICAgImlzX2JvdCI6IHsKICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgICAgICAgICAg\nICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJm\naXJzdF9uYW1lIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAgICAgICAg\nIH0sCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAidXNlcm5hbWUiOiB7\nCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgICAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAicmVx\ndWlyZWQiOiBbCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAiaWQiLAog\nICAgICAgICAgICAgICAgICAgICAgICAgICAgImlzX2JvdCIsCiAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAiZmlyc3RfbmFtZSIsCiAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAidXNlcm5hbWUiCiAgICAgICAgICAgICAgICAg\nICAgICAgIF0KICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAg\nICAgICAgICJjaGF0IjogewogICAgICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAgICAgICAgICAicHJvcGVy\ndGllcyI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJpZCI6IHsK\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJpbnRl\nZ2VyIgogICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICJ0eXBlIjogewogICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAg\nICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAiZmlyc3RfbmFtZSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgICAg\nICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAgICAgInVzZXJuYW1l\nIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0KICAgICAg\nICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAgICAg\nInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgICAgICAgICAgICAgImlk\nIiwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIgogICAgICAg\nICAgICAgICAgICAgICAgICBdCiAgICAgICAgICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgICAgICAgICAiZGF0ZSI6IHsKICAgICAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICAgICAgICAgICAgICB9\nLAogICAgICAgICAgICAgICAgICAgICJwaG90byI6IHsKICAgICAgICAgICAg\nICAgICAgICAgICAgInR5cGUiOiAiYXJyYXkiLAogICAgICAgICAgICAgICAg\nICAgICAgICAiaXRlbXMiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAgICAgICAgICAg\nICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgImZpbGVfaWQiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICJmaWxlX3VuaXF1ZV9pZCI6IHsKICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgImZpbGVfc2l6ZSI6IHsKICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICJ3aWR0aCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICJoZWlnaHQiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgICAgICAgICAgICAg\nfSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJyZXF1aXJlZCI6IFsK\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAiZmlsZV9pZCIsCiAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgImZpbGVfdW5pcXVlX2lk\nIiwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAiZmlsZV9zaXpl\nIiwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAid2lkdGgiLAog\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJoZWlnaHQiCiAgICAg\nICAgICAgICAgICAgICAgICAgICAgICBdCiAgICAgICAgICAgICAgICAgICAg\nICAgIH0KICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAg\nICAgICJjYXB0aW9uIjogewogICAgICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAg\nICAgICAgICAgICAiY2FwdGlvbl9lbnRpdGllcyI6IHsKICAgICAgICAgICAg\nICAgICAgICAgICAgInR5cGUiOiAiYXJyYXkiLAogICAgICAgICAgICAgICAg\nICAgICAgICAiaXRlbXMiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAgICAgICAgICAg\nICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgIm9mZnNldCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICJsZW5ndGgiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAidHlwZSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgIH0KICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgIm9mZnNldCIsCiAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgImxlbmd0aCIsCiAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgInR5cGUiCiAgICAgICAgICAgICAgICAgICAg\nICAgICAgICBdCiAgICAgICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAg\nICAgICAgICAgICB9CiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAg\nICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgICAgICJtZXNzYWdl\nX2lkIiwKICAgICAgICAgICAgICAgICAgICAiY2hhdCIsCiAgICAgICAgICAg\nICAgICAgICAgImRhdGUiCiAgICAgICAgICAgICAgICBdCiAgICAgICAgICAg\nIH0KICAgICAgICB9CiAgICB9LAogICAgInJlcXVpcmVkIjogWwogICAgICAg\nICJvayIsCiAgICAgICAgInJlc3VsdCIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/message/sendMediaGroup.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/4201ad646e4a639e045564e527b7f6120d1076f3",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/message/sendMediaGroup.json"
     },
-    "required": [
-        "ok",
-        "result"
-    ]
+    "version": 1
 }
