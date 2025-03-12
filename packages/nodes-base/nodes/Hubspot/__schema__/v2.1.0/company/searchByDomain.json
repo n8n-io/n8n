@@ -51,11 +51,14 @@
                                             "type": "integer"
                                         }
                                     },
+                                    "useTimestampAsPersistenceTimestamp": {
+                                        "type": "boolean"
+                                    },
                                     "requestId": {
                                         "type": "string"
                                     },
-                                    "useTimestampAsPersistenceTimestamp": {
-                                        "type": "boolean"
+                                    "updatedByUserId": {
+                                        "type": "integer"
                                     }
                                 },
                                 "required": [
@@ -77,7 +80,10 @@
                         "versions"
                     ]
                 }
-            }
+            },
+            "required": [
+                "domain"
+            ]
         },
         "additionalDomains": {
             "type": "array",
@@ -105,5 +111,6 @@
                 ]
             }
         }
-    }
+    },
+    "version": 1
 }
