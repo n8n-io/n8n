@@ -119,8 +119,7 @@
                         }
                     },
                     "required": [
-                        "name",
-                        "address"
+                        "name"
                     ]
                 }
             },
@@ -129,31 +128,6 @@
             ]
         },
         "toRecipients": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "emailAddress": {
-                        "type": "object",
-                        "properties": {
-                            "name": {
-                                "type": "string"
-                            },
-                            "address": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "name"
-                        ]
-                    }
-                },
-                "required": [
-                    "emailAddress"
-                ]
-            }
-        },
-        "ccRecipients": {
             "type": "array",
             "items": {
                 "type": "object",
@@ -179,7 +153,7 @@
                 ]
             }
         },
-        "bccRecipients": {
+        "ccRecipients": {
             "type": "array",
             "items": {
                 "type": "object",
@@ -243,37 +217,5 @@
             ]
         }
     },
-    "required": [
-        "@odata.context",
-        "@odata.etag",
-        "id",
-        "createdDateTime",
-        "lastModifiedDateTime",
-        "changeKey",
-        "categories",
-        "receivedDateTime",
-        "sentDateTime",
-        "hasAttachments",
-        "internetMessageId",
-        "subject",
-        "bodyPreview",
-        "importance",
-        "parentFolderId",
-        "conversationId",
-        "conversationIndex",
-        "isDeliveryReceiptRequested",
-        "isReadReceiptRequested",
-        "isRead",
-        "isDraft",
-        "webLink",
-        "inferenceClassification",
-        "body",
-        "sender",
-        "from",
-        "toRecipients",
-        "ccRecipients",
-        "bccRecipients",
-        "replyTo",
-        "flag"
-    ]
+    "version": 1
 }
