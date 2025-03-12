@@ -1,9 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "CreationTime": {
-            "type": "number"
-        },
         "IdentifyLanguage": {
             "type": "boolean"
         },
@@ -18,11 +15,15 @@
                 "MediaFileUri"
             ]
         },
+        "StartTime": {
+            "type": "number"
+        },
         "TranscriptionJobName": {
             "type": "string"
         },
         "TranscriptionJobStatus": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
