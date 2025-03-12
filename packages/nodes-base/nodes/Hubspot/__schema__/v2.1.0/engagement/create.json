@@ -99,10 +99,14 @@
         "metadata": {
             "type": "object",
             "properties": {
+                "subject": {
+                    "type": "string"
+                },
                 "status": {
                     "type": "string"
                 }
             }
         }
-    }
+    },
+    "version": 1
 }
