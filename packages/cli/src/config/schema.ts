@@ -126,6 +126,12 @@ export const schema = {
 		default: true,
 		env: 'N8N_SECURE_COOKIE',
 	},
+	samesite_cookie: {
+		doc: 'This sets the `SameSite` flag on n8n auth cookie',
+		format: ['strict', 'lax', 'none'],
+		default: 'lax',
+		env: 'N8N_SAMESITE_COOKIE',
+	},
 	ssl_key: {
 		format: String,
 		default: '',
