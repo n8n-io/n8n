@@ -92,6 +92,27 @@
         },
         "status": {
             "type": "string"
+        },
+        "description": {
+            "type": "string"
         }
-    }
+    },
+    "required": [
+        "id",
+        "start",
+        "end",
+        "creator",
+        "organizer",
+        "created",
+        "updated",
+        "etag",
+        "eventType",
+        "htmlLink",
+        "iCalUID",
+        "kind",
+        "reminders",
+        "sequence",
+        "status"
+    ],
+    "version": 1
 }
