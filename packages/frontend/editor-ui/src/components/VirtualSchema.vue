@@ -277,10 +277,6 @@ const onDragEnd = (el: HTMLElement) => {
 					</template>
 				</i18n-t>
 			</N8nText>
-
-			<N8nText v-if="paneType === 'output'">
-				{{ i18n.baseText('ndv.search.noMatchSchema.description') }}
-			</N8nText>
 		</div>
 
 		<Draggable
