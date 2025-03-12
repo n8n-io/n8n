@@ -29,7 +29,7 @@ export const filterSchema = z
 		parentFolderId: z.string().optional(),
 		name: z.string().optional(),
 		tags: z.array(z.string()).optional(),
-		includeFolderIdAndDescendants: z.string().optional(),
+		excludeFolderIdAndDescendants: z.string().optional(),
 	})
 	.strict();
 

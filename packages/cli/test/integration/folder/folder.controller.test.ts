@@ -1014,7 +1014,7 @@ describe('GET /projects/:projectId/folders', () => {
 		expect(response.body.data[0].name).toBe('Folder 3');
 	});
 
-	test('should filter folders by includeFolderIdAndDescendants', async () => {
+	test('should filter folders by excludeFolderIdAndDescendants', async () => {
 		const folder1 = await createFolder(ownerProject, { name: 'folder level 1' });
 		await createFolder(ownerProject, {
 			name: 'folder level 1.1',
@@ -1039,7 +1039,7 @@ describe('GET /projects/:projectId/folders', () => {
 
 		const response = await authOwnerAgent
 			.get(`/projects/${ownerProject.id}/folders`)
-			.query({ filter: `{ "includeFolderIdAndDescendants": "${folder122.id}" }` });
+			.query({ filter: `{ "excludeFolderIdAndDescendants": "${folder122.id}" }` });
 
 		expect(response.body.data.length).toBe(4);
 		expect(response.body.data.map((f: any) => f.name).sort()).toEqual(
