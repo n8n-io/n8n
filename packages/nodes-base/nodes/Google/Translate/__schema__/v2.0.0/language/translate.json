@@ -1,15 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "translatedText": {
-            "type": "string"
-        },
-        "detectedSourceLanguage": {
-            "type": "string"
-        }
+    "name": "translate.json",
+    "path": "packages/nodes-base/nodes/Google/Translate/__schema__/v2.0.0/language/translate.json",
+    "sha": "e5a1bdb3b82d3ed0bdee1427e88935c5a6d2fc5f",
+    "size": 279,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Translate/__schema__/v2.0.0/language/translate.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Translate/__schema__/v2.0.0/language/translate.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/e5a1bdb3b82d3ed0bdee1427e88935c5a6d2fc5f",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/Translate/__schema__/v2.0.0/language/translate.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJ0cmFuc2xhdGVkVGV4dCI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImRldGVjdGVkU291cmNl\nTGFuZ3VhZ2UiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICB9CiAgICB9LAogICAgInJlcXVpcmVkIjogWwogICAgICAgICJ0cmFu\nc2xhdGVkVGV4dCIsCiAgICAgICAgImRldGVjdGVkU291cmNlTGFuZ3VhZ2Ui\nCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Translate/__schema__/v2.0.0/language/translate.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/e5a1bdb3b82d3ed0bdee1427e88935c5a6d2fc5f",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Translate/__schema__/v2.0.0/language/translate.json"
     },
-    "required": [
-        "translatedText",
-        "detectedSourceLanguage"
-    ]
+    "version": 1
 }
