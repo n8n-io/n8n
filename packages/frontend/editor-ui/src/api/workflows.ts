@@ -1,5 +1,6 @@
 import type {
 	FolderCreateResponse,
+	FolderListItem,
 	FolderTreeResponseItem,
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
@@ -109,4 +110,33 @@ export async function getFolderPath(
 		'GET',
 		`/projects/${projectId}/folders/${folderId}/tree`,
 	);
+}
+
+export async function deleteFolder(
+	context: IRestApiContext,
+	projectId: string,
+	folderId: string,
+	transferToFolderId?: string,
+): Promise<void> {
+	return await makeRestApiRequest(context, 'DELETE', `/projects/${projectId}/folders/${folderId}`, {
+		transferToFolderId,
+	});
+}
+
+export async function renameFolder(
+	context: IRestApiContext,
+	projectId: string,
+	folderId: string,
+	name: string,
+): Promise<void> {
+	return await makeRestApiRequest(context, 'PATCH', `/projects/${projectId}/folders/${folderId}`, {
+		name,
+	});
+}
+
+export async function getProjectFolders(
+	context: IRestApiContext,
+	projectId: string,
+): Promise<FolderListItem[]> {
+	return await makeRestApiRequest(context, 'GET', `/projects/${projectId}/folders`);
 }
