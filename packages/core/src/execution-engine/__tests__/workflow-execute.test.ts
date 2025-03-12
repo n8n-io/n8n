@@ -11,6 +11,7 @@ process.env.N8N_RUNNERS_ENABLED = 'false';
 // 1  means the output has run data
 // ►► denotes the node that the user wants to execute to
 // XX denotes that the node is disabled
+// DR denotes that the node is dirty
 // PD denotes that the node has pinned data
 
 import { mock } from 'jest-mock-extended';
@@ -295,6 +296,72 @@ describe('WorkflowExecute', () => {
 			expect(fullRunData.data.resultData.runData).not.toHaveProperty(node1.name);
 		});
 
+		//
+		// ┌───────┐1  ┌────┐1
+		// │trigger├───►set1├─┐ ┌─────┐    ►►
+		// └───────┘   └────┘ └─►     │1  ┌───────────┐
+		//              DR      │merge├───►destination│
+		//             ┌────┐1┌─►     │   └───────────┘
+		//             │set2├─┘ └─────┘
+		//             └────┘
+		test('deletes run data of children of dirty nodes as well', async () => {
+			// ARRANGE
+			const waitPromise = createDeferredPromise<IRun>();
+			const nodeExecutionOrder: string[] = [];
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+			jest.spyOn(workflowExecute, 'processRunExecutionData').mockImplementationOnce(jest.fn());
+
+			const recreateNodeExecutionStackSpy = jest.spyOn(
+				partialExecutionUtils,
+				'recreateNodeExecutionStack',
+			);
+
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const set1 = createNodeData({ name: 'set1' });
+			const set2 = createNodeData({ name: 'set2' });
+			const merge = createNodeData({ name: 'merge' });
+			const destination = createNodeData({ name: 'destination' });
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, set1, set2, merge, destination)
+				.addConnections(
+					{ from: trigger, to: set1 },
+					{ from: trigger, to: set2 },
+					{ from: set1, to: merge, inputIndex: 0 },
+					{ from: set2, to: merge, inputIndex: 1 },
+					{ from: merge, to: destination },
+				)
+				.toWorkflow({ name: '', active: false, nodeTypes });
+			const pinData: IPinData = {};
+			const runData: IRunData = {
+				[trigger.name]: [toITaskData([{ data: { node: 'trigger' } }])],
+				[set1.name]: [toITaskData([{ data: { node: 'set1' } }])],
+				[set2.name]: [toITaskData([{ data: { node: 'set2' } }])],
+				[merge.name]: [toITaskData([{ data: { node: 'merge' } }])],
+				[destination.name]: [toITaskData([{ data: { node: 'destination' } }])],
+			};
+			const dirtyNodeNames = [set2.name];
+			const destinationNode = destination.name;
+
+			// ACT
+			await workflowExecute.runPartialWorkflow2(
+				workflow,
+				runData,
+				pinData,
+				dirtyNodeNames,
+				destinationNode,
+			);
+
+			// ASSERT
+			expect(recreateNodeExecutionStackSpy).toHaveBeenCalledTimes(1);
+			expect(recreateNodeExecutionStackSpy).toHaveBeenCalledWith(
+				expect.any(DirectedGraph),
+				new Set([merge, set2]),
+				pick(runData, [trigger.name, set1.name]),
+				pinData,
+			);
+		});
+
 		//                 XX           ►►
 		// ┌───────┐1     ┌─────┐1     ┌─────┐
 		// │trigger├──────►node1├──────►node2│
@@ -452,10 +519,23 @@ describe('WorkflowExecute', () => {
 			);
 
 			// ASSERT
+			const subgraph = new DirectedGraph()
+				.addNodes(trigger, node1)
+				.addConnections({ from: trigger, to: node1 });
+			expect(cleanRunDataSpy).toHaveBeenCalledTimes(2);
 			expect(cleanRunDataSpy).toHaveBeenNthCalledWith(
 				1,
 				runData,
-				new DirectedGraph().addNodes(trigger, node1).addConnections({ from: trigger, to: node1 }),
+				subgraph,
+				// first call with the dirty nodes, which are an empty set in this case
+				new Set(),
+			);
+			expect(cleanRunDataSpy).toHaveBeenNthCalledWith(
+				2,
+				pick(runData, [trigger.name, node1.name]),
+				subgraph,
+				// second call with start nodes, which is the destination node in this
+				// case
 				new Set([node1]),
 			);
 		});

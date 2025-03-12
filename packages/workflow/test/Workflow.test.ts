@@ -344,6 +344,10 @@ describe('Workflow', () => {
 		active: false,
 	});
 
+	beforeEach(() => {
+		jest.restoreAllMocks();
+	});
+
 	describe('renameNodeInParameterValue', () => {
 		describe('for expressions', () => {
 			const tests = [
@@ -2337,6 +2341,67 @@ describe('Workflow', () => {
 			});
 
 			expect(workflow.getStartNode()).toBeUndefined();
+		});
+	});
+
+	describe('getNode', () => {
+		test('should return the node with the given name if it exists', () => {
+			const workflow = SIMPLE_WORKFLOW;
+			const node = workflow.getNode('Start');
+			expect(node).not.toBeNull();
+			expect(node?.name).toBe('Start');
+			expect(node?.type).toBe('test.set');
+			expect(node?.id).toBe('uuid-1');
+		});
+
+		test('should return null if the node does not exist', () => {
+			const nonExistentNode = SIMPLE_WORKFLOW.getNode('NonExistentNode');
+			expect(nonExistentNode).toBeNull();
+		});
+	});
+
+	describe('getNodes', () => {
+		test('should return all requested nodes that exist', () => {
+			const nodes = SIMPLE_WORKFLOW.getNodes(['Start', 'Set', 'Set1']);
+			expect(nodes).toHaveLength(3);
+			expect(nodes[0].name).toBe('Start');
+			expect(nodes[1].name).toBe('Set');
+			expect(nodes[2].name).toBe('Set1');
+		});
+
+		test('should return nodes in the order they were requested', () => {
+			const nodes = SIMPLE_WORKFLOW.getNodes(['Set1', 'Start', 'Set']);
+			expect(nodes).toHaveLength(3);
+			expect(nodes[0].name).toBe('Set1');
+			expect(nodes[1].name).toBe('Start');
+			expect(nodes[2].name).toBe('Set');
+		});
+
+		test('should skip nodes that do not exist and log a warning', () => {
+			// Spy on console.warn
+			const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+			const nodes = SIMPLE_WORKFLOW.getNodes(['Start', 'NonExistentNode', 'Set1']);
+			expect(nodes).toHaveLength(2);
+			expect(nodes[0].name).toBe('Start');
+			expect(nodes[1].name).toBe('Set1');
+			expect(consoleWarnSpy).toHaveBeenCalledWith(
+				expect.stringContaining('Could not find a node with the name NonExistentNode'),
+			);
+		});
+
+		test('should return an empty array if none of the requested nodes exist', () => {
+			// Spy on console.warn
+			const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+			const nodes = SIMPLE_WORKFLOW.getNodes(['NonExistentNode1', 'NonExistentNode2']);
+			expect(nodes).toHaveLength(0);
+			expect(consoleWarnSpy).toHaveBeenCalledTimes(2);
+		});
+
+		test('should handle an empty array of node names', () => {
+			const nodes = SIMPLE_WORKFLOW.getNodes([]);
+			expect(nodes).toHaveLength(0);
 		});
 	});
 });
