@@ -1,11 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "documentId": {
-            "type": "string"
-        }
+    "name": "update.json",
+    "path": "packages/nodes-base/nodes/Google/Docs/__schema__/v2.0.0/document/update.json",
+    "sha": "d9cfafc98443adadf5949ae881660cd10dabb62a",
+    "size": 161,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Docs/__schema__/v2.0.0/document/update.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Docs/__schema__/v2.0.0/document/update.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/d9cfafc98443adadf5949ae881660cd10dabb62a",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/Docs/__schema__/v2.0.0/document/update.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJkb2N1bWVudElkIjogewogICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgfQogICAgfSwKICAgICJyZXF1aXJlZCI6IFsKICAg\nICAgICAiZG9jdW1lbnRJZCIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Docs/__schema__/v2.0.0/document/update.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/d9cfafc98443adadf5949ae881660cd10dabb62a",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Docs/__schema__/v2.0.0/document/update.json"
     },
-    "required": [
-        "documentId"
-    ]
+    "version": 1
 }
