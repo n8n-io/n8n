@@ -7,9 +7,6 @@
         "team": {
             "type": "string"
         },
-        "score": {
-            "type": "integer"
-        },
         "channel": {
             "type": "object",
             "properties": {
@@ -96,16 +93,10 @@
                                             "type": {
                                                 "type": "string"
                                             },
-                                            "user_id": {
-                                                "type": "string"
-                                            },
                                             "text": {
                                                 "type": "string"
                                             },
-                                            "name": {
-                                                "type": "string"
-                                            },
-                                            "unicode": {
+                                            "user_id": {
                                                 "type": "string"
                                             }
                                         },
@@ -137,16 +128,5 @@
             "type": "boolean"
         }
     },
-    "required": [
-        "iid",
-        "team",
-        "score",
-        "channel",
-        "type",
-        "user",
-        "username",
-        "ts",
-        "text",
-        "permalink"
-    ]
+    "version": 1
 }
