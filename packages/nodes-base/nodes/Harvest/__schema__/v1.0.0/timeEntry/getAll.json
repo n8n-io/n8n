@@ -141,9 +141,6 @@
                 "billable": {
                     "type": "boolean"
                 },
-                "is_active": {
-                    "type": "boolean"
-                },
                 "created_at": {
                     "type": "string"
                 },
@@ -191,5 +188,6 @@
         "task_assignment",
         "invoice",
         "external_reference"
-    ]
+    ],
+    "version": 1
 }
