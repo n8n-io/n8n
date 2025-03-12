@@ -1,110 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "integer"
-        },
-        "url": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "created_at": {
-            "type": "string"
-        },
-        "updated_at": {
-            "type": "string"
-        },
-        "time_zone": {
-            "type": "string"
-        },
-        "iana_time_zone": {
-            "type": "string"
-        },
-        "locale_id": {
-            "type": "integer"
-        },
-        "locale": {
-            "type": "string"
-        },
-        "role": {
-            "type": "string"
-        },
-        "verified": {
-            "type": "boolean"
-        },
-        "tags": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "active": {
-            "type": "boolean"
-        },
-        "shared": {
-            "type": "boolean"
-        },
-        "shared_agent": {
-            "type": "boolean"
-        },
-        "two_factor_auth_enabled": {
-            "type": "null"
-        },
-        "moderator": {
-            "type": "boolean"
-        },
-        "only_private_comments": {
-            "type": "boolean"
-        },
-        "restricted_agent": {
-            "type": "boolean"
-        },
-        "suspended": {
-            "type": "boolean"
-        },
-        "report_csv": {
-            "type": "boolean"
-        }
+    "name": "search.json",
+    "path": "packages/nodes-base/nodes/Zendesk/__schema__/v1.0.0/user/search.json",
+    "sha": "67d340a0702a8406c8e4c4d35f82a92bc8ea1091",
+    "size": 2289,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Zendesk/__schema__/v1.0.0/user/search.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Zendesk/__schema__/v1.0.0/user/search.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/67d340a0702a8406c8e4c4d35f82a92bc8ea1091",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Zendesk/__schema__/v1.0.0/user/search.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIK\nICAgICAgICB9LAogICAgICAgICJ1cmwiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJuYW1lIjogewogICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAi\nY3JlYXRlZF9hdCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInVwZGF0ZWRfYXQiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJ0aW1lX3pv\nbmUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9\nLAogICAgICAgICJpYW5hX3RpbWVfem9uZSI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImxvY2FsZV9pZCI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAog\nICAgICAgICJsb2NhbGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJyb2xlIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAidmVyaWZpZWQi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwK\nICAgICAgICAidGFncyI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYXJyYXki\nLAogICAgICAgICAgICAiaXRlbXMiOiB7CiAgICAgICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgICAgIH0KICAgICAgICB9LAogICAgICAg\nICJhY3RpdmUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAg\nICAgICAgfSwKICAgICAgICAic2hhcmVkIjogewogICAgICAgICAgICAidHlw\nZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgInNoYXJlZF9hZ2Vu\ndCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9\nLAogICAgICAgICJ0d29fZmFjdG9yX2F1dGhfZW5hYmxlZCI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAgICAgICJtb2Rl\ncmF0b3IiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAg\nICAgfSwKICAgICAgICAib25seV9wcml2YXRlX2NvbW1lbnRzIjogewogICAg\nICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAg\nInJlc3RyaWN0ZWRfYWdlbnQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJv\nb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAic3VzcGVuZGVkIjogewogICAg\nICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAg\nInJlcG9ydF9jc3YiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4i\nCiAgICAgICAgfQogICAgfSwKICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAi\naWQiLAogICAgICAgICJ1cmwiLAogICAgICAgICJuYW1lIiwKICAgICAgICAi\nZW1haWwiLAogICAgICAgICJjcmVhdGVkX2F0IiwKICAgICAgICAidXBkYXRl\nZF9hdCIsCiAgICAgICAgInRpbWVfem9uZSIsCiAgICAgICAgImlhbmFfdGlt\nZV96b25lIiwKICAgICAgICAicGhvbmUiLAogICAgICAgICJzaGFyZWRfcGhv\nbmVfbnVtYmVyIiwKICAgICAgICAicGhvdG8iLAogICAgICAgICJsb2NhbGVf\naWQiLAogICAgICAgICJsb2NhbGUiLAogICAgICAgICJvcmdhbml6YXRpb25f\naWQiLAogICAgICAgICJyb2xlIiwKICAgICAgICAidmVyaWZpZWQiLAogICAg\nICAgICJleHRlcm5hbF9pZCIsCiAgICAgICAgInRhZ3MiLAogICAgICAgICJh\nbGlhcyIsCiAgICAgICAgImFjdGl2ZSIsCiAgICAgICAgInNoYXJlZCIsCiAg\nICAgICAgInNoYXJlZF9hZ2VudCIsCiAgICAgICAgImxhc3RfbG9naW5fYXQi\nLAogICAgICAgICJ0d29fZmFjdG9yX2F1dGhfZW5hYmxlZCIsCiAgICAgICAg\nInNpZ25hdHVyZSIsCiAgICAgICAgImRldGFpbHMiLAogICAgICAgICJub3Rl\ncyIsCiAgICAgICAgInJvbGVfdHlwZSIsCiAgICAgICAgImN1c3RvbV9yb2xl\nX2lkIiwKICAgICAgICAibW9kZXJhdG9yIiwKICAgICAgICAidGlja2V0X3Jl\nc3RyaWN0aW9uIiwKICAgICAgICAib25seV9wcml2YXRlX2NvbW1lbnRzIiwK\nICAgICAgICAicmVzdHJpY3RlZF9hZ2VudCIsCiAgICAgICAgInN1c3BlbmRl\nZCIsCiAgICAgICAgImRlZmF1bHRfZ3JvdXBfaWQiLAogICAgICAgICJyZXBv\ncnRfY3N2IiwKICAgICAgICAidXNlcl9maWVsZHMiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Zendesk/__schema__/v1.0.0/user/search.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/67d340a0702a8406c8e4c4d35f82a92bc8ea1091",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Zendesk/__schema__/v1.0.0/user/search.json"
     },
-    "required": [
-        "id",
-        "url",
-        "name",
-        "email",
-        "created_at",
-        "updated_at",
-        "time_zone",
-        "iana_time_zone",
-        "phone",
-        "shared_phone_number",
-        "photo",
-        "locale_id",
-        "locale",
-        "organization_id",
-        "role",
-        "verified",
-        "external_id",
-        "tags",
-        "alias",
-        "active",
-        "shared",
-        "shared_agent",
-        "last_login_at",
-        "two_factor_auth_enabled",
-        "signature",
-        "details",
-        "notes",
-        "role_type",
-        "custom_role_id",
-        "moderator",
-        "ticket_restriction",
-        "only_private_comments",
-        "restricted_agent",
-        "suspended",
-        "default_group_id",
-        "report_csv",
-        "user_fields"
-    ]
+    "version": 1
 }
