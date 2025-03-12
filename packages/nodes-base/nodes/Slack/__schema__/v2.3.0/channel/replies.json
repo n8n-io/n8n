@@ -1,7 +1,7 @@
 {
     "type": "object",
     "properties": {
-        "text": {
+        "user": {
             "type": "string"
         },
         "type": {
@@ -10,8 +10,38 @@
         "ts": {
             "type": "string"
         },
+        "client_msg_id": {
+            "type": "string"
+        },
+        "text": {
+            "type": "string"
+        },
+        "team": {
+            "type": "string"
+        },
         "thread_ts": {
             "type": "string"
+        },
+        "reply_count": {
+            "type": "integer"
+        },
+        "reply_users_count": {
+            "type": "integer"
+        },
+        "latest_reply": {
+            "type": "string"
+        },
+        "reply_users": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "is_locked": {
+            "type": "boolean"
+        },
+        "subscribed": {
+            "type": "boolean"
         },
         "blocks": {
             "type": "array",
@@ -62,14 +92,71 @@
                 ]
             }
         },
-        "user": {
+        "bot_id": {
             "type": "string"
         },
-        "client_msg_id": {
+        "app_id": {
             "type": "string"
         },
-        "team": {
+        "bot_profile": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "deleted": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updated": {
+                    "type": "integer"
+                },
+                "app_id": {
+                    "type": "string"
+                },
+                "icons": {
+                    "type": "object",
+                    "properties": {
+                        "image_36": {
+                            "type": "string"
+                        },
+                        "image_48": {
+                            "type": "string"
+                        },
+                        "image_72": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "image_36",
+                        "image_48",
+                        "image_72"
+                    ]
+                },
+                "team_id": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "deleted",
+                "name",
+                "updated",
+                "app_id",
+                "icons",
+                "team_id"
+            ]
+        },
+        "parent_user_id": {
             "type": "string"
         }
-    }
+    },
+    "required": [
+        "type",
+        "ts",
+        "text"
+    ],
+    "version": 1
 }
