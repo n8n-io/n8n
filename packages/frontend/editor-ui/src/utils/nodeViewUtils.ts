@@ -15,7 +15,7 @@ import type {
 	NodeHint,
 	Workflow,
 } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
 
 /*
@@ -280,6 +280,19 @@ export function getGenericHints({
 }) {
 	const nodeHints: NodeHint[] = [];
 
+	// tools hints
+	if (node?.type.toLocaleLowerCase().includes('tool') && hasNodeRun) {
+		const stringifiedParameters = JSON.stringify(workflowNode.parameters);
+		if (!stringifiedParameters.includes('$fromAI')) {
+			nodeHints.push({
+				message:
+					'No parameters are set up to be filled by AI. Click on the ✨ button next to a parameter to allow AI to set its value.',
+				location: 'outputPane',
+				whenToDisplay: 'afterExecution',
+			});
+		}
+	}
+
 	// add limit reached hint
 	if (hasNodeRun && workflowNode.parameters.limit) {
 		if (nodeOutputData.length === workflowNode.parameters.limit) {
@@ -301,6 +314,17 @@ export function getGenericHints({
 			nodeHints.push({
 				message:
 					'This node runs multiple times, once for each input item. Use ‘Execute Once’ in the node settings if you want to run it only once.',
+				location: 'outputPane',
+			});
+		}
+	}
+
+	// add sendAndWait hint
+	if (hasMultipleInputItems && workflowNode.parameters.operation === SEND_AND_WAIT_OPERATION) {
+		const executeOnce = workflow.getNode(node.name)?.executeOnce;
+		if (!executeOnce) {
+			nodeHints.push({
+				message: 'This action will run only once, for the first input item',
 				location: 'outputPane',
 			});
 		}
