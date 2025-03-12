@@ -1,0 +1,67 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "shared": {
+            "type": "boolean"
+        },
+        "domain": {
+            "type": "string"
+        },
+        "domain_assignment": {
+            "type": "boolean"
+        },
+        "active": {
+            "type": "boolean"
+        },
+        "vip": {
+            "type": "boolean"
+        },
+        "updated_by_id": {
+            "type": "integer"
+        },
+        "created_by_id": {
+            "type": "integer"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "member_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "secondary_member_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        }
+    },
+    "required": [
+        "id",
+        "name",
+        "shared",
+        "domain",
+        "domain_assignment",
+        "active",
+        "vip",
+        "note",
+        "updated_by_id",
+        "created_by_id",
+        "created_at",
+        "updated_at",
+        "member_ids",
+        "secondary_member_ids"
+    ],
+    "version": 1
+}
