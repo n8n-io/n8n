@@ -49,9 +49,6 @@
                         "id": {
                             "type": "string"
                         },
-                        "displayName": {
-                            "type": "string"
-                        },
                         "userIdentityType": {
                             "type": "string"
                         },
@@ -78,9 +75,6 @@
             "type": "object",
             "properties": {
                 "contentType": {
-                    "type": "string"
-                },
-                "content": {
                     "type": "string"
                 }
             },
@@ -117,9 +111,6 @@
                     },
                     "thumbnailUrl": {
                         "type": "null"
-                    },
-                    "teamsAppId": {
-                        "type": "null"
                     }
                 },
                 "required": [
@@ -155,6 +146,32 @@
                             },
                             "tag": {
                                 "type": "null"
+                            },
+                            "user": {
+                                "type": "object",
+                                "properties": {
+                                    "@odata.type": {
+                                        "type": "string"
+                                    },
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "displayName": {
+                                        "type": "string"
+                                    },
+                                    "userIdentityType": {
+                                        "type": "string"
+                                    },
+                                    "tenantId": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "@odata.type",
+                                    "id",
+                                    "displayName",
+                                    "userIdentityType"
+                                ]
                             }
                         },
                         "required": [
@@ -222,8 +239,7 @@
                                     "@odata.type",
                                     "id",
                                     "displayName",
-                                    "userIdentityType",
-                                    "tenantId"
+                                    "userIdentityType"
                                 ]
                             }
                         },
@@ -243,5 +259,6 @@
                 ]
             }
         }
-    }
+    },
+    "version": 1
 }
