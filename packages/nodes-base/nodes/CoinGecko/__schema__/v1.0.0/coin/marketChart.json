@@ -4,9 +4,6 @@
         "time": {
             "type": "string"
         },
-        "price": {
-            "type": "number"
-        },
         "totalVolume": {
             "type": "number"
         }
@@ -16,5 +13,6 @@
         "price",
         "marketCaps",
         "totalVolume"
-    ]
+    ],
+    "version": 1
 }
