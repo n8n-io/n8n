@@ -10,9 +10,6 @@
         "firstName": {
             "type": "string"
         },
-        "lastName": {
-            "type": "string"
-        },
         "cdate": {
             "type": "string"
         },
@@ -76,9 +73,6 @@
                 "scoreValues": {
                     "type": "string"
                 },
-                "accountContacts": {
-                    "type": "string"
-                },
                 "automationEntryCounts": {
                     "type": "string"
                 }
@@ -110,6 +104,9 @@
             }
         },
         "id": {
+            "type": "string"
+        },
+        "lastName": {
             "type": "string"
         },
         "segmentio_id": {
@@ -148,9 +145,6 @@
         "anonymized": {
             "type": "string"
         },
-        "deleted_at": {
-            "type": "null"
-        },
         "created_utc_timestamp": {
             "type": "string"
         },
@@ -166,5 +160,6 @@
         "mpp_tracking": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
