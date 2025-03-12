@@ -6,6 +6,7 @@ import * as list from './list.operation';
 import * as lock from './lock.operation';
 import * as remove from './remove.operation';
 import * as search from './search.operation';
+import { sharedProperties } from './sharedProperties';
 import * as unlock from './unlock.operation';
 import * as update from './update.operation';
 
@@ -74,12 +75,10 @@ export const descriptions: INodeProperties[] = [
 		],
 		default: 'create',
 	},
+	...sharedProperties,
 	...create.description,
 	...get.description,
 	...list.description,
 	...search.description,
 	...update.description,
-	...remove.description,
-	...lock.description,
-	...unlock.description,
 ];

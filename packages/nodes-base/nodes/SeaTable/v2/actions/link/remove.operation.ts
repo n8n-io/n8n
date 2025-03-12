@@ -1,3 +1,5 @@
+/* eslint-disable n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options */
+/* eslint-disable n8n-nodes-base/node-param-description-wrong-for-dynamic-options */
 import {
 	type IDataObject,
 	type INodeExecutionData,
@@ -10,7 +12,6 @@ import { seaTableApiRequest } from '../../GenericFunctions';
 
 export const properties: INodeProperties[] = [
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Table Name (Source)',
 		name: 'tableName',
 		type: 'options',
@@ -20,12 +21,10 @@ export const properties: INodeProperties[] = [
 			loadOptionsMethod: 'getTableNameAndId',
 		},
 		default: '',
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description:
 			'Choose from the list, of specify by using an expression. Provide it in the way "table_name:::table_id".',
 	},
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Link Column',
 		name: 'linkColumn',
 		type: 'options',
@@ -35,7 +34,6 @@ export const properties: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description:
 			'Choose from the list of specify the Link Column by using an expression. You have to provide it in the way "column_name:::link_id:::other_table_id".',
 	},

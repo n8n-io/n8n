@@ -19,36 +19,6 @@ import type { IRowObject } from '../Interfaces';
 
 export const properties: INodeProperties[] = [
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Table Name',
-		name: 'tableName',
-		type: 'options',
-		placeholder: 'Select a table',
-		required: true,
-		typeOptions: {
-			loadOptionsMethod: 'getTableNames',
-		},
-		default: '',
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
-		description:
-			'The name of SeaTable table to access. Choose from the list, or specify a name using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-	},
-	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Row ID',
-		name: 'rowId',
-		type: 'options',
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		required: true,
-		typeOptions: {
-			loadOptionsDependsOn: ['tableName'],
-			loadOptionsMethod: 'getRowIds',
-		},
-		default: '',
-	},
-	{
 		displayName: 'Data to Send',
 		name: 'fieldsToSend',
 		type: 'options',
@@ -98,13 +68,11 @@ export const properties: INodeProperties[] = [
 				name: 'columnValues',
 				values: [
 					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-						displayName: 'Column Name',
+						displayName: 'Column Name or ID',
 						name: 'columnName',
 						type: 'options',
-						// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 						description:
-							'Choose from the list, or specify the column name using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsDependsOn: ['tableName'],
 							loadOptionsMethod: 'getTableUpdateAbleColumns',
