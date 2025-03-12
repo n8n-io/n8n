@@ -24,6 +24,22 @@
                         }
                     },
                     "required": [
+                        "id",
+                        "displayName"
+                    ]
+                },
+                "application": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "string"
+                        },
+                        "displayName": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "id",
                         "displayName"
                     ]
                 }
@@ -58,6 +74,7 @@
                         }
                     },
                     "required": [
+                        "id",
                         "displayName"
                     ]
                 }
@@ -113,6 +130,12 @@
                     "properties": {
                         "quickXorHash": {
                             "type": "string"
+                        },
+                        "sha1Hash": {
+                            "type": "string"
+                        },
+                        "sha256Hash": {
+                            "type": "string"
                         }
                     },
                     "required": [
@@ -145,20 +168,10 @@
         },
         "size": {
             "type": "integer"
-        },
-        "shared": {
-            "type": "object",
-            "properties": {
-                "scope": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "scope"
-            ]
         }
     },
     "required": [
+        "@odata.context",
         "createdDateTime",
         "id",
         "lastModifiedDateTime",
@@ -167,5 +180,6 @@
         "webUrl",
         "fileSystemInfo",
         "size"
-    ]
+    ],
+    "version": 1
 }
