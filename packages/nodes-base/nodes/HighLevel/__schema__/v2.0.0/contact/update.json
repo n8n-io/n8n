@@ -1,118 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "tags": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "additionalPhones": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "phoneLabel": {
-                        "type": "null"
-                    },
-                    "phone": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "phoneLabel",
-                    "phone"
-                ]
-            }
-        },
-        "dateAdded": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
-        },
-        "locationId": {
-            "type": "string"
-        },
-        "firstName": {
-            "type": "string"
-        },
-        "firstNameLowerCase": {
-            "type": "string"
-        },
-        "fullNameLowerCase": {
-            "type": "string"
-        },
-        "lastName": {
-            "type": "string"
-        },
-        "lastNameLowerCase": {
-            "type": "string"
-        },
-        "phone": {
-            "type": "string"
-        },
-        "country": {
-            "type": "string"
-        },
-        "dnd": {
-            "type": "boolean"
-        },
-        "createdBy": {
-            "type": "object",
-            "properties": {
-                "source": {
-                    "type": "string"
-                },
-                "channel": {
-                    "type": "string"
-                },
-                "sourceId": {
-                    "type": "string"
-                },
-                "timestamp": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "source",
-                "channel",
-                "sourceId",
-                "timestamp"
-            ]
-        },
-        "emailLowerCase": {
-            "type": "string"
-        },
-        "email": {
-            "type": "string"
-        },
-        "dateUpdated": {
-            "type": "string"
-        },
-        "followers": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "customFields": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "id",
-                    "value"
-                ]
-            }
-        }
-    }
+    "name": "update.json",
+    "path": "packages/nodes-base/nodes/HighLevel/__schema__/v2.0.0/contact/update.json",
+    "sha": "3ed476586685cc67e631e20aa5723b69ef59b557",
+    "size": 2734,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/HighLevel/__schema__/v2.0.0/contact/update.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/HighLevel/__schema__/v2.0.0/contact/update.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/3ed476586685cc67e631e20aa5723b69ef59b557",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/HighLevel/__schema__/v2.0.0/contact/update.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInRhZ3MiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogImFycmF5IiwKICAgICAgICAgICAgIml0ZW1zIjogewogICAgICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICB9CiAgICAgICAg\nfSwKICAgICAgICAiYWRkaXRpb25hbFBob25lcyI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAiYXJyYXkiLAogICAgICAgICAgICAiaXRlbXMiOiB7CiAgICAg\nICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAg\nInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgInBob25lTGFi\nZWwiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogIm51bGwi\nCiAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAi\ncGhvbmUiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICB9\nLAogICAgICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAg\nICAgICAgICJwaG9uZUxhYmVsIiwKICAgICAgICAgICAgICAgICAgICAicGhv\nbmUiCiAgICAgICAgICAgICAgICBdCiAgICAgICAgICAgIH0KICAgICAgICB9\nLAogICAgICAgICJkYXRlQWRkZWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJ0eXBlIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAibG9j\nYXRpb25JZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgIH0sCiAgICAgICAgImZpcnN0TmFtZSI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImZpcnN0TmFtZUxv\nd2VyQ2FzZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgIH0sCiAgICAgICAgImZ1bGxOYW1lTG93ZXJDYXNlIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAibGFz\ndE5hbWUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICB9LAogICAgICAgICJsYXN0TmFtZUxvd2VyQ2FzZSI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInBob25l\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwK\nICAgICAgICAiY291bnRyeSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgIH0sCiAgICAgICAgImRuZCI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9LAogICAgICAgICJjcmVhdGVk\nQnkiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAg\nICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgInNvdXJjZSI6\nIHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImNoYW5uZWwiOiB7CiAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAg\nICAgICAgfSwKICAgICAgICAgICAgICAgICJzb3VyY2VJZCI6IHsKICAgICAg\nICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAg\nICB9LAogICAgICAgICAgICAgICAgInRpbWVzdGFtcCI6IHsKICAgICAgICAg\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9\nCiAgICAgICAgICAgIH0sCiAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAg\nICAgICAgICAgICAgICJzb3VyY2UiLAogICAgICAgICAgICAgICAgImNoYW5u\nZWwiLAogICAgICAgICAgICAgICAgInNvdXJjZUlkIiwKICAgICAgICAgICAg\nICAgICJ0aW1lc3RhbXAiCiAgICAgICAgICAgIF0KICAgICAgICB9LAogICAg\nICAgICJlbWFpbExvd2VyQ2FzZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImVtYWlsIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiZGF0\nZVVwZGF0ZWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICB9LAogICAgICAgICJmb2xsb3dlcnMiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogImFycmF5IiwKICAgICAgICAgICAgIml0ZW1zIjogewogICAgICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICB9CiAgICAg\nICAgfSwKICAgICAgICAiY3VzdG9tRmllbGRzIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAgICJpdGVtcyI6IHsKICAgICAg\nICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICAgICAi\ncHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICAgICAiaWQiOiB7CiAg\nICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICB9LAogICAgICAgICAg\nICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgICAgICJpZCIs\nCiAgICAgICAgICAgICAgICAgICAgInZhbHVlIgogICAgICAgICAgICAgICAg\nXQogICAgICAgICAgICB9CiAgICAgICAgfQogICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/HighLevel/__schema__/v2.0.0/contact/update.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/3ed476586685cc67e631e20aa5723b69ef59b557",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/HighLevel/__schema__/v2.0.0/contact/update.json"
+    },
+    "version": 1
 }
