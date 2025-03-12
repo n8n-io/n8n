@@ -13,13 +13,13 @@
                 "friendly_name": {
                     "type": "string"
                 },
-                "state_class": {
-                    "type": "string"
-                },
                 "unit_of_measurement": {
                     "type": "string"
                 },
                 "device_class": {
+                    "type": "string"
+                },
+                "state_class": {
                     "type": "string"
                 }
             },
@@ -57,5 +57,6 @@
         "last_changed",
         "last_updated",
         "context"
-    ]
+    ],
+    "version": 1
 }
