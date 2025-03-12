@@ -1,8 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "email": {
-            "type": "string"
-        }
-    }
+    "name": "upsert.json",
+    "path": "packages/nodes-base/nodes/CustomerIo/__schema__/v1.0.0/customer/upsert.json",
+    "sha": "f349353d5f85daafc4171a96c7dc71d61e0161e9",
+    "size": 110,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/CustomerIo/__schema__/v1.0.0/customer/upsert.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/CustomerIo/__schema__/v1.0.0/customer/upsert.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/f349353d5f85daafc4171a96c7dc71d61e0161e9",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/CustomerIo/__schema__/v1.0.0/customer/upsert.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJlbWFpbCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgIH0KICAgIH0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/CustomerIo/__schema__/v1.0.0/customer/upsert.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/f349353d5f85daafc4171a96c7dc71d61e0161e9",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/CustomerIo/__schema__/v1.0.0/customer/upsert.json"
+    },
+    "version": 1
 }
