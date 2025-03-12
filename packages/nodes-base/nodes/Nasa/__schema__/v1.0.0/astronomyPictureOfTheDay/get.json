@@ -1,29 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "copyright": {
-            "type": "string"
-        },
-        "date": {
-            "type": "string"
-        },
-        "explanation": {
-            "type": "string"
-        },
-        "hdurl": {
-            "type": "string"
-        },
-        "media_type": {
-            "type": "string"
-        },
-        "service_version": {
-            "type": "string"
-        },
-        "title": {
-            "type": "string"
-        },
-        "url": {
-            "type": "string"
-        }
-    }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Nasa/__schema__/v1.0.0/astronomyPictureOfTheDay/get.json",
+    "sha": "b73ef63d413b799c11889c36390b5e628a80a5ae",
+    "size": 545,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Nasa/__schema__/v1.0.0/astronomyPictureOfTheDay/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Nasa/__schema__/v1.0.0/astronomyPictureOfTheDay/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/b73ef63d413b799c11889c36390b5e628a80a5ae",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Nasa/__schema__/v1.0.0/astronomyPictureOfTheDay/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJjb3B5cmlnaHQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJkYXRlIjogewogICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiZXhwbGFu\nYXRpb24iOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICB9LAogICAgICAgICJoZHVybCI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIm1lZGlhX3R5cGUiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAg\nICJzZXJ2aWNlX3ZlcnNpb24iOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJ0aXRsZSI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInVybCI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0KICAg\nIH0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Nasa/__schema__/v1.0.0/astronomyPictureOfTheDay/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/b73ef63d413b799c11889c36390b5e628a80a5ae",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Nasa/__schema__/v1.0.0/astronomyPictureOfTheDay/get.json"
+    },
+    "version": 1
 }
