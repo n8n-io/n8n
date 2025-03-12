@@ -702,7 +702,7 @@ export class Github implements INodeType {
 			},
 			{
 				displayName:
-					'Your execution will wait until the following webhook URL is called - this can be added as a step to your Github workflow. <a href="https://docs.n8n.io/integrations/creating-nodes/build/reference/ui-elements/#notice" target="_blank">More info</a>',
+					'Your execution will pause until a webhook is called. This URL will be generated at runtime and passed to your Github workflow as a resumeUrl input.',
 				name: 'webhookNotice',
 				type: 'notice',
 				displayOptions: {
