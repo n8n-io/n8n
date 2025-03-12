@@ -13,29 +13,20 @@
         "dnd": {
             "type": "boolean"
         },
-        "type": {
-            "type": "string"
-        },
         "dateAdded": {
             "type": "string"
         },
         "dateUpdated": {
             "type": "string"
         },
+        "dateOfBirth": {
+            "type": "null"
+        },
         "tags": {
             "type": "array",
             "items": {
                 "type": "string"
             }
-        },
-        "followers": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "country": {
-            "type": "string"
         },
         "website": {
             "type": "null"
@@ -56,8 +47,7 @@
                     }
                 },
                 "required": [
-                    "utmSessionSource",
-                    "medium"
+                    "utmSessionSource"
                 ]
             }
         },
@@ -76,5 +66,32 @@
                 ]
             }
         }
-    }
+    },
+    "required": [
+        "id",
+        "locationId",
+        "contactName",
+        "firstName",
+        "lastName",
+        "companyName",
+        "email",
+        "phone",
+        "dnd",
+        "dndSettings",
+        "type",
+        "source",
+        "assignedTo",
+        "city",
+        "state",
+        "postalCode",
+        "address1",
+        "dateAdded",
+        "dateUpdated",
+        "dateOfBirth",
+        "businessId",
+        "tags",
+        "additionalEmails",
+        "customFields"
+    ],
+    "version": 1
 }
