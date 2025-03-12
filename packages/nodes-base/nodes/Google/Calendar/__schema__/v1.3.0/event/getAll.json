@@ -1,99 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "summary": {
-            "type": "string"
-        },
-        "start": {
-            "type": "object",
-            "properties": {
-                "dateTime": {
-                    "type": "string"
-                },
-                "timeZone": {
-                    "type": "string"
-                }
-            }
-        },
-        "end": {
-            "type": "object",
-            "properties": {
-                "dateTime": {
-                    "type": "string"
-                },
-                "timeZone": {
-                    "type": "string"
-                }
-            }
-        },
-        "creator": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "self": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "email"
-            ]
-        },
-        "organizer": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "self": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "email"
-            ]
-        },
-        "created": {
-            "type": "string"
-        },
-        "updated": {
-            "type": "string"
-        },
-        "etag": {
-            "type": "string"
-        },
-        "eventType": {
-            "type": "string"
-        },
-        "htmlLink": {
-            "type": "string"
-        },
-        "iCalUID": {
-            "type": "string"
-        },
-        "kind": {
-            "type": "string"
-        },
-        "reminders": {
-            "type": "object",
-            "properties": {
-                "useDefault": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "useDefault"
-            ]
-        },
-        "sequence": {
-            "type": "integer"
-        },
-        "status": {
-            "type": "string"
-        }
-    }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Google/Calendar/__schema__/v1.3.0/event/getAll.json",
+    "sha": "40e1aad52108023473267e3a212fa91844749cb5",
+    "size": 2193,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Calendar/__schema__/v1.3.0/event/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Calendar/__schema__/v1.3.0/event/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/40e1aad52108023473267e3a212fa91844749cb5",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/Calendar/__schema__/v1.3.0/event/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInN1bW1hcnkiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJzdGFydCI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgInBy\nb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAiZGF0ZVRpbWUiOiB7CiAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAg\nICAgICAgfSwKICAgICAgICAgICAgICAgICJ0aW1lWm9uZSI6IHsKICAgICAg\nICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAg\nICB9CiAgICAgICAgICAgIH0KICAgICAgICB9LAogICAgICAgICJlbmQiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJw\ncm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgImRhdGVUaW1lIjogewog\nICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICAgICAidGltZVpvbmUiOiB7CiAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAg\nICAgfQogICAgICAgICAgICB9CiAgICAgICAgfSwKICAgICAgICAiY3JlYXRv\nciI6IHsKICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAg\nICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAiZW1haWwiOiB7\nCiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJzZWxmIjogewogICAgICAg\nICAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgICAgICAg\nICB9CiAgICAgICAgICAgIH0sCiAgICAgICAgICAgICJyZXF1aXJlZCI6IFsK\nICAgICAgICAgICAgICAgICJlbWFpbCIKICAgICAgICAgICAgXQogICAgICAg\nIH0sCiAgICAgICAgIm9yZ2FuaXplciI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAib2JqZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAg\nICAgICAgICAgICAiZW1haWwiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nICAgICJzZWxmIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImJv\nb2xlYW4iCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0sCiAgICAg\nICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICJlbWFpbCIK\nICAgICAgICAgICAgXQogICAgICAgIH0sCiAgICAgICAgImNyZWF0ZWQiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAg\nICAgICJ1cGRhdGVkIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAiZXRhZyI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImV2ZW50VHlwZSI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAg\nICAgICAgImh0bWxMaW5rIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgfSwKICAgICAgICAiaUNhbFVJRCI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImtpbmQi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAog\nICAgICAgICJyZW1pbmRlcnMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9i\namVjdCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAg\nICAgICAgInVzZURlZmF1bHQiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5\ncGUiOiAiYm9vbGVhbiIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAg\nfSwKICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAg\nInVzZURlZmF1bHQiCiAgICAgICAgICAgIF0KICAgICAgICB9LAogICAgICAg\nICJzZXF1ZW5jZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIK\nICAgICAgICB9LAogICAgICAgICJzdGF0dXMiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9CiAgICB9Cn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Calendar/__schema__/v1.3.0/event/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/40e1aad52108023473267e3a212fa91844749cb5",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Calendar/__schema__/v1.3.0/event/getAll.json"
+    },
+    "version": 1
 }
