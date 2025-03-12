@@ -1,59 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "kind": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "selfLink": {
-            "type": "string"
-        },
-        "mediaLink": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "bucket": {
-            "type": "string"
-        },
-        "generation": {
-            "type": "string"
-        },
-        "metageneration": {
-            "type": "string"
-        },
-        "contentType": {
-            "type": "string"
-        },
-        "storageClass": {
-            "type": "string"
-        },
-        "size": {
-            "type": "string"
-        },
-        "md5Hash": {
-            "type": "string"
-        },
-        "crc32c": {
-            "type": "string"
-        },
-        "etag": {
-            "type": "string"
-        },
-        "timeCreated": {
-            "type": "string"
-        },
-        "updated": {
-            "type": "string"
-        },
-        "timeStorageClassUpdated": {
-            "type": "string"
-        },
-        "timeFinalized": {
-            "type": "string"
-        }
-    }
+    "name": "update.json",
+    "path": "packages/nodes-base/nodes/Google/CloudStorage/__schema__/v1.0.0/object/update.json",
+    "sha": "ca31e1f6144f78a043d026e31533774033d887c8",
+    "size": 1178,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/CloudStorage/__schema__/v1.0.0/object/update.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/CloudStorage/__schema__/v1.0.0/object/update.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/ca31e1f6144f78a043d026e31533774033d887c8",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/CloudStorage/__schema__/v1.0.0/object/update.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJraW5kIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAiaWQiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJzZWxmTGluayI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAg\nICAgIm1lZGlhTGluayI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgIH0sCiAgICAgICAgIm5hbWUiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJidWNrZXQiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAg\nICAgICJnZW5lcmF0aW9uIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgfSwKICAgICAgICAibWV0YWdlbmVyYXRpb24iOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAg\nICJjb250ZW50VHlwZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgIH0sCiAgICAgICAgInN0b3JhZ2VDbGFzcyI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInNp\nemUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9\nLAogICAgICAgICJtZDVIYXNoIjogewogICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgfSwKICAgICAgICAiY3JjMzJjIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiZXRh\nZyI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0s\nCiAgICAgICAgInRpbWVDcmVhdGVkIjogewogICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAidXBkYXRlZCI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAg\nInRpbWVTdG9yYWdlQ2xhc3NVcGRhdGVkIjogewogICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAidGltZUZpbmFsaXpl\nZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0K\nICAgIH0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/CloudStorage/__schema__/v1.0.0/object/update.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/ca31e1f6144f78a043d026e31533774033d887c8",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/CloudStorage/__schema__/v1.0.0/object/update.json"
+    },
+    "version": 1
 }
