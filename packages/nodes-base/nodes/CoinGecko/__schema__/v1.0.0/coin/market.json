@@ -16,26 +16,8 @@
         "market_cap": {
             "type": "integer"
         },
-        "market_cap_rank": {
-            "type": "integer"
-        },
-        "fully_diluted_valuation": {
-            "type": "integer"
-        },
-        "total_volume": {
-            "type": "integer"
-        },
-        "market_cap_change_percentage_24h": {
-            "type": "number"
-        },
-        "ath_change_percentage": {
-            "type": "number"
-        },
         "ath_date": {
             "type": "string"
-        },
-        "atl": {
-            "type": "number"
         },
         "atl_change_percentage": {
             "type": "number"
@@ -74,5 +56,6 @@
         "atl_date",
         "roi",
         "last_updated"
-    ]
+    ],
+    "version": 1
 }
