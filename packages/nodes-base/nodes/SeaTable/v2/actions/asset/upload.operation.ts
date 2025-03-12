@@ -11,6 +11,7 @@ import type { IUploadLink, IRowObject } from '../Interfaces';
 
 const properties: INodeProperties[] = [
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Table Name',
 		name: 'tableName',
 		type: 'options',
@@ -20,10 +21,12 @@ const properties: INodeProperties[] = [
 			loadOptionsMethod: 'getTableNames',
 		},
 		default: '',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description:
-			'The name of SeaTable table to access. Choose from the list, or specify a name using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Choose from the list, or specify a name using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 	},
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Column Name',
 		name: 'uploadColumn',
 		type: 'options',
@@ -33,15 +36,17 @@ const properties: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description:
-			'Select the column for the upload. Choose from the list, or specify the name  using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Choose from the list, or specify the name using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 	},
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Row ID',
 		name: 'rowId',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsDependsOn: ['tableName'],
