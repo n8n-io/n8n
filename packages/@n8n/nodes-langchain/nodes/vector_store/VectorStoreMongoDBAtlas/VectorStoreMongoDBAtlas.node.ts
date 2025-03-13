@@ -33,7 +33,7 @@ const vectorIndexName: INodeProperties = {
 	displayName: 'Vector Index Name',
 	name: 'vectorIndexName',
 	type: 'string',
-	default: 'vector_index',
+	default: '',
 	description: 'The name of the vector index',
 	required: true,
 };
@@ -101,7 +101,7 @@ const insertFields: INodeProperties[] = [
 		],
 	},
 ];
-export async function mongoCollectionSearch(this: ILoadOptionsFunctions) {
+async function mongoCollectionSearch(this: ILoadOptionsFunctions) {
 	const credentials = await this.getCredentials('mongoDb');
 
 	const client = new MongoClient(credentials.connectionString as string, {
