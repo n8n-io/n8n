@@ -1,0 +1,295 @@
+{
+	"name": "[Unit Test] Wait Node - Webhook",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "ec0cce37-e0a4-42f6-ab9a-10412dccecbf",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-460, 340]
+		},
+		{
+			"parameters": {
+				"value": "={{ $now }}",
+				"dataPropertyName": "afterTimestamp",
+				"toFormat": "X",
+				"options": {}
+			},
+			"id": "879a37e1-01b2-4347-b7b2-029ce24c248e",
+			"name": "After1",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 1,
+			"position": [200, 240]
+		},
+		{
+			"parameters": {
+				"value": "={{ $now }}",
+				"dataPropertyName": "startTimestamp",
+				"toFormat": "X",
+				"options": {}
+			},
+			"id": "74f5b014-b0a0-4d14-b3e1-862b4e6a8050",
+			"name": "Before1",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 1,
+			"position": [-200, 240]
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3,
+			"position": [700, 340],
+			"id": "a1c7c7db-9336-4712-a8c4-8eb2d1055eee",
+			"name": "Merge"
+		},
+		{
+			"parameters": {
+				"resume": "webhook",
+				"limitWaitTime": true,
+				"resumeAmount": 7,
+				"resumeUnit": "seconds",
+				"options": {}
+			},
+			"id": "b9cf3cd6-a365-4894-835d-8d7f442a78b7",
+			"name": "Wait on Webhook Call",
+			"type": "n8n-nodes-base.wait",
+			"typeVersion": 1,
+			"position": [0, 240],
+			"webhookId": "35edc971-c3e4-48cf-835d-4d73a4fd1fd8",
+			"notesInFlow": true,
+			"notes": "7s timeout"
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"number": [
+						{
+							"value1": "={{ parseInt($json.afterTimestamp) }}",
+							"operation": "largerEqual",
+							"value2": "={{ parseInt($json.startTimestamp) + 7 }}"
+						}
+					]
+				}
+			},
+			"id": "d3ad2c95-1f13-4534-81dd-5f6c94e8061c",
+			"name": "Check",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [400, 240],
+			"notesInFlow": true,
+			"notes": "check if timeout after 7s"
+		},
+		{
+			"parameters": {
+				"keepOnlySet": true,
+				"values": {
+					"boolean": [
+						{
+							"name": "success",
+							"value": true
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "78d50315-05df-4277-9792-b46881c55b5f",
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [900, 340],
+			"notesInFlow": true,
+			"notes": "success"
+		},
+		{
+			"parameters": {
+				"value": "={{ $now }}",
+				"dataPropertyName": "afterTimestamp",
+				"toFormat": "X",
+				"options": {}
+			},
+			"id": "68f750d4-9f98-48f5-ad9f-3a263a895299",
+			"name": "After2",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 1,
+			"position": [200, 460]
+		},
+		{
+			"parameters": {
+				"value": "={{ $now }}",
+				"dataPropertyName": "startTimestamp",
+				"toFormat": "X",
+				"options": {}
+			},
+			"id": "7731f422-a903-47c9-ac8e-3a0055f1c9ca",
+			"name": "Before2",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 1,
+			"position": [-200, 460]
+		},
+		{
+			"parameters": {
+				"resume": "webhook",
+				"limitWaitTime": true,
+				"resumeAmount": 67,
+				"resumeUnit": "seconds",
+				"options": {}
+			},
+			"id": "312d3b18-129e-4b90-8440-8ee0ec463aa5",
+			"name": "Wait on Webhook Call1",
+			"type": "n8n-nodes-base.wait",
+			"typeVersion": 1,
+			"position": [0, 460],
+			"webhookId": "35edc971-c3e4-48cf-835d-4d73a4fd1fd8",
+			"notesInFlow": true,
+			"notes": "67s timeout (for putExecutionToWait)"
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"number": [
+						{
+							"value1": "={{ parseInt($json.afterTimestamp) }}",
+							"operation": "largerEqual",
+							"value2": "={{ parseInt($json.startTimestamp) + 67 }}"
+						}
+					]
+				}
+			},
+			"id": "851e91a5-b9f4-496d-aa43-d8b7799aa764",
+			"name": "Check1",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [400, 460],
+			"notesInFlow": true,
+			"notes": "check if timeout after 67s"
+		}
+	],
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Before1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Before2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"After1": {
+			"main": [
+				[
+					{
+						"node": "Check",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Before1": {
+			"main": [
+				[
+					{
+						"node": "Wait on Webhook Call",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge": {
+			"main": [
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait on Webhook Call": {
+			"main": [
+				[
+					{
+						"node": "After1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"After2": {
+			"main": [
+				[
+					{
+						"node": "Check1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Before2": {
+			"main": [
+				[
+					{
+						"node": "Wait on Webhook Call1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait on Webhook Call1": {
+			"main": [
+				[
+					{
+						"node": "After2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check1": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Set": [
+			{
+				"success": true
+			}
+		]
+	},
+	"meta": {
+		"instanceId": "8a0f4e2702f32f19e733825a1554a3e8f324c0954c0f1d18c22769193f2baae3"
+	}
+}
