@@ -31,6 +31,7 @@ const mockNode1 = createTestNode({
 	type: MANUAL_TRIGGER_NODE_TYPE,
 	typeVersion: 1,
 	disabled: false,
+	credentials: undefined,
 });
 
 const mockNode2 = createTestNode({
@@ -419,40 +420,111 @@ describe('VirtualSchema.vue', () => {
 		});
 	});
 
-	it('should handle drop event', async () => {
-		const ndvStore = useNDVStore();
-		useWorkflowsStore().pinData({
-			node: mockNode1,
-			data: [{ json: { name: 'John', age: 22, hobbies: ['surfing', 'traveling'] } }],
+	describe('telemetry', () => {
+		function dragDropPill(pill: HTMLElement) {
+			const ndvStore = useNDVStore();
+			const reset = vi.spyOn(ndvStore, 'resetMappingTelemetry');
+			fireEvent(pill, new MouseEvent('mousedown', { bubbles: true }));
+			fireEvent(window, new MouseEvent('mousemove', { bubbles: true }));
+			expect(reset).toHaveBeenCalled();
+
+			vi.useFakeTimers({ toFake: ['setTimeout'] });
+			fireEvent(window, new MouseEvent('mouseup', { bubbles: true }));
+			vi.advanceTimersByTime(250);
+			vi.useRealTimers();
+		}
+
+		it('should track data pill drag and drop', async () => {
+			useWorkflowsStore().pinData({
+				node: mockNode1,
+				data: [{ json: { name: 'John', age: 22, hobbies: ['surfing', 'traveling'] } }],
+			});
+			const telemetry = useTelemetry();
+			const trackSpy = vi.spyOn(telemetry, 'track');
+
+			const { getAllByTestId } = renderComponent();
+
+			await waitFor(() => {
+				expect(getAllByTestId('run-data-schema-item')).toHaveLength(6);
+			});
+			const items = getAllByTestId('run-data-schema-item');
+
+			expect(items[0].className).toBe('schema-item draggable');
+			expect(items[0]).toHaveTextContent('nameJohn');
+
+			const pill = items[0].querySelector('.pill') as HTMLElement;
+			dragDropPill(pill);
+
+			await waitFor(() =>
+				expect(trackSpy).toHaveBeenCalledWith(
+					'User dragged data for mapping',
+					expect.objectContaining({
+						src_view: 'schema',
+						src_field_name: 'name',
+						src_field_nest_level: 0,
+						src_node_type: 'n8n-nodes-base.manualTrigger',
+						src_nodes_back: '1',
+						src_has_credential: false,
+					}),
+					{ withPostHog: true },
+				),
+			);
 		});
-		const telemetry = useTelemetry();
-		const trackSpy = vi.spyOn(telemetry, 'track');
-		const reset = vi.spyOn(ndvStore, 'resetMappingTelemetry');
-		const { getAllByTestId } = renderComponent();
 
-		await waitFor(() => {
-			expect(getAllByTestId('run-data-schema-item')).toHaveLength(6);
+		it('should track data pill drag and drop for schema preview', async () => {
+			useWorkflowsStore().pinData({
+				node: {
+					...mockNode2,
+					credentials: { myCredential: { id: 'myCredential', name: 'myCredential' } },
+				},
+				data: [],
+			});
+
+			const telemetry = useTelemetry();
+			const trackSpy = vi.spyOn(telemetry, 'track');
+			const posthogStore = usePostHog();
+
+			vi.spyOn(posthogStore, 'isFeatureEnabled').mockReturnValue(true);
+			const schemaPreviewStore = useSchemaPreviewStore();
+			vi.spyOn(schemaPreviewStore, 'getSchemaPreview').mockResolvedValue(
+				createResultOk({
+					type: 'object',
+					properties: {
+						account: {
+							type: 'object',
+							properties: {
+								id: {
+									type: 'string',
+								},
+							},
+						},
+					},
+				}),
+			);
+
+			const { getAllByTestId } = renderComponent({
+				props: {
+					nodes: [{ name: mockNode2.name, indicies: [], depth: 1 }],
+				},
+			});
+
+			await waitFor(() => {
+				expect(getAllByTestId('run-data-schema-item')).toHaveLength(2);
+			});
+			const pill = getAllByTestId('run-data-schema-item')[0].querySelector('.pill') as HTMLElement;
+			dragDropPill(pill);
+
+			await waitFor(() =>
+				expect(trackSpy).toHaveBeenCalledWith(
+					'User dragged data for mapping',
+					expect.objectContaining({
+						src_view: 'schema_preview',
+						src_has_credential: true,
+					}),
+					{ withPostHog: true },
+				),
+			);
 		});
-		const items = getAllByTestId('run-data-schema-item');
-
-		expect(items[0].className).toBe('schema-item draggable');
-		expect(items[0]).toHaveTextContent('nameJohn');
-
-		const pill = items[0].querySelector('.pill') as Element;
-
-		fireEvent(pill, new MouseEvent('mousedown', { bubbles: true }));
-		fireEvent(window, new MouseEvent('mousemove', { bubbles: true }));
-		expect(reset).toHaveBeenCalled();
-
-		fireEvent(window, new MouseEvent('mouseup', { bubbles: true }));
-
-		await waitFor(() =>
-			expect(trackSpy).toHaveBeenCalledWith(
-				'User dragged data for mapping',
-				expect.any(Object),
-				expect.any(Object),
-			),
-		);
 	});
 
 	it('should expand all nodes when searching', async () => {
