@@ -36,8 +36,15 @@ export async function handleRetrieveAsToolOperation<T extends VectorStore = Vect
 		name: toolName,
 		description: toolDescription,
 		func: async (input) => {
-			// For each tool use, get a fresh vector store client
-			const vectorStore = await args.getVectorStoreClient(context, filter, embeddings, itemIndex);
+			// For each tool use, get a fresh vector store client.
+			// We don't pass in a filter here only later in the similaritySearchVectorWithScore
+			// method to avoid an exception with some vector stores like Supabase or Pinecone(#AI-740)
+			const vectorStore = await args.getVectorStoreClient(
+				context,
+				undefined,
+				embeddings,
+				itemIndex,
+			);
 
 			try {
 				// Embed the input query
