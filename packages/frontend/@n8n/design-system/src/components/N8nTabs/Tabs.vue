@@ -90,7 +90,7 @@ const scrollRight = () => scroll(50);
 			>
 				<N8nTooltip :disabled="!option.tooltip" placement="bottom">
 					<template #content>
-						<div @click="handleTooltipClick(option.value, $event)" v-n8n-html="option.tooltip" />
+						<div v-n8n-html="option.tooltip" @click="handleTooltipClick(option.value, $event)" />
 					</template>
 					<a
 						v-if="option.href"

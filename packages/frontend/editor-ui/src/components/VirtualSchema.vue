@@ -32,6 +32,7 @@ import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
 import { asyncComputed } from '@vueuse/core';
 import { usePostHog } from '@/stores/posthog.store';
 import { SCHEMA_PREVIEW_EXPERIMENT } from '@/constants';
+import { isEmpty } from '@/utils/typesUtils';
 
 type Props = {
 	nodes?: IConnectedNode[];
@@ -133,15 +134,16 @@ const isSchemaPreviewEnabled = computed(() =>
 );
 
 const nodeSchema = asyncComputed(async () => {
+	const search = props.search;
 	if (props.data.length === 0 && isSchemaPreviewEnabled.value) {
 		const previewSchema = await getSchemaPreview(props.node);
 		if (previewSchema.ok) {
-			return filterSchema(getSchemaForJsonSchema(previewSchema.result), props.search);
+			return filterSchema(getSchemaForJsonSchema(previewSchema.result), search);
 		}
 	}
 
-	return filterSchema(getSchemaForExecutionData(props.data), props.search);
-});
+	return filterSchema(getSchemaForExecutionData(props.data), search);
+}, null);
 
 async function getSchemaPreview(node: INodeUi | null) {
 	if (!node) return createResultError(new Error());
@@ -161,6 +163,7 @@ async function getSchemaPreview(node: INodeUi | null) {
 
 const nodesSchemas = asyncComputed<SchemaNode[]>(async () => {
 	const result: SchemaNode[] = [];
+	const search = props.search;
 
 	for (const node of props.nodes) {
 		const fullNode = workflowsStore.getNodeByName(node.name);
@@ -174,7 +177,7 @@ const nodesSchemas = asyncComputed<SchemaNode[]>(async () => {
 			node,
 		);
 
-		const filteredSchema = filterSchema(schema, props.search);
+		const filteredSchema = filterSchema(schema, search);
 
 		if (!filteredSchema) continue;
 
@@ -242,6 +245,11 @@ const onDragStart = () => {
 const onDragEnd = (el: HTMLElement) => {
 	setTimeout(() => {
 		const mappingTelemetry = ndvStore.mappingTelemetry;
+		const parentNode = nodesSchemas.value.find(({ node }) => node.name === el.dataset.nodeName);
+
+		const isPreview = parentNode?.preview ?? false;
+		const hasCredential = !isEmpty(parentNode?.node.credentials);
+
 		const telemetryPayload = {
 			src_node_type: el.dataset.nodeType,
 			src_field_name: el.dataset.name ?? '',
@@ -249,7 +257,8 @@ const onDragEnd = (el: HTMLElement) => {
 			src_run_index: props.runIndex,
 			src_runs_total: props.totalRuns,
 			src_field_nest_level: el.dataset.level ?? 0,
-			src_view: 'schema',
+			src_view: isPreview ? 'schema_preview' : 'schema',
+			src_has_credential: hasCredential,
 			src_element: el,
 			success: false,
 			...mappingTelemetry,
@@ -267,17 +276,13 @@ const onDragEnd = (el: HTMLElement) => {
 		<div v-if="noSearchResults" class="no-results">
 			<N8nText tag="h3" size="large">{{ i18n.baseText('ndv.search.noNodeMatch.title') }}</N8nText>
 			<N8nText>
-				<i18n-t keypath="ndv.search.noMatch.description" tag="span">
+				<i18n-t keypath="ndv.search.noMatchSchema.description" tag="span">
 					<template #link>
 						<a href="#" @click="emit('clear:search')">
-							{{ i18n.baseText('ndv.search.noMatch.description.link') }}
+							{{ i18n.baseText('ndv.search.noMatchSchema.description.link') }}
 						</a>
 					</template>
 				</i18n-t>
-			</N8nText>
-
-			<N8nText v-if="paneType === 'output'">
-				{{ i18n.baseText('ndv.search.noMatchSchema.description') }}
 			</N8nText>
 		</div>
 
@@ -314,7 +319,7 @@ const onDragEnd = (el: HTMLElement) => {
 							@click="toggleNodeAndScrollTop(item.id)"
 						/>
 						<VirtualSchemaItem
-							v-else
+							v-else-if="item.type === 'item'"
 							v-bind="item"
 							:search="search"
 							:draggable="mappingEnabled"
@@ -323,6 +328,10 @@ const onDragEnd = (el: HTMLElement) => {
 							@click="toggleLeaf(item.id)"
 						>
 						</VirtualSchemaItem>
+
+						<N8nTooltip v-else-if="item.type === 'icon'" :content="item.tooltip" placement="top">
+							<N8nIcon :size="14" :icon="item.icon" class="icon" />
+						</N8nTooltip>
 					</DynamicScrollerItem>
 				</template>
 			</DynamicScroller>
@@ -334,6 +343,7 @@ const onDragEnd = (el: HTMLElement) => {
 .full-height {
 	height: 100%;
 }
+
 .run-data-schema {
 	padding: 0;
 }
@@ -344,7 +354,20 @@ const onDragEnd = (el: HTMLElement) => {
 }
 
 .no-results {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
 	text-align: center;
+	height: 100%;
+	gap: var(--spacing-2xs);
 	padding: var(--spacing-s) var(--spacing-s) var(--spacing-xl) var(--spacing-s);
+}
+
+.icon {
+	display: inline-flex;
+	margin-left: var(--spacing-xl);
+	color: var(--color-text-light);
+	margin-bottom: var(--spacing-s);
 }
 </style>

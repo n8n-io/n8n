@@ -1,6 +1,6 @@
 {
   "name": "@n8n/api-types",
-  "version": "0.17.0",
+  "version": "0.18.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -22,10 +22,10 @@
   ],
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
-    "@n8n/config": "workspace:*",
-    "n8n-workflow": "workspace:*"
+    "@n8n/config": "workspace:*"
   },
   "dependencies": {
+    "n8n-workflow": "workspace:*",
     "xss": "catalog:",
     "zod": "catalog:",
     "zod-class": "0.0.16"

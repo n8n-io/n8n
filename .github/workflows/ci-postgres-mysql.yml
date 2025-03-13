@@ -130,7 +130,7 @@ jobs:
     timeout-minutes: 20
     strategy:
       matrix:
-        service-name: [ 'mysql-8.0.13', 'mysql-8.4' ]
+        service-name: ['mysql-8.0.13', 'mysql-8.4']
     env:
       DB_MYSQLDB_PASSWORD: password
     steps:

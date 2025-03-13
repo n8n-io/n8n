@@ -138,55 +138,62 @@ function onEdit(id: string) {
 				</i18n-t>
 			</n8n-text>
 		</p>
-		<template v-if="apiKeysSortByCreationDate.length">
-			<el-row
-				v-for="apiKey in apiKeysSortByCreationDate"
-				:key="apiKey.id"
-				:gutter="10"
-				:class="$style.destinationItem"
-			>
-				<el-col>
-					<ApiKeyCard :api-key="apiKey" @delete="onDelete" @edit="onEdit" />
-				</el-col>
-			</el-row>
 
-			<div v-if="isPublicApiEnabled && apiKeysSortByCreationDate.length" :class="$style.BottomHint">
-				<N8nText size="small" color="text-light">
-					{{
-						i18n.baseText(
-							`settings.api.view.${settingsStore.isSwaggerUIEnabled ? 'tryapi' : 'more-details'}`,
-						)
-					}}
-				</N8nText>
-				{{ ' ' }}
-				<n8n-link
-					v-if="isSwaggerUIEnabled"
-					data-test-id="api-playground-link"
-					:to="apiDocsURL"
-					:new-window="true"
-					size="small"
+		<div :class="$style.apiKeysContainer">
+			<template v-if="apiKeysSortByCreationDate.length">
+				<el-row
+					v-for="(apiKey, index) in apiKeysSortByCreationDate"
+					:key="apiKey.id"
+					:gutter="10"
+					:class="[{ [$style.destinationItem]: index !== apiKeysSortByCreationDate.length - 1 }]"
 				>
-					{{ i18n.baseText('settings.api.view.apiPlayground') }}
-				</n8n-link>
-				<n8n-link
-					v-else
-					data-test-id="api-endpoint-docs-link"
-					:to="apiDocsURL"
-					:new-window="true"
-					size="small"
-				>
-					{{ i18n.baseText(`settings.api.view.external-docs`) }}
-				</n8n-link>
-			</div>
-			<div class="mt-m text-right">
-				<n8n-button size="large" @click="onCreateApiKey">
-					{{ i18n.baseText('settings.api.create.button') }}
-				</n8n-button>
-			</div>
-		</template>
+					<el-col>
+						<ApiKeyCard :api-key="apiKey" @delete="onDelete" @edit="onEdit" />
+					</el-col>
+				</el-row>
+			</template>
+		</div>
+
+		<div v-if="isPublicApiEnabled && apiKeysSortByCreationDate.length" :class="$style.BottomHint">
+			<N8nText size="small" color="text-light">
+				{{
+					i18n.baseText(
+						`settings.api.view.${settingsStore.isSwaggerUIEnabled ? 'tryapi' : 'more-details'}`,
+					)
+				}}
+			</N8nText>
+			{{ ' ' }}
+			<n8n-link
+				v-if="isSwaggerUIEnabled"
+				data-test-id="api-playground-link"
+				:to="apiDocsURL"
+				:new-window="true"
+				size="small"
+			>
+				{{ i18n.baseText('settings.api.view.apiPlayground') }}
+			</n8n-link>
+			<n8n-link
+				v-else
+				data-test-id="api-endpoint-docs-link"
+				:to="apiDocsURL"
+				:new-window="true"
+				size="small"
+			>
+				{{ i18n.baseText(`settings.api.view.external-docs`) }}
+			</n8n-link>
+		</div>
+		<div class="mt-m text-right">
+			<n8n-button
+				v-if="isPublicApiEnabled && apiKeysSortByCreationDate.length"
+				size="large"
+				@click="onCreateApiKey"
+			>
+				{{ i18n.baseText('settings.api.create.button') }}
+			</n8n-button>
+		</div>
 
 		<n8n-action-box
-			v-else-if="!isPublicApiEnabled && cloudPlanStore.userIsTrialing"
+			v-if="!isPublicApiEnabled && cloudPlanStore.userIsTrialing"
 			data-test-id="public-api-upgrade-cta"
 			:heading="i18n.baseText('settings.api.trial.upgradePlan.title')"
 			:description="i18n.baseText('settings.api.trial.upgradePlan.description')"
@@ -246,5 +253,13 @@ function onEdit(id: string) {
 
 .BottomHint {
 	margin-bottom: var(--spacing-s);
+	margin-top: var(--spacing-s);
+}
+
+.apiKeysContainer {
+	max-height: 45vh;
+	overflow-y: auto;
+	overflow-x: hidden;
+	scrollbar-width: none;
 }
 </style>

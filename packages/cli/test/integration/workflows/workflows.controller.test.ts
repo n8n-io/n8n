@@ -1321,6 +1321,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					},
 					parentFolder: null,
 					workflowCount: 0,
+					subFolderCount: 0,
 				}),
 			]),
 		});

@@ -110,7 +110,12 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
               swapopacity="false"
               symbol="false"
             />
-            <!--v-if-->
+            <div
+              class="extra-info"
+              data-v-882a318e=""
+            >
+              Preview
+            </div>
           </div>
           <div
             class="notice"
@@ -119,13 +124,12 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
             theme="warning"
           >
             
-            
-            This is a preview of the schema, execute the node to see the exact schema and data. 
+            Usually outputs the following fields. Execute the node to see the actual ones. 
             
             <a
               class="n8n-link"
               data-v-882a318e=""
-              href="https://docs.n8n.io/data/data-editing/"
+              href="https://docs.n8n.io/data/schema-preview/"
               target="_blank"
             >
               
@@ -133,7 +137,7 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
                 class="primary"
               >
                 <span
-                  class="n8n-text size-small regular"
+                  class="n8n-text size-small bold"
                 >
                   
                   
@@ -144,7 +148,6 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
               </span>
               
             </a>
-            
             
             
           </div>
@@ -197,6 +200,7 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
             data-depth="1"
             data-name="account"
             data-nest-level="1"
+            data-node-name="Manual Trigger"
             data-node-type="n8n-nodes-base.manualTrigger"
             data-path=".account"
             data-target="mappable"
@@ -269,6 +273,7 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
             data-depth="1"
             data-name="id"
             data-nest-level="2"
+            data-node-name="Manual Trigger"
             data-node-type="n8n-nodes-base.manualTrigger"
             data-path=".account.id"
             data-target="mappable"
@@ -328,70 +333,38 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
         
         
         
-        <div
-          class="schema-item draggable"
-          data-test-id="run-data-schema-item"
-          data-v-0f5e7239=""
+        
+        <span
+          class="n8n-text compact size-14 regular n8n-icon icon el-tooltip__trigger el-tooltip__trigger icon el-tooltip__trigger el-tooltip__trigger n8n-icon icon el-tooltip__trigger el-tooltip__trigger icon el-tooltip__trigger el-tooltip__trigger"
           data-v-d00cba9a=""
-          type="item"
         >
-          <div
-            class="toggle-container"
-            data-v-0f5e7239=""
-          >
-            <!--v-if-->
-          </div>
-          <div
-            class="pill pill--preview"
-            data-name="..."
-            data-nest-level="1"
-            data-target="mappable"
-            data-test-id="run-data-schema-node-name"
-            data-v-0f5e7239=""
-          >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
-              class="type-icon"
-              data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon=""
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
-            <span
-              class="content title"
-              data-v-0f5e7239=""
-            >
-              
-              <span>
-                <!--v-if-->
-                ...
-              </span>
-              
-            </span>
-          </div>
-          <span
-            class="content text"
-            data-test-id="run-data-schema-item-value"
-            data-v-0f5e7239=""
-          >
-            <span />
-          </span>
-        </div>
+          
+          <font-awesome-icon-stub
+            beat="false"
+            beatfade="false"
+            border="false"
+            bounce="false"
+            class="14"
+            fade="false"
+            fixedwidth="false"
+            flash="false"
+            flip="false"
+            icon="ellipsis-h"
+            inverse="false"
+            listitem="false"
+            pulse="false"
+            shake="false"
+            spin="false"
+            spinpulse="false"
+            spinreverse="false"
+            swapopacity="false"
+            symbol="false"
+          />
+          
+        </span>
+        <!--teleport start-->
+        <!--teleport end-->
+        
         
         
         
@@ -464,7 +437,12 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
               <!--v-if-->
             </div>
             <!--v-if-->
-            <!--v-if-->
+            <div
+              class="extra-info"
+              data-v-882a318e=""
+            >
+              Preview
+            </div>
           </div>
           <div
             class="notice"
@@ -473,13 +451,12 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
             theme="warning"
           >
             
-            
-            This is a preview of the schema, execute the node to see the exact schema and data. 
+            Usually outputs the following fields. Execute the node to see the actual ones. 
             
             <a
               class="n8n-link"
               data-v-882a318e=""
-              href="https://docs.n8n.io/data/data-editing/"
+              href="https://docs.n8n.io/data/schema-preview/"
               target="_blank"
             >
               
@@ -487,7 +464,7 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
                 class="primary"
               >
                 <span
-                  class="n8n-text size-small regular"
+                  class="n8n-text size-small bold"
                 >
                   
                   
@@ -498,7 +475,6 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
               </span>
               
             </a>
-            
             
             
           </div>
@@ -551,6 +527,7 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
             data-depth="2"
             data-name="account"
             data-nest-level="1"
+            data-node-name="Set2"
             data-node-type="n8n-nodes-base.set"
             data-path=".account"
             data-target="mappable"
@@ -623,6 +600,7 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
             data-depth="2"
             data-name="id"
             data-nest-level="2"
+            data-node-name="Set2"
             data-node-type="n8n-nodes-base.set"
             data-path=".account.id"
             data-target="mappable"
@@ -682,70 +660,38 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
         
         
         
-        <div
-          class="schema-item draggable"
-          data-test-id="run-data-schema-item"
-          data-v-0f5e7239=""
+        
+        <span
+          class="n8n-text compact size-14 regular n8n-icon icon el-tooltip__trigger el-tooltip__trigger icon el-tooltip__trigger el-tooltip__trigger n8n-icon icon el-tooltip__trigger el-tooltip__trigger icon el-tooltip__trigger el-tooltip__trigger"
           data-v-d00cba9a=""
-          type="item"
         >
-          <div
-            class="toggle-container"
-            data-v-0f5e7239=""
-          >
-            <!--v-if-->
-          </div>
-          <div
-            class="pill pill--preview"
-            data-name="..."
-            data-nest-level="1"
-            data-target="mappable"
-            data-test-id="run-data-schema-node-name"
-            data-v-0f5e7239=""
-          >
-            <font-awesome-icon-stub
-              beat="false"
-              beatfade="false"
-              border="false"
-              bounce="false"
-              class="type-icon"
-              data-v-0f5e7239=""
-              fade="false"
-              fixedwidth="false"
-              flash="false"
-              flip="false"
-              icon=""
-              inverse="false"
-              listitem="false"
-              pulse="false"
-              shake="false"
-              size="sm"
-              spin="false"
-              spinpulse="false"
-              spinreverse="false"
-              swapopacity="false"
-              symbol="false"
-            />
-            <span
-              class="content title"
-              data-v-0f5e7239=""
-            >
-              
-              <span>
-                <!--v-if-->
-                ...
-              </span>
-              
-            </span>
-          </div>
-          <span
-            class="content text"
-            data-test-id="run-data-schema-item-value"
-            data-v-0f5e7239=""
-          >
-            <span />
-          </span>
-        </div>
+          
+          <font-awesome-icon-stub
+            beat="false"
+            beatfade="false"
+            border="false"
+            bounce="false"
+            class="14"
+            fade="false"
+            fixedwidth="false"
+            flash="false"
+            flip="false"
+            icon="ellipsis-h"
+            inverse="false"
+            listitem="false"
+            pulse="false"
+            shake="false"
+            spin="false"
+            spinpulse="false"
+            spinreverse="false"
+            swapopacity="false"
+            symbol="false"
+          />
+          
+        </span>
+        <!--teleport start-->
+        <!--teleport end-->
+        
         
         
         
@@ -821,7 +767,7 @@ exports[`VirtualSchema.vue > renders previous nodes schema for AI tools 1`] = `
   </div>
   <!--v-if-->
   <div
-    class="item-count"
+    class="extra-info"
     data-test-id="run-data-schema-node-item-count"
     data-v-882a318e=""
   >
@@ -893,7 +839,7 @@ exports[`VirtualSchema.vue > renders schema for correct output branch 1`] = `
   </div>
   <!--v-if-->
   <div
-    class="item-count"
+    class="extra-info"
     data-test-id="run-data-schema-node-item-count"
     data-v-882a318e=""
   >
@@ -940,6 +886,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-depth="0"
             data-name="name"
             data-nest-level="0"
+            data-node-name=""
             data-node-type=""
             data-path=".name"
             data-target="mappable"
@@ -1017,6 +964,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-depth="0"
             data-name="age"
             data-nest-level="0"
+            data-node-name=""
             data-node-type=""
             data-path=".age"
             data-target="mappable"
@@ -1120,6 +1068,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-depth="0"
             data-name="hobbies"
             data-nest-level="0"
+            data-node-name=""
             data-node-type=""
             data-path=".hobbies"
             data-target="mappable"
@@ -1192,6 +1141,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-depth="0"
             data-name="hobbies[0]"
             data-nest-level="1"
+            data-node-name=""
             data-node-type=""
             data-path=".hobbies[0]"
             data-target="mappable"
@@ -1269,6 +1219,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-depth="0"
             data-name="hobbies[1]"
             data-nest-level="1"
+            data-node-name=""
             data-node-type=""
             data-path=".hobbies[1]"
             data-target="mappable"
@@ -1447,7 +1398,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               symbol="false"
             />
             <div
-              class="item-count"
+              class="extra-info"
               data-test-id="run-data-schema-node-item-count"
               data-v-882a318e=""
             >
@@ -1504,6 +1455,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             data-depth="1"
             data-name="hello world"
             data-nest-level="1"
+            data-node-name="Manual Trigger"
             data-node-type="n8n-nodes-base.manualTrigger"
             data-path="['hello world']"
             data-target="mappable"
@@ -1602,6 +1554,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             data-depth="1"
             data-name="hello world[0]"
             data-nest-level="2"
+            data-node-name="Manual Trigger"
             data-node-type="n8n-nodes-base.manualTrigger"
             data-path="['hello world'][0]"
             data-target="mappable"
@@ -1700,6 +1653,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             data-depth="1"
             data-name="test"
             data-nest-level="3"
+            data-node-name="Manual Trigger"
             data-node-type="n8n-nodes-base.manualTrigger"
             data-path="['hello world'][0].test"
             data-target="mappable"
@@ -1772,6 +1726,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             data-depth="1"
             data-name="more to think about"
             data-nest-level="4"
+            data-node-name="Manual Trigger"
             data-node-type="n8n-nodes-base.manualTrigger"
             data-path="['hello world'][0].test['more to think about']"
             data-target="mappable"
@@ -1849,6 +1804,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             data-depth="1"
             data-name="test.how"
             data-nest-level="3"
+            data-node-name="Manual Trigger"
             data-node-type="n8n-nodes-base.manualTrigger"
             data-path="['hello world'][0]['test.how']"
             data-target="mappable"

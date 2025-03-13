@@ -96,6 +96,7 @@ const props = withDefaults(
 		resourcesRefreshing?: boolean;
 		// Set to true if sorting and filtering is done outside of the component
 		dontPerformSortingAndFiltering?: boolean;
+		hasEmptyState?: boolean;
 	}>(),
 	{
 		displayName: (resource: Resource) => resource.name || '',
@@ -114,6 +115,7 @@ const props = withDefaults(
 		totalItems: 0,
 		dontPerformSortingAndFiltering: false,
 		resourcesRefreshing: false,
+		hasEmptyState: true,
 	},
 );
 
@@ -144,8 +146,13 @@ const slots = defineSlots<{
 		filters: Record<string, boolean | string | string[]>;
 		setKeyValue: (key: string, value: unknown) => void;
 	}): unknown;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	default(props: { data: any; updateItemSize: (data: any) => void }): unknown;
+	default(props: {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		data: any;
+		columns?: DatatableColumn[];
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		updateItemSize?: (data: any) => void;
+	}): unknown;
 	item(props: { item: unknown; index: number }): unknown;
 	breadcrumbs(): unknown;
 }>();
@@ -158,7 +165,7 @@ const filtersModel = computed({
 
 const showEmptyState = computed(() => {
 	return (
-		route.params.folderId === undefined &&
+		props.hasEmptyState &&
 		props.resources.length === 0 &&
 		// Don't show empty state if resources are refreshing or if filters are being set
 		!hasFilters.value &&
@@ -418,7 +425,7 @@ const getColumns = () => {
 	if ('columns' in props.typeProps) {
 		return props.typeProps.columns;
 	}
-	return {};
+	return [];
 };
 
 const sendSortingTelemetry = () => {
@@ -692,6 +699,15 @@ const loadPaginationFromQueryString = async () => {
 		grid-auto-flow: row;
 		grid-auto-columns: unset;
 		grid-template-columns: 1fr;
+	}
+}
+
+.search {
+	max-width: 196px;
+	justify-self: end;
+
+	input {
+		height: 42px;
 	}
 }
 

@@ -245,6 +245,7 @@ export type RenderItem = {
 	id: string;
 	icon: string;
 	collapsable?: boolean;
+	nodeName?: string;
 	nodeType?: INodeUi['type'];
 	preview?: boolean;
 	type: 'item';
@@ -261,7 +262,14 @@ export type RenderHeader = {
 	preview?: boolean;
 };
 
-type Renders = RenderHeader | RenderItem;
+export type RenderIcon = {
+	id: string;
+	type: 'icon';
+	icon: string;
+	tooltip: string;
+};
+
+type Renders = RenderHeader | RenderItem | RenderIcon;
 
 const icons = {
 	object: 'cube',
@@ -285,13 +293,11 @@ const emptyItem = (): RenderItem => ({
 	type: 'item',
 });
 
-const dummyItem = (): RenderItem => ({
-	id: `dummy-${window.crypto.randomUUID()}`,
-	icon: '',
-	level: 1,
-	title: '...',
-	type: 'item',
-	preview: true,
+const moreFieldsItem = (): RenderIcon => ({
+	id: `moreFields-${window.crypto.randomUUID()}`,
+	type: 'icon',
+	icon: 'ellipsis-h',
+	tooltip: useI18n().baseText('dataMapping.schemaView.previewExtraFields'),
 });
 
 const isDataEmpty = (schema: Schema) => {
@@ -366,6 +372,7 @@ export const useFlattenSchema = () => {
 					icon: getIconBySchemaType(schema.type),
 					id,
 					collapsable: true,
+					nodeName: node.name,
 					nodeType: node.type,
 					type: 'item',
 					preview,
@@ -404,6 +411,7 @@ export const useFlattenSchema = () => {
 					icon: getIconBySchemaType(schema.type),
 					collapsable: false,
 					nodeType: node.type,
+					nodeName: node.name,
 					type: 'item',
 					preview,
 				},
@@ -445,7 +453,7 @@ export const useFlattenSchema = () => {
 			acc.push(...flattenSchema(item));
 
 			if (item.preview) {
-				acc.push(dummyItem());
+				acc.push(moreFieldsItem());
 			}
 
 			return acc;

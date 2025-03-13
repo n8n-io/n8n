@@ -55,8 +55,8 @@ const nodeName = (node: IVersionNode): string => {
 		<div>
 			<div
 				v-if="version.description"
-				:class="$style.description"
 				v-n8n-html="version.description"
+				:class="$style.description"
 			></div>
 			<div v-if="version.nodes && version.nodes.length > 0" :class="$style.nodes">
 				<NodeIcon
