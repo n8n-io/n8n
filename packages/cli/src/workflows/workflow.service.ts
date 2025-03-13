@@ -2,9 +2,10 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
+import type { EntityManager } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import omit from 'lodash/omit';
 import pick from 'lodash/pick';
 import { BinaryDataService, Logger } from 'n8n-core';
@@ -27,6 +28,7 @@ import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { hasSharing, type ListQuery } from '@/requests';
+import { FolderService } from '@/services/folder.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -36,7 +38,6 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { WorkflowHistoryService } from './workflow-history.ee/workflow-history.service.ee';
 import { WorkflowSharingService } from './workflow-sharing.service';
-import { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 @Service()
 export class WorkflowService {
@@ -58,6 +59,7 @@ export class WorkflowService {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly eventService: EventService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly folderService: FolderService,
 	) {}
 
 	async getMany(
@@ -275,10 +277,11 @@ export class WorkflowService {
 			'staticData',
 			'pinData',
 			'versionId',
-			'parentFolderId',
 		]);
 
 		if (parentFolderId) {
+			const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflow.id);
+			await this.folderService.findFolderInProjectOrFail(parentFolderId, project?.id ?? '');
 			updatePayload.parentFolder = { id: parentFolderId };
 		}
 
