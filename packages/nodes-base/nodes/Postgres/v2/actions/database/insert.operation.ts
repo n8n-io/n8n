@@ -241,6 +241,10 @@ export async function execute(
 
 		const outputColumns = this.getNodeParameter('options.outputColumns', i, ['*']) as string[];
 
+		if (nodeVersion >= 2.6 && Object.keys(item).length === 0) {
+			query = 'INSERT INTO $1:name.$2:name DEFAULT VALUES';
+		}
+
 		[query, values] = addReturning(query, outputColumns, values);
 
 		queries.push({ query, values });
