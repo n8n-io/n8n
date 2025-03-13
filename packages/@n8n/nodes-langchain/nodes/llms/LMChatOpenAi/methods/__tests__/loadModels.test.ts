@@ -94,9 +94,9 @@ describe('searchModels', () => {
 		const result = await searchModels.call(mockContext, 'gpt');
 
 		expect(result.results).toEqual([
-			{ name: 'gpt-4', value: 'gpt-4' },
-			{ name: 'gpt-3.5-turbo', value: 'gpt-3.5-turbo' },
 			{ name: 'ft:gpt-3.5-turbo', value: 'ft:gpt-3.5-turbo' },
+			{ name: 'gpt-3.5-turbo', value: 'gpt-3.5-turbo' },
+			{ name: 'gpt-4', value: 'gpt-4' },
 		]);
 	});
 
@@ -104,9 +104,43 @@ describe('searchModels', () => {
 		const result = await searchModels.call(mockContext, 'GPT');
 
 		expect(result.results).toEqual([
-			{ name: 'gpt-4', value: 'gpt-4' },
-			{ name: 'gpt-3.5-turbo', value: 'gpt-3.5-turbo' },
 			{ name: 'ft:gpt-3.5-turbo', value: 'ft:gpt-3.5-turbo' },
+			{ name: 'gpt-3.5-turbo', value: 'gpt-3.5-turbo' },
+			{ name: 'gpt-4', value: 'gpt-4' },
+		]);
+	});
+
+	it('should return models sorted alphabetically by id', async () => {
+		// Setup a mock with scrambled order
+		const mockUnsortedInstance = {
+			apiKey: 'test-api-key',
+			models: {
+				list: jest.fn().mockResolvedValue({
+					data: [
+						{ id: 'gpt-4' },
+						{ id: 'a-model' },
+						{ id: 'o1-model' },
+						{ id: 'gpt-3.5-turbo' },
+						{ id: 'z-model' },
+					],
+				}),
+			},
+		} as unknown as OpenAI;
+
+		(OpenAI as jest.MockedClass<typeof OpenAI>).mockImplementation(() => mockUnsortedInstance);
+
+		// Custom API endpoint to include all models
+		mockContext.getNodeParameter = jest.fn().mockReturnValue('https://custom-api.com');
+
+		const result = await searchModels.call(mockContext);
+
+		// Verify the results are sorted alphabetically
+		expect(result.results).toEqual([
+			{ name: 'a-model', value: 'a-model' },
+			{ name: 'gpt-3.5-turbo', value: 'gpt-3.5-turbo' },
+			{ name: 'gpt-4', value: 'gpt-4' },
+			{ name: 'o1-model', value: 'o1-model' },
+			{ name: 'z-model', value: 'z-model' },
 		]);
 	});
 });
