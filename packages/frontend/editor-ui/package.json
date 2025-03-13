@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "1.81.0",
+  "version": "1.83.0",
   "description": "Workflow Editor UI for n8n",
   "main": "index.js",
   "scripts": {
@@ -76,7 +76,7 @@
     "qrcode.vue": "^3.3.4",
     "stream-browserify": "^3.0.0",
     "timeago.js": "^4.0.2",
-    "typescript": "^5.5.2",
+    "typescript": "catalog:frontend",
     "uuid": "catalog:",
     "v3-infinite-loading": "^1.2.2",
     "vue": "catalog:frontend",
@@ -94,11 +94,11 @@
     "xss": "catalog:"
   },
   "devDependencies": {
+    "@faker-js/faker": "^8.0.2",
+    "@iconify/json": "^2.2.228",
     "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
-    "@faker-js/faker": "^8.0.2",
-    "@iconify/json": "^2.2.228",
     "@pinia/testing": "^0.1.6",
     "@types/dateformat": "^3.0.0",
     "@types/file-saver": "^2.0.1",
@@ -107,10 +107,11 @@
     "@types/jsonpath": "^0.2.0",
     "@types/lodash-es": "^4.17.6",
     "@types/uuid": "catalog:",
-    "@vitejs/plugin-legacy": "^6.0.0",
+    "@vitejs/plugin-legacy": "^6.0.2",
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vitest/coverage-v8": "catalog:frontend",
     "browserslist-to-esbuild": "^2.1.1",
+    "fake-indexeddb": "^6.0.0",
     "miragejs": "^0.1.48",
     "unplugin-icons": "^0.19.0",
     "unplugin-vue-components": "^0.27.2",

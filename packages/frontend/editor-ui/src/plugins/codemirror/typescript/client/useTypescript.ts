@@ -14,7 +14,7 @@ import { Text, type Extension } from '@codemirror/state';
 import { EditorView, hoverTooltip } from '@codemirror/view';
 import * as Comlink from 'comlink';
 import { NodeConnectionType, type CodeExecutionMode, type INodeExecutionData } from 'n8n-workflow';
-import { ref, toRef, toValue, watch, type MaybeRefOrGetter } from 'vue';
+import { onBeforeUnmount, ref, toRef, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import type { LanguageServiceWorker, RemoteLanguageServiceWorkerInit } from '../types';
 import { typescriptCompletionSource } from './completions';
 import { typescriptWorkerFacet } from './facet';
@@ -33,11 +33,13 @@ export function useTypescript(
 	const { debounce } = useDebounce();
 	const activeNodeName = ndvStore.activeNodeName;
 	const worker = ref<Comlink.Remote<LanguageServiceWorker>>();
+	const webWorker = ref<Worker>();
 
 	async function createWorker(): Promise<Extension> {
-		const { init } = Comlink.wrap<RemoteLanguageServiceWorkerInit>(
-			new Worker(new URL('../worker/typescript.worker.ts', import.meta.url), { type: 'module' }),
-		);
+		webWorker.value = new Worker(new URL('../worker/typescript.worker.ts', import.meta.url), {
+			type: 'module',
+		});
+		const { init } = Comlink.wrap<RemoteLanguageServiceWorkerInit>(webWorker.value);
 		worker.value = await init(
 			{
 				id: toValue(id),
@@ -123,6 +125,10 @@ export function useTypescript(
 
 		await worker.value.updateMode(newMode);
 		forceParse(editor);
+	});
+
+	onBeforeUnmount(() => {
+		if (webWorker.value) webWorker.value.terminate();
 	});
 
 	return {

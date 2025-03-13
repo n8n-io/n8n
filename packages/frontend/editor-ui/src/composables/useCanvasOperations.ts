@@ -99,6 +99,7 @@ import { useClipboard } from '@/composables/useClipboard';
 import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { isPresent } from '../utils/typesUtils';
 import { useProjectsStore } from '@/stores/projects.store';
+import type { CanvasLayoutEvent } from './useCanvasLayout';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -163,6 +164,22 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	/**
 	 * Node operations
 	 */
+
+	function tidyUp({ result, source, target }: CanvasLayoutEvent) {
+		updateNodesPosition(
+			result.nodes.map(({ id, x, y }) => ({ id, position: { x, y } })),
+			{ trackBulk: true, trackHistory: true },
+		);
+		trackTidyUp({ result, source, target });
+	}
+
+	function trackTidyUp({ result, source, target }: CanvasLayoutEvent) {
+		telemetry.track('User tidied up canvas', {
+			source,
+			target,
+			nodes_count: result.nodes.length,
+		});
+	}
 
 	function updateNodesPosition(
 		events: CanvasNodeMoveEvent[],
@@ -1684,9 +1701,9 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 							nodeHelpers.assignWebhookId(node);
 
 							if (node.parameters.path) {
-								node.parameters.path = node.webhookId as string;
+								node.parameters.path = node.webhookId;
 							} else if ((node.parameters.options as IDataObject).path) {
-								(node.parameters.options as IDataObject).path = node.webhookId as string;
+								(node.parameters.options as IDataObject).path = node.webhookId;
 							}
 						}
 					}
@@ -1995,6 +2012,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		revertAddNode,
 		updateNodesPosition,
 		updateNodePosition,
+		tidyUp,
 		revertUpdateNodePosition,
 		setNodeActive,
 		setNodeActiveByName,

@@ -71,7 +71,7 @@ const onTooltipClick = (item: string, event: MouseEvent) => emit('tooltipClick',
 				<div v-for="item in items" :key="item.id" :class="$style.accordionItem">
 					<n8n-tooltip :disabled="!item.tooltip">
 						<template #content>
-							<div @click="onTooltipClick(item.id, $event)" v-n8n-html="item.tooltip"></div>
+							<div v-n8n-html="item.tooltip" @click="onTooltipClick(item.id, $event)"></div>
 						</template>
 						<N8nIcon :icon="item.icon" :color="item.iconColor" size="small" class="mr-2xs" />
 					</n8n-tooltip>

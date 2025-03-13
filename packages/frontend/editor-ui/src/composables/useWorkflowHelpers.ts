@@ -395,7 +395,7 @@ export function executeData(
 			!workflowRunData[parentNodeName][runIndex] ||
 			!workflowRunData[parentNodeName][runIndex].hasOwnProperty('data') ||
 			workflowRunData[parentNodeName][runIndex].data === undefined ||
-			!workflowRunData[parentNodeName][runIndex].data!.hasOwnProperty(inputName)
+			!workflowRunData[parentNodeName][runIndex].data.hasOwnProperty(inputName)
 		) {
 			executeData.data = {};
 		} else {

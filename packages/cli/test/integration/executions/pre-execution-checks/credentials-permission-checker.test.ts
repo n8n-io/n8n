@@ -9,19 +9,18 @@ import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 import { OwnershipService } from '@/services/ownership.service';
-import { PermissionChecker } from '@/user-management/permission-checker';
+import { mockInstance } from '@test/mocking';
+import { affixRoleToSaveCredential } from '@test-integration/db/credentials';
+import { getPersonalProject } from '@test-integration/db/projects';
+import { createOwner, createUser } from '@test-integration/db/users';
+import { randomCredentialPayload as randomCred } from '@test-integration/random';
+import * as testDb from '@test-integration/test-db';
+import type { SaveCredentialFunction } from '@test-integration/types';
 import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
-
-import { affixRoleToSaveCredential } from './shared/db/credentials';
-import { getPersonalProject } from './shared/db/projects';
-import { createOwner, createUser } from './shared/db/users';
-import { randomCredentialPayload as randomCred } from './shared/random';
-import * as testDb from './shared/test-db';
-import type { SaveCredentialFunction } from './shared/types';
-import { mockInstance } from '../shared/mocking';
 
 const ownershipService = mockInstance(OwnershipService);
 
@@ -62,14 +61,14 @@ mockInstance(LoadNodesAndCredentials, {
 	loadedNodes: mockNodeTypesData(['start', 'actionNetwork']),
 });
 
-let permissionChecker: PermissionChecker;
+let permissionChecker: CredentialsPermissionChecker;
 
 beforeAll(async () => {
 	await testDb.init();
 
 	saveCredential = affixRoleToSaveCredential('credential:owner');
 
-	permissionChecker = Container.get(PermissionChecker);
+	permissionChecker = Container.get(CredentialsPermissionChecker);
 
 	[owner, member] = await Promise.all([createOwner(), createUser()]);
 	ownerPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(

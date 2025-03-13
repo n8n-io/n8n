@@ -177,7 +177,7 @@ const onTagsEditEsc = () => {
 			>
 				<div
 					v-for="attr in Object.keys(activeExecution?.customData)"
-					v-bind:key="attr"
+					:key="attr"
 					:class="$style.customDataEntry"
 				>
 					<n8n-text :class="$style.key" size="small" color="text-base">

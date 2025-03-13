@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, nextTick, onBeforeMount, onMounted } from 'vue';
+import { computed, nextTick, onBeforeMount, onMounted, ref, getCurrentInstance } from 'vue';
 import { v4 as uuid } from 'uuid';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { hasPermission } from '@/utils/rbac/permissions';
@@ -13,7 +13,6 @@ import { deepCopy, defaultMessageEventBusDestinationOptions } from 'n8n-workflow
 import EventDestinationCard from '@/components/SettingsLogStreaming/EventDestinationCard.ee.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { ref, getCurrentInstance } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
