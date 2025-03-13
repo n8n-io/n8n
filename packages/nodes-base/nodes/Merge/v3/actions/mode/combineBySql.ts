@@ -57,7 +57,7 @@ const prepareError = (node: INode, error: Error) => {
 	});
 };
 
-async function executeSelectWithMapedPairedItems(
+async function executeSelectWithMappedPairedItems(
 	node: INode,
 	inputsData: INodeExecutionData[][],
 	query: string,
