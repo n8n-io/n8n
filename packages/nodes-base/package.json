@@ -399,7 +399,8 @@
       "dist/credentials/ZoomApi.credentials.js",
       "dist/credentials/ZoomOAuth2Api.credentials.js",
       "dist/credentials/ZscalerZiaApi.credentials.js",
-      "dist/credentials/ZulipApi.credentials.js"
+      "dist/credentials/ZulipApi.credentials.js",
+      "dist/credentials/WaterCrawlApi.credentials.js"
     ],
     "nodes": [
       "dist/nodes/ActionNetwork/ActionNetwork.node.js",
@@ -798,6 +799,7 @@
       "dist/nodes/Venafi/Datacenter/VenafiTlsProtectDatacenter.node.js",
       "dist/nodes/Vonage/Vonage.node.js",
       "dist/nodes/Wait/Wait.node.js",
+      "dist/nodes/WaterCrawl/WaterCrawl.node.js",
       "dist/nodes/Webflow/Webflow.node.js",
       "dist/nodes/Webflow/WebflowTrigger.node.js",
       "dist/nodes/Webhook/Webhook.node.js",
