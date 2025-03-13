@@ -221,3 +221,22 @@ export const getConnectedTools = async (
 
 	return finalTools;
 };
+
+/**
+ * Sometimes model output is wrapped in an additional object property.
+ * This function unwraps the output if it is in the format { output: { output: { ... } } }
+ */
+export function unwrapNestedOutput(output: Record<string, unknown>): Record<string, unknown> {
+	if (
+		'output' in output &&
+		Object.keys(output).length === 1 &&
+		typeof output.output === 'object' &&
+		output.output !== null &&
+		'output' in output.output &&
+		Object.keys(output.output).length === 1
+	) {
+		return output.output as Record<string, unknown>;
+	}
+
+	return output;
+}
