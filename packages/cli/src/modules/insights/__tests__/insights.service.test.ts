@@ -273,7 +273,7 @@ describe('workflowExecuteAfterHandler', () => {
 			},
 		])('$name', async ({ timestamps, batches }) => {
 			// ARRANGE
-			const insightsModule = Container.get(InsightsModule);
+			const insightsService = Container.get(InsightsService);
 			const insightsRawRepository = Container.get(InsightsRawRepository);
 			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
 
@@ -286,7 +286,7 @@ describe('workflowExecuteAfterHandler', () => {
 			}
 
 			// ACT
-			const compactedRows = await insightsModule.compactRawToHour();
+			const compactedRows = await insightsService.compactRawToHour();
 
 			// ASSERT
 			expect(compactedRows).toBe(timestamps.length);
@@ -300,7 +300,7 @@ describe('workflowExecuteAfterHandler', () => {
 
 		test('compaction', async () => {
 			// ARRANGE
-			const insightsModule = Container.get(InsightsModule);
+			const insightsService = Container.get(InsightsService);
 			const insightsRawRepository = Container.get(InsightsRawRepository);
 			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
 
@@ -317,7 +317,7 @@ describe('workflowExecuteAfterHandler', () => {
 			}
 
 			// ACT
-			await insightsModule.compactInsights();
+			await insightsService.compactInsights();
 
 			// ASSERT
 			{
@@ -353,7 +353,7 @@ describe('workflowExecuteAfterHandler', () => {
 				name: 'compact into 2 rows',
 				periodStarts: [
 					DateTime.utc(2000, 1, 1, 0, 0),
-					DateTime.utc(2000, 1, 1, 0, 59),
+					DateTime.utc(2000, 1, 1, 23, 59),
 					DateTime.utc(2000, 1, 1, 1, 0),
 				],
 				batches: [3],
@@ -369,7 +369,7 @@ describe('workflowExecuteAfterHandler', () => {
 			},
 		])('$name', async ({ periodStarts, batches }) => {
 			// ARRANGE
-			const insightsModule = Container.get(InsightsModule);
+			const insightsService = Container.get(InsightsService);
 			const insightsRawRepository = Container.get(InsightsRawRepository);
 			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
 
@@ -387,7 +387,7 @@ describe('workflowExecuteAfterHandler', () => {
 			}
 
 			// ACT
-			const compactedRows = await insightsModule.compactHourToDay();
+			const compactedRows = await insightsService.compactHourToDay();
 
 			// ASSERT
 			expect(compactedRows).toBe(periodStarts.length);
