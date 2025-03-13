@@ -1,3 +1,4 @@
+import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 
@@ -12,6 +13,7 @@ import { InsightsRaw } from '../insights-raw';
 import type { TypeUnits } from '../insights-shared';
 
 let insightsRawRepository: InsightsRawRepository;
+const config = Container.get(GlobalConfig);
 
 beforeAll(async () => {
 	await testDb.init();
@@ -55,29 +57,54 @@ describe('Insights Raw Entity', () => {
 		expect(rawInsight.timestamp).toEqual(now);
 	});
 
-	test('timestamp is stored as timestamp, not as date', async () => {
-		// ARRANGE
-		const project = await createTeamProject();
-		const workflow = await createWorkflow({}, project);
-		const now = DateTime.utc().startOf('second');
-		await createMetadata(workflow);
-		const rawInsight = await createRawInsightsEvent(workflow, {
-			type: 'success',
-			value: 1,
-			timestamp: now,
-		});
+	if (config.database.type === 'sqlite') {
+		test('timestamp is stored as timestamp, not as date', async () => {
+			// ARRANGE
+			const project = await createTeamProject();
+			const workflow = await createWorkflow({}, project);
+			const now = DateTime.utc().startOf('second');
+			await createMetadata(workflow);
+			const rawInsight = await createRawInsightsEvent(workflow, {
+				type: 'success',
+				value: 1,
+				timestamp: now,
+			});
 
-		// ACT
-		await insightsRawRepository.save(rawInsight);
+			// ACT
+			await insightsRawRepository.save(rawInsight);
 
-		// ASSERT
-		const timestampValue: Array<{ timestamp: number }> = await insightsRawRepository.query(sql`
+			// ASSERT
+			const timestampValue: Array<{ timestamp: number }> = await insightsRawRepository.query(sql`
 			SELECT timestamp from insights_raw
 		`);
-		expect(timestampValue).toHaveLength(1);
-		const timestamp = timestampValue[0].timestamp;
-		expect(timestamp).toEqual(now.toSeconds());
-	});
+			expect(timestampValue).toHaveLength(1);
+			const timestamp = timestampValue[0].timestamp;
+			expect(timestamp).toEqual(now.toSeconds());
+		});
+
+		test('default timestamp is stored as timestamp, not as date', async () => {
+			// ARRANGE
+			const project = await createTeamProject();
+			const workflow = await createWorkflow({}, project);
+			const now = DateTime.utc().startOf('second');
+			await createMetadata(workflow);
+			const rawInsight = await createRawInsightsEvent(workflow, {
+				type: 'success',
+				value: 1,
+			});
+
+			// ACT
+			await insightsRawRepository.save(rawInsight);
+
+			// ASSERT
+			const timestampValue: Array<{ timestamp: number }> = await insightsRawRepository.query(sql`
+				SELECT timestamp from insights_raw
+			`);
+			expect(timestampValue).toHaveLength(1);
+			const timestamp = timestampValue[0].timestamp;
+			expect(timestamp - now.toSeconds()).toBeLessThan(2);
+		});
+	}
 
 	test('timestamp uses the correct default value', async () => {
 		// ARRANGE
@@ -94,11 +121,12 @@ describe('Insights Raw Entity', () => {
 		await insightsRawRepository.save(rawInsight);
 
 		// ASSERT
-		const timestampValue: Array<{ timestamp: number }> = await insightsRawRepository.query(sql`
-			SELECT timestamp from insights_raw;
-		`);
+		const timestampValue = await insightsRawRepository.find();
 		expect(timestampValue).toHaveLength(1);
 		const timestamp = timestampValue[0].timestamp;
-		expect(Math.abs(now.toSeconds() - timestamp)).toBeLessThan(1);
+
+		expect(
+			Math.abs(now.toSeconds() - DateTime.fromJSDate(timestamp).toUTC().toSeconds()),
+		).toBeLessThan(2);
 	});
 });

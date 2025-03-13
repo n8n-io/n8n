@@ -1,3 +1,4 @@
+import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 
@@ -12,6 +13,7 @@ import { InsightsByPeriod } from '../insights-by-period';
 import type { PeriodUnits, TypeUnits } from '../insights-shared';
 
 let insightsRawRepository: InsightsRawRepository;
+const config = Container.get(GlobalConfig);
 
 beforeAll(async () => {
 	await testDb.init();
@@ -54,27 +56,29 @@ describe('Insights By Period', () => {
 		},
 	);
 
-	test('timestamp is stored as timestamp, not as date', async () => {
-		// ARRANGE
-		const project = await createTeamProject();
-		const workflow = await createWorkflow({}, project);
-		const now = DateTime.utc().startOf('second');
-		await createMetadata(workflow);
-		const rawInsight = await createRawInsightsEvent(workflow, {
-			type: 'success',
-			value: 1,
-			timestamp: now,
+	if (config.database.type === 'sqlite') {
+		test('timestamp is stored as timestamp, not as date', async () => {
+			// ARRANGE
+			const project = await createTeamProject();
+			const workflow = await createWorkflow({}, project);
+			const now = DateTime.utc().startOf('second');
+			await createMetadata(workflow);
+			const rawInsight = await createRawInsightsEvent(workflow, {
+				type: 'success',
+				value: 1,
+				timestamp: now,
+			});
+
+			// ACT
+			await insightsRawRepository.save(rawInsight);
+
+			// ASSERT
+			const timestampValue: Array<{ timestamp: number }> = await insightsRawRepository.query(sql`
+				SELECT timestamp from insights_raw
+			`);
+			expect(timestampValue).toHaveLength(1);
+			const timestamp = timestampValue[0].timestamp;
+			expect(timestamp).toEqual(now.toSeconds());
 		});
-
-		// ACT
-		await insightsRawRepository.save(rawInsight);
-
-		// ASSERT
-		const timestampValue: Array<{ timestamp: number }> = await insightsRawRepository.query(sql`
-			SELECT timestamp from insights_raw
-		`);
-		expect(timestampValue).toHaveLength(1);
-		const timestamp = timestampValue[0].timestamp;
-		expect(timestamp).toEqual(now.toSeconds());
-	});
+	}
 });

@@ -1,7 +1,7 @@
 import { BaseEntity, Column, Entity, PrimaryGeneratedColumn } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { timestampColumnDefault, timestampColumnType } from './abstract-entity';
+import { datetimeColumnType } from './abstract-entity';
 import type { PeriodUnits } from './insights-shared';
 import {
 	isValidPeriodNumber,
@@ -57,6 +57,6 @@ export class InsightsByPeriod extends BaseEntity {
 		this.periodUnit_ = PeriodUnitToNumber[value];
 	}
 
-	@Column({ type: timestampColumnType, default: timestampColumnDefault })
+	@Column({ type: datetimeColumnType })
 	periodStart: Date;
 }
