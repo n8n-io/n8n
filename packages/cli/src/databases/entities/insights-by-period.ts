@@ -21,7 +21,7 @@ export class InsightsByPeriod extends BaseEntity {
 	metaId: number;
 
 	@Column({ name: 'type', type: 'int' })
-	private type_: keyof typeof NumberToType;
+	private type_: number;
 
 	get type() {
 		if (!isValidTypeNumber(this.type_)) {
