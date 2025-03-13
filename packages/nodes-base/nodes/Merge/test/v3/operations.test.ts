@@ -260,7 +260,7 @@ describe('Test MergeV3, combineBySql operation', () => {
 		});
 	});
 
-	it('should run executeSelectWithMappedPairedItems, if version >= 3.1 and SELECT query, and collect pairedItems data', async () => {
+	it('should collect pairedItems data, if version >= 3.1 and SELECT query', async () => {
 		const nodeParameters: IDataObject = {
 			operation: 'combineBySql',
 			query: 'SELECT name FROM input1 LEFT JOIN input2 ON input1.id = input2.id',
