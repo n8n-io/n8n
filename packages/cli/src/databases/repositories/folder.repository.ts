@@ -136,6 +136,13 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 
 		this.applyBasicFilters(query, filter);
 		this.applyTagsFilter(query, Array.isArray(filter?.tags) ? filter.tags : undefined);
+
+		if (
+			filter?.excludeFolderIdAndDescendants &&
+			typeof filter.excludeFolderIdAndDescendants === 'string'
+		) {
+			this.applyExcludeFolderFilter(query, filter.excludeFolderIdAndDescendants);
+		}
 	}
 
 	private applyBasicFilters(
@@ -292,5 +299,39 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 				homeProject: { id: toProjectId },
 			},
 		);
+	}
+
+	private applyExcludeFolderFilter(
+		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
+		excludeFolderIdAndDescendants: string,
+	): void {
+		// Exclude the specific folder by ID
+		query.andWhere('folder.id != :excludeFolderIdAndDescendants', {
+			excludeFolderIdAndDescendants,
+		});
+
+		// Use a WITH RECURSIVE CTE to find all child folders of the excluded folder
+		const baseQuery = this.createQueryBuilder('f')
+			.select('f.id', 'id')
+			.addSelect('f.parentFolderId', 'parentFolderId')
+			.where('f.id = :excludeFolderIdAndDescendants', { excludeFolderIdAndDescendants });
+
+		const recursiveQuery = this.createQueryBuilder('child')
+			.select('child.id', 'id')
+			.addSelect('child.parentFolderId', 'parentFolderId')
+			.innerJoin('folder_tree', 'parent', 'child.parentFolderId = parent.id');
+
+		const subQuery = this.createQueryBuilder()
+			.select('tree.id')
+			.addCommonTableExpression(
+				`${baseQuery.getQuery()} UNION ALL ${recursiveQuery.getQuery()}`,
+				'folder_tree',
+				{ recursive: true },
+			)
+			.from('folder_tree', 'tree')
+			.setParameters({ excludeFolderIdAndDescendants });
+
+		// Exclude all children of the specified folder
+		query.andWhere(`folder.id NOT IN (${subQuery.getQuery()})`);
 	}
 }
