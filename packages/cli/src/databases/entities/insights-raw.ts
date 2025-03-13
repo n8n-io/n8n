@@ -13,7 +13,7 @@ export class InsightsRaw extends BaseEntity {
 	metaId: number;
 
 	@Column({ name: 'type', type: 'int' })
-	private type_: keyof typeof NumberToType;
+	private type_: number;
 
 	get type() {
 		if (!isValidTypeNumber(this.type_)) {
@@ -41,5 +41,38 @@ export class InsightsRaw extends BaseEntity {
 
 	set timestamp(value: Date) {
 		this.timestamp_ = Math.floor(value.getTime() / 1000);
+	}
+
+	inspect() {
+		console.log('inspect');
+		return {
+			...this,
+			type: this.type,
+			timestamp: this.timestamp,
+		};
+	}
+
+	toJSON() {
+		console.log('toJSON');
+		const result = {
+			...this,
+			type_: undefined,
+			timestamp_: undefined,
+			type: this.type,
+			timestamp: this.timestamp,
+		};
+		return result;
+	}
+
+	toString() {
+		console.log('toString');
+		const result = {
+			...this,
+			type_: undefined,
+			timestamp_: undefined,
+			type: this.type,
+			timestamp: this.timestamp,
+		};
+		return JSON.stringify(result);
 	}
 }
