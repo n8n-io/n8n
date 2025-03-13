@@ -2,12 +2,14 @@ import type { CreateFolderDto, DeleteFolderDto, UpdateFolderDto } from '@n8n/api
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
+import { UserError, PROJECT_ROOT } from 'n8n-workflow';
 
 import { Folder } from '@/databases/entities/folder';
 import { FolderTagMappingRepository } from '@/databases/repositories/folder-tag-mapping.repository';
 import { FolderRepository } from '@/databases/repositories/folder.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
+import type { ListQuery } from '@/requests';
 
 export interface SimpleFolderNode {
 	id: string;
@@ -46,13 +48,31 @@ export class FolderService {
 		return folder;
 	}
 
-	async updateFolder(folderId: string, projectId: string, { name, tagIds }: UpdateFolderDto) {
+	async updateFolder(
+		folderId: string,
+		projectId: string,
+		{ name, tagIds, parentFolderId }: UpdateFolderDto,
+	) {
 		await this.findFolderInProjectOrFail(folderId, projectId);
 		if (name) {
 			await this.folderRepository.update({ id: folderId }, { name });
 		}
 		if (tagIds) {
 			await this.folderTagMappingRepository.overwriteTags(folderId, tagIds);
+		}
+
+		if (parentFolderId) {
+			if (folderId === parentFolderId) {
+				throw new UserError('Cannot set a folder as its own parent');
+			}
+
+			if (parentFolderId !== PROJECT_ROOT) {
+				await this.findFolderInProjectOrFail(parentFolderId, projectId);
+			}
+			await this.folderRepository.update(
+				{ id: folderId },
+				{ parentFolder: parentFolderId !== PROJECT_ROOT ? { id: parentFolderId } : null },
+			);
 		}
 	}
 
@@ -114,6 +134,10 @@ export class FolderService {
 			return;
 		}
 
+		if (folderId === transferToFolderId) {
+			throw new UserError('Cannot transfer folder contents to the folder being deleted');
+		}
+
 		await this.findFolderInProjectOrFail(transferToFolderId, projectId);
 
 		return await this.folderRepository.manager.transaction(async (tx) => {
@@ -122,6 +146,14 @@ export class FolderService {
 			await tx.delete(Folder, { id: folderId });
 			return;
 		});
+	}
+
+	async transferAllFoldersToProject(
+		fromProjectId: string,
+		toProjectId: string,
+		tx?: EntityManager,
+	) {
+		return await this.folderRepository.transferAllFoldersToProject(fromProjectId, toProjectId, tx);
 	}
 
 	private transformFolderPathToTree(flatPath: FolderPathRow[]): SimpleFolderNode[] {
@@ -155,5 +187,10 @@ export class FolderService {
 		});
 
 		return rootNode ? [rootNode] : [];
+	}
+
+	async getManyAndCount(projectId: string, options: ListQuery.Options) {
+		options.filter = { ...options.filter, projectId };
+		return await this.folderRepository.getManyAndCount(options);
 	}
 }

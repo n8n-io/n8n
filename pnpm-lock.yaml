@@ -293,6 +293,9 @@ importers:
 
   packages/@n8n/api-types:
     dependencies:
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../workflow
       xss:
         specifier: 'catalog:'
         version: 1.0.15
@@ -309,9 +312,6 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
-      n8n-workflow:
-        specifier: workspace:*
-        version: link:../../workflow
 
   packages/@n8n/benchmark:
     dependencies:

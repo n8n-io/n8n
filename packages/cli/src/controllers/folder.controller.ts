@@ -1,10 +1,18 @@
-import { CreateFolderDto, DeleteFolderDto, UpdateFolderDto } from '@n8n/api-types';
+import {
+	CreateFolderDto,
+	DeleteFolderDto,
+	ListFolderQueryDto,
+	UpdateFolderDto,
+} from '@n8n/api-types';
 import { Response } from 'express';
+import { UserError } from 'n8n-workflow';
 
-import { Post, RestController, ProjectScope, Body, Get, Patch, Delete } from '@/decorators';
+import { Post, RestController, ProjectScope, Body, Get, Patch, Delete, Query } from '@/decorators';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { ListQuery } from '@/requests';
 import { AuthenticatedRequest } from '@/requests';
 import { FolderService } from '@/services/folder.service';
 
@@ -63,6 +71,8 @@ export class ProjectController {
 		} catch (e) {
 			if (e instanceof FolderNotFoundError) {
 				throw new NotFoundError(e.message);
+			} else if (e instanceof UserError) {
+				throw new BadRequestError(e.message);
 			}
 			throw new InternalServerError(undefined, e);
 		}
@@ -73,7 +83,7 @@ export class ProjectController {
 	async deleteFolder(
 		req: AuthenticatedRequest<{ projectId: string; folderId: string }>,
 		_res: Response,
-		@Body payload: DeleteFolderDto,
+		@Query payload: DeleteFolderDto,
 	) {
 		const { projectId, folderId } = req.params;
 
@@ -82,8 +92,27 @@ export class ProjectController {
 		} catch (e) {
 			if (e instanceof FolderNotFoundError) {
 				throw new NotFoundError(e.message);
+			} else if (e instanceof UserError) {
+				throw new BadRequestError(e.message);
 			}
 			throw new InternalServerError(undefined, e);
 		}
+	}
+
+	@Get('/')
+	@ProjectScope('folder:list')
+	async listFolders(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		res: Response,
+		@Query payload: ListFolderQueryDto,
+	) {
+		const { projectId } = req.params;
+
+		const [data, count] = await this.folderService.getManyAndCount(
+			projectId,
+			payload as ListQuery.Options,
+		);
+
+		res.json({ count, data });
 	}
 }
