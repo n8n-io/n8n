@@ -5,7 +5,7 @@ export const insightsSummaryTypeSchema = z.enum([
 	'failed',
 	'failureRate',
 	'timeSaved',
-	'avgRunTime',
+	'averageRunTime',
 ]);
 export type InsightsSummaryType = z.infer<typeof insightsSummaryTypeSchema>;
 
@@ -33,12 +33,12 @@ export const insightsSummaryDataSchemas = {
 		deviation: z.number(),
 		unit: z.literal('time'),
 	}),
-	avgRunTime: z.object({
+	averageRunTime: z.object({
 		value: z.number(),
 		deviation: z.number(),
 		unit: z.literal('time'),
 	}),
 } as const;
 
-export const insightsSchema = z.object(insightsSummaryDataSchemas);
-export type InsightsSummary = z.infer<typeof insightsSchema>;
+export const insightsSummarySchema = z.object(insightsSummaryDataSchemas).strict();
+export type InsightsSummary = z.infer<typeof insightsSummarySchema>;
