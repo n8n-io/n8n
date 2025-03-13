@@ -244,4 +244,159 @@ describe('workflowExecuteAfterHandler', () => {
 			`Could not find an owner for the workflow with the name '${workflow.name}' and the id '${workflow.id}'`,
 		);
 	});
+
+	describe('compactRawToHour', () => {
+		type TestData = {
+			name: string;
+			timestamps: DateTime[];
+			batches: number[];
+		};
+
+		test.each<TestData>([
+			{
+				name: 'compact into 2 rows',
+				timestamps: [
+					DateTime.utc(2000, 1, 1, 0, 0),
+					DateTime.utc(2000, 1, 1, 0, 59),
+					DateTime.utc(2000, 1, 1, 1, 0),
+				],
+				batches: [2, 1],
+			},
+			{
+				name: 'compact into 3 rows',
+				timestamps: [
+					DateTime.utc(2000, 1, 1, 0, 0),
+					DateTime.utc(2000, 1, 1, 1, 0),
+					DateTime.utc(2000, 1, 1, 2, 0),
+				],
+				batches: [1, 1, 1],
+			},
+		])('$name', async ({ timestamps, batches }) => {
+			// ARRANGE
+			const insightsModule = Container.get(InsightsModule);
+			const insightsRawRepository = Container.get(InsightsRawRepository);
+			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+
+			const project = await createTeamProject();
+			const workflow = await createWorkflow({}, project);
+			// create before so we can create the raw events in parallel
+			await createMetadata(workflow);
+			for (const timestamp of timestamps) {
+				await createRawInsightsEvent(workflow, { type: 'success', value: 1, timestamp });
+			}
+
+			// ACT
+			const compactedRows = await insightsModule.compactRawToHour();
+
+			// ASSERT
+			expect(compactedRows).toBe(timestamps.length);
+			await expect(insightsRawRepository.count()).resolves.toBe(0);
+			const allCompacted = await insightsByPeriodRepository.find({ order: { periodStart: 1 } });
+			expect(allCompacted).toHaveLength(batches.length);
+			for (const [index, compacted] of allCompacted.entries()) {
+				expect(compacted.value).toBe(batches[index]);
+			}
+		});
+
+		test('compaction', async () => {
+			// ARRANGE
+			const insightsModule = Container.get(InsightsModule);
+			const insightsRawRepository = Container.get(InsightsRawRepository);
+			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+
+			const project = await createTeamProject();
+			const workflow = await createWorkflow({}, project);
+
+			const batchSize = 100;
+
+			let timestamp = DateTime.utc();
+			for (let i = 0; i < batchSize; i++) {
+				await createRawInsightsEvent(workflow, { type: 'success', value: 1, timestamp });
+				// create 60 events per hour
+				timestamp = timestamp.minus({ minute: 1 });
+			}
+
+			// ACT
+			await insightsModule.compactInsights();
+
+			// ASSERT
+			{
+				await expect(insightsRawRepository.count()).resolves.toBe(0);
+
+				const allCompacted = await insightsByPeriodRepository.find();
+				const accumulatedValues = allCompacted.reduce((acc, event) => acc + event.value, 0);
+				expect(accumulatedValues).toBe(batchSize);
+				for (const compacted of allCompacted) {
+					expect(compacted.value).toBeLessThanOrEqual(60);
+				}
+			}
+		});
+
+		test.todo('test different types');
+
+		test.todo('does not conflate different workflows');
+
+		test.todo('should return the number of compacted events');
+
+		test.todo('works with data in the compacted table');
+	});
+
+	describe('compactHourToDay', () => {
+		type TestData = {
+			name: string;
+			periodStarts: DateTime[];
+			batches: number[];
+		};
+
+		test.each<TestData>([
+			{
+				name: 'compact into 2 rows',
+				periodStarts: [
+					DateTime.utc(2000, 1, 1, 0, 0),
+					DateTime.utc(2000, 1, 1, 0, 59),
+					DateTime.utc(2000, 1, 1, 1, 0),
+				],
+				batches: [3],
+			},
+			{
+				name: 'compact into 3 rows',
+				periodStarts: [
+					DateTime.utc(2000, 1, 1, 23, 59),
+					DateTime.utc(2000, 1, 2, 0, 0),
+					DateTime.utc(2000, 1, 2, 23, 59),
+				],
+				batches: [1, 2],
+			},
+		])('$name', async ({ periodStarts, batches }) => {
+			// ARRANGE
+			const insightsModule = Container.get(InsightsModule);
+			const insightsRawRepository = Container.get(InsightsRawRepository);
+			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+
+			const project = await createTeamProject();
+			const workflow = await createWorkflow({}, project);
+			// create before so we can create the raw events in parallel
+			await createMetadata(workflow);
+			for (const periodStart of periodStarts) {
+				await createCompactedInsightsEvent(workflow, {
+					type: 'success',
+					value: 1,
+					periodUnit: 'hour',
+					periodStart,
+				});
+			}
+
+			// ACT
+			const compactedRows = await insightsModule.compactHourToDay();
+
+			// ASSERT
+			expect(compactedRows).toBe(periodStarts.length);
+			await expect(insightsRawRepository.count()).resolves.toBe(0);
+			const allCompacted = await insightsByPeriodRepository.find({ order: { periodStart: 1 } });
+			expect(allCompacted).toHaveLength(batches.length);
+			for (const [index, compacted] of allCompacted.entries()) {
+				expect(compacted.value).toBe(batches[index]);
+			}
+		});
+	});
 });
