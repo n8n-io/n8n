@@ -108,7 +108,7 @@ function tooltipContent(data: CanvasNodeData) {
 }
 
 function tooltipOffset(data: CanvasNodeData) {
-	if (!canBeMocked(data.outputs, data.inputs)) return;
+	if (nodeTypesStore.isTriggerNode(data.type)) return;
 
 	return 45 * viewport.value.zoom;
 }
