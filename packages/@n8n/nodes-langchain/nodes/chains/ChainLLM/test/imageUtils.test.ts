@@ -34,8 +34,6 @@ const createMockExecuteFunctions = () => {
 };
 
 describe('imageUtils', () => {
-	// The dataUriFromImageData tests are already covered in the existing utils.test.ts
-	// Re-implementing here for completeness
 	describe('dataUriFromImageData', () => {
 		it('should convert image data to data URI', () => {
 			const mockBuffer = Buffer.from('Test data');
