@@ -107,6 +107,10 @@ const { canPopOut, isPoppedOut, pipWindow } = usePiPWindow({
 	content: pipContent,
 	shouldPopOut: computed(() => chatPanelState.value === 'floating'),
 	onRequestClose: () => {
+		if (chatPanelState.value === 'closed') {
+			return;
+		}
+
 		telemetry.track('User toggled log view', { new_state: 'attached' });
 		workflowsStore.setPanelState('attached');
 	},
