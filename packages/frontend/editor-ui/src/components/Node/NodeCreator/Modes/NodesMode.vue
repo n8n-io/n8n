@@ -34,6 +34,8 @@ import { useUIStore } from '@/stores/ui.store';
 import { useActions } from '../composables/useActions';
 import { SEND_AND_WAIT_OPERATION, type INodeParameters } from 'n8n-workflow';
 
+import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
+
 export interface Props {
 	rootView: 'trigger' | 'action';
 }
@@ -112,6 +114,18 @@ function onSelected(item: INodeCreateElement) {
 
 	if (item.type === 'node') {
 		const nodeActions = getFilteredActions(item);
+
+		if (isCommunityPackageName(item.key)) {
+			pushViewStack({
+				subcategory: item.properties.displayName,
+				title: 'Community node details',
+				rootView: activeViewStack.value.rootView,
+				hasSearch: false,
+				mode: 'actions',
+				items: [],
+			});
+			return;
+		}
 
 		// If there is only one action, use it
 		if (nodeActions.length === 1) {
