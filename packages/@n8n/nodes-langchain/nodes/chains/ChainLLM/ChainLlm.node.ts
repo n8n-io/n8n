@@ -62,55 +62,74 @@ async function getImageMessage(
 		);
 	}
 	const detail = message.imageDetail === 'auto' ? undefined : message.imageDetail;
+	const images = [];
+
+	// ✅ Handle Multiple Image URLs
 	if (message.messageType === 'imageUrl' && message.imageUrl) {
-		return new HumanMessage({
-			content: [
-				{
-					type: 'image_url',
-					image_url: {
-						url: message.imageUrl,
-						detail,
-					},
+		const imageUrls = message.imageUrl.split(',').map((url) => url.trim()); // Split CSV
+
+		for (const url of imageUrls) {
+			images.push({
+				type: 'image_url',
+				image_url: {
+					url,
+					detail,
 				},
-			],
-		});
+			});
+		}
 	}
 
-	const binaryDataKey = message.binaryImageDataKey ?? 'data';
-	const inputData = context.getInputData()[itemIndex];
-	const binaryData = inputData.binary?.[binaryDataKey] as IBinaryData;
+	// ✅ Handle Multiple Binary Files
+	if (message.messageType === 'imageBinary') {
+		const binaryDataKeys = (message.binaryImageDataKey ?? 'data')
+			.split(',')
+			.map((key) => key.trim()); // Support multiple fields
 
-	if (!binaryData) {
-		throw new NodeOperationError(context.getNode(), 'No binary data set.');
-	}
-
-	const bufferData = await context.helpers.getBinaryDataBuffer(itemIndex, binaryDataKey);
-	const model = (await context.getInputConnectionData(
-		NodeConnectionType.AiLanguageModel,
-		0,
-	)) as BaseLanguageModel;
-
-	try {
-		const dataURI = dataUriFromImageData(binaryData, bufferData);
+		const inputData = context.getInputData()[itemIndex];
+		const model = (await context.getInputConnectionData(
+			NodeConnectionType.AiLanguageModel,
+			0,
+		)) as BaseLanguageModel;
 
 		const directUriModels = [ChatGoogleGenerativeAI, ChatOllama];
-		const imageUrl = directUriModels.some((i) => model instanceof i)
-			? dataURI
-			: { url: dataURI, detail };
 
-		return new HumanMessage({
-			content: [
-				{
+		for (const binaryDataKey of binaryDataKeys) {
+			const binaryData = inputData.binary?.[binaryDataKey] as IBinaryData;
+			if (!binaryData) {
+				throw new NodeOperationError(
+					context.getNode(),
+					`No binary data found for field: ${binaryDataKey}`
+				);
+			}
+
+			const bufferData = await context.helpers.getBinaryDataBuffer(itemIndex, binaryDataKey);
+
+			try {
+				const dataURI = dataUriFromImageData(binaryData, bufferData);
+				const imageUrl = directUriModels.some((i) => model instanceof i)
+					? dataURI
+					: { url: dataURI, detail };
+
+				images.push({
 					type: 'image_url',
 					image_url: imageUrl,
-				},
-			],
-		});
-	} catch (error) {
-		if (error instanceof UnsupportedMimeTypeError)
-			throw new NodeOperationError(context.getNode(), error.message);
-		throw error;
+				});
+			} catch (error) {
+				if (error instanceof UnsupportedMimeTypeError)
+					throw new NodeOperationError(context.getNode(), error.message);
+				throw error;
+			}
+		}
 	}
+
+	// ✅ Return All Images in One Message
+	if (images.length === 0) {
+		throw new NodeOperationError(context.getNode(), 'No valid image URLs or binary data found.');
+	}
+
+	return new HumanMessage({
+		content: images, // Send all images in one request
+	});
 }
 
 async function getChainPromptTemplate(
@@ -428,13 +447,13 @@ export class ChainLlm implements INodeType {
 								default: 'text',
 							},
 							{
-								displayName: 'Image Data Field Name',
+								displayName: 'Input Data Field Name(s)',
 								name: 'binaryImageDataKey',
 								type: 'string',
 								default: 'data',
 								required: true,
-								description:
-									'The name of the field in the chain’s input that contains the binary image file to be processed',
+								placeholder: 'e.g. data, image1, image2',
+								description: 'The name of the field in the chain’s input that contains the binary image file to be processed. Enter multiple field names separated by commas to pass multiple images for analysis.',
 								displayOptions: {
 									show: {
 										messageType: ['imageBinary'],
@@ -442,12 +461,13 @@ export class ChainLlm implements INodeType {
 								},
 							},
 							{
-								displayName: 'Image URL',
+								displayName: 'Image URL(s)',
 								name: 'imageUrl',
 								type: 'string',
 								default: '',
 								required: true,
-								description: 'URL to the image to be processed',
+								placeholder: 'e.g. https://example.com/image1.jpg, https://example.com/image2.png',
+								description: 'URL to the image to be processed. Enter multiple image URLs separated by commas to analyze multiple images at once.',
 								displayOptions: {
 									show: {
 										messageType: ['imageUrl'],
