@@ -2,7 +2,7 @@ import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 
 import { InsightsRawRepository } from '@/databases/repositories/insights-raw.repository';
-import { sql } from '@/insights/insights.module';
+import { sql } from '@/utils/sql';
 import { createMetadata, createRawInsightsEvent } from '@test-integration/db/insights';
 import { createTeamProject } from '@test-integration/db/projects';
 import { createWorkflow } from '@test-integration/db/workflows';
