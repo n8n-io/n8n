@@ -11,7 +11,7 @@ export async function microsoftSharePointApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	endpoint: string,
-	body: IDataObject = {},
+	body: IDataObject | Buffer = {},
 	qs?: IDataObject,
 	headers?: IDataObject,
 	url?: string,
@@ -35,7 +35,3 @@ export async function microsoftSharePointApiRequest(
 		options,
 	);
 }
-
-export const untilSiteSelected = { site: [''] };
-
-export const untilListSelected = { list: [''] };

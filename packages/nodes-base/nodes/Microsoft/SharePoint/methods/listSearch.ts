@@ -3,25 +3,129 @@ import type {
 	ILoadOptionsFunctions,
 	INodeListSearchItems,
 	INodeListSearchResult,
-	INodeParameterResourceLocator,
 } from 'n8n-workflow';
 
-import { microsoftSharePointApiRequest } from '../GenericFunctions';
+import type { IDriveItem, IList, IListItem, ISite } from '../helpers/interfaces';
+import { microsoftSharePointApiRequest } from '../transport';
 
-export async function getItems(
+export async function getFolders(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const site = this.getNodeParameter('site') as INodeParameterResourceLocator;
-	const list = this.getNodeParameter('list') as INodeParameterResourceLocator;
+	const site = this.getNodeParameter('site.value') as string;
 
 	let response: any;
 	if (paginationToken) {
 		response = await microsoftSharePointApiRequest.call(
 			this,
 			'GET',
-			`/sites/${site.value}/lists/${list.value}/items`,
+			`/sites/${site}/drive/items`,
+			{},
+			undefined,
+			undefined,
+			paginationToken,
+		);
+	} else {
+		const qs: IDataObject = {
+			$select: 'id,name,folder',
+			// Folder filter not supported, but filter is still required
+			// https://learn.microsoft.com/en-us/onedrive/developer/rest-api/concepts/filtering-results?view=odsp-graph-online#filterable-properties
+			$filter: 'folder ne null',
+		};
+		if (filter) {
+			qs.$filter = `name eq '${filter}'`;
+		}
+		response = await microsoftSharePointApiRequest.call(
+			this,
+			'GET',
+			`/sites/${site}/drive/items`,
+			{},
+			qs,
+		);
+	}
+
+	const items: IDriveItem[] = response.value;
+
+	const results: INodeListSearchItems[] = items
+		.filter((x) => x.folder)
+		.map((g) => ({
+			name: g.name,
+			value: g.id,
+		}))
+		.sort((a, b) =>
+			a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }),
+		);
+
+	return { results, paginationToken: response['@odata.nextLink'] };
+}
+
+export async function getFiles(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const site = this.getNodeParameter('site.value') as string;
+	const folder = this.getNodeParameter('folder.value') as string;
+
+	let response: any;
+	if (paginationToken) {
+		response = await microsoftSharePointApiRequest.call(
+			this,
+			'GET',
+			`/sites/${site}/drive/items/${folder}/children`,
+			{},
+			undefined,
+			undefined,
+			paginationToken,
+		);
+	} else {
+		// File filter not supported
+		// https://learn.microsoft.com/en-us/onedrive/developer/rest-api/concepts/filtering-results?view=odsp-graph-online#filterable-properties
+		const qs: IDataObject = {
+			$select: 'id,name,file',
+		};
+		if (filter) {
+			qs.$filter = `name eq '${filter}'`;
+		}
+		response = await microsoftSharePointApiRequest.call(
+			this,
+			'GET',
+			`/sites/${site}/drive/items/${folder}/children`,
+			{},
+			qs,
+		);
+	}
+
+	const items: IDriveItem[] = response.value;
+
+	const results: INodeListSearchItems[] = items
+		.filter((x) => x.file)
+		.map((g) => ({
+			name: g.name,
+			value: g.id,
+		}))
+		.sort((a, b) =>
+			a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }),
+		);
+
+	return { results, paginationToken: response['@odata.nextLink'] };
+}
+
+export async function getItems(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const site = this.getNodeParameter('site.value') as string;
+	const list = this.getNodeParameter('list.value') as string;
+
+	let response: any;
+	if (paginationToken) {
+		response = await microsoftSharePointApiRequest.call(
+			this,
+			'GET',
+			`/sites/${site}/lists/${list}/items`,
 			{},
 			undefined,
 			undefined,
@@ -38,18 +142,13 @@ export async function getItems(
 		response = await microsoftSharePointApiRequest.call(
 			this,
 			'GET',
-			`/sites/${site.value}/lists/${list.value}/items`,
+			`/sites/${site}/lists/${list}/items`,
 			{},
 			qs,
 		);
 	}
 
-	const items: Array<{
-		id: string;
-		fields: {
-			Title: string;
-		};
-	}> = response.value;
+	const items: IListItem[] = response.value;
 
 	const results: INodeListSearchItems[] = items
 		.map((g) => ({
@@ -68,14 +167,14 @@ export async function getLists(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const site = this.getNodeParameter('site') as INodeParameterResourceLocator;
+	const site = this.getNodeParameter('site.value') as string;
 
 	let response: any;
 	if (paginationToken) {
 		response = await microsoftSharePointApiRequest.call(
 			this,
 			'GET',
-			`/sites/${site.value}/lists`,
+			`/sites/${site}/lists`,
 			{},
 			undefined,
 			undefined,
@@ -91,16 +190,13 @@ export async function getLists(
 		response = await microsoftSharePointApiRequest.call(
 			this,
 			'GET',
-			`/sites/${site.value}/lists`,
+			`/sites/${site}/lists`,
 			{},
 			qs,
 		);
 	}
 
-	const lists: Array<{
-		id: string;
-		name: string;
-	}> = response.value;
+	const lists: IList[] = response.value;
 
 	const results: INodeListSearchItems[] = lists
 		.map((g) => ({
@@ -132,7 +228,8 @@ export async function getSites(
 		);
 	} else {
 		const qs: IDataObject = {
-			$select: 'id,name',
+			$select: 'id,title',
+			$search: '*',
 		};
 		if (filter) {
 			qs.$search = filter;
@@ -140,14 +237,11 @@ export async function getSites(
 		response = await microsoftSharePointApiRequest.call(this, 'GET', '/sites', {}, qs);
 	}
 
-	const sites: Array<{
-		id: string;
-		name: string;
-	}> = response.value;
+	const sites: ISite[] = response.value;
 
 	const results: INodeListSearchItems[] = sites
 		.map((g) => ({
-			name: g.name,
+			name: g.title,
 			value: g.id,
 		}))
 		.sort((a, b) =>

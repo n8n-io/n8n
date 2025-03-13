@@ -108,7 +108,7 @@ export const properties: INodeProperties[] = [
 				property: '$select',
 				type: 'query',
 				value:
-					'={{ $value ? "id,title,description,created,lastItemModifiedDate,lastItemDeletedDate,itemCount,hidden,parentWebUrl,imageUrl" : undefined }}',
+					'={{ $value ? "id,name,displayName,description,createdDateTime,lastModifiedDateTime,webUrl" : undefined }}',
 			},
 		},
 		type: 'boolean',

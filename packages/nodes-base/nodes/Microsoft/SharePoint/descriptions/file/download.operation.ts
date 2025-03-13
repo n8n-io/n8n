@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { untilSiteSelected } from '../../GenericFunctions';
+import { untilSiteSelected } from '../../helpers/utils';
 
 export const properties: INodeProperties[] = [
 	{
@@ -67,7 +67,7 @@ export const properties: INodeProperties[] = [
 			{
 				displayName: 'By ID',
 				name: 'id',
-				placeholder: 'e.g. myfolder',
+				placeholder: 'e.g. folder1/folder2',
 				type: 'string',
 			},
 		],
@@ -77,7 +77,7 @@ export const properties: INodeProperties[] = [
 	},
 	{
 		displayName: 'File',
-		name: 'File',
+		name: 'file',
 		default: {
 			mode: 'list',
 			value: '',

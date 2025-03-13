@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { untilListSelected, untilSiteSelected } from '../../GenericFunctions';
+import { untilListSelected, untilSiteSelected } from '../../helpers/utils';
 
 export const properties: INodeProperties[] = [
 	{

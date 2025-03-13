@@ -2,6 +2,7 @@ import type { INodeProperties } from 'n8n-workflow';
 
 import * as get from './get.operation';
 import * as getAll from './getAll.operation';
+import { handleErrorPostReceive, simplifyListPostReceive } from '../../helpers/utils';
 
 export const description: INodeProperties[] = [
 	{
@@ -26,7 +27,7 @@ export const description: INodeProperties[] = [
 						url: '=/sites/{{ $parameter["site"] }}/lists/{{ $parameter["list"] }}',
 					},
 					output: {
-						postReceive: [],
+						postReceive: [handleErrorPostReceive, simplifyListPostReceive],
 					},
 				},
 				action: 'Get list',
@@ -42,16 +43,18 @@ export const description: INodeProperties[] = [
 					},
 					output: {
 						postReceive: [
+							handleErrorPostReceive,
 							{
 								type: 'rootProperty',
 								properties: {
 									property: 'value',
 								},
 							},
+							simplifyListPostReceive,
 						],
 					},
 				},
-				action: 'Get many',
+				action: 'Get many lists',
 			},
 		],
 		default: 'getAll',

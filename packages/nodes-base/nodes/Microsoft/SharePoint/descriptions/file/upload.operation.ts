@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { untilSiteSelected } from '../../GenericFunctions';
+import { untilSiteSelected, uploadFilePreSend } from '../../helpers/utils';
 
 export const properties: INodeProperties[] = [
 	{
@@ -67,7 +67,7 @@ export const properties: INodeProperties[] = [
 			{
 				displayName: 'By ID',
 				name: 'id',
-				placeholder: 'e.g. myfolder',
+				placeholder: 'e.g. folder1/folder2',
 				type: 'string',
 			},
 		],
@@ -105,6 +105,11 @@ export const properties: INodeProperties[] = [
 		hint: 'The name of the input field containing the binary file data to update the file',
 		placeholder: 'data',
 		required: true,
+		routing: {
+			send: {
+				preSend: [uploadFilePreSend],
+			},
+		},
 		type: 'string',
 	},
 ];

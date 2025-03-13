@@ -6,6 +6,7 @@ import * as get from './get.operation';
 import * as getAll from './getAll.operation';
 import * as update from './update.operation';
 import * as upsert from './upsert.operation';
+import { handleErrorPostReceive } from '../../helpers/utils';
 
 export const description: INodeProperties[] = [
 	{
@@ -29,7 +30,7 @@ export const description: INodeProperties[] = [
 						url: '=/sites/{{ $parameter["site"] }}/lists/{{ $parameter["list"] }}/items',
 					},
 					output: {
-						postReceive: [],
+						postReceive: [handleErrorPostReceive],
 					},
 				},
 				action: 'Create item in a list',
@@ -44,10 +45,10 @@ export const description: INodeProperties[] = [
 						url: '=/sites/{{ $parameter["site"] }}/lists/{{ $parameter["list"] }}/items',
 					},
 					output: {
-						postReceive: [],
+						postReceive: [handleErrorPostReceive],
 					},
 				},
-				action: 'Create or Update Item (Upsert)',
+				action: 'Create or update item (upsert)',
 			},
 			{
 				name: 'Delete',
@@ -60,6 +61,7 @@ export const description: INodeProperties[] = [
 					},
 					output: {
 						postReceive: [
+							handleErrorPostReceive,
 							{
 								type: 'set',
 								properties: {
@@ -82,7 +84,7 @@ export const description: INodeProperties[] = [
 						url: '=/sites/{{ $parameter["site"] }}/lists/{{ $parameter["list"] }}/items/{{ $parameter["item"] }}',
 					},
 					output: {
-						postReceive: [],
+						postReceive: [handleErrorPostReceive],
 					},
 				},
 				action: 'Get an item',
@@ -98,6 +100,7 @@ export const description: INodeProperties[] = [
 					},
 					output: {
 						postReceive: [
+							handleErrorPostReceive,
 							{
 								type: 'rootProperty',
 								properties: {
@@ -119,7 +122,7 @@ export const description: INodeProperties[] = [
 						url: '=/sites/{{ $parameter["site"] }}/lists/{{ $parameter["list"] }}/items',
 					},
 					output: {
-						postReceive: [],
+						postReceive: [handleErrorPostReceive],
 					},
 				},
 				action: 'Update item in a list',

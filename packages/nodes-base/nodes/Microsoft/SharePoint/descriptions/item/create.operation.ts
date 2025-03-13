@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { untilSiteSelected } from '../../GenericFunctions';
+import { itemColumnsPreSend, untilListSelected, untilSiteSelected } from '../../helpers/utils';
 
 export const properties: INodeProperties[] = [
 	{
@@ -73,5 +73,44 @@ export const properties: INodeProperties[] = [
 		],
 		required: true,
 		type: 'resourceLocator',
+	},
+	{
+		displayName: 'Columns',
+		name: 'columns',
+		default: {
+			mappingMode: 'defineBelow',
+			value: null,
+		},
+		displayOptions: {
+			show: {
+				resource: ['item'],
+				operation: ['create'],
+			},
+			hide: {
+				...untilSiteSelected,
+				...untilListSelected,
+			},
+		},
+		noDataExpression: true,
+		required: true,
+		routing: {
+			send: {
+				preSend: [itemColumnsPreSend],
+			},
+		},
+		type: 'resourceMapper',
+		typeOptions: {
+			loadOptionsDependsOn: ['site.value', 'list.value'],
+			resourceMapper: {
+				resourceMapperMethod: 'getMappingColumns',
+				mode: 'add',
+				fieldWords: {
+					singular: 'column',
+					plural: 'columns',
+				},
+				addAllFields: true,
+				multiKeyMatch: false,
+			},
+		},
 	},
 ];

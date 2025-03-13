@@ -3,6 +3,7 @@ import type { INodeProperties } from 'n8n-workflow';
 import * as download from './download.operation';
 import * as update from './update.operation';
 import * as upload from './upload.operation';
+import { downloadFilePostReceive, handleErrorPostReceive } from '../../helpers/utils';
 
 export const description: INodeProperties[] = [
 	{
@@ -23,10 +24,12 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '/',
+						url: '=/sites/{{ $parameter["site"] }}/drive/items/{{ $parameter["file"] }}/content',
+						json: false,
+						encoding: 'arraybuffer',
 					},
 					output: {
-						postReceive: [],
+						postReceive: [handleErrorPostReceive, downloadFilePostReceive],
 					},
 				},
 				action: 'Download file',
@@ -37,11 +40,11 @@ export const description: INodeProperties[] = [
 				description: 'Update a file',
 				routing: {
 					request: {
-						method: 'PUT',
-						url: '',
+						method: 'PATCH',
+						url: '=/sites/{{ $parameter["site"] }}/drive/items/{{ $parameter["file"] }}',
 					},
 					output: {
-						postReceive: [],
+						postReceive: [handleErrorPostReceive],
 					},
 				},
 				action: 'Update file',
@@ -52,11 +55,11 @@ export const description: INodeProperties[] = [
 				description: 'Upload an existing file',
 				routing: {
 					request: {
-						method: 'POST',
-						url: '',
+						method: 'PUT',
+						url: '=/sites/{{ $parameter["site"] }}/drive/items/{{ $parameter["folder"] }}:/{{ $parameter["fileName"] }}:/content',
 					},
 					output: {
-						postReceive: [],
+						postReceive: [handleErrorPostReceive],
 					},
 				},
 				action: 'Upload file',

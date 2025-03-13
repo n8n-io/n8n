@@ -1,6 +1,12 @@
-import type { INodeProperties } from 'n8n-workflow';
+import type {
+	IExecuteSingleFunctions,
+	IN8nHttpFullResponse,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
 
-import { untilSiteSelected } from '../../GenericFunctions';
+import { untilSiteSelected } from '../../helpers/utils';
+import { microsoftSharePointApiRequest } from '../../transport';
 
 export const properties: INodeProperties[] = [
 	{
@@ -77,7 +83,7 @@ export const properties: INodeProperties[] = [
 	},
 	{
 		displayName: 'File',
-		name: 'File',
+		name: 'file',
 		default: {
 			mode: 'list',
 			value: '',
@@ -121,7 +127,13 @@ export const properties: INodeProperties[] = [
 			},
 		},
 		placeholder: 'e.g. My New File',
-		required: true,
+		routing: {
+			send: {
+				property: 'name',
+				type: 'body',
+				value: '={{ $value }}',
+			},
+		},
 		type: 'string',
 	},
 	{
@@ -155,6 +167,32 @@ export const properties: INodeProperties[] = [
 		hint: 'The name of the input field containing the binary file data to update the file',
 		placeholder: 'data',
 		required: true,
+		routing: {
+			output: {
+				postReceive: [
+					async function (
+						this: IExecuteSingleFunctions,
+						items: INodeExecutionData[],
+						_response: IN8nHttpFullResponse,
+					): Promise<INodeExecutionData[]> {
+						for (const _item of items) {
+							const site = this.getNodeParameter('site.value') as string;
+							const file = this.getNodeParameter('file.value') as string;
+							const binaryProperty = this.getNodeParameter('fileContents') as string;
+							this.helpers.assertBinaryData(binaryProperty);
+							const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(binaryProperty);
+							await microsoftSharePointApiRequest.call(
+								this,
+								'PUT',
+								`/sites/${site}/drive/items/${file}/content`,
+								binaryDataBuffer,
+							);
+						}
+						return items;
+					},
+				],
+			},
+		},
 		type: 'string',
 	},
 ];

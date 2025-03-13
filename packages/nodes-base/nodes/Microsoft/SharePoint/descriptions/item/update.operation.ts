@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { untilListSelected, untilSiteSelected } from '../../GenericFunctions';
+import { itemColumnsPreSend, untilListSelected, untilSiteSelected } from '../../helpers/utils';
 
 export const properties: INodeProperties[] = [
 	{
@@ -75,40 +75,42 @@ export const properties: INodeProperties[] = [
 		type: 'resourceLocator',
 	},
 	{
-		displayName: 'Item',
-		name: 'item',
+		displayName: 'Columns',
+		name: 'columns',
 		default: {
-			mode: 'list',
-			value: '',
+			mappingMode: 'defineBelow',
+			value: null,
 		},
-		description: 'Select the item you want to update',
 		displayOptions: {
 			show: {
 				resource: ['item'],
 				operation: ['update'],
 			},
 			hide: {
+				...untilSiteSelected,
 				...untilListSelected,
 			},
 		},
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'getItems',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				placeholder: 'e.g. 1',
-				type: 'string',
-			},
-		],
+		noDataExpression: true,
 		required: true,
-		type: 'resourceLocator',
+		routing: {
+			send: {
+				preSend: [itemColumnsPreSend],
+			},
+		},
+		type: 'resourceMapper',
+		typeOptions: {
+			loadOptionsDependsOn: ['site.value', 'list.value'],
+			resourceMapper: {
+				resourceMapperMethod: 'getMappingColumns',
+				mode: 'update',
+				fieldWords: {
+					singular: 'column',
+					plural: 'columns',
+				},
+				addAllFields: true,
+				multiKeyMatch: false,
+			},
+		},
 	},
 ];

@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { untilSiteSelected } from '../../GenericFunctions';
+import { itemGetAllFieldsPreSend, untilSiteSelected } from '../../helpers/utils';
 
 export const properties: INodeProperties[] = [
 	{
@@ -79,7 +79,7 @@ export const properties: INodeProperties[] = [
 		name: 'filter',
 		default: '',
 		description:
-			'The formula will be evaluated for each record, and if the result is not 0, false, "", NaN, [], or #Error! the record will be included in the response. <a href="https://todo">More info</a>.',
+			'The formula will be evaluated for each record. <a href="https://learn.microsoft.com/en-us/graph/filter-query-parameter">More info</a>.',
 		displayOptions: {
 			show: {
 				resource: ['item'],
@@ -87,8 +87,14 @@ export const properties: INodeProperties[] = [
 			},
 		},
 		hint: 'If empty, all the items will be returned',
-		placeholder: "e.g. NOT({Name}='Admin')",
-		required: true,
+		placeholder: "e.g. fields/Title eq 'item1'",
+		routing: {
+			send: {
+				property: '$filter',
+				type: 'query',
+				value: '={{ $value ? $value : undefined }}',
+			},
+		},
 		type: 'string',
 	},
 	{
@@ -138,7 +144,7 @@ export const properties: INodeProperties[] = [
 		},
 		routing: {
 			send: {
-				property: 'maxresults',
+				property: '$top',
 				type: 'query',
 				value: '={{ $value }}',
 			},
@@ -167,17 +173,46 @@ export const properties: INodeProperties[] = [
 				description: 'The fields you want to include in the output',
 				options: [
 					{
-						name: 'Copy',
-						value: 'copy',
-						description:
-							'Specifies that metadata related to any current or previous Copy Blob operation should be included in the response',
+						name: 'Content Type',
+						value: 'contentType',
+					},
+					{
+						name: 'Created At',
+						value: 'createdDateTime',
+					},
+					{
+						name: 'Created By',
+						value: 'createdBy',
+					},
+					{
+						name: 'Fields',
+						value: 'fields',
+					},
+					{
+						name: 'ID',
+						value: 'id',
+					},
+					{
+						name: 'Last Modified At',
+						value: 'lastModifiedDateTime',
+					},
+					{
+						name: 'Last Modified By',
+						value: 'lastModifiedBy',
+					},
+
+					{
+						name: 'Parent Reference',
+						value: 'parentReference',
+					},
+					{
+						name: 'Web URL',
+						value: 'webUrl',
 					},
 				],
 				routing: {
 					send: {
-						property: 'include',
-						type: 'query',
-						value: '={{ $value.join(",") || undefined }}',
+						preSend: [itemGetAllFieldsPreSend],
 					},
 				},
 				type: 'multiOptions',

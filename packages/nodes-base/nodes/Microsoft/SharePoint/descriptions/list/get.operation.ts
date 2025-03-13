@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { untilSiteSelected } from '../../GenericFunctions';
+import { untilSiteSelected } from '../../helpers/utils';
 
 export const properties: INodeProperties[] = [
 	{
@@ -89,7 +89,7 @@ export const properties: INodeProperties[] = [
 				property: '$select',
 				type: 'query',
 				value:
-					'id,title,description,created,lastItemModifiedDate,lastItemDeletedDate,itemCount,hidden,parentWebUrl,imageUrl',
+					'={{ $value ? "id,name,displayName,description,createdDateTime,lastModifiedDateTime,webUrl" : undefined }}',
 			},
 		},
 		type: 'boolean',

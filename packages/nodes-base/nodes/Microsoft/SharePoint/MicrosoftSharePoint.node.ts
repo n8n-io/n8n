@@ -2,7 +2,7 @@ import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
 import { file, item, list } from './descriptions';
-import { getItems, getLists, getSites } from './methods/listSearch';
+import { listSearch, resourceMapping } from './methods';
 
 export class MicrosoftSharePoint implements INodeType {
 	description: INodeTypeDescription = {
@@ -14,7 +14,7 @@ export class MicrosoftSharePoint implements INodeType {
 		},
 		group: ['transform'],
 		version: 1,
-		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+		subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
 		description: 'Interact with Microsoft SharePoint API',
 		defaults: {
 			name: 'Microsoft SharePoint',
@@ -30,9 +30,7 @@ export class MicrosoftSharePoint implements INodeType {
 		],
 		requestDefaults: {
 			baseURL: '=https://{{ $credentials.subdomain }}.sharepoint.com/_api/v2.0/',
-			headers: {
-				'Content-Type': 'application/json',
-			},
+			ignoreHttpStatusErrors: true,
 		},
 		properties: [
 			{
@@ -64,10 +62,7 @@ export class MicrosoftSharePoint implements INodeType {
 	};
 
 	methods = {
-		listSearch: {
-			getItems,
-			getLists,
-			getSites,
-		},
+		listSearch,
+		resourceMapping,
 	};
 }
