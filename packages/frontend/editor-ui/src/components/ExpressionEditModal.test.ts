@@ -3,10 +3,9 @@ import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
 import ExpressionEditModal from '@/components/ExpressionEditModal.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor, within } from '@testing-library/vue';
-import { resolveParameter, useWorkflowHelpers } from '../composables/useWorkflowHelpers';
-import { createPinia, setActivePinia, type Pinia } from 'pinia';
-import { useSettingsStore } from '../stores/settings.store';
+import { setActivePinia, type Pinia } from 'pinia';
 import { defaultSettings } from '../__tests__/defaults';
+import { useSettingsStore } from '../stores/settings.store';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
