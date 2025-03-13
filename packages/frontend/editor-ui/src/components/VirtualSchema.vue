@@ -250,7 +250,6 @@ const onDragEnd = (el: HTMLElement) => {
 		const isPreview = parentNode?.preview ?? false;
 		const hasCredential = !isEmpty(parentNode?.node.credentials);
 
-		console.log('hasCred', hasCredential, parentNode?.node.credentials);
 		const telemetryPayload = {
 			src_node_type: el.dataset.nodeType,
 			src_field_name: el.dataset.name ?? '',
