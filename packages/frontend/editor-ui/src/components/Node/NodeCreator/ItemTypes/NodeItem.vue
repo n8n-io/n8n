@@ -45,6 +45,9 @@ const draggablePosition = ref({ x: -100, y: -100 });
 const draggableDataTransfer = ref(null as Element | null);
 
 const description = computed<string>(() => {
+	if (isCommunityNode.value) {
+		return 'Community';
+	}
 	if (isSendAndWaitCategory.value) {
 		return '';
 	}
@@ -143,7 +146,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 			<NodeIcon :class="$style.nodeIcon" :node-type="nodeType" />
 		</template>
 
-		<template v-if="isCommunityNode" #tooltip>
+		<template v-if="false" #tooltip>
 			<p
 				v-n8n-html="
 					i18n.baseText('generic.communityNode.tooltip', {
