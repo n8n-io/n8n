@@ -38,7 +38,6 @@
     "tsup": "catalog:frontend",
     "typescript": "catalog:frontend",
     "vite": "catalog:frontend",
-    "vite-plugin-dts": "catalog:frontend",
     "vitest": "catalog:frontend",
     "vue-tsc": "catalog:frontend"
   },

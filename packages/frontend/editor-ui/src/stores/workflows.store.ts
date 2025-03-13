@@ -61,6 +61,7 @@ import {
 	NodeHelpers,
 	SEND_AND_WAIT_OPERATION,
 	Workflow,
+	TelemetryHelpers,
 } from 'n8n-workflow';
 import { findLast, pick, isEqual } from 'lodash-es';
 
@@ -82,7 +83,6 @@ import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectSharingData } from '@/types/projects.types';
 import type { PushPayload } from '@n8n/api-types';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { TelemetryHelpers } from 'n8n-workflow';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';
 import { useSettingsStore } from './settings.store';

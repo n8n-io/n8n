@@ -155,7 +155,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 			receivedData.type === 'nodeExecuteBefore' ||
 			receivedData.type === 'executionStarted'
 		) {
-			if (!uiStore.isActionActive['workflowRunning']) {
+			if (!uiStore.isActionActive.workflowRunning) {
 				// No workflow is running so ignore the messages
 				return false;
 			}
@@ -198,7 +198,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 		}
 
 		if (receivedData.type === 'executionFinished' || receivedData.type === 'executionRecovered') {
-			if (!uiStore.isActionActive['workflowRunning']) {
+			if (!uiStore.isActionActive.workflowRunning) {
 				// No workflow is running so ignore the messages
 				return false;
 			}

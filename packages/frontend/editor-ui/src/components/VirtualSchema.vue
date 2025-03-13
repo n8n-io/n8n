@@ -133,15 +133,16 @@ const isSchemaPreviewEnabled = computed(() =>
 );
 
 const nodeSchema = asyncComputed(async () => {
+	const search = props.search;
 	if (props.data.length === 0 && isSchemaPreviewEnabled.value) {
 		const previewSchema = await getSchemaPreview(props.node);
 		if (previewSchema.ok) {
-			return filterSchema(getSchemaForJsonSchema(previewSchema.result), props.search);
+			return filterSchema(getSchemaForJsonSchema(previewSchema.result), search);
 		}
 	}
 
-	return filterSchema(getSchemaForExecutionData(props.data), props.search);
-});
+	return filterSchema(getSchemaForExecutionData(props.data), search);
+}, null);
 
 async function getSchemaPreview(node: INodeUi | null) {
 	if (!node) return createResultError(new Error());
@@ -161,6 +162,7 @@ async function getSchemaPreview(node: INodeUi | null) {
 
 const nodesSchemas = asyncComputed<SchemaNode[]>(async () => {
 	const result: SchemaNode[] = [];
+	const search = props.search;
 
 	for (const node of props.nodes) {
 		const fullNode = workflowsStore.getNodeByName(node.name);
@@ -174,7 +176,7 @@ const nodesSchemas = asyncComputed<SchemaNode[]>(async () => {
 			node,
 		);
 
-		const filteredSchema = filterSchema(schema, props.search);
+		const filteredSchema = filterSchema(schema, search);
 
 		if (!filteredSchema) continue;
 
@@ -267,17 +269,13 @@ const onDragEnd = (el: HTMLElement) => {
 		<div v-if="noSearchResults" class="no-results">
 			<N8nText tag="h3" size="large">{{ i18n.baseText('ndv.search.noNodeMatch.title') }}</N8nText>
 			<N8nText>
-				<i18n-t keypath="ndv.search.noMatch.description" tag="span">
+				<i18n-t keypath="ndv.search.noMatchSchema.description" tag="span">
 					<template #link>
 						<a href="#" @click="emit('clear:search')">
-							{{ i18n.baseText('ndv.search.noMatch.description.link') }}
+							{{ i18n.baseText('ndv.search.noMatchSchema.description.link') }}
 						</a>
 					</template>
 				</i18n-t>
-			</N8nText>
-
-			<N8nText v-if="paneType === 'output'">
-				{{ i18n.baseText('ndv.search.noMatchSchema.description') }}
 			</N8nText>
 		</div>
 
@@ -338,6 +336,7 @@ const onDragEnd = (el: HTMLElement) => {
 .full-height {
 	height: 100%;
 }
+
 .run-data-schema {
 	padding: 0;
 }
@@ -348,7 +347,13 @@ const onDragEnd = (el: HTMLElement) => {
 }
 
 .no-results {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
 	text-align: center;
+	height: 100%;
+	gap: var(--spacing-2xs);
 	padding: var(--spacing-s) var(--spacing-s) var(--spacing-xl) var(--spacing-s);
 }
 

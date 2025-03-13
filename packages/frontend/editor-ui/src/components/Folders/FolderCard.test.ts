@@ -32,7 +32,8 @@ const DEFAULT_FOLDER: FolderResource = {
 	updatedAt: new Date().toISOString(),
 	resourceType: 'folder',
 	readOnly: false,
-	workflowCount: 0,
+	workflowCount: 2,
+	subFolderCount: 2,
 	homeProject: {
 		id: '1',
 		name: 'Project 1',
@@ -51,6 +52,7 @@ const PARENT_FOLDER: FolderResource = {
 	resourceType: 'folder',
 	readOnly: false,
 	workflowCount: 0,
+	subFolderCount: 0,
 	homeProject: {
 		id: '1',
 		name: 'Project 1',
@@ -100,9 +102,24 @@ describe('FolderCard', () => {
 		const { getByTestId } = renderComponent();
 		expect(getByTestId('folder-card-icon')).toBeInTheDocument();
 		expect(getByTestId('folder-card-name')).toHaveTextContent(DEFAULT_FOLDER.name);
-		expect(getByTestId('folder-card-workflow-count')).toHaveTextContent('0');
+		expect(getByTestId('folder-card-workflow-count')).toHaveTextContent('2');
+		expect(getByTestId('folder-card-folder-count')).toHaveTextContent('2');
 		expect(getByTestId('folder-card-last-updated')).toHaveTextContent('Last updated just now');
 		expect(getByTestId('folder-card-created')).toHaveTextContent('Created just now');
+	});
+
+	it('should not render workflow & folder count if they are 0', () => {
+		const { queryByTestId } = renderComponent({
+			props: {
+				data: {
+					...DEFAULT_FOLDER,
+					workflowCount: 0,
+					subFolderCount: 0,
+				},
+			},
+		});
+		expect(queryByTestId('folder-card-workflow-count')).not.toBeInTheDocument();
+		expect(queryByTestId('folder-card-folder-count')).not.toBeInTheDocument();
 	});
 
 	it('should render breadcrumbs with personal folder', () => {

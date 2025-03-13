@@ -65,7 +65,7 @@ withDefaults(defineProps<ActionBoxProps>(), {
 			:class="$style.callout"
 		>
 			<N8nText color="text-base">
-				<span size="small" v-n8n-html="calloutText"></span>
+				<span v-n8n-html="calloutText" size="small"></span>
 			</N8nText>
 		</N8nCallout>
 	</div>

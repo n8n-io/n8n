@@ -23,6 +23,7 @@ import type {
 	WorkflowListResource,
 	WorkflowListItem,
 	FolderPathItem,
+	FolderListItem,
 } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -126,45 +127,35 @@ const currentFolderId = ref<string | null>(null);
  */
 const folderActions = ref<Array<UserAction & { onlyAvailableOn?: 'mainBreadcrumbs' | 'card' }>>([
 	{
-		label: 'Open',
+		label: i18n.baseText('generic.open'),
 		value: FOLDER_LIST_ITEM_ACTIONS.OPEN,
 		disabled: false,
 		onlyAvailableOn: 'card',
 	},
 	{
-		label: 'Create Folder',
+		label: i18n.baseText('folders.actions.create'),
 		value: FOLDER_LIST_ITEM_ACTIONS.CREATE,
 		disabled: false,
 	},
 	{
-		label: 'Create Workflow',
+		label: i18n.baseText('folders.actions.create.workflow'),
 		value: FOLDER_LIST_ITEM_ACTIONS.CREATE_WORKFLOW,
 		disabled: false,
 	},
 	{
-		label: 'Rename',
+		label: i18n.baseText('generic.rename'),
 		value: FOLDER_LIST_ITEM_ACTIONS.RENAME,
-		disabled: true,
+		disabled: false,
 	},
 	{
-		label: 'Move to Folder',
+		label: i18n.baseText('folders.actions.moveToFolder'),
 		value: FOLDER_LIST_ITEM_ACTIONS.MOVE,
 		disabled: true,
 	},
 	{
-		label: 'Change Owner',
-		value: FOLDER_LIST_ITEM_ACTIONS.CHOWN,
-		disabled: true,
-	},
-	{
-		label: 'Manage Tags',
-		value: FOLDER_LIST_ITEM_ACTIONS.TAGS,
-		disabled: true,
-	},
-	{
-		label: 'Delete',
+		label: i18n.baseText('generic.delete'),
 		value: FOLDER_LIST_ITEM_ACTIONS.DELETE,
-		disabled: true,
+		disabled: false,
 	},
 ]);
 const folderCardActions = computed(() =>
@@ -218,6 +209,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				homeProject: resource.homeProject,
 				sharedWithProjects: resource.sharedWithProjects,
 				workflowCount: resource.workflowCount,
+				subFolderCount: resource.subFolderCount,
 				parentFolder: resource.parentFolder,
 			} as FolderResource;
 		} else {
@@ -280,7 +272,7 @@ const emptyListDescription = computed(() => {
 });
 
 /**
- * WATCHERS AND STORE SUBSCRIPTIONS
+ * WATCHERS, STORE SUBSCRIPTIONS AND EVENT BUS HANDLERS
  */
 
 watch(
@@ -303,6 +295,21 @@ sourceControlStore.$onAction(({ name, after }) => {
 	after(async () => await initialize());
 });
 
+const onFolderDeleted = async (payload: { folderId: string }) => {
+	const folderInfo = foldersStore.getCachedFolder(payload.folderId);
+	foldersStore.deleteFoldersFromCache([payload.folderId, folderInfo?.parentFolder ?? '']);
+	// If the deleted folder is the current folder, navigate to the parent folder
+
+	if (currentFolderId.value === payload.folderId) {
+		void router.push({
+			name: VIEWS.PROJECTS_FOLDERS,
+			params: { projectId: route.params.projectId, folderId: folderInfo?.parentFolder ?? '' },
+		});
+	} else {
+		await fetchWorkflows();
+	}
+};
+
 /**
  * LIFE-CYCLE HOOKS
  */
@@ -313,11 +320,13 @@ onMounted(async () => {
 
 	workflowListEventBus.on('resource-moved', fetchWorkflows);
 	workflowListEventBus.on('workflow-duplicated', fetchWorkflows);
+	workflowListEventBus.on('folder-deleted', onFolderDeleted);
 });
 
 onBeforeUnmount(() => {
 	workflowListEventBus.off('resource-moved', fetchWorkflows);
 	workflowListEventBus.off('workflow-duplicated', fetchWorkflows);
+	workflowListEventBus.off('folder-deleted', onFolderDeleted);
 });
 
 /**
@@ -328,9 +337,8 @@ onBeforeUnmount(() => {
 const initialize = async () => {
 	loading.value = true;
 	await setFiltersFromQueryString();
-	if (!route.params.folderId) {
-		currentFolderId.value = null;
-	}
+
+	currentFolderId.value = route.params.folderId as string | null;
 	const [, resourcesPage] = await Promise.all([
 		usersStore.fetchUsers(),
 		fetchWorkflows(),
@@ -357,41 +365,63 @@ const fetchWorkflows = async () => {
 	const homeProjectFilter = filters.value.homeProject || undefined;
 	const parentFolder = (route.params?.folderId as string) || undefined;
 
-	const fetchedResources = await workflowsStore.fetchWorkflowsPage(
-		routeProjectId ?? homeProjectFilter,
-		currentPage.value,
-		pageSize.value,
-		currentSort.value,
-		{
-			name: filters.value.search || undefined,
-			active:
-				filters.value.status === StatusFilter.ALL
-					? undefined
-					: filters.value.status === StatusFilter.ACTIVE,
-			tags: filters.value.tags.map((tagId) => tagsStore.tagsById[tagId]?.name),
-			parentFolderId: parentFolder ?? '0', // 0 is the root folder in the API
-		},
-		showFolders.value,
-	);
-	foldersStore.cacheFolders(
-		fetchedResources
-			.filter((resource) => resource.resource === 'folder')
-			.map((r) => ({ id: r.id, name: r.name, parentFolder: r.parentFolder?.id })),
-	);
-	const isCurrentFolderCached = foldersStore.breadcrumbsCache[parentFolder ?? ''] !== undefined;
-	const needToFetchFolderPath = parentFolder && !isCurrentFolderCached && routeProjectId;
-	if (needToFetchFolderPath) {
-		breadcrumbsLoading.value = true;
-		await foldersStore.getFolderPath(routeProjectId, parentFolder);
-		currentFolderId.value = parentFolder;
-		breadcrumbsLoading.value = false;
-	}
-	await foldersStore.fetchTotalWorkflowsAndFoldersCount(routeProjectId);
+	const tags = filters.value.tags.length
+		? filters.value.tags.map((tagId) => tagsStore.tagsById[tagId]?.name)
+		: [];
+	const activeFilter =
+		filters.value.status === StatusFilter.ALL
+			? undefined
+			: filters.value.status === StatusFilter.ACTIVE;
 
-	delayedLoading.cancel();
-	workflowsAndFolders.value = fetchedResources;
-	loading.value = false;
-	return fetchedResources;
+	// Only fetch folders if showFolders is enabled and there are not tags or active filter applied
+	const fetchFolders = showFolders.value && !tags.length && activeFilter === undefined;
+
+	try {
+		const fetchedResources = await workflowsStore.fetchWorkflowsPage(
+			routeProjectId ?? homeProjectFilter,
+			currentPage.value,
+			pageSize.value,
+			currentSort.value,
+			{
+				name: filters.value.search || undefined,
+				active: activeFilter,
+				tags,
+				parentFolderId: parentFolder ?? '0', // 0 is the root folder in the API
+			},
+			fetchFolders,
+		);
+
+		foldersStore.cacheFolders(
+			fetchedResources
+				.filter((resource) => resource.resource === 'folder')
+				.map((r) => ({ id: r.id, name: r.name, parentFolder: r.parentFolder?.id })),
+		);
+
+		const isCurrentFolderCached = foldersStore.breadcrumbsCache[parentFolder ?? ''] !== undefined;
+		const needToFetchFolderPath = parentFolder && !isCurrentFolderCached && routeProjectId;
+
+		if (needToFetchFolderPath) {
+			breadcrumbsLoading.value = true;
+			await foldersStore.getFolderPath(routeProjectId, parentFolder);
+			breadcrumbsLoading.value = false;
+		}
+
+		await foldersStore.fetchTotalWorkflowsAndFoldersCount(routeProjectId);
+
+		workflowsAndFolders.value = fetchedResources;
+		return fetchedResources;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('workflows.list.error.fetching'));
+		// redirect to the project page if the folder is not found
+		void router.push({ name: VIEWS.PROJECTS_FOLDERS, params: { projectId: routeProjectId } });
+		return [];
+	} finally {
+		delayedLoading.cancel();
+		loading.value = false;
+		if (breadcrumbsLoading.value) {
+			breadcrumbsLoading.value = false;
+		}
+	}
 };
 
 // Filter and sort methods
@@ -608,6 +638,44 @@ const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
 	workflow.active = data.active;
 };
 
+const getFolderListItem = (folderId: string): FolderListItem | undefined => {
+	return workflowsAndFolders.value.find(
+		(resource): resource is FolderListItem =>
+			resource.resource === 'folder' && resource.id === folderId,
+	);
+};
+// TODO: This will only count the workflows and folders in the current page
+// Check if we need to add counts to /tree endpoint or not show them in modal
+const getCurrentFolderWorkflowCount = () => {
+	const workflows = workflowsAndFolders.value.filter(
+		(resource): resource is WorkflowListItem => resource.resource === 'workflow',
+	);
+	return workflows.length;
+};
+
+const getCurrentFolderSubFolderCount = () => {
+	const folders = workflowsAndFolders.value.filter(
+		(resource): resource is FolderListItem => resource.resource === 'folder',
+	);
+	return folders.length;
+};
+
+const getFolderContent = (folderId: string) => {
+	const folderListItem = getFolderListItem(folderId);
+	if (!folderListItem) {
+		toast.showMessage({
+			title: i18n.baseText('folders.delete.error.message'),
+			message: i18n.baseText('folders.not.found.message'),
+			type: 'error',
+		});
+		return { workflowCount: 0, subFolderCount: 0 };
+	}
+	return {
+		workflowCount: folderListItem.workflowCount,
+		subFolderCount: folderListItem.subFolderCount,
+	};
+};
+
 // Breadcrumbs methods
 
 /**
@@ -720,6 +788,16 @@ const onBreadCrumbsAction = async (action: string) => {
 		case FOLDER_LIST_ITEM_ACTIONS.CREATE_WORKFLOW:
 			addWorkflow();
 			break;
+		case FOLDER_LIST_ITEM_ACTIONS.DELETE:
+			if (!route.params.folderId) return;
+			const subFolderCount = getCurrentFolderSubFolderCount();
+			const workflowCount = getCurrentFolderWorkflowCount();
+			await deleteFolder(route.params.folderId as string, workflowCount, subFolderCount);
+			break;
+		case FOLDER_LIST_ITEM_ACTIONS.RENAME:
+			if (!route.params.folderId) return;
+			await renameFolder(route.params.folderId as string);
+			break;
 		default:
 			break;
 	}
@@ -745,6 +823,14 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 				query: { projectId: route.params?.projectId, parentFolderId: clickedFolder.id },
 			});
 			break;
+		case FOLDER_LIST_ITEM_ACTIONS.DELETE: {
+			const content = getFolderContent(clickedFolder.id);
+			await deleteFolder(clickedFolder.id, content.workflowCount, content.subFolderCount);
+			break;
+		}
+		case FOLDER_LIST_ITEM_ACTIONS.RENAME:
+			await renameFolder(clickedFolder.id);
+			break;
 		default:
 			break;
 	}
@@ -758,7 +844,7 @@ const createFolder = async (parent: { id: string; name: string; type: 'project' 
 		{
 			confirmButtonText: i18n.baseText('generic.create'),
 			cancelButtonText: i18n.baseText('generic.cancel'),
-			inputErrorMessage: i18n.baseText('folders.add.invalidName.message'),
+			inputErrorMessage: i18n.baseText('folders.invalidName.message'),
 			inputValue: '',
 			inputPattern: /^[a-zA-Z0-9-_ ]{1,100}$/,
 			customClass: 'add-folder-modal',
@@ -774,7 +860,7 @@ const createFolder = async (parent: { id: string; name: string; type: 'project' 
 				parent.type === 'folder' ? parent.id : undefined,
 			);
 
-			let newFolderURL = `/projects/${route.params.projectId}`;
+			let newFolderURL = `/projects/${route.params.projectId}/folders/${newFolder.id}/workflows`;
 			if (newFolder.parentFolder) {
 				newFolderURL = `/projects/${route.params.projectId}/folders/${newFolder.id}/workflows`;
 			}
@@ -800,14 +886,51 @@ const createFolder = async (parent: { id: string; name: string; type: 'project' 
 						homeProject: projectsStore.currentProject as ProjectSharingData,
 						sharedWithProjects: [],
 						workflowCount: 0,
+						subFolderCount: 0,
 					},
 				];
+				foldersStore.cacheFolders([
+					{ id: newFolder.id, name: newFolder.name, parentFolder: currentFolder.value?.id },
+				]);
 			} else {
 				// Else fetch again with same filters & pagination applied
 				await fetchWorkflows();
 			}
 		} catch (error) {
 			toast.showError(error, 'Error creating folder');
+		}
+	}
+};
+
+const renameFolder = async (folderId: string) => {
+	const folder = foldersStore.getCachedFolder(folderId);
+	if (!folder || !currentProject.value) return;
+	const promptResponsePromise = message.prompt(
+		i18n.baseText('folders.rename.message', { interpolate: { folderName: folder.name } }),
+		{
+			confirmButtonText: i18n.baseText('generic.rename'),
+			cancelButtonText: i18n.baseText('generic.cancel'),
+			inputErrorMessage: i18n.baseText('folders.invalidName.message'),
+			inputValue: folder.name,
+			inputPattern: /^[a-zA-Z0-9-_ ]{1,100}$/,
+			customClass: 'rename-folder-modal',
+		},
+	);
+	const promptResponse = await promptResponsePromise;
+	if (promptResponse.action === MODAL_CONFIRM) {
+		const newFolderName = promptResponse.value;
+		try {
+			await foldersStore.renameFolder(currentProject.value?.id, folderId, newFolderName);
+			foldersStore.breadcrumbsCache[folderId].name = newFolderName;
+			toast.showMessage({
+				title: i18n.baseText('folders.rename.success.message', {
+					interpolate: { folderName: newFolderName },
+				}),
+				type: 'success',
+			});
+			await fetchWorkflows();
+		} catch (error) {
+			toast.showError(error, i18n.baseText('folders.rename.error.title'));
 		}
 	}
 };
@@ -821,6 +944,22 @@ const createFolderInCurrent = async () => {
 		name: currentParent,
 		type: currentFolder.value ? 'folder' : 'project',
 	});
+};
+
+const deleteFolder = async (folderId: string, workflowCount: number, subFolderCount: number) => {
+	if (subFolderCount || workflowCount) {
+		uiStore.openDeleteFolderModal(folderId, workflowListEventBus, {
+			workflowCount,
+			subFolderCount,
+		});
+	} else {
+		await foldersStore.deleteFolder(route.params.projectId as string, folderId);
+		toast.showMessage({
+			title: i18n.baseText('folders.delete.success.message'),
+			type: 'success',
+		});
+		await onFolderDeleted({ folderId });
+	}
 };
 </script>
 
@@ -903,7 +1042,11 @@ const createFolderInCurrent = async () => {
 			<div v-if="breadcrumbsLoading" :class="$style['breadcrumbs-loading']">
 				<n8n-loading :loading="breadcrumbsLoading" :rows="1" variant="p" />
 			</div>
-			<div v-else-if="showFolders && currentFolder" :class="$style['breadcrumbs-container']">
+			<div
+				v-else-if="showFolders && currentFolder"
+				:class="$style['breadcrumbs-container']"
+				data-test-id="main-breadcrumbs"
+			>
 				<FolderBreadcrumbs
 					:breadcrumbs="mainBreadcrumbs"
 					:actions="mainBreadcrumbsActions"

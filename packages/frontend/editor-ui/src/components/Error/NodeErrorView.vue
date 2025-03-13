@@ -424,9 +424,9 @@ async function onAskAssistantClick() {
 			</div>
 			<div
 				v-if="(error.description || error.context?.descriptionKey) && !isSubNodeError"
+				v-n8n-html="getErrorDescription()"
 				data-test-id="node-error-description"
 				class="node-error-view__header-description"
-				v-n8n-html="getErrorDescription()"
 			></div>
 
 			<div v-if="isSubNodeError">
