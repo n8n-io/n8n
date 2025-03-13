@@ -164,7 +164,6 @@ describe('WorkflowCanvas', () => {
 		it('should initialize debounced watchers on component mount', async () => {
 			renderComponent();
 
-			// Expect debounce to be called exactly 3 times
 			expect(lodash.debounce).toHaveBeenCalledTimes(3);
 		});
 
@@ -175,14 +174,12 @@ describe('WorkflowCanvas', () => {
 				},
 			});
 
-			// Expect debounce to be called exactly 3 times
 			expect(lodash.debounce).toHaveBeenCalledTimes(3);
 
 			// Find calls related to our specific debouncing logic
 			const calls = vi.mocked(lodash.debounce).mock.calls;
 			const nonExecutingCalls = calls.filter((call) => call[1] === 0 && call[2]?.maxWait === 0);
 
-			// Check that we have at least two calls with these parameters
 			expect(nonExecutingCalls.length).toBeGreaterThanOrEqual(2);
 			expect(nonExecutingCalls[0][1]).toBe(0);
 			expect(nonExecutingCalls[0][2]).toEqual({ maxWait: 0 });
@@ -195,14 +192,12 @@ describe('WorkflowCanvas', () => {
 				},
 			});
 
-			// Expect debounce to be called exactly 3 times
 			expect(lodash.debounce).toHaveBeenCalledTimes(3);
 
 			// Find calls related to our specific debouncing logic
 			const calls = vi.mocked(lodash.debounce).mock.calls;
 			const executingCalls = calls.filter((call) => call[1] === 200 && call[2]?.maxWait === 50);
 
-			// Check that we have at least two calls with these parameters
 			expect(executingCalls.length).toBeGreaterThanOrEqual(2);
 			expect(executingCalls[0][1]).toBe(200);
 			expect(executingCalls[0][2]).toEqual({ maxWait: 50 });

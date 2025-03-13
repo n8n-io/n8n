@@ -43,7 +43,7 @@ export class MyVectorStoreNode {
       docsUrl: 'https://docs.example.com/my-vector-store',
       icon: 'file:myIcon.svg',
       // Optional: specify which operations this vector store supports
-      operationModes: ['load', 'insert', 'retrieve', 'retrieve-as-tool'],
+      operationModes: ['load', 'insert', 'update','retrieve', 'retrieve-as-tool'],
     },
     sharedFields: [
       // Fields shown in all operation modes
@@ -64,9 +64,10 @@ export class MyVectorStoreNode {
     populateVectorStore: async (context, embeddings, documents, itemIndex) => {
       // Insert documents into vector store
     },
-    // Optional: cleanup function
+    // Optional: cleanup function - called in finally blocks after operations
     releaseVectorStoreClient: (vectorStore) => {
-      // Release resources if needed
+      // Release resources such as database connections or external clients
+      // For example, in PGVector: vectorStore.client?.release();
     },
   });
 }
@@ -99,6 +100,9 @@ export class MyVectorStoreNode {
 - Updates existing documents in the vector store by ID
 - Requires the vector store to support document updates
 - Only enabled if included in `operationModes`
+- Uses `addDocuments` method with an `ids` array to update specific documents
+- Processes a single document per item and applies it to the specified ID
+- Validates that only one document is being updated per operation
 
 ## Key Components
 
@@ -157,28 +161,8 @@ const { processedDocuments, serializedDocuments } = await processDocument(
 
 ## Implementation Details
 
-### Dynamic Inputs and Outputs
-The node definition includes dynamic inputs and outputs based on the selected operation mode:
-
-```typescript
-inputs: `={{
-  ((parameters) => {
-    const mode = parameters?.mode;
-    // Dynamic inputs based on mode
-    // ...
-  })($parameter)
-}}`,
-outputs: `={{
-  ((parameters) => {
-    const mode = parameters?.mode ?? 'retrieve';
-    // Dynamic outputs based on mode
-    // ...
-  })($parameter)
-}}`,
-```
-
-### Error Handling
-Each operation handler includes error handling with proper resource cleanup:
+### Error Handling and Resource Management
+Each operation handler includes error handling with proper resource cleanup. The `releaseVectorStoreClient` function is called in a `finally` block to ensure resources are released even if an error occurs:
 
 ```typescript
 try {
@@ -188,6 +172,15 @@ try {
   args.releaseVectorStoreClient?.(vectorStore);
 }
 ```
+
+#### When releaseVectorStoreClient is called:
+- After completing a similarity search in `loadOperation`
+- As part of the `closeFunction` in `retrieveOperation` to release resources when they're no longer needed
+- After each tool use in `retrieveAsToolOperation`
+- After updating documents in `updateOperation` 
+- After inserting documents in `insertOperation`
+
+This design ensures proper resource management, which is especially important for database-backed vector stores (like PGVector) that need to return connections to a pool. Without proper cleanup, prolonged usage could lead to resource leaks or connection pool exhaustion.
 
 ### Dynamic Tool Creation
 For the `retrieve-as-tool` mode, a DynamicTool is created that exposes vector store functionality:
@@ -213,18 +206,3 @@ const vectorStoreTool = new DynamicTool({
 
 4. **Execution Cancellation**: The code checks for cancellation signals to stop processing when needed.
 
-## Testing
-
-Each component has dedicated tests:
-- Individual operation handlers are tested separately
-- Utility functions have their own test suite
-- Error cases are explicitly tested
-
-## Extension Points
-
-To add new operation modes:
-1. Define the mode in `NodeOperationMode` type
-2. Add it to `DEFAULT_OPERATION_MODES` if it should be widely available
-3. Add description to `OPERATION_MODE_DESCRIPTIONS`
-4. Create a new handler function
-5. Update `execute` and/or `supplyData` methods to use the handler
