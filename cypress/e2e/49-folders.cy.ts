@@ -13,15 +13,11 @@ import {
 	getFolderCard,
 	getFolderCardActionItem,
 	getFolderCardActionToggle,
-	getFolderCardBreadCrumbsEllipsis,
-	getFolderCardCurrentBreadcrumb,
-	getFolderCardHomeProjectBreadcrumb,
 	getFolderCards,
 	getHomeProjectBreadcrumb,
 	getListBreadcrumbs,
 	getMainBreadcrumbsEllipsis,
 	getMainBreadcrumbsEllipsisMenuItems,
-	getOpenHiddenItemsTooltip,
 	getOverviewMenuItem,
 	getPersonalProjectMenuItem,
 	getVisibleListBreadcrumbs,
@@ -62,7 +58,7 @@ describe('Folders', () => {
 			createFolderFromListHeaderButton('My Folder 2');
 			getFolderCards().should('have.length.greaterThan', 0);
 			// Clicking on the success toast should navigate to the folder
-			successToast().find('a').contains('My Folder 2').click();
+			successToast().contains('My Folder 2').find('a').contains('Open folder').click();
 			getCurrentBreadcrumb().should('contain.text', 'My Folder 2');
 		});
 
@@ -113,29 +109,21 @@ describe('Folders', () => {
 			createFolderFromProjectHeader('Multi-level Test');
 			createFolderInsideFolder('Child Folder', 'Multi-level Test');
 			// One level deep:
-			// - Both main breadcrumbs & card breadcrumbs should only show home project and current folder
+			// - Breadcrumbs should only show home project and current folder
 			getHomeProjectBreadcrumb().should('exist');
 			getCurrentBreadcrumb().should('contain.text', 'Multi-level Test');
 			getFolderCard('Child Folder').should('exist');
-			getFolderCardHomeProjectBreadcrumb('Child Folder').should('exist');
-			getFolderCardCurrentBreadcrumb('Child Folder').should('contain.text', 'Multi-level Test');
-			// No hidden items at this level
-			getFolderCardBreadCrumbsEllipsis('Child Folder').should('not.exist');
 
 			createFolderInsideFolder('Child Folder 2', 'Child Folder');
 			// Two levels deep:
-			// - Main breadcrumbs should also show parent folder, without hidden ellipsis
-			// - Card breadcrumbs should show home project, parent folder, with hidden ellipsis
+			// - Breadcrumbs should also show parent folder, without hidden ellipsis
 			getHomeProjectBreadcrumb().should('exist');
 			getCurrentBreadcrumb().should('contain.text', 'Child Folder');
 			getVisibleListBreadcrumbs().should('have.length', 1);
 			getMainBreadcrumbsEllipsis().should('not.exist');
-			getFolderCardCurrentBreadcrumb('Child Folder 2').should('contain.text', 'Child Folder');
-			getFolderCardBreadCrumbsEllipsis('Child Folder 2').should('exist');
 
 			// Three levels deep:
-			// - Main breadcrumbs should show parents up to the grandparent folder, with one hidden element
-			// - Card breadcrumbs should now show two hidden elements
+			// - Breadcrumbs should show parents up to the grandparent folder, with one hidden element
 			createFolderInsideFolder('Child Folder 3', 'Child Folder 2');
 			getVisibleListBreadcrumbs().should('have.length', 1);
 			getMainBreadcrumbsEllipsis().should('exist');
@@ -143,12 +131,6 @@ describe('Folders', () => {
 			getMainBreadcrumbsEllipsis().click();
 			getMainBreadcrumbsEllipsisMenuItems().first().should('contain.text', 'Multi-level Test');
 			getMainBreadcrumbsEllipsis().click();
-			// Card breadcrumbs should show two hidden elements
-			getFolderCardBreadCrumbsEllipsis('Child Folder 3').should('exist');
-			// Clicking on the ellipsis should show hidden element in card breadcrumbs
-			getFolderCardBreadCrumbsEllipsis('Child Folder 3').click();
-			getOpenHiddenItemsTooltip().should('be.visible');
-			getOpenHiddenItemsTooltip().should('contain.text', 'Multi-level Test / Child Folder');
 		});
 
 		// Make sure breadcrumbs and folder card show correct info when landing straight on a folder page
@@ -171,13 +153,6 @@ describe('Folders', () => {
 			getMainBreadcrumbsEllipsisMenuItems().first().should('contain.text', 'Landing Test');
 			// Should load child folder card
 			getFolderCard('Child Folder 3').should('exist');
-			// Card breadcrumbs should show home project and parent, with two hidden elements
-			getFolderCardHomeProjectBreadcrumb('Child Folder 3').should('exist');
-			getFolderCardCurrentBreadcrumb('Child Folder 3').should('contain.text', 'Child Folder 2');
-			getFolderCardBreadCrumbsEllipsis('Child Folder 3').should('exist');
-			getFolderCardBreadCrumbsEllipsis('Child Folder 3').click();
-			getOpenHiddenItemsTooltip().should('be.visible');
-			getOpenHiddenItemsTooltip().should('contain.text', 'Landing Test / Child Folder');
 		});
 
 		it('should show folders only in projects', () => {
@@ -239,9 +214,7 @@ describe('Folders', () => {
 			getPersonalProjectMenuItem().find('li').should('have.class', 'is-active');
 		});
 
-		// TODO: Once we have a backend endpoint that returns sub-folder count, enable this
-		// eslint-disable-next-line n8n-local-rules/no-skipped-tests
-		it.skip('should warn before deleting non-empty folder from card dropdown', () => {
+		it('should warn before deleting non-empty folder from card dropdown', () => {
 			goToPersonalProject();
 			createFolderFromProjectHeader('I also have family');
 			createFolderInsideFolder('Child 1', 'I also have family');
