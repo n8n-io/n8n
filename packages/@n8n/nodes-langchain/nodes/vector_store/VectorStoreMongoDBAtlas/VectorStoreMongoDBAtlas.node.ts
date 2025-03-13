@@ -1,17 +1,61 @@
 import { MongoDBAtlasVectorSearch } from '@langchain/mongodb';
 import { MongoClient } from 'mongodb';
-import { NodeOperationError, type INodeProperties } from 'n8n-workflow';
+import { type ILoadOptionsFunctions, NodeOperationError, type INodeProperties } from 'n8n-workflow';
 
 import { metadataFilterField } from '@utils/sharedFields';
 
 import { createVectorStoreNode } from '../shared/createVectorStoreNode';
-import {
-	mongoCollectionRLC,
-	embeddingField,
-	metadataField,
-	vectorIndexName,
-} from '../shared/descriptions';
-import { mongoCollectionSearch } from '../shared/methods/listSearch';
+
+const mongoCollectionRLC: INodeProperties = {
+	displayName: 'MongoDB Collection',
+	name: 'mongoCollection',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'mongoCollectionSearch', // Method to fetch collections
+			},
+		},
+		{
+			displayName: 'Name',
+			name: 'name',
+			type: 'string',
+			placeholder: 'e.g. my_collection',
+		},
+	],
+};
+
+const vectorIndexName: INodeProperties = {
+	displayName: 'Vector Index Name',
+	name: 'vectorIndexName',
+	type: 'string',
+	default: 'vector_index',
+	description: 'The name of the vector index',
+	required: true,
+};
+
+const embeddingField: INodeProperties = {
+	displayName: 'Embedding',
+	name: 'embedding',
+	type: 'string',
+	default: 'embedding',
+	description: 'The field with the embedding array',
+	required: true,
+};
+
+const metadataField: INodeProperties = {
+	displayName: 'Metadata Field',
+	name: 'metadata_field',
+	type: 'string',
+	default: 'text',
+	description: 'The text field of the raw data',
+	required: true,
+};
 
 const sharedFields: INodeProperties[] = [
 	mongoCollectionRLC,
@@ -58,7 +102,27 @@ const insertFields: INodeProperties[] = [
 		],
 	},
 ];
+export async function mongoCollectionSearch(this: ILoadOptionsFunctions) {
+	const credentials = await this.getCredentials('mongoDb');
 
+	const client = new MongoClient(credentials.connectionString as string, {
+		appName: 'devrel.content.n8n_vector_integ',
+	});
+	await client.connect();
+
+	try {
+		const db = client.db(credentials.database as string);
+		const collections = await db.listCollections().toArray();
+		const results = collections.map((collection) => ({
+			name: collection.name,
+			value: collection.name,
+		}));
+
+		return { results };
+	} finally {
+		await client.close();
+	}
+}
 export class VectorStoreMongoDBAtlas extends createVectorStoreNode({
 	meta: {
 		displayName: 'MongoDB Atlas Vector Store',
@@ -80,21 +144,21 @@ export class VectorStoreMongoDBAtlas extends createVectorStoreNode({
 	loadFields: retrieveFields,
 	insertFields,
 	sharedFields,
-	async getVectorStoreClient(context, filter, embeddings, itemIndex) {
+	async getVectorStoreClient(context, _filter, embeddings, itemIndex) {
 		try {
 			const collectionName = context.getNodeParameter('mongoCollection', itemIndex, '', {
 				extractValue: true,
 			}) as string;
 
-			const vectorIndexName = context.getNodeParameter('vectorIndexName', itemIndex, '', {
+			const mongoVectorIndexName = context.getNodeParameter('vectorIndexName', itemIndex, '', {
 				extractValue: true,
 			}) as string;
 
-			const embeddingField = context.getNodeParameter('embedding', itemIndex, '', {
+			const embeddingFieldName = context.getNodeParameter('embedding', itemIndex, '', {
 				extractValue: true,
 			}) as string;
 
-			const metadataField = context.getNodeParameter('metadata_field', itemIndex, '', {
+			const metadataFieldName = context.getNodeParameter('metadata_field', itemIndex, '', {
 				extractValue: true,
 			}) as string;
 
@@ -108,10 +172,10 @@ export class VectorStoreMongoDBAtlas extends createVectorStoreNode({
 			// test index exists
 			const indexes = await collection.listSearchIndexes().toArray();
 
-			const indexExists = indexes.some((index) => index.name === vectorIndexName);
+			const indexExists = indexes.some((index) => index.name === mongoVectorIndexName);
 
 			if (!indexExists) {
-				throw new NodeOperationError(context.getNode(), `Index ${vectorIndexName} not found`, {
+				throw new NodeOperationError(context.getNode(), `Index ${mongoVectorIndexName} not found`, {
 					itemIndex,
 					description: 'Please check that the index exists in your collection',
 				});
@@ -119,9 +183,9 @@ export class VectorStoreMongoDBAtlas extends createVectorStoreNode({
 
 			return new MongoDBAtlasVectorSearch(embeddings, {
 				collection,
-				indexName: vectorIndexName, // Default index name
-				textKey: metadataField, // Field containing raw text
-				embeddingKey: embeddingField, // Field containing embeddings
+				indexName: mongoVectorIndexName, // Default index name
+				textKey: metadataFieldName, // Field containing raw text
+				embeddingKey: embeddingFieldName, // Field containing embeddings
 			});
 		} catch (error) {
 			throw new NodeOperationError(context.getNode(), `Error: ${error.message}`, {
@@ -132,18 +196,18 @@ export class VectorStoreMongoDBAtlas extends createVectorStoreNode({
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		try {
-			const collectionName = context.getNodeParameter('mongoCollection', itemIndex, '', {
+			const mongoCollectionName = context.getNodeParameter('mongoCollection', itemIndex, '', {
 				extractValue: true,
 			}) as string;
-			const embeddingField = context.getNodeParameter('embedding', itemIndex, '', {
-				extractValue: true,
-			}) as string;
-
-			const metadataField = context.getNodeParameter('metadata_field', itemIndex, '', {
+			const embeddingFieldName = context.getNodeParameter('embedding', itemIndex, '', {
 				extractValue: true,
 			}) as string;
 
-			const vectorIndexName = context.getNodeParameter('vectorIndexName', itemIndex, '', {
+			const metadataFieldName = context.getNodeParameter('metadata_field', itemIndex, '', {
+				extractValue: true,
+			}) as string;
+
+			const mongoDBAtlasVectorIndex = context.getNodeParameter('vectorIndexName', itemIndex, '', {
 				extractValue: true,
 			}) as string;
 
@@ -157,16 +221,16 @@ export class VectorStoreMongoDBAtlas extends createVectorStoreNode({
 			const db = client.db(credentials.database as string);
 
 			// Check if collection exists
-			const collections = await db.listCollections({ name: collectionName }).toArray();
+			const collections = await db.listCollections({ name: mongoCollectionName }).toArray();
 			if (collections.length === 0) {
-				await db.createCollection(collectionName);
+				await db.createCollection(mongoCollectionName);
 			}
-			const collection = db.collection(collectionName);
+			const collection = db.collection(mongoCollectionName);
 			await MongoDBAtlasVectorSearch.fromDocuments(documents, embeddings, {
 				collection,
-				indexName: vectorIndexName, // Default index name
-				textKey: metadataField, // Field containing raw text
-				embeddingKey: embeddingField, // Field containing embeddings
+				indexName: mongoDBAtlasVectorIndex, // Default index name
+				textKey: metadataFieldName, // Field containing raw text
+				embeddingKey: embeddingFieldName, // Field containing embeddings
 			});
 
 			await client.close();
