@@ -303,7 +303,7 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 
 	private applyExcludeFolderFilter(
 		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
-		excludeFolderIdAndDescendants?: string,
+		excludeFolderIdAndDescendants: string,
 	): void {
 		// Exclude the specific folder by ID
 		query.andWhere('folder.id != :excludeFolderIdAndDescendants', {
