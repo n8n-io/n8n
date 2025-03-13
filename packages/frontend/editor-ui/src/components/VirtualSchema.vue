@@ -32,6 +32,7 @@ import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
 import { asyncComputed } from '@vueuse/core';
 import { usePostHog } from '@/stores/posthog.store';
 import { SCHEMA_PREVIEW_EXPERIMENT } from '@/constants';
+import { isEmpty } from '@/utils/typesUtils';
 
 type Props = {
 	nodes?: IConnectedNode[];
@@ -244,6 +245,11 @@ const onDragStart = () => {
 const onDragEnd = (el: HTMLElement) => {
 	setTimeout(() => {
 		const mappingTelemetry = ndvStore.mappingTelemetry;
+		const parentNode = nodesSchemas.value.find(({ node }) => node.name === el.dataset.nodeName);
+
+		const isPreview = parentNode?.preview ?? false;
+		const hasCredential = !isEmpty(parentNode?.node.credentials);
+
 		const telemetryPayload = {
 			src_node_type: el.dataset.nodeType,
 			src_field_name: el.dataset.name ?? '',
@@ -251,7 +257,8 @@ const onDragEnd = (el: HTMLElement) => {
 			src_run_index: props.runIndex,
 			src_runs_total: props.totalRuns,
 			src_field_nest_level: el.dataset.level ?? 0,
-			src_view: 'schema',
+			src_view: isPreview ? 'schema_preview' : 'schema',
+			src_has_credential: hasCredential,
 			src_element: el,
 			success: false,
 			...mappingTelemetry,
