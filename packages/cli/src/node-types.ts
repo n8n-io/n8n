@@ -10,6 +10,7 @@ import { NodeHelpers, UnexpectedError, UserError } from 'n8n-workflow';
 import { join, dirname } from 'path';
 
 import { LoadNodesAndCredentials } from './load-nodes-and-credentials';
+import { shouldAssignExecuteMethod } from './utils';
 
 @Service()
 export class NodeTypes implements INodeTypes {
@@ -55,15 +56,7 @@ export class NodeTypes implements INodeTypes {
 			throw new UnexpectedError('Node already has a `supplyData` method', { extra: { nodeType } });
 		}
 
-		const isDeclarativeNode = versionedNodeType.description.requestDefaults !== undefined;
-
-		if (
-			!versionedNodeType.execute &&
-			!versionedNodeType.poll &&
-			!versionedNodeType.trigger &&
-			(!versionedNodeType.webhook || isDeclarativeNode) &&
-			!versionedNodeType.methods
-		) {
+		if (shouldAssignExecuteMethod(versionedNodeType)) {
 			versionedNodeType.execute = async function (this: ExecuteContext) {
 				const routingNode = new RoutingNode(this, versionedNodeType);
 				const data = await routingNode.runNode();
