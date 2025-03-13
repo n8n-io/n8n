@@ -55,11 +55,13 @@ export class NodeTypes implements INodeTypes {
 			throw new UnexpectedError('Node already has a `supplyData` method', { extra: { nodeType } });
 		}
 
+		const isDeclarativeNode = versionedNodeType.description.requestDefaults !== undefined;
+
 		if (
 			!versionedNodeType.execute &&
 			!versionedNodeType.poll &&
 			!versionedNodeType.trigger &&
-			!versionedNodeType.webhook &&
+			(!versionedNodeType.webhook || isDeclarativeNode) &&
 			!versionedNodeType.methods
 		) {
 			versionedNodeType.execute = async function (this: ExecuteContext) {
