@@ -203,7 +203,7 @@ export async function execute(
 			returnData.push({ json: { success: true }, pairedItem });
 		}
 	} catch (error) {
-		prepareError(this.getNode(), error as Error);
+		prepareError(node, error as Error);
 	} finally {
 		delete alasql.databases[node.id];
 	}
