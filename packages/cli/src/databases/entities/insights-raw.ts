@@ -4,7 +4,7 @@ import { BaseEntity, Column, Entity, PrimaryGeneratedColumn } from '@n8n/typeorm
 import { DateTime } from 'luxon';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { datetimeColumnType } from './abstract-entity';
+import { datetimeColumnDefault, datetimeColumnType } from './abstract-entity';
 import { isValidTypeNumber, NumberToType, TypeToNumber } from './insights-shared';
 
 export const { type: dbType } = Container.get(GlobalConfig).database;
@@ -40,6 +40,7 @@ export class InsightsRaw extends BaseEntity {
 	@Column({
 		name: 'timestamp',
 		type: datetimeColumnType,
+		default: datetimeColumnDefault,
 	})
 	private timestamp_: number | Date;
 
