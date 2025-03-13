@@ -35,7 +35,9 @@ const workflow = computed(() => workflowsStore.getWorkflowById(workflowId.value)
 const workflowObject = computed(() => workflowsStore.getCurrentWorkflow(true));
 const canvasId = computed(() => `${uuid}-${testId.value}`);
 
-const { onNodesInitialized, fitView, zoomTo, onNodeClick } = useVueFlow({ id: canvasId.value });
+const { onNodesInitialized, fitView, zoomTo, onNodeClick, viewport } = useVueFlow({
+	id: canvasId.value,
+});
 const nodes = computed(() => workflow.value.nodes ?? []);
 const connections = computed(() => workflow.value.connections);
 
@@ -53,6 +55,9 @@ async function loadData() {
 		nodeTypesStore.getNodeTypes(),
 		workflowsStore.fetchWorkflow(workflowId.value),
 	]);
+
+	// remove editor pinned data
+	workflow.value.pinData = {};
 	initializeWorkspace(workflow.value);
 }
 
@@ -86,6 +91,37 @@ function handleNodeClick(data: CanvasNodeData) {
 	}
 }
 
+function tooltipContent(data: CanvasNodeData) {
+	if (nodeTypesStore.isTriggerNode(data.type)) {
+		return locale.baseText('testDefinition.edit.nodesPinning.triggerTooltip');
+	}
+
+	if (!canBeMocked(data.outputs, data.inputs)) {
+		return;
+	}
+
+	if (isMocked(data)) {
+		return locale.baseText('testDefinition.edit.nodesPinning.pinButtonTooltip.pinned');
+	} else {
+		return locale.baseText('testDefinition.edit.nodesPinning.pinButtonTooltip');
+	}
+}
+
+function tooltipOffset(data: CanvasNodeData) {
+	if (!canBeMocked(data.outputs, data.inputs)) return;
+
+	return 45 * viewport.value.zoom;
+}
+
+function tooltipProps(data: CanvasNodeData) {
+	const content = tooltipContent(data);
+	return {
+		disabled: !content,
+		content,
+		offset: tooltipOffset(data),
+	};
+}
+
 onNodeClick(({ node }) => handleNodeClick(node.data));
 
 onNodesInitialized(async () => {
@@ -114,11 +150,7 @@ onMounted(loadData);
 			:read-only="true"
 		>
 			<template #node="{ nodeProps }">
-				<N8nTooltip
-					:content="locale.baseText('testDefinition.edit.nodesPinning.triggerTooltip')"
-					:disabled="!nodeTypesStore.isTriggerNode(nodeProps.data.type)"
-					placement="top"
-				>
+				<N8nTooltip placement="top" v-bind="tooltipProps(nodeProps.data)">
 					<CanvasNode
 						v-bind="nodeProps"
 						:class="{
@@ -134,21 +166,16 @@ onMounted(loadData);
 									[$style.pinButtonContainerPinned]: isMocked(data),
 								}"
 							>
-								<N8nTooltip
-									placement="top"
-									:content="locale.baseText('testDefinition.edit.nodesPinning.pinButtonTooltip')"
+								<N8nButton
+									icon="thumbtack"
+									block
+									type="secondary"
+									:class="{ [$style.customSecondary]: isMocked(data) }"
+									data-test-id="node-pin-button"
 								>
-									<N8nButton
-										icon="thumbtack"
-										block
-										type="secondary"
-										:class="{ [$style.customSecondary]: isMocked(data) }"
-										data-test-id="node-pin-button"
-									>
-										<template v-if="isMocked(data)"> Unpin </template>
-										<template v-else> Pin </template>
-									</N8nButton>
-								</N8nTooltip>
+									<template v-if="isMocked(data)"> Unpin </template>
+									<template v-else> Pin </template>
+								</N8nButton>
 							</div>
 						</template>
 					</CanvasNode>
@@ -160,11 +187,6 @@ onMounted(loadData);
 
 <style lang="scss" module>
 .mockNode {
-	--color-canvas-node-pinned-border-color: var(
-		--canvas-node--border-color,
-		var(--color-foreground-xdark)
-	);
-
 	// remove selection outline
 	--color-canvas-selected-transparent: transparent;
 }
