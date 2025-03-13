@@ -3,8 +3,7 @@ import { MongoClient } from 'mongodb';
 import { type ILoadOptionsFunctions, NodeOperationError, type INodeProperties } from 'n8n-workflow';
 
 import { metadataFilterField } from '@utils/sharedFields';
-
-import { createVectorStoreNode } from '../shared/createVectorStoreNode';
+import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
 
 const mongoCollectionRLC: INodeProperties = {
 	displayName: 'MongoDB Collection',
