@@ -125,7 +125,7 @@ export async function execute(
 
 	if (isSelectQuery) {
 		try {
-			return await executeSelectWithMapedPairedItems(node, inputsData, query);
+			return await executeSelectWithMappedPairedItems(node, inputsData, query);
 		} catch (error) {
 			Container.get(ErrorReporter).error(error, {
 				extra: {
