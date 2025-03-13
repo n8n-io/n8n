@@ -1,4 +1,4 @@
-import { waitFor, within } from '@testing-library/vue';
+import { waitFor } from '@testing-library/vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import NodesPinning from '../NodesPinning.vue';
