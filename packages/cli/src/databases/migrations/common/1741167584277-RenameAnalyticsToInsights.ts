@@ -1,3 +1,4 @@
+import { datetimeColumnDefault } from '@/databases/entities/abstract-entity';
 import type { IrreversibleMigration, MigrationContext } from '@/databases/types';
 
 const names = {
@@ -43,9 +44,9 @@ export class RenameAnalyticsToInsights1741167584277 implements IrreversibleMigra
 	async up({ schemaBuilder: { createTable, column, dropTable } }: MigrationContext) {
 		// Until the insights feature is released we're dropping the tables instead
 		// of migrating them.
-		await dropTable(names.t.analyticsMetadata);
 		await dropTable(names.t.analyticsRaw);
 		await dropTable(names.t.analyticsByPeriod);
+		await dropTable(names.t.analyticsMetadata);
 
 		await createTable(names.t.insightsMetadata)
 			.withColumns(
@@ -75,7 +76,7 @@ export class RenameAnalyticsToInsights1741167584277 implements IrreversibleMigra
 				column(names.c.insightsRaw.metaId).int.notNull,
 				column('type').int.notNull.comment(typeComment),
 				column('value').int.notNull,
-				column('timestamp').timestampNoTimezone(0).default('CURRENT_TIMESTAMP').notNull,
+				column('timestamp').timestampTimezone(0).default(datetimeColumnDefault()).notNull,
 			)
 			.withForeignKey(names.c.insightsRaw.metaId, {
 				tableName: names.t.insightsMetadata,
@@ -90,7 +91,9 @@ export class RenameAnalyticsToInsights1741167584277 implements IrreversibleMigra
 				column(names.c.insightsByPeriod.type).int.notNull.comment(typeComment),
 				column('value').int.notNull,
 				column(names.c.insightsByPeriod.periodUnit).int.notNull.comment('0: hour, 1: day, 2: week'),
-				column(names.c.insightsByPeriod.periodStart).timestampNoTimezone(0),
+				column(names.c.insightsByPeriod.periodStart)
+					.timestampTimezone(0)
+					.default(datetimeColumnDefault()),
 			)
 			.withForeignKey(names.c.insightsByPeriod.metaId, {
 				tableName: names.t.insightsMetadata,

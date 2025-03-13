@@ -1,8 +1,13 @@
+import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { BaseEntity, Column, Entity, PrimaryGeneratedColumn } from '@n8n/typeorm';
+import { DateTime } from 'luxon';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { timestampColumnDefault, timestampColumnType } from './abstract-entity';
+import { datetimeColumnType } from './abstract-entity';
 import { isValidTypeNumber, NumberToType, TypeToNumber } from './insights-shared';
+
+export const { type: dbType } = Container.get(GlobalConfig).database;
 
 @Entity()
 export class InsightsRaw extends BaseEntity {
@@ -32,15 +37,23 @@ export class InsightsRaw extends BaseEntity {
 	@Column()
 	value: number;
 
-	@Column({ name: 'timestamp', type: timestampColumnType, default: timestampColumnDefault })
-	private timestamp_: number;
+	@Column({
+		name: 'timestamp',
+		type: datetimeColumnType,
+	})
+	private timestamp_: number | Date;
 
 	get timestamp() {
-		return new Date(this.timestamp_ * 1000);
+		if (this.timestamp_ instanceof Date) return this.timestamp_;
+		return DateTime.fromSeconds(this.timestamp_, { zone: 'utc' }).toJSDate();
 	}
 
 	set timestamp(value: Date) {
-		this.timestamp_ = Math.floor(value.getTime() / 1000);
+		if (dbType === 'sqlite') {
+			this.timestamp_ = Math.floor(value.getTime() / 1000);
+		} else {
+			this.timestamp_ = value;
+		}
 	}
 
 	inspect() {
