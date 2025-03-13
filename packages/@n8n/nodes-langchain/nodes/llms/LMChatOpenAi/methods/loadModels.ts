@@ -27,6 +27,8 @@ export async function searchModels(
 		return isValidModel && model.id.toLowerCase().includes(filter.toLowerCase());
 	});
 
+	filteredModels.sort((a, b) => a.id.localeCompare(b.id));
+
 	const results = {
 		results: filteredModels.map((model: { id: string }) => ({
 			name: model.id,
