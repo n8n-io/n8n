@@ -305,7 +305,7 @@ watchEffect(() => {
 							:supported-directions="['right']"
 							:width="chatWidth"
 							:class="$style.chat"
-							:window-obj="pipWindow"
+							:window="pipWindow"
 							@resize="onResizeChatDebounced"
 						>
 							<div :class="$style.inner">
@@ -326,14 +326,28 @@ watchEffect(() => {
 							<ChatLogsPanel
 								:key="`${resultData?.length ?? messages?.length}`"
 								:workflow="workflow"
-								:is-popped-out="isPoppedOut"
-								:can-pop-out="canPopOut"
 								data-test-id="canvas-chat-logs"
 								:node="connectedNode"
 								:slim="logsWidth < 700"
-								@close="closePanel"
-								@request-pop-out="onPopOut"
-							/>
+							>
+								<template #actions>
+									<n8n-icon-button
+										v-if="canPopOut && !isPoppedOut"
+										icon="pop-out"
+										type="secondary"
+										size="medium"
+										@click="onPopOut"
+									/>
+									<n8n-icon-button
+										v-if="!isPoppedOut"
+										outline
+										icon="times"
+										type="secondary"
+										size="medium"
+										@click="closePanel"
+									/>
+								</template>
+							</ChatLogsPanel>
 						</div>
 					</div>
 				</div>
