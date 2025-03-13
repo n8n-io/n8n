@@ -1,0 +1,43 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "displayName": {
+            "type": "string"
+        },
+        "firstName": {
+            "type": "string"
+        },
+        "lastName": {
+            "type": "string"
+        },
+        "pronouns": {
+            "type": "null"
+        },
+        "photoUploaded": {
+            "type": "boolean"
+        },
+        "photoUrl": {
+            "type": "string"
+        },
+        "canUploadPhoto": {
+            "type": "integer"
+        }
+    },
+    "required": [
+        "id",
+        "displayName",
+        "firstName",
+        "lastName",
+        "preferredName",
+        "jobTitle",
+        "workEmail",
+        "department",
+        "pronouns",
+        "photoUploaded",
+        "photoUrl",
+        "canUploadPhoto"
+    ]
+}

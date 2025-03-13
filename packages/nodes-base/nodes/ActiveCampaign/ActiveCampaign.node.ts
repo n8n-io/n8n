@@ -77,6 +77,7 @@ export class ActiveCampaign implements INodeType {
 		defaults: {
 			name: 'ActiveCampaign',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

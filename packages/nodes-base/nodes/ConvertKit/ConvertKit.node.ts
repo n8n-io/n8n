@@ -28,6 +28,7 @@ export class ConvertKit implements INodeType {
 		defaults: {
 			name: 'ConvertKit',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

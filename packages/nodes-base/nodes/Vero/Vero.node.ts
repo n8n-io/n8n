@@ -24,6 +24,7 @@ export class Vero implements INodeType {
 		defaults: {
 			name: 'Vero',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

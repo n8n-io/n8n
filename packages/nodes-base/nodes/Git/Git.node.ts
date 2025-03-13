@@ -31,6 +31,7 @@ export class Git implements INodeType {
 		defaults: {
 			name: 'Git',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

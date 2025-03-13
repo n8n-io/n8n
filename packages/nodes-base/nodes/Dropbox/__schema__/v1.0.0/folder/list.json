@@ -1,0 +1,38 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "lastModifiedClient": {
+            "type": "string"
+        },
+        "lastModifiedServer": {
+            "type": "string"
+        },
+        "rev": {
+            "type": "string"
+        },
+        "contentSize": {
+            "type": "integer"
+        },
+        "type": {
+            "type": "string"
+        },
+        "contentHash": {
+            "type": "string"
+        },
+        "pathLower": {
+            "type": "string"
+        },
+        "pathDisplay": {
+            "type": "string"
+        },
+        "isDownloadable": {
+            "type": "boolean"
+        }
+    }
+}

@@ -30,6 +30,7 @@ export class SentryIo implements INodeType {
 		defaults: {
 			name: 'Sentry.io',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

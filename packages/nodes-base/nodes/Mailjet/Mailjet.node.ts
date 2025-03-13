@@ -25,6 +25,7 @@ export class Mailjet implements INodeType {
 		defaults: {
 			name: 'Mailjet',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

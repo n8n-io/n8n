@@ -1,0 +1,263 @@
+{
+    "type": "object",
+    "properties": {
+        "DueDate": {
+            "type": "string"
+        },
+        "domain": {
+            "type": "string"
+        },
+        "sparse": {
+            "type": "boolean"
+        },
+        "Id": {
+            "type": "string"
+        },
+        "SyncToken": {
+            "type": "string"
+        },
+        "MetaData": {
+            "type": "object",
+            "properties": {
+                "CreateTime": {
+                    "type": "string"
+                },
+                "LastUpdatedTime": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "CreateTime",
+                "LastUpdatedTime"
+            ]
+        },
+        "TxnDate": {
+            "type": "string"
+        },
+        "CurrencyRef": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "value",
+                "name"
+            ]
+        },
+        "Line": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "Id": {
+                        "type": "string"
+                    },
+                    "LineNum": {
+                        "type": "integer"
+                    },
+                    "Description": {
+                        "type": "string"
+                    },
+                    "DetailType": {
+                        "type": "string"
+                    },
+                    "AccountBasedExpenseLineDetail": {
+                        "type": "object",
+                        "properties": {
+                            "AccountRef": {
+                                "type": "object",
+                                "properties": {
+                                    "value": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "value",
+                                    "name"
+                                ]
+                            },
+                            "BillableStatus": {
+                                "type": "string"
+                            },
+                            "TaxCodeRef": {
+                                "type": "object",
+                                "properties": {
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "value"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "AccountRef",
+                            "BillableStatus",
+                            "TaxCodeRef"
+                        ]
+                    }
+                },
+                "required": [
+                    "Id",
+                    "LineNum",
+                    "Amount",
+                    "DetailType"
+                ]
+            }
+        },
+        "VendorRef": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "value",
+                "name"
+            ]
+        },
+        "APAccountRef": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "value",
+                "name"
+            ]
+        },
+        "SalesTermRef": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "value"
+            ]
+        },
+        "LinkedTxn": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "TxnId": {
+                        "type": "string"
+                    },
+                    "TxnType": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "TxnId",
+                    "TxnType"
+                ]
+            }
+        },
+        "DocNumber": {
+            "type": "string"
+        },
+        "TxnTaxDetail": {
+            "type": "object",
+            "properties": {
+                "TotalTax": {
+                    "type": "number"
+                },
+                "TaxLine": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "Amount": {
+                                "type": "number"
+                            },
+                            "DetailType": {
+                                "type": "string"
+                            },
+                            "TaxLineDetail": {
+                                "type": "object",
+                                "properties": {
+                                    "TaxRateRef": {
+                                        "type": "object",
+                                        "properties": {
+                                            "value": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "value"
+                                        ]
+                                    },
+                                    "PercentBased": {
+                                        "type": "boolean"
+                                    },
+                                    "TaxPercent": {
+                                        "type": "integer"
+                                    },
+                                    "NetAmountTaxable": {
+                                        "type": "number"
+                                    }
+                                },
+                                "required": [
+                                    "TaxRateRef",
+                                    "PercentBased",
+                                    "TaxPercent",
+                                    "NetAmountTaxable"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "Amount",
+                            "DetailType",
+                            "TaxLineDetail"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "TotalTax",
+                "TaxLine"
+            ]
+        },
+        "GlobalTaxCalculation": {
+            "type": "string"
+        },
+        "PrivateNote": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "DueDate",
+        "Balance",
+        "domain",
+        "sparse",
+        "Id",
+        "SyncToken",
+        "MetaData",
+        "TxnDate",
+        "CurrencyRef",
+        "Line",
+        "VendorRef",
+        "APAccountRef",
+        "TotalAmt"
+    ]
+}

@@ -118,6 +118,15 @@ describe('NDV', () => {
 		ndv.actions.switchInputMode('Table');
 		ndv.actions.switchOutputMode('Table');
 
+		// Start from linked state
+		ndv.getters.outputLinkRun().then(($el) => {
+			const classList = Array.from($el[0].classList);
+			if (!classList.includes('linked')) {
+				ndv.actions.toggleOutputRunLinking();
+				ndv.getters.inputTbodyCell(1, 0).click(); // remove tooltip
+			}
+		});
+
 		ndv.getters
 			.inputRunSelector()
 			.should('exist')
@@ -243,38 +252,38 @@ describe('NDV', () => {
 		// biome-ignore format:
 		const PINNED_DATA = [
 			{
-				"id": "abc",
-				"historyId": "def",
-				"messages": [
+				id: 'abc',
+				historyId: 'def',
+				messages: [
 					{
-						"id": "abc"
-					}
-				]
+						id: 'abc',
+					},
+				],
 			},
 			{
-				"id": "abc",
-				"historyId": "def",
-				"messages": [
+				id: 'abc',
+				historyId: 'def',
+				messages: [
 					{
-						"id": "abc"
+						id: 'abc',
 					},
 					{
-						"id": "abc"
+						id: 'abc',
 					},
 					{
-						"id": "abc"
-					}
-				]
+						id: 'abc',
+					},
+				],
 			},
 			{
-				"id": "abc",
-				"historyId": "def",
-				"messages": [
+				id: 'abc',
+				historyId: 'def',
+				messages: [
 					{
-						"id": "abc"
-					}
-				]
-			}
+						id: 'abc',
+					},
+				],
+			},
 		];
 		workflowPage.actions.openNode('Get thread details1');
 		ndv.actions.pastePinnedData(PINNED_DATA);

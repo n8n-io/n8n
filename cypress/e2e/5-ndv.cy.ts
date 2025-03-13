@@ -110,7 +110,10 @@ describe('NDV', () => {
 		ndv.actions.execute();
 		ndv.getters
 			.nodeRunErrorMessage()
-			.should('have.text', 'Info for expression missing from previous node');
+			.should(
+				'have.text',
+				"Using the item method doesn't work with pinned data in this scenario. Please unpin 'Break pairedItem chain' and try again.",
+			);
 		ndv.getters
 			.nodeRunErrorDescription()
 			.should(
@@ -245,6 +248,15 @@ describe('NDV', () => {
 
 		ndv.actions.switchInputMode('Table');
 		ndv.actions.switchOutputMode('Table');
+
+		// Start from linked state
+		ndv.getters.outputLinkRun().then(($el) => {
+			const classList = Array.from($el[0].classList);
+			if (!classList.includes('linked')) {
+				ndv.actions.toggleOutputRunLinking();
+				ndv.getters.inputTbodyCell(1, 0).click(); // remove tooltip
+			}
+		});
 
 		ndv.getters
 			.inputRunSelector()
@@ -899,7 +911,7 @@ describe('NDV', () => {
 		ndv.getters.outputPanel().find('[data-test-id=ndv-search]').click().type('foo');
 		ndv.getters
 			.outputPanel()
-			.contains('To search field contents rather than just names, use Table or JSON view')
+			.contains('To search field values, switch to table or JSON view.')
 			.should('exist');
 	});
 

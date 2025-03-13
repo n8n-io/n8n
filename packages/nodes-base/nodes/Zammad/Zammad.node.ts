@@ -51,6 +51,7 @@ export class Zammad implements INodeType {
 		defaults: {
 			name: 'Zammad',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

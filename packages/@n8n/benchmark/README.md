@@ -27,7 +27,7 @@ docker run ghcr.io/n8n-io/n8n-benchmark:latest run \
 	--n8nUserPassword=InstanceOwnerPassword \
 	--vus=5 \
 	--duration=1m \
-	--scenarioFilter SingleWebhook
+	--scenarioFilter=single-webhook
 ```
 
 ### Using custom scenarios with the Docker image

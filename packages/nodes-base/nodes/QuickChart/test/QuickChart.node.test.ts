@@ -8,15 +8,10 @@ import type { WorkflowTestData } from '@test/nodes/types';
 describe('Test QuickChart Node', () => {
 	beforeEach(async () => {
 		await Helpers.initBinaryDataService();
-		nock.disableNetConnect();
 		nock('https://quickchart.io')
 			.persist()
 			.get(/chart.*/)
 			.reply(200, { success: true });
-	});
-
-	afterEach(() => {
-		nock.restore();
 	});
 
 	const workflow = Helpers.readJsonFileSync('nodes/QuickChart/test/QuickChart.workflow.json');

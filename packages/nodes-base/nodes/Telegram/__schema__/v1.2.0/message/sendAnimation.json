@@ -1,0 +1,176 @@
+{
+    "type": "object",
+    "properties": {
+        "ok": {
+            "type": "boolean"
+        },
+        "result": {
+            "type": "object",
+            "properties": {
+                "message_id": {
+                    "type": "integer"
+                },
+                "from": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "integer"
+                        },
+                        "is_bot": {
+                            "type": "boolean"
+                        },
+                        "first_name": {
+                            "type": "string"
+                        },
+                        "username": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "id",
+                        "is_bot",
+                        "first_name",
+                        "username"
+                    ]
+                },
+                "chat": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "integer"
+                        },
+                        "first_name": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "type": "string"
+                        },
+                        "username": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "id",
+                        "first_name",
+                        "type"
+                    ]
+                },
+                "date": {
+                    "type": "integer"
+                },
+                "sticker": {
+                    "type": "object",
+                    "properties": {
+                        "width": {
+                            "type": "integer"
+                        },
+                        "height": {
+                            "type": "integer"
+                        },
+                        "emoji": {
+                            "type": "string"
+                        },
+                        "set_name": {
+                            "type": "string"
+                        },
+                        "is_animated": {
+                            "type": "boolean"
+                        },
+                        "is_video": {
+                            "type": "boolean"
+                        },
+                        "type": {
+                            "type": "string"
+                        },
+                        "thumbnail": {
+                            "type": "object",
+                            "properties": {
+                                "file_id": {
+                                    "type": "string"
+                                },
+                                "file_unique_id": {
+                                    "type": "string"
+                                },
+                                "file_size": {
+                                    "type": "integer"
+                                },
+                                "width": {
+                                    "type": "integer"
+                                },
+                                "height": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "file_id",
+                                "file_unique_id",
+                                "file_size",
+                                "width",
+                                "height"
+                            ]
+                        },
+                        "thumb": {
+                            "type": "object",
+                            "properties": {
+                                "file_id": {
+                                    "type": "string"
+                                },
+                                "file_unique_id": {
+                                    "type": "string"
+                                },
+                                "file_size": {
+                                    "type": "integer"
+                                },
+                                "width": {
+                                    "type": "integer"
+                                },
+                                "height": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "file_id",
+                                "file_unique_id",
+                                "file_size",
+                                "width",
+                                "height"
+                            ]
+                        },
+                        "file_id": {
+                            "type": "string"
+                        },
+                        "file_unique_id": {
+                            "type": "string"
+                        },
+                        "file_size": {
+                            "type": "integer"
+                        }
+                    },
+                    "required": [
+                        "width",
+                        "height",
+                        "emoji",
+                        "is_animated",
+                        "is_video",
+                        "type",
+                        "thumbnail",
+                        "thumb",
+                        "file_id",
+                        "file_unique_id",
+                        "file_size"
+                    ]
+                }
+            },
+            "required": [
+                "message_id",
+                "from",
+                "chat",
+                "date"
+            ]
+        }
+    },
+    "required": [
+        "ok",
+        "result"
+    ]
+}

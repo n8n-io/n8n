@@ -1,0 +1,181 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "tax": {
+            "type": "integer"
+        },
+        "active_flag": {
+            "type": "boolean"
+        },
+        "selectable": {
+            "type": "boolean"
+        },
+        "first_char": {
+            "type": "string"
+        },
+        "visible_to": {
+            "type": "string"
+        },
+        "owner_id": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "has_pic": {
+                    "type": "integer"
+                },
+                "pic_hash": {
+                    "type": "null"
+                },
+                "active_flag": {
+                    "type": "boolean"
+                },
+                "value": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "email",
+                "has_pic",
+                "pic_hash",
+                "active_flag",
+                "value"
+            ]
+        },
+        "add_time": {
+            "type": "string"
+        },
+        "update_time": {
+            "type": "string"
+        },
+        "billing_frequency": {
+            "type": "string"
+        },
+        "billing_frequency_cycles": {
+            "type": "null"
+        },
+        "prices": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "currency": {
+                        "type": "string"
+                    },
+                    "notes": {
+                        "type": "string"
+                    },
+                    "product_id": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "id",
+                    "price",
+                    "currency",
+                    "cost",
+                    "overhead_cost",
+                    "notes",
+                    "product_id"
+                ]
+            }
+        },
+        "product_variations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "product_id": {
+                        "type": "integer"
+                    },
+                    "prices": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "integer"
+                                },
+                                "product_id": {
+                                    "type": "integer"
+                                },
+                                "product_variation_id": {
+                                    "type": "integer"
+                                },
+                                "currency": {
+                                    "type": "string"
+                                },
+                                "cost": {
+                                    "type": "integer"
+                                },
+                                "comment": {
+                                    "type": "string"
+                                },
+                                "overhead_cost": {
+                                    "type": "integer"
+                                },
+                                "price": {
+                                    "type": "integer"
+                                },
+                                "price_formatted": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "product_id",
+                                "product_variation_id",
+                                "currency",
+                                "cost",
+                                "comment",
+                                "overhead_cost",
+                                "price",
+                                "price_formatted"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "product_id",
+                    "prices"
+                ]
+            }
+        }
+    },
+    "required": [
+        "active_flag",
+        "first_char",
+        "files_count",
+        "add_time",
+        "update_time",
+        "billing_frequency",
+        "prices",
+        "product_variations"
+    ]
+}

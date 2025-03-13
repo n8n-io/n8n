@@ -69,6 +69,7 @@ export class Freshservice implements INodeType {
 		defaults: {
 			name: 'Freshservice',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

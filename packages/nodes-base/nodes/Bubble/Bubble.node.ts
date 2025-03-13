@@ -22,6 +22,7 @@ export class Bubble implements INodeType {
 		defaults: {
 			name: 'Bubble',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

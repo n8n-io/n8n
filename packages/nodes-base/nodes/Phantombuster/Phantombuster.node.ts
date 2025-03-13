@@ -29,6 +29,7 @@ export class Phantombuster implements INodeType {
 		defaults: {
 			name: 'Phantombuster',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

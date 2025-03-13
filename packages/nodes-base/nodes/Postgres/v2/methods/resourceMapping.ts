@@ -1,8 +1,8 @@
 import type { ILoadOptionsFunctions, ResourceMapperFields, FieldType } from 'n8n-workflow';
 
+import { configurePostgres } from '../../transport';
 import type { PostgresNodeCredentials } from '../helpers/interfaces';
 import { getEnumValues, getEnums, getTableSchema, uniqueColumns } from '../helpers/utils';
-import { configurePostgres } from '../transport';
 
 const fieldTypeMapping: Partial<Record<FieldType, string[]>> = {
 	string: ['text', 'varchar', 'character varying', 'character', 'char'],
@@ -74,7 +74,9 @@ export async function getMappingColumns(
 			const options =
 				type === 'options' ? getEnumValues(enumInfo, col.udt_name as string) : undefined;
 			const hasDefault = Boolean(col.column_default);
-			const isGenerated = col.is_generated === 'ALWAYS' || col.identity_generation === 'ALWAYS';
+			const isGenerated =
+				col.is_generated === 'ALWAYS' ||
+				['ALWAYS', 'BY DEFAULT'].includes(col.identity_generation ?? '');
 			const nullable = col.is_nullable === 'YES';
 			return {
 				id: col.column_name,

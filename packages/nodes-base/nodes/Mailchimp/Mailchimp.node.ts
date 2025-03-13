@@ -59,6 +59,7 @@ export class Mailchimp implements INodeType {
 		defaults: {
 			name: 'Mailchimp',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

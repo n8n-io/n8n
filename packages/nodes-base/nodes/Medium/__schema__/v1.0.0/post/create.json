@@ -1,0 +1,38 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "authorId": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
+        },
+        "canonicalUrl": {
+            "type": "string"
+        },
+        "publishStatus": {
+            "type": "string"
+        },
+        "publishedAt": {
+            "type": "integer"
+        },
+        "license": {
+            "type": "string"
+        },
+        "licenseUrl": {
+            "type": "string"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        }
+    }
+}

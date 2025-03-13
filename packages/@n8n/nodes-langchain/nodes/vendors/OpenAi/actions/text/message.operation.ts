@@ -34,11 +34,12 @@ const properties: INodeProperties[] = [
 				name: 'values',
 				values: [
 					{
-						displayName: 'Text',
+						displayName: 'Prompt',
 						name: 'content',
 						type: 'string',
 						description: 'The content of the message to be send',
 						default: '',
+						placeholder: 'e.g. Hello, how can you help me?',
 						typeOptions: {
 							rows: 2,
 						},

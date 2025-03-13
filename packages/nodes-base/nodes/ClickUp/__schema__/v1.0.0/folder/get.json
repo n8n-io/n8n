@@ -1,0 +1,172 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "orderindex": {
+            "type": "integer"
+        },
+        "override_statuses": {
+            "type": "boolean"
+        },
+        "hidden": {
+            "type": "boolean"
+        },
+        "space": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "access": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "access"
+            ]
+        },
+        "task_count": {
+            "type": "string"
+        },
+        "archived": {
+            "type": "boolean"
+        },
+        "statuses": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "orderindex": {
+                        "type": "integer"
+                    },
+                    "color": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "status",
+                    "orderindex",
+                    "color",
+                    "type"
+                ]
+            }
+        },
+        "lists": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "orderindex": {
+                        "type": "integer"
+                    },
+                    "content": {
+                        "type": "string"
+                    },
+                    "priority": {
+                        "type": "null"
+                    },
+                    "task_count": {
+                        "type": "integer"
+                    },
+                    "archived": {
+                        "type": "boolean"
+                    },
+                    "statuses": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "string"
+                                },
+                                "status": {
+                                    "type": "string"
+                                },
+                                "orderindex": {
+                                    "type": "integer"
+                                },
+                                "color": {
+                                    "type": "string"
+                                },
+                                "type": {
+                                    "type": "string"
+                                },
+                                "status_group": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "status",
+                                "orderindex",
+                                "color",
+                                "type",
+                                "status_group"
+                            ]
+                        }
+                    },
+                    "permission_level": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "orderindex",
+                    "status",
+                    "priority",
+                    "assignee",
+                    "task_count",
+                    "due_date",
+                    "start_date",
+                    "archived",
+                    "override_statuses",
+                    "statuses",
+                    "permission_level"
+                ]
+            }
+        },
+        "permission_level": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "id",
+        "name",
+        "orderindex",
+        "override_statuses",
+        "hidden",
+        "space",
+        "task_count",
+        "archived",
+        "statuses",
+        "lists",
+        "permission_level"
+    ]
+}

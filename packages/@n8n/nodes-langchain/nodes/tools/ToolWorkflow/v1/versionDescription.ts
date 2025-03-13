@@ -13,8 +13,6 @@ import { getConnectionHintNoticeField } from '../../../../utils/sharedFields';
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Call n8n Workflow Tool',
 	name: 'toolWorkflow',
-	icon: 'fa:network-wired',
-	iconColor: 'black',
 	group: ['transform'],
 	version: [1, 1.1, 1.2, 1.3],
 	description: 'Uses another n8n workflow as a tool. Allows packaging any n8n node(s) as a tool.',

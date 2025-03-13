@@ -22,6 +22,7 @@ export class MessageBird implements INodeType {
 		defaults: {
 			name: 'MessageBird',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

@@ -1,0 +1,101 @@
+{
+    "type": "object",
+    "properties": {
+        "ok": {
+            "type": "boolean"
+        },
+        "result": {
+            "type": "object",
+            "properties": {
+                "message_id": {
+                    "type": "integer"
+                },
+                "from": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "integer"
+                        },
+                        "is_bot": {
+                            "type": "boolean"
+                        },
+                        "first_name": {
+                            "type": "string"
+                        },
+                        "username": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "id",
+                        "is_bot",
+                        "first_name",
+                        "username"
+                    ]
+                },
+                "chat": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "integer"
+                        },
+                        "first_name": {
+                            "type": "string"
+                        },
+                        "last_name": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "type": "string"
+                        },
+                        "username": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "id",
+                        "type"
+                    ]
+                },
+                "date": {
+                    "type": "integer"
+                },
+                "document": {
+                    "type": "object",
+                    "properties": {
+                        "file_name": {
+                            "type": "string"
+                        },
+                        "file_id": {
+                            "type": "string"
+                        },
+                        "file_unique_id": {
+                            "type": "string"
+                        },
+                        "file_size": {
+                            "type": "integer"
+                        },
+                        "mime_type": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "file_name",
+                        "file_id",
+                        "file_unique_id",
+                        "file_size"
+                    ]
+                }
+            },
+            "required": [
+                "message_id",
+                "chat",
+                "date"
+            ]
+        }
+    },
+    "required": [
+        "ok",
+        "result"
+    ]
+}

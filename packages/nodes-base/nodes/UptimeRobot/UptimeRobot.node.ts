@@ -29,6 +29,7 @@ export class UptimeRobot implements INodeType {
 		defaults: {
 			name: 'UptimeRobot',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

@@ -1,0 +1,146 @@
+{
+	"type": "object",
+	"properties": {
+		"id": {
+			"type": "string"
+		},
+		"task": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				},
+				"status": {
+					"type": "object",
+					"properties": {
+						"status": {
+							"type": "string"
+						},
+						"color": {
+							"type": "string"
+						},
+						"type": {
+							"type": "string"
+						},
+						"orderindex": {
+							"type": "integer"
+						}
+					},
+					"required": [
+						"status",
+						"color",
+						"type",
+						"orderindex"
+					]
+				}
+			},
+			"required": [
+				"id",
+				"name",
+				"status",
+				"custom_type"
+			]
+		},
+		"wid": {
+			"type": "string"
+		},
+		"user": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "integer"
+				},
+				"username": {
+					"type": "string"
+				},
+				"email": {
+					"type": "string"
+				},
+				"color": {
+					"type": "string"
+				},
+				"initials": {
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"username",
+				"email",
+				"color",
+				"initials",
+				"profilePicture"
+			]
+		},
+		"billable": {
+			"type": "boolean"
+		},
+		"start": {
+			"type": "string"
+		},
+		"end": {
+			"type": "string"
+		},
+		"duration": {
+			"type": "string"
+		},
+		"description": {
+			"type": "string"
+		},
+		"source": {
+			"type": "string"
+		},
+		"at": {
+			"type": "string"
+		},
+		"is_locked": {
+			"type": "boolean"
+		},
+		"approval_id": {
+			"type": "null"
+		},
+		"task_location": {
+			"type": "object",
+			"properties": {
+				"list_id": {
+					"type": "string"
+				},
+				"folder_id": {
+					"type": "string"
+				},
+				"space_id": {
+					"type": "string"
+				}
+			},
+			"required": [
+				"list_id",
+				"folder_id",
+				"space_id"
+			]
+		},
+		"task_url": {
+			"type": "string"
+		}
+	},
+	"required": [
+		"id",
+		"task",
+		"wid",
+		"user",
+		"billable",
+		"start",
+		"end",
+		"duration",
+		"description",
+		"tags",
+		"source",
+		"at",
+		"is_locked",
+		"approval_id",
+		"task_location",
+		"task_url"
+	]
+}

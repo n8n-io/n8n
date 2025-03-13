@@ -1,0 +1,52 @@
+{
+    "type": "object",
+    "properties": {
+        "ok": {
+            "type": "boolean"
+        },
+        "result": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "integer"
+                        },
+                        "is_bot": {
+                            "type": "boolean"
+                        },
+                        "first_name": {
+                            "type": "string"
+                        },
+                        "language_code": {
+                            "type": "string"
+                        },
+                        "username": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "id",
+                        "is_bot",
+                        "first_name"
+                    ]
+                },
+                "status": {
+                    "type": "string"
+                },
+                "is_anonymous": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "user",
+                "status"
+            ]
+        }
+    },
+    "required": [
+        "ok",
+        "result"
+    ]
+}

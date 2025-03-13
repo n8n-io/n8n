@@ -1,0 +1,32 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "type": {
+            "type": "integer"
+        },
+        "last_message_id": {
+            "type": "null"
+        },
+        "flags": {
+            "type": "integer"
+        },
+        "guild_id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "rate_limit_per_user": {
+            "type": "integer"
+        },
+        "position": {
+            "type": "integer"
+        },
+        "nsfw": {
+            "type": "boolean"
+        }
+    }
+}

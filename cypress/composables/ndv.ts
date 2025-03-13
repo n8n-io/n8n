@@ -4,6 +4,10 @@
 
 import { getVisiblePopper, getVisibleSelect } from '../utils/popper';
 
+export function getNdvContainer() {
+	return cy.getByTestId('ndv');
+}
+
 export function getCredentialSelect(eq = 0) {
 	return cy.getByTestId('node-credentials-select').eq(eq);
 }
@@ -202,6 +206,10 @@ export function clickWorkflowCardContent(workflowName: string) {
 	getWorkflowCardContent(workflowName).click();
 }
 
+export function clickAssignmentCollectionAdd() {
+	cy.getByTestId('assignment-collection-drop-area').click();
+}
+
 export function assertNodeOutputHintExists() {
 	getNodeOutputHint().should('exist');
 }
@@ -225,7 +233,7 @@ export function populateMapperFields(fields: ReadonlyArray<[string, string]>) {
 		getParameterInputByName(name).type(value);
 
 		// Click on a parent to dismiss the pop up which hides the field below.
-		getParameterInputByName(name).parent().parent().parent().click('topLeft');
+		getParameterInputByName(name).parent().parent().parent().parent().click('topLeft');
 	}
 }
 

@@ -850,7 +850,7 @@ describe('JsTaskRunner', () => {
 			});
 		});
 
-		test.each([['items'], ['$input.all()'], ["$('Trigger').all()"]])(
+		test.each([['items'], ['$input.all()'], ["$('Trigger').all()"], ['$items()']])(
 			'should have all input items in the context as %s',
 			async (expression) => {
 				const outcome = await executeForAllItems({
@@ -1434,6 +1434,44 @@ describe('JsTaskRunner', () => {
 			expect(Interval.fromISO('P1Y2M10DT2H30M').maliciousKey).toBeUndefined();
 			// @ts-expect-error Non-existing property
 			expect(Duration.fromObject({ hours: 1 }).maliciousKey).toBeUndefined();
+		});
+	});
+
+	describe('stack trace', () => {
+		it('should extract correct line number from user-defined function stack trace', async () => {
+			const runner = createRunnerWithOpts({});
+			const taskId = '1';
+			const task = newTaskState(taskId);
+			const taskSettings: JSExecSettings = {
+				code: 'function my_function() {\n  null.map();\n}\nmy_function();\nreturn []',
+				nodeMode: 'runOnceForAllItems',
+				continueOnFail: false,
+				workflowMode: 'manual',
+			};
+			runner.runningTasks.set(taskId, task);
+
+			const sendSpy = jest.spyOn(runner.ws, 'send').mockImplementation(() => {});
+			jest.spyOn(runner, 'sendOffers').mockImplementation(() => {});
+			jest
+				.spyOn(runner, 'requestData')
+				.mockResolvedValue(newDataRequestResponse([wrapIntoJson({ a: 1 })]));
+
+			await runner.receivedSettings(taskId, taskSettings);
+
+			expect(sendSpy).toHaveBeenCalled();
+			const calledWith = sendSpy.mock.calls[0][0] as string;
+			expect(typeof calledWith).toBe('string');
+			const calledObject = JSON.parse(calledWith);
+			expect(calledObject).toEqual({
+				type: 'runner:taskerror',
+				taskId,
+				error: {
+					stack: expect.any(String),
+					message: expect.stringContaining('Cannot read properties of null'),
+					description: 'TypeError',
+					lineNumber: 2, // from user-defined function
+				},
+			});
 		});
 	});
 });

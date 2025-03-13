@@ -1,0 +1,24 @@
+{
+    "type": "object",
+    "properties": {
+        "portalId": {
+            "type": "integer"
+        },
+        "objectType": {
+            "type": "string"
+        },
+        "objectId": {
+            "type": "integer"
+        },
+        "isDeleted": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "portalId",
+        "objectType",
+        "objectId",
+        "properties",
+        "isDeleted"
+    ]
+}

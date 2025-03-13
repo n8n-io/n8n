@@ -11,7 +11,6 @@ import {
 	type IPairedItemData,
 	NodeConnectionType,
 	type NodeExecutionHint,
-	NodeExecutionOutput,
 } from 'n8n-workflow';
 
 import { addBinariesToItem } from './utils';
@@ -432,7 +431,9 @@ export class Aggregate implements INodeType {
 				}
 			}
 
-			if (hints.length) return new NodeExecutionOutput([[returnData]], hints);
+			if (hints.length) {
+				this.addExecutionHints(...hints);
+			}
 		}
 
 		return [[returnData]];

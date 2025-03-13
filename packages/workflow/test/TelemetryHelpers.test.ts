@@ -3,7 +3,7 @@ import { v5 as uuidv5, v3 as uuidv3, v4 as uuidv4, v1 as uuidv1 } from 'uuid';
 
 import { STICKY_NODE_TYPE } from '@/Constants';
 import { ApplicationError, ExpressionError, NodeApiError } from '@/errors';
-import type { IRun, IRunData } from '@/Interfaces';
+import type { INode, INodeTypeDescription, IRun, IRunData } from '@/Interfaces';
 import { NodeConnectionType, type IWorkflowBase } from '@/Interfaces';
 import * as nodeHelpers from '@/NodeHelpers';
 import {
@@ -12,11 +12,13 @@ import {
 	generateNodesGraph,
 	getDomainBase,
 	getDomainPath,
+	resolveAIMetrics,
 	userInInstanceRanOutOfFreeAiCredits,
 } from '@/TelemetryHelpers';
 import { randomInt } from '@/utils';
 
 import { nodeTypes } from './ExpressionExtensions/Helpers';
+import type { NodeTypes } from './NodeTypes';
 
 describe('getDomainBase should return protocol plus domain', () => {
 	test('in valid URLs', () => {
@@ -1541,3 +1543,109 @@ function generateTestWorkflowAndRunData(): { workflow: Partial<IWorkflowBase>; r
 
 	return { workflow, runData };
 }
+
+describe('makeAIMetrics', () => {
+	const makeNode = (parameters: object, type: string) =>
+		({
+			parameters,
+			type,
+			typeVersion: 2.1,
+			id: '7cb0b373-715c-4a89-8bbb-3f238907bc86',
+			name: 'a name',
+			position: [0, 0],
+		}) as INode;
+
+	it('should count applicable nodes and parameters', async () => {
+		const nodes = [
+			makeNode(
+				{
+					sendTo: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', ``, 'string') }}",
+					sendTwo: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', ``, 'string') }}",
+					subject: "={{ $fromAI('Subject', ``, 'string') }}",
+				},
+				'n8n-nodes-base.gmailTool',
+			),
+			makeNode(
+				{
+					subject: "={{ $fromAI('Subject', ``, 'string') }}",
+					verb: "={{ $fromAI('Verb', ``, 'string') }}",
+				},
+				'n8n-nodes-base.gmailTool',
+			),
+			makeNode(
+				{
+					subject: "'A Subject'",
+				},
+				'n8n-nodes-base.gmailTool',
+			),
+		];
+
+		const nodeTypes = mock<NodeTypes>({
+			getByNameAndVersion: () => ({
+				description: {
+					codex: {
+						categories: ['AI'],
+						subcategories: { AI: ['Tools'] },
+					},
+				} as unknown as INodeTypeDescription,
+			}),
+		});
+
+		const result = resolveAIMetrics(nodes, nodeTypes);
+		expect(result).toMatchObject({
+			aiNodeCount: 3,
+			aiToolCount: 3,
+			fromAIOverrideCount: 2,
+			fromAIExpressionCount: 3,
+		});
+	});
+
+	it('should not count non-applicable nodes and parameters', async () => {
+		const nodes = [
+			makeNode(
+				{
+					sendTo: 'someone',
+				},
+				'n8n-nodes-base.gmail',
+			),
+		];
+
+		const nodeTypes = mock<NodeTypes>({
+			getByNameAndVersion: () => ({
+				description: {} as unknown as INodeTypeDescription,
+			}),
+		});
+
+		const result = resolveAIMetrics(nodes, nodeTypes);
+		expect(result).toMatchObject({});
+	});
+
+	it('should count ai nodes without tools', async () => {
+		const nodes = [
+			makeNode(
+				{
+					sendTo: 'someone',
+				},
+				'n8n-nodes-base.gmailTool',
+			),
+		];
+
+		const nodeTypes = mock<NodeTypes>({
+			getByNameAndVersion: () => ({
+				description: {
+					codex: {
+						categories: ['AI'],
+					},
+				} as unknown as INodeTypeDescription,
+			}),
+		});
+
+		const result = resolveAIMetrics(nodes, nodeTypes);
+		expect(result).toMatchObject({
+			aiNodeCount: 1,
+			aiToolCount: 0,
+			fromAIOverrideCount: 0,
+			fromAIExpressionCount: 0,
+		});
+	});
+});

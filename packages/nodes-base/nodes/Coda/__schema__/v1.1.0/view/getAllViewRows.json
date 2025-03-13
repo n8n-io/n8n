@@ -1,0 +1,65 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "Contract ID": {
+            "type": "string"
+        },
+        "Contract Link": {
+            "type": "string"
+        },
+        "Summary": {
+            "type": "string"
+        },
+        "over4MB?": {
+            "type": "boolean"
+        },
+        "fileSize": {
+            "type": "string"
+        },
+        "Summarize": {
+            "type": "string"
+        },
+        "contractTextOutput": {
+            "type": "string"
+        },
+        "extractText": {
+            "type": "string"
+        },
+        "lastUpdated": {
+            "type": "string"
+        },
+        "Status Date": {
+            "type": "string"
+        },
+        "Contract Signature Date": {
+            "type": "string"
+        },
+        "Processing Organization": {
+            "type": "string"
+        },
+        "Contract Notes": {
+            "type": "string"
+        },
+        "Full Deletion Required?": {
+            "type": "boolean"
+        },
+        "IT Addendum?": {
+            "type": "boolean"
+        },
+        "Do not use name/logo?": {
+            "type": "boolean"
+        },
+        "Created on": {
+            "type": "string"
+        },
+        "rowID": {
+            "type": "integer"
+        }
+    },
+    "required": [
+        "id"
+    ]
+}

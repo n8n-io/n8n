@@ -1,0 +1,181 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "company_id": {
+            "type": "integer"
+        },
+        "owner_id": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "has_pic": {
+                    "type": "integer"
+                },
+                "active_flag": {
+                    "type": "boolean"
+                },
+                "value": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "email",
+                "has_pic",
+                "pic_hash",
+                "active_flag",
+                "value"
+            ]
+        },
+        "name": {
+            "type": "string"
+        },
+        "open_deals_count": {
+            "type": "integer"
+        },
+        "related_open_deals_count": {
+            "type": "integer"
+        },
+        "closed_deals_count": {
+            "type": "integer"
+        },
+        "related_closed_deals_count": {
+            "type": "integer"
+        },
+        "email_messages_count": {
+            "type": "integer"
+        },
+        "people_count": {
+            "type": "integer"
+        },
+        "activities_count": {
+            "type": "integer"
+        },
+        "done_activities_count": {
+            "type": "integer"
+        },
+        "undone_activities_count": {
+            "type": "integer"
+        },
+        "files_count": {
+            "type": "integer"
+        },
+        "notes_count": {
+            "type": "integer"
+        },
+        "followers_count": {
+            "type": "integer"
+        },
+        "won_deals_count": {
+            "type": "integer"
+        },
+        "related_won_deals_count": {
+            "type": "integer"
+        },
+        "lost_deals_count": {
+            "type": "integer"
+        },
+        "related_lost_deals_count": {
+            "type": "integer"
+        },
+        "active_flag": {
+            "type": "boolean"
+        },
+        "picture_id": {
+            "type": "null"
+        },
+        "country_code": {
+            "type": "null"
+        },
+        "first_char": {
+            "type": "string"
+        },
+        "update_time": {
+            "type": "string"
+        },
+        "delete_time": {
+            "type": "null"
+        },
+        "add_time": {
+            "type": "string"
+        },
+        "visible_to": {
+            "type": "string"
+        },
+        "next_activity_date": {
+            "type": "null"
+        },
+        "next_activity_time": {
+            "type": "null"
+        },
+        "next_activity_id": {
+            "type": "null"
+        },
+        "last_activity_id": {
+            "type": "null"
+        },
+        "last_activity_date": {
+            "type": "null"
+        },
+        "label_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "address_subpremise": {
+            "type": "null"
+        },
+        "address_street_number": {
+            "type": "null"
+        },
+        "address_route": {
+            "type": "null"
+        },
+        "address_sublocality": {
+            "type": "null"
+        },
+        "address_locality": {
+            "type": "null"
+        },
+        "address_admin_area_level_1": {
+            "type": "null"
+        },
+        "address_admin_area_level_2": {
+            "type": "null"
+        },
+        "address_country": {
+            "type": "null"
+        },
+        "address_postal_code": {
+            "type": "null"
+        },
+        "address_formatted_address": {
+            "type": "null"
+        },
+        "cc_email": {
+            "type": "string"
+        },
+        "owner_name": {
+            "type": "string"
+        },
+        "edit_name": {
+            "type": "boolean"
+        },
+        "category_id": {
+            "type": "null"
+        }
+    }
+}

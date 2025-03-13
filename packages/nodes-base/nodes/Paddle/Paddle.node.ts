@@ -36,6 +36,7 @@ export class Paddle implements INodeType {
 		defaults: {
 			name: 'Paddle',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

@@ -23,6 +23,7 @@ export class UrlScanIo implements INodeType {
 		defaults: {
 			name: 'urlscan.io',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

@@ -1,0 +1,281 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "replyToId": {
+            "type": "null"
+        },
+        "etag": {
+            "type": "string"
+        },
+        "messageType": {
+            "type": "string"
+        },
+        "createdDateTime": {
+            "type": "string"
+        },
+        "lastModifiedDateTime": {
+            "type": "string"
+        },
+        "chatId": {
+            "type": "string"
+        },
+        "importance": {
+            "type": "string"
+        },
+        "locale": {
+            "type": "string"
+        },
+        "webUrl": {
+            "type": "null"
+        },
+        "channelIdentity": {
+            "type": "null"
+        },
+        "policyViolation": {
+            "type": "null"
+        },
+        "from": {
+            "type": "object",
+            "properties": {
+                "device": {
+                    "type": "null"
+                },
+                "user": {
+                    "type": "object",
+                    "properties": {
+                        "@odata.type": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "displayName": {
+                            "type": "string"
+                        },
+                        "userIdentityType": {
+                            "type": "string"
+                        },
+                        "tenantId": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "@odata.type",
+                        "id",
+                        "displayName",
+                        "userIdentityType"
+                    ]
+                }
+            },
+            "required": [
+                "application",
+                "device",
+                "user"
+            ]
+        },
+        "body": {
+            "type": "object",
+            "properties": {
+                "contentType": {
+                    "type": "string"
+                },
+                "content": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "contentType",
+                "content"
+            ]
+        },
+        "attachments": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "contentType": {
+                        "type": "string"
+                    },
+                    "thumbnailUrl": {
+                        "type": "null"
+                    }
+                },
+                "required": [
+                    "id",
+                    "contentType",
+                    "contentUrl",
+                    "content",
+                    "name",
+                    "thumbnailUrl",
+                    "teamsAppId"
+                ]
+            }
+        },
+        "mentions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "mentionText": {
+                        "type": "string"
+                    },
+                    "mentioned": {
+                        "type": "object",
+                        "properties": {
+                            "application": {
+                                "type": "null"
+                            },
+                            "device": {
+                                "type": "null"
+                            },
+                            "conversation": {
+                                "type": "null"
+                            },
+                            "tag": {
+                                "type": "null"
+                            },
+                            "user": {
+                                "type": "object",
+                                "properties": {
+                                    "@odata.type": {
+                                        "type": "string"
+                                    },
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "displayName": {
+                                        "type": "string"
+                                    },
+                                    "userIdentityType": {
+                                        "type": "string"
+                                    },
+                                    "tenantId": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "@odata.type",
+                                    "id",
+                                    "displayName",
+                                    "userIdentityType",
+                                    "tenantId"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "application",
+                            "device",
+                            "conversation",
+                            "tag",
+                            "user"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "mentionText",
+                    "mentioned"
+                ]
+            }
+        },
+        "reactions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "reactionType": {
+                        "type": "string"
+                    },
+                    "displayName": {
+                        "type": "string"
+                    },
+                    "reactionContentUrl": {
+                        "type": "null"
+                    },
+                    "createdDateTime": {
+                        "type": "string"
+                    },
+                    "user": {
+                        "type": "object",
+                        "properties": {
+                            "application": {
+                                "type": "null"
+                            },
+                            "device": {
+                                "type": "null"
+                            },
+                            "user": {
+                                "type": "object",
+                                "properties": {
+                                    "@odata.type": {
+                                        "type": "string"
+                                    },
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "displayName": {
+                                        "type": "null"
+                                    },
+                                    "userIdentityType": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "@odata.type",
+                                    "id",
+                                    "displayName",
+                                    "userIdentityType"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "application",
+                            "device",
+                            "user"
+                        ]
+                    }
+                },
+                "required": [
+                    "reactionType",
+                    "displayName",
+                    "reactionContentUrl",
+                    "createdDateTime",
+                    "user"
+                ]
+            }
+        }
+    },
+    "required": [
+        "id",
+        "replyToId",
+        "etag",
+        "messageType",
+        "createdDateTime",
+        "lastModifiedDateTime",
+        "lastEditedDateTime",
+        "deletedDateTime",
+        "subject",
+        "summary",
+        "chatId",
+        "importance",
+        "locale",
+        "webUrl",
+        "channelIdentity",
+        "policyViolation",
+        "eventDetail",
+        "from",
+        "body",
+        "attachments",
+        "mentions",
+        "reactions"
+    ]
+}

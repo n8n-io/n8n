@@ -25,6 +25,7 @@ export class Storyblok implements INodeType {
 		defaults: {
 			name: 'Storyblok',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

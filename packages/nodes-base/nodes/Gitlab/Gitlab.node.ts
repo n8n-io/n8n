@@ -22,6 +22,7 @@ export class Gitlab implements INodeType {
 		defaults: {
 			name: 'GitLab',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

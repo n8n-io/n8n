@@ -28,6 +28,7 @@ export class GSuiteAdmin implements INodeType {
 		defaults: {
 			name: 'Google Workspace Admin',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

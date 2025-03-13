@@ -1,5 +1,5 @@
 import type { ClientOAuth2 } from './ClientOAuth2';
-import type { ClientOAuth2Token, ClientOAuth2TokenData } from './ClientOAuth2Token';
+import type { ClientOAuth2Token } from './ClientOAuth2Token';
 import { DEFAULT_HEADERS } from './constants';
 import type { Headers } from './types';
 import { auth, expects, getRequestOptions } from './utils';
@@ -55,7 +55,7 @@ export class CredentialsFlow {
 			options,
 		);
 
-		const responseData = await this.client.request<ClientOAuth2TokenData>(requestOptions);
+		const responseData = await this.client.accessTokenRequest(requestOptions);
 		return this.client.createToken(responseData);
 	}
 }

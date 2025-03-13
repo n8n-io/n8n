@@ -1,0 +1,123 @@
+{
+    "type": "object",
+    "properties": {
+        "data": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "documentId": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "category": {
+                        "type": "string"
+                    },
+                    "vendor": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string"
+                    },
+                    "updatedAt": {
+                        "type": "string"
+                    },
+                    "publishedAt": {
+                        "type": "string"
+                    },
+                    "locale": {
+                        "type": "null"
+                    },
+                    "price_list": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "integer"
+                                },
+                                "price": {
+                                    "type": "integer"
+                                },
+                                "user_level": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "price",
+                                "min_quantity",
+                                "max_quantity",
+                                "user_level"
+                            ]
+                        }
+                    },
+                    "inventory": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "integer"
+                                },
+                                "location": {
+                                    "type": "string"
+                                },
+                                "quantity": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "location",
+                                "quantity"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "id"
+                ]
+            }
+        },
+        "meta": {
+            "type": "object",
+            "properties": {
+                "pagination": {
+                    "type": "object",
+                    "properties": {
+                        "page": {
+                            "type": "integer"
+                        },
+                        "pageSize": {
+                            "type": "integer"
+                        },
+                        "pageCount": {
+                            "type": "integer"
+                        },
+                        "total": {
+                            "type": "integer"
+                        }
+                    },
+                    "required": [
+                        "page",
+                        "pageSize",
+                        "pageCount",
+                        "total"
+                    ]
+                }
+            },
+            "required": [
+                "pagination"
+            ]
+        }
+    }
+}

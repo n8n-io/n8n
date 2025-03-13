@@ -10,4 +10,8 @@ export class WorkflowsConfig {
 	@Env('N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION')
 	callerPolicyDefaultOption: 'any' | 'none' | 'workflowsFromAList' | 'workflowsFromSameOwner' =
 		'workflowsFromSameOwner';
+
+	/** How many workflows to activate simultaneously during startup. */
+	@Env('N8N_WORKFLOW_ACTIVATION_BATCH_SIZE')
+	activationBatchSize: number = 1;
 }

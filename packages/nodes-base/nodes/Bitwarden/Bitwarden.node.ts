@@ -42,6 +42,7 @@ export class Bitwarden implements INodeType {
 		defaults: {
 			name: 'Bitwarden',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

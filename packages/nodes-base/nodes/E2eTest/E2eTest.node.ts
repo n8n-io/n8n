@@ -24,6 +24,7 @@ export class E2eTest implements INodeType {
 		defaults: {
 			name: 'E2E Test',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		properties: [

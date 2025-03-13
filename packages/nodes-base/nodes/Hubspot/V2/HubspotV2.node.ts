@@ -52,6 +52,7 @@ export class HubspotV2 implements INodeType {
 			defaults: {
 				name: 'HubSpot',
 			},
+			usableAsTool: true,
 			inputs: [NodeConnectionType.Main],
 			outputs: [NodeConnectionType.Main],
 			credentials: [

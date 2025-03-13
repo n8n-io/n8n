@@ -49,6 +49,7 @@ export class GoToWebinar implements INodeType {
 		defaults: {
 			name: 'GoToWebinar',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

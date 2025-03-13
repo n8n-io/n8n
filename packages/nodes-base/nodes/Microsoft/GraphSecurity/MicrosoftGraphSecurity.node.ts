@@ -31,6 +31,7 @@ export class MicrosoftGraphSecurity implements INodeType {
 		defaults: {
 			name: 'Microsoft Graph Security',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

@@ -4,14 +4,16 @@ import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import glob from 'fast-glob';
 import { Credentials, ErrorReporter, InstanceSettings, Logger } from 'n8n-core';
-import { ApplicationError, jsonParse, ensureError } from 'n8n-workflow';
+import { jsonParse, ensureError, UserError, UnexpectedError } from 'n8n-workflow';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { CredentialsService } from '@/credentials/credentials.service';
 import type { Project } from '@/databases/entities/project';
 import { SharedCredentials } from '@/databases/entities/shared-credentials';
 import type { TagEntity } from '@/databases/entities/tag-entity';
+import type { User } from '@/databases/entities/user';
 import type { Variables } from '@/databases/entities/variables';
 import type { WorkflowTagMapping } from '@/databases/entities/workflow-tag-mapping';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
@@ -25,7 +27,9 @@ import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { IWorkflowToImport } from '@/interfaces';
 import { isUniqueConstraintError } from '@/response-helper';
+import { TagService } from '@/services/tag.service';
 import { assertNever } from '@/utils';
+import { WorkflowService } from '@/workflows/workflow.service';
 
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
@@ -62,6 +66,9 @@ export class SourceControlImportService {
 		private readonly variablesRepository: VariablesRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowTagMappingRepository: WorkflowTagMappingRepository,
+		private readonly workflowService: WorkflowService,
+		private readonly credentialsService: CredentialsService,
+		private readonly tagService: TagService,
 		instanceSettings: InstanceSettings,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
@@ -243,7 +250,7 @@ export class SourceControlImportService {
 			this.logger.debug(`Updating workflow id ${importedWorkflow.id ?? 'new'}`);
 			const upsertResult = await this.workflowRepository.upsert({ ...importedWorkflow }, ['id']);
 			if (upsertResult?.identifiers?.length !== 1) {
-				throw new ApplicationError('Failed to upsert workflow', {
+				throw new UnexpectedError('Failed to upsert workflow', {
 					extra: { workflowId: importedWorkflow.id ?? 'new' },
 				});
 			}
@@ -404,7 +411,7 @@ export class SourceControlImportService {
 					select: ['id'],
 				});
 				if (findByName && findByName.id !== tag.id) {
-					throw new ApplicationError(
+					throw new UserError(
 						`A tag with the name <strong>${tag.name}</strong> already exists locally.<br />Please either rename the local tag, or the remote one with the id <strong>${tag.id}</strong> in the tags.json file.`,
 					);
 				}
@@ -500,6 +507,30 @@ export class SourceControlImportService {
 		return result;
 	}
 
+	async deleteWorkflowsNotInWorkfolder(user: User, candidates: SourceControlledFile[]) {
+		for (const candidate of candidates) {
+			await this.workflowService.delete(user, candidate.id);
+		}
+	}
+
+	async deleteCredentialsNotInWorkfolder(user: User, candidates: SourceControlledFile[]) {
+		for (const candidate of candidates) {
+			await this.credentialsService.delete(user, candidate.id);
+		}
+	}
+
+	async deleteVariablesNotInWorkfolder(candidates: SourceControlledFile[]) {
+		for (const candidate of candidates) {
+			await this.variablesService.delete(candidate.id);
+		}
+	}
+
+	async deleteTagsNotInWorkfolder(candidates: SourceControlledFile[]) {
+		for (const candidate of candidates) {
+			await this.tagService.delete(candidate.id);
+		}
+	}
+
 	private async findOrCreateOwnerProject(owner: ResourceOwner): Promise<Project | null> {
 		if (typeof owner === 'string' || owner.type === 'personal') {
 			const email = typeof owner === 'string' ? owner : owner.personalEmail;
@@ -539,7 +570,7 @@ export class SourceControlImportService {
 		assertNever(owner);
 
 		const errorOwner = owner as ResourceOwner;
-		throw new ApplicationError(
+		throw new UnexpectedError(
 			`Unknown resource owner type "${
 				typeof errorOwner !== 'string' ? errorOwner.type : 'UNKNOWN'
 			}" found when importing from source controller`,

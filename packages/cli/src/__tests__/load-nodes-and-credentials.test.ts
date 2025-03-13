@@ -107,7 +107,7 @@ describe('LoadNodesAndCredentials', () => {
 			};
 			fullNodeWrapper.description.properties = [existingProp];
 			const result = instance.convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.properties).toHaveLength(3); // Existing prop + toolDescription + notice
+			expect(result.description.properties).toHaveLength(2); // Existing prop + toolDescription
 			expect(result.description.properties).toContainEqual(existingProp);
 		});
 
@@ -121,9 +121,9 @@ describe('LoadNodesAndCredentials', () => {
 			};
 			fullNodeWrapper.description.properties = [resourceProp];
 			const result = instance.convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.properties[1].name).toBe('descriptionType');
-			expect(result.description.properties[2].name).toBe('toolDescription');
-			expect(result.description.properties[3]).toEqual(resourceProp);
+			expect(result.description.properties[0].name).toBe('descriptionType');
+			expect(result.description.properties[1].name).toBe('toolDescription');
+			expect(result.description.properties[2]).toEqual(resourceProp);
 		});
 
 		it('should handle nodes with operation property', () => {
@@ -136,9 +136,9 @@ describe('LoadNodesAndCredentials', () => {
 			};
 			fullNodeWrapper.description.properties = [operationProp];
 			const result = instance.convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.properties[1].name).toBe('descriptionType');
-			expect(result.description.properties[2].name).toBe('toolDescription');
-			expect(result.description.properties[3]).toEqual(operationProp);
+			expect(result.description.properties[0].name).toBe('descriptionType');
+			expect(result.description.properties[1].name).toBe('toolDescription');
+			expect(result.description.properties[2]).toEqual(operationProp);
 		});
 
 		it('should handle nodes with both resource and operation properties', () => {
@@ -158,17 +158,17 @@ describe('LoadNodesAndCredentials', () => {
 			};
 			fullNodeWrapper.description.properties = [resourceProp, operationProp];
 			const result = instance.convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.properties[1].name).toBe('descriptionType');
-			expect(result.description.properties[2].name).toBe('toolDescription');
-			expect(result.description.properties[3]).toEqual(resourceProp);
-			expect(result.description.properties[4]).toEqual(operationProp);
+			expect(result.description.properties[0].name).toBe('descriptionType');
+			expect(result.description.properties[1].name).toBe('toolDescription');
+			expect(result.description.properties[2]).toEqual(resourceProp);
+			expect(result.description.properties[3]).toEqual(operationProp);
 		});
 
 		it('should handle nodes with empty properties', () => {
 			fullNodeWrapper.description.properties = [];
 			const result = instance.convertNodeToAiTool(fullNodeWrapper);
-			expect(result.description.properties).toHaveLength(2);
-			expect(result.description.properties[1].name).toBe('toolDescription');
+			expect(result.description.properties).toHaveLength(1);
+			expect(result.description.properties[0].name).toBe('toolDescription');
 		});
 
 		it('should handle nodes with existing codex property', () => {
@@ -209,6 +209,46 @@ describe('LoadNodesAndCredentials', () => {
 			const result = instance.convertNodeToAiTool(fullNodeWrapper);
 			expect(result.description.name).toBe('special@#$%NodeTool');
 			expect(result.description.displayName).toBe('Special @#$% Node Tool');
+		});
+	});
+
+	describe('resolveSchema', () => {
+		let instance: LoadNodesAndCredentials;
+
+		beforeEach(() => {
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock());
+			instance.knownNodes['n8n-nodes-base.test'] = {
+				className: 'Test',
+				sourcePath: '/nodes-base/dist/nodes/Test/Test.node.js',
+			};
+		});
+
+		it('should return undefined if the node is not known', () => {
+			const result = instance.resolveSchema({
+				node: 'n8n-nodes-base.doesNotExist',
+				version: '1.0.0',
+				resource: 'account',
+				operation: 'get',
+			});
+			expect(result).toBeUndefined();
+		});
+
+		it('should return the correct path if the node is known', () => {
+			const result = instance.resolveSchema({
+				node: 'n8n-nodes-base.test',
+				version: '1.0.0',
+				resource: 'account',
+				operation: 'get',
+			});
+			expect(result).toEqual('/nodes-base/dist/nodes/Test/__schema__/v1.0.0/account/get.json');
+		});
+
+		it('should return the correct path if there is no resource or operation', () => {
+			const result = instance.resolveSchema({
+				node: 'n8n-nodes-base.test',
+				version: '1.0.0',
+			});
+			expect(result).toEqual('/nodes-base/dist/nodes/Test/__schema__/v1.0.0.json');
 		});
 	});
 });

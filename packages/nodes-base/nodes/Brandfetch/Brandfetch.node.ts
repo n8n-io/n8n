@@ -23,6 +23,7 @@ export class Brandfetch implements INodeType {
 		defaults: {
 			name: 'Brandfetch',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

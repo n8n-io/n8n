@@ -32,6 +32,7 @@ export class Strapi implements INodeType {
 		defaults: {
 			name: 'Strapi',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

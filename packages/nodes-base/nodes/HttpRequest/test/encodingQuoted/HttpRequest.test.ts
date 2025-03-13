@@ -21,18 +21,11 @@ describe('Test Quoted Response Encoding', () => {
 	beforeAll(async () => {
 		await initBinaryDataService();
 
-		nock.disableNetConnect();
-
 		nock(baseUrl)
 			.persist()
 			.get('/index.html')
 			.reply(200, payload, { 'content-type': 'text/plain; charset="latin1"' });
 	});
-
-	afterAll(() => {
-		nock.restore();
-	});
-
 	const nodeTypes = setup(tests);
 
 	for (const testData of tests) {

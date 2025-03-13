@@ -1,0 +1,149 @@
+{
+    "type": "object",
+    "properties": {
+        "attributes": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "type",
+                "url"
+            ]
+        },
+        "Id": {
+            "type": "string"
+        },
+        "IsDeleted": {
+            "type": "boolean"
+        },
+        "MasterRecordId": {
+            "type": "null"
+        },
+        "LastName": {
+            "type": "string"
+        },
+        "MiddleName": {
+            "type": "null"
+        },
+        "Suffix": {
+            "type": "null"
+        },
+        "Name": {
+            "type": "string"
+        },
+        "Company": {
+            "type": "string"
+        },
+        "Latitude": {
+            "type": "null"
+        },
+        "Longitude": {
+            "type": "null"
+        },
+        "GeocodeAccuracy": {
+            "type": "null"
+        },
+        "Address": {
+            "type": "object",
+            "properties": {
+                "geocodeAccuracy": {
+                    "type": "null"
+                },
+                "latitude": {
+                    "type": "null"
+                },
+                "longitude": {
+                    "type": "null"
+                }
+            },
+            "required": [
+                "city",
+                "country",
+                "geocodeAccuracy",
+                "latitude",
+                "longitude",
+                "postalCode",
+                "state",
+                "street"
+            ]
+        },
+        "Fax": {
+            "type": "null"
+        },
+        "PhotoUrl": {
+            "type": "string"
+        },
+        "Status": {
+            "type": "string"
+        },
+        "AnnualRevenue": {
+            "type": "null"
+        },
+        "OwnerId": {
+            "type": "string"
+        },
+        "HasOptedOutOfEmail": {
+            "type": "boolean"
+        },
+        "IsConverted": {
+            "type": "boolean"
+        },
+        "IsUnreadByOwner": {
+            "type": "boolean"
+        },
+        "CreatedDate": {
+            "type": "string"
+        },
+        "CreatedById": {
+            "type": "string"
+        },
+        "LastModifiedDate": {
+            "type": "string"
+        },
+        "LastModifiedById": {
+            "type": "string"
+        },
+        "SystemModstamp": {
+            "type": "string"
+        },
+        "DoNotCall": {
+            "type": "boolean"
+        },
+        "HasOptedOutOfFax": {
+            "type": "boolean"
+        },
+        "LastTransferDate": {
+            "type": "string"
+        },
+        "Jigsaw": {
+            "type": "null"
+        },
+        "JigsawContactId": {
+            "type": "null"
+        },
+        "EmailBouncedReason": {
+            "type": "null"
+        },
+        "EmailBouncedDate": {
+            "type": "null"
+        },
+        "IndividualId": {
+            "type": "null"
+        },
+        "Pronouns": {
+            "type": "null"
+        },
+        "GenderIdentity": {
+            "type": "null"
+        },
+        "IsPriorityRecord": {
+            "type": "boolean"
+        }
+    }
+}

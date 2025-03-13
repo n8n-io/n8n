@@ -29,6 +29,7 @@ export class Zendesk implements INodeType {
 		defaults: {
 			name: 'Zendesk',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

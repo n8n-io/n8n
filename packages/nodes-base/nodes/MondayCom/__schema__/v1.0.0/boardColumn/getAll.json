@@ -1,0 +1,27 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "settings_str": {
+            "type": "string"
+        },
+        "archived": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "id",
+        "title",
+        "type",
+        "settings_str",
+        "archived"
+    ]
+}

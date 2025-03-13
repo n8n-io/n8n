@@ -10,17 +10,10 @@ describe('Test N8n Node, expect base_url to be received from credentials', () =>
 	const tests = workflowToTests(workflows);
 
 	beforeAll(() => {
-		nock.disableNetConnect();
-
 		//base url is set in fake credentials map packages/nodes-base/test/nodes/FakeCredentialsMap.ts
 		const baseUrl = 'https://test.app.n8n.cloud/api/v1';
 		nock(baseUrl).get('/workflows?tags=n8n-test').reply(200, {});
 	});
-
-	afterAll(() => {
-		nock.restore();
-	});
-
 	const nodeTypes = setup(tests);
 
 	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {

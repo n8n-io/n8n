@@ -1,0 +1,29 @@
+{
+    "type": "object",
+    "properties": {
+        "path": {
+            "type": "string"
+        },
+        "lastModified": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "eTag": {
+            "type": "string"
+        },
+        "contentLength": {
+            "type": "string"
+        },
+        "contentType": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "path",
+        "lastModified",
+        "type",
+        "eTag"
+    ]
+}

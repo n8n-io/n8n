@@ -33,6 +33,7 @@ export class HelpScout implements INodeType {
 		defaults: {
 			name: 'HelpScout',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

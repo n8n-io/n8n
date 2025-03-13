@@ -18,6 +18,7 @@ export class Metabase implements INodeType {
 		defaults: {
 			name: 'Metabase',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

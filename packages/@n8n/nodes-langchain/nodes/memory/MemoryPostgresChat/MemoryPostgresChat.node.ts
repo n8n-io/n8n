@@ -1,9 +1,9 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { PostgresChatMessageHistory } from '@langchain/community/stores/message/postgres';
 import { BufferMemory, BufferWindowMemory } from 'langchain/memory';
+import { configurePostgres } from 'n8n-nodes-base/dist/nodes/Postgres/transport';
 import type { PostgresNodeCredentials } from 'n8n-nodes-base/dist/nodes/Postgres/v2/helpers/interfaces';
 import { postgresConnectionTest } from 'n8n-nodes-base/dist/nodes/Postgres/v2/methods/credentialTest';
-import { configurePostgres } from 'n8n-nodes-base/dist/nodes/Postgres/v2/transport';
 import type {
 	ISupplyDataFunctions,
 	INodeType,
@@ -115,12 +115,7 @@ export class MemoryPostgresChat implements INodeType {
 			...kOptions,
 		});
 
-		async function closeFunction() {
-			void pool.end();
-		}
-
 		return {
-			closeFunction,
 			response: logWrapper(memory, this),
 		};
 	}

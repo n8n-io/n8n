@@ -28,6 +28,7 @@ export class Coda implements INodeType {
 		defaults: {
 			name: 'Coda',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

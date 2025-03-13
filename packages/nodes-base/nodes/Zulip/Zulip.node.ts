@@ -30,6 +30,7 @@ export class Zulip implements INodeType {
 		defaults: {
 			name: 'Zulip',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [
