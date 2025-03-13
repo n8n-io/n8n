@@ -15,8 +15,9 @@ export async function searchModels(
 	const { data: models = [] } = await openai.models.list();
 
 	const filteredModels = models.filter((model: { id: string }) => {
+		const url = baseURL && new URL(baseURL);
 		const isValidModel =
-			(baseURL && !baseURL.includes('api.openai.com')) ||
+			(url && url.hostname !== 'api.openai.com') ||
 			model.id.startsWith('ft:') ||
 			model.id.startsWith('o1') ||
 			model.id.startsWith('o3') ||
