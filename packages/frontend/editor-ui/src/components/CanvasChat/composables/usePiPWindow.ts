@@ -1,33 +1,46 @@
-import { useTelemetry } from '@/composables/useTelemetry';
 import { IsInPiPWindowSymbol } from '@/constants';
 import { useProvideTooltipAppendTo } from '@n8n/design-system/composables/useTooltipAppendTo';
 import {
 	computed,
 	type ComputedRef,
 	onBeforeUnmount,
-	onMounted,
 	provide,
 	type Ref,
 	ref,
 	type ShallowRef,
+	watch,
 } from 'vue';
+
+interface UsePiPWindowOptions {
+	initialWidth?: number;
+	initialHeight?: number;
+	container: Readonly<ShallowRef<HTMLDivElement | null>>;
+	content: Readonly<ShallowRef<HTMLDivElement | null>>;
+	shouldPopOut: ComputedRef<boolean>;
+	onRequestClose: () => void;
+}
+
+interface UsePiPWindowReturn {
+	isPoppedOut: ComputedRef<boolean>;
+	canPopOut: ComputedRef<boolean>;
+	pipWindow?: Ref<Window | undefined>;
+}
 
 /**
  * A composable that allows to pop out given content in document PiP (picture-in-picture) window
  */
-export function usePiPWindow(
-	container: Readonly<ShallowRef<HTMLDivElement | null>>,
-	content: Readonly<ShallowRef<HTMLDivElement | null>>,
-): {
-	isPoppedOut: ComputedRef<boolean>;
-	canPopOut: ComputedRef<boolean>;
-	pipWindow?: Ref<Window | undefined>;
-	onPopOut?: () => void;
-} {
+export function usePiPWindow({
+	container,
+	content,
+	initialHeight,
+	initialWidth,
+	shouldPopOut,
+	onRequestClose,
+}: UsePiPWindowOptions): UsePiPWindowReturn {
 	const pipWindow = ref<Window>();
+	const isUnmounting = ref(false);
 	const canPopOut = computed(() => !!window.documentPictureInPicture);
 	const isPoppedOut = computed(() => !!pipWindow.value);
-	const telemetry = useTelemetry();
 	const tooltipContainer = computed(() =>
 		isPoppedOut.value ? (content.value ?? undefined) : undefined,
 	);
@@ -35,10 +48,18 @@ export function usePiPWindow(
 	provide(IsInPiPWindowSymbol, isPoppedOut);
 	useProvideTooltipAppendTo(tooltipContainer);
 
-	function showPip() {
+	async function showPip() {
 		if (!content.value) {
 			return;
 		}
+
+		pipWindow.value =
+			pipWindow.value ??
+			(await window.documentPictureInPicture?.requestWindow({
+				width: initialWidth,
+				height: initialHeight,
+				disallowReturnToOpener: true,
+			}));
 
 		// Copy style sheets over from the initial document
 		// so that the content looks the same.
@@ -62,43 +83,27 @@ export function usePiPWindow(
 
 		// Move the content to the Picture-in-Picture window.
 		pipWindow.value?.document.body.append(content.value);
-		pipWindow.value?.addEventListener('pagehide', () => {
-			telemetry.track('User toggled log view', { new_state: 'attached' });
-
-			pipWindow.value = undefined;
-
-			if (content.value) {
-				container.value?.appendChild(content.value);
-			}
-		});
+		pipWindow.value?.addEventListener('pagehide', () => !isUnmounting.value && onRequestClose());
 	}
 
-	async function onPopOut() {
-		telemetry.track('User toggled log view', { new_state: 'floating' });
+	function hidePiP() {
+		pipWindow.value?.close();
+		pipWindow.value = undefined;
 
-		pipWindow.value = await window.documentPictureInPicture?.requestWindow({
-			width: window.document.body.offsetWidth * 0.8,
-			height: 400,
-			disallowReturnToOpener: true,
-		});
-
-		showPip();
-	}
-
-	onMounted(() => {
-		// If PiP window is already open, render in PiP
-		if (window.documentPictureInPicture?.window) {
-			pipWindow.value = window.documentPictureInPicture.window;
-			showPip();
+		if (content.value) {
+			container.value?.appendChild(content.value);
 		}
+	}
+
+	// `requestAnimationFrame()` to make sure the content is already rendered
+	watch(shouldPopOut, (value) => (value ? requestAnimationFrame(showPip) : hidePiP()), {
+		immediate: true,
 	});
 
 	onBeforeUnmount(() => {
-		if (content.value) {
-			// Make the PiP window blank but keep it open
-			pipWindow.value?.document.body.removeChild(content.value);
-		}
+		isUnmounting.value = true;
+		pipWindow.value?.close();
 	});
 
-	return { canPopOut, isPoppedOut, pipWindow, onPopOut };
+	return { canPopOut, isPoppedOut, pipWindow };
 }

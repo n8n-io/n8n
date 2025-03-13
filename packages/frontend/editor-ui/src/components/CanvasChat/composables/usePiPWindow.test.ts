@@ -1,7 +1,7 @@
 /* eslint-disable vue/one-component-per-file */
-import { defineComponent, h, ref } from 'vue';
+import { computed, defineComponent, h, ref } from 'vue';
 import { usePiPWindow } from './usePiPWindow';
-import { fireEvent } from '@testing-library/vue';
+import { waitFor } from '@testing-library/vue';
 import { renderComponent } from '@/__tests__/render';
 
 describe(usePiPWindow, () => {
@@ -11,6 +11,7 @@ describe(usePiPWindow, () => {
 			({
 				document: { body: { append: vi.fn(), removeChild: vi.fn() } },
 				addEventListener: vi.fn(),
+				close: vi.fn(),
 			}) as unknown as Window,
 	};
 
@@ -20,7 +21,12 @@ describe(usePiPWindow, () => {
 				setup() {
 					const container = ref<HTMLDivElement | null>(null);
 					const content = ref<HTMLDivElement | null>(null);
-					const pipWindow = usePiPWindow(container, content);
+					const pipWindow = usePiPWindow({
+						container,
+						content,
+						shouldPopOut: computed(() => true),
+						onRequestClose: vi.fn(),
+					});
 
 					return () =>
 						h(
@@ -43,7 +49,12 @@ describe(usePiPWindow, () => {
 				setup() {
 					const container = ref<HTMLDivElement | null>(null);
 					const content = ref<HTMLDivElement | null>(null);
-					const pipWindow = usePiPWindow(container, content);
+					const pipWindow = usePiPWindow({
+						container,
+						content,
+						shouldPopOut: computed(() => true),
+						onRequestClose: vi.fn(),
+					});
 
 					return () =>
 						h(
@@ -60,43 +71,40 @@ describe(usePiPWindow, () => {
 		});
 	});
 
-	describe('onPopOut', () => {
+	describe('isPoppedOut', () => {
 		beforeEach(() => {
 			Object.assign(window, { documentPictureInPicture });
 		});
 
-		it('should set isPoppedOut to true', async () => {
+		it('should be set to true when popped out', async () => {
+			const shouldPopOut = ref(false);
 			const MyComponent = defineComponent({
 				setup() {
 					const container = ref<HTMLDivElement | null>(null);
 					const content = ref<HTMLDivElement | null>(null);
-					const pipWindow = usePiPWindow(container, content);
+					const pipWindow = usePiPWindow({
+						container,
+						content,
+						shouldPopOut: computed(() => shouldPopOut.value),
+						onRequestClose: vi.fn(),
+					});
 
 					return () =>
 						h(
 							'div',
 							{ ref: container },
-							h(
-								'div',
-								{ ref: content },
-								h(
-									'button',
-									{
-										onClick: pipWindow.onPopOut,
-									},
-									String(pipWindow.isPoppedOut.value),
-								),
-							),
+							h('div', { ref: content }, String(pipWindow.isPoppedOut.value)),
 						);
 				},
 			});
 
-			const { getByRole, queryByText, rerender } = renderComponent(MyComponent);
+			const { queryByText } = renderComponent(MyComponent);
 
 			expect(queryByText('false')).toBeInTheDocument();
-			await fireEvent.click(getByRole('button'));
-			await rerender({});
-			expect(queryByText('true')).toBeInTheDocument();
+
+			shouldPopOut.value = true;
+
+			await waitFor(() => expect(queryByText('true')).toBeInTheDocument());
 		});
 	});
 });
