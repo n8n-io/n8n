@@ -121,7 +121,6 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
             class="notice"
             data-test-id="schema-preview-warning"
             data-v-882a318e=""
-            theme="warning"
           >
             
             Usually outputs the following fields. Execute the node to see the actual ones. 
@@ -242,6 +241,7 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
               
             </span>
           </div>
+          <!--v-if-->
           <span
             class="content text"
             data-test-id="run-data-schema-item-value"
@@ -314,6 +314,7 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
               
             </span>
           </div>
+          <!--v-if-->
           <span
             class="content text"
             data-test-id="run-data-schema-item-value"
@@ -446,7 +447,6 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
             class="notice"
             data-test-id="schema-preview-warning"
             data-v-882a318e=""
-            theme="warning"
           >
             
             Usually outputs the following fields. Execute the node to see the actual ones. 
@@ -567,6 +567,7 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
               
             </span>
           </div>
+          <!--v-if-->
           <span
             class="content text"
             data-test-id="run-data-schema-item-value"
@@ -639,6 +640,7 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
               
             </span>
           </div>
+          <!--v-if-->
           <span
             class="content text"
             data-test-id="run-data-schema-item-value"
@@ -688,6 +690,473 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
         <!--teleport start-->
         <!--teleport end-->
         
+        
+        
+        
+        
+        <div
+          class="schema-header-wrapper"
+          data-v-882a318e=""
+          data-v-d00cba9a=""
+          id="variables"
+          type="header"
+        >
+          <div
+            class="schema-header"
+            data-test-id="run-data-schema-header"
+            data-v-882a318e=""
+          >
+            <div
+              class="toggle"
+              data-v-882a318e=""
+            >
+              <font-awesome-icon-stub
+                beat="false"
+                beatfade="false"
+                border="false"
+                bounce="false"
+                class="collapse-icon"
+                data-v-882a318e=""
+                fade="false"
+                fixedwidth="false"
+                flash="false"
+                flip="false"
+                icon="angle-down"
+                inverse="false"
+                listitem="false"
+                pulse="false"
+                shake="false"
+                spin="false"
+                spinpulse="false"
+                spinreverse="false"
+                swapopacity="false"
+                symbol="false"
+              />
+            </div>
+            <!--v-if-->
+            <div
+              class="title"
+              data-v-882a318e=""
+            >
+              Variables and context 
+              <!--v-if-->
+            </div>
+            <!--v-if-->
+            <!--v-if-->
+          </div>
+          <!--v-if-->
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="$now"
+            data-nest-level="1"
+            data-path=".$now"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $now }}"
+          >
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="type-icon"
+              data-v-0f5e7239=""
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="hashtag"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              size="sm"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                $now
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            
+            <span>
+              <!--v-if-->
+              123
+            </span>
+            
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="$today"
+            data-nest-level="1"
+            data-path=".$today"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $today }}"
+          >
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="type-icon"
+              data-v-0f5e7239=""
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="hashtag"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              size="sm"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                $today
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            
+            <span>
+              <!--v-if-->
+              123
+            </span>
+            
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill pill--locked"
+            data-depth="1"
+            data-name="$vars"
+            data-nest-level="1"
+            data-path=".$vars"
+            data-target="false"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $vars }}"
+          >
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="type-icon"
+              data-v-0f5e7239=""
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="cube"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              size="sm"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                $vars
+              </span>
+              
+            </span>
+          </div>
+          
+          <span
+            class="n8n-text compact size-small regular n8n-icon locked-icon el-tooltip__trigger el-tooltip__trigger locked-icon el-tooltip__trigger el-tooltip__trigger n8n-icon locked-icon el-tooltip__trigger el-tooltip__trigger locked-icon el-tooltip__trigger el-tooltip__trigger"
+            data-v-0f5e7239=""
+          >
+            
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="small"
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="lock"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
+            
+          </span>
+          <!--teleport start-->
+          <!--teleport end-->
+          
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            <span />
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="$execution"
+            data-nest-level="1"
+            data-path=".$execution"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $execution }}"
+          >
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="type-icon"
+              data-v-0f5e7239=""
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="hashtag"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              size="sm"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                $execution
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            
+            <span>
+              <!--v-if-->
+              123
+            </span>
+            
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="$workflow"
+            data-nest-level="1"
+            data-path=".$workflow"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $workflow }}"
+          >
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="type-icon"
+              data-v-0f5e7239=""
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="hashtag"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              size="sm"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                $workflow
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            
+            <span>
+              <!--v-if-->
+              123
+            </span>
+            
+          </span>
+        </div>
         
         
         
@@ -882,12 +1351,11 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-depth="0"
             data-name="name"
             data-nest-level="0"
-            data-node-type=""
             data-path=".name"
             data-target="mappable"
             data-test-id="run-data-schema-node-name"
             data-v-0f5e7239=""
-            data-value="{{ $('').item.json.name }}"
+            data-value="{{ name }}"
           >
             <font-awesome-icon-stub
               beat="false"
@@ -924,6 +1392,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
               
             </span>
           </div>
+          <!--v-if-->
           <span
             class="content text"
             data-test-id="run-data-schema-item-value"
@@ -959,12 +1428,11 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-depth="0"
             data-name="age"
             data-nest-level="0"
-            data-node-type=""
             data-path=".age"
             data-target="mappable"
             data-test-id="run-data-schema-node-name"
             data-v-0f5e7239=""
-            data-value="{{ $('').item.json.age }}"
+            data-value="{{ age }}"
           >
             <font-awesome-icon-stub
               beat="false"
@@ -1001,6 +1469,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
               
             </span>
           </div>
+          <!--v-if-->
           <span
             class="content text"
             data-test-id="run-data-schema-item-value"
@@ -1062,12 +1531,11 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-depth="0"
             data-name="hobbies"
             data-nest-level="0"
-            data-node-type=""
             data-path=".hobbies"
             data-target="mappable"
             data-test-id="run-data-schema-node-name"
             data-v-0f5e7239=""
-            data-value="{{ $('').item.json.hobbies }}"
+            data-value="{{ hobbies }}"
           >
             <font-awesome-icon-stub
               beat="false"
@@ -1104,6 +1572,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
               
             </span>
           </div>
+          <!--v-if-->
           <span
             class="content text"
             data-test-id="run-data-schema-item-value"
@@ -1134,12 +1603,11 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-depth="0"
             data-name="hobbies[0]"
             data-nest-level="1"
-            data-node-type=""
             data-path=".hobbies[0]"
             data-target="mappable"
             data-test-id="run-data-schema-node-name"
             data-v-0f5e7239=""
-            data-value="{{ $('').item.json.hobbies[0] }}"
+            data-value="{{ hobbies[0] }}"
           >
             <font-awesome-icon-stub
               beat="false"
@@ -1176,6 +1644,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
               
             </span>
           </div>
+          <!--v-if-->
           <span
             class="content text"
             data-test-id="run-data-schema-item-value"
@@ -1211,12 +1680,11 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             data-depth="0"
             data-name="hobbies[1]"
             data-nest-level="1"
-            data-node-type=""
             data-path=".hobbies[1]"
             data-target="mappable"
             data-test-id="run-data-schema-node-name"
             data-v-0f5e7239=""
-            data-value="{{ $('').item.json.hobbies[1] }}"
+            data-value="{{ hobbies[1] }}"
           >
             <font-awesome-icon-stub
               beat="false"
@@ -1253,6 +1721,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
               
             </span>
           </div>
+          <!--v-if-->
           <span
             class="content text"
             data-test-id="run-data-schema-item-value"
@@ -1488,6 +1957,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               
             </span>
           </div>
+          <!--v-if-->
           <span
             class="content text"
             data-test-id="run-data-schema-item-value"
@@ -1586,6 +2056,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               
             </span>
           </div>
+          <!--v-if-->
           <span
             class="content text"
             data-test-id="run-data-schema-item-value"
@@ -1684,6 +2155,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               
             </span>
           </div>
+          <!--v-if-->
           <span
             class="content text"
             data-test-id="run-data-schema-item-value"
@@ -1756,6 +2228,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               
             </span>
           </div>
+          <!--v-if-->
           <span
             class="content text"
             data-test-id="run-data-schema-item-value"
@@ -1833,6 +2306,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               
             </span>
           </div>
+          <!--v-if-->
           <span
             class="content text"
             data-test-id="run-data-schema-item-value"
@@ -1940,6 +2414,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             <!--v-if-->
           </div>
           <!--v-if-->
+          <!--v-if-->
           <span
             class="content text"
             data-test-id="run-data-schema-item-value"
@@ -1949,6 +2424,473 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             <span>
               <!--v-if-->
               No fields - item(s) exist, but they're empty
+            </span>
+            
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-header-wrapper"
+          data-v-882a318e=""
+          data-v-d00cba9a=""
+          id="variables"
+          type="header"
+        >
+          <div
+            class="schema-header"
+            data-test-id="run-data-schema-header"
+            data-v-882a318e=""
+          >
+            <div
+              class="toggle"
+              data-v-882a318e=""
+            >
+              <font-awesome-icon-stub
+                beat="false"
+                beatfade="false"
+                border="false"
+                bounce="false"
+                class="collapse-icon"
+                data-v-882a318e=""
+                fade="false"
+                fixedwidth="false"
+                flash="false"
+                flip="false"
+                icon="angle-down"
+                inverse="false"
+                listitem="false"
+                pulse="false"
+                shake="false"
+                spin="false"
+                spinpulse="false"
+                spinreverse="false"
+                swapopacity="false"
+                symbol="false"
+              />
+            </div>
+            <!--v-if-->
+            <div
+              class="title"
+              data-v-882a318e=""
+            >
+              Variables and context 
+              <!--v-if-->
+            </div>
+            <!--v-if-->
+            <!--v-if-->
+          </div>
+          <!--v-if-->
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="$now"
+            data-nest-level="1"
+            data-path=".$now"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $now }}"
+          >
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="type-icon"
+              data-v-0f5e7239=""
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="hashtag"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              size="sm"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                $now
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            
+            <span>
+              <!--v-if-->
+              123
+            </span>
+            
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="$today"
+            data-nest-level="1"
+            data-path=".$today"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $today }}"
+          >
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="type-icon"
+              data-v-0f5e7239=""
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="hashtag"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              size="sm"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                $today
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            
+            <span>
+              <!--v-if-->
+              123
+            </span>
+            
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill pill--locked"
+            data-depth="1"
+            data-name="$vars"
+            data-nest-level="1"
+            data-path=".$vars"
+            data-target="false"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $vars }}"
+          >
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="type-icon"
+              data-v-0f5e7239=""
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="cube"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              size="sm"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                $vars
+              </span>
+              
+            </span>
+          </div>
+          
+          <span
+            class="n8n-text compact size-small regular n8n-icon locked-icon el-tooltip__trigger el-tooltip__trigger locked-icon el-tooltip__trigger el-tooltip__trigger n8n-icon locked-icon el-tooltip__trigger el-tooltip__trigger locked-icon el-tooltip__trigger el-tooltip__trigger"
+            data-v-0f5e7239=""
+          >
+            
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="small"
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="lock"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
+            
+          </span>
+          <!--teleport start-->
+          <!--teleport end-->
+          
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            <span />
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="$execution"
+            data-nest-level="1"
+            data-path=".$execution"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $execution }}"
+          >
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="type-icon"
+              data-v-0f5e7239=""
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="hashtag"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              size="sm"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                $execution
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            
+            <span>
+              <!--v-if-->
+              123
+            </span>
+            
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="$workflow"
+            data-nest-level="1"
+            data-path=".$workflow"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $workflow }}"
+          >
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="type-icon"
+              data-v-0f5e7239=""
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="hashtag"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              size="sm"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                $workflow
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            
+            <span>
+              <!--v-if-->
+              123
             </span>
             
           </span>
