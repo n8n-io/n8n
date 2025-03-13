@@ -53,7 +53,6 @@ export async function sendErrorPostReceive(
 
 export function getBaseUrl(credentials: ICredentialDataDecryptedObject): string {
 	const baseUrl = credentials.baseUrl as string;
-	console.log('baseUrl', baseUrl);
 	return baseUrl ? baseUrl.replace(/\/$/, '') : 'https://api.perplexity.ai';
 }
 
