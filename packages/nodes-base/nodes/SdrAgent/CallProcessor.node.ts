@@ -12,6 +12,7 @@ import {
 	getWeekDayOfToday,
 	checkTimeSlotDayWise,
 	checkDynamicObject,
+	agentVoiceProvider,
 	NormalObjT,
 } from './helper';
 import Retell from 'retell-sdk';
@@ -56,10 +57,10 @@ export class CallProcessor implements INodeType {
 			sdrAgent.offset,
 		);
 
-		if (!isAvailable) {
-			console.log('Agent not available in the current time slot.');
-			return [[{ json: { message: 'Agent unavailable at this time.' } }]];
-		}
+		// if (!isAvailable) {
+		// 	console.log('Agent not available in the current time slot.');
+		// 	return [[{ json: { message: 'Agent unavailable at this time.' } }]];
+		// }
 
 		// Fetch eligible contacts
 		const contacts = await fetchContacts(
@@ -77,19 +78,18 @@ export class CallProcessor implements INodeType {
 		// Process calls
 		const callResults = await processCalls(contacts, sdrAgent);
 
-		return [[{ json: { callResults } }]];
+		return [this.helpers.returnJsonArray(callResults)];
 	}
 }
 
 // 🔹 Fetch SDR Agent details from DB
 async function fetchSDRAgent(connection: any, sdrAgentId: any) {
 	const [results] = await connection.execute(
-		`SELECT sa.*, sa.id as agent_id, sasd.scheduling_hours, sasd.retry_after_days, sasd.max_attempts, 
-                sasd.is_enabled, sasd.timezone, tz.*
+		`SELECT sa.*, sa.id as agent_id, tz.*
          FROM sdr_agents AS sa
          JOIN s_a_scheduling_details AS sasd ON sa.id = sasd.sdr_agent_id
          JOIN timezones AS tz ON sasd.timezone = tz.id
-         WHERE sa.id = ? AND sa.status = 'ACTIVE' AND sasd.is_enabled = TRUE`,
+         WHERE sa.id = ? AND sa.status = 'ACTIVE'`,
 		[sdrAgentId],
 	);
 	return results.length ? results[0] : null;
@@ -109,7 +109,6 @@ async function fetchContacts(
          JOIN customers_and_leads AS cal ON cals.customers_and_leads_id = cal.id
          LEFT JOIN sdr_agents_call_details AS sacd ON sacd.lead_id = cal.id
          WHERE cals.segment_id = ?
-         AND cal.id = 28084
          AND cal.status NOT IN ('calling', 'non-responsive', 'do-not-call')
          AND (cal.status != 'call-back' 
               OR (CONVERT_TZ(NOW(), '+00:00', IFNULL(?, "+00:00")) >= 
@@ -129,7 +128,7 @@ async function processCalls(contacts: any[], sdrAgent: any) {
 	const callPromises = contacts.map(async (contact) => {
 		try {
 			console.log(`Calling ${contact.phone_number} from ${sdrAgent.agent_phone_number}...`);
-			const dynamicVariables = (contact.dynamic_variables as string[]) || [];
+			const dynamicVariables = (sdrAgent.dynamic_variables as string[]) || [];
 			dynamicVariables.push('companyName');
 
 			const dynamicVariableObj = createDynamicObject(contact?.custom_fields);
@@ -137,6 +136,8 @@ async function processCalls(contacts: any[], sdrAgent: any) {
 			dynamicVariableObj['productName'] = contact.product_of_interest;
 			dynamicVariableObj['currentTime'] = adjustTimeByOffset(new Date(), sdrAgent.offset);
 			dynamicVariableObj['companyName'] = contact.company_name;
+			const agentVoice = sdrAgent.agent_voice;
+			const llmModel = sdrAgent.llm_model;
 
 			if (checkDynamicObject(dynamicVariables, { ...dynamicVariableObj, ...contact })) {
 				const callData = await createPhoneCall(
@@ -144,6 +145,10 @@ async function processCalls(contacts: any[], sdrAgent: any) {
 					contact.phone_number,
 					dynamicVariableObj,
 					contact.company_id,
+					{
+						llm_model: llmModel,
+						voice_provider: agentVoiceProvider(agentVoice),
+					},
 				);
 
 				await storeCallDetails([
@@ -154,6 +159,7 @@ async function processCalls(contacts: any[], sdrAgent: any) {
 					contact.id,
 				]);
 				await updateCallStatus(contact.id, 'calling');
+				return { ...contact, ...callData };
 			} else {
 				console.log(`Skipping call for lead ${contact.id} (not eligible).`);
 			}
@@ -199,11 +205,13 @@ async function createPhoneCall(
 	toNumber: string,
 	dynamicVariables: NormalObjT,
 	companyId: number,
+	metadata?: NormalObjT,
 ) {
 	const client = await getRetellClient(companyId);
 	return client?.call?.createPhoneCall({
 		from_number: fromNumber,
 		to_number: toNumber,
 		retell_llm_dynamic_variables: dynamicVariables,
+		metadata,
 	});
 }

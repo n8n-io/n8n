@@ -4,6 +4,7 @@ import {
 	IExecuteFunctions,
 	INodeExecutionData,
 	NodeConnectionType,
+	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 import { getDbConnection } from '@utils/db';
 import moment = require('moment');
@@ -146,6 +147,16 @@ export class Contacts implements INodeType {
 					},
 				],
 			},
+			{
+				displayName: 'Pages',
+				name: 'pages',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getTotalPages',
+				},
+				required: false,
+				default: 1,
+			},
 		],
 	};
 
@@ -167,6 +178,7 @@ export class Contacts implements INodeType {
 					},
 				];
 			},
+
 			async getContactPriority() {
 				return [
 					{
@@ -195,6 +207,7 @@ export class Contacts implements INodeType {
 					},
 				];
 			},
+
 			async getContactLabels() {
 				// const connection = await getDbConnection();
 				// const [agents] = await connection.execute('SELECT id, email FROM customers_and_leads limit 30') as any[];
@@ -213,6 +226,7 @@ export class Contacts implements INodeType {
 					},
 				];
 			},
+
 			async getContactSource() {
 				return [
 					{
@@ -246,105 +260,134 @@ export class Contacts implements INodeType {
 					},
 				];
 			},
+
+			async getTotalPages(this: ILoadOptionsFunctions) {
+				const connection = await getDbConnection();
+				const { rawQuery, recordsPerPage } = generatContactQuery(this);
+
+				const countQuery = `SELECT count(*) as totalRecords FROM (${rawQuery}) as temp`;
+
+				const [totalResult] = (await connection.execute(countQuery)) as any[];
+
+				const totalRecords = totalResult[0].totalRecords;
+				const totalPages = Math.ceil(totalRecords / recordsPerPage);
+
+				return Array.from({ length: totalPages }, (_, i) => ({
+					name: `Page ${i + 1}`,
+					value: i + 1,
+				}));
+			},
 		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const search = this.getNodeParameter('search', 0) as any;
-		const status = this.getNodeParameter('status', 0) as any[];
-		const priority = this.getNodeParameter('priority', 0) as any[];
-		const labels = this.getNodeParameter('label', 0) as any[];
-		const source = this.getNodeParameter('lead_source', 0) as any[];
-		const type = this.getNodeParameter('type', 0) as any[];
-		const createdOn = this.getNodeParameter('createdOn', 0, {}) as {
-			range?: { from?: string; to?: string };
-		};
-		const lastActivity = this.getNodeParameter('lastActivity', 0, {}) as {
-			range?: { from?: string; to?: string };
-		};
-
-		const createdOnFrom = createdOn?.range?.from || null;
-		const createdOnTo = createdOn?.range?.to || null;
-		const lastActivityFrom = lastActivity?.range?.from || null;
-		const lastActivityTo = lastActivity?.range?.to || null;
-
 		const connection = await getDbConnection();
-
-		const filters = { status, priority, label: labels, lead_source: source, type };
-		// const query = `
-		// SELECT name as Name, phone_number as Phone, email as Email, company_name as Company, job_title as "Job Title", product_of_interest as "Product Interest", priority as Priority, updated_at as "Last Activity", created_at as "Created On", lead_source as Source, status as "Lead Status", type as Type FROM customers_and_leads LIMIT 30`;
-
-		// const whereCondition: string[] = [`t1.company_id = ${companyId}`];
-		const whereCondition: string[] = [];
-		const havingCondition: string[] = [];
-
-		// Search Query (Name, Email, Phone)
-		if (search) {
-			havingCondition.push(
-				`(t1.name LIKE '%${search}%' OR t1.email LIKE '%${search}%' OR t1.phone_number LIKE '%${search}%')`,
-			);
-		}
-
-		// Created On Date Range
-		if (createdOn) {
-			if (createdOnFrom && createdOnTo) {
-				whereCondition.push(
-					`t1.created_at BETWEEN "${createdOnFrom}" AND "${addDaysToDate(createdOnTo)}"`,
-				);
-			} else if (createdOnFrom) {
-				whereCondition.push(`t1.created_at >= "${createdOnFrom}"`);
-			} else if (createdOnTo) {
-				whereCondition.push(`t1.created_at <= "${addDaysToDate(createdOnTo)}"`);
-			}
-		}
-
-		// Last Activity Date Range
-		if (lastActivity) {
-			if (lastActivityFrom && lastActivityTo) {
-				whereCondition.push(
-					`t1.updated_at BETWEEN "${lastActivityFrom}" AND "${addDaysToDate(lastActivityTo)}"`,
-				);
-			} else if (lastActivityFrom) {
-				whereCondition.push(`t1.updated_at >= "${lastActivityFrom}"`);
-			} else if (lastActivityTo) {
-				whereCondition.push(`t1.updated_at <= "${addDaysToDate(lastActivityTo)}"`);
-			}
-		}
-
-		if (filters['label'] && filters['label'].length) {
-			whereCondition.push(`cll.label_id in (${[...filters['label']]})`);
-		}
-
-		if (filters['type'] && filters['type'].length) {
-			whereCondition.push(`t1.type in (${[...filters['type']]})`);
-		}
-
-		if (filters['priority'] && filters['priority'].length) {
-			whereCondition.push(`t1.priority in (${[...filters['priority']]})`);
-		}
-
-		if (filters['status'] && filters['status'].length) {
-			whereCondition.push(`t1.status in (${[...filters['status']]})`);
-		}
-
-		if (filters['lead_source'] && filters['lead_source'].length) {
-			whereCondition.push(`t1.lead_source in (${[...filters['lead_source']]})`);
-		}
-
-		// Sort & Pagination
-		let orderBy = `t1.updated_at DESC`;
-
-		// Generate Query
-		const rawQuery = getLeadsRawQuery(whereCondition, havingCondition);
-		const query = `${rawQuery} ORDER BY ${orderBy} LIMIT 30`;
-		console.log(query);
+		const { rawQuery, orderBy, recordsPerPage, offset } = generatContactQuery(this);
+		const query = `${rawQuery} ORDER BY ${orderBy} LIMIT ${recordsPerPage} OFFSET ${offset}`;
 
 		// Execute Query
-
 		const [data] = (await connection.execute(query)) as any[];
 
 		return [this.helpers.returnJsonArray(data)];
 	}
+}
+function generatContactQuery(node: IExecuteFunctions | ILoadOptionsFunctions) {
+	const search = node.getNodeParameter('search', 0) as any;
+	const status = node.getNodeParameter('status', 0) as any[];
+	const priority = node.getNodeParameter('priority', 0) as any[];
+	const labels = node.getNodeParameter('label', 0) as any[];
+	const source = node.getNodeParameter('lead_source', 0) as any[];
+	const type = node.getNodeParameter('type', 0) as any[];
+	const createdOn = node.getNodeParameter('createdOn', 0, {}) as {
+		range?: { from?: string; to?: string };
+	};
+	const lastActivity = node.getNodeParameter('lastActivity', 0, {}) as {
+		range?: { from?: string; to?: string };
+	};
+	const currentPage = node.getNodeParameter('pages', 0) as number;
+
+	const createdOnFrom = createdOn?.range?.from || null;
+	const createdOnTo = createdOn?.range?.to || null;
+	const lastActivityFrom = lastActivity?.range?.from || null;
+	const lastActivityTo = lastActivity?.range?.to || null;
+
+	const recordsPerPage = 10;
+
+	const offset = (currentPage - 1) * recordsPerPage;
+
+	const filters = { status, priority, label: labels, lead_source: source, type };
+
+	const whereCondition: string[] = [];
+	const havingCondition: string[] = [];
+
+	// Search Query (Name, Email, Phone)
+	if (search) {
+		havingCondition.push(
+			`(t1.name LIKE '%${search}%' OR t1.email LIKE '%${search}%' OR t1.phone_number LIKE '%${search}%')`,
+		);
+	}
+
+	// Created On Date Range
+	if (createdOn) {
+		if (createdOnFrom && createdOnTo) {
+			whereCondition.push(
+				`t1.created_at BETWEEN "${createdOnFrom}" AND "${addDaysToDate(createdOnTo)}"`,
+			);
+		} else if (createdOnFrom) {
+			whereCondition.push(`t1.created_at >= "${createdOnFrom}"`);
+		} else if (createdOnTo) {
+			whereCondition.push(`t1.created_at <= "${addDaysToDate(createdOnTo)}"`);
+		}
+	}
+
+	// Last Activity Date Range
+	if (lastActivity) {
+		if (lastActivityFrom && lastActivityTo) {
+			whereCondition.push(
+				`t1.updated_at BETWEEN "${lastActivityFrom}" AND "${addDaysToDate(lastActivityTo)}"`,
+			);
+		} else if (lastActivityFrom) {
+			whereCondition.push(`t1.updated_at >= "${lastActivityFrom}"`);
+		} else if (lastActivityTo) {
+			whereCondition.push(`t1.updated_at <= "${addDaysToDate(lastActivityTo)}"`);
+		}
+	}
+
+	if (filters['label'] && filters['label'].length) {
+		whereCondition.push(
+			`cll.label_id in (${filters['label'].map((data) => `'${data}'`).join(', ')})`,
+		);
+	}
+
+	if (filters['type'] && filters['type'].length) {
+		whereCondition.push(`t1.type in (${filters['type'].map((data) => `'${data}'`).join(', ')})`);
+	}
+
+	if (filters['priority'] && filters['priority'].length) {
+		whereCondition.push(
+			`t1.priority in (${filters['priority'].map((data) => `'${data}'`).join(', ')})`,
+		);
+	}
+
+	if (filters['status'] && filters['status'].length) {
+		whereCondition.push(
+			`t1.status in (${filters['status'].map((data) => `'${data}'`).join(', ')})`,
+		);
+	}
+
+	if (filters['lead_source'] && filters['lead_source'].length) {
+		whereCondition.push(
+			`t1.lead_source in (${filters['lead_source'].map((data) => `'${data}'`).join(', ')})`,
+		);
+	}
+
+	// Sort & Pagination
+	let orderBy = `t1.updated_at DESC`;
+
+	// Generate Query
+	const rawQuery = getLeadsRawQuery(whereCondition, havingCondition);
+
+	return { rawQuery, orderBy, recordsPerPage, offset };
 }
 
 export const getLeadsRawQuery = (whereCondition: string[] = [], havingCondition: string[] = []) => {

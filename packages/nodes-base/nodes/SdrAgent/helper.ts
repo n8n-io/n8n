@@ -52,7 +52,8 @@ export const toCamelCase = <T extends NormalObjT | NormalObjT[]>(obj: T): T => {
 };
 
 export function createDynamicObject(transformedData: Record<string, any>[]) {
-	return transformedData.reduce((acc, item) => {
+	if (!transformedData || !Object.keys(transformedData).length) return {};
+	return transformedData?.reduce((acc, item) => {
 		acc[item.label] = item.value;
 		return acc;
 	}, {});
@@ -78,3 +79,10 @@ export const defaultConfig = {
 	retryAfterDays: 1,
 	maxAttempts: 3,
 };
+
+export function agentVoiceProvider(voiceId: string) {
+	if (voiceId.includes('labs') || voiceId.includes('custom')) {
+		return 'elevenlabs';
+	}
+	return null;
+}
