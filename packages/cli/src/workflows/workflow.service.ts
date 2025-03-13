@@ -2,7 +2,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import type { EntityManager } from '@n8n/typeorm';
+import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import omit from 'lodash/omit';
@@ -36,6 +36,7 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { WorkflowHistoryService } from './workflow-history.ee/workflow-history.service.ee';
 import { WorkflowSharingService } from './workflow-sharing.service';
+import { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 @Service()
 export class WorkflowService {
@@ -179,6 +180,7 @@ export class WorkflowService {
 		workflowUpdateData: WorkflowEntity,
 		workflowId: string,
 		tagIds?: string[],
+		parentFolderId?: string,
 		forceSave?: boolean,
 	): Promise<WorkflowEntity> {
 		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
@@ -263,20 +265,24 @@ export class WorkflowService {
 			await validateEntity(workflowUpdateData);
 		}
 
-		await this.workflowRepository.update(
-			workflowId,
-			pick(workflowUpdateData, [
-				'name',
-				'active',
-				'nodes',
-				'connections',
-				'meta',
-				'settings',
-				'staticData',
-				'pinData',
-				'versionId',
-			]),
-		);
+		const updatePayload: QueryDeepPartialEntity<WorkflowEntity> = pick(workflowUpdateData, [
+			'name',
+			'active',
+			'nodes',
+			'connections',
+			'meta',
+			'settings',
+			'staticData',
+			'pinData',
+			'versionId',
+			'parentFolderId',
+		]);
+
+		if (parentFolderId) {
+			updatePayload.parentFolder = { id: parentFolderId };
+		}
+
+		await this.workflowRepository.update(workflowId, updatePayload);
 
 		const tagsDisabled = this.globalConfig.tags.disabled;
 
