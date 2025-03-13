@@ -99,7 +99,7 @@ describe('handleRetrieveAsToolOperation', () => {
 		// Check vector store client was initialized
 		expect(mockArgs.getVectorStoreClient).toHaveBeenCalledWith(
 			mockContext,
-			{ testFilter: 'value' },
+			undefined,
 			mockEmbeddings,
 			0,
 		);
