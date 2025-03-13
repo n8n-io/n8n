@@ -57,7 +57,7 @@ const prepareError = (node: INode, error: Error) => {
 	});
 };
 
-async function executeSelectWithMapedPairedItems(
+async function executeSelectWithMappedPairedItems(
 	node: INode,
 	inputsData: INodeExecutionData[][],
 	query: string,
@@ -125,7 +125,7 @@ export async function execute(
 
 	if (isSelectQuery) {
 		try {
-			return await executeSelectWithMapedPairedItems(node, inputsData, query);
+			return await executeSelectWithMappedPairedItems(node, inputsData, query);
 		} catch (error) {
 			Container.get(ErrorReporter).error(error, {
 				extra: {
