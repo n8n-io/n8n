@@ -6,7 +6,6 @@ import {
 	PromptTemplate,
 } from '@langchain/core/prompts';
 import type { BaseRetriever } from '@langchain/core/retrievers';
-import { RetrievalQAChain } from 'langchain/chains';
 import { createStuffDocumentsChain } from 'langchain/chains/combine_documents';
 import { createRetrievalChain } from 'langchain/chains/retrieval';
 import { NodeConnectionType, NodeOperationError, parseErrorMetadata } from 'n8n-workflow';
@@ -31,10 +30,6 @@ Context: {context}`;
 // Due to the refactoring in version 1.5, the variable name {question} needed to be changed to {input} in the prompt template.
 const LEGACY_INPUT_TEMPLATE_KEY = 'question';
 const INPUT_TEMPLATE_KEY = 'input';
-
-function getInputTemplateKey(version: number): string {
-	return version >= 1.5 ? INPUT_TEMPLATE_KEY : LEGACY_INPUT_TEMPLATE_KEY;
-}
 
 const systemPromptOption: INodeProperties = {
 	displayName: 'System Prompt Template',
@@ -190,7 +185,6 @@ export class ChainRetrievalQa implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		this.logger.debug('Executing Retrieval QA Chain');
 
-		const inputTemplateKey = getInputTemplateKey(this.getNode().typeVersion);
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
@@ -228,61 +222,61 @@ export class ChainRetrievalQa implements INodeType {
 					systemPromptTemplate?: string;
 				};
 
-				// Create prompt template based on model type and user configuration
-				const templateText = options.systemPromptTemplate ?? SYSTEM_PROMPT_TEMPLATE;
-				let promptTemplate;
+				let templateText = options.systemPromptTemplate ?? SYSTEM_PROMPT_TEMPLATE;
 
+				// Replace legacy input template key for versions 1.4 and below
+				if (this.getNode().typeVersion < 1.5) {
+					templateText = templateText.replace(
+						`{${LEGACY_INPUT_TEMPLATE_KEY}}`,
+						`{${INPUT_TEMPLATE_KEY}}`,
+					);
+				}
+
+				// Create prompt template based on model type and user configuration
+				let promptTemplate;
 				if (isChatInstance(model)) {
 					// For chat models, create a chat prompt template with system and human messages
 					const messages = [
 						SystemMessagePromptTemplate.fromTemplate(templateText),
-						HumanMessagePromptTemplate.fromTemplate(`{${inputTemplateKey}}`),
+						HumanMessagePromptTemplate.fromTemplate('{input}'),
 					];
 					promptTemplate = ChatPromptTemplate.fromMessages(messages);
 				} else {
 					// For non-chat models, create a text prompt template with Question/Answer format
 					const questionSuffix =
-						options.systemPromptTemplate === undefined
-							? `\n\nQuestion: {${inputTemplateKey}}\nAnswer:`
-							: '';
+						options.systemPromptTemplate === undefined ? '\n\nQuestion: {input}\nAnswer:' : '';
 
 					promptTemplate = new PromptTemplate({
 						template: templateText + questionSuffix,
-						inputVariables: ['context', inputTemplateKey],
+						inputVariables: ['context', 'input'],
 					});
 				}
 
-				let retrievalChain;
-				if (this.getNode().typeVersion <= 1.4) {
-					retrievalChain = RetrievalQAChain.fromLLM(model, retriever, { prompt: promptTemplate });
-				} else {
-					// Create the document chain that combines the retrieved documents
-					const combineDocsChain = await createStuffDocumentsChain({
-						llm: model,
-						prompt: promptTemplate,
-					});
+				// Create the document chain that combines the retrieved documents
+				const combineDocsChain = await createStuffDocumentsChain({
+					llm: model,
+					prompt: promptTemplate,
+				});
 
-					// Create the retrieval chain that handles the retrieval and then passes to the combine docs chain
-					retrievalChain = await createRetrievalChain({
-						combineDocsChain,
-						retriever,
-					});
-				}
+				// Create the retrieval chain that handles the retrieval and then passes to the combine docs chain
+				const retrievalChain = await createRetrievalChain({
+					combineDocsChain,
+					retriever,
+				});
 
 				// Execute the chain with tracing config
-				const input = this.getNode().typeVersion <= 1.4 ? { query } : { input: query };
 				const tracingConfig = getTracingConfig(this);
 				const response = await retrievalChain
 					.withConfig(tracingConfig)
-					.invoke(input, { signal: this.getExecutionCancelSignal() });
+					.invoke({ input: query }, { signal: this.getExecutionCancelSignal() });
 
 				// Get the answer from the response
+				const answer: string = response.answer;
 				if (this.getNode().typeVersion >= 1.5) {
-					const answer: string = response.answer;
 					returnData.push({ json: { response: answer } });
 				} else {
 					// Legacy format for versions 1.4 and below is { text: string }
-					returnData.push({ json: { response } });
+					returnData.push({ json: { response: { text: answer } } });
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {

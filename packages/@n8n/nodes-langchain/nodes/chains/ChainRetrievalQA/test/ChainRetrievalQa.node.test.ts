@@ -12,6 +12,7 @@ const createExecuteFunctionsMock = (
 	parameters: IDataObject,
 	fakeLlm: BaseLanguageModel,
 	fakeRetriever: BaseRetriever,
+	version: number,
 ) => {
 	return {
 		getExecutionCancelSignal() {
@@ -22,7 +23,7 @@ const createExecuteFunctionsMock = (
 		},
 		getNode() {
 			return {
-				typeVersion: 1.5,
+				typeVersion: version,
 			};
 		},
 		getInputConnectionData(type: NodeConnectionType) {
@@ -70,123 +71,159 @@ describe('ChainRetrievalQa', () => {
 		node = new ChainRetrievalQa();
 	});
 
-	it('should process a query using a chat model', async () => {
-		// Mock a chat model that returns a predefined answer
-		const mockChatModel = new FakeChatModel({});
+	it.each([1.3, 1.4, 1.5])(
+		'should process a query using a chat model (version %s)',
+		async (version) => {
+			// Mock a chat model that returns a predefined answer
+			const mockChatModel = new FakeChatModel({});
 
-		const params = {
-			promptType: 'define',
-			text: 'What is the capital of France?',
-			options: {},
-		};
+			const params = {
+				promptType: 'define',
+				text: 'What is the capital of France?',
+				options: {},
+			};
 
-		const result = await node.execute.call(
-			createExecuteFunctionsMock(params, mockChatModel, fakeRetriever),
-		);
+			const result = await node.execute.call(
+				createExecuteFunctionsMock(params, mockChatModel, fakeRetriever, version),
+			);
 
-		// Check that the result contains the expected response (FakeChatModel returns the query as response)
-		expect(result).toHaveLength(1);
-		expect(result[0]).toHaveLength(1);
-		expect(result[0][0].json.response).toContain(
-			'You are an assistant for question-answering tasks',
-		); // system prompt
-		expect(result[0][0].json.response).toContain('The capital of France is Paris.'); // context
-		expect(result[0][0].json.response).toContain('What is the capital of France?'); // query
-	});
+			// Check that the result contains the expected response (FakeChatModel returns the query as response)
+			expect(result).toHaveLength(1);
+			expect(result[0]).toHaveLength(1);
+			expect(result[0][0].json.response).toBeDefined();
 
-	it('should process a query using a text completion model', async () => {
-		// Mock a text completion model that returns a predefined answer
-		const mockTextModel = new FakeLLM({ response: 'Paris is the capital of France.' });
+			let responseText = result[0][0].json.response;
+			if (version < 1.5 && typeof responseText === 'object') {
+				responseText = (responseText as { text: string }).text;
+			}
 
-		const modelCallSpy = jest.spyOn(mockTextModel, '_call');
+			expect(responseText).toContain('You are an assistant for question-answering tasks'); // system prompt
+			expect(responseText).toContain('The capital of France is Paris.'); // context
+			expect(responseText).toContain('What is the capital of France?'); // query
+		},
+	);
 
-		const params = {
-			promptType: 'define',
-			text: 'What is the capital of France?',
-			options: {},
-		};
+	it.each([1.3, 1.4, 1.5])(
+		'should process a query using a text completion model (version %s)',
+		async (version) => {
+			// Mock a text completion model that returns a predefined answer
+			const mockTextModel = new FakeLLM({ response: 'Paris is the capital of France.' });
 
-		const result = await node.execute.call(
-			createExecuteFunctionsMock(params, mockTextModel, fakeRetriever),
-		);
+			const modelCallSpy = jest.spyOn(mockTextModel, '_call');
 
-		// Check model was called with the correct query
-		expect(modelCallSpy).toHaveBeenCalled();
-		expect(modelCallSpy.mock.calls[0][0]).toEqual(
-			expect.stringContaining('Question: What is the capital of France?'),
-		);
+			const params = {
+				promptType: 'define',
+				text: 'What is the capital of France?',
+				options: {},
+			};
 
-		// Check that the result contains the expected response
-		expect(result).toHaveLength(1);
-		expect(result[0]).toHaveLength(1);
-		expect(result[0][0].json).toEqual({
-			response: 'Paris is the capital of France.',
-		});
-	});
+			const result = await node.execute.call(
+				createExecuteFunctionsMock(params, mockTextModel, fakeRetriever, version),
+			);
 
-	it('should use a custom system prompt if provided', async () => {
-		const customSystemPrompt = `You are a geography expert. Use the following context to answer the question.
+			// Check model was called with the correct query
+			expect(modelCallSpy).toHaveBeenCalled();
+			expect(modelCallSpy.mock.calls[0][0]).toEqual(
+				expect.stringContaining('Question: What is the capital of France?'),
+			);
+
+			// Check that the result contains the expected response
+			expect(result).toHaveLength(1);
+			expect(result[0]).toHaveLength(1);
+
+			if (version < 1.5) {
+				expect((result[0][0].json.response as { text: string }).text).toContain(
+					'Paris is the capital of France.',
+				);
+			} else {
+				expect(result[0][0].json).toEqual({
+					response: 'Paris is the capital of France.',
+				});
+			}
+		},
+	);
+
+	it.each([1.3, 1.4, 1.5])(
+		'should use a custom system prompt if provided (version %s)',
+		async (version) => {
+			const customSystemPrompt = `You are a geography expert. Use the following context to answer the question.
 			----------------
 			Context: {context}`;
 
-		// The chat model will return a response indicating it received the custom prompt
-		const mockChatModel = new FakeChatModel({});
+			// The chat model will return a response indicating it received the custom prompt
+			const mockChatModel = new FakeChatModel({});
 
-		const params = {
-			promptType: 'define',
-			text: 'What is the capital of France?',
-			options: {
-				systemPromptTemplate: customSystemPrompt,
-			},
-		};
+			const params = {
+				promptType: 'define',
+				text: 'What is the capital of France?',
+				options: {
+					systemPromptTemplate: customSystemPrompt,
+				},
+			};
 
-		const result = await node.execute.call(
-			createExecuteFunctionsMock(params, mockChatModel, fakeRetriever),
-		);
+			const result = await node.execute.call(
+				createExecuteFunctionsMock(params, mockChatModel, fakeRetriever, version),
+			);
 
-		expect(result).toHaveLength(1);
-		expect(result[0][0].json.response).toContain('You are a geography expert.');
-	});
-
-	it('should throw an error if the query is undefined', async () => {
-		const mockChatModel = new FakeChatModel({});
-
-		const params = {
-			promptType: 'define',
-			text: undefined, // undefined query
-			options: {},
-		};
-
-		await expect(
-			node.execute.call(createExecuteFunctionsMock(params, mockChatModel, fakeRetriever)),
-		).rejects.toThrow(NodeOperationError);
-	});
-
-	it('should add error to json if continueOnFail is true', async () => {
-		// Create a model that will throw an error
-		class ErrorLLM extends FakeLLM {
-			async _call(): Promise<string> {
-				throw new UnexpectedError('Model error');
+			expect(result).toHaveLength(1);
+			expect(result[0]).toHaveLength(1);
+			if (version < 1.5) {
+				expect((result[0][0].json.response as { text: string }).text).toContain(
+					'You are a geography expert.',
+				);
+			} else {
+				expect(result[0][0].json.response).toContain('You are a geography expert.');
 			}
-		}
+		},
+	);
 
-		const errorModel = new ErrorLLM({});
+	it.each([1.3, 1.4, 1.5])(
+		'should throw an error if the query is undefined (version %s)',
+		async (version) => {
+			const mockChatModel = new FakeChatModel({});
 
-		const params = {
-			promptType: 'define',
-			text: 'What is the capital of France?',
-			options: {},
-		};
+			const params = {
+				promptType: 'define',
+				text: undefined, // undefined query
+				options: {},
+			};
 
-		// Override continueOnFail to return true
-		const execMock = createExecuteFunctionsMock(params, errorModel, fakeRetriever);
-		execMock.continueOnFail = () => true;
+			await expect(
+				node.execute.call(
+					createExecuteFunctionsMock(params, mockChatModel, fakeRetriever, version),
+				),
+			).rejects.toThrow(NodeOperationError);
+		},
+	);
 
-		const result = await node.execute.call(execMock);
+	it.each([1.3, 1.4, 1.5])(
+		'should add error to json if continueOnFail is true (version %s)',
+		async (version) => {
+			// Create a model that will throw an error
+			class ErrorLLM extends FakeLLM {
+				async _call(): Promise<string> {
+					throw new UnexpectedError('Model error');
+				}
+			}
 
-		expect(result).toHaveLength(1);
-		expect(result[0]).toHaveLength(1);
-		expect(result[0][0].json).toHaveProperty('error');
-		expect(result[0][0].json.error).toContain('Model error');
-	});
+			const errorModel = new ErrorLLM({});
+
+			const params = {
+				promptType: 'define',
+				text: 'What is the capital of France?',
+				options: {},
+			};
+
+			// Override continueOnFail to return true
+			const execMock = createExecuteFunctionsMock(params, errorModel, fakeRetriever, version);
+			execMock.continueOnFail = () => true;
+
+			const result = await node.execute.call(execMock);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toHaveLength(1);
+			expect(result[0][0].json).toHaveProperty('error');
+			expect(result[0][0].json.error).toContain('Model error');
+		},
+	);
 });
