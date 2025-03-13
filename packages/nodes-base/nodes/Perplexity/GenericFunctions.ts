@@ -22,7 +22,7 @@ export async function sendErrorPostReceive(
 		const errorMessage =
 			typeof error.message === 'string'
 				? error.message
-				: response.statusMessage || 'An unexpected issue occurred';
+				: (response.statusMessage ?? 'An unexpected issue occurred');
 		const errorType = typeof error.type === 'string' ? error.type : 'UnknownError';
 		const itemIndex = typeof error.itemIndex === 'number' ? `[Item ${error.itemIndex}]` : '';
 
@@ -45,7 +45,8 @@ export async function sendErrorPostReceive(
 		// Fallback for other errors
 		throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
 			message: `${errorMessage} ${itemIndex}.`,
-			description: `Please check the request parameters and ensure they are correct.For more details, refer to the API documentation: https://docs.perplexity.ai/api-reference/chat-completions.`,
+			description:
+				'Please check the request parameters and ensure they are correct.For more details, refer to the API documentation: https://docs.perplexity.ai/api-reference/chat-completions.',
 		});
 	}
 	return data;

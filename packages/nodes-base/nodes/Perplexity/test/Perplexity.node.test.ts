@@ -4,6 +4,7 @@ import {
 	type IN8nHttpFullResponse,
 } from 'n8n-workflow';
 import nock from 'nock';
+
 import { sendErrorPostReceive } from '../GenericFunctions';
 
 describe('Chat Completion Operations', () => {
