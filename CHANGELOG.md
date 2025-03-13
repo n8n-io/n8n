@@ -1,3 +1,12 @@
+## [1.82.3](https://github.com/n8n-io/n8n/compare/n8n@1.82.2...n8n@1.82.3) (2025-03-13)
+
+
+### Bug Fixes
+
+* **core:** License should ignore empty input on onFeatureChange ([#13912](https://github.com/n8n-io/n8n/issues/13912)) ([b7d14e0](https://github.com/n8n-io/n8n/commit/b7d14e031e272f4fe9190a3d215ff6e024be6652))
+
+
+
 ## [1.82.2](https://github.com/n8n-io/n8n/compare/n8n@1.82.1...n8n@1.82.2) (2025-03-12)
 
 
