@@ -217,7 +217,7 @@ describe('getTools', () => {
 		const tools = await getTools(ctx, fakeOutputParser);
 		// Our fake getConnectedTools returns one tool; with outputParser, one extra is appended.
 		expect(tools.length).toEqual(2);
-		const dynamicTool = tools.find((t) => t.name === 'format_final_response');
+		const dynamicTool = tools.find((t) => t.name === 'format_final_json_response');
 		expect(dynamicTool).toBeDefined();
 	});
 });
