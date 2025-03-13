@@ -1,27 +1,26 @@
 {
-	"name": "My workflow 130",
+	"name": "Gmail v1 test - labels",
 	"nodes": [
 		{
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [-60, 100],
-			"id": "636b40bc-2c98-4b9a-8ce2-9d1322294518",
+			"position": [520, 200],
+			"id": "d52d5cac-d1df-4581-bb97-c14d559a93ad",
 			"name": "When clicking ‘Test workflow’"
 		},
 		{
 			"parameters": {
 				"resource": "label",
-				"operation": "create",
-				"name": "Test Label Name",
-				"options": {}
+				"operation": "getAll",
+				"limit": 2
 			},
 			"type": "n8n-nodes-base.gmail",
 			"typeVersion": 1,
-			"position": [220, -180],
-			"id": "45758452-3b5b-478d-aece-001e117ce69d",
-			"name": "Gmail - Labels - Create",
-			"webhookId": "3b8b38e0-2f4b-40bc-8b67-37e7ea95cb60",
+			"position": [740, -100],
+			"id": "48634d96-92f3-430f-9063-2e3784e5ba98",
+			"name": "Gmail - Labels - All",
+			"webhookId": "f3cbddc1-3cfa-4217-aa73-f0e5a9309661",
 			"credentials": {
 				"gmailOAuth2": {
 					"id": "22",
@@ -37,10 +36,10 @@
 			},
 			"type": "n8n-nodes-base.gmail",
 			"typeVersion": 1,
-			"position": [220, 20],
-			"id": "ed979c3a-b2ea-413e-be63-0392cc1714a5",
+			"position": [740, 100],
+			"id": "3ddc7641-ae81-41f1-a987-d7b517f348ea",
 			"name": "Gmail - Labels - Delete",
-			"webhookId": "3b8b38e0-2f4b-40bc-8b67-37e7ea95cb60",
+			"webhookId": "f3cbddc1-3cfa-4217-aa73-f0e5a9309661",
 			"credentials": {
 				"gmailOAuth2": {
 					"id": "22",
@@ -56,10 +55,10 @@
 			},
 			"type": "n8n-nodes-base.gmail",
 			"typeVersion": 1,
-			"position": [220, 200],
-			"id": "8802fdb5-2741-407b-82a4-ccedc4055076",
+			"position": [740, 300],
+			"id": "80443d2e-f1f5-4f30-aeb2-6eea23a7d888",
 			"name": "Gmail - Labels - Get",
-			"webhookId": "3b8b38e0-2f4b-40bc-8b67-37e7ea95cb60",
+			"webhookId": "f3cbddc1-3cfa-4217-aa73-f0e5a9309661",
 			"credentials": {
 				"gmailOAuth2": {
 					"id": "22",
@@ -70,14 +69,14 @@
 		{
 			"parameters": {
 				"resource": "label",
-				"limit": 2
+				"name": "Test Label Name"
 			},
 			"type": "n8n-nodes-base.gmail",
 			"typeVersion": 1,
-			"position": [220, 400],
-			"id": "bae81586-7641-4fdc-81a4-0006b289bf9d",
-			"name": "Gmail - Labels - Get Many",
-			"webhookId": "3b8b38e0-2f4b-40bc-8b67-37e7ea95cb60",
+			"position": [740, 500],
+			"id": "41efa86b-19f7-4acc-b118-e2f605b81c24",
+			"name": "Gmail - Labels - Create",
+			"webhookId": "f3cbddc1-3cfa-4217-aa73-f0e5a9309661",
 			"credentials": {
 				"gmailOAuth2": {
 					"id": "22",
@@ -87,40 +86,46 @@
 		}
 	],
 	"pinData": {
-		"Gmail - Labels - Create": [
+		"Gmail - Labels - All": [
 			{
 				"json": {
 					"id": "CHAT",
-					"name": "CHAT",
-					"messageListVisibility": "hide",
 					"labelListVisibility": "labelHide",
+					"messageListVisibility": "hide",
+					"name": "CHAT",
+					"type": "system"
+				}
+			},
+			{
+				"json": {
+					"id": "SENT",
+					"name": "SENT",
+					"type": "system"
+				}
+			}
+		],
+		"Gmail - Labels - Get": [
+			{
+				"json": {
+					"id": "CHAT",
+					"labelListVisibility": "labelHide",
+					"messageListVisibility": "hide",
+					"name": "CHAT",
 					"type": "system"
 				}
 			}
 		],
 		"Gmail - Labels - Delete": [{ "json": { "success": true } }],
-		"Gmail - Labels - Get": [
+		"Gmail - Labels - Create": [
 			{
 				"json": {
 					"id": "CHAT",
-					"name": "CHAT",
-					"messageListVisibility": "hide",
 					"labelListVisibility": "labelHide",
+					"messageListVisibility": "hide",
+					"name": "CHAT",
 					"type": "system"
 				}
 			}
-		],
-		"Gmail - Labels - Get Many": [
-			{
-				"json": {
-					"id": "CHAT",
-					"name": "CHAT",
-					"messageListVisibility": "hide",
-					"labelListVisibility": "labelHide",
-					"type": "system"
-				}
-			},
-			{ "json": { "id": "SENT", "name": "SENT", "type": "system" } }
 		]
 	},
 	"connections": {
@@ -128,7 +133,7 @@
 			"main": [
 				[
 					{
-						"node": "Gmail - Labels - Create",
+						"node": "Gmail - Labels - All",
 						"type": "main",
 						"index": 0
 					},
@@ -143,7 +148,7 @@
 						"index": 0
 					},
 					{
-						"node": "Gmail - Labels - Get Many",
+						"node": "Gmail - Labels - Create",
 						"type": "main",
 						"index": 0
 					}
@@ -155,9 +160,11 @@
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"versionId": "",
+	"versionId": "59109e41-be89-484a-b8d0-8f5c8f0407f9",
 	"meta": {
-		"instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+		"templateCredsSetupCompleted": true,
+		"instanceId": "cb484ba7b742928a2048bf8829668bed5b5ad9787579adea888f05980292a4a7"
 	},
+	"id": "dbQv4DRzYXIcTNNs",
 	"tags": []
 }

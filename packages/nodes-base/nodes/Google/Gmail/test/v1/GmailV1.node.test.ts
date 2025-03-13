@@ -1,11 +1,9 @@
 /* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
-import { mock, mockDeep } from 'jest-mock-extended';
-import { jsonParse, type ILoadOptionsFunctions, type INode } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import nock from 'nock';
 
 import { testWorkflows } from '@test/nodes/Helpers';
 
-import { getLabels } from '../../v1/loadOptions';
 import labels from '../fixtures/labels.json';
 import messages from '../fixtures/messages.json';
 
@@ -27,38 +25,19 @@ describe('Test Gmail Node v1', () => {
 		const gmailNock = nock('https://www.googleapis.com/gmail');
 
 		beforeAll(() => {
-			gmailNock.get('/v1/users/me/messages').query({ maxResults: 2 }).reply(200, {
-				messages,
-			});
 			gmailNock
 				.get('/v1/users/me/messages')
 				.query({
 					includeSpamTrash: 'true',
-					labelIds: 'CHAT',
-					q: 'test from:Test Sender after:1734393600 before:1735171200',
-					readStatus: 'both',
-					dataPropertyAttachmentsPrefixName: 'attachment_',
-					downloadAttachments: 'true',
+					dataPropertyAttachmentsPrefixName: 'custom_attachment_',
 					maxResults: '2',
 				})
 				.reply(200, { messages });
 			gmailNock
 				.get('/v1/users/me/messages/a1b2c3d4e5f6g7h8')
 				.query({
-					maxResults: '2',
-					format: 'metadata',
-					metadataHeaders: ['From', 'To', 'Cc', 'Bcc', 'Subject'],
-				})
-				.reply(200, messages[0]);
-			gmailNock
-				.get('/v1/users/me/messages/a1b2c3d4e5f6g7h8')
-				.query({
 					includeSpamTrash: 'true',
-					labelIds: 'CHAT',
-					q: 'test from:Test Sender after:1734393600 before:1735171200',
-					readStatus: 'both',
-					dataPropertyAttachmentsPrefixName: 'attachment_',
-					downloadAttachments: 'true',
+					dataPropertyAttachmentsPrefixName: 'custom_attachment_',
 					maxResults: '2',
 					format: 'raw',
 				})
@@ -70,11 +49,7 @@ describe('Test Gmail Node v1', () => {
 				.get('/v1/users/me/messages/z9y8x7w6v5u4t3s2')
 				.query({
 					includeSpamTrash: 'true',
-					labelIds: 'CHAT',
-					q: 'test from:Test Sender after:1734393600 before:1735171200',
-					readStatus: 'both',
-					dataPropertyAttachmentsPrefixName: 'attachment_',
-					downloadAttachments: 'true',
+					dataPropertyAttachmentsPrefixName: 'custom_attachment_',
 					maxResults: '2',
 					format: 'raw',
 				})
@@ -82,57 +57,18 @@ describe('Test Gmail Node v1', () => {
 					...messages[1],
 					raw: 'TUlNRS1WZXJzaW9uOiAxLjANCkRhdGU6IEZyaSwgMTMgRGVjIDIwMjQgMTE6MTU6MDEgKzAxMDANCk1lc3NhZ2UtSUQ6IDxDQUVHQVByb3d1ZEduS1h4cXJoTWpPdXhhbVRoN3lBcmp3UDdPRDlVQnEtSnBrYjBYOXdAbWFpbC5nbWFpbC5jb20-DQpTdWJqZWN0OiBUZXN0IGRyYWZ0DQpGcm9tOiBub2RlIHFhIDxub2RlOHFhQGdtYWlsLmNvbT4NClRvOiB0ZXN0QGdtYWlsLmNvbQ0KQ29udGVudC1UeXBlOiBtdWx0aXBhcnQvYWx0ZXJuYXRpdmU7IGJvdW5kYXJ5PSIwMDAwMDAwMDAwMDA5ZDU4YjYwNjI5MjQxYTIyIg0KDQotLTAwMDAwMDAwMDAwMDlkNThiNjA2MjkyNDFhMjINCkNvbnRlbnQtVHlwZTogdGV4dC9wbGFpbjsgY2hhcnNldD0iVVRGLTgiDQoNCmRyYWZ0IGJvZHkNCg0KLS0wMDAwMDAwMDAwMDA5ZDU4YjYwNjI5MjQxYTIyDQpDb250ZW50LVR5cGU6IHRleHQvaHRtbDsgY2hhcnNldD0iVVRGLTgiDQoNCjxkaXYgZGlyPSJsdHIiPmRyYWZ0IGJvZHk8YnI-PC9kaXY-DQoNCi0tMDAwMDAwMDAwMDAwOWQ1OGI2MDYyOTI0MWEyMi0t',
 				});
-			gmailNock
-				.get('/v1/users/me/messages/z9y8x7w6v5u4t3s2')
-				.query({
-					maxResults: '2',
-					format: 'metadata',
-					metadataHeaders: ['From', 'To', 'Cc', 'Bcc', 'Subject'],
-				})
-				.reply(200, messages[0]);
-			gmailNock.get('/v1/users/me/labels').reply(200, {
-				labels,
-			});
-			gmailNock.get('/v1/users/me/profile').times(2).reply(200, { emailAddress: 'test@n8n.io' });
-			gmailNock
-				.post('/v1/users/me/messages/send')
-				.query({ format: 'metadata' })
-				.reply(200, messages[0]);
-			gmailNock.post('/v1/users/me/messages/send').reply(200, messages[0]);
-			gmailNock
-				.post('/v1/users/me/messages/send')
-				.query({ userId: 'me', uploadType: 'media' })
-				.reply(200, messages[0]);
-			gmailNock
-				.post('/v1/users/me/messages/test/modify', (body) => 'addLabelIds' in body)
-				.reply(200, messages[0]);
-			gmailNock
-				.post('/v1/users/me/messages/test/modify', (body) => 'removeLabelIds' in body)
-				.reply(200, messages[0]);
 			gmailNock.delete('/v1/users/me/messages/test').reply(200, messages[0]);
 			gmailNock
 				.get('/v1/users/me/messages/test')
-				.query({
-					format: 'metadata',
-					metadataHeaders: ['From', 'To', 'Cc', 'Bcc', 'Subject'],
-				})
-				.reply(200, messages[0]);
-			gmailNock.get('/v1/users/me/labels').reply(200, { labels });
-			gmailNock
-				.get('/v1/users/me/messages/test')
 				.query({ format: 'raw' })
-				.reply(200, { raw: 'test email content' });
+				.reply(200, {
+					...messages[1],
+					raw: 'TUlNRS1WZXJzaW9uOiAxLjANCkRhdGU6IEZyaSwgMTMgRGVjIDIwMjQgMTE6MTU6MDEgKzAxMDANCk1lc3NhZ2UtSUQ6IDxDQUVHQVByb3d1ZEduS1h4cXJoTWpPdXhhbVRoN3lBcmp3UDdPRDlVQnEtSnBrYjBYOXdAbWFpbC5nbWFpbC5jb20-DQpTdWJqZWN0OiBUZXN0IGRyYWZ0DQpGcm9tOiBub2RlIHFhIDxub2RlOHFhQGdtYWlsLmNvbT4NClRvOiB0ZXN0QGdtYWlsLmNvbQ0KQ29udGVudC1UeXBlOiBtdWx0aXBhcnQvYWx0ZXJuYXRpdmU7IGJvdW5kYXJ5PSIwMDAwMDAwMDAwMDA5ZDU4YjYwNjI5MjQxYTIyIg0KDQotLTAwMDAwMDAwMDAwMDlkNThiNjA2MjkyNDFhMjINCkNvbnRlbnQtVHlwZTogdGV4dC9wbGFpbjsgY2hhcnNldD0iVVRGLTgiDQoNCmRyYWZ0IGJvZHkNCg0KLS0wMDAwMDAwMDAwMDA5ZDU4YjYwNjI5MjQxYTIyDQpDb250ZW50LVR5cGU6IHRleHQvaHRtbDsgY2hhcnNldD0iVVRGLTgiDQoNCjxkaXYgZGlyPSJsdHIiPmRyYWZ0IGJvZHk8YnI-PC9kaXY-DQoNCi0tMDAwMDAwMDAwMDAwOWQ1OGI2MDYyOTI0MWEyMi0t',
+				});
+
 			gmailNock
-				.post('/v1/users/me/messages/test/modify', { removeLabelIds: ['UNREAD'] })
-				.reply(200, messages[0]);
-			gmailNock
-				.post('/v1/users/me/messages/test/modify', { addLabelIds: ['UNREAD'] })
-				.reply(200, messages[0]);
-			gmailNock
-				.get('/v1/users/me/messages/test')
-				.query({
-					format: 'metadata',
-				})
+				.post('/v1/users/me/messages/send')
+				.query({ userId: 'me', uploadType: 'media' })
 				.reply(200, messages[0]);
 		});
 
@@ -168,6 +104,25 @@ describe('Test Gmail Node v1', () => {
 		});
 	});
 
+	describe('Message Labels', () => {
+		const gmailNock = nock('https://www.googleapis.com/gmail');
+
+		beforeAll(() => {
+			gmailNock
+				.post('/v1/users/me/messages/test/modify', (body) => 'addLabelIds' in body)
+				.reply(200, messages[0]);
+			gmailNock
+				.post('/v1/users/me/messages/test/modify', (body) => 'removeLabelIds' in body)
+				.reply(200, messages[0]);
+		});
+
+		testWorkflows(['nodes/Google/Gmail/test/v1/message-labels.workflow.json']);
+
+		it('should make the correct network calls', () => {
+			gmailNock.done();
+		});
+	});
+
 	describe('Drafts', () => {
 		const gmailNock = nock('https://www.googleapis.com/gmail');
 
@@ -194,15 +149,14 @@ describe('Test Gmail Node v1', () => {
 				})
 				.post('/v1/users/me/drafts', {
 					message: {
-						raw: 'Q29udGVudC1UeXBlOiBtdWx0aXBhcnQvbWl4ZWQ7IGJvdW5kYXJ5PSItLXRlc3QtYm91bmRhcnkiDQpGcm9tOiB0ZXN0LWFsaWFzQG44bi5pbw0KVG86IHRlc3QtdG9AbjhuLmlvDQpDYzogdGVzdC1jY0BuOG4uaW8NCkJjYzogdGVzdC1iY2NAbjhuLmlvDQpSZXBseS1UbzogdGVzdC1yZXBseUBuOG4uaW8NClN1YmplY3Q6IFRlc3QgRHJhZnQgU3ViamVjdA0KTWVzc2FnZS1JRDogdGVzdC1tZXNzYWdlLWlkDQpEYXRlOiBNb24sIDE2IERlYyAyMDI0IDEyOjM0OjU2ICswMDAwDQpNSU1FLVZlcnNpb246IDEuMA0KDQotLS0tdGVzdC1ib3VuZGFyeQ0KQ29udGVudC1UeXBlOiB0ZXh0L3BsYWluOyBjaGFyc2V0PXV0Zi04DQpDb250ZW50LVRyYW5zZmVyLUVuY29kaW5nOiA3Yml0DQoNClRlc3QgRHJhZnQgTWVzc2FnZQ0KLS0tLXRlc3QtYm91bmRhcnkNCkNvbnRlbnQtVHlwZTogYXBwbGljYXRpb24vanNvbjsgbmFtZT1maWxlLmpzb24NCkNvbnRlbnQtVHJhbnNmZXItRW5jb2Rpbmc6IGJhc2U2NA0KQ29udGVudC1EaXNwb3NpdGlvbjogYXR0YWNobWVudDsgZmlsZW5hbWU9ZmlsZS5qc29uDQoNClczc2lZbWx1WVhKNUlqcDBjblZsZlYwPQ0KLS0tLXRlc3QtYm91bmRhcnkNCg==',
-						threadId: 'test-thread-id',
+						raw: 'Q29udGVudC1UeXBlOiBtdWx0aXBhcnQvbWl4ZWQ7IGJvdW5kYXJ5PSItLXRlc3QtYm91bmRhcnkiDQpDYzogdGVzdF9jY0BuOG4uaW8NCkJjYzogdGVzdF9iY2NAbjhuLmlvDQpTdWJqZWN0OiBUZXN0IFN1YmplY3QNCk1lc3NhZ2UtSUQ6IHRlc3QtbWVzc2FnZS1pZA0KRGF0ZTogTW9uLCAxNiBEZWMgMjAyNCAxMjozNDo1NiArMDAwMA0KTUlNRS1WZXJzaW9uOiAxLjANCg0KLS0tLXRlc3QtYm91bmRhcnkNCkNvbnRlbnQtVHlwZTogdGV4dC9wbGFpbjsgY2hhcnNldD11dGYtOA0KQ29udGVudC1UcmFuc2Zlci1FbmNvZGluZzogN2JpdA0KDQpUZXN0IE1lc3NhZ2UNCi0tLS10ZXN0LWJvdW5kYXJ5DQpDb250ZW50LVR5cGU6IGFwcGxpY2F0aW9uL2pzb247IG5hbWU9ZmlsZS5qc29uDQpDb250ZW50LVRyYW5zZmVyLUVuY29kaW5nOiBiYXNlNjQNCkNvbnRlbnQtRGlzcG9zaXRpb246IGF0dGFjaG1lbnQ7IGZpbGVuYW1lPWZpbGUuanNvbg0KDQpXM3NpWVhSMFlXTm9iV1Z1ZENJNmRISjFaWDFkDQotLS0tdGVzdC1ib3VuZGFyeQ0K',
 					},
 				})
 				.query({ userId: 'me', uploadType: 'media' })
 				.reply(200, messages[0]);
-			gmailNock.delete('/v1/users/me/drafts/test-draft-id').reply(200, messages[0]);
+			gmailNock.delete('/v1/users/me/drafts/test').reply(200, messages[0]);
 			gmailNock
-				.get('/v1/users/me/drafts/test-draft-id')
+				.get('/v1/users/me/drafts/test')
 				.query({ format: 'raw' })
 				.reply(200, {
 					message: {
@@ -213,19 +167,13 @@ describe('Test Gmail Node v1', () => {
 			gmailNock
 				.get('/v1/users/me/drafts')
 				.query({
-					dataPropertyAttachmentsPrefixName: 'attachment_',
-					downloadAttachments: true,
-					includeSpamTrash: true,
-					maxResults: 100,
+					maxResults: 2,
 				})
 				.reply(200, { drafts: messages });
 			gmailNock
 				.get('/v1/users/me/drafts/a1b2c3d4e5f6g7h8')
 				.query({
-					dataPropertyAttachmentsPrefixName: 'attachment_',
-					downloadAttachments: true,
-					includeSpamTrash: true,
-					maxResults: 100,
+					maxResults: 2,
 					format: 'raw',
 				})
 				.reply(200, {
@@ -237,10 +185,7 @@ describe('Test Gmail Node v1', () => {
 			gmailNock
 				.get('/v1/users/me/drafts/z9y8x7w6v5u4t3s2')
 				.query({
-					dataPropertyAttachmentsPrefixName: 'attachment_',
-					downloadAttachments: true,
-					includeSpamTrash: true,
-					maxResults: 100,
+					maxResults: 2,
 					format: 'raw',
 				})
 				.reply(200, {
@@ -255,30 +200,6 @@ describe('Test Gmail Node v1', () => {
 
 		it('should make the correct network calls', () => {
 			gmailNock.done();
-		});
-	});
-
-	describe('loadOptions', () => {
-		describe('getLabels', () => {
-			it('should return a list of Gmail labels', async () => {
-				const loadOptionsFunctions = mockDeep<ILoadOptionsFunctions>({
-					getNode: jest.fn(() => mock<INode>()),
-					helpers: mock<ILoadOptionsFunctions['helpers']>({
-						requestWithAuthentication: jest
-							.fn()
-							// 2 pages of labels
-							.mockImplementationOnce(async () => ({ labels, nextPageToken: 'nextPageToken' }))
-							.mockImplementationOnce(async () => ({ labels })),
-					}),
-				});
-
-				expect(await getLabels.call(loadOptionsFunctions)).toEqual([
-					{ name: 'CHAT', value: 'CHAT' },
-					{ name: 'CHAT', value: 'CHAT' },
-					{ name: 'SENT', value: 'SENT' },
-					{ name: 'SENT', value: 'SENT' },
-				]);
-			});
 		});
 	});
 });
