@@ -192,12 +192,12 @@ export const chatCompletionsFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Output Randomness (Top K)',
+				displayName: 'Top K',
 				name: 'topK',
 				type: 'number',
 				default: 0,
 				description:
-					'The number of tokens to keep for highest Top-K filtering, specified as an integer between 0 and 2048 inclusive. If set to 0, top-k filtering is disabled. We recommend either altering Top K or Top P, but not both.',
+					'The number of tokens to keep for highest Top K filtering, specified as an integer between 0 and 2048 inclusive. If set to 0, Top K filtering is disabled. We recommend either altering Top K or Top P, but not both.',
 				typeOptions: {
 					minValue: 0,
 					maxValue: 2048,
@@ -210,12 +210,12 @@ export const chatCompletionsFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Output Randomness (Top P)',
+				displayName: 'Top P',
 				name: 'topP',
 				type: 'number',
 				default: 0.9,
 				description:
-					'The nucleus sampling threshold, valued between 0 and 1 inclusive. For each subsequent token, the model considers the results of the tokens with Top_P probability mass. We recommend either altering top_k or top_p, but not both.',
+					'The nucleus sampling threshold, valued between 0 and 1 inclusive. For each subsequent token, the model considers the results of the tokens with Top P probability mass. We recommend either altering Top K or Top P, but not both.',
 				typeOptions: {
 					minValue: 0,
 					maxValue: 1,
