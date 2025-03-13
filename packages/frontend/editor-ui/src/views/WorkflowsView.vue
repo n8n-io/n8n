@@ -125,7 +125,9 @@ const currentFolderId = ref<string | null>(null);
  * or on each folder card, and then they are applied to the clicked folder
  * 'onlyAvailableOn' is used to specify where the action should be available, if not specified it will be available on both
  */
-const folderActions = ref<Array<UserAction & { onlyAvailableOn?: 'mainBreadcrumbs' | 'card' }>>([
+const folderActions = computed<
+	Array<UserAction & { onlyAvailableOn?: 'mainBreadcrumbs' | 'card' }>
+>(() => [
 	{
 		label: i18n.baseText('generic.open'),
 		value: FOLDER_LIST_ITEM_ACTIONS.OPEN,
@@ -135,39 +137,42 @@ const folderActions = ref<Array<UserAction & { onlyAvailableOn?: 'mainBreadcrumb
 	{
 		label: i18n.baseText('folders.actions.create'),
 		value: FOLDER_LIST_ITEM_ACTIONS.CREATE,
-		disabled: false,
+		disabled: readOnlyEnv.value || !hasPermissionToCreateFolders.value,
 	},
 	{
 		label: i18n.baseText('folders.actions.create.workflow'),
 		value: FOLDER_LIST_ITEM_ACTIONS.CREATE_WORKFLOW,
-		disabled: false,
+		disabled: readOnlyEnv.value || !hasPermissionToCreateWorkflows.value,
 	},
 	{
 		label: i18n.baseText('generic.rename'),
 		value: FOLDER_LIST_ITEM_ACTIONS.RENAME,
-		disabled: false,
+		disabled: readOnlyEnv.value || !hasPermissionToUpdateFolders.value,
 	},
 	{
 		label: i18n.baseText('folders.actions.moveToFolder'),
 		value: FOLDER_LIST_ITEM_ACTIONS.MOVE,
-		disabled: true,
+		disabled: readOnlyEnv.value || !hasPermissionToUpdateFolders.value,
 	},
 	{
 		label: i18n.baseText('generic.delete'),
 		value: FOLDER_LIST_ITEM_ACTIONS.DELETE,
-		disabled: false,
+		disabled: readOnlyEnv.value || !hasPermissionToDeleteFolders.value,
 	},
 ]);
+
 const folderCardActions = computed(() =>
 	folderActions.value.filter(
 		(action) => !action.onlyAvailableOn || action.onlyAvailableOn === 'card',
 	),
 );
+
 const mainBreadcrumbsActions = computed(() =>
 	folderActions.value.filter(
 		(action) => !action.onlyAvailableOn || action.onlyAvailableOn === 'mainBreadcrumbs',
 	),
 );
+
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 const foldersEnabled = computed(() => settingsStore.settings.folders.enabled);
 const isOverviewPage = computed(() => route.name === VIEWS.WORKFLOWS);
@@ -179,6 +184,26 @@ const showFolders = computed(() => foldersEnabled.value && !isOverviewPage.value
 
 const currentFolder = computed(() => {
 	return currentFolderId.value ? foldersStore.breadcrumbsCache[currentFolderId.value] : null;
+});
+
+const hasPermissionToCreateFolders = computed(() => {
+	if (!currentProject.value) return false;
+	return getResourcePermissions(currentProject.value.scopes).folder.create === true;
+});
+
+const hasPermissionToUpdateFolders = computed(() => {
+	if (!currentProject.value) return false;
+	return getResourcePermissions(currentProject.value.scopes).folder.update === true;
+});
+
+const hasPermissionToDeleteFolders = computed(() => {
+	if (!currentProject.value) return false;
+	return getResourcePermissions(currentProject.value.scopes).folder.delete === true;
+});
+
+const hasPermissionToCreateWorkflows = computed(() => {
+	if (!currentProject.value) return false;
+	return getResourcePermissions(currentProject.value.scopes).workflow.create === true;
 });
 
 const currentProject = computed(() => projectsStore.currentProject);
@@ -385,8 +410,8 @@ const fetchWorkflows = async () => {
 			{
 				name: filters.value.search || undefined,
 				active: activeFilter,
-				tags,
-				parentFolderId: parentFolder ?? '0', // 0 is the root folder in the API
+				tags: tags.length ? tags : undefined,
+				parentFolderId: parentFolder ?? (isOverviewPage.value ? undefined : '0'), // Sending 0 will only show one level of folders
 			},
 			fetchFolders,
 		);
@@ -440,14 +465,14 @@ const onSortUpdated = async (sort: string) => {
 const onFiltersUpdated = async () => {
 	currentPage.value = 1;
 	saveFiltersOnQueryString();
-	await fetchWorkflows();
+	await callDebounced(fetchWorkflows, { debounceTime: 100, trailing: true });
 };
 
 const onSearchUpdated = async (search: string) => {
 	currentPage.value = 1;
 	saveFiltersOnQueryString();
 	if (search) {
-		await callDebounced(fetchWorkflows, { debounceTime: 500, trailing: true });
+		await callDebounced(fetchWorkflows, { debounceTime: 100, trailing: true });
 	} else {
 		// No need to debounce when clearing search
 		await fetchWorkflows();
@@ -456,12 +481,12 @@ const onSearchUpdated = async (search: string) => {
 
 const setCurrentPage = async (page: number) => {
 	currentPage.value = page;
-	await fetchWorkflows();
+	await callDebounced(fetchWorkflows, { debounceTime: 100, trailing: true });
 };
 
 const setPageSize = async (size: number) => {
 	pageSize.value = size;
-	await fetchWorkflows();
+	await callDebounced(fetchWorkflows, { debounceTime: 100, trailing: true });
 };
 
 const onClickTag = async (tagId: string) => {
@@ -735,25 +760,6 @@ const mainBreadcrumbs = computed(() => {
 	};
 });
 
-/**
- * Card breadcrumbs items that show on workflow and folder cards
- * These show path to the current folder with up to one parent visible
- */
-const cardBreadcrumbs = computed(() => {
-	const visibleItems = visibleBreadcrumbsItems.value;
-	const hiddenItems = hiddenBreadcrumbsItems.value;
-	if (visibleItems.length > 1) {
-		return {
-			visibleItems: [visibleItems[visibleItems.length - 1]],
-			hiddenItems: [...hiddenItems, ...visibleItems.slice(0, visibleItems.length - 1)],
-		};
-	}
-	return {
-		visibleItems,
-		hiddenItems,
-	};
-});
-
 const onBreadcrumbItemClick = (item: PathItem) => {
 	if (item.href) {
 		loading.value = true;
@@ -839,14 +845,18 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 // Reusable action handlers
 // Both action handlers ultimately call these methods once folder to apply action to is determined
 const createFolder = async (parent: { id: string; name: string; type: 'project' | 'folder' }) => {
+	// Rules for folder name:
+	// - Invalid characters: \/:*?"<>|
+	// - Invalid name: empty or only dots
+	const validFolderNameRegex = /^(?!\.+$)(?!\s+$)[^\\/:*?"<>|]{1,100}$/;
+
 	const promptResponsePromise = message.prompt(
 		i18n.baseText('folders.add.to.parent.message', { interpolate: { parent: parent.name } }),
 		{
 			confirmButtonText: i18n.baseText('generic.create'),
 			cancelButtonText: i18n.baseText('generic.cancel'),
 			inputErrorMessage: i18n.baseText('folders.invalidName.message'),
-			inputValue: '',
-			inputPattern: /^[a-zA-Z0-9-_ ]{1,100}$/,
+			inputPattern: validFolderNameRegex,
 			customClass: 'add-folder-modal',
 		},
 	);
@@ -864,14 +874,20 @@ const createFolder = async (parent: { id: string; name: string; type: 'project' 
 			if (newFolder.parentFolder) {
 				newFolderURL = `/projects/${route.params.projectId}/folders/${newFolder.id}/workflows`;
 			}
-			toast.showMessage({
+			toast.showToast({
 				title: i18n.baseText('folders.add.success.title'),
 				message: i18n.baseText('folders.add.success.message', {
 					interpolate: {
 						link: newFolderURL,
-						name: newFolder.name,
+						folderName: newFolder.name,
 					},
 				}),
+				onClick: (event: MouseEvent | undefined) => {
+					if (event?.target instanceof HTMLAnchorElement) {
+						event.preventDefault();
+						void router.push(newFolderURL);
+					}
+				},
 				type: 'success',
 			});
 			// If we are on an empty list, just add the new folder to the list
@@ -978,6 +994,7 @@ const deleteFolder = async (folderId: string, workflowCount: number, subFolderCo
 		:custom-page-size="DEFAULT_WORKFLOW_PAGE_SIZE"
 		:total-items="workflowsStore.totalWorkflowCount"
 		:dont-perform-sorting-and-filtering="true"
+		:has-empty-state="foldersStore.totalWorkflowCount === 0 && !currentFolderId"
 		@click:add="addWorkflow"
 		@update:search="onSearchUpdated"
 		@update:current-page="setCurrentPage"
@@ -989,7 +1006,7 @@ const deleteFolder = async (folderId: string, workflowCount: number, subFolderCo
 			<ProjectHeader @create-folder="createFolderInCurrent" />
 		</template>
 		<template v-if="showFolders" #add-button>
-			<N8nTooltip placement="top">
+			<N8nTooltip placement="top" :disabled="readOnlyEnv || !hasPermissionToCreateFolders">
 				<template #content>
 					{{
 						currentParentName
@@ -1005,6 +1022,7 @@ const deleteFolder = async (folderId: string, workflowCount: number, subFolderCo
 					type="tertiary"
 					data-test-id="add-folder-button"
 					:class="$style['add-folder-button']"
+					:disabled="readOnlyEnv || !hasPermissionToCreateFolders"
 					@click="createFolderInCurrent"
 				/>
 			</N8nTooltip>
@@ -1060,7 +1078,7 @@ const deleteFolder = async (folderId: string, workflowCount: number, subFolderCo
 				v-if="(data as FolderResource | WorkflowResource).resourceType === 'folder'"
 				:data="data as FolderResource"
 				:actions="folderCardActions"
-				:breadcrumbs="cardBreadcrumbs"
+				:read-only="readOnlyEnv || (!hasPermissionToDeleteFolders && !hasPermissionToCreateFolders)"
 				class="mb-2xs"
 				@action="onFolderCardAction"
 			/>
@@ -1069,7 +1087,6 @@ const deleteFolder = async (folderId: string, workflowCount: number, subFolderCo
 				data-test-id="resources-list-item"
 				class="mb-2xs"
 				:data="data as WorkflowResource"
-				:breadcrumbs="cardBreadcrumbs"
 				:workflow-list-event-bus="workflowListEventBus"
 				:read-only="readOnlyEnv"
 				@click:tag="onClickTag"
@@ -1219,6 +1236,7 @@ const deleteFolder = async (folderId: string, workflowCount: number, subFolderCo
 .breadcrumbs-container {
 	display: flex;
 	align-items: center;
+	align-self: flex-end;
 }
 
 .breadcrumbs-loading {
