@@ -83,7 +83,11 @@ const onSubmit = () => {
 				:exclude-only-parent="props.data.resourceType === 'workflow'"
 				@folder:selected="onFolderSelected"
 			/>
-			<p v-if="props.data.resourceType === 'folder'" :class="$style.description">
+			<p
+				v-if="props.data.resourceType === 'folder'"
+				:class="$style.description"
+				data-test-id="move-folder-description"
+			>
 				{{ i18n.baseText('folders.move.modal.description') }}
 			</p>
 		</template>

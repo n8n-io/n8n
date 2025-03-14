@@ -139,7 +139,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const isMfaFeatureEnabled = computed(() => mfa.value.enabled);
 
 	const isFoldersFeatureEnabled = computed(
-		() => folders.value.enabled && useRoute().name !== VIEWS.WORKFLOWS,
+		() => folders.value.enabled && useRoute()?.name !== VIEWS.WORKFLOWS,
 	);
 
 	const areTagsEnabled = computed(() =>

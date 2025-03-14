@@ -16,13 +16,11 @@ type Props = {
 	currentProjectId: string;
 	currentFolderId?: string;
 	parentFolderId?: string;
-	excludeOnlyParent?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	currentFolderId: '',
 	parentFolderId: '',
-	excludeOnlyParent: false,
 });
 
 const emit = defineEmits<{
@@ -72,7 +70,7 @@ onMounted(async () => {
 </script>
 
 <template>
-	<div :class="$style['move-folder-dropdown']">
+	<div :class="$style['move-folder-dropdown']" data-test-id="move-to-folder-dropdown">
 		<N8nSelect
 			ref="moveFolderDropdown"
 			v-model="selectedFolderId"
