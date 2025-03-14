@@ -1,9 +1,12 @@
+import { SecurityConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import { access as fsAccess } from 'fs/promises';
 import helmet from 'helmet';
+import { isEmpty } from 'lodash';
 import { InstanceSettings } from 'n8n-core';
+import { jsonParse } from 'n8n-workflow';
 import { resolve } from 'path';
 
 import { AbstractServer } from '@/abstract-server';
@@ -348,8 +351,21 @@ export class Server extends AbstractServer {
 			const isTLSEnabled =
 				this.globalConfig.protocol === 'https' && !!(this.sslKey && this.sslCert);
 			const isPreviewMode = process.env.N8N_PREVIEW_MODE === 'true';
+			const cspDirectives = jsonParse<{ [key: string]: Iterable<string> }>(
+				Container.get(SecurityConfig).contentSecurityPolicy,
+				{
+					errorMessage: 'The contentSecurityPolicy is not valid JSON.',
+				},
+			);
 			const securityHeadersMiddleware = helmet({
-				contentSecurityPolicy: false,
+				contentSecurityPolicy: isEmpty(cspDirectives)
+					? false
+					: {
+							useDefaults: false,
+							directives: {
+								...cspDirectives,
+							},
+						},
 				xFrameOptions:
 					isPreviewMode || inE2ETests || inDevelopment ? false : { action: 'sameorigin' },
 				dnsPrefetchControl: false,

@@ -120,7 +120,7 @@ export class AuthService {
 		res.cookie(AUTH_COOKIE_NAME, token, {
 			maxAge: this.jwtExpiration * Time.seconds.toMilliseconds,
 			httpOnly: true,
-			sameSite: 'lax',
+			sameSite: config.getEnv('samesite_cookie') as 'lax' | 'strict' | 'none',
 			secure: config.getEnv('secure_cookie'),
 		});
 	}

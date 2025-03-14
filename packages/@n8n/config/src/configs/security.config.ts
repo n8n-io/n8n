@@ -24,4 +24,11 @@ export class SecurityConfig {
 	 */
 	@Env('N8N_SECURITY_AUDIT_DAYS_ABANDONED_WORKFLOW')
 	daysAbandonedWorkflow: number = 90;
+
+	/**
+	 * Set [Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP) headers as [helmet.js](https://helmetjs.github.io/#content-security-policy) nested directives object.
+	 * Example: { "frame-ancestors": ["http://localhost:3000"] }
+	 */
+	@Env('N8N_CONTENT_SECURITY_POLICY')
+	contentSecurityPolicy: string = '{}';
 }
