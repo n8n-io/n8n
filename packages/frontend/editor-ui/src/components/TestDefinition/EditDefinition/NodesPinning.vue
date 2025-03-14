@@ -126,7 +126,9 @@ onNodeClick(({ node }) => handleNodeClick(node.data));
 
 onNodesInitialized(async () => {
 	await fitView();
-	await zoomTo(0.7, { duration: 400 });
+	await zoomTo(0.7);
+	// Wait for the zoom to be applied and the canvas edges to recompute
+	await new Promise((resolve) => setTimeout(resolve, 400));
 	isLoading.value = false;
 });
 onMounted(loadData);
