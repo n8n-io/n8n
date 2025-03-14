@@ -1022,21 +1022,28 @@ const moveFolder = async (payload: {
 			payload.folder.id,
 			payload.newParent.id,
 		);
+		const isCurrentFolder = currentFolderId.value === payload.folder.id;
 		const newFolderURL = `/projects/${route.params.projectId}/folders/${payload.newParent.id}/workflows`;
-		toast.showToast({
-			title: i18n.baseText('folders.move.success.title'),
-			message: i18n.baseText('folders.move.success.message', {
-				interpolate: { folderName: payload.folder.name, newFolderName: payload.newParent.name },
-			}),
-			onClick: (event: MouseEvent | undefined) => {
-				if (event?.target instanceof HTMLAnchorElement) {
-					event.preventDefault();
-					void router.push(newFolderURL);
-				}
-			},
-			type: 'success',
-		});
-		await fetchWorkflows();
+		if (isCurrentFolder) {
+			// If we just moved the current folder, automatically navigate to the new folder
+			void router.push(newFolderURL);
+		} else {
+			// Else show success message and update the list
+			toast.showToast({
+				title: i18n.baseText('folders.move.success.title'),
+				message: i18n.baseText('folders.move.success.message', {
+					interpolate: { folderName: payload.folder.name, newFolderName: payload.newParent.name },
+				}),
+				onClick: (event: MouseEvent | undefined) => {
+					if (event?.target instanceof HTMLAnchorElement) {
+						event.preventDefault();
+						void router.push(newFolderURL);
+					}
+				},
+				type: 'success',
+			});
+			await fetchWorkflows();
+		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('folders.move.error.title'));
 	}
