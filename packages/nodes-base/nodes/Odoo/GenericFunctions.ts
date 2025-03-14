@@ -121,7 +121,7 @@ export async function odooJSONRPCRequest(
 			json: true,
 		};
 
-		const response = await this.helpers.request(options);
+		const response = await this.helpers.httpRequest(options);
 		if (response.error) {
 			throw new NodeApiError(this.getNode(), response.error.data as JsonObject, {
 				message: response.error.data.message,
