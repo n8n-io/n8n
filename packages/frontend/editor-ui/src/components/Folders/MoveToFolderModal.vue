@@ -71,7 +71,7 @@ const onSubmit = () => {
 <template>
 	<Modal :name="modalName" :title="title" width="500" :class="$style.container">
 		<template #content>
-			<MoveFolderDropdown
+			<MoveToFolderDropdown
 				v-if="projectsStore.currentProject"
 				:current-folder-id="currentFolder?.id"
 				:current-project-id="projectsStore.currentProject?.id"

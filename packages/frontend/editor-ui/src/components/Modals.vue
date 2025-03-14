@@ -291,7 +291,7 @@ import type { EventBus } from '@n8n/utils/event-bus';
 
 		<ModalRoot :name="MOVE_FOLDER_MODAL_KEY">
 			<template #default="{ modalName, activeId, data }">
-				<MoveFolderModal :modal-name="modalName" :active-id="activeId" :data="data" />
+				<MoveToFolderModal :modal-name="modalName" :active-id="activeId" :data="data" />
 			</template>
 		</ModalRoot>
 	</div>

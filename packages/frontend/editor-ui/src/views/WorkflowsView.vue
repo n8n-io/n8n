@@ -16,6 +16,7 @@ import {
 	VIEWS,
 	DEFAULT_WORKFLOW_PAGE_SIZE,
 	MODAL_CONFIRM,
+	VALID_FOLDER_NAME_REGEX,
 } from '@/constants';
 import type {
 	IUser,
@@ -174,13 +175,12 @@ const mainBreadcrumbsActions = computed(() =>
 );
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
-const foldersEnabled = computed(() => settingsStore.settings.folders.enabled);
 const isOverviewPage = computed(() => route.name === VIEWS.WORKFLOWS);
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const isShareable = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
 );
-const showFolders = computed(() => foldersEnabled.value && !isOverviewPage.value);
+const showFolders = computed(() => settingsStore.isFoldersFeatureEnabled);
 
 const currentFolder = computed(() => {
 	return currentFolderId.value ? foldersStore.breadcrumbsCache[currentFolderId.value] : null;
@@ -875,18 +875,13 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 // Reusable action handlers
 // Both action handlers ultimately call these methods once folder to apply action to is determined
 const createFolder = async (parent: { id: string; name: string; type: 'project' | 'folder' }) => {
-	// Rules for folder name:
-	// - Invalid characters: \/:*?"<>|
-	// - Invalid name: empty or only dots
-	const validFolderNameRegex = /^(?!\.+$)(?!\s+$)[^\\/:*?"<>|]{1,100}$/;
-
 	const promptResponsePromise = message.prompt(
 		i18n.baseText('folders.add.to.parent.message', { interpolate: { parent: parent.name } }),
 		{
 			confirmButtonText: i18n.baseText('generic.create'),
 			cancelButtonText: i18n.baseText('generic.cancel'),
 			inputErrorMessage: i18n.baseText('folders.invalidName.message'),
-			inputPattern: validFolderNameRegex,
+			inputPattern: VALID_FOLDER_NAME_REGEX,
 			customClass: 'add-folder-modal',
 		},
 	);
@@ -961,7 +956,7 @@ const renameFolder = async (folderId: string) => {
 			cancelButtonText: i18n.baseText('generic.cancel'),
 			inputErrorMessage: i18n.baseText('folders.invalidName.message'),
 			inputValue: folder.name,
-			inputPattern: /^[a-zA-Z0-9-_ ]{1,100}$/,
+			inputPattern: VALID_FOLDER_NAME_REGEX,
 			customClass: 'rename-folder-modal',
 		},
 	);

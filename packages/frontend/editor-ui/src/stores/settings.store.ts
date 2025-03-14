@@ -7,7 +7,7 @@ import * as ldapApi from '@/api/ldap';
 import * as settingsApi from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
 import type { ILdapConfig } from '@/Interface';
-import { STORES, INSECURE_CONNECTION_WARNING } from '@/constants';
+import { STORES, INSECURE_CONNECTION_WARNING, VIEWS } from '@/constants';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import type { IDataObject, WorkflowSettings } from 'n8n-workflow';
 import { ExpressionEvaluatorProxy } from 'n8n-workflow';
@@ -20,6 +20,7 @@ import { makeRestApiRequest } from '@/utils/apiUtils';
 import { useToast } from '@/composables/useToast';
 import { i18n } from '@/plugins/i18n';
 import { useLocalStorage } from '@vueuse/core';
+import { useRoute } from 'vue-router';
 
 export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const initialized = ref(false);
@@ -137,7 +138,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isMfaFeatureEnabled = computed(() => mfa.value.enabled);
 
-	const isFoldersFeatureEnabled = computed(() => folders.value.enabled);
+	const isFoldersFeatureEnabled = computed(
+		() => folders.value.enabled && useRoute().name !== VIEWS.WORKFLOWS,
+	);
 
 	const areTagsEnabled = computed(() =>
 		settings.value.workflowTagsDisabled !== undefined ? !settings.value.workflowTagsDisabled : true,
