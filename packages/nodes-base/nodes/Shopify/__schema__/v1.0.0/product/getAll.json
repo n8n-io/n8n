@@ -39,10 +39,10 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "product_id": {
+                    "id": {
                         "type": "integer"
                     },
-                    "id": {
+                    "product_id": {
                         "type": "integer"
                     },
                     "title": {
@@ -95,8 +95,8 @@
                     }
                 },
                 "required": [
-                    "product_id",
                     "id",
+                    "product_id",
                     "title",
                     "price",
                     "position",
@@ -129,10 +129,10 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "product_id": {
+                    "id": {
                         "type": "integer"
                     },
-                    "id": {
+                    "product_id": {
                         "type": "integer"
                     },
                     "name": {
@@ -149,8 +149,8 @@
                     }
                 },
                 "required": [
-                    "product_id",
                     "id",
+                    "product_id",
                     "name",
                     "position",
                     "values"
@@ -262,5 +262,6 @@
                 "variant_ids"
             ]
         }
-    }
+    },
+    "version": 1
 }

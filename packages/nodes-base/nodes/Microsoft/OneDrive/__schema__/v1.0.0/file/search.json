@@ -13,11 +13,11 @@
         "name": {
             "type": "string"
         },
-        "size": {
-            "type": "integer"
-        },
         "webUrl": {
             "type": "string"
+        },
+        "size": {
+            "type": "integer"
         },
         "createdBy": {
             "type": "object",
@@ -25,10 +25,10 @@
                 "user": {
                     "type": "object",
                     "properties": {
-                        "displayName": {
+                        "email": {
                             "type": "string"
                         },
-                        "email": {
+                        "displayName": {
                             "type": "string"
                         }
                     },
@@ -47,10 +47,10 @@
                 "user": {
                     "type": "object",
                     "properties": {
-                        "displayName": {
+                        "email": {
                             "type": "string"
                         },
-                        "email": {
+                        "displayName": {
                             "type": "string"
                         }
                     },
@@ -66,10 +66,10 @@
         "parentReference": {
             "type": "object",
             "properties": {
-                "driveId": {
+                "driveType": {
                     "type": "string"
                 },
-                "driveType": {
+                "driveId": {
                     "type": "string"
                 },
                 "id": {
@@ -80,8 +80,8 @@
                 }
             },
             "required": [
-                "driveId",
                 "driveType",
+                "driveId",
                 "id"
             ]
         },
@@ -111,5 +111,6 @@
                 "lastModifiedDateTime"
             ]
         }
-    }
+    },
+    "version": 1
 }

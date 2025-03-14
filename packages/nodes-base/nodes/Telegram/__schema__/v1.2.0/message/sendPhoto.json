@@ -45,6 +45,9 @@
                         "type": {
                             "type": "string"
                         },
+                        "last_name": {
+                            "type": "string"
+                        },
                         "username": {
                             "type": "string"
                         }
@@ -99,5 +102,6 @@
     "required": [
         "ok",
         "result"
-    ]
+    ],
+    "version": 1
 }

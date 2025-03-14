@@ -89,5 +89,6 @@
         "size",
         "mimeType",
         "content"
-    ]
+    ],
+    "version": 1
 }

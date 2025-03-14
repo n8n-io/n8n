@@ -18,12 +18,7 @@
         },
         "Id": {
             "type": "string"
-        },
-        "AccountId": {
-            "type": "string"
         }
     },
-    "required": [
-        "attributes"
-    ]
+    "version": 1
 }

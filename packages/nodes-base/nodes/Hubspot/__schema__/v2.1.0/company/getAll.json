@@ -50,6 +50,9 @@
                                     },
                                     "useTimestampAsPersistenceTimestamp": {
                                         "type": "boolean"
+                                    },
+                                    "requestId": {
+                                        "type": "string"
                                     }
                                 },
                                 "required": [
@@ -91,5 +94,15 @@
                 ]
             }
         }
-    }
+    },
+    "required": [
+        "portalId",
+        "companyId",
+        "isDeleted",
+        "properties",
+        "additionalDomains",
+        "stateChanges",
+        "mergeAudits"
+    ],
+    "version": 1
 }

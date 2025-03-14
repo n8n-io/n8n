@@ -54,5 +54,6 @@
         "update_time": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

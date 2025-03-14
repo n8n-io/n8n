@@ -22,23 +22,6 @@
         "application_fee_amount": {
             "type": "null"
         },
-        "billing_details": {
-            "type": "object",
-            "properties": {
-                "phone": {
-                    "type": "null"
-                }
-            },
-            "required": [
-                "address",
-                "email",
-                "name",
-                "phone"
-            ]
-        },
-        "calculated_statement_descriptor": {
-            "type": "string"
-        },
         "captured": {
             "type": "boolean"
         },
@@ -107,14 +90,14 @@
                 "risk_level": {
                     "type": "string"
                 },
-                "risk_score": {
-                    "type": "integer"
-                },
                 "seller_message": {
                     "type": "string"
                 },
                 "type": {
                     "type": "string"
+                },
+                "risk_score": {
+                    "type": "integer"
                 }
             },
             "required": [
@@ -162,9 +145,6 @@
                             "required": [
                                 "status"
                             ]
-                        },
-                        "fingerprint": {
-                            "type": "string"
                         },
                         "funding": {
                             "type": "string"
@@ -240,6 +220,9 @@
                         },
                         "capture_before": {
                             "type": "integer"
+                        },
+                        "fingerprint": {
+                            "type": "string"
                         }
                     },
                     "required": [
@@ -251,7 +234,6 @@
                         "exp_month",
                         "exp_year",
                         "extended_authorization",
-                        "fingerprint",
                         "funding",
                         "incremental_authorization",
                         "installments",
@@ -270,12 +252,38 @@
                 }
             },
             "required": [
-                "card",
                 "type"
             ]
         },
         "refunded": {
             "type": "boolean"
+        },
+        "review": {
+            "type": "null"
+        },
+        "shipping": {
+            "type": "null"
+        },
+        "source": {
+            "type": "null"
+        },
+        "source_transfer": {
+            "type": "null"
+        },
+        "statement_descriptor": {
+            "type": "null"
+        },
+        "statement_descriptor_suffix": {
+            "type": "null"
+        },
+        "status": {
+            "type": "string"
+        },
+        "transfer_data": {
+            "type": "null"
+        },
+        "transfer_group": {
+            "type": "null"
         },
         "refunds": {
             "type": "object",
@@ -350,9 +358,6 @@
                             "reason": {
                                 "type": "null"
                             },
-                            "receipt_number": {
-                                "type": "string"
-                            },
                             "source_transfer_reversal": {
                                 "type": "null"
                             },
@@ -399,33 +404,6 @@
                 "total_count",
                 "url"
             ]
-        },
-        "review": {
-            "type": "null"
-        },
-        "shipping": {
-            "type": "null"
-        },
-        "source": {
-            "type": "null"
-        },
-        "source_transfer": {
-            "type": "null"
-        },
-        "statement_descriptor": {
-            "type": "null"
-        },
-        "statement_descriptor_suffix": {
-            "type": "null"
-        },
-        "status": {
-            "type": "string"
-        },
-        "transfer_data": {
-            "type": "null"
-        },
-        "transfer_group": {
-            "type": "null"
         }
     },
     "required": [
@@ -476,5 +454,6 @@
         "status",
         "transfer_data",
         "transfer_group"
-    ]
+    ],
+    "version": 1
 }

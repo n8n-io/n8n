@@ -4,12 +4,6 @@
         "id": {
             "type": "string"
         },
-        "assigner_id": {
-            "type": "null"
-        },
-        "assignee_id": {
-            "type": "null"
-        },
         "project_id": {
             "type": "string"
         },
@@ -43,8 +37,32 @@
         "created_at": {
             "type": "string"
         },
+        "due": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string"
+                },
+                "string": {
+                    "type": "string"
+                },
+                "lang": {
+                    "type": "string"
+                },
+                "is_recurring": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "date",
+                "string",
+                "lang",
+                "is_recurring"
+            ]
+        },
         "url": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

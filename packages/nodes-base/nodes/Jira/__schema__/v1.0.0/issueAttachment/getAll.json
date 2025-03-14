@@ -60,7 +60,6 @@
             },
             "required": [
                 "self",
-                "emailAddress",
                 "avatarUrls",
                 "displayName",
                 "active",
@@ -92,5 +91,6 @@
         "size",
         "mimeType",
         "content"
-    ]
+    ],
+    "version": 1
 }

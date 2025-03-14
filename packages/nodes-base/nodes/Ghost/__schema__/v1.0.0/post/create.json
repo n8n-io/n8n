@@ -52,6 +52,91 @@
         "canonical_url": {
             "type": "null"
         },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "slug": {
+                        "type": "string"
+                    },
+                    "visibility": {
+                        "type": "string"
+                    },
+                    "og_image": {
+                        "type": "null"
+                    },
+                    "og_title": {
+                        "type": "null"
+                    },
+                    "og_description": {
+                        "type": "null"
+                    },
+                    "twitter_image": {
+                        "type": "null"
+                    },
+                    "twitter_title": {
+                        "type": "null"
+                    },
+                    "twitter_description": {
+                        "type": "null"
+                    },
+                    "meta_title": {
+                        "type": "null"
+                    },
+                    "meta_description": {
+                        "type": "null"
+                    },
+                    "codeinjection_head": {
+                        "type": "null"
+                    },
+                    "codeinjection_foot": {
+                        "type": "null"
+                    },
+                    "canonical_url": {
+                        "type": "null"
+                    },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "slug",
+                    "description",
+                    "feature_image",
+                    "visibility",
+                    "og_image",
+                    "og_title",
+                    "og_description",
+                    "twitter_image",
+                    "twitter_title",
+                    "twitter_description",
+                    "meta_title",
+                    "meta_description",
+                    "codeinjection_head",
+                    "codeinjection_foot",
+                    "canonical_url",
+                    "accent_color",
+                    "created_at",
+                    "updated_at",
+                    "url"
+                ]
+            }
+        },
         "authors": {
             "type": "array",
             "items": {
@@ -68,18 +153,6 @@
                     },
                     "email": {
                         "type": "string"
-                    },
-                    "cover_image": {
-                        "type": "null"
-                    },
-                    "bio": {
-                        "type": "null"
-                    },
-                    "website": {
-                        "type": "null"
-                    },
-                    "location": {
-                        "type": "null"
                     },
                     "facebook": {
                         "type": "null"
@@ -212,17 +285,11 @@
                     "active": {
                         "type": "boolean"
                     },
-                    "welcome_page_url": {
-                        "type": "null"
-                    },
                     "visibility": {
                         "type": "string"
                     },
                     "trial_days": {
                         "type": "integer"
-                    },
-                    "description": {
-                        "type": "null"
                     },
                     "type": {
                         "type": "string"
@@ -289,18 +356,6 @@
                 },
                 "email": {
                     "type": "string"
-                },
-                "cover_image": {
-                    "type": "null"
-                },
-                "bio": {
-                    "type": "null"
-                },
-                "website": {
-                    "type": "null"
-                },
-                "location": {
-                    "type": "null"
                 },
                 "facebook": {
                     "type": "null"
@@ -415,14 +470,14 @@
                 "url"
             ]
         },
-        "primary_tag": {
-            "type": "null"
-        },
         "email_segment": {
             "type": "string"
         },
         "url": {
             "type": "string"
+        },
+        "reading_time": {
+            "type": "integer"
         },
         "og_title": {
             "type": "null"
@@ -434,12 +489,6 @@
             "type": "null"
         },
         "twitter_description": {
-            "type": "null"
-        },
-        "meta_title": {
-            "type": "null"
-        },
-        "meta_description": {
             "type": "null"
         },
         "email_subject": {
@@ -462,9 +511,7 @@
         },
         "newsletter": {
             "type": "null"
-        },
-        "reading_time": {
-            "type": "integer"
         }
-    }
+    },
+    "version": 1
 }

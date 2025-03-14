@@ -1,0 +1,85 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "userId": {
+            "type": "string"
+        },
+        "billable": {
+            "type": "boolean"
+        },
+        "timeInterval": {
+            "type": "object",
+            "properties": {
+                "start": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "start",
+                "end",
+                "duration"
+            ]
+        },
+        "workspaceId": {
+            "type": "string"
+        },
+        "isLocked": {
+            "type": "boolean"
+        },
+        "customFieldValues": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "customFieldId": {
+                        "type": "string"
+                    },
+                    "timeEntryId": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "type": "null"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "customFieldId",
+                    "timeEntryId",
+                    "value",
+                    "name",
+                    "type"
+                ]
+            }
+        },
+        "type": {
+            "type": "string"
+        },
+        "kioskId": {
+            "type": "null"
+        }
+    },
+    "required": [
+        "id",
+        "description",
+        "tagIds",
+        "userId",
+        "billable",
+        "taskId",
+        "projectId",
+        "timeInterval",
+        "workspaceId",
+        "isLocked",
+        "customFieldValues",
+        "type",
+        "kioskId"
+    ],
+    "version": 1
+}

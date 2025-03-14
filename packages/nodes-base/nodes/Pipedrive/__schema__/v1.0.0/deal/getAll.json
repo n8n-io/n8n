@@ -82,14 +82,14 @@
                     "items": {
                         "type": "object",
                         "properties": {
+                            "label": {
+                                "type": "string"
+                            },
                             "value": {
                                 "type": "string"
                             },
                             "primary": {
                                 "type": "boolean"
-                            },
-                            "label": {
-                                "type": "string"
                             }
                         },
                         "required": [
@@ -120,6 +120,9 @@
                     }
                 },
                 "owner_id": {
+                    "type": "integer"
+                },
+                "company_id": {
                     "type": "integer"
                 },
                 "value": {
@@ -235,11 +238,17 @@
         "participants_count": {
             "type": "integer"
         },
+        "origin": {
+            "type": "string"
+        },
+        "is_archived": {
+            "type": "boolean"
+        },
+        "archive_time": {
+            "type": "null"
+        },
         "stage_order_nr": {
             "type": "integer"
-        },
-        "next_activity_duration": {
-            "type": "null"
         },
         "formatted_value": {
             "type": "string"
@@ -281,6 +290,8 @@
         "local_won_date",
         "local_lost_date",
         "local_close_date",
+        "is_archived",
+        "archive_time",
         "stage_order_nr",
         "person_name",
         "org_name",
@@ -289,11 +300,11 @@
         "next_activity_duration",
         "next_activity_note",
         "formatted_value",
-        "formatted_weighted_value",
         "rotten_time",
         "owner_name",
         "cc_email",
         "org_hidden",
         "person_hidden"
-    ]
+    ],
+    "version": 1
 }

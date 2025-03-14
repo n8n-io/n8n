@@ -34,6 +34,9 @@
         "PreferredDeliveryMethod": {
             "type": "string"
         },
+        "IsProject": {
+            "type": "boolean"
+        },
         "domain": {
             "type": "string"
         },
@@ -73,17 +76,6 @@
         "Active": {
             "type": "boolean"
         },
-        "PrimaryEmailAddr": {
-            "type": "object",
-            "properties": {
-                "Address": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "Address"
-            ]
-        },
         "DefaultTaxCodeRef": {
             "type": "object",
             "properties": {
@@ -95,5 +87,6 @@
                 "value"
             ]
         }
-    }
+    },
+    "version": 1
 }

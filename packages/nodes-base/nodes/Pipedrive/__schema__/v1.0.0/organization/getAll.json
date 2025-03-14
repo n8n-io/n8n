@@ -4,9 +4,6 @@
         "id": {
             "type": "integer"
         },
-        "company_id": {
-            "type": "integer"
-        },
         "owner_id": {
             "type": "object",
             "properties": {
@@ -126,12 +123,11 @@
         "cc_email": {
             "type": "string"
         },
-        "category_id": {
-            "type": "null"
+        "company_id": {
+            "type": "integer"
         }
     },
     "required": [
-        "company_id",
         "related_open_deals_count",
         "related_closed_deals_count",
         "files_count",
@@ -148,6 +144,8 @@
         "last_activity_id",
         "label_ids",
         "owner_name",
-        "cc_email"
-    ]
+        "cc_email",
+        "company_id"
+    ],
+    "version": 1
 }

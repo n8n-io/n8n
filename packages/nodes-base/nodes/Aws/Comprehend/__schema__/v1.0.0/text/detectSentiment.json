@@ -1,35 +1,36 @@
 {
-	"type": "object",
-	"properties": {
-		"Sentiment": {
-			"type": "string"
-		},
-		"SentimentScore": {
-			"type": "object",
-			"properties": {
-				"Mixed": {
-					"type": "number"
-				},
-				"Negative": {
-					"type": "number"
-				},
-				"Neutral": {
-					"type": "number"
-				},
-				"Positive": {
-					"type": "number"
-				}
-			},
-			"required": [
-				"Mixed",
-				"Negative",
-				"Neutral",
-				"Positive"
-			]
-		}
-	},
-	"required": [
-		"Sentiment",
-		"SentimentScore"
-	]
+    "type": "object",
+    "properties": {
+        "Sentiment": {
+            "type": "string"
+        },
+        "SentimentScore": {
+            "type": "object",
+            "properties": {
+                "Mixed": {
+                    "type": "number"
+                },
+                "Negative": {
+                    "type": "number"
+                },
+                "Neutral": {
+                    "type": "number"
+                },
+                "Positive": {
+                    "type": "number"
+                }
+            },
+            "required": [
+                "Mixed",
+                "Negative",
+                "Neutral",
+                "Positive"
+            ]
+        }
+    },
+    "required": [
+        "Sentiment",
+        "SentimentScore"
+    ],
+    "version": 1
 }

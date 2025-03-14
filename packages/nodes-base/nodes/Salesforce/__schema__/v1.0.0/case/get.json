@@ -28,17 +28,11 @@
         "CaseNumber": {
             "type": "string"
         },
-        "RecordTypeId": {
-            "type": "string"
-        },
         "Status": {
             "type": "string"
         },
         "Language": {
             "type": "null"
-        },
-        "Priority": {
-            "type": "string"
         },
         "IsClosed": {
             "type": "boolean"
@@ -67,66 +61,15 @@
         "Comments": {
             "type": "null"
         },
-        "ProductId": {
+        "AssetId": {
             "type": "null"
         },
         "BusinessHoursId": {
             "type": "string"
         },
-        "ServiceContractId": {
-            "type": "null"
-        },
-        "AssetId": {
-            "type": "null"
-        },
-        "IsClosedOnCreate": {
-            "type": "boolean"
-        },
-        "IsStopped": {
-            "type": "boolean"
-        },
-        "StopStartDate": {
-            "type": "null"
-        },
-        "MilestoneStatus": {
+        "RecordTypeId": {
             "type": "string"
         }
     },
-    "required": [
-        "attributes",
-        "Id",
-        "IsDeleted",
-        "MasterRecordId",
-        "CaseNumber",
-        "ContactId",
-        "AccountId",
-        "ParentId",
-        "SuppliedName",
-        "SuppliedEmail",
-        "SuppliedPhone",
-        "SuppliedCompany",
-        "Type",
-        "Status",
-        "Reason",
-        "Origin",
-        "Subject",
-        "Priority",
-        "Description",
-        "IsClosed",
-        "ClosedDate",
-        "IsEscalated",
-        "OwnerId",
-        "CreatedDate",
-        "CreatedById",
-        "LastModifiedDate",
-        "LastModifiedById",
-        "SystemModstamp",
-        "ContactPhone",
-        "ContactMobile",
-        "ContactEmail",
-        "ContactFax",
-        "Comments",
-        "LastViewedDate",
-        "LastReferencedDate"
-    ]
+    "version": 1
 }

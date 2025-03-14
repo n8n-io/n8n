@@ -270,9 +270,7 @@
                             "required": [
                                 "id",
                                 "key",
-                                "value",
-                                "display_key",
-                                "display_value"
+                                "value"
                             ]
                         }
                     },
@@ -306,8 +304,7 @@
                     "taxes",
                     "meta_data",
                     "sku",
-                    "price",
-                    "parent_name"
+                    "price"
                 ]
             }
         },
@@ -336,36 +333,6 @@
                     },
                     "shipping_tax_total": {
                         "type": "string"
-                    },
-                    "meta_data": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "id": {
-                                    "type": "integer"
-                                },
-                                "key": {
-                                    "type": "string"
-                                },
-                                "value": {
-                                    "type": "string"
-                                },
-                                "display_key": {
-                                    "type": "string"
-                                },
-                                "display_value": {
-                                    "type": "string"
-                                }
-                            },
-                            "required": [
-                                "id",
-                                "key",
-                                "value",
-                                "display_key",
-                                "display_value"
-                            ]
-                        }
                     }
                 },
                 "required": [
@@ -437,16 +404,20 @@
                                 "key": {
                                     "type": "string"
                                 },
+                                "value": {
+                                    "type": "string"
+                                },
                                 "display_key": {
+                                    "type": "string"
+                                },
+                                "display_value": {
                                     "type": "string"
                                 }
                             },
                             "required": [
                                 "id",
                                 "key",
-                                "value",
-                                "display_key",
-                                "display_value"
+                                "value"
                             ]
                         }
                     }
@@ -510,36 +481,6 @@
                                 "subtotal"
                             ]
                         }
-                    },
-                    "meta_data": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "id": {
-                                    "type": "integer"
-                                },
-                                "key": {
-                                    "type": "string"
-                                },
-                                "value": {
-                                    "type": "string"
-                                },
-                                "display_key": {
-                                    "type": "string"
-                                },
-                                "display_value": {
-                                    "type": "string"
-                                }
-                            },
-                            "required": [
-                                "id",
-                                "key",
-                                "value",
-                                "display_key",
-                                "display_value"
-                            ]
-                        }
                     }
                 },
                 "required": [
@@ -583,22 +524,14 @@
                                 "key": {
                                     "type": "string"
                                 },
-                                "value": {
-                                    "type": "string"
-                                },
                                 "display_key": {
-                                    "type": "string"
-                                },
-                                "display_value": {
                                     "type": "string"
                                 }
                             },
                             "required": [
                                 "id",
                                 "key",
-                                "value",
-                                "display_key",
-                                "display_value"
+                                "value"
                             ]
                         }
                     },
@@ -614,32 +547,7 @@
                     "code",
                     "discount",
                     "discount_tax",
-                    "meta_data",
-                    "discount_type",
-                    "nominal_amount",
-                    "free_shipping"
-                ]
-            }
-        },
-        "refunds": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "integer"
-                    },
-                    "reason": {
-                        "type": "string"
-                    },
-                    "total": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "id",
-                    "reason",
-                    "total"
+                    "meta_data"
                 ]
             }
         },
@@ -647,9 +555,6 @@
             "type": "string"
         },
         "is_editable": {
-            "type": "boolean"
-        },
-        "needs_payment": {
             "type": "boolean"
         },
         "needs_processing": {
@@ -674,6 +579,20 @@
                         "properties": {
                             "href": {
                                 "type": "string"
+                            },
+                            "targetHints": {
+                                "type": "object",
+                                "properties": {
+                                    "allow": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                },
+                                "required": [
+                                    "allow"
+                                ]
                             }
                         },
                         "required": [
@@ -682,20 +601,6 @@
                     }
                 },
                 "collection": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "href": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "href"
-                        ]
-                    }
-                },
-                "customer": {
                     "type": "array",
                     "items": {
                         "type": "object",
@@ -758,7 +663,7 @@
         "date_modified_gmt",
         "date_completed_gmt",
         "date_paid_gmt",
-        "currency_symbol",
         "_links"
-    ]
+    ],
+    "version": 1
 }

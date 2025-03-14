@@ -4,6 +4,9 @@
         "id": {
             "type": "string"
         },
+        "lastUpdated": {
+            "type": "string"
+        },
         "Contract ID": {
             "type": "string"
         },
@@ -26,9 +29,6 @@
             "type": "string"
         },
         "extractText": {
-            "type": "string"
-        },
-        "lastUpdated": {
             "type": "string"
         },
         "Status Date": {
@@ -61,5 +61,6 @@
     },
     "required": [
         "id"
-    ]
+    ],
+    "version": 1
 }

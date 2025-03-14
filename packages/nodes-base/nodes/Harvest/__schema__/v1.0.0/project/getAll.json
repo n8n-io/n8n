@@ -88,5 +88,6 @@
         "hourly_rate",
         "fee",
         "client"
-    ]
+    ],
+    "version": 1
 }

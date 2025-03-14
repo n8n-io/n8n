@@ -136,21 +136,9 @@
                                                             "bold": {
                                                                 "type": "boolean"
                                                             }
-                                                        },
-                                                        "required": [
-                                                            "italic"
-                                                        ]
+                                                        }
                                                     },
                                                     "url": {
-                                                        "type": "string"
-                                                    },
-                                                    "name": {
-                                                        "type": "string"
-                                                    },
-                                                    "unicode": {
-                                                        "type": "string"
-                                                    },
-                                                    "user_id": {
                                                         "type": "string"
                                                     }
                                                 },
@@ -174,16 +162,15 @@
                 }
             },
             "required": [
-                "user",
                 "type",
                 "edited",
                 "text",
-                "team",
                 "blocks"
             ]
         },
         "message_timestamp": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

@@ -7,22 +7,6 @@
         "object": {
             "type": "string"
         },
-        "address": {
-            "type": "object",
-            "properties": {
-                "country": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "city",
-                "country",
-                "line1",
-                "line2",
-                "postal_code",
-                "state"
-            ]
-        },
         "balance": {
             "type": "integer"
         },
@@ -69,9 +53,6 @@
             "properties": {
                 "Telefone": {
                     "type": "string"
-                },
-                "Pais": {
-                    "type": "string"
                 }
             }
         },
@@ -83,9 +64,6 @@
             "items": {
                 "type": "string"
             }
-        },
-        "shipping": {
-            "type": "null"
         },
         "tax_exempt": {
             "type": "string"
@@ -116,5 +94,6 @@
         "shipping",
         "tax_exempt",
         "test_clock"
-    ]
+    ],
+    "version": 1
 }

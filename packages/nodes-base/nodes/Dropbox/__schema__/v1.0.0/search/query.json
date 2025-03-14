@@ -7,6 +7,9 @@
         "client_modified": {
             "type": "string"
         },
+        "content_hash": {
+            "type": "string"
+        },
         "file_owner_team_encrypted_id": {
             "type": "string"
         },
@@ -19,6 +22,12 @@
         "name": {
             "type": "string"
         },
+        "path_display": {
+            "type": "string"
+        },
+        "path_lower": {
+            "type": "string"
+        },
         "rev": {
             "type": "string"
         },
@@ -27,15 +36,11 @@
         },
         "size": {
             "type": "integer"
-        },
-        "content_hash": {
-            "type": "string"
-        },
-        "path_display": {
-            "type": "string"
-        },
-        "path_lower": {
-            "type": "string"
         }
-    }
+    },
+    "required": [
+        "highlight_spans",
+        "match_type"
+    ],
+    "version": 1
 }

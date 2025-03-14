@@ -4,17 +4,11 @@
         "active": {
             "type": "boolean"
         },
-        "email": {
-            "type": "string"
-        },
         "id": {
             "type": "integer"
         },
         "name": {
             "type": "string"
-        },
-        "phone": {
-            "type": "null"
         },
         "time_zone": {
             "type": "string"
@@ -30,9 +24,6 @@
         },
         "updated_at": {
             "type": "string"
-        },
-        "unique_external_id": {
-            "type": "null"
         },
         "first_name": {
             "type": "string"
@@ -68,5 +59,6 @@
         "preferred_source",
         "company_id",
         "unique_external_id"
-    ]
+    ],
+    "version": 1
 }

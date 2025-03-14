@@ -201,7 +201,7 @@
         "shipping",
         "is_paying_customer",
         "avatar_url",
-        "meta_data",
         "_links"
-    ]
+    ],
+    "version": 1
 }

@@ -52,9 +52,6 @@
                 "display_name_normalized": {
                     "type": "string"
                 },
-                "fields": {
-                    "type": "null"
-                },
                 "status_text": {
                     "type": "string"
                 },
@@ -94,12 +91,6 @@
                 },
                 "is_custom_image": {
                     "type": "boolean"
-                },
-                "huddle_state": {
-                    "type": "string"
-                },
-                "huddle_state_expiration_ts": {
-                    "type": "integer"
                 },
                 "first_name": {
                     "type": "string"
@@ -149,8 +140,6 @@
                 "status_emoji_display_info",
                 "status_expiration",
                 "avatar_hash",
-                "first_name",
-                "last_name",
                 "image_24",
                 "image_32",
                 "image_48",
@@ -188,9 +177,6 @@
         "is_email_confirmed": {
             "type": "boolean"
         },
-        "has_2fa": {
-            "type": "boolean"
-        },
         "who_can_share_contact_card": {
             "type": "string"
         }
@@ -204,5 +190,6 @@
         "is_bot",
         "is_app_user",
         "updated"
-    ]
+    ],
+    "version": 1
 }

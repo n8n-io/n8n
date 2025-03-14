@@ -70,6 +70,9 @@
                 "type": {
                     "type": "string"
                 },
+                "user_view_type": {
+                    "type": "string"
+                },
                 "site_admin": {
                     "type": "boolean"
                 }
@@ -338,5 +341,6 @@
         "events_url",
         "issues_url",
         "notifications_url"
-    ]
+    ],
+    "version": 1
 }

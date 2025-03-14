@@ -77,6 +77,9 @@
                 "state": {
                     "type": "string"
                 },
+                "locked": {
+                    "type": "boolean"
+                },
                 "avatar_url": {
                     "type": "string"
                 },
@@ -128,9 +131,6 @@
                 },
                 "total_time_spent": {
                     "type": "integer"
-                },
-                "human_time_estimate": {
-                    "type": "null"
                 },
                 "human_total_time_spent": {
                     "type": "null"
@@ -216,6 +216,12 @@
         "moved_to_id": {
             "type": "null"
         },
+        "imported": {
+            "type": "boolean"
+        },
+        "imported_from": {
+            "type": "string"
+        },
         "service_desk_reply_to": {
             "type": "null"
         }
@@ -254,5 +260,6 @@
         "severity",
         "moved_to_id",
         "service_desk_reply_to"
-    ]
+    ],
+    "version": 1
 }

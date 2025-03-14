@@ -15,5 +15,6 @@
         "id",
         "snippet",
         "historyId"
-    ]
+    ],
+    "version": 1
 }

@@ -12,8 +12,7 @@
                 }
             },
             "required": [
-                "type",
-                "url"
+                "type"
             ]
         },
         "Id": {
@@ -22,5 +21,6 @@
     },
     "required": [
         "attributes"
-    ]
+    ],
+    "version": 1
 }

@@ -40,6 +40,18 @@
         "join_url": {
             "type": "string"
         },
+        "password": {
+            "type": "string"
+        },
+        "h323_password": {
+            "type": "string"
+        },
+        "pstn_password": {
+            "type": "string"
+        },
+        "encrypted_password": {
+            "type": "string"
+        },
         "settings": {
             "type": "object",
             "properties": {
@@ -161,8 +173,7 @@
                     },
                     "required": [
                         "enable",
-                        "auto_add_invited_external_users",
-                        "channel_id"
+                        "auto_add_invited_external_users"
                     ]
                 },
                 "participant_focused_meeting": {
@@ -171,10 +182,7 @@
                 "push_change_to_calendar": {
                     "type": "boolean"
                 },
-                "auto_start_meeting_summary": {
-                    "type": "boolean"
-                },
-                "auto_start_ai_companion_questions": {
+                "allow_host_control_participant_mute_state": {
                     "type": "boolean"
                 },
                 "alternative_hosts_email_notification": {
@@ -212,7 +220,10 @@
                 "email_in_attendee_report": {
                     "type": "boolean"
                 },
-                "enable_dedicated_group_chat": {
+                "auto_start_meeting_summary": {
+                    "type": "boolean"
+                },
+                "auto_start_ai_companion_questions": {
                     "type": "boolean"
                 }
             },
@@ -269,18 +280,6 @@
         },
         "pre_schedule": {
             "type": "boolean"
-        },
-        "password": {
-            "type": "string"
-        },
-        "h323_password": {
-            "type": "string"
-        },
-        "pstn_password": {
-            "type": "string"
-        },
-        "encrypted_password": {
-            "type": "string"
         }
     },
     "required": [
@@ -299,5 +298,6 @@
         "join_url",
         "settings",
         "pre_schedule"
-    ]
+    ],
+    "version": 1
 }

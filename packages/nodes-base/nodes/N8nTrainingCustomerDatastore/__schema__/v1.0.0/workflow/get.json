@@ -29,23 +29,23 @@
                             }
                         }
                     },
+                    "type": {
+                        "type": "string"
+                    },
                     "id": {
                         "type": "string"
                     },
                     "name": {
                         "type": "string"
-                    },
-                    "type": {
-                        "type": "string"
                     }
                 },
                 "required": [
                     "parameters",
-                    "id",
-                    "name",
                     "type",
                     "typeVersion",
-                    "position"
+                    "position",
+                    "id",
+                    "name"
                 ]
             }
         },
@@ -55,10 +55,15 @@
                 "executionOrder": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "executionOrder"
-            ]
+            }
+        },
+        "meta": {
+            "type": "object",
+            "properties": {
+                "templateCredsSetupCompleted": {
+                    "type": "boolean"
+                }
+            }
         },
         "versionId": {
             "type": "string"
@@ -144,6 +149,37 @@
                                                 },
                                                 "lastName": {
                                                     "type": "string"
+                                                },
+                                                "settings": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "userActivated": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "firstSuccessfulWorkflowId": {
+                                                            "type": "string"
+                                                        },
+                                                        "userActivatedAt": {
+                                                            "type": "integer"
+                                                        },
+                                                        "npsSurvey": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "responded": {
+                                                                    "type": "boolean"
+                                                                },
+                                                                "lastShownAt": {
+                                                                    "type": "integer"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "lastShownAt"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "userActivated"
+                                                    ]
                                                 },
                                                 "role": {
                                                     "type": "string"
@@ -235,5 +271,6 @@
                 ]
             }
         }
-    }
+    },
+    "version": 1
 }

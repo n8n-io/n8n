@@ -66,6 +66,50 @@
                     "DetailType": {
                         "type": "string"
                     },
+                    "ItemBasedExpenseLineDetail": {
+                        "type": "object",
+                        "properties": {
+                            "BillableStatus": {
+                                "type": "string"
+                            },
+                            "ItemRef": {
+                                "type": "object",
+                                "properties": {
+                                    "value": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "value",
+                                    "name"
+                                ]
+                            },
+                            "Qty": {
+                                "type": "integer"
+                            },
+                            "TaxCodeRef": {
+                                "type": "object",
+                                "properties": {
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "value"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "BillableStatus",
+                            "ItemRef",
+                            "UnitPrice",
+                            "Qty",
+                            "TaxCodeRef"
+                        ]
+                    },
                     "AccountBasedExpenseLineDetail": {
                         "type": "object",
                         "properties": {
@@ -175,74 +219,6 @@
         },
         "DocNumber": {
             "type": "string"
-        },
-        "TxnTaxDetail": {
-            "type": "object",
-            "properties": {
-                "TotalTax": {
-                    "type": "number"
-                },
-                "TaxLine": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "Amount": {
-                                "type": "number"
-                            },
-                            "DetailType": {
-                                "type": "string"
-                            },
-                            "TaxLineDetail": {
-                                "type": "object",
-                                "properties": {
-                                    "TaxRateRef": {
-                                        "type": "object",
-                                        "properties": {
-                                            "value": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "required": [
-                                            "value"
-                                        ]
-                                    },
-                                    "PercentBased": {
-                                        "type": "boolean"
-                                    },
-                                    "TaxPercent": {
-                                        "type": "integer"
-                                    },
-                                    "NetAmountTaxable": {
-                                        "type": "number"
-                                    }
-                                },
-                                "required": [
-                                    "TaxRateRef",
-                                    "PercentBased",
-                                    "TaxPercent",
-                                    "NetAmountTaxable"
-                                ]
-                            }
-                        },
-                        "required": [
-                            "Amount",
-                            "DetailType",
-                            "TaxLineDetail"
-                        ]
-                    }
-                }
-            },
-            "required": [
-                "TotalTax",
-                "TaxLine"
-            ]
-        },
-        "GlobalTaxCalculation": {
-            "type": "string"
-        },
-        "PrivateNote": {
-            "type": "string"
         }
     },
     "required": [
@@ -259,5 +235,6 @@
         "VendorRef",
         "APAccountRef",
         "TotalAmt"
-    ]
+    ],
+    "version": 1
 }

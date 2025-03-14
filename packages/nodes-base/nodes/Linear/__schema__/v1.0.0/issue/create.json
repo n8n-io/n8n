@@ -51,9 +51,6 @@
         },
         "dueDate": {
             "type": "null"
-        },
-        "cycle": {
-            "type": "null"
         }
     },
     "required": [
@@ -69,5 +66,6 @@
         "description",
         "dueDate",
         "cycle"
-    ]
+    ],
+    "version": 1
 }

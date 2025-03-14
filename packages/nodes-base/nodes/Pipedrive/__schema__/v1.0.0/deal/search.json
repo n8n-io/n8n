@@ -48,26 +48,12 @@
                 "name"
             ]
         },
-        "person": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "id",
-                "name"
-            ]
-        },
         "notes": {
             "type": "array",
             "items": {
                 "type": "string"
             }
         }
-    }
+    },
+    "version": 1
 }

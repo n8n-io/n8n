@@ -1,13 +1,13 @@
 {
     "type": "object",
     "properties": {
+        "ETag": {
+            "type": "string"
+        },
         "Key": {
             "type": "string"
         },
         "LastModified": {
-            "type": "string"
-        },
-        "ETag": {
             "type": "string"
         },
         "Size": {
@@ -21,10 +21,10 @@
         }
     },
     "required": [
+        "ETag",
         "Key",
         "LastModified",
-        "ETag",
-        "Size",
-        "StorageClass"
-    ]
+        "Size"
+    ],
+    "version": 1
 }

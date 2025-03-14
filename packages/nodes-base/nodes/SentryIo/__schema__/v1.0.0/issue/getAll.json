@@ -63,8 +63,41 @@
         "metadata": {
             "type": "object",
             "properties": {
+                "value": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "filename": {
+                    "type": "string"
+                },
+                "function": {
+                    "type": "string"
+                },
+                "in_app_frame_mix": {
+                    "type": "string"
+                },
+                "sdk": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "name_normalized": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "name_normalized"
+                    ]
+                },
                 "initial_priority": {
                     "type": "integer"
+                },
+                "severity_reason": {
+                    "type": "string"
                 }
             },
             "required": [
@@ -156,5 +189,6 @@
         "firstSeen",
         "lastSeen",
         "stats"
-    ]
+    ],
+    "version": 1
 }

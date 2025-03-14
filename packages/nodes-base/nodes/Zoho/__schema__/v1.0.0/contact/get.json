@@ -76,9 +76,6 @@
         "$editable": {
             "type": "boolean"
         },
-        "Home_Phone": {
-            "type": "null"
-        },
         "Created_By": {
             "type": "object",
             "properties": {
@@ -160,22 +157,34 @@
         "$in_merge": {
             "type": "boolean"
         },
-        "$approval_state": {
-            "type": "string"
-        },
         "Locked__s": {
             "type": "boolean"
         },
-        "Secondary_Email": {
+        "Tag": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "name",
+                    "id"
+                ]
+            }
+        },
+        "$approval_state": {
+            "type": "string"
+        },
+        "Other_State": {
             "type": "null"
         },
-        "Vendor_Name": {
-            "type": "null"
-        },
-        "Date_of_Birth": {
-            "type": "null"
-        },
-        "Fax": {
+        "Other_City": {
             "type": "null"
         },
         "Other_Country": {
@@ -184,22 +193,28 @@
         "Assistant": {
             "type": "null"
         },
+        "Reporting_To": {
+            "type": "null"
+        },
+        "Home_Phone": {
+            "type": "null"
+        },
+        "Vendor_Name": {
+            "type": "null"
+        },
         "Other_Zip": {
+            "type": "null"
+        },
+        "Asst_Phone": {
+            "type": "null"
+        },
+        "Date_of_Birth": {
             "type": "null"
         },
         "Other_Street": {
             "type": "null"
         },
-        "Other_State": {
-            "type": "null"
-        },
-        "Reporting_To": {
-            "type": "null"
-        },
-        "Other_City": {
-            "type": "null"
-        },
-        "Asst_Phone": {
+        "Fax": {
             "type": "null"
         },
         "$canvas_id": {
@@ -211,28 +226,24 @@
         "Email",
         "$currency_symbol",
         "$field_states",
-        "Mailing_State",
         "Last_Activity_Time",
         "$state",
         "$process_flow",
-        "Mailing_Country",
         "$locked_for_me",
         "id",
         "$approved",
         "$approval",
         "$editable",
         "$zia_owner_assignment",
-        "Mailing_Zip",
         "$review_process",
-        "Mailing_Street",
         "Salutation",
         "First_Name",
         "Full_Name",
         "$review",
-        "Mailing_City",
         "$orchestration",
         "Last_Name",
         "$in_merge",
         "$approval_state"
-    ]
+    ],
+    "version": 1
 }

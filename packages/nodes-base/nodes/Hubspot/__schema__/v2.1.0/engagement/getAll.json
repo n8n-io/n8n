@@ -152,13 +152,19 @@
                 "taskType": {
                     "type": "string"
                 },
-                "sendDefaultReminder": {
-                    "type": "boolean"
+                "reminders": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "priority": {
                     "type": "string"
                 },
                 "isAllDay": {
+                    "type": "boolean"
+                },
+                "sendDefaultReminder": {
                     "type": "boolean"
                 }
             }
@@ -203,5 +209,6 @@
         "associations",
         "attachments",
         "metadata"
-    ]
+    ],
+    "version": 1
 }

@@ -85,6 +85,9 @@
                 "type": {
                     "type": "string"
                 },
+                "user_view_type": {
+                    "type": "string"
+                },
                 "site_admin": {
                     "type": "boolean"
                 }
@@ -344,5 +347,6 @@
         "timeline_url",
         "performed_via_github_app",
         "state_reason"
-    ]
+    ],
+    "version": 1
 }

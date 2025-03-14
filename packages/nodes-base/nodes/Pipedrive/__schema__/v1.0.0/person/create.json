@@ -98,14 +98,14 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "label": {
+                        "type": "string"
+                    },
                     "value": {
                         "type": "string"
                     },
                     "primary": {
                         "type": "boolean"
-                    },
-                    "label": {
-                        "type": "string"
                     }
                 },
                 "required": [
@@ -198,9 +198,6 @@
                 ]
             }
         },
-        "postal_address": {
-            "type": "null"
-        },
         "postal_address_lat": {
             "type": "null"
         },
@@ -246,5 +243,6 @@
         "owner_name": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

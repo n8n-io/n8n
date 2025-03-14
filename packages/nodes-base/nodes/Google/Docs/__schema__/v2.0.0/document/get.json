@@ -8,7 +8,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "documentId"
-    ]
+    "version": 1
 }

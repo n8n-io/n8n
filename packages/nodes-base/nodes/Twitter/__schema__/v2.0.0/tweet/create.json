@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "id": {
+            "type": "string"
+        },
         "text": {
             "type": "string"
         },
@@ -9,9 +12,7 @@
             "items": {
                 "type": "string"
             }
-        },
-        "id": {
-            "type": "string"
         }
-    }
+    },
+    "version": 1
 }

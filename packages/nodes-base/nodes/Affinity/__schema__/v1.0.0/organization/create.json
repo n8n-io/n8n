@@ -37,5 +37,6 @@
         "crunchbase_uuid",
         "global",
         "person_ids"
-    ]
+    ],
+    "version": 1
 }

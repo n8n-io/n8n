@@ -1,10 +1,52 @@
 {
     "type": "object",
     "properties": {
-        "id": {
+        "related_open_deals_count": {
             "type": "integer"
         },
-        "company_id": {
+        "related_closed_deals_count": {
+            "type": "integer"
+        },
+        "files_count": {
+            "type": "integer"
+        },
+        "notes_count": {
+            "type": "integer"
+        },
+        "followers_count": {
+            "type": "integer"
+        },
+        "related_won_deals_count": {
+            "type": "integer"
+        },
+        "related_lost_deals_count": {
+            "type": "integer"
+        },
+        "active_flag": {
+            "type": "boolean"
+        },
+        "country_code": {
+            "type": "null"
+        },
+        "first_char": {
+            "type": "string"
+        },
+        "next_activity_time": {
+            "type": "null"
+        },
+        "label_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "owner_name": {
+            "type": "string"
+        },
+        "cc_email": {
+            "type": "string"
+        },
+        "id": {
             "type": "integer"
         },
         "owner_id": {
@@ -45,13 +87,7 @@
         "open_deals_count": {
             "type": "integer"
         },
-        "related_open_deals_count": {
-            "type": "integer"
-        },
         "closed_deals_count": {
-            "type": "integer"
-        },
-        "related_closed_deals_count": {
             "type": "integer"
         },
         "email_messages_count": {
@@ -69,38 +105,14 @@
         "undone_activities_count": {
             "type": "integer"
         },
-        "files_count": {
-            "type": "integer"
-        },
-        "notes_count": {
-            "type": "integer"
-        },
-        "followers_count": {
-            "type": "integer"
-        },
         "won_deals_count": {
-            "type": "integer"
-        },
-        "related_won_deals_count": {
             "type": "integer"
         },
         "lost_deals_count": {
             "type": "integer"
         },
-        "related_lost_deals_count": {
-            "type": "integer"
-        },
-        "active_flag": {
-            "type": "boolean"
-        },
         "picture_id": {
             "type": "null"
-        },
-        "country_code": {
-            "type": "null"
-        },
-        "first_char": {
-            "type": "string"
         },
         "update_time": {
             "type": "string"
@@ -111,26 +123,12 @@
         "visible_to": {
             "type": "string"
         },
-        "next_activity_time": {
-            "type": "null"
-        },
-        "label_ids": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
-        },
-        "cc_email": {
-            "type": "string"
-        },
-        "owner_name": {
-            "type": "string"
-        },
         "edit_name": {
             "type": "boolean"
         },
         "category_id": {
             "type": "null"
         }
-    }
+    },
+    "version": 1
 }

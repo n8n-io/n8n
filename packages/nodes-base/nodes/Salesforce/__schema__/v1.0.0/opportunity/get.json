@@ -25,9 +25,6 @@
         "AccountId": {
             "type": "string"
         },
-        "IsPrivate": {
-            "type": "boolean"
-        },
         "Name": {
             "type": "string"
         },
@@ -61,9 +58,6 @@
         "CreatedDate": {
             "type": "string"
         },
-        "AgeInDays": {
-            "type": "integer"
-        },
         "CreatedById": {
             "type": "string"
         },
@@ -79,9 +73,6 @@
         "PushCount": {
             "type": "integer"
         },
-        "LastStageChangeInDays": {
-            "type": "integer"
-        },
         "FiscalQuarter": {
             "type": "integer"
         },
@@ -91,13 +82,7 @@
         "Fiscal": {
             "type": "string"
         },
-        "PartnerAccountId": {
-            "type": "null"
-        },
         "SyncedQuoteId": {
-            "type": "null"
-        },
-        "ContractId": {
             "type": "null"
         },
         "HasOpenActivity": {
@@ -105,78 +90,7 @@
         },
         "HasOverdueTask": {
             "type": "boolean"
-        },
-        "IsPriorityRecord": {
-            "type": "boolean"
-        },
-        "HasUnlikelyToCloseInsight": {
-            "type": "boolean"
-        },
-        "ActivityMetricId": {
-            "type": "string"
-        },
-        "Budget_Confirmed__c": {
-            "type": "boolean"
-        },
-        "Discovery_Completed__c": {
-            "type": "boolean"
-        },
-        "ROI_Analysis_Completed__c": {
-            "type": "boolean"
-        },
-        "Loss_Reason__c": {
-            "type": "null"
-        },
-        "Campagne_lead__c": {
-            "type": "null"
-        },
-        "Opmerking__c": {
-            "type": "null"
-        },
-        "Partner_land__c": {
-            "type": "null"
-        },
-        "Demo_gegeven__c": {
-            "type": "boolean"
-        },
-        "Partner__c": {
-            "type": "null"
-        },
-        "LID__CurrentGenerators__c": {
-            "type": "null"
-        },
-        "LID__DeliveryInstallationStatus__c": {
-            "type": "null"
-        },
-        "LID__Is_Influenced__c": {
-            "type": "boolean"
-        },
-        "LID__LinkedIn_Company_Id__c": {
-            "type": "null"
-        },
-        "LID__MainCompetitors__c": {
-            "type": "null"
-        },
-        "LID__My_DateTime__c": {
-            "type": "null"
-        },
-        "LID__My_Geolocation__Latitude__s": {
-            "type": "null"
-        },
-        "LID__My_Geolocation__Longitude__s": {
-            "type": "null"
-        },
-        "LID__My_Geolocation__c": {
-            "type": "null"
-        },
-        "LID__OrderNumber__c": {
-            "type": "null"
-        },
-        "LID__TrackingNumber__c": {
-            "type": "null"
-        },
-        "Einstein_scores__c": {
-            "type": "null"
         }
-    }
+    },
+    "version": 1
 }

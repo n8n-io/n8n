@@ -74,16 +74,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "external_urls",
-        "followers",
-        "genres",
-        "href",
-        "id",
-        "images",
-        "name",
-        "popularity",
-        "type",
-        "uri"
-    ]
+    "version": 1
 }

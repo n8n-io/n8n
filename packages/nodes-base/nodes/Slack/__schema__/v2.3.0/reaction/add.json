@@ -4,5 +4,6 @@
         "ok": {
             "type": "boolean"
         }
-    }
+    },
+    "version": 1
 }

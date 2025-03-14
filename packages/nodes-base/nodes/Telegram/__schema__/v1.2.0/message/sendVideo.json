@@ -39,13 +39,13 @@
                         "id": {
                             "type": "integer"
                         },
-                        "type": {
-                            "type": "string"
-                        },
                         "first_name": {
                             "type": "string"
                         },
                         "username": {
+                            "type": "string"
+                        },
+                        "type": {
                             "type": "string"
                         }
                     },
@@ -56,9 +56,6 @@
                 },
                 "date": {
                     "type": "integer"
-                },
-                "caption": {
-                    "type": "string"
                 },
                 "video": {
                     "type": "object",
@@ -151,6 +148,9 @@
                         "file_unique_id",
                         "file_size"
                     ]
+                },
+                "caption": {
+                    "type": "string"
                 }
             },
             "required": [
@@ -163,5 +163,6 @@
     "required": [
         "ok",
         "result"
-    ]
+    ],
+    "version": 1
 }

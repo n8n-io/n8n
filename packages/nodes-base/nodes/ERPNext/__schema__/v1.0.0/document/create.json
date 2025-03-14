@@ -22,9 +22,6 @@
         "naming_series": {
             "type": "string"
         },
-        "language": {
-            "type": "string"
-        },
         "disabled": {
             "type": "integer"
         },
@@ -41,5 +38,6 @@
         "docstatus",
         "idx",
         "doctype"
-    ]
+    ],
+    "version": 1
 }

@@ -109,13 +109,7 @@
                     "$zia_owner_assignment": {
                         "type": "string"
                     },
-                    "Annual_Revenue": {
-                        "type": "null"
-                    },
                     "Secondary_Email": {
-                        "type": "null"
-                    },
-                    "Description": {
                         "type": "null"
                     },
                     "Rating": {
@@ -140,17 +134,8 @@
                             "resubmit"
                         ]
                     },
-                    "Twitter": {
-                        "type": "null"
-                    },
-                    "Salutation": {
-                        "type": "null"
-                    },
                     "Full_Name": {
                         "type": "string"
-                    },
-                    "Record_Image": {
-                        "type": "null"
                     },
                     "Modified_By": {
                         "type": "object",
@@ -174,9 +159,6 @@
                     "$review": {
                         "type": "null"
                     },
-                    "Skype_ID": {
-                        "type": "null"
-                    },
                     "Email_Opt_Out": {
                         "type": "boolean"
                     },
@@ -190,6 +172,9 @@
                         "type": "string"
                     },
                     "$in_merge": {
+                        "type": "boolean"
+                    },
+                    "Locked__s": {
                         "type": "boolean"
                     },
                     "Tag": {
@@ -215,9 +200,6 @@
                     },
                     "$approval_state": {
                         "type": "string"
-                    },
-                    "Locked__s": {
-                        "type": "boolean"
                     }
                 },
                 "required": [
@@ -242,7 +224,6 @@
                     "Salutation",
                     "First_Name",
                     "Full_Name",
-                    "Lead_Status",
                     "$review",
                     "Phone",
                     "$converted_detail",
@@ -257,5 +238,6 @@
     },
     "required": [
         "data"
-    ]
+    ],
+    "version": 1
 }

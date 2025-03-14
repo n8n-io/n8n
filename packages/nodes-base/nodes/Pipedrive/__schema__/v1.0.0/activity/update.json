@@ -4,9 +4,6 @@
         "id": {
             "type": "integer"
         },
-        "company_id": {
-            "type": "integer"
-        },
         "user_id": {
             "type": "integer"
         },
@@ -132,11 +129,13 @@
         },
         "lead": {
             "type": "null"
+        },
+        "company_id": {
+            "type": "integer"
         }
     },
     "required": [
         "id",
-        "company_id",
         "user_id",
         "done",
         "type",
@@ -197,6 +196,8 @@
         "deal_dropbox_bcc",
         "assigned_to_user_id",
         "type_name",
-        "lead"
-    ]
+        "lead",
+        "company_id"
+    ],
+    "version": 1
 }

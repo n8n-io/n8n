@@ -114,5 +114,6 @@
         "priority": {
             "type": "integer"
         }
-    }
+    },
+    "version": 1
 }

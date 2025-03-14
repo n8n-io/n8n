@@ -4,38 +4,20 @@
         "user": {
             "type": "string"
         },
-        "text": {
-            "type": "string"
-        },
         "type": {
             "type": "string"
         },
         "ts": {
             "type": "string"
         },
-        "thread_ts": {
+        "client_msg_id": {
             "type": "string"
         },
-        "reply_count": {
-            "type": "integer"
-        },
-        "reply_users_count": {
-            "type": "integer"
-        },
-        "latest_reply": {
+        "text": {
             "type": "string"
         },
-        "reply_users": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "is_locked": {
-            "type": "boolean"
-        },
-        "subscribed": {
-            "type": "boolean"
+        "team": {
+            "type": "string"
         },
         "blocks": {
             "type": "array",
@@ -66,6 +48,17 @@
                                             },
                                             "text": {
                                                 "type": "string"
+                                            },
+                                            "url": {
+                                                "type": "string"
+                                            },
+                                            "style": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "bold": {
+                                                        "type": "boolean"
+                                                    }
+                                                }
                                             }
                                         },
                                         "required": [
@@ -86,11 +79,14 @@
                 ]
             }
         },
-        "client_msg_id": {
-            "type": "string"
-        },
-        "team": {
+        "subtype": {
             "type": "string"
         }
-    }
+    },
+    "required": [
+        "type",
+        "ts",
+        "text"
+    ],
+    "version": 1
 }

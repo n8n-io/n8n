@@ -31,13 +31,10 @@
         "attributes": {
             "type": "object",
             "properties": {
+                "SMS": {
+                    "type": "string"
+                },
                 "FIRSTNAME": {
-                    "type": "string"
-                },
-                "LASTNAME": {
-                    "type": "string"
-                },
-                "PHONE": {
                     "type": "string"
                 }
             }
@@ -52,5 +49,6 @@
         "listIds",
         "listUnsubscribed",
         "attributes"
-    ]
+    ],
+    "version": 1
 }

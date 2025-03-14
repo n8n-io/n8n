@@ -42,5 +42,6 @@
         "presentationId",
         "replies",
         "writeControl"
-    ]
+    ],
+    "version": 1
 }

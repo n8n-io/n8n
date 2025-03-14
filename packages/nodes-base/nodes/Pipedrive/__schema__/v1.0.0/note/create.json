@@ -45,6 +45,28 @@
                 "name"
             ]
         },
+        "person": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name"
+            ]
+        },
+        "deal": {
+            "type": "object",
+            "properties": {
+                "title": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "title"
+            ]
+        },
         "user": {
             "type": "object",
             "properties": {
@@ -65,5 +87,6 @@
                 "is_you"
             ]
         }
-    }
+    },
+    "version": 1
 }

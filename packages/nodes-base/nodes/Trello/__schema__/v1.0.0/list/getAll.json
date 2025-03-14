@@ -16,6 +16,9 @@
         "subscribed": {
             "type": "boolean"
         },
+        "softLimit": {
+            "type": "null"
+        },
         "type": {
             "type": "null"
         },
@@ -32,6 +35,16 @@
         }
     },
     "required": [
-        "id"
-    ]
+        "id",
+        "name",
+        "closed",
+        "color",
+        "idBoard",
+        "pos",
+        "subscribed",
+        "softLimit",
+        "type",
+        "datasource"
+    ],
+    "version": 1
 }

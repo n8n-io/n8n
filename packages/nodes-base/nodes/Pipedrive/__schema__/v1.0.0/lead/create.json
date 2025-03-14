@@ -55,5 +55,6 @@
         "cc_email": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

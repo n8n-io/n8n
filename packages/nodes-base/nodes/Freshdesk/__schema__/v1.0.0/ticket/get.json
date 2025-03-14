@@ -61,6 +61,12 @@
         "is_escalated": {
             "type": "boolean"
         },
+        "description": {
+            "type": "string"
+        },
+        "description_text": {
+            "type": "string"
+        },
         "created_at": {
             "type": "string"
         },
@@ -72,12 +78,6 @@
             "items": {
                 "type": "string"
             }
-        },
-        "description": {
-            "type": "string"
-        },
-        "description_text": {
-            "type": "string"
         },
         "attachments": {
             "type": "array",
@@ -119,12 +119,6 @@
         },
         "source_additional_info": {
             "type": "null"
-        },
-        "nr_due_by": {
-            "type": "null"
-        },
-        "nr_escalated": {
-            "type": "boolean"
         }
     },
     "required": [
@@ -156,5 +150,6 @@
         "created_at",
         "updated_at",
         "tags"
-    ]
+    ],
+    "version": 1
 }

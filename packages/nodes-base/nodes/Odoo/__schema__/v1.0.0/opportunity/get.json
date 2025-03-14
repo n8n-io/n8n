@@ -1,0 +1,57 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "website_message_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "name": {
+            "type": "string"
+        },
+        "active": {
+            "type": "boolean"
+        },
+        "type": {
+            "type": "string"
+        },
+        "priority": {
+            "type": "string"
+        },
+        "kanban_state": {
+            "type": "string"
+        },
+        "write_date": {
+            "type": "string"
+        },
+        "won_status": {
+            "type": "string"
+        },
+        "sale_amount_total": {
+            "type": "integer"
+        },
+        "sale_order_count": {
+            "type": "integer"
+        },
+        "order_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "__last_update": {
+            "type": "string"
+        },
+        "lost_reason": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "id"
+    ],
+    "version": 1
+}

@@ -22,5 +22,6 @@
         "id",
         "type",
         "role"
-    ]
+    ],
+    "version": 1
 }

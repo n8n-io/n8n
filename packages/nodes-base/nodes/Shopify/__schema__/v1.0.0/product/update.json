@@ -268,5 +268,6 @@
                 "variant_ids"
             ]
         }
-    }
+    },
+    "version": 1
 }

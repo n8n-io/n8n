@@ -64,10 +64,19 @@
         "url_private_download": {
             "type": "string"
         },
+        "media_display_type": {
+            "type": "string"
+        },
         "permalink": {
             "type": "string"
         },
         "channels": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "groups": {
             "type": "array",
             "items": {
                 "type": "string"
@@ -81,37 +90,7 @@
         },
         "comments_count": {
             "type": "integer"
-        },
-        "media_display_type": {
-            "type": "string"
         }
     },
-    "required": [
-        "id",
-        "created",
-        "timestamp",
-        "name",
-        "title",
-        "mimetype",
-        "filetype",
-        "pretty_type",
-        "user",
-        "user_team",
-        "editable",
-        "size",
-        "mode",
-        "is_external",
-        "external_type",
-        "is_public",
-        "public_url_shared",
-        "display_as_bot",
-        "username",
-        "url_private",
-        "url_private_download",
-        "permalink",
-        "channels",
-        "groups",
-        "ims",
-        "comments_count"
-    ]
+    "version": 1
 }

@@ -4,14 +4,12 @@
         "id": {
             "type": "integer"
         },
-        "name": {
+        "won_status": {
             "type": "string"
-        },
-        "expected_revenue": {
-            "type": "integer"
         }
     },
     "required": [
         "id"
-    ]
+    ],
+    "version": 1
 }

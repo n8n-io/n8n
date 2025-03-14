@@ -42,12 +42,6 @@
                                         },
                                         "route": {
                                             "type": "string"
-                                        },
-                                        "ip": {
-                                            "type": "string"
-                                        },
-                                        "user_agent": {
-                                            "type": "string"
                                         }
                                     },
                                     "required": [
@@ -156,5 +150,6 @@
         "hist_id",
         "date",
         "version"
-    ]
+    ],
+    "version": 1
 }

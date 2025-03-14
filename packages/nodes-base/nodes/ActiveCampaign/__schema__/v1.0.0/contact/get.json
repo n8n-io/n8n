@@ -607,6 +607,56 @@
                 ]
             }
         },
+        "accountContacts": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "account": {
+                        "type": "string"
+                    },
+                    "contact": {
+                        "type": "string"
+                    },
+                    "jobTitle": {
+                        "type": "string"
+                    },
+                    "createdTimestamp": {
+                        "type": "string"
+                    },
+                    "updatedTimestamp": {
+                        "type": "string"
+                    },
+                    "links": {
+                        "type": "object",
+                        "properties": {
+                            "account": {
+                                "type": "string"
+                            },
+                            "contact": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "account",
+                            "contact"
+                        ]
+                    },
+                    "id": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "account",
+                    "contact",
+                    "jobTitle",
+                    "createdTimestamp",
+                    "updatedTimestamp",
+                    "links",
+                    "id"
+                ]
+            }
+        },
         "contact": {
             "type": "object",
             "properties": {
@@ -778,10 +828,10 @@
                         "scoreValues": {
                             "type": "string"
                         },
-                        "automationEntryCounts": {
+                        "accountContacts": {
                             "type": "string"
                         },
-                        "accountContacts": {
+                        "automationEntryCounts": {
                             "type": "string"
                         }
                     },
@@ -856,56 +906,7 @@
                 "id",
                 "organization"
             ]
-        },
-        "accountContacts": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "account": {
-                        "type": "string"
-                    },
-                    "contact": {
-                        "type": "string"
-                    },
-                    "jobTitle": {
-                        "type": "string"
-                    },
-                    "createdTimestamp": {
-                        "type": "string"
-                    },
-                    "updatedTimestamp": {
-                        "type": "string"
-                    },
-                    "links": {
-                        "type": "object",
-                        "properties": {
-                            "account": {
-                                "type": "string"
-                            },
-                            "contact": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "account",
-                            "contact"
-                        ]
-                    },
-                    "id": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "account",
-                    "contact",
-                    "jobTitle",
-                    "createdTimestamp",
-                    "updatedTimestamp",
-                    "links",
-                    "id"
-                ]
-            }
         }
-    }
+    },
+    "version": 1
 }

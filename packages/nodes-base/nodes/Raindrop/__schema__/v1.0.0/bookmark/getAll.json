@@ -37,6 +37,33 @@
         "cover": {
             "type": "string"
         },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "removed": {
+            "type": "boolean"
+        },
+        "collection": {
+            "type": "object",
+            "properties": {
+                "$ref": {
+                    "type": "string"
+                },
+                "$id": {
+                    "type": "integer"
+                },
+                "oid": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "$ref",
+                "$id"
+            ]
+        },
         "media": {
             "type": "array",
             "items": {
@@ -55,11 +82,40 @@
                 ]
             }
         },
-        "tags": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
+        "created": {
+            "type": "string"
+        },
+        "lastUpdate": {
+            "type": "string"
+        },
+        "domain": {
+            "type": "string"
+        },
+        "creatorRef": {
+            "type": "object",
+            "properties": {
+                "_id": {
+                    "type": "integer"
+                },
+                "avatar": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "_id",
+                "avatar",
+                "name",
+                "email"
+            ]
+        },
+        "sort": {
+            "type": "integer"
         },
         "highlights": {
             "type": "array",
@@ -99,68 +155,11 @@
                 ]
             }
         },
-        "important": {
-            "type": "boolean"
-        },
-        "removed": {
-            "type": "boolean"
-        },
-        "created": {
-            "type": "string"
-        },
-        "collection": {
-            "type": "object",
-            "properties": {
-                "$ref": {
-                    "type": "string"
-                },
-                "$id": {
-                    "type": "integer"
-                },
-                "oid": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "$ref",
-                "$id",
-                "oid"
-            ]
-        },
-        "lastUpdate": {
-            "type": "string"
-        },
-        "domain": {
-            "type": "string"
-        },
-        "creatorRef": {
-            "type": "object",
-            "properties": {
-                "_id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "avatar": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "_id",
-                "name",
-                "avatar",
-                "email"
-            ]
-        },
-        "sort": {
-            "type": "integer"
-        },
         "collectionId": {
             "type": "integer"
+        },
+        "important": {
+            "type": "boolean"
         },
         "reminder": {
             "type": "object",
@@ -183,16 +182,16 @@
         "type",
         "user",
         "cover",
-        "media",
         "tags",
-        "highlights",
         "removed",
-        "created",
         "collection",
+        "media",
+        "created",
         "lastUpdate",
         "domain",
-        "creatorRef",
         "sort",
+        "highlights",
         "collectionId"
-    ]
+    ],
+    "version": 1
 }

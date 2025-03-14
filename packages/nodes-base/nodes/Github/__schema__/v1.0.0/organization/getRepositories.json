@@ -334,6 +334,85 @@
                 "triage",
                 "pull"
             ]
+        },
+        "security_and_analysis": {
+            "type": "object",
+            "properties": {
+                "secret_scanning": {
+                    "type": "object",
+                    "properties": {
+                        "status": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "status"
+                    ]
+                },
+                "secret_scanning_push_protection": {
+                    "type": "object",
+                    "properties": {
+                        "status": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "status"
+                    ]
+                },
+                "dependabot_security_updates": {
+                    "type": "object",
+                    "properties": {
+                        "status": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "status"
+                    ]
+                },
+                "secret_scanning_non_provider_patterns": {
+                    "type": "object",
+                    "properties": {
+                        "status": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "status"
+                    ]
+                },
+                "secret_scanning_validity_checks": {
+                    "type": "object",
+                    "properties": {
+                        "status": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "status"
+                    ]
+                },
+                "advanced_security": {
+                    "type": "object",
+                    "properties": {
+                        "status": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "status"
+                    ]
+                }
+            },
+            "required": [
+                "secret_scanning",
+                "secret_scanning_push_protection",
+                "dependabot_security_updates",
+                "secret_scanning_non_provider_patterns",
+                "secret_scanning_validity_checks"
+            ]
         }
-    }
+    },
+    "version": 1
 }

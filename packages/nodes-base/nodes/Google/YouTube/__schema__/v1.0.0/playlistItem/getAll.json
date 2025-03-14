@@ -170,9 +170,7 @@
                 "channelTitle",
                 "playlistId",
                 "position",
-                "resourceId",
-                "videoOwnerChannelTitle",
-                "videoOwnerChannelId"
+                "resourceId"
             ]
         },
         "contentDetails": {
@@ -186,8 +184,7 @@
                 }
             },
             "required": [
-                "videoId",
-                "videoPublishedAt"
+                "videoId"
             ]
         },
         "status": {
@@ -206,5 +203,6 @@
         "kind",
         "etag",
         "id"
-    ]
+    ],
+    "version": 1
 }

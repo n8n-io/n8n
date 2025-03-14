@@ -7,6 +7,22 @@
         "object": {
             "type": "string"
         },
+        "address": {
+            "type": "object",
+            "properties": {
+                "country": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "city",
+                "country",
+                "line1",
+                "line2",
+                "postal_code",
+                "state"
+            ]
+        },
         "balance": {
             "type": "integer"
         },
@@ -15,9 +31,6 @@
         },
         "delinquent": {
             "type": "boolean"
-        },
-        "discount": {
-            "type": "null"
         },
         "invoice_prefix": {
             "type": "string"
@@ -42,9 +55,6 @@
         "livemode": {
             "type": "boolean"
         },
-        "next_invoice_sequence": {
-            "type": "integer"
-        },
         "preferred_locales": {
             "type": "array",
             "items": {
@@ -54,5 +64,10 @@
         "tax_exempt": {
             "type": "string"
         }
-    }
+    },
+    "required": [
+        "id",
+        "object"
+    ],
+    "version": 1
 }

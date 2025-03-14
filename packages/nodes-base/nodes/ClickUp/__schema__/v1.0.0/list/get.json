@@ -10,22 +10,10 @@
         "deleted": {
             "type": "boolean"
         },
-        "orderindex": {
-            "type": "integer"
-        },
         "content": {
             "type": "string"
         },
         "priority": {
-            "type": "null"
-        },
-        "assignee": {
-            "type": "null"
-        },
-        "due_date": {
-            "type": "null"
-        },
-        "start_date": {
             "type": "null"
         },
         "folder": {
@@ -130,5 +118,6 @@
         "override_statuses",
         "statuses",
         "permission_level"
-    ]
+    ],
+    "version": 1
 }

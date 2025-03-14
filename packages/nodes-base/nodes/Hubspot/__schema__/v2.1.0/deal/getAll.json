@@ -45,63 +45,11 @@
                                     "source": {
                                         "type": "string"
                                     },
-                                    "sourceMetadata": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "name",
-                                    "value",
-                                    "timestamp",
-                                    "source",
-                                    "sourceVid"
-                                ]
-                            }
-                        }
-                    },
-                    "required": [
-                        "value",
-                        "timestamp",
-                        "source",
-                        "sourceId",
-                        "updatedByUserId",
-                        "versions"
-                    ]
-                },
-                "dealstage": {
-                    "type": "object",
-                    "properties": {
-                        "value": {
-                            "type": "string"
-                        },
-                        "timestamp": {
-                            "type": "integer"
-                        },
-                        "source": {
-                            "type": "string"
-                        },
-                        "versions": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "name": {
-                                        "type": "string"
-                                    },
-                                    "value": {
-                                        "type": "string"
-                                    },
-                                    "timestamp": {
+                                    "updatedByUserId": {
                                         "type": "integer"
                                     },
-                                    "sourceId": {
-                                        "type": "string"
-                                    },
-                                    "source": {
-                                        "type": "string"
-                                    },
-                                    "sourceMetadata": {
-                                        "type": "string"
+                                    "useTimestampAsPersistenceTimestamp": {
+                                        "type": "boolean"
                                     }
                                 },
                                 "required": [
@@ -151,5 +99,6 @@
         "associations",
         "properties",
         "stateChanges"
-    ]
+    ],
+    "version": 1
 }

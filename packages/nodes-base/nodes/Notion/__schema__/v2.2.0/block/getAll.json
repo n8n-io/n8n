@@ -59,6 +59,15 @@
         }
     },
     "required": [
-        "id"
-    ]
+        "object",
+        "parent_id",
+        "id",
+        "parent",
+        "last_edited_by",
+        "has_children",
+        "archived",
+        "in_trash",
+        "type"
+    ],
+    "version": 1
 }

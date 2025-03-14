@@ -4,5 +4,6 @@
         "snapshot_id": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

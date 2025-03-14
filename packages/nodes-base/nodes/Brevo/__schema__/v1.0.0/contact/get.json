@@ -19,19 +19,12 @@
         "modifiedAt": {
             "type": "string"
         },
-        "attributes": {
-            "type": "object",
-            "properties": {
-                "FIRSTNAME": {
-                    "type": "string"
-                }
-            }
-        },
         "listIds": {
             "type": "array",
             "items": {
                 "type": "integer"
             }
         }
-    }
+    },
+    "version": 1
 }

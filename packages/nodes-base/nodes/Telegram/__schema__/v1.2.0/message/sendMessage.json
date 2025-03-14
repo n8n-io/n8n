@@ -39,10 +39,13 @@
                         "id": {
                             "type": "integer"
                         },
+                        "type": {
+                            "type": "string"
+                        },
                         "first_name": {
                             "type": "string"
                         },
-                        "type": {
+                        "last_name": {
                             "type": "string"
                         }
                     },
@@ -81,22 +84,10 @@
                             "type"
                         ]
                     }
-                },
-                "link_preview_options": {
-                    "type": "object",
-                    "properties": {
-                        "is_disabled": {
-                            "type": "boolean"
-                        }
-                    },
-                    "required": [
-                        "is_disabled"
-                    ]
                 }
             },
             "required": [
                 "message_id",
-                "from",
                 "chat",
                 "date",
                 "text"
@@ -106,5 +97,6 @@
     "required": [
         "ok",
         "result"
-    ]
+    ],
+    "version": 1
 }

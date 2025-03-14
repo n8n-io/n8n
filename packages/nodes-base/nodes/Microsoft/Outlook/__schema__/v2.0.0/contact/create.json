@@ -40,9 +40,6 @@
         "nickName": {
             "type": "null"
         },
-        "title": {
-            "type": "null"
-        },
         "yomiGivenName": {
             "type": "null"
         },
@@ -55,20 +52,17 @@
         "generation": {
             "type": "null"
         },
-        "department": {
-            "type": "null"
-        },
-        "officeLocation": {
-            "type": "null"
-        },
         "profession": {
-            "type": "null"
-        },
-        "assistantName": {
             "type": "null"
         },
         "manager": {
             "type": "null"
+        },
+        "homePhones": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
         },
         "businessPhones": {
             "type": "array",
@@ -87,10 +81,10 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "name": {
+                    "address": {
                         "type": "string"
                     },
-                    "address": {
+                    "name": {
                         "type": "string"
                     }
                 },
@@ -141,5 +135,6 @@
         "homeAddress",
         "businessAddress",
         "otherAddress"
-    ]
+    ],
+    "version": 1
 }

@@ -52,5 +52,6 @@
                 "content_hash"
             ]
         }
-    }
+    },
+    "version": 1
 }

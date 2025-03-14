@@ -85,13 +85,13 @@
                     "familyName": {
                         "type": "string"
                     },
+                    "givenName": {
+                        "type": "string"
+                    },
                     "displayNameLastFirst": {
                         "type": "string"
                     },
                     "unstructuredName": {
-                        "type": "string"
-                    },
-                    "givenName": {
                         "type": "string"
                     }
                 },
@@ -198,58 +198,7 @@
         },
         "contactId": {
             "type": "string"
-        },
-        "phoneNumbers": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "metadata": {
-                        "type": "object",
-                        "properties": {
-                            "primary": {
-                                "type": "boolean"
-                            },
-                            "source": {
-                                "type": "object",
-                                "properties": {
-                                    "type": {
-                                        "type": "string"
-                                    },
-                                    "id": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "type",
-                                    "id"
-                                ]
-                            }
-                        },
-                        "required": [
-                            "source"
-                        ]
-                    },
-                    "value": {
-                        "type": "string"
-                    },
-                    "canonicalForm": {
-                        "type": "string"
-                    },
-                    "type": {
-                        "type": "string"
-                    },
-                    "formattedType": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "metadata",
-                    "value",
-                    "type",
-                    "formattedType"
-                ]
-            }
         }
-    }
+    },
+    "version": 1
 }

@@ -7,44 +7,6 @@
         "badges": {
             "type": "object",
             "properties": {
-                "attachmentsByType": {
-                    "type": "object",
-                    "properties": {
-                        "trello": {
-                            "type": "object",
-                            "properties": {
-                                "board": {
-                                    "type": "integer"
-                                },
-                                "card": {
-                                    "type": "integer"
-                                }
-                            },
-                            "required": [
-                                "board",
-                                "card"
-                            ]
-                        }
-                    },
-                    "required": [
-                        "trello"
-                    ]
-                },
-                "externalSource": {
-                    "type": "null"
-                },
-                "location": {
-                    "type": "boolean"
-                },
-                "votes": {
-                    "type": "integer"
-                },
-                "viewingMemberVoted": {
-                    "type": "boolean"
-                },
-                "subscribed": {
-                    "type": "boolean"
-                },
                 "attachments": {
                     "type": "integer"
                 },
@@ -74,15 +36,47 @@
                 },
                 "start": {
                     "type": "null"
+                },
+                "externalSource": {
+                    "type": "null"
+                },
+                "attachmentsByType": {
+                    "type": "object",
+                    "properties": {
+                        "trello": {
+                            "type": "object",
+                            "properties": {
+                                "board": {
+                                    "type": "integer"
+                                },
+                                "card": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "board",
+                                "card"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "trello"
+                    ]
+                },
+                "location": {
+                    "type": "boolean"
+                },
+                "votes": {
+                    "type": "integer"
+                },
+                "viewingMemberVoted": {
+                    "type": "boolean"
+                },
+                "subscribed": {
+                    "type": "boolean"
                 }
             },
             "required": [
-                "attachmentsByType",
-                "externalSource",
-                "location",
-                "votes",
-                "viewingMemberVoted",
-                "subscribed",
                 "attachments",
                 "fogbugz",
                 "checkItems",
@@ -93,7 +87,13 @@
                 "due",
                 "dueComplete",
                 "lastUpdatedByAi",
-                "start"
+                "start",
+                "externalSource",
+                "attachmentsByType",
+                "location",
+                "votes",
+                "viewingMemberVoted",
+                "subscribed"
             ]
         },
         "closed": {
@@ -158,9 +158,6 @@
                     "nodeId": {
                         "type": "string"
                     },
-                    "color": {
-                        "type": "string"
-                    },
                     "uses": {
                         "type": "integer"
                     }
@@ -186,6 +183,9 @@
             "type": "boolean"
         },
         "name": {
+            "type": "string"
+        },
+        "nodeId": {
             "type": "string"
         },
         "pinned": {
@@ -266,6 +266,9 @@
                     "idMember": {
                         "type": "string"
                     },
+                    "isMalicious": {
+                        "type": "boolean"
+                    },
                     "isUpload": {
                         "type": "boolean"
                     },
@@ -322,6 +325,7 @@
         "idLabels",
         "manualCoverAttachment",
         "name",
+        "nodeId",
         "pinned",
         "pos",
         "shortLink",
@@ -332,8 +336,10 @@
         "cover",
         "isTemplate",
         "cardRole",
+        "mirrorSourceId",
         "attachments",
         "stickers",
         "limits"
-    ]
+    ],
+    "version": 1
 }

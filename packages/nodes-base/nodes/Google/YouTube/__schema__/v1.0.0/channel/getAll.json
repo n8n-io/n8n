@@ -178,9 +178,6 @@
                 "longUploadsStatus": {
                     "type": "string"
                 },
-                "madeForKids": {
-                    "type": "boolean"
-                },
                 "isChannelMonetizationEnabled": {
                     "type": "boolean"
                 }
@@ -219,5 +216,6 @@
                 "channel"
             ]
         }
-    }
+    },
+    "version": 1
 }

@@ -100,12 +100,6 @@
                     "portal-id": {
                         "type": "integer"
                     },
-                    "page-url": {
-                        "type": "string"
-                    },
-                    "page-title": {
-                        "type": "string"
-                    },
                     "title": {
                         "type": "string"
                     },
@@ -117,6 +111,12 @@
                         "items": {
                             "type": "string"
                         }
+                    },
+                    "page-url": {
+                        "type": "string"
+                    },
+                    "page-title": {
+                        "type": "string"
                     }
                 },
                 "required": [
@@ -204,6 +204,43 @@
                     "num-properties-moved": {
                         "type": "integer"
                     },
+                    "merged_from_email": {
+                        "type": "object",
+                        "properties": {
+                            "value": {
+                                "type": "string"
+                            },
+                            "source-type": {
+                                "type": "string"
+                            },
+                            "source-label": {
+                                "type": "null"
+                            },
+                            "timestamp": {
+                                "type": "integer"
+                            },
+                            "selected": {
+                                "type": "boolean"
+                            },
+                            "data-sensitivity": {
+                                "type": "null"
+                            },
+                            "is-encrypted": {
+                                "type": "null"
+                            }
+                        },
+                        "required": [
+                            "value",
+                            "source-type",
+                            "source-id",
+                            "source-label",
+                            "updated-by-user-id",
+                            "timestamp",
+                            "selected",
+                            "data-sensitivity",
+                            "is-encrypted"
+                        ]
+                    },
                     "merged_to_email": {
                         "type": "object",
                         "properties": {
@@ -241,54 +278,14 @@
                             "is-encrypted"
                         ]
                     },
-                    "merged_from_email": {
-                        "type": "object",
-                        "properties": {
-                            "value": {
-                                "type": "string"
-                            },
-                            "source-type": {
-                                "type": "string"
-                            },
-                            "source-label": {
-                                "type": "null"
-                            },
-                            "timestamp": {
-                                "type": "integer"
-                            },
-                            "selected": {
-                                "type": "boolean"
-                            },
-                            "data-sensitivity": {
-                                "type": "null"
-                            },
-                            "is-encrypted": {
-                                "type": "null"
-                            },
-                            "source-vids": {
-                                "type": "array",
-                                "items": {
-                                    "type": "integer"
-                                }
-                            }
-                        },
-                        "required": [
-                            "value",
-                            "source-type",
-                            "source-id",
-                            "source-label",
-                            "updated-by-user-id",
-                            "timestamp",
-                            "selected",
-                            "data-sensitivity",
-                            "is-encrypted"
-                        ]
-                    },
                     "first-name": {
                         "type": "string"
                     },
                     "last-name": {
                         "type": "string"
+                    },
+                    "is-reverted": {
+                        "type": "boolean"
                     }
                 },
                 "required": [
@@ -307,14 +304,7 @@
         }
     },
     "required": [
-        "vid",
-        "canonical-vid",
-        "merged-vids",
-        "portal-id",
-        "is-contact",
-        "properties",
-        "identity-profiles",
-        "merge-audits",
-        "addedAt"
-    ]
+        "properties"
+    ],
+    "version": 1
 }

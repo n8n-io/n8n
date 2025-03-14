@@ -19,5 +19,6 @@
         "name",
         "resource_type",
         "resource_subtype"
-    ]
+    ],
+    "version": 1
 }

@@ -86,9 +86,6 @@
         "archived": {
             "type": "boolean"
         },
-        "duration": {
-            "type": "string"
-        },
         "clientName": {
             "type": "string"
         },
@@ -152,5 +149,6 @@
         "estimateReset",
         "template",
         "public"
-    ]
+    ],
+    "version": 1
 }

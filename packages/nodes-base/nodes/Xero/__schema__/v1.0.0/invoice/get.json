@@ -13,11 +13,43 @@
         "Reference": {
             "type": "string"
         },
+        "Overpayments": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "OverpaymentID": {
+                        "type": "string"
+                    },
+                    "CurrencyRate": {
+                        "type": "integer"
+                    },
+                    "AppliedAmount": {
+                        "type": "number"
+                    },
+                    "DateString": {
+                        "type": "string"
+                    },
+                    "Date": {
+                        "type": "string"
+                    },
+                    "Total": {
+                        "type": "number"
+                    }
+                },
+                "required": [
+                    "OverpaymentID",
+                    "CurrencyRate",
+                    "AppliedAmount",
+                    "DateString",
+                    "Date",
+                    "LineItems",
+                    "Total"
+                ]
+            }
+        },
         "SentToContact": {
             "type": "boolean"
-        },
-        "CurrencyRate": {
-            "type": "integer"
         },
         "IsDiscounted": {
             "type": "boolean"
@@ -70,16 +102,10 @@
                 "Name": {
                     "type": "string"
                 },
-                "FirstName": {
-                    "type": "string"
-                },
-                "LastName": {
-                    "type": "string"
-                },
                 "EmailAddress": {
                     "type": "string"
                 },
-                "AccountsReceivableTaxType": {
+                "BankAccountDetails": {
                     "type": "string"
                 },
                 "Addresses": {
@@ -90,10 +116,10 @@
                             "AddressType": {
                                 "type": "string"
                             },
-                            "AddressLine1": {
+                            "City": {
                                 "type": "string"
                             },
-                            "City": {
+                            "Region": {
                                 "type": "string"
                             },
                             "PostalCode": {
@@ -102,7 +128,7 @@
                             "Country": {
                                 "type": "string"
                             },
-                            "Region": {
+                            "AddressLine1": {
                                 "type": "string"
                             }
                         },
@@ -238,7 +264,13 @@
                 "HasValidationErrors": {
                     "type": "boolean"
                 },
-                "BankAccountDetails": {
+                "FirstName": {
+                    "type": "string"
+                },
+                "LastName": {
+                    "type": "string"
+                },
+                "AccountsReceivableTaxType": {
                     "type": "string"
                 }
             },
@@ -270,9 +302,6 @@
         "DueDate": {
             "type": "string"
         },
-        "BrandingThemeID": {
-            "type": "string"
-        },
         "Status": {
             "type": "string"
         },
@@ -284,9 +313,6 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "Description": {
-                        "type": "string"
-                    },
                     "TaxType": {
                         "type": "string"
                     },
@@ -325,6 +351,9 @@
                     "AccountID": {
                         "type": "string"
                     },
+                    "Description": {
+                        "type": "string"
+                    },
                     "ItemCode": {
                         "type": "string"
                     },
@@ -334,26 +363,21 @@
                             "ItemID": {
                                 "type": "string"
                             },
-                            "Name": {
+                            "Code": {
                                 "type": "string"
                             },
-                            "Code": {
+                            "Name": {
                                 "type": "string"
                             }
                         },
                         "required": [
                             "ItemID",
-                            "Name",
                             "Code"
                         ]
                     }
                 },
                 "required": [
-                    "UnitAmount",
-                    "TaxAmount",
-                    "LineAmount",
                     "Tracking",
-                    "Quantity",
                     "LineItemID",
                     "ValidationErrors"
                 ]
@@ -363,6 +387,9 @@
             "type": "string"
         },
         "CurrencyCode": {
+            "type": "string"
+        },
+        "BrandingThemeID": {
             "type": "string"
         },
         "Url": {
@@ -395,5 +422,6 @@
         "Total",
         "UpdatedDateUTC",
         "CurrencyCode"
-    ]
+    ],
+    "version": 1
 }

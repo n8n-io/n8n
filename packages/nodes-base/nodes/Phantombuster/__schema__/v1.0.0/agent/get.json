@@ -110,7 +110,7 @@
         "orgS3Folder",
         "updatedAt",
         "name",
-        "fileMgmt",
-        "maxParallelism"
-    ]
+        "fileMgmt"
+    ],
+    "version": 1
 }

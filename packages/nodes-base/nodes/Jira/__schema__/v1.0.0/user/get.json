@@ -10,6 +10,9 @@
         "accountType": {
             "type": "string"
         },
+        "emailAddress": {
+            "type": "string"
+        },
         "avatarUrls": {
             "type": "object",
             "properties": {
@@ -111,9 +114,6 @@
         },
         "expand": {
             "type": "string"
-        },
-        "emailAddress": {
-            "type": "string"
         }
     },
     "required": [
@@ -128,5 +128,6 @@
         "groups",
         "applicationRoles",
         "expand"
-    ]
+    ],
+    "version": 1
 }

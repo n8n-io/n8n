@@ -195,6 +195,26 @@
     "required": [
         "type",
         "id",
-        "etag"
-    ]
+        "file_version",
+        "sequence_id",
+        "etag",
+        "sha1",
+        "name",
+        "description",
+        "size",
+        "path_collection",
+        "created_at",
+        "modified_at",
+        "trashed_at",
+        "purged_at",
+        "content_created_at",
+        "content_modified_at",
+        "created_by",
+        "modified_by",
+        "owned_by",
+        "shared_link",
+        "parent",
+        "item_status"
+    ],
+    "version": 1
 }

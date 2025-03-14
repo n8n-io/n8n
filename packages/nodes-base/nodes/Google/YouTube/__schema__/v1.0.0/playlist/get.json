@@ -128,8 +128,7 @@
                         "default",
                         "medium",
                         "high",
-                        "standard",
-                        "maxres"
+                        "standard"
                     ]
                 },
                 "channelTitle": {
@@ -199,5 +198,6 @@
         "kind",
         "etag",
         "id"
-    ]
+    ],
+    "version": 1
 }

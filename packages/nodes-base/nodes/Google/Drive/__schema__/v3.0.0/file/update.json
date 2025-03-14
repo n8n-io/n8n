@@ -13,5 +13,6 @@
         "mimeType": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

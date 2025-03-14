@@ -41,9 +41,6 @@
                                                 "name": {
                                                     "type": "string"
                                                 },
-                                                "value": {
-                                                    "type": "string"
-                                                },
                                                 "type": {
                                                     "type": "string"
                                                 }
@@ -61,30 +58,27 @@
                                     "assignments"
                                 ]
                             },
-                            "authentication": {
-                                "type": "string"
-                            },
-                            "jsCode": {
-                                "type": "string"
-                            },
-                            "resource": {
+                            "path": {
                                 "type": "string"
                             },
                             "operation": {
                                 "type": "string"
                             },
-                            "path": {
+                            "jsCode": {
+                                "type": "string"
+                            },
+                            "authentication": {
                                 "type": "string"
                             }
                         }
+                    },
+                    "type": {
+                        "type": "string"
                     },
                     "id": {
                         "type": "string"
                     },
                     "name": {
-                        "type": "string"
-                    },
-                    "type": {
                         "type": "string"
                     },
                     "webhookId": {
@@ -93,49 +87,10 @@
                 },
                 "required": [
                     "parameters",
-                    "name",
                     "type",
-                    "typeVersion",
-                    "position"
+                    "position",
+                    "name"
                 ]
-            }
-        },
-        "connections": {
-            "type": "object",
-            "properties": {
-                "When clicking ‘Test workflow’": {
-                    "type": "object",
-                    "properties": {
-                        "main": {
-                            "type": "array",
-                            "items": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "node": {
-                                            "type": "string"
-                                        },
-                                        "type": {
-                                            "type": "string"
-                                        },
-                                        "index": {
-                                            "type": "integer"
-                                        }
-                                    },
-                                    "required": [
-                                        "node",
-                                        "type",
-                                        "index"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "required": [
-                        "main"
-                    ]
-                }
             }
         },
         "settings": {
@@ -144,7 +99,10 @@
                 "executionOrder": {
                     "type": "string"
                 }
-            }
+            },
+            "required": [
+                "executionOrder"
+            ]
         },
         "triggerCount": {
             "type": "integer"
@@ -175,5 +133,6 @@
                 ]
             }
         }
-    }
+    },
+    "version": 1
 }

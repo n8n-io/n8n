@@ -52,20 +52,7 @@
         }
     },
     "required": [
-        "contactId",
-        "href",
-        "name",
-        "email",
-        "note",
-        "origin",
-        "dayOfCycle",
-        "changedOn",
-        "timeZone",
-        "ipAddress",
-        "activities",
-        "campaign",
-        "createdOn",
-        "scoring",
-        "engagementScore"
-    ]
+        "contactId"
+    ],
+    "version": 1
 }

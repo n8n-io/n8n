@@ -33,11 +33,5 @@
             "type": "boolean"
         }
     },
-    "required": [
-        "id",
-        "properties",
-        "createdAt",
-        "updatedAt",
-        "archived"
-    ]
+    "version": 1
 }

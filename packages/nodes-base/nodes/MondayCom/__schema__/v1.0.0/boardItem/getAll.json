@@ -61,5 +61,6 @@
         "created_at",
         "state",
         "column_values"
-    ]
+    ],
+    "version": 1
 }

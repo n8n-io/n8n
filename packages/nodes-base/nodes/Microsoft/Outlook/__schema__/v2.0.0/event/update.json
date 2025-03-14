@@ -82,9 +82,6 @@
         "webLink": {
             "type": "string"
         },
-        "onlineMeetingUrl": {
-            "type": "null"
-        },
         "isOnlineMeeting": {
             "type": "boolean"
         },
@@ -211,6 +208,52 @@
         "recurrence": {
             "type": "null"
         },
+        "attendees": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "object",
+                        "properties": {
+                            "response": {
+                                "type": "string"
+                            },
+                            "time": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "response",
+                            "time"
+                        ]
+                    },
+                    "emailAddress": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "address": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "address"
+                        ]
+                    }
+                },
+                "required": [
+                    "type",
+                    "status",
+                    "emailAddress"
+                ]
+            }
+        },
         "organizer": {
             "type": "object",
             "properties": {
@@ -234,5 +277,6 @@
                 "emailAddress"
             ]
         }
-    }
+    },
+    "version": 1
 }

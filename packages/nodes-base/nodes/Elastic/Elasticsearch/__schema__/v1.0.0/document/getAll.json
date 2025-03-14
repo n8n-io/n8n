@@ -7,5 +7,6 @@
     },
     "required": [
         "_id"
-    ]
+    ],
+    "version": 1
 }

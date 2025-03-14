@@ -16,6 +16,9 @@
         "name": {
             "type": "string"
         },
+        "rate_limit_per_user": {
+            "type": "integer"
+        },
         "position": {
             "type": "integer"
         },
@@ -44,9 +47,6 @@
                     "deny"
                 ]
             }
-        },
-        "rate_limit_per_user": {
-            "type": "integer"
         },
         "nsfw": {
             "type": "boolean"
@@ -79,5 +79,6 @@
         "parent_id",
         "position",
         "permission_overwrites"
-    ]
+    ],
+    "version": 1
 }

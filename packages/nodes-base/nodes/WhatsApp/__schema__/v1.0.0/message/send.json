@@ -36,5 +36,11 @@
                 ]
             }
         }
-    }
+    },
+    "required": [
+        "messaging_product",
+        "contacts",
+        "messages"
+    ],
+    "version": 1
 }

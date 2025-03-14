@@ -28,21 +28,6 @@
         "Name": {
             "type": "string"
         },
-        "ShippingLatitude": {
-            "type": "null"
-        },
-        "ShippingLongitude": {
-            "type": "null"
-        },
-        "ShippingGeocodeAccuracy": {
-            "type": "null"
-        },
-        "Fax": {
-            "type": "null"
-        },
-        "PhotoUrl": {
-            "type": "string"
-        },
         "OwnerId": {
             "type": "string"
         },
@@ -61,17 +46,15 @@
         "SystemModstamp": {
             "type": "string"
         },
+        "Jigsaw": {
+            "type": "null"
+        },
         "JigsawCompanyId": {
             "type": "null"
         },
         "SicDesc": {
             "type": "null"
-        },
-        "Sic": {
-            "type": "null"
-        },
-        "AnnualRevenue": {
-            "type": "null"
         }
-    }
+    },
+    "version": 1
 }

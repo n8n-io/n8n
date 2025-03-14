@@ -53,9 +53,6 @@
                     },
                     "Type": {
                         "type": "string"
-                    },
-                    "StringValue": {
-                        "type": "string"
                     }
                 },
                 "required": [
@@ -135,8 +132,7 @@
                                     }
                                 },
                                 "required": [
-                                    "value",
-                                    "name"
+                                    "value"
                                 ]
                             },
                             "TaxCodeRef": {
@@ -152,8 +148,7 @@
                             }
                         },
                         "required": [
-                            "ItemRef",
-                            "TaxCodeRef"
+                            "ItemRef"
                         ]
                     }
                 },
@@ -268,26 +263,6 @@
                 "Id"
             ]
         },
-        "ShipAddr": {
-            "type": "object",
-            "properties": {
-                "Id": {
-                    "type": "string"
-                },
-                "Line1": {
-                    "type": "string"
-                },
-                "City": {
-                    "type": "string"
-                },
-                "PostalCode": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "Id"
-            ]
-        },
         "SalesTermRef": {
             "type": "object",
             "properties": {
@@ -324,6 +299,30 @@
             "required": [
                 "Address"
             ]
+        },
+        "ShipAddr": {
+            "type": "object",
+            "properties": {
+                "Id": {
+                    "type": "string"
+                },
+                "Line1": {
+                    "type": "string"
+                },
+                "City": {
+                    "type": "string"
+                },
+                "CountrySubDivisionCode": {
+                    "type": "string"
+                },
+                "PostalCode": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Id"
+            ]
         }
-    }
+    },
+    "version": 1
 }

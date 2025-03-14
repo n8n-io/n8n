@@ -33,9 +33,6 @@
                     "id": {
                         "type": "string"
                     },
-                    "orderindex": {
-                        "type": "null"
-                    },
                     "assignee": {
                         "type": "null"
                     },
@@ -91,5 +88,6 @@
         "resolved",
         "unresolved",
         "items"
-    ]
+    ],
+    "version": 1
 }

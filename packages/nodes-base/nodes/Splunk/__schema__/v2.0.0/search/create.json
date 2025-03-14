@@ -1,299 +1,325 @@
 {
-	"type": "object",
-	"properties": {
-		"name": {
-			"type": "string"
-		},
-		"id": {
-			"type": "string"
-		},
-		"updated": {
-			"type": "string"
-		},
-		"links": {
-			"type": "object",
-			"properties": {
-				"alternate": {
-					"type": "string"
-				},
-				"search.log": {
-					"type": "string"
-				},
-				"events": {
-					"type": "string"
-				},
-				"results": {
-					"type": "string"
-				},
-				"results_preview": {
-					"type": "string"
-				},
-				"timeline": {
-					"type": "string"
-				},
-				"summary": {
-					"type": "string"
-				},
-				"control": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"alternate",
-				"search.log",
-				"events",
-				"results",
-				"results_preview",
-				"timeline",
-				"summary",
-				"control"
-			]
-		},
-		"published": {
-			"type": "string"
-		},
-		"author": {
-			"type": "string"
-		},
-		"acl": {
-			"type": "object",
-			"properties": {
-				"perms": {
-					"type": "object",
-					"properties": {
-						"read": {
-							"type": "array",
-							"items": {
-								"type": "string"
-							}
-						},
-						"write": {
-							"type": "array",
-							"items": {
-								"type": "string"
-							}
-						}
-					},
-					"required": [
-						"read",
-						"write"
-					]
-				},
-				"owner": {
-					"type": "string"
-				},
-				"modifiable": {
-					"type": "boolean"
-				},
-				"sharing": {
-					"type": "string"
-				},
-				"app": {
-					"type": "string"
-				},
-				"can_write": {
-					"type": "boolean"
-				},
-				"ttl": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"perms",
-				"owner",
-				"modifiable",
-				"sharing",
-				"app",
-				"can_write",
-				"ttl"
-			]
-		},
-		"cursorTime": {
-			"type": "string"
-		},
-		"defaultSaveTTL": {
-			"type": "string"
-		},
-		"defaultTTL": {
-			"type": "string"
-		},
-		"delegate": {
-			"type": "string"
-		},
-		"diskUsage": {
-			"type": "integer"
-		},
-		"dispatchState": {
-			"type": "string"
-		},
-		"doneProgress": {
-			"type": "integer"
-		},
-		"earliestTime": {
-			"type": "string"
-		},
-		"isDone": {
-			"type": "boolean"
-		},
-		"isFailed": {
-			"type": "boolean"
-		},
-		"isFinalized": {
-			"type": "boolean"
-		},
-		"isPaused": {
-			"type": "boolean"
-		},
-		"isSaved": {
-			"type": "boolean"
-		},
-		"isSavedSearch": {
-			"type": "boolean"
-		},
-		"isZombie": {
-			"type": "boolean"
-		},
-		"label": {
-			"type": "string"
-		},
-		"pid": {
-			"type": "string"
-		},
-		"sid": {
-			"type": "string"
-		},
-		"statusBuckets": {
-			"type": "integer"
-		},
-		"ttl": {
-			"type": "integer"
-		},
-		"request": {
-			"type": "object",
-			"properties": {
-				"search": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"search"
-			]
-		},
-		"runtime": {
-			"type": "object",
-			"properties": {
-				"auto_cancel": {
-					"type": "string"
-				},
-				"auto_pause": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"auto_cancel",
-				"auto_pause"
-			]
-		},
-		"entryUrl": {
-			"type": "string"
-		},
-		"bundleVersion": {
-			"type": "string"
-		},
-		"isEventsPreviewEnabled": {
-			"type": "boolean"
-		},
-		"isPreviewEnabled": {
-			"type": "boolean"
-		},
-		"numPreviews": {
-			"type": "integer"
-		},
-		"priority": {
-			"type": "integer"
-		},
-		"provenance": {
-			"type": "string"
-		},
-		"resultPreviewCount": {
-			"type": "integer"
-		},
-		"sampleRatio": {
-			"type": "string"
-		},
-		"sampleSeed": {
-			"type": "string"
-		},
-		"search": {
-			"type": "string"
-		},
-		"performance": {
-			"type": "object",
-			"properties": {
-				"startup.configuration": {
-					"type": "object",
-					"properties": {
-						"duration_secs": {
-							"type": "number"
-						},
-						"invocations": {
-							"type": "integer"
-						}
-					},
-					"required": [
-						"duration_secs",
-						"invocations"
-					]
-				},
-				"startup.handoff": {
-					"type": "object",
-					"properties": {
-						"duration_secs": {
-							"type": "number"
-						},
-						"invocations": {
-							"type": "integer"
-						}
-					},
-					"required": [
-						"duration_secs",
-						"invocations"
-					]
-				}
-			}
-		}
-	},
-	"required": [
-		"name",
-		"id",
-		"updated",
-		"links",
-		"published",
-		"author",
-		"acl",
-		"cursorTime",
-		"defaultSaveTTL",
-		"defaultTTL",
-		"delegate",
-		"diskUsage",
-		"dispatchState",
-		"doneProgress",
-		"earliestTime",
-		"isDone",
-		"isFailed",
-		"isFinalized",
-		"isPaused",
-		"isSaved",
-		"isSavedSearch",
-		"isZombie",
-		"label",
-		"sid",
-		"statusBuckets",
-		"ttl",
-		"messages",
-		"request",
-		"runtime",
-		"searchProviders",
-		"entryUrl"
-	]
+    "type": "object",
+    "properties": {
+        "name": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "updated": {
+            "type": "string"
+        },
+        "links": {
+            "type": "object",
+            "properties": {
+                "alternate": {
+                    "type": "string"
+                },
+                "search.log": {
+                    "type": "string"
+                },
+                "events": {
+                    "type": "string"
+                },
+                "results": {
+                    "type": "string"
+                },
+                "results_preview": {
+                    "type": "string"
+                },
+                "timeline": {
+                    "type": "string"
+                },
+                "summary": {
+                    "type": "string"
+                },
+                "control": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "alternate",
+                "events",
+                "results",
+                "results_preview",
+                "timeline",
+                "summary",
+                "control"
+            ]
+        },
+        "published": {
+            "type": "string"
+        },
+        "author": {
+            "type": "string"
+        },
+        "acl": {
+            "type": "object",
+            "properties": {
+                "perms": {
+                    "type": "object",
+                    "properties": {
+                        "read": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "write": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "required": [
+                        "read",
+                        "write"
+                    ]
+                },
+                "owner": {
+                    "type": "string"
+                },
+                "modifiable": {
+                    "type": "boolean"
+                },
+                "sharing": {
+                    "type": "string"
+                },
+                "app": {
+                    "type": "string"
+                },
+                "can_write": {
+                    "type": "boolean"
+                },
+                "ttl": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "perms",
+                "owner",
+                "modifiable",
+                "sharing",
+                "app",
+                "can_write",
+                "ttl"
+            ]
+        },
+        "bundleVersion": {
+            "type": "string"
+        },
+        "cursorTime": {
+            "type": "string"
+        },
+        "defaultSaveTTL": {
+            "type": "string"
+        },
+        "defaultTTL": {
+            "type": "string"
+        },
+        "delegate": {
+            "type": "string"
+        },
+        "diskUsage": {
+            "type": "integer"
+        },
+        "dispatchState": {
+            "type": "string"
+        },
+        "doneProgress": {
+            "type": "integer"
+        },
+        "earliestTime": {
+            "type": "string"
+        },
+        "isDone": {
+            "type": "boolean"
+        },
+        "isEventsPreviewEnabled": {
+            "type": "boolean"
+        },
+        "isFailed": {
+            "type": "boolean"
+        },
+        "isFinalized": {
+            "type": "boolean"
+        },
+        "isPaused": {
+            "type": "boolean"
+        },
+        "isPreviewEnabled": {
+            "type": "boolean"
+        },
+        "isSaved": {
+            "type": "boolean"
+        },
+        "isSavedSearch": {
+            "type": "boolean"
+        },
+        "isZombie": {
+            "type": "boolean"
+        },
+        "label": {
+            "type": "string"
+        },
+        "numPreviews": {
+            "type": "integer"
+        },
+        "pid": {
+            "type": "string"
+        },
+        "priority": {
+            "type": "integer"
+        },
+        "provenance": {
+            "type": "string"
+        },
+        "resultPreviewCount": {
+            "type": "integer"
+        },
+        "sampleRatio": {
+            "type": "string"
+        },
+        "sampleSeed": {
+            "type": "string"
+        },
+        "search": {
+            "type": "string"
+        },
+        "sid": {
+            "type": "string"
+        },
+        "statusBuckets": {
+            "type": "integer"
+        },
+        "ttl": {
+            "type": "integer"
+        },
+        "performance": {
+            "type": "object",
+            "properties": {
+                "startup.configuration": {
+                    "type": "object",
+                    "properties": {
+                        "duration_secs": {
+                            "type": "number"
+                        },
+                        "invocations": {
+                            "type": "integer"
+                        }
+                    },
+                    "required": [
+                        "duration_secs",
+                        "invocations"
+                    ]
+                },
+                "startup.handoff": {
+                    "type": "object",
+                    "properties": {
+                        "duration_secs": {
+                            "type": "number"
+                        },
+                        "invocations": {
+                            "type": "integer"
+                        }
+                    },
+                    "required": [
+                        "duration_secs",
+                        "invocations"
+                    ]
+                }
+            }
+        },
+        "messages": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string"
+                    },
+                    "text": {
+                        "type": "string"
+                    },
+                    "help": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "type",
+                    "text"
+                ]
+            }
+        },
+        "request": {
+            "type": "object",
+            "properties": {
+                "search": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "search"
+            ]
+        },
+        "runtime": {
+            "type": "object",
+            "properties": {
+                "auto_cancel": {
+                    "type": "string"
+                },
+                "auto_pause": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "auto_cancel",
+                "auto_pause"
+            ]
+        },
+        "searchProviders": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "entryUrl": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "name",
+        "id",
+        "updated",
+        "links",
+        "published",
+        "author",
+        "acl",
+        "cursorTime",
+        "defaultSaveTTL",
+        "defaultTTL",
+        "delegate",
+        "diskUsage",
+        "dispatchState",
+        "doneProgress",
+        "earliestTime",
+        "isDone",
+        "isFailed",
+        "isFinalized",
+        "isPaused",
+        "isSaved",
+        "isSavedSearch",
+        "label",
+        "sid",
+        "statusBuckets",
+        "ttl",
+        "messages",
+        "request",
+        "runtime",
+        "searchProviders",
+        "entryUrl"
+    ],
+    "version": 1
 }

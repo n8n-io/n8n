@@ -4,6 +4,9 @@
         "Name": {
             "type": "string"
         },
+        "Description": {
+            "type": "string"
+        },
         "Active": {
             "type": "boolean"
         },
@@ -30,9 +33,6 @@
                 "value",
                 "name"
             ]
-        },
-        "PurchaseCost": {
-            "type": "integer"
         },
         "TrackQtyOnHand": {
             "type": "boolean"
@@ -63,32 +63,7 @@
                 "CreateTime",
                 "LastUpdatedTime"
             ]
-        },
-        "ExpenseAccountRef": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "value",
-                "name"
-            ]
         }
     },
-    "required": [
-        "Name",
-        "Active",
-        "FullyQualifiedName",
-        "Type",
-        "domain",
-        "sparse",
-        "Id",
-        "SyncToken",
-        "MetaData"
-    ]
+    "version": 1
 }

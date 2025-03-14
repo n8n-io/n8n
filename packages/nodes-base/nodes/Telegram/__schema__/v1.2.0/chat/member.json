@@ -19,10 +19,10 @@
                         "first_name": {
                             "type": "string"
                         },
-                        "language_code": {
+                        "username": {
                             "type": "string"
                         },
-                        "username": {
+                        "language_code": {
                             "type": "string"
                         }
                     },
@@ -48,5 +48,6 @@
     "required": [
         "ok",
         "result"
-    ]
+    ],
+    "version": 1
 }

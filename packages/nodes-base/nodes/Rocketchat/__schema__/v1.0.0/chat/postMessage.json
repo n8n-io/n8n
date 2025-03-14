@@ -88,14 +88,26 @@
                 "rid": {
                     "type": "string"
                 },
-                "unread": {
-                    "type": "boolean"
-                },
                 "_id": {
                     "type": "string"
                 },
                 "_updatedAt": {
                     "type": "string"
+                },
+                "urls": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "url": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "url",
+                            "meta"
+                        ]
+                    }
                 },
                 "mentions": {
                     "type": "array",
@@ -151,20 +163,8 @@
                         ]
                     }
                 },
-                "urls": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "url": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "url",
-                            "meta"
-                        ]
-                    }
+                "unread": {
+                    "type": "boolean"
                 }
             },
             "required": [
@@ -185,5 +185,6 @@
         "success": {
             "type": "boolean"
         }
-    }
+    },
+    "version": 1
 }

@@ -1,0 +1,200 @@
+{
+    "type": "object",
+    "properties": {
+        "Owner": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "id",
+                "email"
+            ]
+        },
+        "$currency_symbol": {
+            "type": "string"
+        },
+        "$field_states": {
+            "type": "null"
+        },
+        "$state": {
+            "type": "string"
+        },
+        "$process_flow": {
+            "type": "boolean"
+        },
+        "$locked_for_me": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "$approved": {
+            "type": "boolean"
+        },
+        "$approval": {
+            "type": "object",
+            "properties": {
+                "delegate": {
+                    "type": "boolean"
+                },
+                "takeover": {
+                    "type": "boolean"
+                },
+                "approve": {
+                    "type": "boolean"
+                },
+                "reject": {
+                    "type": "boolean"
+                },
+                "resubmit": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "delegate",
+                "takeover",
+                "approve",
+                "reject",
+                "resubmit"
+            ]
+        },
+        "Created_Time": {
+            "type": "string"
+        },
+        "$editable": {
+            "type": "boolean"
+        },
+        "Created_By": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "id",
+                "email"
+            ]
+        },
+        "$is_duplicate": {
+            "type": "boolean"
+        },
+        "$review_process": {
+            "type": "object",
+            "properties": {
+                "approve": {
+                    "type": "boolean"
+                },
+                "reject": {
+                    "type": "boolean"
+                },
+                "resubmit": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "approve",
+                "reject",
+                "resubmit"
+            ]
+        },
+        "$layout_id": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "id"
+            ]
+        },
+        "Modified_By": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "id",
+                "email"
+            ]
+        },
+        "$review": {
+            "type": "null"
+        },
+        "Account_Name": {
+            "type": "string"
+        },
+        "Account_Number": {
+            "type": "string"
+        },
+        "Modified_Time": {
+            "type": "string"
+        },
+        "Parent_Account": {
+            "type": "null"
+        },
+        "$in_merge": {
+            "type": "boolean"
+        },
+        "Locked__s": {
+            "type": "boolean"
+        },
+        "$approval_state": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Owner",
+        "$currency_symbol",
+        "$field_states",
+        "Last_Activity_Time",
+        "$state",
+        "$process_flow",
+        "$locked_for_me",
+        "id",
+        "$approved",
+        "$approval",
+        "$editable",
+        "$zia_owner_assignment",
+        "$review_process",
+        "Website",
+        "$review",
+        "Account_Name",
+        "Modified_Time",
+        "$orchestration",
+        "$in_merge",
+        "$approval_state"
+    ],
+    "version": 1
+}

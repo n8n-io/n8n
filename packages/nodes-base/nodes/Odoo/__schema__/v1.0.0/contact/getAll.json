@@ -3,9 +3,7 @@
     "properties": {
         "id": {
             "type": "integer"
-        },
-        "display_name": {
-            "type": "string"
         }
-    }
+    },
+    "version": 1
 }

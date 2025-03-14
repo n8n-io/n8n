@@ -28,27 +28,6 @@
         "note": {
             "type": "null"
         },
-        "first_response_escalation_at": {
-            "type": "null"
-        },
-        "first_response_in_min": {
-            "type": "null"
-        },
-        "first_response_diff_in_min": {
-            "type": "null"
-        },
-        "close_escalation_at": {
-            "type": "null"
-        },
-        "update_escalation_at": {
-            "type": "null"
-        },
-        "update_in_min": {
-            "type": "null"
-        },
-        "update_diff_in_min": {
-            "type": "null"
-        },
         "create_article_type_id": {
             "type": "integer"
         },
@@ -62,9 +41,6 @@
             "type": "null"
         },
         "pending_time": {
-            "type": "null"
-        },
-        "type": {
             "type": "null"
         },
         "updated_by_id": {
@@ -111,12 +87,12 @@
         "article_count",
         "escalation_at",
         "pending_time",
-        "type",
         "time_unit",
         "preferences",
         "updated_by_id",
         "created_by_id",
         "created_at",
         "updated_at"
-    ]
+    ],
+    "version": 1
 }

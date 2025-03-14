@@ -228,8 +228,10 @@
                 }
             },
             "required": [
-                "childCount"
+                "childCount",
+                "view"
             ]
         }
-    }
+    },
+    "version": 1
 }

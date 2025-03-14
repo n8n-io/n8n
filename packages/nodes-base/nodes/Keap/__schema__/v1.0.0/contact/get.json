@@ -103,9 +103,6 @@
         "family_name": {
             "type": "string"
         },
-        "contact_type": {
-            "type": "string"
-        },
         "custom_fields": {
             "type": "array",
             "items": {
@@ -120,6 +117,9 @@
                     "content"
                 ]
             }
+        },
+        "contact_type": {
+            "type": "string"
         }
     },
     "required": [
@@ -139,5 +139,6 @@
         "family_name",
         "middle_name",
         "owner_id"
-    ]
+    ],
+    "version": 1
 }

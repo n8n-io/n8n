@@ -1,0 +1,17 @@
+{
+    "type": "object",
+    "properties": {
+        "data": {
+            "type": "object",
+            "properties": {
+                "text": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "required": [
+        "data"
+    ],
+    "version": 1
+}

@@ -82,14 +82,14 @@
                     "items": {
                         "type": "object",
                         "properties": {
+                            "label": {
+                                "type": "string"
+                            },
                             "value": {
                                 "type": "string"
                             },
                             "primary": {
                                 "type": "boolean"
-                            },
-                            "label": {
-                                "type": "string"
                             }
                         },
                         "required": [
@@ -159,17 +159,11 @@
         "next_activity_time": {
             "type": "null"
         },
-        "lost_reason": {
-            "type": "null"
-        },
         "visible_to": {
             "type": "string"
         },
         "pipeline_id": {
             "type": "integer"
-        },
-        "lost_time": {
-            "type": "null"
         },
         "products_count": {
             "type": "integer"
@@ -197,9 +191,6 @@
         },
         "participants_count": {
             "type": "integer"
-        },
-        "local_lost_date": {
-            "type": "null"
         },
         "stage_order_nr": {
             "type": "integer"
@@ -307,14 +298,6 @@
         "stay_in_pipeline_stages": {
             "type": "object",
             "properties": {
-                "times_in_stages": {
-                    "type": "object",
-                    "properties": {
-                        "36": {
-                            "type": "integer"
-                        }
-                    }
-                },
                 "order_of_stages": {
                     "type": "array",
                     "items": {
@@ -360,5 +343,6 @@
         "0bb28fa193c6b091813e9ba57a42aae322b1f098": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

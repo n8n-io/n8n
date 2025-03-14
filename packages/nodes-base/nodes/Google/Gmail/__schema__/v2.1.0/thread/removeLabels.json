@@ -29,8 +29,5 @@
             }
         }
     },
-    "required": [
-        "id",
-        "messages"
-    ]
+    "version": 1
 }

@@ -168,14 +168,12 @@
                 ]
             }
         },
-        "next_cursor": {
-            "type": "null"
-        },
         "has_more": {
             "type": "boolean"
         },
         "request_id": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

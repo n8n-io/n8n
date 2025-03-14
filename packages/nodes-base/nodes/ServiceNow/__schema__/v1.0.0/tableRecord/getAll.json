@@ -4,53 +4,12 @@
         "number": {
             "type": "string"
         },
-        "short_description": {
-            "type": "string"
-        },
         "sys_id": {
             "type": "string"
         },
-        "author": {
-            "type": "object",
-            "properties": {
-                "link": {
-                    "type": "string"
-                },
-                "value": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "link",
-                "value"
-            ]
-        },
-        "rating": {
-            "type": "string"
-        },
-        "language": {
-            "type": "string"
-        },
-        "embedded_media": {
-            "type": "string"
-        },
-        "content": {
-            "type": "string"
-        },
-        "helpful_text": {
-            "type": "string"
-        },
-        "last_updated_on": {
-            "type": "string"
-        },
-        "last_helpful_rating": {
-            "type": "string"
-        },
-        "last_rating": {
-            "type": "string"
-        },
-        "view_count": {
+        "short_description": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

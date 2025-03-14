@@ -72,5 +72,6 @@
         "global",
         "person_ids",
         "list_entries"
-    ]
+    ],
+    "version": 1
 }

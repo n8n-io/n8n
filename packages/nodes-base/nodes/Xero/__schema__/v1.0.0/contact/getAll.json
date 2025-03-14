@@ -13,6 +13,9 @@
         "EmailAddress": {
             "type": "string"
         },
+        "BankAccountDetails": {
+            "type": "string"
+        },
         "Addresses": {
             "type": "array",
             "items": {
@@ -24,10 +27,13 @@
                     "City": {
                         "type": "string"
                     },
+                    "Region": {
+                        "type": "string"
+                    },
                     "PostalCode": {
                         "type": "string"
                     },
-                    "AddressLine1": {
+                    "Country": {
                         "type": "string"
                     }
                 },
@@ -48,6 +54,9 @@
                         "type": "string"
                     },
                     "PhoneAreaCode": {
+                        "type": "string"
+                    },
+                    "PhoneCountryCode": {
                         "type": "string"
                     }
                 },
@@ -70,20 +79,10 @@
         },
         "HasValidationErrors": {
             "type": "boolean"
+        },
+        "DefaultCurrency": {
+            "type": "string"
         }
     },
-    "required": [
-        "ContactID",
-        "ContactStatus",
-        "Name",
-        "Addresses",
-        "Phones",
-        "UpdatedDateUTC",
-        "ContactGroups",
-        "IsSupplier",
-        "IsCustomer",
-        "ContactPersons",
-        "HasAttachments",
-        "HasValidationErrors"
-    ]
+    "version": 1
 }

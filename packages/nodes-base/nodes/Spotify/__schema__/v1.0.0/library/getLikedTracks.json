@@ -269,5 +269,6 @@
     "required": [
         "added_at",
         "track"
-    ]
+    ],
+    "version": 1
 }

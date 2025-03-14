@@ -39,9 +39,6 @@
                         "id": {
                             "type": "integer"
                         },
-                        "type": {
-                            "type": "string"
-                        },
                         "first_name": {
                             "type": "string"
                         },
@@ -49,6 +46,9 @@
                             "type": "string"
                         },
                         "username": {
+                            "type": "string"
+                        },
+                        "type": {
                             "type": "string"
                         }
                     },
@@ -154,8 +154,6 @@
                         "is_animated",
                         "is_video",
                         "type",
-                        "thumbnail",
-                        "thumb",
                         "file_id",
                         "file_unique_id",
                         "file_size"
@@ -173,5 +171,6 @@
     "required": [
         "ok",
         "result"
-    ]
+    ],
+    "version": 1
 }

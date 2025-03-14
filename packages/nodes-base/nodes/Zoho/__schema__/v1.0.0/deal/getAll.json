@@ -60,28 +60,6 @@
                 "id"
             ]
         },
-        "Reason_For_Loss__s": {
-            "type": "null"
-        },
-        "Modified_By": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "name",
-                "id",
-                "email"
-            ]
-        },
         "$review": {
             "type": "null"
         },
@@ -96,21 +74,6 @@
         },
         "$locked_for_me": {
             "type": "boolean"
-        },
-        "Account_Name": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "name",
-                "id"
-            ]
         },
         "id": {
             "type": "string"
@@ -144,14 +107,8 @@
                 "resubmit"
             ]
         },
-        "Modified_Time": {
-            "type": "string"
-        },
         "Created_Time": {
             "type": "string"
-        },
-        "Probability": {
-            "type": "integer"
         },
         "$editable": {
             "type": "boolean"
@@ -183,9 +140,25 @@
         },
         "$approval_state": {
             "type": "string"
+        },
+        "Account_Name": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "id"
+            ]
         }
     },
     "required": [
         "id"
-    ]
+    ],
+    "version": 1
 }

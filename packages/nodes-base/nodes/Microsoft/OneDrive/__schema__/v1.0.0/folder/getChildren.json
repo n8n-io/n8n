@@ -4,10 +4,32 @@
         "@microsoft.graph.downloadUrl": {
             "type": "string"
         },
-        "createdDateTime": {
-            "type": "string"
+        "createdBy": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "type": "object",
+                    "properties": {
+                        "email": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "displayName": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "displayName"
+                    ]
+                }
+            },
+            "required": [
+                "user"
+            ]
         },
-        "cTag": {
+        "createdDateTime": {
             "type": "string"
         },
         "eTag": {
@@ -16,56 +38,19 @@
         "id": {
             "type": "string"
         },
-        "lastModifiedDateTime": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "size": {
-            "type": "integer"
-        },
-        "webUrl": {
-            "type": "string"
-        },
-        "createdBy": {
-            "type": "object",
-            "properties": {
-                "user": {
-                    "type": "object",
-                    "properties": {
-                        "displayName": {
-                            "type": "string"
-                        },
-                        "id": {
-                            "type": "string"
-                        },
-                        "email": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "displayName"
-                    ]
-                }
-            },
-            "required": [
-                "user"
-            ]
-        },
         "lastModifiedBy": {
             "type": "object",
             "properties": {
                 "user": {
                     "type": "object",
                     "properties": {
-                        "displayName": {
+                        "email": {
                             "type": "string"
                         },
                         "id": {
                             "type": "string"
                         },
-                        "email": {
+                        "displayName": {
                             "type": "string"
                         }
                     },
@@ -78,13 +63,19 @@
                 "user"
             ]
         },
+        "lastModifiedDateTime": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
         "parentReference": {
             "type": "object",
             "properties": {
-                "driveId": {
+                "driveType": {
                     "type": "string"
                 },
-                "driveType": {
+                "driveId": {
                     "type": "string"
                 },
                 "id": {
@@ -101,18 +92,22 @@
                 }
             },
             "required": [
-                "driveId",
                 "driveType",
+                "driveId",
                 "id",
+                "name",
                 "path"
             ]
+        },
+        "webUrl": {
+            "type": "string"
+        },
+        "cTag": {
+            "type": "string"
         },
         "file": {
             "type": "object",
             "properties": {
-                "mimeType": {
-                    "type": "string"
-                },
                 "hashes": {
                     "type": "object",
                     "properties": {
@@ -123,11 +118,14 @@
                     "required": [
                         "quickXorHash"
                     ]
+                },
+                "mimeType": {
+                    "type": "string"
                 }
             },
             "required": [
-                "mimeType",
-                "hashes"
+                "hashes",
+                "mimeType"
             ]
         },
         "fileSystemInfo": {
@@ -145,30 +143,23 @@
                 "lastModifiedDateTime"
             ]
         },
-        "shared": {
-            "type": "object",
-            "properties": {
-                "scope": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "scope"
-            ]
+        "size": {
+            "type": "integer"
         }
     },
     "required": [
+        "createdBy",
         "createdDateTime",
-        "cTag",
         "eTag",
         "id",
+        "lastModifiedBy",
         "lastModifiedDateTime",
         "name",
-        "size",
-        "webUrl",
-        "createdBy",
-        "lastModifiedBy",
         "parentReference",
-        "fileSystemInfo"
-    ]
+        "webUrl",
+        "cTag",
+        "fileSystemInfo",
+        "size"
+    ],
+    "version": 1
 }

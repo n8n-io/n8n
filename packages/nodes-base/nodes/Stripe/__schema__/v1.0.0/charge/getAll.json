@@ -76,12 +76,6 @@
         "paid": {
             "type": "boolean"
         },
-        "payment_intent": {
-            "type": "string"
-        },
-        "payment_method": {
-            "type": "string"
-        },
         "payment_method_details": {
             "type": "object",
             "properties": {
@@ -176,6 +170,9 @@
                                 "maximum_amount_capturable",
                                 "status"
                             ]
+                        },
+                        "regulated_status": {
+                            "type": "string"
                         }
                     },
                     "required": [
@@ -187,7 +184,6 @@
                         "exp_month",
                         "exp_year",
                         "extended_authorization",
-                        "fingerprint",
                         "funding",
                         "incremental_authorization",
                         "installments",
@@ -212,21 +208,6 @@
         "refunded": {
             "type": "boolean"
         },
-        "review": {
-            "type": "null"
-        },
-        "source_transfer": {
-            "type": "null"
-        },
-        "status": {
-            "type": "string"
-        },
-        "transfer_data": {
-            "type": "null"
-        },
-        "transfer_group": {
-            "type": "null"
-        },
         "refunds": {
             "type": "object",
             "properties": {
@@ -250,6 +231,21 @@
                 "total_count",
                 "url"
             ]
+        },
+        "review": {
+            "type": "null"
+        },
+        "source_transfer": {
+            "type": "null"
+        },
+        "status": {
+            "type": "string"
+        },
+        "transfer_data": {
+            "type": "null"
+        },
+        "transfer_group": {
+            "type": "null"
         }
     },
     "required": [
@@ -299,5 +295,6 @@
         "status",
         "transfer_data",
         "transfer_group"
-    ]
+    ],
+    "version": 1
 }

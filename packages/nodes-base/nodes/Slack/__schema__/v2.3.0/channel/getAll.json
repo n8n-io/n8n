@@ -129,6 +129,42 @@
                         "quip_thread_id"
                     ]
                 },
+                "tabs": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "type": {
+                                "type": "string"
+                            },
+                            "label": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "type",
+                            "label",
+                            "id"
+                        ]
+                    }
+                },
+                "tabz": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "type": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "type"
+                        ]
+                    }
+                },
                 "use_case": {
                     "type": "string"
                 }
@@ -152,5 +188,6 @@
         "is_org_shared",
         "context_team_id",
         "updated"
-    ]
+    ],
+    "version": 1
 }

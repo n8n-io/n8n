@@ -13,11 +13,12 @@
         "_locked_by": {
             "type": "null"
         },
-        "_ctime": {
-            "type": "string"
-        },
         "_mtime": {
             "type": "string"
+        },
+        "_ctime": {
+            "type": "string"
         }
-    }
+    },
+    "version": 1
 }

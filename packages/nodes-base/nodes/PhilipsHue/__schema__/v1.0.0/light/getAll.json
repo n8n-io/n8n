@@ -10,21 +10,6 @@
                 "bri": {
                     "type": "integer"
                 },
-                "alert": {
-                    "type": "string"
-                },
-                "mode": {
-                    "type": "string"
-                },
-                "reachable": {
-                    "type": "boolean"
-                },
-                "ct": {
-                    "type": "integer"
-                },
-                "colormode": {
-                    "type": "string"
-                },
                 "hue": {
                     "type": "integer"
                 },
@@ -39,6 +24,21 @@
                     "items": {
                         "type": "number"
                     }
+                },
+                "ct": {
+                    "type": "integer"
+                },
+                "alert": {
+                    "type": "string"
+                },
+                "colormode": {
+                    "type": "string"
+                },
+                "mode": {
+                    "type": "string"
+                },
+                "reachable": {
+                    "type": "boolean"
                 }
             },
             "required": [
@@ -90,6 +90,18 @@
                         "maxlumen": {
                             "type": "integer"
                         },
+                        "colorgamuttype": {
+                            "type": "string"
+                        },
+                        "colorgamut": {
+                            "type": "array",
+                            "items": {
+                                "type": "array",
+                                "items": {
+                                    "type": "number"
+                                }
+                            }
+                        },
                         "ct": {
                             "type": "object",
                             "properties": {
@@ -104,18 +116,6 @@
                                 "min",
                                 "max"
                             ]
-                        },
-                        "colorgamuttype": {
-                            "type": "string"
-                        },
-                        "colorgamut": {
-                            "type": "array",
-                            "items": {
-                                "type": "array",
-                                "items": {
-                                    "type": "number"
-                                }
-                            }
                         }
                     },
                     "required": [
@@ -204,5 +204,6 @@
         "config",
         "uniqueid",
         "swversion"
-    ]
+    ],
+    "version": 1
 }

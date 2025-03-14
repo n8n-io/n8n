@@ -48,9 +48,6 @@
                 },
                 "PHONE": {
                     "type": "string"
-                },
-                "BIRTHDAY": {
-                    "type": "string"
                 }
             }
         },
@@ -165,5 +162,6 @@
                 ]
             }
         }
-    }
+    },
+    "version": 1
 }

@@ -1,6 +1,54 @@
 {
     "type": "object",
     "properties": {
+        "related_open_deals_count": {
+            "type": "integer"
+        },
+        "related_closed_deals_count": {
+            "type": "integer"
+        },
+        "participant_open_deals_count": {
+            "type": "integer"
+        },
+        "participant_closed_deals_count": {
+            "type": "integer"
+        },
+        "files_count": {
+            "type": "integer"
+        },
+        "notes_count": {
+            "type": "integer"
+        },
+        "followers_count": {
+            "type": "integer"
+        },
+        "related_won_deals_count": {
+            "type": "integer"
+        },
+        "related_lost_deals_count": {
+            "type": "integer"
+        },
+        "active_flag": {
+            "type": "boolean"
+        },
+        "first_char": {
+            "type": "string"
+        },
+        "label_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "cc_email": {
+            "type": "string"
+        },
+        "owner_name": {
+            "type": "string"
+        },
+        "company_id": {
+            "type": "integer"
+        },
         "id": {
             "type": "integer"
         },
@@ -45,19 +93,7 @@
         "open_deals_count": {
             "type": "integer"
         },
-        "related_open_deals_count": {
-            "type": "integer"
-        },
         "closed_deals_count": {
-            "type": "integer"
-        },
-        "related_closed_deals_count": {
-            "type": "integer"
-        },
-        "participant_open_deals_count": {
-            "type": "integer"
-        },
-        "participant_closed_deals_count": {
             "type": "integer"
         },
         "email_messages_count": {
@@ -72,43 +108,25 @@
         "undone_activities_count": {
             "type": "integer"
         },
-        "files_count": {
-            "type": "integer"
-        },
-        "notes_count": {
-            "type": "integer"
-        },
-        "followers_count": {
-            "type": "integer"
-        },
         "won_deals_count": {
-            "type": "integer"
-        },
-        "related_won_deals_count": {
             "type": "integer"
         },
         "lost_deals_count": {
             "type": "integer"
-        },
-        "related_lost_deals_count": {
-            "type": "integer"
-        },
-        "active_flag": {
-            "type": "boolean"
         },
         "phone": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "label": {
-                        "type": "string"
-                    },
                     "value": {
                         "type": "string"
                     },
                     "primary": {
                         "type": "boolean"
+                    },
+                    "label": {
+                        "type": "string"
                     }
                 },
                 "required": [
@@ -138,16 +156,7 @@
                 ]
             }
         },
-        "first_char": {
-            "type": "string"
-        },
         "update_time": {
-            "type": "string"
-        },
-        "add_time": {
-            "type": "string"
-        },
-        "visible_to": {
             "type": "string"
         },
         "im": {
@@ -168,26 +177,12 @@
                 ]
             }
         },
-        "label_ids": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
-        },
-        "cc_email": {
-            "type": "string"
-        },
-        "company_id": {
-            "type": "integer"
-        },
-        "owner_name": {
-            "type": "string"
-        },
         "postal_address_lat": {
             "type": "null"
         },
         "postal_address_long": {
             "type": "null"
         }
-    }
+    },
+    "version": 1
 }

@@ -29,15 +29,5 @@
             "type": "boolean"
         }
     },
-    "required": [
-        "@odata.context",
-        "id",
-        "displayName",
-        "parentFolderId",
-        "childFolderCount",
-        "unreadItemCount",
-        "totalItemCount",
-        "sizeInBytes",
-        "isHidden"
-    ]
+    "version": 1
 }

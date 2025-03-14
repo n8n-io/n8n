@@ -13,8 +13,20 @@
         "priority": {
             "type": "integer"
         },
-        "archivedAt": {
-            "type": "null"
+        "assignee": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "displayName": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "displayName"
+            ]
         },
         "state": {
             "type": "object",
@@ -63,5 +75,6 @@
         "description",
         "dueDate",
         "cycle"
-    ]
+    ],
+    "version": 1
 }

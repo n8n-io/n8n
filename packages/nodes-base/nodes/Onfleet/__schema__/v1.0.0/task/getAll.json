@@ -34,6 +34,12 @@
         "creator": {
             "type": "string"
         },
+        "dependencies": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
         "state": {
             "type": "integer"
         },
@@ -53,9 +59,6 @@
                     "type": "boolean"
                 },
                 "notes": {
-                    "type": "string"
-                },
-                "failureNotes": {
                     "type": "string"
                 },
                 "events": {
@@ -81,6 +84,9 @@
                             "time"
                         ]
                     }
+                },
+                "failureNotes": {
+                    "type": "string"
                 },
                 "successNotes": {
                     "type": "string"
@@ -134,9 +140,6 @@
                         ]
                     }
                 },
-                "photoUploadId": {
-                    "type": "null"
-                },
                 "firstLocation": {
                     "type": "array",
                     "items": {
@@ -152,8 +155,8 @@
             },
             "required": [
                 "time",
-                "failureNotes",
                 "events",
+                "failureNotes",
                 "successNotes",
                 "failureReason",
                 "actions",
@@ -326,6 +329,9 @@
                         "street": {
                             "type": "string"
                         },
+                        "apartment": {
+                            "type": "string"
+                        },
                         "city": {
                             "type": "string"
                         },
@@ -337,17 +343,14 @@
                         },
                         "country": {
                             "type": "string"
-                        },
-                        "apartment": {
-                            "type": "string"
                         }
                     },
                     "required": [
+                        "apartment",
                         "city",
                         "state",
                         "postalCode",
-                        "country",
-                        "apartment"
+                        "country"
                     ]
                 },
                 "notes": {
@@ -413,5 +416,6 @@
         "eta",
         "recipients",
         "destination"
-    ]
+    ],
+    "version": 1
 }

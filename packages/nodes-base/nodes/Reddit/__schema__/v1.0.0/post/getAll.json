@@ -63,9 +63,6 @@
         "quarantine": {
             "type": "boolean"
         },
-        "subreddit_type": {
-            "type": "string"
-        },
         "ups": {
             "type": "integer"
         },
@@ -116,20 +113,20 @@
                 ]
             }
         },
-        "content_categories": {
-            "type": "null"
-        },
         "is_self": {
             "type": "boolean"
         },
-        "mod_note": {
-            "type": "null"
+        "subreddit_type": {
+            "type": "string"
         },
         "created": {
             "type": "integer"
         },
         "link_flair_type": {
             "type": "string"
+        },
+        "removed_by_category": {
+            "type": "null"
         },
         "banned_by": {
             "type": "null"
@@ -167,9 +164,6 @@
         "media_only": {
             "type": "boolean"
         },
-        "link_flair_template_id": {
-            "type": "string"
-        },
         "can_gild": {
             "type": "boolean"
         },
@@ -185,6 +179,9 @@
         "removed_by": {
             "type": "null"
         },
+        "mod_note": {
+            "type": "null"
+        },
         "subreddit_id": {
             "type": "string"
         },
@@ -192,6 +189,9 @@
             "type": "boolean"
         },
         "mod_reason_by": {
+            "type": "null"
+        },
+        "removal_reason": {
             "type": "null"
         },
         "id": {
@@ -202,6 +202,9 @@
         },
         "author": {
             "type": "string"
+        },
+        "discussion_type": {
+            "type": "null"
         },
         "num_comments": {
             "type": "integer"
@@ -235,13 +238,89 @@
         },
         "is_video": {
             "type": "boolean"
+        },
+        "post_hint": {
+            "type": "string"
+        },
+        "url_overridden_by_dest": {
+            "type": "string"
+        },
+        "preview": {
+            "type": "object",
+            "properties": {
+                "images": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "source": {
+                                "type": "object",
+                                "properties": {
+                                    "url": {
+                                        "type": "string"
+                                    },
+                                    "width": {
+                                        "type": "integer"
+                                    },
+                                    "height": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "required": [
+                                    "url",
+                                    "width",
+                                    "height"
+                                ]
+                            },
+                            "resolutions": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "url": {
+                                            "type": "string"
+                                        },
+                                        "width": {
+                                            "type": "integer"
+                                        },
+                                        "height": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "required": [
+                                        "url",
+                                        "width",
+                                        "height"
+                                    ]
+                                }
+                            },
+                            "id": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "source",
+                            "resolutions",
+                            "variants",
+                            "id"
+                        ]
+                    }
+                },
+                "enabled": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "images",
+                "enabled"
+            ]
         }
     },
     "required": [
+        "author_flair_background_color",
         "approved_at_utc",
         "subreddit",
         "selftext",
-        "author_fullname",
         "saved",
         "mod_reason_title",
         "gilded",
@@ -259,8 +338,6 @@
         "quarantine",
         "link_flair_text_color",
         "upvote_ratio",
-        "author_flair_background_color",
-        "subreddit_type",
         "ups",
         "total_awards_received",
         "media_embed",
@@ -277,21 +354,18 @@
         "score",
         "approved_by",
         "is_created_from_ads_ui",
-        "author_premium",
         "thumbnail",
         "edited",
         "author_flair_css_class",
-        "author_flair_richtext",
         "gildings",
         "content_categories",
         "is_self",
-        "mod_note",
+        "subreddit_type",
         "created",
         "link_flair_type",
         "wls",
         "removed_by_category",
         "banned_by",
-        "author_flair_type",
         "domain",
         "allow_live_comments",
         "selftext_html",
@@ -314,11 +388,12 @@
         "treatment_tags",
         "visited",
         "removed_by",
-        "num_reports",
+        "mod_note",
         "distinguished",
         "subreddit_id",
         "author_is_blocked",
         "mod_reason_by",
+        "num_reports",
         "removal_reason",
         "link_flair_background_color",
         "id",
@@ -330,7 +405,6 @@
         "send_replies",
         "contest_mode",
         "mod_reports",
-        "author_patreon_flair",
         "author_flair_text_color",
         "permalink",
         "stickied",
@@ -340,5 +414,6 @@
         "num_crossposts",
         "media",
         "is_video"
-    ]
+    ],
+    "version": 1
 }

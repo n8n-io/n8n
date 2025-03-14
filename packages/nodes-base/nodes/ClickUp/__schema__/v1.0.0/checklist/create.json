@@ -28,5 +28,6 @@
         "resolved",
         "unresolved",
         "items"
-    ]
+    ],
+    "version": 1
 }

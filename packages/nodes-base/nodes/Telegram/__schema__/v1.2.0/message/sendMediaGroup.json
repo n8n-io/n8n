@@ -12,42 +12,19 @@
                     "message_id": {
                         "type": "integer"
                     },
-                    "from": {
-                        "type": "object",
-                        "properties": {
-                            "id": {
-                                "type": "integer"
-                            },
-                            "is_bot": {
-                                "type": "boolean"
-                            },
-                            "first_name": {
-                                "type": "string"
-                            },
-                            "username": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "id",
-                            "is_bot",
-                            "first_name",
-                            "username"
-                        ]
-                    },
                     "chat": {
                         "type": "object",
                         "properties": {
                             "id": {
                                 "type": "integer"
                             },
+                            "username": {
+                                "type": "string"
+                            },
                             "type": {
                                 "type": "string"
                             },
                             "first_name": {
-                                "type": "string"
-                            },
-                            "username": {
                                 "type": "string"
                             }
                         },
@@ -92,27 +69,28 @@
                     "caption": {
                         "type": "string"
                     },
-                    "caption_entities": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "offset": {
-                                    "type": "integer"
-                                },
-                                "length": {
-                                    "type": "integer"
-                                },
-                                "type": {
-                                    "type": "string"
-                                }
+                    "from": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "integer"
                             },
-                            "required": [
-                                "offset",
-                                "length",
-                                "type"
-                            ]
-                        }
+                            "is_bot": {
+                                "type": "boolean"
+                            },
+                            "first_name": {
+                                "type": "string"
+                            },
+                            "username": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "is_bot",
+                            "first_name",
+                            "username"
+                        ]
                     }
                 },
                 "required": [
@@ -126,5 +104,6 @@
     "required": [
         "ok",
         "result"
-    ]
+    ],
+    "version": 1
 }

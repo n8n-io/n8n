@@ -18,31 +18,21 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "PaymentID": {
-                        "type": "string"
-                    },
                     "Date": {
                         "type": "string"
-                    },
-                    "Reference": {
-                        "type": "string"
-                    },
-                    "CurrencyRate": {
-                        "type": "integer"
                     },
                     "HasAccount": {
                         "type": "boolean"
                     },
                     "HasValidationErrors": {
                         "type": "boolean"
+                    },
+                    "Reference": {
+                        "type": "string"
                     }
                 },
                 "required": [
-                    "PaymentID",
-                    "Date",
-                    "Amount",
-                    "HasAccount",
-                    "HasValidationErrors"
+                    "PaymentID"
                 ]
             }
         },
@@ -63,17 +53,11 @@
                     "HasErrors": {
                         "type": "boolean"
                     },
-                    "AppliedAmount": {
-                        "type": "number"
-                    },
                     "DateString": {
                         "type": "string"
                     },
                     "Date": {
                         "type": "string"
-                    },
-                    "Total": {
-                        "type": "number"
                     }
                 },
                 "required": [
@@ -82,6 +66,37 @@
                     "ID",
                     "HasErrors",
                     "InvoiceAddresses",
+                    "AppliedAmount",
+                    "DateString",
+                    "Date",
+                    "LineItems",
+                    "Total"
+                ]
+            }
+        },
+        "Overpayments": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "OverpaymentID": {
+                        "type": "string"
+                    },
+                    "AppliedAmount": {
+                        "type": "integer"
+                    },
+                    "DateString": {
+                        "type": "string"
+                    },
+                    "Date": {
+                        "type": "string"
+                    },
+                    "Total": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "OverpaymentID",
                     "AppliedAmount",
                     "DateString",
                     "Date",
@@ -134,6 +149,9 @@
         "DueDate": {
             "type": "string"
         },
+        "BrandingThemeID": {
+            "type": "string"
+        },
         "Status": {
             "type": "string"
         },
@@ -145,11 +163,36 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "ItemCode": {
+                        "type": "string"
+                    },
+                    "Description": {
+                        "type": "string"
+                    },
                     "TaxType": {
                         "type": "string"
                     },
                     "AccountCode": {
                         "type": "string"
+                    },
+                    "Item": {
+                        "type": "object",
+                        "properties": {
+                            "ItemID": {
+                                "type": "string"
+                            },
+                            "Name": {
+                                "type": "string"
+                            },
+                            "Code": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "ItemID",
+                            "Name",
+                            "Code"
+                        ]
                     },
                     "Tracking": {
                         "type": "array",
@@ -182,9 +225,6 @@
                     },
                     "AccountID": {
                         "type": "string"
-                    },
-                    "Description": {
-                        "type": "string"
                     }
                 },
                 "required": [
@@ -199,38 +239,9 @@
         "CurrencyCode": {
             "type": "string"
         },
-        "BrandingThemeID": {
-            "type": "string"
-        },
         "SentToContact": {
             "type": "boolean"
         }
     },
-    "required": [
-        "Type",
-        "InvoiceID",
-        "Payments",
-        "CreditNotes",
-        "Prepayments",
-        "Overpayments",
-        "AmountDue",
-        "AmountPaid",
-        "AmountCredited",
-        "IsDiscounted",
-        "HasAttachments",
-        "InvoiceAddresses",
-        "HasErrors",
-        "InvoicePaymentServices",
-        "Contact",
-        "DateString",
-        "Date",
-        "Status",
-        "LineAmountTypes",
-        "LineItems",
-        "SubTotal",
-        "TotalTax",
-        "Total",
-        "UpdatedDateUTC",
-        "CurrencyCode"
-    ]
+    "version": 1
 }

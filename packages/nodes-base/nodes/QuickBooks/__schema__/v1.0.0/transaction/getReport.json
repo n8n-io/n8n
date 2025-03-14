@@ -1,139 +1,33 @@
 {
     "type": "object",
     "properties": {
-        "Header": {
-            "type": "object",
-            "properties": {
-                "Time": {
-                    "type": "string"
-                },
-                "ReportName": {
-                    "type": "string"
-                },
-                "DateMacro": {
-                    "type": "string"
-                },
-                "StartPeriod": {
-                    "type": "string"
-                },
-                "EndPeriod": {
-                    "type": "string"
-                },
-                "Currency": {
-                    "type": "string"
-                },
-                "Option": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "Name": {
-                                "type": "string"
-                            },
-                            "Value": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "Name",
-                            "Value"
-                        ]
-                    }
-                }
-            },
-            "required": [
-                "Time",
-                "ReportName",
-                "DateMacro",
-                "StartPeriod",
-                "EndPeriod",
-                "Currency",
-                "Option"
-            ]
+        "tx_date": {
+            "type": "string"
         },
-        "Columns": {
-            "type": "object",
-            "properties": {
-                "Column": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "ColTitle": {
-                                "type": "string"
-                            },
-                            "ColType": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "ColTitle",
-                            "ColType"
-                        ]
-                    }
-                }
-            },
-            "required": [
-                "Column"
-            ]
+        "txn_type": {
+            "type": "string"
         },
-        "Rows": {
-            "type": "object",
-            "properties": {
-                "Row": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "ColData": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "value": {
-                                            "type": "string"
-                                        },
-                                        "id": {
-                                            "type": "string"
-                                        }
-                                    },
-                                    "required": [
-                                        "value"
-                                    ]
-                                }
-                            },
-                            "type": {
-                                "type": "string"
-                            },
-                            "Summary": {
-                                "type": "object",
-                                "properties": {
-                                    "ColData": {
-                                        "type": "array",
-                                        "items": {
-                                            "type": "object",
-                                            "properties": {
-                                                "value": {
-                                                    "type": "string"
-                                                }
-                                            },
-                                            "required": [
-                                                "value"
-                                            ]
-                                        }
-                                    }
-                                },
-                                "required": [
-                                    "ColData"
-                                ]
-                            }
-                        }
-                    }
-                }
-            },
-            "required": [
-                "Row"
-            ]
+        "doc_num": {
+            "type": "string"
+        },
+        "is_no_post": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "memo": {
+            "type": "string"
+        },
+        "account_name": {
+            "type": "string"
+        },
+        "other_account": {
+            "type": "string"
+        },
+        "subt_nat_amount": {
+            "type": "string"
         }
-    }
+    },
+    "version": 1
 }

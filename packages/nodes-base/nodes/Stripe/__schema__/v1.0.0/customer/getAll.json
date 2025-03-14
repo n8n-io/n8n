@@ -77,5 +77,6 @@
         "shipping",
         "tax_exempt",
         "test_clock"
-    ]
+    ],
+    "version": 1
 }

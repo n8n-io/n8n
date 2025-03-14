@@ -57,5 +57,6 @@
         "statuses",
         "lists",
         "permission_level"
-    ]
+    ],
+    "version": 1
 }

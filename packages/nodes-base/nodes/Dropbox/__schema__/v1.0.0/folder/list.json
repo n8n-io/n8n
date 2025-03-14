@@ -7,6 +7,15 @@
         "name": {
             "type": "string"
         },
+        "type": {
+            "type": "string"
+        },
+        "pathLower": {
+            "type": "string"
+        },
+        "pathDisplay": {
+            "type": "string"
+        },
         "lastModifiedClient": {
             "type": "string"
         },
@@ -19,20 +28,19 @@
         "contentSize": {
             "type": "integer"
         },
-        "type": {
-            "type": "string"
-        },
         "contentHash": {
-            "type": "string"
-        },
-        "pathLower": {
-            "type": "string"
-        },
-        "pathDisplay": {
             "type": "string"
         },
         "isDownloadable": {
             "type": "boolean"
         }
-    }
+    },
+    "required": [
+        "id",
+        "name",
+        "type",
+        "pathLower",
+        "pathDisplay"
+    ],
+    "version": 1
 }

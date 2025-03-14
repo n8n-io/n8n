@@ -97,9 +97,6 @@
                                 "type": "string"
                             }
                         },
-                        "assignedTo": {
-                            "type": "string"
-                        },
                         "followers": {
                             "type": "array",
                             "items": {
@@ -145,5 +142,6 @@
     "required": [
         "opportunity",
         "traceId"
-    ]
+    ],
+    "version": 1
 }

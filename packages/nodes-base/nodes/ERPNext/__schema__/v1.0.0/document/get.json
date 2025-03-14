@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "name": {
+            "type": "string"
+        },
         "owner": {
             "type": "string"
         },
@@ -21,18 +24,10 @@
         },
         "doctype": {
             "type": "string"
-        },
-        "naming_series": {
-            "type": "string"
-        },
-        "customer_name": {
-            "type": "string"
-        },
-        "language": {
-            "type": "string"
         }
     },
     "required": [
         "name"
-    ]
+    ],
+    "version": 1
 }

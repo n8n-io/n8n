@@ -72,6 +72,8 @@
         "etag",
         "timeCreated",
         "updated",
-        "timeStorageClassUpdated"
-    ]
+        "timeStorageClassUpdated",
+        "timeFinalized"
+    ],
+    "version": 1
 }

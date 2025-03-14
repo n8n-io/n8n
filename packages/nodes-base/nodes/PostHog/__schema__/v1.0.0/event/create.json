@@ -1,0 +1,12 @@
+{
+    "type": "object",
+    "properties": {
+        "status": {
+            "type": "integer"
+        }
+    },
+    "required": [
+        "status"
+    ],
+    "version": 1
+}

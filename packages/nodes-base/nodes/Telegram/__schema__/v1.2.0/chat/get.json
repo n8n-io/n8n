@@ -13,10 +13,19 @@
                 "first_name": {
                     "type": "string"
                 },
-                "username": {
+                "type": {
                     "type": "string"
                 },
-                "type": {
+                "can_send_gift": {
+                    "type": "boolean"
+                },
+                "max_reaction_count": {
+                    "type": "integer"
+                },
+                "accent_color_id": {
+                    "type": "integer"
+                },
+                "username": {
                     "type": "string"
                 },
                 "active_usernames": {
@@ -24,12 +33,6 @@
                     "items": {
                         "type": "string"
                     }
-                },
-                "max_reaction_count": {
-                    "type": "integer"
-                },
-                "accent_color_id": {
-                    "type": "integer"
                 }
             },
             "required": [
@@ -43,5 +46,6 @@
     "required": [
         "ok",
         "result"
-    ]
+    ],
+    "version": 1
 }

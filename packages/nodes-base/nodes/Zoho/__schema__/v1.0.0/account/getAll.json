@@ -92,36 +92,14 @@
                 "resubmit"
             ]
         },
-        "Modified_Time": {
-            "type": "string"
-        },
-        "Created_Time": {
-            "type": "string"
-        },
         "$editable": {
             "type": "boolean"
         },
         "$in_merge": {
             "type": "boolean"
         },
-        "Created_By": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "name",
-                "id",
-                "email"
-            ]
+        "Locked__s": {
+            "type": "boolean"
         },
         "Tag": {
             "type": "array",
@@ -143,9 +121,19 @@
         },
         "$approval_state": {
             "type": "string"
+        },
+        "$is_duplicate": {
+            "type": "boolean"
+        },
+        "Created_Time": {
+            "type": "string"
+        },
+        "Account_Number": {
+            "type": "string"
         }
     },
     "required": [
         "id"
-    ]
+    ],
+    "version": 1
 }

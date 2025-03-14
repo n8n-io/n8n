@@ -7,25 +7,43 @@
         "threadId": {
             "type": "string"
         },
-        "sizeEstimate": {
-            "type": "integer"
-        },
         "labelIds": {
             "type": "array",
             "items": {
                 "type": "string"
             }
         },
+        "sizeEstimate": {
+            "type": "integer"
+        },
         "headers": {
             "type": "object",
             "properties": {
+                "mime-version": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "message-id": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                },
+                "from": {
+                    "type": "string"
+                },
+                "to": {
+                    "type": "string"
+                },
+                "content-type": {
+                    "type": "string"
+                },
                 "delivered-to": {
                     "type": "string"
                 },
                 "received": {
-                    "type": "string"
-                },
-                "x-google-smtp-source": {
                     "type": "string"
                 },
                 "x-received": {
@@ -52,35 +70,23 @@
                 "dkim-signature": {
                     "type": "string"
                 },
-                "content-type": {
+                "x-google-dkim-signature": {
                     "type": "string"
                 },
-                "date": {
+                "x-gm-message-state": {
                     "type": "string"
                 },
-                "mime-version": {
-                    "type": "string"
-                },
-                "to": {
-                    "type": "string"
-                },
-                "subject": {
-                    "type": "string"
-                },
-                "message-id": {
-                    "type": "string"
-                },
-                "from": {
+                "x-google-smtp-source": {
                     "type": "string"
                 }
             },
             "required": [
-                "content-type",
-                "date",
                 "mime-version",
-                "subject",
+                "date",
                 "message-id",
-                "from"
+                "subject",
+                "from",
+                "content-type"
             ]
         },
         "text": {
@@ -166,5 +172,6 @@
         "messageId": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

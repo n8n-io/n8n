@@ -21,9 +21,6 @@
                 },
                 "slug": {
                     "type": "string"
-                },
-                "body": {
-                    "type": "string"
                 }
             },
             "required": [
@@ -32,14 +29,5 @@
             ]
         }
     },
-    "required": [
-        "id",
-        "cmsLocaleId",
-        "lastPublished",
-        "lastUpdated",
-        "createdOn",
-        "isArchived",
-        "isDraft",
-        "fieldData"
-    ]
+    "version": 1
 }

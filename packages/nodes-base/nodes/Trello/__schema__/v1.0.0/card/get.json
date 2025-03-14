@@ -7,41 +7,6 @@
         "badges": {
             "type": "object",
             "properties": {
-                "attachmentsByType": {
-                    "type": "object",
-                    "properties": {
-                        "trello": {
-                            "type": "object",
-                            "properties": {
-                                "board": {
-                                    "type": "integer"
-                                },
-                                "card": {
-                                    "type": "integer"
-                                }
-                            },
-                            "required": [
-                                "board",
-                                "card"
-                            ]
-                        }
-                    },
-                    "required": [
-                        "trello"
-                    ]
-                },
-                "location": {
-                    "type": "boolean"
-                },
-                "votes": {
-                    "type": "integer"
-                },
-                "viewingMemberVoted": {
-                    "type": "boolean"
-                },
-                "subscribed": {
-                    "type": "boolean"
-                },
                 "attachments": {
                     "type": "integer"
                 },
@@ -68,15 +33,47 @@
                 },
                 "lastUpdatedByAi": {
                     "type": "boolean"
+                },
+                "attachmentsByType": {
+                    "type": "object",
+                    "properties": {
+                        "trello": {
+                            "type": "object",
+                            "properties": {
+                                "board": {
+                                    "type": "integer"
+                                },
+                                "card": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "board",
+                                "card"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "trello"
+                    ]
+                },
+                "externalSource": {
+                    "type": "null"
+                },
+                "location": {
+                    "type": "boolean"
+                },
+                "votes": {
+                    "type": "integer"
+                },
+                "viewingMemberVoted": {
+                    "type": "boolean"
+                },
+                "subscribed": {
+                    "type": "boolean"
                 }
             },
             "required": [
-                "attachmentsByType",
-                "externalSource",
-                "location",
-                "votes",
-                "viewingMemberVoted",
-                "subscribed",
                 "attachments",
                 "fogbugz",
                 "checkItems",
@@ -87,7 +84,13 @@
                 "due",
                 "dueComplete",
                 "lastUpdatedByAi",
-                "start"
+                "start",
+                "attachmentsByType",
+                "externalSource",
+                "location",
+                "votes",
+                "viewingMemberVoted",
+                "subscribed"
             ]
         },
         "checkItemStates": {
@@ -132,6 +135,12 @@
                 "type": "string"
             }
         },
+        "idLabels": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
         "idList": {
             "type": "string"
         },
@@ -171,22 +180,21 @@
                 "required": [
                     "id",
                     "idBoard",
+                    "idOrganization",
                     "name",
+                    "nodeId",
                     "color",
                     "uses"
                 ]
-            }
-        },
-        "idLabels": {
-            "type": "array",
-            "items": {
-                "type": "string"
             }
         },
         "manualCoverAttachment": {
             "type": "boolean"
         },
         "name": {
+            "type": "string"
+        },
+        "nodeId": {
             "type": "string"
         },
         "pinned": {
@@ -231,9 +239,13 @@
         },
         "cardRole": {
             "type": "null"
+        },
+        "mirrorSourceId": {
+            "type": "null"
         }
     },
     "required": [
         "id"
-    ]
+    ],
+    "version": 1
 }

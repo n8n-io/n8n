@@ -53,6 +53,18 @@
         "submitter_id": {
             "type": "integer"
         },
+        "collaborator_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "follower_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
         "forum_topic_id": {
             "type": "null"
         },
@@ -136,5 +148,6 @@
         "from_messaging_channel": {
             "type": "boolean"
         }
-    }
+    },
+    "version": 1
 }

@@ -42,10 +42,10 @@
                         "first_name": {
                             "type": "string"
                         },
-                        "last_name": {
+                        "type": {
                             "type": "string"
                         },
-                        "type": {
+                        "last_name": {
                             "type": "string"
                         },
                         "username": {
@@ -97,5 +97,6 @@
     "required": [
         "ok",
         "result"
-    ]
+    ],
+    "version": 1
 }

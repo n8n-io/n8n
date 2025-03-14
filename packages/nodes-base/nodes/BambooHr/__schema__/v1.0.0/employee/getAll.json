@@ -39,5 +39,6 @@
         "photoUploaded",
         "photoUrl",
         "canUploadPhoto"
-    ]
+    ],
+    "version": 1
 }

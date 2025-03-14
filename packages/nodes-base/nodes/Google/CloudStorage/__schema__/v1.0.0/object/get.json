@@ -51,6 +51,10 @@
         },
         "timeStorageClassUpdated": {
             "type": "string"
+        },
+        "timeFinalized": {
+            "type": "string"
         }
-    }
+    },
+    "version": 1
 }

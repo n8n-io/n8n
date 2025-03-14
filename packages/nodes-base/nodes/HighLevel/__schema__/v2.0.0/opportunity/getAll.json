@@ -31,9 +31,6 @@
         "updatedAt": {
             "type": "string"
         },
-        "indexVersion": {
-            "type": "integer"
-        },
         "contactId": {
             "type": "string"
         },
@@ -53,9 +50,6 @@
                     },
                     "type": {
                         "type": "string"
-                    },
-                    "fieldValueDate": {
-                        "type": "integer"
                     }
                 },
                 "required": [
@@ -179,5 +173,6 @@
         "contact",
         "sort",
         "attributions"
-    ]
+    ],
+    "version": 1
 }

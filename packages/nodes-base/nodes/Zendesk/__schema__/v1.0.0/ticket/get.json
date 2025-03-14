@@ -28,12 +28,6 @@
         "generated_timestamp": {
             "type": "integer"
         },
-        "subject": {
-            "type": "string"
-        },
-        "raw_subject": {
-            "type": "string"
-        },
         "description": {
             "type": "string"
         },
@@ -138,6 +132,9 @@
                 "type": "integer"
             }
         },
+        "ticket_form_id": {
+            "type": "integer"
+        },
         "brand_id": {
             "type": "integer"
         },
@@ -191,5 +188,6 @@
         "allow_channelback",
         "allow_attachments",
         "from_messaging_channel"
-    ]
+    ],
+    "version": 1
 }

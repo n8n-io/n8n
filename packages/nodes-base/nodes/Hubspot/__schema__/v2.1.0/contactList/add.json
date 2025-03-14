@@ -26,10 +26,5 @@
             }
         }
     },
-    "required": [
-        "updated",
-        "discarded",
-        "invalidVids",
-        "invalidEmails"
-    ]
+    "version": 1
 }

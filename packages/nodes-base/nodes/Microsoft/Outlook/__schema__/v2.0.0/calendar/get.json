@@ -63,6 +63,21 @@
         }
     },
     "required": [
-        "@odata.context"
-    ]
+        "@odata.context",
+        "id",
+        "name",
+        "color",
+        "hexColor",
+        "isDefaultCalendar",
+        "changeKey",
+        "canShare",
+        "canViewPrivateItems",
+        "canEdit",
+        "allowedOnlineMeetingProviders",
+        "defaultOnlineMeetingProvider",
+        "isTallyingResponses",
+        "isRemovable",
+        "owner"
+    ],
+    "version": 1
 }

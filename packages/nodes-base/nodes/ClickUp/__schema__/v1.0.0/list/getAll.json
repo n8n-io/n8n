@@ -7,9 +7,6 @@
         "name": {
             "type": "string"
         },
-        "orderindex": {
-            "type": "integer"
-        },
         "content": {
             "type": "string"
         },
@@ -24,9 +21,6 @@
                 },
                 "name": {
                     "type": "string"
-                },
-                "hidden": {
-                    "type": "boolean"
                 },
                 "access": {
                     "type": "boolean"
@@ -80,5 +74,6 @@
         "archived",
         "override_statuses",
         "permission_level"
-    ]
+    ],
+    "version": 1
 }

@@ -13,22 +13,22 @@
                 "user": {
                     "type": "string"
                 },
+                "text": {
+                    "type": "string"
+                },
                 "type": {
                     "type": "string"
                 },
                 "ts": {
                     "type": "string"
                 },
+                "permalink": {
+                    "type": "string"
+                },
                 "client_msg_id": {
                     "type": "string"
                 },
-                "text": {
-                    "type": "string"
-                },
                 "team": {
-                    "type": "string"
-                },
-                "thread_ts": {
                     "type": "string"
                 },
                 "blocks": {
@@ -58,39 +58,8 @@
                                                     "type": {
                                                         "type": "string"
                                                     },
-                                                    "user_id": {
-                                                        "type": "string"
-                                                    },
                                                     "text": {
                                                         "type": "string"
-                                                    },
-                                                    "elements": {
-                                                        "type": "array",
-                                                        "items": {
-                                                            "type": "object",
-                                                            "properties": {
-                                                                "type": {
-                                                                    "type": "string"
-                                                                },
-                                                                "text": {
-                                                                    "type": "string"
-                                                                },
-                                                                "style": {
-                                                                    "type": "object",
-                                                                    "properties": {
-                                                                        "bold": {
-                                                                            "type": "boolean"
-                                                                        }
-                                                                    },
-                                                                    "required": [
-                                                                        "bold"
-                                                                    ]
-                                                                }
-                                                            },
-                                                            "required": [
-                                                                "type"
-                                                            ]
-                                                        }
                                                     },
                                                     "url": {
                                                         "type": "string"
@@ -138,27 +107,17 @@
                             "count"
                         ]
                     }
-                },
-                "permalink": {
-                    "type": "string"
                 }
             },
             "required": [
-                "type",
-                "ts",
                 "text",
-                "blocks",
-                "reactions"
+                "type",
+                "ts"
             ]
         },
         "channel": {
             "type": "string"
         }
     },
-    "required": [
-        "ok",
-        "type",
-        "message",
-        "channel"
-    ]
+    "version": 1
 }

@@ -75,8 +75,7 @@
                         },
                         "required": [
                             "emoji_name",
-                            "display_url",
-                            "unicode"
+                            "display_url"
                         ]
                     }
                 },
@@ -132,12 +131,6 @@
                     "type": "integer"
                 },
                 "image_1024": {
-                    "type": "string"
-                },
-                "api_app_id": {
-                    "type": "string"
-                },
-                "bot_id": {
                     "type": "string"
                 }
             },
@@ -205,5 +198,6 @@
         "is_bot",
         "is_app_user",
         "updated"
-    ]
+    ],
+    "version": 1
 }
