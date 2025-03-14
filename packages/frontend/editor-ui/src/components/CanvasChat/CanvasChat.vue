@@ -286,7 +286,7 @@ watch(
 );
 
 watchEffect(() => {
-	canvasStore.setPanelHeight(chatPanelState.value ? height.value : 0);
+	canvasStore.setPanelHeight(chatPanelState.value === 'attached' ? height.value : 0);
 });
 </script>
 
