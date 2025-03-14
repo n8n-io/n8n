@@ -2,9 +2,9 @@ import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	JsonObject,
-	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError, randomInt } from 'n8n-workflow';
 
@@ -108,7 +108,7 @@ export async function odooJSONRPCRequest(
 	url: string,
 ): Promise<IDataObject | IDataObject[]> {
 	try {
-		const options: IRequestOptions = {
+		const options: IHttpRequestOptions = {
 			headers: {
 				'User-Agent': 'n8n',
 				Connection: 'keep-alive',
@@ -117,11 +117,11 @@ export async function odooJSONRPCRequest(
 			},
 			method: 'POST',
 			body,
-			uri: `${url}/jsonrpc`,
+			url: `${url}/jsonrpc`,
 			json: true,
 		};
 
-		const response = await this.helpers.request(options);
+		const response = await this.helpers.httpRequest(options);
 		if (response.error) {
 			throw new NodeApiError(this.getNode(), response.error.data as JsonObject, {
 				message: response.error.data.message,
@@ -376,6 +376,35 @@ export async function odooDelete(
 
 		await odooJSONRPCRequest.call(this, body, url);
 		return { success: true };
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error as JsonObject);
+	}
+}
+
+export async function odooExecuteMethod(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	db: string,
+	userID: number,
+	password: string,
+	resource: string,
+	methodName: string,
+	methodArgs: any[],
+	methodKwargs: object,
+	url: string,
+): Promise<any> {
+	try {
+		const body = {
+			jsonrpc: '2.0',
+			method: 'call',
+			params: {
+				service: serviceJSONRPC,
+				method: 'execute_kw',
+				args: [db, userID, password, resource, methodName, methodArgs, methodKwargs],
+			},
+			id: randomInt(100),
+		};
+		const result = await odooJSONRPCRequest.call(this, body, url);
+		return { id: result };
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}

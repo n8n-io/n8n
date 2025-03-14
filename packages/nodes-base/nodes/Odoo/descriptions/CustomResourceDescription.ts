@@ -42,6 +42,12 @@ export const customResourceOperations: INodeProperties[] = [
 				action: 'Delete an item',
 			},
 			{
+				name: 'Execute a Method',
+				value: 'executeMethod',
+				description: 'Execute a method on a custom resource',
+				action: 'Execute a method',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an item',
@@ -104,6 +110,100 @@ export const customResourceDescription: INodeProperties[] = [
 						name: 'fieldValue',
 						type: 'string',
 						default: '',
+					},
+				],
+			},
+		],
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                            custom:executeMethod                            */
+	/* -------------------------------------------------------------------------- */
+
+	{
+		displayName: 'Method Name',
+		name: 'methodName',
+		type: 'string',
+		description: 'Choose a method to execute on the custom resource',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['custom'],
+				operation: ['executeMethod'],
+			},
+		},
+	},
+
+	{
+		displayName: 'Method Arguments',
+		name: 'methodArgs',
+		type: 'fixedCollection',
+		description: 'Arguments to pass to the method',
+		default: {},
+		typeOptions: {
+			multipleValues: true,
+			multipleValueButtonText: 'Add Argument',
+		},
+		placeholder: 'Add Argument',
+		displayOptions: {
+			show: {
+				resource: ['custom'],
+				operation: ['executeMethod'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Argument',
+				name: 'args',
+				values: [
+					{
+						displayName: 'Argument Value',
+						name: 'argValue',
+						type: 'string',
+						default: '',
+						placeholder: 'Could be a number, a string, an array or a tupple',
+					},
+				],
+			},
+		],
+	},
+
+	{
+		displayName: 'Method Keyword Arguments',
+		name: 'methodKwargs',
+		type: 'fixedCollection',
+		description: 'Keyword arguments to pass to the method',
+		default: {},
+		typeOptions: {
+			multipleValues: true,
+			multipleValueButtonText: 'Add Keyword Argument',
+		},
+		placeholder: 'Add Keyword Argument',
+		displayOptions: {
+			show: {
+				resource: ['custom'],
+				operation: ['executeMethod'],
+			},
+		},
+		options: [
+			{
+				name: 'kwargs',
+				displayName: 'Keyword Argument',
+				values: [
+					{
+						displayName: 'Keyword Argument Name',
+						name: 'kwargName',
+						type: 'string',
+						default: '',
+						placeholder: 'limit',
+					},
+					{
+						displayName: 'Keyword Argument Value',
+						name: 'kwargValue',
+						type: 'string',
+						default: '',
+						placeholder: '10',
 					},
 				],
 			},
