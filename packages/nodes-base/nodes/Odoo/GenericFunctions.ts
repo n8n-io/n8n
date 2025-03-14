@@ -381,6 +381,35 @@ export async function odooDelete(
 	}
 }
 
+export async function odooExecuteMethod(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	db: string,
+	userID: number,
+	password: string,
+	resource: string,
+	methodName: string,
+	methodArgs: any[],
+	methodKwargs: object,
+	url: string,
+): Promise<any> {
+	try {
+		const body = {
+			jsonrpc: '2.0',
+			method: 'call',
+			params: {
+				service: serviceJSONRPC,
+				method: 'execute_kw',
+				args: [db, userID, password, resource, methodName, methodArgs, methodKwargs],
+			},
+			id: randomInt(100),
+		};
+		const result = await odooJSONRPCRequest.call(this, body, url);
+		return { id: result };
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error as JsonObject);
+	}
+}
+
 export async function odooGetUserID(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	db: string,
