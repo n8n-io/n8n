@@ -13,6 +13,12 @@ export const userOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Add to Group',
+				value: 'addToGroup',
+				description: 'Add an existing user to a group',
+				action: 'Add user to group',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a user',
@@ -37,6 +43,12 @@ export const userOperations: INodeProperties[] = [
 				action: 'Get many users',
 			},
 			{
+				name: 'Remove From Group',
+				value: 'removeFromGroup',
+				description: 'Remove a user from a group',
+				action: 'Remove user from group',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a user',
@@ -49,11 +61,98 @@ export const userOperations: INodeProperties[] = [
 
 export const userFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
+	/*                                 user:addToGroup                                */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'User',
+		name: 'userId',
+		required: true,
+		type: 'resourceLocator',
+		default: {
+			mode: 'list',
+			value: '',
+		},
+		description: 'Select the user you want to add to the group',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['addToGroup'],
+			},
+		},
+		modes: [
+			{
+				displayName: 'From list',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchUsers',
+				},
+			},
+			{
+				displayName: 'By Email',
+				name: 'userEmail',
+				type: 'string',
+				hint: 'Enter the user email',
+				placeholder: 'e.g. sales@example.com',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
+							errorMessage: 'Please enter a valid email address.',
+						},
+					},
+				],
+			},
+			{
+				displayName: 'By ID',
+				name: 'userId',
+				type: 'string',
+				hint: 'Enter the user id',
+				placeholder: 'e.g. 123456789879230471055',
+			},
+		],
+	},
+	{
+		displayName: 'Group',
+		name: 'groupId',
+		required: true,
+		type: 'resourceLocator',
+		default: {
+			mode: 'list',
+			value: '',
+		},
+		description: 'Select the group you want to add the user to',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['addToGroup'],
+			},
+		},
+		modes: [
+			{
+				displayName: 'From list',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchGroups',
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'groupId',
+				type: 'string',
+				placeholder: 'e.g. 0123kx3o1habcdf',
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
 	/*                                 user:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'First Name',
 		name: 'firstName',
+		placeholder: 'e.g. Nathan',
 		type: 'string',
 		required: true,
 		displayOptions: {
@@ -69,6 +168,7 @@ export const userFields: INodeProperties[] = [
 		name: 'lastName',
 		type: 'string',
 		required: true,
+		placeholder: 'e.g. Smith',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -96,6 +196,21 @@ export const userFields: INodeProperties[] = [
 			'Stores the password for the user account. A minimum of 8 characters is required. The maximum length is 100 characters.',
 	},
 	{
+		displayName: 'Username',
+		name: 'username',
+		type: 'string',
+		placeholder: 'e.g. n.smith',
+		displayOptions: {
+			show: {
+				operation: ['create'],
+				resource: ['user'],
+			},
+		},
+		default: '',
+		description:
+			"The username that will be set to the user. Example: If you domain is example.com and you set the username to n.smith then the user's final email address will be n.smith@example.com.",
+	},
+	{
 		displayName: 'Domain Name or ID',
 		name: 'domain',
 		type: 'options',
@@ -114,34 +229,6 @@ export const userFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Username',
-		name: 'username',
-		type: 'string',
-		displayOptions: {
-			show: {
-				operation: ['create'],
-				resource: ['user'],
-			},
-		},
-		default: '',
-		description:
-			"The username that will be set to the user. Example: If you domain is example.com and you set the username to jhon then the user's final email address will be jhon@example.com.",
-	},
-	{
-		displayName: 'Make Admin',
-		name: 'makeAdmin',
-		type: 'boolean',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['create'],
-				resource: ['user'],
-			},
-		},
-		default: false,
-		description: 'Whether to make a user a super administrator',
-	},
-	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -155,9 +242,8 @@ export const userFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Change Password At Next Login',
+				displayName: 'Change Password at Next Login',
 				name: 'changePasswordAtNextLogin',
-
 				type: 'boolean',
 				default: false,
 				description: 'Whether the user is forced to change their password at next login',
@@ -282,8 +368,7 @@ export const userFields: INodeProperties[] = [
 								name: 'primary',
 								type: 'boolean',
 								default: false,
-								description:
-									"Whether this is the user's primary phone number. A user may only have one primary phone number.",
+								description: "Whether this is the user's primary phone number",
 							},
 						],
 					},
@@ -334,33 +419,186 @@ export const userFields: INodeProperties[] = [
 					},
 				],
 			},
+			{
+				displayName: 'Roles',
+				name: 'roles',
+				type: 'multiOptions',
+				default: [],
+				description: 'Select the roles you want to assign to the user',
+				options: [
+					{
+						name: 'Directory Sync Admin',
+						value: 'directorySyncAdmin',
+						description: 'Whether to assign the Directory Sync Admin role',
+					},
+					{
+						name: 'Groups Admin',
+						value: 'groupsAdmin',
+						description: 'Whether to assign the Groups Admin role',
+					},
+					{
+						name: 'Groups Editor',
+						value: 'groupsEditor',
+						description: 'Whether to assign the Groups Editor role',
+					},
+					{
+						name: 'Groups Reader',
+						value: 'groupsReader',
+						description: 'Whether to assign the Groups Reader role',
+					},
+					{
+						name: 'Help Desk Admin',
+						value: 'helpDeskAdmin',
+						description: 'Whether to assign the Help Desk Admin role',
+					},
+					{
+						name: 'Inventory Reporting Admin',
+						value: 'inventoryReportingAdmin',
+						description: 'Whether to assign the Inventory Reporting Admin role',
+					},
+					{
+						name: 'Mobile Admin',
+						value: 'mobileAdmin',
+						description: 'Whether to assign the Mobile Admin role',
+					},
+					{
+						name: 'Services Admin',
+						value: 'servicesAdmin',
+						description: 'Whether to assign the Services Admin role',
+					},
+					{
+						name: 'Storage Admin',
+						value: 'storageAdmin',
+						description: 'Whether to assign the Storage Admin role',
+					},
+					{
+						name: 'Super Admin',
+						value: 'superAdmin',
+						description: 'Whether to assign the Super Admin role',
+					},
+					{
+						name: 'User Management',
+						value: 'userManagement',
+						description: 'Whether to assign the User Management role',
+					},
+				],
+			},
+			{
+				displayName: 'Custom Fields',
+				name: 'customFields',
+				placeholder: 'Add or Edit Custom Fields',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				description: 'Allows editing and adding of custom fields',
+				options: [
+					{
+						name: 'fieldValues',
+						displayName: 'Field',
+						values: [
+							{
+								displayName: 'Schema Name or ID',
+								name: 'schemaName',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getSchemas',
+								},
+								default: '',
+								description:
+									'Select the schema to use for custom fields. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+							},
+							{
+								displayName: 'Field Name or ID',
+								name: 'fieldName',
+								type: 'string',
+								// type: 'options',
+								// typeOptions: {
+								// 	loadOptionsDependsOn: [
+								// 		'additionalFields.test',
+								// 		'additionalFields.customFields.fieldValues[0].schemaName',
+								// 	],
+								// 	loadOptionsMethod: 'getSchemaFields',
+								// },
+								default: '',
+								required: true,
+								description: 'Enter a field name from the selected schema',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								required: true,
+								description: 'Provide a value for the selected field',
+							},
+						],
+					},
+				],
+			},
 		],
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 user:delete                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'User ID',
+		displayName: 'User',
 		name: 'userId',
-		type: 'string',
-		required: true,
+		default: {
+			mode: 'list',
+			value: '',
+		},
 		displayOptions: {
 			show: {
 				operation: ['delete'],
 				resource: ['user'],
 			},
 		},
-		default: '',
-		description:
-			"The value can be the user's primary email address, alias email address, or unique user ID",
+		description: 'Select the user you want to delete',
+		modes: [
+			{
+				displayName: 'From list',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchUsers',
+				},
+			},
+			{
+				displayName: 'By Email',
+				name: 'userEmail',
+				type: 'string',
+				hint: 'Enter the user email',
+				placeholder: 'e.g. sales@example.com',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
+							errorMessage: 'Please enter a valid email address.',
+						},
+					},
+				],
+			},
+			{
+				displayName: 'By ID',
+				name: 'userId',
+				type: 'string',
+				hint: 'Enter the user id',
+				placeholder: 'e.g. 123456789879230471055',
+			},
+		],
+		required: true,
+		type: 'resourceLocator',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 user:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'User ID',
+		displayName: 'User',
 		name: 'userId',
-		type: 'string',
+		type: 'resourceLocator',
 		required: true,
 		displayOptions: {
 			show: {
@@ -368,93 +606,148 @@ export const userFields: INodeProperties[] = [
 				resource: ['user'],
 			},
 		},
-		default: '',
-		description:
-			"The value can be the user's primary email address, alias email address, or unique user ID",
+		default: {
+			mode: 'list',
+			value: '',
+		},
+		description: 'Select the user you want to retrieve',
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchUsers',
+				},
+			},
+			{
+				displayName: 'By Email',
+				name: 'userEmail',
+				type: 'string',
+				hint: 'Enter the user email',
+				placeholder: 'e.g. sales@example.com',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
+							errorMessage: 'Please enter a valid email address.',
+						},
+					},
+				],
+			},
+			{
+				displayName: 'By ID',
+				name: 'groupId',
+				type: 'string',
+				hint: 'Enter the user id',
+				placeholder: 'e.g. 0123kx3o1habcdf',
+			},
+		],
 	},
 	{
-		displayName: 'Projection',
+		displayName: 'Output',
+		name: 'output',
+		type: 'options',
+		required: true,
+		default: 'simplified',
+		displayOptions: {
+			show: {
+				operation: ['get'],
+				resource: ['user'],
+			},
+		},
+		options: [
+			{
+				name: 'Simplified',
+				value: 'simplified',
+				description:
+					'Only return specific fields: kind, ID, primaryEmail, name (with subfields), isAdmin, lastLoginTime, creationTime, and suspended',
+			},
+			{
+				name: 'Raw',
+				value: 'raw',
+				description: 'Return all fields from the API response',
+			},
+			{
+				name: 'Select Included Fields',
+				value: 'select',
+				description: 'Choose specific fields to include',
+			},
+		],
+	},
+	{
+		displayName: 'Fields',
+		name: 'fields',
+		type: 'multiOptions',
+		default: [],
+		displayOptions: {
+			show: {
+				output: ['select'],
+				operation: ['get'],
+				resource: ['user'],
+			},
+		},
+		options: [
+			{ name: 'creationTime', value: 'creationTime' },
+			{ name: 'isAdmin', value: 'isAdmin' },
+			{ name: 'Kind', value: 'kind' },
+			{ name: 'lastLoginTime', value: 'lastLoginTime' },
+			{ name: 'Name', value: 'name' },
+			{ name: 'primaryEmail', value: 'primaryEmail' },
+			{ name: 'Suspended', value: 'suspended' },
+		],
+		description: 'Fields to include in the response when "Select Included Fields" is chosen',
+	},
+	{
+		displayName: 'Custom Fields',
 		name: 'projection',
 		type: 'options',
 		required: true,
 		options: [
 			{
-				name: 'Basic',
+				name: 'Don’t Include',
 				value: 'basic',
 				description: 'Do not include any custom fields for the user',
 			},
 			{
 				name: 'Custom',
 				value: 'custom',
-				description: 'Include custom fields from schemas requested in customField',
+				description: 'Include custom fields from schemas requested in Custom Schema Names or IDs',
 			},
 			{
-				name: 'Full',
+				name: 'Include All',
 				value: 'full',
 				description: 'Include all fields associated with this user',
 			},
 		],
+		default: 'basic',
 		displayOptions: {
 			show: {
 				operation: ['get'],
 				resource: ['user'],
 			},
 		},
-		default: 'basic',
 		description: 'What subset of fields to fetch for this user',
 	},
 	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add option',
-		default: {},
+		displayName: 'Custom Schema Names or IDs',
+		name: 'customFieldMask',
+		type: 'multiOptions',
+		required: true,
 		displayOptions: {
 			show: {
 				operation: ['get'],
 				resource: ['user'],
+				'/projection': ['custom'],
 			},
 		},
-		options: [
-			{
-				displayName: 'Custom Schema Names or IDs',
-				name: 'customFieldMask',
-				type: 'multiOptions',
-				displayOptions: {
-					show: {
-						'/projection': ['custom'],
-					},
-				},
-				typeOptions: {
-					loadOptionsMethod: 'getSchemas',
-				},
-				default: [],
-				description:
-					'A comma-separated list of schema names. All fields from these schemas are fetched. This should only be set when projection=custom. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-			},
-			{
-				displayName: 'View Type',
-				name: 'viewType',
-				type: 'options',
-				options: [
-					{
-						name: 'Admin View',
-						value: 'admin_view',
-						description:
-							'Results include both administrator-only and domain-public fields for the user',
-					},
-					{
-						name: 'Descending',
-						value: 'DESCENDING',
-						description:
-							'Results only include fields for the user that are publicly visible to other users in the domain',
-					},
-				],
-				default: 'admin_view',
-				description:
-					'Whether to fetch the administrator-only or domain-wide public view of the user. For more information, see Retrieve a user as a non-administrator.',
-			},
-		],
+		typeOptions: {
+			loadOptionsMethod: 'getSchemas',
+		},
+		default: [],
+		description:
+			'A comma-separated list of schema names. All fields from these schemas are fetched. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 user:getAll                                */
@@ -491,41 +784,114 @@ export const userFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Projection',
-		name: 'projection',
+		displayName: 'Output',
+		name: 'output',
 		type: 'options',
 		required: true,
-		options: [
-			{
-				name: 'Basic',
-				value: 'basic',
-				description: 'Do not include any custom fields for the user',
-			},
-			{
-				name: 'Custom',
-				value: 'custom',
-				description: 'Include custom fields from schemas requested in customField',
-			},
-			{
-				name: 'Full',
-				value: 'full',
-				description: 'Include all fields associated with this user',
-			},
-		],
+		default: 'simplified',
 		displayOptions: {
 			show: {
 				operation: ['getAll'],
 				resource: ['user'],
 			},
 		},
+		options: [
+			{
+				name: 'Simplified',
+				value: 'simplified',
+				description:
+					'Only return specific fields: kind, ID, primaryEmail, name (with subfields), isAdmin, lastLoginTime, creationTime, and suspended',
+			},
+			{
+				name: 'Raw',
+				value: 'raw',
+				description: 'Return all fields from the API response',
+			},
+			{
+				name: 'Select Included Fields',
+				value: 'select',
+				description: 'Choose specific fields to include',
+			},
+		],
+	},
+	{
+		displayName: 'Fields',
+		name: 'fields',
+		type: 'multiOptions',
+		default: [],
+		displayOptions: {
+			show: {
+				output: ['select'],
+				operation: ['getAll'],
+				resource: ['user'],
+			},
+		},
+		options: [
+			{ name: 'creationTime', value: 'creationTime' },
+			{ name: 'isAdmin', value: 'isAdmin' },
+			{ name: 'Kind', value: 'kind' },
+			{ name: 'lastLoginTime', value: 'lastLoginTime' },
+			{ name: 'Name', value: 'name' },
+			{ name: 'primaryEmail', value: 'primaryEmail' },
+			{ name: 'Suspended', value: 'suspended' },
+		],
+		description: 'Fields to include in the response when "Select Included Fields" is chosen',
+	},
+	{
+		displayName: 'Custom Fields',
+		name: 'projection',
+		type: 'options',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: ['getAll'],
+				resource: ['user'],
+			},
+		},
+		options: [
+			{
+				name: 'Don’t Include',
+				value: 'basic',
+				description: 'Do not include any custom fields for the user',
+			},
+			{
+				name: 'Custom',
+				value: 'custom',
+				description: 'Include custom fields from schemas requested in Custom Schema Names or IDs',
+			},
+			{
+				name: 'Include All',
+				value: 'full',
+				description: 'Include all fields associated with this user',
+			},
+		],
 		default: 'basic',
 		description: 'What subset of fields to fetch for this user',
 	},
 	{
-		displayName: 'Options',
-		name: 'options',
+		displayName: 'Custom Schema Names or IDs',
+		name: 'customFieldMask',
+		type: 'multiOptions',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: ['getAll'],
+				resource: ['user'],
+				'/projection': ['custom'],
+			},
+		},
+		typeOptions: {
+			loadOptionsMethod: 'getSchemas',
+		},
+		default: [],
+		description:
+			'A comma-separated list of schema names. All fields from these schemas are fetched. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+	},
+	{
+		displayName: 'Filter',
+		name: 'filter',
 		type: 'collection',
-		placeholder: 'Add option',
+		placeholder: 'Add Filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -535,110 +901,182 @@ export const userFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Custom Schema Names or IDs',
-				name: 'customFieldMask',
-				type: 'multiOptions',
-				displayOptions: {
-					show: {
-						'/projection': ['custom'],
-					},
-				},
-				typeOptions: {
-					loadOptionsMethod: 'getSchemas',
-				},
-				default: [],
-				description:
-					'A comma-separated list of schema names. All fields from these schemas are fetched. This should only be set when projection=custom. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-			},
-			{
 				displayName: 'Customer',
 				name: 'customer',
 				type: 'string',
 				default: '',
-				description:
-					"The unique ID for the customer's Google Workspace account. In case of a multi-domain account, to fetch all groups for a customer, fill this field instead of domain.",
+				description: "The unique ID for the customer's Google Workspace account",
 			},
 			{
 				displayName: 'Domain',
 				name: 'domain',
 				type: 'string',
 				default: '',
-				description: 'The domain name. Use this field to get fields from only one domain.',
-			},
-			{
-				displayName: 'Order By',
-				name: 'orderBy',
-				type: 'options',
-				options: [
-					{
-						name: 'Email',
-						value: 'email',
-					},
-					{
-						name: 'Family Name',
-						value: 'familyName',
-					},
-					{
-						name: 'Given Name',
-						value: 'givenName',
-					},
-				],
-				default: '',
-				description: 'Property to use for sorting results',
+				description: 'The domain name. Use this field to get groups from a specific domain.',
 			},
 			{
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
+				placeholder: 'e.g. name:contact* email:contact*',
 				default: '',
 				description:
-					'Free text search terms to find users that match these terms in any field, except for extended properties. For more information on constructing user queries, see <a href="https://developers.google.com/admin-sdk/directory/v1/guides/search-users">Search for Users</a>.',
+					'Query string to filter the results. Follow Google Admin SDK documentation. <a href="https://developers.google.com/admin-sdk/directory/v1/guides/search-users#examples" target="_blank">More info</a>.',
 			},
 			{
 				displayName: 'Show Deleted',
 				name: 'showDeleted',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to retrieve the list of deleted users',
+				description: 'Whether retrieve the list of deleted users',
 			},
+		],
+	},
+	{
+		displayName: 'Sort',
+		name: 'sort',
+		type: 'fixedCollection',
+		placeholder: 'Add Sort Rule',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: ['getAll'],
+				resource: ['user'],
+			},
+		},
+		options: [
 			{
-				displayName: 'Sort Order',
-				name: 'sortOrder',
-				type: 'options',
-				options: [
+				name: 'sortRules',
+				displayName: 'Sort Rules',
+				values: [
 					{
-						name: 'Ascending',
-						value: 'ASCENDING',
+						displayName: 'Order By',
+						name: 'orderBy',
+						type: 'options',
+						options: [
+							{
+								name: 'Email',
+								value: 'email',
+							},
+							{
+								name: 'Family Name',
+								value: 'familyName',
+							},
+							{
+								name: 'Given Name',
+								value: 'givenName',
+							},
+						],
+						default: '',
+						description: 'Field to sort the results by',
 					},
 					{
-						name: 'Descending',
-						value: 'DESCENDING',
+						displayName: 'Sort Order',
+						name: 'sortOrder',
+						type: 'options',
+						options: [
+							{
+								name: 'Ascending',
+								value: 'ASCENDING',
+							},
+							{
+								name: 'Descending',
+								value: 'DESCENDING',
+							},
+						],
+						default: 'ASCENDING',
+						description: 'Sort order direction',
 					},
 				],
-				default: '',
-				description: 'Whether to return results in ascending or descending order',
+			},
+		],
+		description: 'Define sorting rules for the results',
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 user:removeFromGroup                                */
+	/* -------------------------------------------------------------------------- */
+
+	{
+		displayName: 'User',
+		name: 'userId',
+		required: true,
+		type: 'resourceLocator',
+		default: {
+			mode: 'list',
+			value: '',
+		},
+		description: 'Select the user you want to remove from the group',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['removeFromGroup'],
+			},
+		},
+		modes: [
+			{
+				displayName: 'From list',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchUsers',
+				},
 			},
 			{
-				displayName: 'View Type',
-				name: 'viewType',
-				type: 'options',
-				options: [
+				displayName: 'By Email',
+				name: 'userEmail',
+				type: 'string',
+				hint: 'Enter the user email',
+				placeholder: 'e.g. sales@example.com',
+				validation: [
 					{
-						name: 'Admin View',
-						value: 'admin_view',
-						description:
-							'Results include both administrator-only and domain-public fields for the user',
-					},
-					{
-						name: 'Descending',
-						value: 'DESCENDING',
-						description:
-							'Results only include fields for the user that are publicly visible to other users in the domain',
+						type: 'regex',
+						properties: {
+							regex: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
+							errorMessage: 'Please enter a valid email address.',
+						},
 					},
 				],
-				default: 'admin_view',
-				description:
-					'Whether to fetch the administrator-only or domain-wide public view of the user. For more information, see Retrieve a user as a non-administrator.',
+			},
+			{
+				displayName: 'By ID',
+				name: 'userId',
+				type: 'string',
+				hint: 'Enter the user id',
+				placeholder: 'e.g. 123456789879230471055',
+			},
+		],
+	},
+	{
+		displayName: 'Group',
+		name: 'groupId',
+		required: true,
+		type: 'resourceLocator',
+		default: {
+			mode: 'list',
+			value: '',
+		},
+		description: 'Select the group you want to remove the user from',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['removeFromGroup'],
+			},
+		},
+		modes: [
+			{
+				displayName: 'From list',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchGroups',
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'groupId',
+				type: 'string',
+				placeholder: 'e.g. 0123kx3o1habcdf',
 			},
 		],
 	},
@@ -646,9 +1084,9 @@ export const userFields: INodeProperties[] = [
 	/*                                 user:update                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'User ID',
+		displayName: 'User',
 		name: 'userId',
-		type: 'string',
+		type: 'resourceLocator',
 		required: true,
 		displayOptions: {
 			show: {
@@ -656,9 +1094,44 @@ export const userFields: INodeProperties[] = [
 				resource: ['user'],
 			},
 		},
-		default: '',
-		description:
-			"The value can be the user's primary email address, alias email address, or unique user ID",
+		default: {
+			mode: 'list',
+			value: '',
+		},
+		modes: [
+			{
+				displayName: 'From list',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchUsers',
+				},
+			},
+			{
+				displayName: 'By Email',
+				name: 'userEmail',
+				type: 'string',
+				hint: 'Enter the user email',
+				placeholder: 'e.g. sales@example.com',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
+							errorMessage: 'Please enter a valid email address.',
+						},
+					},
+				],
+			},
+			{
+				displayName: 'By ID',
+				name: 'userId',
+				type: 'string',
+				hint: 'Enter the user id',
+				placeholder: 'e.g. 123456789879230471055',
+			},
+		],
+		description: 'Select the user you want to update',
 	},
 	{
 		displayName: 'Update Fields',
@@ -681,9 +1154,16 @@ export const userFields: INodeProperties[] = [
 				description: 'Whether user is archived',
 			},
 			{
-				displayName: 'Change Password At Next Login',
+				displayName: 'Suspend',
+				name: 'suspendUi',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to set the user as suspended. If set to OFF, the user will be reactivated. If not added, the status will remain unchanged.',
+			},
+			{
+				displayName: 'Change Password at Next Login',
 				name: 'changePasswordAtNextLogin',
-
 				type: 'boolean',
 				default: false,
 				description: 'Whether the user is forced to change their password at next login',
@@ -693,12 +1173,14 @@ export const userFields: INodeProperties[] = [
 				name: 'firstName',
 				type: 'string',
 				default: '',
+				placeholder: 'e.g. John',
 			},
 			{
 				displayName: 'Last Name',
 				name: 'lastName',
 				type: 'string',
 				default: '',
+				placeholder: 'e.g. Doe',
 			},
 			{
 				displayName: 'Password',
@@ -706,6 +1188,7 @@ export const userFields: INodeProperties[] = [
 				type: 'string',
 				typeOptions: { password: true },
 				default: '',
+				placeholder: 'e.g. MyStrongP@ssword123',
 				description:
 					'Stores the password for the user account. A minimum of 8 characters is required. The maximum length is 100 characters.',
 			},
@@ -821,6 +1304,7 @@ export const userFields: INodeProperties[] = [
 								name: 'value',
 								type: 'string',
 								default: '',
+								placeholder: 'e.g. +1234567890',
 							},
 							{
 								displayName: 'Primary',
@@ -839,6 +1323,7 @@ export const userFields: INodeProperties[] = [
 				name: 'primaryEmail',
 				type: 'string',
 				default: '',
+				placeholder: 'e.g. john.doe@example.com',
 				description:
 					"The user's primary email address. This property is required in a request to create a user account. The primaryEmail must be unique and cannot be an alias of another user.",
 			},
@@ -882,6 +1367,122 @@ export const userFields: INodeProperties[] = [
 								name: 'address',
 								type: 'string',
 								default: '',
+								placeholder: 'e.g. john.doe.work@example.com',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Roles',
+				name: 'roles',
+				type: 'multiOptions',
+				default: [],
+				description: 'Select the roles you want to assign to the user',
+				options: [
+					{
+						name: 'Directory Sync Admin',
+						value: 'directorySyncAdmin',
+						description: 'Whether Assign Directory Sync Admin role',
+					},
+					{
+						name: 'Groups Admin',
+						value: 'groupsAdmin',
+						description: 'Whether Assign Groups Admin role',
+					},
+					{
+						name: 'Groups Editor',
+						value: 'groupsEditor',
+						description: 'Whether Assign Groups Editor role',
+					},
+					{
+						name: 'Groups Reader',
+						value: 'groupsReader',
+						description: 'Whether Assign Groups Reader role',
+					},
+					{
+						name: 'Help Desk Admin',
+						value: 'helpDeskAdmin',
+						description: 'Whether Assign Help Desk Admin role',
+					},
+					{
+						name: 'Inventory Reporting Admin',
+						value: 'inventoryReportingAdmin',
+						description: 'Whether Assign Inventory Reporting Admin role',
+					},
+					{
+						name: 'Mobile Admin',
+						value: 'mobileAdmin',
+						description: 'Whether Assign Mobile Admin role',
+					},
+					{
+						name: 'Services Admin',
+						value: 'servicesAdmin',
+						description: 'Whether Assign Services Admin role',
+					},
+					{
+						name: 'Storage Admin',
+						value: 'storageAdmin',
+						description: 'Whether Assign Storage Admin role',
+					},
+					{
+						name: 'Super Admin',
+						value: 'superAdmin',
+						description: 'Whether Assign Super Admin role',
+					},
+					{
+						name: 'User Management',
+						value: 'userManagement',
+						description: 'Whether Assign User Management role',
+					},
+				],
+			},
+			{
+				displayName: 'Custom Fields',
+				name: 'customFields',
+				placeholder: 'Add or Edit Custom Fields',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				description: 'Allows editing and adding of custom fields',
+				options: [
+					{
+						name: 'fieldValues',
+						displayName: 'Field',
+						values: [
+							{
+								displayName: 'Schema Name or ID',
+								name: 'schemaName',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getSchemas',
+								},
+								default: '',
+								description:
+									'Select the schema to use for custom fields. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+							},
+							{
+								displayName: 'Field Name or ID',
+								name: 'fieldName',
+								type: 'string',
+								// type: 'options',
+								// typeOptions: {
+								// 	loadOptionsMethod: 'getSchemaFields',
+								// 	loadOptionsDependsOn: ['customFields.fieldValues.schema.schemaName'],
+								// },
+								default: '',
+								required: true,
+								description: 'Enter a field name from the selected schema',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								required: true,
+								description: 'Provide a value for the selected field',
 							},
 						],
 					},
