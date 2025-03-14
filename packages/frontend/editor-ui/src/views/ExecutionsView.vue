@@ -15,6 +15,7 @@ import { useToast } from '@/composables/useToast';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { storeToRefs } from 'pinia';
 import type { ExecutionFilterType } from '@/Interface';
+import { useOverview } from '@/composables/useOverview';
 
 const route = useRoute();
 const i18n = useI18n();
@@ -25,15 +26,7 @@ const executionsStore = useExecutionsStore();
 const insightsStore = useInsightsStore();
 const documentTitle = useDocumentTitle();
 const toast = useToast();
-
-const isOverviewSubPage = computed(
-	() =>
-		route.name === VIEWS.WORKFLOWS ||
-		route.name === VIEWS.HOMEPAGE ||
-		route.name === VIEWS.CREDENTIALS ||
-		route.name === VIEWS.EXECUTIONS ||
-		route.name === VIEWS.FOLDERS,
-);
+const overview = useOverview();
 
 const { executionsCount, executionsCountEstimated, filters, allExecutions } =
 	storeToRefs(executionsStore);
@@ -42,7 +35,6 @@ onBeforeMount(async () => {
 	await loadWorkflows();
 
 	void externalHooks.run('executionsList.openDialog');
-	void insightsStore.summary.execute();
 	telemetry.track('User opened Executions log', {
 		workflow_id: workflowsStore.workflowId,
 	});
@@ -104,7 +96,11 @@ async function onExecutionStop() {
 		@update:filters="onUpdateFilters"
 	>
 		<ProjectHeader>
-			<InsightsSummary v-if="isOverviewSubPage" :summary="insightsStore.summary.state" />
+			<InsightsSummary
+				v-if="overview.isOverviewSubPage"
+				:loading="insightsStore.summary.isLoading"
+				:summary="insightsStore.summary.state"
+			/>
 		</ProjectHeader>
 	</GlobalExecutionsList>
 </template>

@@ -3,10 +3,10 @@ import { computed, useCssModule } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import type { InsightsSummary } from '@n8n/api-types';
 import type { InsightsSummaryDisplay } from '@/features/insights/insights.types';
-import { INSIGHTS_UNIT_MAPPING } from '@/features/insights/insights.constants';
 
 defineProps<{
 	summary: InsightsSummaryDisplay;
+	loading?: boolean;
 }>();
 
 const i18n = useI18n();
@@ -32,7 +32,8 @@ const getDeviationStyles = (d: number) => ({
 		<N8nHeading bold tag="h3" size="small" color="text-light" class="mb-xs">{{
 			i18n.baseText('insights.banner.title', { interpolate: { count: 7 } })
 		}}</N8nHeading>
-		<ul>
+		<N8nLoading v-if="loading" :class="$style.loading" :cols="5" />
+		<ul v-else>
 			<li v-for="{ id, value, deviation, unit } in summary" :key="id">
 				<p>
 					<strong>{{ summaryTitles[id] }}</strong>
@@ -75,11 +76,13 @@ const getDeviationStyles = (d: number) => ({
 
 <style lang="scss" module>
 .insights {
+	display: grid;
+	grid-template-rows: auto 1fr;
 	padding: var(--spacing-xs) 0 var(--spacing-2xl);
+	height: 181px;
 
 	ul {
 		display: flex;
-		height: 91px;
 		align-items: stretch;
 		justify-content: flex-start;
 		border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
@@ -175,5 +178,16 @@ const getDeviationStyles = (d: number) => ({
 	left: 0;
 	top: 50%;
 	transform: translateY(-50%);
+}
+
+.loading {
+	display: flex;
+	align-self: stretch;
+	align-items: stretch;
+
+	> div {
+		margin: 0;
+		height: auto;
+	}
 }
 </style>

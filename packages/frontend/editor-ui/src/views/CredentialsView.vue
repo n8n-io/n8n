@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onBeforeMount, watch } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
 import type { ICredentialTypeMap } from '@/Interface';
 import type { ICredentialType, ICredentialsDecrypted } from 'n8n-workflow';
@@ -34,6 +34,7 @@ import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
 import { isCredentialsResource } from '@/utils/typeGuards';
 import { useInsightsStore } from '@/features/insights/insights.store';
 import InsightsSummary from '@/features/insights/InsightsSummary.vue';
+import { useOverview } from '@/composables/useOverview';
 
 const props = defineProps<{
 	credentialId?: string;
@@ -46,22 +47,14 @@ const sourceControlStore = useSourceControlStore();
 const externalSecretsStore = useExternalSecretsStore();
 const projectsStore = useProjectsStore();
 const usersStore = useUsersStore();
+const insightsStore = useInsightsStore();
 
 const documentTitle = useDocumentTitle();
 const route = useRoute();
 const router = useRouter();
 const telemetry = useTelemetry();
 const i18n = useI18n();
-
-const insightsStore = useInsightsStore();
-const isOverviewSubPage = computed(
-	() =>
-		route.name === VIEWS.WORKFLOWS ||
-		route.name === VIEWS.HOMEPAGE ||
-		route.name === VIEWS.CREDENTIALS ||
-		route.name === VIEWS.EXECUTIONS ||
-		route.name === VIEWS.FOLDERS,
-);
+const overview = useOverview();
 
 type Filters = BaseFilters & { type?: string[]; setupNeeded?: boolean };
 const updateFilter = (state: Filters) => {
@@ -227,9 +220,8 @@ watch(
 	},
 );
 
-onBeforeMount(() => {
+onMounted(() => {
 	documentTitle.set(i18n.baseText('credentials.heading'));
-	void insightsStore.summary.execute();
 });
 </script>
 
@@ -249,7 +241,11 @@ onBeforeMount(() => {
 	>
 		<template #header>
 			<ProjectHeader>
-				<InsightsSummary v-if="isOverviewSubPage" :summary="insightsStore.summary.state" />
+				<InsightsSummary
+					v-if="overview.isOverviewSubPage"
+					:loading="insightsStore.summary.isLoading"
+					:summary="insightsStore.summary.state"
+				/>
 			</ProjectHeader>
 		</template>
 		<template #default="{ data }">

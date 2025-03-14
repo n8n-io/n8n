@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, watch, ref, onBeforeUnmount, onBeforeMount } from 'vue';
+import { computed, onMounted, watch, ref, onBeforeUnmount } from 'vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import type {
 	Resource,
@@ -60,6 +60,7 @@ import { useToast } from '@/composables/useToast';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useInsightsStore } from '@/features/insights/insights.store';
 import InsightsSummary from '@/features/insights/InsightsSummary.vue';
+import { useOverview } from '@/composables/useOverview';
 
 interface Filters extends BaseFilters {
 	status: string | boolean;
@@ -96,19 +97,11 @@ const telemetry = useTelemetry();
 const uiStore = useUIStore();
 const tagsStore = useTagsStore();
 const foldersStore = useFoldersStore();
+const insightsStore = useInsightsStore();
 
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
-
-const insightsStore = useInsightsStore();
-const isOverviewSubPage = computed(
-	() =>
-		route.name === VIEWS.WORKFLOWS ||
-		route.name === VIEWS.HOMEPAGE ||
-		route.name === VIEWS.CREDENTIALS ||
-		route.name === VIEWS.EXECUTIONS ||
-		route.name === VIEWS.FOLDERS,
-);
+const overview = useOverview();
 
 const loading = ref(false);
 const breadcrumbsLoading = ref(false);
@@ -358,10 +351,6 @@ onMounted(async () => {
 	workflowListEventBus.on('resource-moved', fetchWorkflows);
 	workflowListEventBus.on('workflow-duplicated', fetchWorkflows);
 	workflowListEventBus.on('folder-deleted', onFolderDeleted);
-});
-
-onBeforeMount(() => {
-	void insightsStore.summary.execute();
 });
 
 onBeforeUnmount(() => {
@@ -1019,8 +1008,12 @@ const deleteFolder = async (folderId: string, workflowCount: number, subFolderCo
 		@sort="onSortUpdated"
 	>
 		<template #header>
-			<ProjectHeader @create-folder="createFolderInCurrent">
-				<InsightsSummary v-if="isOverviewSubPage" :summary="insightsStore.summary.state" />
+			<ProjectHeader>
+				<InsightsSummary
+					v-if="overview.isOverviewSubPage"
+					:loading="insightsStore.summary.isLoading"
+					:summary="insightsStore.summary.state"
+				/>
 			</ProjectHeader>
 		</template>
 		<template v-if="showFolders" #add-button>
