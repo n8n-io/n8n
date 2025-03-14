@@ -326,7 +326,7 @@ export type BaseResource = {
 
 export type WorkflowListItem = Omit<
 	IWorkflowDb,
-	'nodes' | 'connections' | 'settings' | 'pinData' | 'versionId' | 'usedCredentials' | 'meta'
+	'nodes' | 'connections' | 'settings' | 'pinData' | 'usedCredentials' | 'meta'
 > & {
 	resource: 'workflow';
 	parentFolder?: { id: string; name: string };

@@ -1064,9 +1064,14 @@ const onWorkflowMoved = async (payload: {
 	if (!route.params.projectId) return;
 	try {
 		const newFolderURL = `/projects/${route.params.projectId}/folders/${payload.newParent.id}/workflows`;
+		const workflowResource = workflowsAndFolders.value.find(
+			(resource): resource is WorkflowListItem => resource.id === payload.workflow.id,
+		);
 		await workflowsStore.updateWorkflow(payload.workflow.id, {
 			parentFolderId: payload.newParent.id,
+			versionId: workflowResource?.versionId,
 		});
+		await fetchWorkflows();
 		toast.showToast({
 			title: i18n.baseText('folders.move.workflow.success.title'),
 			message: i18n.baseText('folders.move.workflow.success.message', {
