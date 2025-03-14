@@ -27,7 +27,12 @@ export function getInputs(parameters: IDataObject) {
 	// always add the output parser input
 	const hasOutputParser = parameters?.hasOutputParser;
 	if (hasOutputParser === undefined || hasOutputParser === true) {
-		inputs.push({ displayName: 'Output Parser', type: NodeConnectionType.AiOutputParser });
+		inputs.push({
+			displayName: 'Output Parser',
+			type: NodeConnectionType.AiOutputParser,
+			maxConnections: 1,
+			required: false,
+		});
 	}
 
 	return inputs;

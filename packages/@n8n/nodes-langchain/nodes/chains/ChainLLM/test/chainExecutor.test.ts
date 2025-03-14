@@ -2,7 +2,6 @@ import { StringOutputParser } from '@langchain/core/output_parsers';
 import { ChatPromptTemplate, PromptTemplate } from '@langchain/core/prompts';
 import { FakeLLM, FakeChatModel } from '@langchain/core/utils/testing';
 import { mock } from 'jest-mock-extended';
-import { CombiningOutputParser } from 'langchain/output_parsers';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
@@ -57,7 +56,6 @@ describe('chainExecutor', () => {
 				itemIndex: 0,
 				query: 'Hello',
 				llm: fakeLLM,
-				outputParsers: [],
 			});
 
 			expect(promptUtils.createPromptTemplate).toHaveBeenCalledWith({
@@ -106,7 +104,7 @@ describe('chainExecutor', () => {
 				itemIndex: 0,
 				query: 'Hello',
 				llm: fakeLLM,
-				outputParsers: [mock<N8nOutputParser>()],
+				outputParser: mock<N8nOutputParser>(),
 			});
 
 			expect(promptUtils.createPromptTemplate).toHaveBeenCalledWith({
@@ -118,52 +116,6 @@ describe('chainExecutor', () => {
 			});
 
 			expect(result).toEqual([{ result: 'Test response' }]);
-		});
-
-		it('should use CombiningOutputParser for multiple output parsers', async () => {
-			const fakeLLM = new FakeLLM({ response: 'Test response' });
-			const mockPromptTemplate = new PromptTemplate({
-				template: '{query}\n{formatInstructions}',
-				inputVariables: ['query'],
-				partialVariables: { formatInstructions: 'Combined format instructions' },
-			});
-
-			const mockOutputParser1 = mock<N8nOutputParser>();
-			const mockOutputParser2 = mock<N8nOutputParser>();
-
-			const combiningOutputParserSpy = jest.spyOn(
-				CombiningOutputParser.prototype,
-				'getFormatInstructions',
-			);
-			combiningOutputParserSpy.mockReturnValue('Combined format instructions');
-
-			const mockChain = {
-				invoke: jest.fn().mockResolvedValue('Test response'),
-			};
-			const withConfigMock = jest.fn().mockReturnValue(mockChain);
-			const pipeOutputParserMock = jest.fn().mockReturnValue({
-				withConfig: withConfigMock,
-			});
-			const pipeMock = jest.fn().mockReturnValue({
-				pipe: pipeOutputParserMock,
-			});
-
-			mockPromptTemplate.pipe = pipeMock;
-			fakeLLM.pipe = jest.fn();
-
-			(promptUtils.createPromptTemplate as jest.Mock).mockResolvedValue(mockPromptTemplate);
-
-			await executeChain({
-				context: mockContext,
-				itemIndex: 0,
-				query: 'Hello',
-				llm: fakeLLM,
-				outputParsers: [mockOutputParser1, mockOutputParser2],
-			});
-
-			expect(combiningOutputParserSpy).toHaveBeenCalled();
-
-			combiningOutputParserSpy.mockRestore();
 		});
 
 		it('should wrap non-array responses in an array', async () => {
@@ -196,7 +148,7 @@ describe('chainExecutor', () => {
 				itemIndex: 0,
 				query: 'Hello',
 				llm: fakeLLM,
-				outputParsers: [mockOutputParser],
+				outputParser: mockOutputParser,
 			});
 
 			expect(Array.isArray(result)).toBe(true);
@@ -232,7 +184,6 @@ describe('chainExecutor', () => {
 				itemIndex: 0,
 				query: 'Hello',
 				llm: fakeLLM,
-				outputParsers: [],
 			});
 
 			expect(mockContext.getExecutionCancelSignal).toHaveBeenCalled();
@@ -264,7 +215,6 @@ describe('chainExecutor', () => {
 				itemIndex: 0,
 				query: 'Hello',
 				llm: fakeChatModel,
-				outputParsers: [],
 			});
 
 			expect(result).toEqual(['Test chat response']);

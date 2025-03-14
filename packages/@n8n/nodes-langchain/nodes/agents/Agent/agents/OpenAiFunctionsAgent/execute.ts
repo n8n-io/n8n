@@ -13,7 +13,7 @@ import {
 } from 'n8n-workflow';
 
 import { getConnectedTools, getPromptInputByType } from '@utils/helpers';
-import { getOptionalOutputParsers } from '@utils/output_parsers/N8nOutputParser';
+import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import { getTracingConfig } from '@utils/tracing';
 
 import { extractParsedOutput } from '../utils';
@@ -38,7 +38,7 @@ export async function openAiFunctionsAgentExecute(
 		| BaseChatMemory
 		| undefined;
 	const tools = await getConnectedTools(this, nodeVersion >= 1.5, false);
-	const outputParsers = await getOptionalOutputParsers(this);
+	const outputParser = await getOptionalOutputParser(this);
 	const options = this.getNodeParameter('options', 0, {}) as {
 		systemMessage?: string;
 		maxIterations?: number;
@@ -67,12 +67,8 @@ export async function openAiFunctionsAgentExecute(
 
 	const returnData: INodeExecutionData[] = [];
 
-	let outputParser: BaseOutputParser | undefined;
 	let prompt: PromptTemplate | undefined;
-	if (outputParsers.length) {
-		outputParser =
-			outputParsers.length === 1 ? outputParsers[0] : new CombiningOutputParser(...outputParsers);
-
+	if (outputParser) {
 		const formatInstructions = outputParser.getFormatInstructions();
 
 		prompt = new PromptTemplate({
@@ -107,7 +103,7 @@ export async function openAiFunctionsAgentExecute(
 
 			const response = await agentExecutor
 				.withConfig(getTracingConfig(this))
-				.invoke({ input, outputParsers });
+				.invoke({ input, outputParser });
 
 			if (outputParser) {
 				response.output = await extractParsedOutput(this, outputParser, response.output as string);

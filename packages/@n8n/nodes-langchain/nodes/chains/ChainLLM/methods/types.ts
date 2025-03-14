@@ -36,6 +36,6 @@ export interface ChainExecutionParams {
 	itemIndex: number;
 	query: string;
 	llm: BaseLanguageModel;
-	outputParsers: N8nOutputParser[];
+	outputParser?: N8nOutputParser;
 	messages?: MessageTemplate[];
 }

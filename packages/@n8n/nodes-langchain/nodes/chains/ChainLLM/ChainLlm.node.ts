@@ -8,7 +8,7 @@ import type {
 import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { getPromptInputByType } from '@utils/helpers';
-import { getOptionalOutputParsers } from '@utils/output_parsers/N8nOutputParser';
+import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 
 // Import from centralized module
 import {
@@ -77,8 +77,8 @@ export class ChainLlm implements INodeType {
 					0,
 				)) as BaseLanguageModel;
 
-				// Get output parsers if configured
-				const outputParsers = await getOptionalOutputParsers(this);
+				// Get output parser if configured
+				const outputParser = await getOptionalOutputParser(this);
 
 				// Get user prompt based on node version
 				let prompt: string;
@@ -112,7 +112,7 @@ export class ChainLlm implements INodeType {
 					itemIndex,
 					query: prompt,
 					llm,
-					outputParsers,
+					outputParser,
 					messages,
 				});
 
