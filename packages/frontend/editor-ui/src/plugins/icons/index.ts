@@ -184,6 +184,7 @@ import {
 	statusCanceled,
 	statusNew,
 	statusUnknown,
+	statusWarning,
 } from './custom';
 import { faStickyNote } from '@fortawesome/free-regular-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
@@ -376,6 +377,7 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(statusCanceled);
 		addIcon(statusNew);
 		addIcon(statusUnknown);
+		addIcon(statusWarning);
 
 		app.component('FontAwesomeIcon', FontAwesomeIcon);
 	},
