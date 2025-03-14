@@ -186,15 +186,13 @@ async function copySessionId() {
 			</template>
 		</PanelHeader>
 		<main v-if="isOpen" :class="$style.chatBody">
-			<!-- TODO: implement in chat package -->
-			<template v-if="showEmptyMessage && messages.length === 0">
-				<div :class="$style.empty">
-					<N8nText tag="p" size="large" color="text-base">
-						{{ locale.baseText('chat.window.chat.emptyChatMessage.v2') }}
-					</N8nText>
-				</div>
-			</template>
-			<MessagesList :messages="messages" :class="$style.messages">
+			<MessagesList
+				:messages="messages"
+				:class="$style.messages"
+				:empty-text="
+					showEmptyMessage ? locale.baseText('chat.window.chat.emptyChatMessage.v2') : undefined
+				"
+			>
 				<template #beforeMessage="{ message }">
 					<MessageOptionTooltip
 						v-if="message.sender === 'bot' && !message.id.includes('preload')"
@@ -234,7 +232,7 @@ async function copySessionId() {
 			>
 				<template v-if="pastChatMessages.length > 0" #leftPanel>
 					<div :class="$style.messagesHistory">
-						<N8NButton
+						<N8nButton
 							title="Navigate to previous message"
 							icon="chevron-up"
 							type="tertiary"
@@ -242,7 +240,7 @@ async function copySessionId() {
 							size="mini"
 							@click="onArrowKeyDown({ currentInputValue: '', key: 'ArrowUp' })"
 						/>
-						<N8NButton
+						<N8nButton
 							title="Navigate to next message"
 							icon="chevron-down"
 							type="tertiary"
@@ -349,10 +347,5 @@ async function copySessionId() {
 	&:focus-within {
 		--input-border-color: #4538a3;
 	}
-}
-
-.empty {
-	max-width: 20em;
-	text-align: center;
 }
 </style>
