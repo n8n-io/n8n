@@ -1,10 +1,8 @@
-import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { ChatOpenAI } from '@langchain/openai';
 import type { AgentExecutorInput } from 'langchain/agents';
 import { AgentExecutor, OpenAIAgent } from 'langchain/agents';
 import { BufferMemory, type BaseChatMemory } from 'langchain/memory';
-import { CombiningOutputParser } from 'langchain/output_parsers';
 import {
 	type IExecuteFunctions,
 	type INodeExecutionData,

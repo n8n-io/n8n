@@ -1,9 +1,7 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { AgentExecutor, ChatAgent, ZeroShotAgent } from 'langchain/agents';
-import { CombiningOutputParser } from 'langchain/output_parsers';
 import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
