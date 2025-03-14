@@ -7,8 +7,12 @@ import { useResize } from '@/components/CanvasChat/composables/useResize';
 import { usePiPWindow } from '@/components/CanvasChat/composables/usePiPWindow';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/constants';
+import LogsPanel from '@/components/CanvasChat/v2/components/LogsPanel.vue';
+import { useCanvasStore } from '@/stores/canvas.store';
+import { watch } from 'vue';
 
 const workflowsStore = useWorkflowsStore();
+const canvasStore = useCanvasStore();
 const panelState = computed(() => workflowsStore.chatPanelState);
 const container = ref<HTMLElement>();
 const pipContainer = useTemplateRef('pipContainer');
@@ -25,8 +29,10 @@ const telemetry = useTelemetry();
 const { rootStyles, height, chatWidth, onWindowResize, onResizeDebounced, onResizeChatDebounced } =
 	useResize(container);
 
-const { currentSessionId, messages, connectedNode, sendMessage, refreshSession, displayExecution } =
-	useChatState(ref(false), onWindowResize);
+const { currentSessionId, messages, sendMessage, refreshSession, displayExecution } = useChatState(
+	ref(false),
+	onWindowResize,
+);
 
 const { canPopOut, isPoppedOut, pipWindow } = usePiPWindow({
 	initialHeight: 400,
@@ -58,6 +64,12 @@ function onPopOut() {
 	telemetry.track('User toggled log view', { new_state: 'floating' });
 	workflowsStore.setPanelState('floating');
 }
+
+watch([panelState, height], ([state, h]) => {
+	canvasStore.setPanelHeight(
+		state === 'floating' ? 0 : state === 'attached' ? h : 42 /* collapsed panel height */,
+	);
+});
 </script>
 
 <template>
@@ -66,7 +78,7 @@ function onPopOut() {
 			<N8nResizeWrapper
 				:height="height"
 				:supported-directions="['top']"
-				:is-resizing-enabled="true"
+				:is-resizing-enabled="panelState === 'attached'"
 				:style="rootStyles"
 				:class="[$style.resizeWrapper, panelState === 'closed' ? '' : $style.isOpen]"
 				@resize="onResizeDebounced"
