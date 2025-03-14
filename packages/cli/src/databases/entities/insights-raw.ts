@@ -56,37 +56,4 @@ export class InsightsRaw extends BaseEntity {
 			this.timestamp_ = value;
 		}
 	}
-
-	inspect() {
-		console.log('inspect');
-		return {
-			...this,
-			type: this.type,
-			timestamp: this.timestamp,
-		};
-	}
-
-	toJSON() {
-		console.log('toJSON');
-		const result = {
-			...this,
-			type_: undefined,
-			timestamp_: undefined,
-			type: this.type,
-			timestamp: this.timestamp,
-		};
-		return result;
-	}
-
-	toString() {
-		console.log('toString');
-		const result = {
-			...this,
-			type_: undefined,
-			timestamp_: undefined,
-			type: this.type,
-			timestamp: this.timestamp,
-		};
-		return JSON.stringify(result);
-	}
 }
