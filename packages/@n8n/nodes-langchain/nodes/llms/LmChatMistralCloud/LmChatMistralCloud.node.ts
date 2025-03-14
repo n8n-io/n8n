@@ -54,7 +54,7 @@ export class LmChatMistralCloud implements INodeType {
 		],
 		requestDefaults: {
 			ignoreHttpStatusErrors: true,
-			baseURL: 'https://api.mistral.ai/v1',
+			baseURL: '={{$credentials.endpoint}}/v1',
 		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
@@ -190,6 +190,7 @@ export class LmChatMistralCloud implements INodeType {
 
 		const model = new ChatMistralAI({
 			apiKey: credentials.apiKey as string,
+			endpoint: credentials.endpoint as string,
 			modelName,
 			...options,
 			callbacks: [new N8nLlmTracing(this)],
