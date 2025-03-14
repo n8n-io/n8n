@@ -7,7 +7,7 @@ import * as ldapApi from '@/api/ldap';
 import * as settingsApi from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
 import type { ILdapConfig } from '@/Interface';
-import { STORES, INSECURE_CONNECTION_WARNING, VIEWS } from '@/constants';
+import { STORES, INSECURE_CONNECTION_WARNING } from '@/constants';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import type { IDataObject, WorkflowSettings } from 'n8n-workflow';
 import { ExpressionEvaluatorProxy } from 'n8n-workflow';
