@@ -180,7 +180,9 @@ const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const isShareable = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
 );
-const showFolders = computed(() => settingsStore.isFoldersFeatureEnabled);
+const showFolders = computed(() => {
+	return settingsStore.isFoldersFeatureEnabled && !isOverviewPage.value;
+});
 
 const currentFolder = computed(() => {
 	return currentFolderId.value ? foldersStore.breadcrumbsCache[currentFolderId.value] : null;

@@ -20,7 +20,7 @@ import TimeAgo from '@/components/TimeAgo.vue';
 import { useProjectsStore } from '@/stores/projects.store';
 import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
 import { useI18n } from '@/composables/useI18n';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { ResourceType } from '@/utils/projects.utils';
 import type { EventBus } from '@n8n/utils/event-bus';
@@ -60,6 +60,7 @@ const toast = useToast();
 const message = useMessage();
 const locale = useI18n();
 const router = useRouter();
+const route = useRoute();
 const telemetry = useTelemetry();
 
 const settingsStore = useSettingsStore();
@@ -71,6 +72,11 @@ const projectsStore = useProjectsStore();
 const resourceTypeLabel = computed(() => locale.baseText('generic.workflow').toLowerCase());
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const workflowPermissions = computed(() => getResourcePermissions(props.data.scopes).workflow);
+
+const showFolders = computed(() => {
+	return settingsStore.isFoldersFeatureEnabled && route.name !== VIEWS.WORKFLOWS;
+});
+
 const actions = computed(() => {
 	const items = [
 		{
@@ -90,11 +96,7 @@ const actions = computed(() => {
 		});
 	}
 
-	if (
-		workflowPermissions.value.update &&
-		!props.readOnly &&
-		settingsStore.isFoldersFeatureEnabled
-	) {
+	if (workflowPermissions.value.update && !props.readOnly && showFolders.value) {
 		items.push({
 			label: locale.baseText('folders.actions.moveToFolder'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.MOVE_TO_FOLDER,
