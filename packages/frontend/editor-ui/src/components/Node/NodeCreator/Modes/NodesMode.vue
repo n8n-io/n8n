@@ -116,6 +116,24 @@ function onSelected(item: INodeCreateElement) {
 		const nodeActions = getFilteredActions(item);
 
 		if (isCommunityPackageName(item.key) && !activeViewStack.value.communityNodeDetails) {
+			const iconUrl = getNodeIconUrl(item.properties, uiStore.appliedTheme);
+			const icon = iconUrl
+				? rootStore.baseUrl + iconUrl
+				: getNodeIcon(item.properties, uiStore.appliedTheme)?.split(':')[1];
+			const nodeIcon = {
+				color: getNodeIconColor(item.properties),
+				icon,
+				iconType: iconUrl ? 'file' : 'icon',
+			};
+			const communityNodeDetails = {
+				title: item.properties.displayName,
+				description: item.properties.description ?? 'Community',
+				nodeIcon,
+				installed: true,
+				verified: true,
+				installs: 1342,
+				publishedBy: 'n8n-contributor',
+			};
 			if (nodeActions.length) {
 				const transformedActions = nodeActions?.map((a) =>
 					transformNodeType(a, item.properties.displayName, 'action'),
@@ -127,7 +145,7 @@ function onSelected(item: INodeCreateElement) {
 					hasSearch: false,
 					mode: 'actions',
 					items: transformedActions,
-					communityNodeDetails: true,
+					communityNodeDetails,
 				});
 			} else {
 				pushViewStack({
@@ -137,7 +155,7 @@ function onSelected(item: INodeCreateElement) {
 					hasSearch: false,
 					items: [item],
 					mode: 'nodes',
-					communityNodeDetails: true,
+					communityNodeDetails,
 				});
 			}
 			return;
@@ -177,7 +195,6 @@ function onSelected(item: INodeCreateElement) {
 				icon,
 				iconType: iconUrl ? 'file' : 'icon',
 			},
-
 			rootView: activeViewStack.value.rootView,
 			hasSearch: true,
 			mode: 'actions',

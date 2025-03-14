@@ -57,7 +57,7 @@ const { t } = useI18n();
 					<template #content>
 						<slot name="tooltip" />
 					</template>
-					<n8n-icon :class="$style.tooltipIcon" icon="cube" />
+					<n8n-icon :class="$style.tooltipIcon" icon="users" />
 				</N8nTooltip>
 			</div>
 			<p
@@ -113,6 +113,8 @@ const { t } = useI18n();
 }
 .tooltipIcon {
 	margin-left: var(--spacing-3xs);
+	color: var(--color-text-base);
+	font-size: var(--font-size-2xs);
 }
 .panelArrow {
 	font-size: var(--font-size-2xs);

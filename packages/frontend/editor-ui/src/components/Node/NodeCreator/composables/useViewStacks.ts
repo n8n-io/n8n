@@ -72,7 +72,20 @@ interface ViewStack {
 	actionsFilter?: (items: ActionTypeDescription[]) => ActionTypeDescription[];
 	panelClass?: string;
 	sections?: string[] | NodeViewItemSection[];
-	communityNodeDetails?: boolean;
+	communityNodeDetails?: {
+		title: string;
+		description: string;
+		installed: boolean;
+		verified: boolean;
+		installs: number;
+		publishedBy: string;
+		nodeIcon?: {
+			iconType?: string;
+			icon?: Themed<string>;
+			color?: string;
+		};
+		iconUrl?: string;
+	};
 }
 
 export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {

@@ -1,49 +1,62 @@
 <script setup lang="ts">
-import { reactive } from 'vue';
+import { useViewStacks } from '../composables/useViewStacks';
+
+const { activeViewStack } = useViewStacks();
+
+const { communityNodeDetails } = activeViewStack;
 
 export interface Props {}
 
 withDefaults(defineProps<Props>(), {});
-
-const emit = defineEmits<{
-	'update:modelValue': [value: string];
-}>();
-
-const state = reactive({});
-
-console.log(emit, state);
 </script>
 
 <template>
 	<div :class="$style.card">
 		<div :class="$style.header">
 			<div :class="$style.title">
-				<img
-					src="https://static-production.npmjs.com/attachments/ck3uweazy72ye8874y9kkxnx1-gak.png"
-					alt="PDF Icon"
+				<n8n-node-icon
+					v-if="communityNodeDetails?.nodeIcon"
+					:class="$style.nodeIcon"
+					:type="communityNodeDetails.nodeIcon.iconType || 'unknown'"
+					:src="communityNodeDetails.nodeIcon.icon"
+					:name="communityNodeDetails.nodeIcon.icon"
+					:color="communityNodeDetails.nodeIcon.color"
+					:circle="false"
+					:show-tooltip="false"
 				/>
-				PDFKit
+				<span>{{ communityNodeDetails?.title }}</span>
 			</div>
-			<button :class="$style.installbtn">
-				<span>Install node</span>
-			</button>
+			<N8nButton
+				:loading="false"
+				:disabled="false"
+				label="Install Node"
+				size="small"
+				@click="() => console.log('installing node')"
+			/>
 		</div>
-		<p :class="$style.description">Use this node to convert images to PDF.</p>
+		<p :class="$style.description">{{ communityNodeDetails?.description }}</p>
 		<div :class="$style.separator"></div>
 		<div :class="$style.info">
-			<div>User</div>
-			<div>✔ 1,342 installs</div>
-			<div>• Published by oriondesign</div>
+			<div>
+				<FontAwesomeIcon :class="$style.tooltipIcon" icon="check-circle" />
+				{{ communityNodeDetails?.verified ? 'Verified' : 'Unverified' }}
+			</div>
+			<div>
+				<FontAwesomeIcon :class="$style.tooltipIcon" icon="download" />
+				{{ communityNodeDetails?.installs }} installs
+			</div>
+			<div>
+				<FontAwesomeIcon :class="$style.tooltipIcon" icon="user" /> Published by
+				{{ communityNodeDetails?.publishedBy }}
+			</div>
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
 .card {
-	background: white;
 	width: 100%;
-	padding: 16px;
-
+	padding: var(--spacing-s);
 	display: flex;
 	flex-direction: column;
 }
@@ -55,35 +68,20 @@ console.log(emit, state);
 .title {
 	display: flex;
 	align-items: center;
-	font-size: 18px;
-	font-weight: bold;
+	color: var(--color-text);
+	font-size: var(--font-size-xl);
+	font-weight: var(--font-weight-bold);
 }
-.title img {
-	width: 24px;
-	height: 24px;
-	margin-right: 8px;
-}
-.installbtn {
-	background-color: #ff5a5f;
-	color: white;
-	border: none;
-	padding: 6px 10px;
-	border-radius: 5px;
-	cursor: pointer;
-	font-size: 14px;
-	display: flex;
-	align-items: center;
-	gap: 6px;
-}
-.installbtn span {
-	display: flex;
-	align-items: center;
+.nodeIcon {
+	--node-icon-size: 36px;
+	margin-right: var(--spacing-s);
 }
 
 .description {
-	font-size: 14px;
-	color: #666;
-	margin: 8px 0;
+	margin: var(--spacing-m) 0;
+	font-size: var(--font-size-s);
+	line-height: 1rem;
+	color: var(--node-creator-description-colos);
 }
 .separator {
 	height: 1px;
@@ -93,18 +91,20 @@ console.log(emit, state);
 .info {
 	display: flex;
 	align-items: center;
-	font-size: 12px;
-	color: #666;
-	gap: 10px;
-	margin-top: 5px;
+	font-size: var(--font-size-3xs);
+	color: var(--color-text-light);
+	gap: var(--spacing-s);
+	margin-top: var(--spacing-2xs);
+	margin-bottom: var(--spacing-2xs);
 }
 .info div {
 	display: flex;
 	align-items: center;
 	gap: 5px;
 }
-.info img {
-	width: 16px;
-	height: 16px;
+
+.tooltipIcon {
+	color: var(--color-text-light);
+	font-size: var(--font-size-2xs);
 }
 </style>
