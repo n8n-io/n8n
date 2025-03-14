@@ -18,8 +18,8 @@ export class TelegramTrigger implements INodeType {
 		name: 'telegramTrigger',
 		icon: 'file:telegram.svg',
 		group: ['trigger'],
-		version: [1, 1.1],
-		defaultVersion: 1.1,
+		version: [1, 1.1, 1.2],
+		defaultVersion: 1.2,
 		subtitle: '=Updates: {{$parameter["updates"].join(", ")}}',
 		description: 'Starts the workflow on a Telegram update',
 		defaults: {
@@ -57,7 +57,19 @@ export class TelegramTrigger implements INodeType {
 					{
 						name: '*',
 						value: '*',
-						description: 'All updates',
+						description:
+							'All updates except "Chat Member", "Message Reaction", and "Message Reaction Count" (default behavior of Telegram API as they produces a lot of calls of updates)',
+					},
+					{
+						name: 'Business Connection',
+						value: 'business_connection',
+						description:
+							'Trigger when the bot was connected to or disconnected from a business account, or a user edited an existing connection with the bot',
+					},
+					{
+						name: 'Business Message',
+						value: 'business_message',
+						description: 'Trigger on new message from a connected business account',
 					},
 					{
 						name: 'Callback Query',
@@ -69,6 +81,40 @@ export class TelegramTrigger implements INodeType {
 						value: 'channel_post',
 						description:
 							'Trigger on new incoming channel post of any kind — text, photo, sticker, etc',
+					},
+					{
+						name: 'Chat Boost',
+						value: 'chat_boost',
+						description:
+							'Trigger when a chat boost was added or changed. The bot must be an administrator in the chat to receive these updates.',
+					},
+					{
+						name: 'Chat Join Request',
+						value: 'chat_join_request',
+						description:
+							'Trigger when a request to join the chat has been sent. The bot must have the can_invite_users administrator right in the chat to receive these updates.',
+					},
+					{
+						name: 'Chat Member',
+						value: 'chat_member',
+						description:
+							"Trigger when a chat member's status was updated in a chat. The bot must be an administrator in the chat.",
+					},
+					{
+						name: 'Chosen Inline Result',
+						value: 'chosen_inline_result',
+						description:
+							"Trigger when the result of an inline query that was chosen by a user and sent to their chat partner. Please see Telegram's documentation on the feedback collecting for details on how to enable these updates for your bot.",
+					},
+					{
+						name: 'Deleted Business Messages',
+						value: 'deleted_business_messages',
+						description: 'Trigger when messages were deleted from a connected business account',
+					},
+					{
+						name: 'Edited Business Message',
+						value: 'edited_business_message',
+						description: 'Trigger on new version of a message from a connected business account',
 					},
 					{
 						name: 'Edited Channel Post',
@@ -93,6 +139,24 @@ export class TelegramTrigger implements INodeType {
 						description: 'Trigger on new incoming message of any kind — text, photo, sticker, etc',
 					},
 					{
+						name: 'Message Reaction',
+						value: 'message_reaction',
+						description:
+							"Trigger when a reaction to a message was changed by a user. The bot must be an administrator in the chat. The update isn't received for reactions set by bots.",
+					},
+					{
+						name: 'Message Reaction Count',
+						value: 'message_reaction_count',
+						description:
+							'Trigger when reactions to a message with anonymous reactions were changed. The bot must be an administrator in the chat. The updates are grouped and can be sent with delay up to a few minutes.',
+					},
+					{
+						name: 'My Chat Member',
+						value: 'my_chat_member',
+						description:
+							"Trigger when the bot's chat member status was updated in a chat. For private chats, this update is received only when the bot is blocked or unblocked by the user.",
+					},
+					{
 						name: 'Poll',
 						value: 'poll',
 						action: 'On Poll Change',
@@ -100,10 +164,28 @@ export class TelegramTrigger implements INodeType {
 							'Trigger on new poll state. Bots receive only updates about stopped polls and polls, which are sent by the bot.',
 					},
 					{
+						name: 'Poll Answer',
+						value: 'poll_answer',
+						description:
+							'Trigger when user changed their answer in a non-anonymous poll. Bots receive new votes only in polls that were sent by the bot itself.',
+					},
+					{
 						name: 'Pre-Checkout Query',
 						value: 'pre_checkout_query',
 						description:
 							'Trigger on new incoming pre-checkout query. Contains full information about checkout.',
+					},
+					{
+						name: 'Purchased Paid Media',
+						value: 'purchased_paid_media',
+						description:
+							'Trigger when a user purchased paid media with a non-empty payload sent by the bot in a non-channel chat',
+					},
+					{
+						name: 'Removed Chat Boost',
+						value: 'removed_chat_boost',
+						description:
+							'Trigger when a boost was removed from a chat. The bot must be an administrator in the chat to receive these updates.',
 					},
 					{
 						name: 'Shipping Query',
@@ -113,6 +195,7 @@ export class TelegramTrigger implements INodeType {
 					},
 				],
 				required: true,
+				hint: 'Some triggers may require additional permissions, see <a href="https://core.telegram.org/bots/api#getting-updates">Telegram API documentation</a> for more information',
 				default: [],
 			},
 			{
