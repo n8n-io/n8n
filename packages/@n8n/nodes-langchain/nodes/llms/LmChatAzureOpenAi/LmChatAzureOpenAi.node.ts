@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import { ChatOpenAI } from '@langchain/openai';
+import { AzureChatOpenAI } from '@langchain/openai';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -184,7 +184,7 @@ export class LmChatAzureOpenAi implements INodeType {
 			responseFormat?: 'text' | 'json_object';
 		};
 
-		const model = new ChatOpenAI({
+		const model = new AzureChatOpenAI({
 			azureOpenAIApiDeploymentName: modelName,
 			// instance name only needed to set base url
 			azureOpenAIApiInstanceName: !credentials.endpoint ? credentials.resourceName : undefined,
