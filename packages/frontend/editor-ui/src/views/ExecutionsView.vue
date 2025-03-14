@@ -1,7 +1,6 @@
 <script lang="ts" setup>
-import { computed, onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
+import { onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-import { VIEWS } from '@/constants';
 import GlobalExecutionsList from '@/components/executions/global/GlobalExecutionsList.vue';
 import InsightsSummary from '@/features/insights/InsightsSummary.vue';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
