@@ -11,7 +11,9 @@ export const PeriodUnitToNumber = {
 	day: 1,
 	week: 2,
 } as const;
+// TODO: rename to singular
 export type PeriodUnits = keyof typeof PeriodUnitToNumber;
+// TODO: rename to singular
 export type PeriodUnitNumbers = (typeof PeriodUnitToNumber)[PeriodUnits];
 export const NumberToPeriodUnit = Object.entries(PeriodUnitToNumber).reduce(
 	(acc, [key, value]: [PeriodUnits, PeriodUnitNumbers]) => {
@@ -31,7 +33,9 @@ export const TypeToNumber = {
 	success: 2,
 	failure: 3,
 } as const;
+// TODO: rename to singular
 export type TypeUnits = keyof typeof TypeToNumber;
+// TODO: rename to singular
 export type TypeUnitNumbers = (typeof TypeToNumber)[TypeUnits];
 export const NumberToType = Object.entries(TypeToNumber).reduce(
 	(acc, [key, value]: [TypeUnits, TypeUnitNumbers]) => {
