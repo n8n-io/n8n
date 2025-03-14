@@ -38,11 +38,17 @@ const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
 
 @Service()
 export class InsightsService {
+	private readonly rawToHourBatchSize = 500;
+
+	private readonly hourToDayBatchSize = 500;
+
 	constructor(
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
 		private readonly insightsRawRepository: InsightsRawRepository,
-	) {}
+	) {
+		setInterval(async () => await this.compactInsights(), 1000 * 60);
+	}
 
 	async workflowExecuteAfterHandler(ctx: ExecutionLifecycleHooks, fullRunData: IRun) {
 		if (shouldSkipStatus[fullRunData.status] || shouldSkipMode[fullRunData.mode]) {
@@ -116,7 +122,11 @@ export class InsightsService {
 	}
 
 	async compactInsights() {
-		await this.compactRawToHour();
+		let numberOfCompactedData: number;
+
+		do {
+			numberOfCompactedData = await this.compactRawToHour();
+		} while (numberOfCompactedData > 0);
 	}
 
 	private escapeField(fieldName: string) {
@@ -127,15 +137,13 @@ export class InsightsService {
 	 * Compacts raw data to hourly aggregates
 	 */
 	async compactRawToHour() {
-		const batchSize = 500;
-
 		// Get the query builder function for raw insights
 		const batchQuery = this.insightsRawRepository
 			.createQueryBuilder()
 			.select(['id', 'metaId', 'type', 'value'].map((fieldName) => this.escapeField(fieldName)))
 			.addSelect('timestamp', 'periodStart')
 			.orderBy('timestamp', 'ASC')
-			.limit(batchSize);
+			.limit(this.rawToHourBatchSize);
 
 		return await this.compactSourceDataIntoInsightPeriod({
 			sourceBatchQuery: batchQuery.getSql(),
@@ -148,8 +156,6 @@ export class InsightsService {
 	 * Compacts hourly data to daily aggregates
 	 */
 	async compactHourToDay() {
-		const batchSize = 500;
-
 		// Get the query builder function for hourly insights
 		const batchQuery = this.insightsByPeriodRepository
 			.createQueryBuilder()
@@ -160,7 +166,7 @@ export class InsightsService {
 			)
 			.where(`${this.escapeField('periodUnit')} = 0`)
 			.orderBy(this.escapeField('periodStart'), 'ASC')
-			.limit(batchSize);
+			.limit(this.hourToDayBatchSize);
 
 		return await this.compactSourceDataIntoInsightPeriod({
 			sourceBatchQuery: batchQuery.getSql(),
@@ -171,10 +177,7 @@ export class InsightsService {
 	private getPeriodStartExpr(periodUnit: PeriodUnits) {
 		// Database-specific period start expression to truncate timestamp to the periodUnit
 		// SQLite by default
-		let periodStartExpr =
-			periodUnit === 'hour'
-				? "unixepoch(strftime('%Y-%m-%d %H:00:00', periodStart, 'unixepoch'))"
-				: `cast(strftime('%s', periodStart, 'start of ${periodUnit}') as integer)`;
+		let periodStartExpr = `unixepoch(strftime('%Y-%m-%d ${periodUnit === 'hour' ? '%H' : '00'}:00:00', periodStart, 'unixepoch'))`;
 		if (dbType === 'mysqldb' || dbType === 'mariadb') {
 			periodStartExpr =
 				periodUnit === 'hour'

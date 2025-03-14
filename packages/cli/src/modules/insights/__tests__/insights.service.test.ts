@@ -298,7 +298,7 @@ describe('workflowExecuteAfterHandler', () => {
 			}
 		});
 
-		test('compaction', async () => {
+		test('batch compaction split events in hourly insight periods', async () => {
 			// ARRANGE
 			const insightsService = Container.get(InsightsService);
 			const insightsRawRepository = Container.get(InsightsRawRepository);
@@ -309,11 +309,11 @@ describe('workflowExecuteAfterHandler', () => {
 
 			const batchSize = 100;
 
-			let timestamp = DateTime.utc();
+			let timestamp = DateTime.utc(2000, 1, 1, 0, 0);
 			for (let i = 0; i < batchSize; i++) {
 				await createRawInsightsEvent(workflow, { type: 'success', value: 1, timestamp });
 				// create 60 events per hour
-				timestamp = timestamp.minus({ minute: 1 });
+				timestamp = timestamp.plus({ minute: 1 });
 			}
 
 			// ACT
@@ -322,21 +322,187 @@ describe('workflowExecuteAfterHandler', () => {
 			// ASSERT
 			await expect(insightsRawRepository.count()).resolves.toBe(0);
 
-			const allCompacted = await insightsByPeriodRepository.find();
+			const allCompacted = await insightsByPeriodRepository.find({ order: { periodStart: 1 } });
 			const accumulatedValues = allCompacted.reduce((acc, event) => acc + event.value, 0);
 			expect(accumulatedValues).toBe(batchSize);
-			for (const compacted of allCompacted) {
-				expect(compacted.value).toBeLessThanOrEqual(60);
-			}
+			expect(allCompacted[0].value).toBe(60);
+			expect(allCompacted[1].value).toBe(40);
 		});
 
-		test.todo('test different types');
+		test('batch compaction split events in hourly insight periods by type and workflow', async () => {
+			// ARRANGE
+			const insightsService = Container.get(InsightsService);
+			const insightsRawRepository = Container.get(InsightsRawRepository);
+			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
 
-		test.todo('does not conflate different workflows');
+			const project = await createTeamProject();
+			const workflow1 = await createWorkflow({}, project);
+			const workflow2 = await createWorkflow({}, project);
 
-		test.todo('should return the number of compacted events');
+			const batchSize = 100;
 
-		test.todo('works with data in the compacted table');
+			let timestamp = DateTime.utc(2000, 1, 1, 0, 0);
+			for (let i = 0; i < batchSize / 4; i++) {
+				await createRawInsightsEvent(workflow1, { type: 'success', value: 1, timestamp });
+				timestamp = timestamp.plus({ minute: 1 });
+			}
+
+			for (let i = 0; i < batchSize / 4; i++) {
+				await createRawInsightsEvent(workflow1, { type: 'failure', value: 1, timestamp });
+				timestamp = timestamp.plus({ minute: 1 });
+			}
+
+			for (let i = 0; i < batchSize / 4; i++) {
+				await createRawInsightsEvent(workflow2, { type: 'runtime_ms', value: 1200, timestamp });
+				timestamp = timestamp.plus({ minute: 1 });
+			}
+
+			for (let i = 0; i < batchSize / 4; i++) {
+				await createRawInsightsEvent(workflow2, { type: 'time_saved_min', value: 3, timestamp });
+				timestamp = timestamp.plus({ minute: 1 });
+			}
+
+			// ACT
+			await insightsService.compactInsights();
+
+			// ASSERT
+			await expect(insightsRawRepository.count()).resolves.toBe(0);
+
+			const allCompacted = await insightsByPeriodRepository.find({
+				order: { metaId: 'ASC', periodStart: 'ASC' },
+			});
+
+			// Expect 2 insights for workflow 1 (for success and failure)
+			// and 3 for workflow 2 (2 period starts for runtime_ms and 1 for time_saved_min)
+			expect(allCompacted).toHaveLength(5);
+			const metaIds = allCompacted.map((event) => event.metaId);
+
+			// meta id are ordered. first 2 are for workflow 1, last 3 are for workflow 2
+			const uniqueMetaIds = [metaIds[0], metaIds[2]];
+			const workflow1Insights = allCompacted.filter((event) => event.metaId === uniqueMetaIds[0]);
+			const workflow2Insights = allCompacted.filter((event) => event.metaId === uniqueMetaIds[1]);
+
+			expect(workflow1Insights).toHaveLength(2);
+			expect(workflow2Insights).toHaveLength(3);
+
+			const successInsights = workflow1Insights.find((event) => event.type === 'success');
+			const failureInsights = workflow1Insights.find((event) => event.type === 'failure');
+
+			expect(successInsights).toBeTruthy();
+			expect(failureInsights).toBeTruthy();
+			// success and failure insights should have the value matching the number or raw events (because value = 1)
+			expect(successInsights!.value).toBe(25);
+			expect(failureInsights!.value).toBe(25);
+
+			const runtimeMsEvents = workflow2Insights.filter((event) => event.type === 'runtime_ms');
+			const timeSavedMinEvents = workflow2Insights.find((event) => event.type === 'time_saved_min');
+			expect(runtimeMsEvents).toHaveLength(2);
+
+			// The last 10 minutes of the first hour
+			expect(runtimeMsEvents[0].value).toBe(1200 * 10);
+
+			// The first 15 minutes of the second hour
+			expect(runtimeMsEvents[1].value).toBe(1200 * 15);
+			expect(timeSavedMinEvents).toBeTruthy();
+			expect(timeSavedMinEvents!.value).toBe(3 * 25);
+		});
+
+		test('should return the number of compacted events', async () => {
+			// ARRANGE
+			const insightsService = Container.get(InsightsService);
+
+			const project = await createTeamProject();
+			const workflow = await createWorkflow({}, project);
+
+			const batchSize = 100;
+
+			let timestamp = DateTime.utc(2000, 1, 1, 0, 0);
+			for (let i = 0; i < batchSize; i++) {
+				await createRawInsightsEvent(workflow, { type: 'success', value: 1, timestamp });
+				// create 60 events per hour
+				timestamp = timestamp.plus({ minute: 1 });
+			}
+
+			// ACT
+			const numberOfCompactedData = await insightsService.compactRawToHour();
+
+			// ASSERT
+			expect(numberOfCompactedData).toBe(100);
+		});
+
+		test('works with data in the compacted table', async () => {
+			// ARRANGE
+			const insightsService = Container.get(InsightsService);
+			const insightsRawRepository = Container.get(InsightsRawRepository);
+			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+
+			const project = await createTeamProject();
+			const workflow = await createWorkflow({}, project);
+
+			const batchSize = 100;
+
+			let timestamp = DateTime.utc(2000, 1, 1, 0, 0);
+
+			// Create an existing compacted event for the first hour
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 10,
+				periodUnit: 'hour',
+				periodStart: timestamp,
+			});
+
+			const events = Array<{ type: 'success'; value: number; timestamp: DateTime }>();
+			for (let i = 0; i < batchSize; i++) {
+				events.push({ type: 'success', value: 1, timestamp });
+				timestamp = timestamp.plus({ minute: 1 });
+			}
+			await createRawInsightsEvents(workflow, events);
+
+			// ACT
+			await insightsService.compactInsights();
+
+			// ASSERT
+			await expect(insightsRawRepository.count()).resolves.toBe(0);
+
+			const allCompacted = await insightsByPeriodRepository.find({ order: { periodStart: 1 } });
+			const accumulatedValues = allCompacted.reduce((acc, event) => acc + event.value, 0);
+			expect(accumulatedValues).toBe(batchSize + 10);
+			expect(allCompacted[0].value).toBe(70);
+			expect(allCompacted[1].value).toBe(40);
+		});
+
+		test('works with data bigger than the batch size', async () => {
+			// ARRANGE
+			const insightsService = Container.get(InsightsService);
+			const insightsRawRepository = Container.get(InsightsRawRepository);
+			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+
+			// spy on the compactRawToHour method to check if it's called multiple times
+			const rawToHourSpy = jest.spyOn(insightsService, 'compactRawToHour');
+
+			const project = await createTeamProject();
+			const workflow = await createWorkflow({}, project);
+
+			const batchSize = 600;
+
+			let timestamp = DateTime.utc(2000, 1, 1, 0, 0);
+			const events = Array<{ type: 'success'; value: number; timestamp: DateTime }>();
+			for (let i = 0; i < batchSize; i++) {
+				events.push({ type: 'success', value: 1, timestamp });
+				timestamp = timestamp.plus({ minute: 1 });
+			}
+			await createRawInsightsEvents(workflow, events);
+
+			// ACT
+			await insightsService.compactInsights();
+
+			// ASSERT
+			expect(rawToHourSpy).toHaveBeenCalledTimes(3);
+			await expect(insightsRawRepository.count()).resolves.toBe(0);
+			const allCompacted = await insightsByPeriodRepository.find({ order: { periodStart: 1 } });
+			const accumulatedValues = allCompacted.reduce((acc, event) => acc + event.value, 0);
+			expect(accumulatedValues).toBe(batchSize);
+		});
 	});
 
 	describe('compactHourToDay', () => {
