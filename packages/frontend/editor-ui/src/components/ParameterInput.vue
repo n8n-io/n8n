@@ -1788,7 +1788,7 @@ onUpdated(async () => {
 	padding-right: 20px;
 
 	.option-headline {
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight-medium);
 		line-height: var(--font-line-height-regular);
 		overflow-wrap: break-word;
 	}

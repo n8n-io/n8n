@@ -278,7 +278,7 @@ function copySessionId() {
 	align-items: center;
 }
 .chatTitle {
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight-medium);
 }
 .session {
 	display: flex;

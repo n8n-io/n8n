@@ -313,7 +313,7 @@ function onActivate() {
 	-webkit-line-clamp: 2;
 	overflow: hidden;
 	overflow-wrap: anywhere;
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight-medium);
 	line-height: var(--font-line-height-compact);
 }
 

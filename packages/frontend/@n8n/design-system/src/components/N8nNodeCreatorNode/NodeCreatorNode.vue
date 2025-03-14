@@ -126,7 +126,7 @@ const { t } = useI18n();
 	margin-right: var(--node-icon-margin-right, var(--spacing-s));
 }
 .name {
-	font-weight: var(--node-creator-name-weight, var(--font-weight-bold));
+	font-weight: var(--node-creator-name-weight, var(--font-weight-medium));
 	font-size: var(--node-creator-name-size, var(--font-size-s));
 	line-height: 1.115rem;
 }
