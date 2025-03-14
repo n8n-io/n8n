@@ -63,7 +63,12 @@ const description = computed<string>(() => {
 		fallback: props.nodeType.description,
 	});
 });
-const showActionArrow = computed(() => hasActions.value && !isSendAndWaitCategory.value);
+const showActionArrow = computed(() => {
+	if (isCommunityNode.value && !activeViewStack.communityNodeDetails) {
+		return true;
+	}
+	return hasActions.value && !isSendAndWaitCategory.value;
+});
 const isSendAndWaitCategory = computed(() => activeViewStack.subcategory === HITL_SUBCATEGORY);
 const dataTestId = computed(() =>
 	hasActions.value ? 'node-creator-action-item' : 'node-creator-node-item',

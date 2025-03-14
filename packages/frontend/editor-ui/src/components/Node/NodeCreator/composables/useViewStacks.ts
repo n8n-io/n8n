@@ -72,6 +72,7 @@ interface ViewStack {
 	actionsFilter?: (items: ActionTypeDescription[]) => ActionTypeDescription[];
 	panelClass?: string;
 	sections?: string[] | NodeViewItemSection[];
+	communityNodeDetails?: boolean;
 }
 
 export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {

@@ -183,6 +183,7 @@ function onBackButton() {
 				:model-value="activeViewStack.search"
 				@update:model-value="onSearch"
 			/>
+			<CommunityNodeDetails v-if="activeViewStack.communityNodeDetails" />
 			<div :class="$style.renderedItems">
 				<n8n-notice
 					v-if="activeViewStack.info && !activeViewStack.search"

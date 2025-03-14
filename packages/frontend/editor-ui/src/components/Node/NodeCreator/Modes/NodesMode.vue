@@ -115,15 +115,31 @@ function onSelected(item: INodeCreateElement) {
 	if (item.type === 'node') {
 		const nodeActions = getFilteredActions(item);
 
-		if (isCommunityPackageName(item.key)) {
-			pushViewStack({
-				subcategory: item.properties.displayName,
-				title: 'Community node details',
-				rootView: activeViewStack.value.rootView,
-				hasSearch: false,
-				mode: 'actions',
-				items: [],
-			});
+		if (isCommunityPackageName(item.key) && !activeViewStack.value.communityNodeDetails) {
+			if (nodeActions.length) {
+				const transformedActions = nodeActions?.map((a) =>
+					transformNodeType(a, item.properties.displayName, 'action'),
+				);
+				pushViewStack({
+					subcategory: item.properties.displayName,
+					title: 'Community node details',
+					rootView: activeViewStack.value.rootView,
+					hasSearch: false,
+					mode: 'actions',
+					items: transformedActions,
+					communityNodeDetails: true,
+				});
+			} else {
+				pushViewStack({
+					subcategory: item.properties.displayName,
+					title: 'Community node details',
+					rootView: activeViewStack.value.rootView,
+					hasSearch: false,
+					items: [item],
+					mode: 'nodes',
+					communityNodeDetails: true,
+				});
+			}
 			return;
 		}
 
