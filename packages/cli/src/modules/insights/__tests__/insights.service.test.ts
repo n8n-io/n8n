@@ -320,15 +320,13 @@ describe('workflowExecuteAfterHandler', () => {
 			await insightsService.compactInsights();
 
 			// ASSERT
-			{
-				await expect(insightsRawRepository.count()).resolves.toBe(0);
+			await expect(insightsRawRepository.count()).resolves.toBe(0);
 
-				const allCompacted = await insightsByPeriodRepository.find();
-				const accumulatedValues = allCompacted.reduce((acc, event) => acc + event.value, 0);
-				expect(accumulatedValues).toBe(batchSize);
-				for (const compacted of allCompacted) {
-					expect(compacted.value).toBeLessThanOrEqual(60);
-				}
+			const allCompacted = await insightsByPeriodRepository.find();
+			const accumulatedValues = allCompacted.reduce((acc, event) => acc + event.value, 0);
+			expect(accumulatedValues).toBe(batchSize);
+			for (const compacted of allCompacted) {
+				expect(compacted.value).toBeLessThanOrEqual(60);
 			}
 		});
 
@@ -354,18 +352,20 @@ describe('workflowExecuteAfterHandler', () => {
 				periodStarts: [
 					DateTime.utc(2000, 1, 1, 0, 0),
 					DateTime.utc(2000, 1, 1, 23, 59),
-					DateTime.utc(2000, 1, 1, 1, 0),
+					DateTime.utc(2000, 1, 2, 1, 0),
 				],
-				batches: [3],
+				batches: [2, 1],
 			},
 			{
 				name: 'compact into 3 rows',
 				periodStarts: [
+					DateTime.utc(2000, 1, 1, 0, 0),
 					DateTime.utc(2000, 1, 1, 23, 59),
 					DateTime.utc(2000, 1, 2, 0, 0),
 					DateTime.utc(2000, 1, 2, 23, 59),
+					DateTime.utc(2000, 1, 3, 23, 59),
 				],
-				batches: [1, 2],
+				batches: [2, 2, 1],
 			},
 		])('$name', async ({ periodStarts, batches }) => {
 			// ARRANGE
