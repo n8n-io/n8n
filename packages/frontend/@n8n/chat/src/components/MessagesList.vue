@@ -8,6 +8,7 @@ import type { ChatMessage } from '@n8n/chat/types';
 
 defineProps<{
 	messages: ChatMessage[];
+	emptyText?: string;
 }>();
 
 defineSlots<{
@@ -29,7 +30,14 @@ watch(
 );
 </script>
 <template>
-	<div class="chat-messages-list">
+	<div v-if="emptyText && initialMessages.length === 0 && messages.length === 0" class="empty">
+		<N8nIcon icon="comment" size="large" class="emptyIcon" />
+		<N8nText tag="p" size="large" color="text-base">
+			{{ emptyText }}
+		</N8nText>
+	</div>
+
+	<div v-else class="chat-messages-list">
 		<Message
 			v-for="initialMessage in initialMessages"
 			:key="initialMessage.id"
@@ -52,5 +60,21 @@ watch(
 	margin-top: auto;
 	display: block;
 	padding: var(--chat--messages-list--padding);
+}
+
+.empty {
+	max-width: 16em;
+	text-align: center;
+	color: var(--color-text-base);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacing-xs);
+	padding-inline: var(--spacing-m);
+}
+
+.emptyIcon {
+	zoom: 3;
 }
 </style>

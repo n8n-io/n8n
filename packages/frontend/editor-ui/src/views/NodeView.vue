@@ -1806,7 +1806,7 @@ onBeforeUnmount(() => {
 				@click="onStopWaitingForWebhook"
 			/>
 			<CanvasClearExecutionDataButton
-				v-if="isClearExecutionButtonVisible"
+				v-if="isClearExecutionButtonVisible && !settingsStore.isNewLogsEnabled"
 				@click="onClearExecutionData"
 			/>
 		</div>
