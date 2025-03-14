@@ -6,6 +6,10 @@ import { useUIStore } from '@/stores/ui.store';
 import { type EventBus } from '@n8n/utils/event-bus';
 import { computed, ref } from 'vue';
 
+/**
+ * This modal is used to move a resource (folder or workflow) to a different folder.
+ */
+
 type Props = {
 	modalName: string;
 	data: {

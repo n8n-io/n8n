@@ -132,8 +132,12 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 				name: filter?.name ? filter.name : undefined,
 			},
 		);
-		// TODO: Cache
-		// cacheFolders(folders);
+		const forCache: FolderShortInfo[] = folders.map((folder) => ({
+			id: folder.id,
+			name: folder.name,
+			parentFolder: folder.parentFolder?.id,
+		}));
+		cacheFolders(forCache);
 		return folders;
 	}
 

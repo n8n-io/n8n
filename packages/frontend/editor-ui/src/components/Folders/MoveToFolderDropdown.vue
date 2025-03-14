@@ -5,6 +5,13 @@ import { useFoldersStore } from '@/stores/folders.store';
 import { N8nSelect } from '@n8n/design-system';
 import { nextTick, onMounted, ref } from 'vue';
 
+/**
+ * This component is used to select a folder to move a resource (folder or workflow) to.
+ * Based on the provided resource type, it fetches the available folders and displays them in a dropdown.
+ * For folders, it filters out current folder parent and all off it's children (done in the back-end)
+ * For workflows, it only filters out the current workflows's folder.
+ */
+
 type Props = {
 	currentProjectId: string;
 	currentFolderId?: string;
