@@ -24,6 +24,39 @@ import type { IGetExecutePollFunctions, IGetExecuteTriggerFunctions } from './in
 import { ScheduledTaskManager } from './scheduled-task-manager';
 import { TriggersAndPollers } from './triggers-and-pollers';
 
+/**
+ * Service that manages workflows that are currently active in the system.
+ * An active workflow is one that has trigger or polling nodes enabled and is
+ * waiting for events to trigger execution.
+ *
+ * ### Responsibilities
+ *
+ * - Activating and deactivating workflows
+ * - Managing trigger and polling nodes for active workflows
+ * - Tracking workflow state and webhooks
+ * - Handling scheduled tasks for polling nodes
+ *
+ * ### Workflow Activation Flow
+ *
+ * ```mermaid
+ * sequenceDiagram
+ *   participant Client
+ *   participant AW as ActiveWorkflows
+ *   participant TAP as TriggersAndPollers
+ *   participant STM as ScheduledTaskManager
+ *
+ *   Client->>AW: add(workflow)
+ *   AW->>AW: Find trigger/poll nodes
+ *   AW->>TAP: For trigger nodes: setupTrigger()
+ *   AW->>STM: For poll nodes: registerScheduledTasks()
+ *   AW->>Client: Workflow activated
+ * ```
+ *
+ * ## Related Components
+ *
+ * - {@link TriggersAndPollers}: Handles the trigger and polling node execution
+ * - {@link ScheduledTaskManager}: Manages scheduled tasks for polling nodes
+ */
 @Service()
 export class ActiveWorkflows {
 	constructor(
