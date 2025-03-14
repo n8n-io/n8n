@@ -1,11 +1,12 @@
 import { request } from '@/utils/apiUtils';
 import type { JSONSchema7 } from 'json-schema';
+import type { NodeParameterValueType } from 'n8n-workflow';
 
 export type GetSchemaPreviewOptions = {
 	nodeType: string;
 	version: number;
-	resource?: string;
-	operation?: string;
+	resource?: NodeParameterValueType;
+	operation?: NodeParameterValueType;
 };
 
 const padVersion = (version: number) => {
