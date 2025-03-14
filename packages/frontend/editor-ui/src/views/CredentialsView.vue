@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onBeforeMount, watch } from 'vue';
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
 import type { ICredentialTypeMap } from '@/Interface';
 import type { ICredentialType, ICredentialsDecrypted } from 'n8n-workflow';
@@ -34,7 +34,6 @@ import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
 import { isCredentialsResource } from '@/utils/typeGuards';
 import { useInsightsStore } from '@/features/insights/insights.store';
 import InsightsSummary from '@/features/insights/InsightsSummary.vue';
-import { useAsyncState } from '@vueuse/core';
 
 const props = defineProps<{
 	credentialId?: string;
@@ -228,7 +227,7 @@ watch(
 	},
 );
 
-onMounted(() => {
+onBeforeMount(() => {
 	documentTitle.set(i18n.baseText('credentials.heading'));
 	void insightsStore.summary.execute();
 });

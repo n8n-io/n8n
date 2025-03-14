@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, watch, ref, onBeforeUnmount } from 'vue';
+import { computed, onMounted, watch, ref, onBeforeUnmount, onBeforeMount } from 'vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import type {
 	Resource,
@@ -60,7 +60,6 @@ import { useToast } from '@/composables/useToast';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useInsightsStore } from '@/features/insights/insights.store';
 import InsightsSummary from '@/features/insights/InsightsSummary.vue';
-import { useAsyncState } from '@vueuse/core';
 
 interface Filters extends BaseFilters {
 	status: string | boolean;
@@ -355,11 +354,14 @@ const onFolderDeleted = async (payload: { folderId: string }) => {
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('workflows.heading'));
 	void usersStore.showPersonalizationSurvey();
-	void insightsStore.summary.execute();
 
 	workflowListEventBus.on('resource-moved', fetchWorkflows);
 	workflowListEventBus.on('workflow-duplicated', fetchWorkflows);
 	workflowListEventBus.on('folder-deleted', onFolderDeleted);
+});
+
+onBeforeMount(() => {
+	void insightsStore.summary.execute();
 });
 
 onBeforeUnmount(() => {

@@ -8,7 +8,7 @@ import { useMessage } from '@/composables/useMessage';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
-import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
+import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/constants';
 import type { ExecutionFilterType, ExecutionSummaryWithScopes, IWorkflowDb } from '@/Interface';
 import type { PermissionsRecord } from '@/permissions';
 import { getResourcePermissions } from '@/permissions';
@@ -19,7 +19,14 @@ import { N8nButton, N8nCheckbox, N8nTableBase } from '@n8n/design-system';
 import { useIntersectionObserver } from '@vueuse/core';
 import { ElSkeletonItem } from 'element-plus';
 import type { ExecutionSummary } from 'n8n-workflow';
-import { computed, ref, useTemplateRef, watch, type ComponentPublicInstance } from 'vue';
+import {
+	computed,
+	ref,
+	useTemplateRef,
+	watch,
+	type ComponentPublicInstance,
+	onBeforeMount,
+} from 'vue';
 import { useRoute } from 'vue-router';
 import { useInsightsStore } from '@/features/insights/insights.store';
 import InsightsSummary from '@/features/insights/InsightsSummary.vue';
@@ -110,9 +117,9 @@ watch(
 	},
 );
 
-onMounted(() => {
+onBeforeMount(() => {
 	void insightsStore.summary.execute();
-})
+});
 
 function handleCheckAllExistingChange() {
 	allExistingSelected.value = !allExistingSelected.value;
