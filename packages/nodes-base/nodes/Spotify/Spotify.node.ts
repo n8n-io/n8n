@@ -368,10 +368,10 @@ export class Spotify implements INodeType {
 
 				options: [
 					{
-						name: 'Add an Item',
+						name: 'Add Items',
 						value: 'add',
 						description: 'Add tracks to a playlist by track and playlist URI or ID',
-						action: 'Add an Item to a playlist',
+						action: 'Add one or more items to a playlist',
 					},
 					{
 						name: 'Create a Playlist',
@@ -398,10 +398,10 @@ export class Spotify implements INodeType {
 						action: "Get a playlist's tracks by URI or ID",
 					},
 					{
-						name: 'Remove an Item',
+						name: 'Remove Items',
 						value: 'delete',
 						description: 'Remove tracks from a playlist by track and playlist URI or ID',
-						action: 'Remove an item from a playlist',
+						action: 'Remove one or more items from a playlist',
 					},
 					{
 						name: 'Search',
@@ -484,9 +484,8 @@ export class Spotify implements INodeType {
 						operation: ['add', 'delete'],
 					},
 				},
-				placeholder: 'spotify:track:0xE4LEFzSNGsz1F6kvXsHU',
-				description:
-					"The track's Spotify URI or its ID. The track to add/delete from the playlist.",
+				placeholder: 'spotify:track:0xE4LEFzSNGsz1F6kvXsHU,spotify:track:0xE5LEFzSNGsz1F6kvXsHU',
+				description: 'The Spotify URI or ID of the track(s) to add or delete from the playlist',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -1084,13 +1083,14 @@ export class Spotify implements INodeType {
 
 						if (operation === 'delete') {
 							requestMethod = 'DELETE';
-							const trackId = this.getNodeParameter('trackID', i) as string;
 
-							body.tracks = [
-								{
-									uri: trackId,
-								},
-							];
+							const trackIdParameter = this.getNodeParameter('trackID', i) as string;
+
+							const trackIds = trackIdParameter.includes(',')
+								? trackIdParameter.split(',').map((trackId) => trackId.trim())
+								: [trackIdParameter];
+
+							body.tracks = trackIds.map((trackId) => ({ uri: trackId }));
 
 							endpoint = `/playlists/${id}/tracks`;
 
@@ -1132,15 +1132,17 @@ export class Spotify implements INodeType {
 						} else if (operation === 'add') {
 							requestMethod = 'POST';
 
-							const trackId = this.getNodeParameter('trackID', i) as string;
+							const trackIdParameter = this.getNodeParameter('trackID', i) as string;
+							const trackIds = trackIdParameter.includes(',')
+								? trackIdParameter.split(',').map((trackId) => trackId.trim())
+								: [trackIdParameter];
+
 							const additionalFields = this.getNodeParameter('additionalFields', i);
 
-							qs = {
-								uris: trackId,
-							};
+							body.uris = trackIds;
 
 							if (additionalFields.position !== undefined) {
-								qs.position = additionalFields.position;
+								body.position = additionalFields.position;
 							}
 
 							endpoint = `/playlists/${id}/tracks`;
