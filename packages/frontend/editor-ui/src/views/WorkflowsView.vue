@@ -347,6 +347,7 @@ onMounted(async () => {
 	workflowListEventBus.on('workflow-duplicated', fetchWorkflows);
 	workflowListEventBus.on('folder-deleted', onFolderDeleted);
 	workflowListEventBus.on('folder-moved', moveFolder);
+	workflowListEventBus.on('workflow-moved', onWorkflowMoved);
 });
 
 onBeforeUnmount(() => {
@@ -354,6 +355,7 @@ onBeforeUnmount(() => {
 	workflowListEventBus.off('workflow-duplicated', fetchWorkflows);
 	workflowListEventBus.off('folder-deleted', onFolderDeleted);
 	workflowListEventBus.off('folder-moved', moveFolder);
+	workflowListEventBus.off('workflow-moved', onWorkflowMoved);
 });
 
 /**
@@ -807,8 +809,16 @@ const onBreadCrumbsAction = async (action: string) => {
 			await renameFolder(route.params.folderId as string);
 			break;
 		case FOLDER_LIST_ITEM_ACTIONS.MOVE:
-			if (!route.params.folderId) return;
-			uiStore.openMoveFolderModal(route.params.folderId as string, workflowListEventBus);
+			if (!currentFolder.value) return;
+			uiStore.openMoveToFolderModal(
+				'folder',
+				{
+					id: currentFolder.value?.id,
+					name: currentFolder.value?.name,
+					parentFolderId: currentFolder.value?.parentFolder,
+				},
+				workflowListEventBus,
+			);
 			break;
 		default:
 			break;
@@ -844,7 +854,15 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 			await renameFolder(clickedFolder.id);
 			break;
 		case FOLDER_LIST_ITEM_ACTIONS.MOVE:
-			uiStore.openMoveFolderModal(clickedFolder.id, workflowListEventBus);
+			uiStore.openMoveToFolderModal(
+				'folder',
+				{
+					id: clickedFolder.id,
+					name: clickedFolder.name,
+					parentFolderId: clickedFolder.parentFolder,
+				},
+				workflowListEventBus,
+			);
 			break;
 		default:
 			break;
@@ -1017,6 +1035,46 @@ const moveFolder = async (payload: {
 		toast.showError(error, i18n.baseText('folders.move.error.title'));
 	}
 };
+
+const moveWorkflowToFolder = async (payload: {
+	id: string;
+	name: string;
+	parentFolderId?: string;
+}) => {
+	uiStore.openMoveToFolderModal(
+		'workflow',
+		{ id: payload.id, name: payload.name, parentFolderId: payload.parentFolderId },
+		workflowListEventBus,
+	);
+};
+
+const onWorkflowMoved = async (payload: {
+	workflow: { id: string; name: string };
+	newParent: { id: string; name: string };
+}) => {
+	if (!route.params.projectId) return;
+	try {
+		const newFolderURL = `/projects/${route.params.projectId}/folders/${payload.newParent.id}/workflows`;
+		await workflowsStore.updateWorkflow(payload.workflow.id, {
+			parentFolderId: payload.newParent.id,
+		});
+		toast.showToast({
+			title: i18n.baseText('folders.move.workflow.success.title'),
+			message: i18n.baseText('folders.move.workflow.success.message', {
+				interpolate: { workflowName: payload.workflow.name, newFolderName: payload.newParent.name },
+			}),
+			onClick: (event: MouseEvent | undefined) => {
+				if (event?.target instanceof HTMLAnchorElement) {
+					event.preventDefault();
+					void router.push(newFolderURL);
+				}
+			},
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('folders.move.workflow.error.title'));
+	}
+};
 </script>
 
 <template>
@@ -1134,6 +1192,7 @@ const moveFolder = async (payload: {
 				@workflow:moved="fetchWorkflows"
 				@workflow:duplicated="fetchWorkflows"
 				@workflow:active-toggle="onWorkflowActiveToggle"
+				@action:move-to-folder="moveWorkflowToFolder"
 			/>
 		</template>
 		<template #empty>

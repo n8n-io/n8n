@@ -1,16 +1,22 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
-import type { FolderListItem, FolderShortInfo } from '@/Interface';
+import type { FolderListItem } from '@/Interface';
 import { useFoldersStore } from '@/stores/folders.store';
 import { N8nSelect } from '@n8n/design-system';
 import { nextTick, onMounted, ref } from 'vue';
 
 type Props = {
 	currentProjectId: string;
-	currentFolder: FolderShortInfo;
+	currentFolderId?: string;
+	parentFolderId?: string;
+	excludeOnlyParent?: boolean;
 };
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+	currentFolderId: '',
+	parentFolderId: '',
+	excludeOnlyParent: false,
+});
 
 const emit = defineEmits<{
 	'folder:selected': [value: { id: string; name: string }];
@@ -31,11 +37,16 @@ const fetchAvailableFolders = async (query?: string) => {
 		return;
 	}
 	loading.value = true;
-	availableFolders.value = await foldersStore.fetchFoldersAvailableForMove(
+	const folders = await foldersStore.fetchFoldersAvailableForMove(
 		props.currentProjectId,
-		props.currentFolder.id,
+		props.currentFolderId,
 		{ name: query ?? undefined },
 	);
+	if (!props.parentFolderId) {
+		availableFolders.value = folders;
+	} else {
+		availableFolders.value = folders.filter((folder) => folder.id !== props.parentFolderId);
+	}
 	loading.value = false;
 };
 

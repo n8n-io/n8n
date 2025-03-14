@@ -1,16 +1,20 @@
 <script lang="ts" setup>
 import { useI18n } from '@/composables/useI18n';
 import { MOVE_FOLDER_MODAL_KEY } from '@/constants';
-import { useFoldersStore } from '@/stores/folders.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useUIStore } from '@/stores/ui.store';
-import type { EventBus } from '@n8n/utils/event-bus';
+import { type EventBus } from '@n8n/utils/event-bus';
 import { computed, ref } from 'vue';
 
 type Props = {
 	modalName: string;
-	activeId: string;
 	data: {
+		resourceType: 'folder' | 'workflow';
+		resource: {
+			id: string;
+			name: string;
+			parentFolderId?: string;
+		};
 		workflowListEventBus: EventBus;
 	};
 };
@@ -19,19 +23,25 @@ const props = defineProps<Props>();
 
 const i18n = useI18n();
 
-const foldersStore = useFoldersStore();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
 
 const selectedFolder = ref<{ id: string; name: string } | null>(null);
 
-const currentFolder = computed(() => {
-	return foldersStore.breadcrumbsCache[props.activeId];
+const title = computed(() => {
+	return i18n.baseText('folders.move.modal.title', {
+		interpolate: { folderName: props.data.resource.name },
+	});
 });
 
-const title = computed(() => {
-	const folderName = currentFolder.value?.name ?? '';
-	return i18n.baseText('folders.move.modal.title', { interpolate: { folderName } });
+const currentFolder = computed(() => {
+	if (props.data.resourceType === 'workflow') {
+		return;
+	}
+	return {
+		id: props.data.resource.id,
+		name: props.data.resource.name,
+	};
 });
 
 const onFolderSelected = (payload: { id: string; name: string }) => {
@@ -39,10 +49,17 @@ const onFolderSelected = (payload: { id: string; name: string }) => {
 };
 
 const onSubmit = () => {
-	props.data.workflowListEventBus.emit('folder-moved', {
-		newParent: selectedFolder.value,
-		folder: { id: currentFolder.value.id, name: currentFolder.value.name },
-	});
+	if (props.data.resourceType === 'folder') {
+		props.data.workflowListEventBus.emit('folder-moved', {
+			newParent: selectedFolder.value,
+			folder: { id: props.data.resource.id, name: props.data.resource.name },
+		});
+	} else {
+		props.data.workflowListEventBus.emit('workflow-moved', {
+			newParent: selectedFolder.value,
+			workflow: { id: props.data.resource.id, name: props.data.resource.name },
+		});
+	}
 	uiStore.closeModal(MOVE_FOLDER_MODAL_KEY);
 };
 </script>
@@ -52,11 +69,15 @@ const onSubmit = () => {
 		<template #content>
 			<MoveFolderDropdown
 				v-if="projectsStore.currentProject"
-				:current-folder="currentFolder"
+				:current-folder-id="currentFolder?.id"
 				:current-project-id="projectsStore.currentProject?.id"
+				:parent-folder-id="props.data.resource.parentFolderId"
+				:exclude-only-parent="props.data.resourceType === 'workflow'"
 				@folder:selected="onFolderSelected"
 			/>
-			<p :class="$style.description">{{ i18n.baseText('folders.move.modal.description') }}</p>
+			<p v-if="props.data.resourceType === 'folder'" :class="$style.description">
+				{{ i18n.baseText('folders.move.modal.description') }}
+			</p>
 		</template>
 		<template #footer="{ close }">
 			<div :class="$style.footer">

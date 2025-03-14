@@ -115,7 +115,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 
 	async function fetchFoldersAvailableForMove(
 		projectId: string,
-		folderId: string,
+		folderId?: string,
 		filter?: {
 			name?: string;
 		},

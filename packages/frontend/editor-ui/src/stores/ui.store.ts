@@ -507,9 +507,15 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		openModalWithData({ name: DELETE_FOLDER_MODAL_KEY, data: { workflowListEventBus, content } });
 	};
 
-	const openMoveFolderModal = (id: string, workflowListEventBus: EventBus) => {
-		setActiveId(MOVE_FOLDER_MODAL_KEY, id);
-		openModalWithData({ name: MOVE_FOLDER_MODAL_KEY, data: { workflowListEventBus } });
+	const openMoveToFolderModal = (
+		resourceType: 'folder' | 'workflow',
+		resource: { id: string; name: string; parentFolderId?: string },
+		workflowListEventBus: EventBus,
+	) => {
+		openModalWithData({
+			name: MOVE_FOLDER_MODAL_KEY,
+			data: { resourceType, resource, workflowListEventBus },
+		});
 	};
 
 	const addActiveAction = (action: string) => {
@@ -684,7 +690,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		resetLastInteractedWith,
 		setProcessingExecutionResults,
 		openDeleteFolderModal,
-		openMoveFolderModal,
+		openMoveToFolderModal,
 	};
 });
 

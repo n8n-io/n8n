@@ -240,11 +240,11 @@ export interface IWorkflowDataUpdate {
 	pinData?: IPinData;
 	versionId?: string;
 	meta?: WorkflowMetadata;
+	parentFolderId?: string;
 }
 
 export interface IWorkflowDataCreate extends IWorkflowDataUpdate {
 	projectId?: string;
-	parentFolderId?: string;
 }
 
 /**

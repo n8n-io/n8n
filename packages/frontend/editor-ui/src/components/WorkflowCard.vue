@@ -33,6 +33,7 @@ const WORKFLOW_LIST_ITEM_ACTIONS = {
 	DUPLICATE: 'duplicate',
 	DELETE: 'delete',
 	MOVE: 'move',
+	MOVE_TO_FOLDER: 'moveToFolder',
 };
 
 const props = withDefaults(
@@ -52,6 +53,7 @@ const emit = defineEmits<{
 	'click:tag': [tagId: string, e: PointerEvent];
 	'workflow:deleted': [];
 	'workflow:active-toggle': [value: { id: string; active: boolean }];
+	'action:move-to-folder': [value: { id: string; name: string; parentFolderId?: string }];
 }>();
 
 const toast = useToast();
@@ -85,6 +87,17 @@ const actions = computed(() => {
 		items.push({
 			label: locale.baseText('workflows.item.duplicate'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.DUPLICATE,
+		});
+	}
+
+	if (
+		workflowPermissions.value.update &&
+		!props.readOnly &&
+		settingsStore.isFoldersFeatureEnabled
+	) {
+		items.push({
+			label: locale.baseText('folders.actions.moveToFolder'),
+			value: WORKFLOW_LIST_ITEM_ACTIONS.MOVE_TO_FOLDER,
 		});
 	}
 
@@ -174,6 +187,13 @@ async function onAction(action: string) {
 			break;
 		case WORKFLOW_LIST_ITEM_ACTIONS.MOVE:
 			moveResource();
+			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.MOVE_TO_FOLDER:
+			emit('action:move-to-folder', {
+				id: props.data.id,
+				name: props.data.name,
+				parentFolderId: props.data.parentFolder?.id,
+			});
 			break;
 	}
 }
