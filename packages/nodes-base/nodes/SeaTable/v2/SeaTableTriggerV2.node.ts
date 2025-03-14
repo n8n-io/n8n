@@ -6,7 +6,7 @@ import {
 	type INodeTypeDescription,
 	NodeConnectionType,
 	type INodeTypeBaseDescription,
-	IDataObject,
+	type IDataObject,
 } from 'n8n-workflow';
 
 import type {
