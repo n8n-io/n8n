@@ -1,3 +1,4 @@
+import { randomString } from '@n8n/utils/random/randomString';
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -10,7 +11,7 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionType, randomString } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionType } from 'n8n-workflow';
 
 import type {
 	ITypeformAnswer,

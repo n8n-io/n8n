@@ -2,7 +2,7 @@ import * as schemaPreviewApi from '@/api/schemaPreview';
 import { createResultError, createResultOk, type Result } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { reactive } from 'vue';
-import { useRootStore } from './root.store';
+import { useRootStore } from '@n8n/stores/root';
 import type { JSONSchema7 } from 'json-schema';
 
 export const useSchemaPreviewStore = defineStore('schemaPreview', () => {

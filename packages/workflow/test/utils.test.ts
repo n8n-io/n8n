@@ -1,4 +1,3 @@
-import { ALPHABET } from '@/Constants';
 import { ApplicationError } from '@/errors/application.error';
 import {
 	jsonParse,
@@ -6,8 +5,6 @@ import {
 	deepCopy,
 	isObjectEmpty,
 	fileTypeFromMimeType,
-	randomInt,
-	randomString,
 	hasKey,
 } from '@/utils';
 
@@ -245,50 +242,6 @@ describe('fileTypeFromMimeType', () => {
 
 	it('should recognize pdf', () => {
 		expect(fileTypeFromMimeType('application/pdf')).toEqual('pdf');
-	});
-});
-
-const repeat = (fn: () => void, times = 10) => Array(times).fill(0).forEach(fn);
-
-describe('randomInt', () => {
-	it('should generate random integers', () => {
-		repeat(() => {
-			const result = randomInt(10);
-			expect(result).toBeLessThanOrEqual(10);
-			expect(result).toBeGreaterThanOrEqual(0);
-		});
-	});
-
-	it('should generate random in range', () => {
-		repeat(() => {
-			const result = randomInt(10, 100);
-			expect(result).toBeLessThanOrEqual(100);
-			expect(result).toBeGreaterThanOrEqual(10);
-		});
-	});
-});
-
-describe('randomString', () => {
-	it('should return a random string of the specified length', () => {
-		repeat(() => {
-			const result = randomString(42);
-			expect(result).toHaveLength(42);
-		});
-	});
-
-	it('should return a random string of the in the length range', () => {
-		repeat(() => {
-			const result = randomString(10, 100);
-			expect(result.length).toBeGreaterThanOrEqual(10);
-			expect(result.length).toBeLessThanOrEqual(100);
-		});
-	});
-
-	it('should only contain characters from the specified character set', () => {
-		repeat(() => {
-			const result = randomString(1000);
-			result.split('').every((char) => ALPHABET.includes(char));
-		});
 	});
 });
 

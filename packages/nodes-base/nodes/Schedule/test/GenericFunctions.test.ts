@@ -1,10 +1,10 @@
-import * as n8nWorkflow from 'n8n-workflow';
+import * as randomIntModule from '@n8n/utils/random/randomInt';
 
 import { intervalToRecurrence, recurrenceCheck, toCronExpression } from '../GenericFunctions';
 import type { IRecurrenceRule } from '../SchedulerInterface';
 
 describe('toCronExpression', () => {
-	Object.defineProperty(n8nWorkflow, 'randomInt', {
+	Object.defineProperty(randomIntModule, 'randomInt', {
 		value: (min: number, max: number) => Math.floor((min + max) / 2),
 	});
 

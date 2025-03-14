@@ -3,9 +3,11 @@ import { merge } from 'lodash-es';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { faker } from '@faker-js/faker';
-import { STORES, VIEWS } from '@/constants';
+import { VIEWS } from '@/constants';
+import { STORES } from '@n8n/stores/constants';
 import ExecutionsList from '@/components/executions/global/GlobalExecutionsList.vue';
-import { randomInt, type ExecutionSummary } from 'n8n-workflow';
+import { randomInt } from '@n8n/utils/random/randomInt';
+import type { ExecutionSummary } from 'n8n-workflow';
 import type { MockedStore } from '@/__tests__/utils';
 import {
 	mockedStore,

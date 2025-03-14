@@ -1,5 +1,6 @@
+import { randomString } from '@n8n/utils/random/randomString';
 import { connect, type IClientOptions, type MqttClient } from 'mqtt';
-import { ApplicationError, randomString } from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
 
 import { formatPrivateKey } from '@utils/utilities';
 

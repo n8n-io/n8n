@@ -25,7 +25,7 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 import { CHAT_TRIGGER_NODE_TYPE, SINGLE_WEBHOOK_TRIGGERS } from '@/constants';
 
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/root';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { displayForm } from '@/utils/executionUtils';

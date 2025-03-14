@@ -1,8 +1,8 @@
 import { Container } from '@n8n/di';
+import { randomString } from '@n8n/utils/random/randomString';
 import { validate } from 'jsonschema';
 import type { Entry as LdapUser } from 'ldapts';
 import { Filter } from 'ldapts/filters/Filter';
-import { randomString } from 'n8n-workflow';
 
 import config from '@/config';
 import { AuthIdentity } from '@/databases/entities/auth-identity';

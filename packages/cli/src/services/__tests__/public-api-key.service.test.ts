@@ -1,8 +1,8 @@
 import { Container } from '@n8n/di';
+import { randomString } from '@n8n/utils/random/randomString';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 import type { InstanceSettings } from 'n8n-core';
-import { randomString } from 'n8n-workflow';
 import type { OpenAPIV3 } from 'openapi-types';
 
 import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';

@@ -1,11 +1,22 @@
 {
-	"extends": "@n8n/typescript-config/tsconfig.frontend.json",
+	"extends": "@n8n/typescript-config/tsconfig.common.json",
 	"compilerOptions": {
+		"rootDirs": [".", "../constants/src"],
 		"baseUrl": ".",
-		"rootDir": ".",
 		"outDir": "dist",
+		"target": "esnext",
+		"module": "esnext",
+		"moduleResolution": "bundler",
+		"importHelpers": true,
+		"allowJs": true,
+		"incremental": false,
+		"allowSyntheticDefaultImports": true,
 		"types": ["vite/client", "vitest/globals"],
-		"isolatedModules": true
+		"lib": ["esnext", "dom", "dom.iterable", "scripthost"],
+		"isolatedModules": true,
+		"paths": {
+			"@n8n/constants*": ["../constants/src*"]
+		}
 	},
 	"include": ["src/**/*.ts", "src/**/*.vue", "vite.config.ts", "tsup.config.ts"]
 }

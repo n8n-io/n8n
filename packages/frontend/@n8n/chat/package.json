@@ -22,9 +22,9 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/chat.es.js",
-      "require": "./dist/chat.umd.js",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/chat.umd.js"
     },
     "./style.css": {
       "import": "./dist/style.css",

@@ -12,7 +12,8 @@ import type {
 	INodeTypeDescription,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { NodeConnectionType, deepCopy, randomInt } from 'n8n-workflow';
+import { NodeConnectionType, deepCopy } from 'n8n-workflow';
+import { randomInt } from '@n8n/utils/random/randomInt';
 
 import {
 	contactDescription,

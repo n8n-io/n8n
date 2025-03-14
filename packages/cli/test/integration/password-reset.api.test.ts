@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
+import { randomString } from '@n8n/utils/random/randomString';
 import { compare } from 'bcryptjs';
 import { mock } from 'jest-mock-extended';
-import { randomString } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { AuthService } from '@/auth/auth.service';

@@ -1,10 +1,16 @@
 {
 	"extends": "@n8n/typescript-config/tsconfig.common.json",
 	"compilerOptions": {
-		"rootDir": ".",
+		"rootDirs": ["src", "../@n8n/utils/src"],
+		"module": "esnext",
+		"moduleResolution": "bundler",
 		"baseUrl": "src",
+		"outDir": "dist",
+		"noUnusedParameters": false,
 		"paths": {
-			"@/*": ["./*"]
+			"@/*": ["./*"],
+			"@n8n/constants*": ["../../@n8n/constants/src*"],
+			"@n8n/utils*": ["../../@n8n/utils/src*"]
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
 	},

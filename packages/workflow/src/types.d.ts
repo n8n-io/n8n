@@ -16,3 +16,8 @@ declare module '@n8n_io/riot-tmpl' {
 interface BigInt {
 	toJSON(): string;
 }
+
+declare module 'js-base64' {
+	export function toBase64(input: string): string;
+	export function fromBase64(input: string): string;
+}

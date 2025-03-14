@@ -6,7 +6,8 @@ import type {
 	INodeProperties,
 	IPairedItemData,
 } from 'n8n-workflow';
-import { ApplicationError, jsonParse, randomInt } from 'n8n-workflow';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { randomInt } from '@n8n/utils/random/randomInt';
 
 /**
  * Creates an array of elements split into groups the length of `size`.

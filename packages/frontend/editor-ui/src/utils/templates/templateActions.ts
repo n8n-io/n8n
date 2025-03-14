@@ -6,7 +6,7 @@ import type {
 } from '@/Interface';
 import { getNewWorkflow } from '@/api/workflows';
 import { TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT, VIEWS } from '@/constants';
-import type { useRootStore } from '@/stores/root.store';
+import type { useRootStore } from '@n8n/stores/root';
 import type { PosthogStore } from '@/stores/posthog.store';
 import type { useWorkflowsStore } from '@/stores/workflows.store';
 import { getNodesWithNormalizedPosition } from '@/utils/nodeViewUtils';

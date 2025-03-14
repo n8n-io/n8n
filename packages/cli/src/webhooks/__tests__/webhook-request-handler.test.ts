@@ -1,6 +1,6 @@
+import { randomString } from '@n8n/utils/random/randomString';
 import { type Response } from 'express';
 import { mock } from 'jest-mock-extended';
-import { randomString } from 'n8n-workflow';
 import type { IHttpRequestMethods } from 'n8n-workflow';
 
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';

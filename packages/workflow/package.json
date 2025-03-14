@@ -7,9 +7,9 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "require": "./dist/index.js",
-      "import": "./src/index.ts",
-      "types": "./dist/index.d.ts"
+      "import": "./src/index.ts"
     },
     "./*": "./*"
   },
@@ -17,7 +17,7 @@
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "pnpm run typecheck && tsup",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
@@ -32,6 +32,8 @@
   "devDependencies": {
     "@langchain/core": "catalog:",
     "@n8n/config": "workspace:*",
+    "@n8n/constants": "workspace:*",
+    "@n8n/utils": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@types/deep-equal": "^1.0.1",
     "@types/express": "catalog:",
@@ -61,5 +63,9 @@
     "transliteration": "2.3.5",
     "xml2js": "catalog:",
     "zod": "catalog:"
+  },
+  "peerDependencies": {
+    "@n8n/constants": "workspace:*",
+    "@n8n/utils": "workspace:*"
   }
 }

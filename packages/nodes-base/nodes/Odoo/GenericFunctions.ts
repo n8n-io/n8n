@@ -6,7 +6,8 @@ import type {
 	JsonObject,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { NodeApiError, randomInt } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
+import { randomInt } from '@n8n/utils/random/randomInt';
 
 const serviceJSONRPC = 'object';
 const methodJSONRPC = 'execute';

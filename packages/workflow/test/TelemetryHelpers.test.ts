@@ -1,3 +1,4 @@
+import { randomInt } from '@n8n/utils/random/randomInt';
 import { mock } from 'jest-mock-extended';
 import { v5 as uuidv5, v3 as uuidv3, v4 as uuidv4, v1 as uuidv1 } from 'uuid';
 
@@ -15,7 +16,6 @@ import {
 	resolveAIMetrics,
 	userInInstanceRanOutOfFreeAiCredits,
 } from '@/TelemetryHelpers';
-import { randomInt } from '@/utils';
 
 import { nodeTypes } from './ExpressionExtensions/Helpers';
 import type { NodeTypes } from './NodeTypes';

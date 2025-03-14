@@ -1,6 +1,6 @@
 import type { SamlAcsDto, SamlPreferences } from '@n8n/api-types';
 import { Container } from '@n8n/di';
-import { randomString } from 'n8n-workflow';
+import { randomString } from '@n8n/utils/random/randomString';
 import type { FlowResult } from 'samlify/types/src/flow';
 
 import config from '@/config';

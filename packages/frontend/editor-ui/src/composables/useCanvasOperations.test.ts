@@ -43,9 +43,9 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	SET_NODE_TYPE,
 	STICKY_NODE_TYPE,
-	STORES,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
+import { STORES } from '@n8n/stores/constants';
 import type { Connection } from '@vue-flow/core';
 import { useClipboard } from '@/composables/useClipboard';
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtils';

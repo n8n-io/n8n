@@ -18,7 +18,7 @@ import {
 } from '@/constants';
 
 import type { BaseTextKey } from '@/plugins/i18n';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/root';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
 import { TriggerView, RegularView, AIView, AINodesView } from '../viewsData';

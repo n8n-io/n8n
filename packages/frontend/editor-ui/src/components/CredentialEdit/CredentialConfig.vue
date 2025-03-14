@@ -24,7 +24,7 @@ import type { PermissionsRecord } from '@/permissions';
 import { addCredentialTranslation } from '@/plugins/i18n';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/root';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import Banner from '../Banner.vue';

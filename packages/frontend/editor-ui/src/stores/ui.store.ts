@@ -17,7 +17,6 @@ import {
 	MFA_SETUP_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
 	NODE_PINNING_MODAL_KEY,
-	STORES,
 	TAGS_MANAGER_MODAL_KEY,
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
 	NPS_SURVEY_MODAL_KEY,
@@ -39,6 +38,7 @@ import {
 	API_KEY_CREATE_OR_EDIT_MODAL_KEY,
 	DELETE_FOLDER_MODAL_KEY,
 } from '@/constants';
+import { STORES } from '@n8n/stores/constants';
 import type {
 	INodeUi,
 	XYPosition,
@@ -51,7 +51,7 @@ import type {
 	AppliedThemeOption,
 } from '@/Interface';
 import { defineStore } from 'pinia';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/root';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';

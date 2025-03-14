@@ -18,8 +18,6 @@ declare global {
 	}
 
 	interface Window {
-		BASE_PATH: string;
-		REST_ENDPOINT: string;
 		sentry?: { dsn?: string; environment: string; release: string; serverName?: string };
 		n8nExternalHooks?: PartialDeep<ExternalHooks>;
 		preventNodeViewBeforeUnload?: boolean;

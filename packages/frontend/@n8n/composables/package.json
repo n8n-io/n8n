@@ -35,7 +35,7 @@
     "@vue/tsconfig": "catalog:frontend",
     "@vueuse/core": "catalog:frontend",
     "vue": "catalog:frontend",
-    "tsup": "catalog:frontend",
+    "tsup": "catalog:",
     "typescript": "catalog:frontend",
     "vite": "catalog:frontend",
     "vitest": "catalog:frontend",

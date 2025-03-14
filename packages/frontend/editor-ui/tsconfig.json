@@ -2,7 +2,16 @@
 	"extends": "@n8n/typescript-config/tsconfig.frontend.json",
 	"compilerOptions": {
 		"baseUrl": ".",
-		"rootDirs": [".", "../@n8n/composables/src", "../@n8n/chat/src", "../@n8n/design-system/src"],
+		"rootDirs": [
+			".",
+			"../@n8n/composables/src",
+			"../@n8n/chat/src",
+			"../@n8n/design-system/src",
+			"../../@n8n/constants/src",
+			"../../@n8n/stores/src",
+			"../../@n8n/utils/src",
+			"../../workflow/src"
+		],
 		"outDir": "dist",
 		"types": [
 			"vitest/globals",
@@ -15,11 +24,14 @@
 			"@n8n/chat*": ["../@n8n/chat/src*"],
 			"@n8n/design-system*": ["../@n8n/design-system/src*"],
 			"@n8n/api-types*": ["../../@n8n/api-types/src*"],
-			"@n8n/utils*": ["../../@n8n/utils/src*"]
+			"@n8n/constants*": ["../../@n8n/constants/src*"],
+			"@n8n/stores*": ["../../@n8n/stores/src*"],
+			"@n8n/utils*": ["../../@n8n/utils/src*"],
+			"n8n-workflow": ["../../workflow/src/index.ts"]
 		},
 		// TODO: remove all options below this line
 		"useUnknownInCatchVariables": false
 	},
-	"include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.vue"],
+	"include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.vue", "vite.config.mts"],
 	"exclude": ["src/plugins/codemirror/typescript/worker/**/*.d.ts"]
 }

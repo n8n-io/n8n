@@ -11,7 +11,10 @@
 		"paths": {
 			"@/*": ["./*"],
 			"@test/*": ["../test/shared/*"],
-			"@test-integration/*": ["../test/integration/shared/*"]
+			"@test-integration/*": ["../test/integration/shared/*"],
+			// @TODO Remove these once we switch to "moduleResolution": "bundler"
+			"@n8n/constants*": ["../../@n8n/constants/dist*"],
+			"@n8n/utils*": ["../../@n8n/utils/dist*"]
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		// TODO: remove all options below this line

@@ -1,5 +1,5 @@
 import { Container } from '@n8n/di';
-import { randomString } from 'n8n-workflow';
+import { randomString } from '@n8n/utils/random/randomString';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';

@@ -1,0 +1,15 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.frontend.json",
+	"compilerOptions": {
+		"rootDirs": [".", "../../../@n8n/constants/src", "../../../@n8n/utils/src"],
+		"baseUrl": ".",
+		"outDir": "dist",
+		"types": ["vite/client", "vitest/globals"],
+		"isolatedModules": true,
+		"paths": {
+			"@n8n/constants*": ["../../../@n8n/constants/src*"],
+			"@n8n/utils*": ["../../../@n8n/utils/src*"]
+		}
+	},
+	"include": ["src/**/*.ts", "src/**/*.vue", "vite.config.ts", "tsup.config.ts"]
+}

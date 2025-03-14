@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { IVersionNode, SimplifiedNodeType } from '@/Interface';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/root';
 import { useUIStore } from '@/stores/ui.store';
 import {
 	getBadgeIconUrl,

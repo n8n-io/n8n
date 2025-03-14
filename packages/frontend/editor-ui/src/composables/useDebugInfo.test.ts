@@ -4,7 +4,7 @@ import type { RootState } from '@/Interface';
 import type { useSettingsStore as useSettingsStoreType } from '@/stores/settings.store';
 import type { RecursivePartial } from '@/type-utils';
 
-vi.mock('@/stores/root.store', () => ({
+vi.mock('@n8n/stores/root', () => ({
 	useRootStore: (): Partial<RootState> => ({
 		versionCli: '0.123.0',
 	}),

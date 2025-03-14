@@ -2,7 +2,7 @@ import type { ProjectRole, RoleMap } from '@/types/roles.types';
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import * as rolesApi from '@/api/roles.api';
-import { useRootStore } from './root.store';
+import { useRootStore } from '@n8n/stores/root';
 
 export const useRolesStore = defineStore('roles', () => {
 	const rootStore = useRootStore();

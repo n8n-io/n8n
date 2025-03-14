@@ -1,18 +1,19 @@
 import { computed, ref } from 'vue';
 import Bowser from 'bowser';
 import type { IUserManagementSettings, FrontendSettings } from '@n8n/api-types';
+import { STORES } from '@n8n/stores/constants';
 
 import * as eventsApi from '@/api/events';
 import * as ldapApi from '@/api/ldap';
 import * as settingsApi from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
 import type { ILdapConfig } from '@/Interface';
-import { STORES, INSECURE_CONNECTION_WARNING } from '@/constants';
+import { INSECURE_CONNECTION_WARNING } from '@/constants';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import type { IDataObject, WorkflowSettings } from 'n8n-workflow';
-import { ExpressionEvaluatorProxy } from 'n8n-workflow';
+import { ExpressionEvaluatorProxy, setGlobalState } from 'n8n-workflow';
 import { defineStore } from 'pinia';
-import { useRootStore } from './root.store';
+import { useRootStore } from '@n8n/stores/root';
 import { useUIStore } from './ui.store';
 import { useUsersStore } from './users.store';
 import { useVersionsStore } from './versions.store';
@@ -268,6 +269,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setEndpointWebhookTest(fetchedSettings.endpointWebhookTest);
 		rootStore.setEndpointWebhookWaiting(fetchedSettings.endpointWebhookWaiting);
 		rootStore.setTimezone(fetchedSettings.timezone);
+		setGlobalState({ defaultTimezone: fetchedSettings.timezone });
 		rootStore.setExecutionTimeout(fetchedSettings.executionTimeout);
 		rootStore.setMaxExecutionTimeout(fetchedSettings.maxExecutionTimeout);
 		rootStore.setInstanceId(fetchedSettings.instanceId);

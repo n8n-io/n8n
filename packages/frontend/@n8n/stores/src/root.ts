@@ -1,10 +1,36 @@
-import { CLOUD_BASE_URL_PRODUCTION, CLOUD_BASE_URL_STAGING, STORES } from '@/constants';
-import type { RootState } from '@/Interface';
-import { randomString, setGlobalState } from 'n8n-workflow';
+import { CLOUD_BASE_URL_PRODUCTION, CLOUD_BASE_URL_STAGING } from '@n8n/constants/urls';
+import { randomString } from '@n8n/utils/random/randomString';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
+import { STORES } from './constants';
+
 const { VUE_APP_URL_BASE_API } = import.meta.env;
+
+export interface RootState {
+	baseUrl: string;
+	restEndpoint: string;
+	defaultLocale: string;
+	endpointForm: string;
+	endpointFormTest: string;
+	endpointFormWaiting: string;
+	endpointWebhook: string;
+	endpointWebhookTest: string;
+	endpointWebhookWaiting: string;
+	timezone: string;
+	executionTimeout: number;
+	maxExecutionTimeout: number;
+	versionCli: string;
+	oauthCallbackUrls: object;
+	n8nMetadata: {
+		[key: string]: string | number | undefined;
+	};
+	pushRef: string;
+	urlBaseWebhook: string;
+	urlBaseEditor: string;
+	instanceId: string;
+	binaryDataMode: 'default' | 'filesystem' | 's3';
+}
 
 export const useRootStore = defineStore(STORES.ROOT, () => {
 	const state = ref({
@@ -133,7 +159,6 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 
 	const setTimezone = (timezone: string) => {
 		state.value.timezone = timezone;
-		setGlobalState({ defaultTimezone: timezone });
 	};
 
 	const setExecutionTimeout = (executionTimeout: number) => {

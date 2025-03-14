@@ -24,19 +24,27 @@ const alias = [
 	{ find: '@', replacement: resolve(__dirname, 'src') },
 	{ find: 'stream', replacement: 'stream-browserify' },
 	{
-		find: /^@n8n\/chat(.+)$/,
+		find: /^n8n-workflow(.*)$/,
+		replacement: resolve(packagesDir, 'workflow', 'src$1'),
+	},
+	{
+		find: /^@n8n\/chat(.*)$/,
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'chat', 'src$1'),
 	},
 	{
-		find: /^@n8n\/composables(.+)$/,
+		find: /^@n8n\/composables(.*)$/,
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'composables', 'src$1'),
 	},
 	{
-		find: /^@n8n\/design-system(.+)$/,
+		find: /^@n8n\/design-system(.*)$/,
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'design-system', 'src$1'),
 	},
 	{
-		find: /^@n8n\/utils(.+)$/,
+		find: /^@n8n\/stores(.*)$/,
+		replacement: resolve(packagesDir, 'frontend', '@n8n', 'stores', 'src$1'),
+	},
+	{
+		find: /^@n8n\/utils(.*)$/,
 		replacement: resolve(packagesDir, '@n8n', 'utils', 'src$1'),
 	},
 	...['orderBy', 'camelCase', 'cloneDeep', 'startCase'].map((name) => ({
@@ -95,7 +103,10 @@ export default mergeConfig(
 			BASE_PATH: `'${publicPath}'`,
 		},
 		plugins,
-		resolve: { alias },
+		resolve: {
+			alias,
+			extensions: ['.vue', '.ts', '.tsx', '.js', '.jsx'],
+		},
 		base: publicPath,
 		envPrefix: 'VUE_APP',
 		css: {

@@ -9,9 +9,9 @@ import {
 	MAX_WORKFLOW_NAME_LENGTH,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	START_NODE_TYPE,
-	STORES,
 	WAIT_NODE_TYPE,
 } from '@/constants';
+import { STORES } from '@n8n/stores/constants';
 import type {
 	IExecutionPushResponse,
 	IExecutionResponse,
@@ -65,7 +65,7 @@ import {
 } from 'n8n-workflow';
 import { findLast, pick, isEqual } from 'lodash-es';
 
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/root';
 import * as workflowsApi from '@/api/workflows';
 import { useUIStore } from '@/stores/ui.store';
 import { dataPinningEventBus } from '@/event-bus';

@@ -4,7 +4,7 @@ import { snakeCase } from 'lodash-es';
 import { useSessionStorage } from '@vueuse/core';
 
 import { N8nButton, N8nInput, N8nTooltip } from '@n8n/design-system/components';
-import { randomInt } from 'n8n-workflow';
+import { randomInt } from '@n8n/utils/random/randomInt';
 import type { CodeExecutionMode, INodeExecutionData } from 'n8n-workflow';
 
 import type { BaseTextKey } from '@/plugins/i18n';
@@ -16,7 +16,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/root';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import {

@@ -2,9 +2,9 @@ import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { DataSourceOptions, Repository } from '@n8n/typeorm';
 import { DataSource as Connection } from '@n8n/typeorm';
+import { randomString } from '@n8n/utils/random/randomString';
 import { kebabCase } from 'lodash';
 import type { Class } from 'n8n-core';
-import { randomString } from 'n8n-workflow';
 
 import { getOptionOverrides } from '@/databases/config';
 import * as Db from '@/db';

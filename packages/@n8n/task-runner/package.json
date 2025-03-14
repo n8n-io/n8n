@@ -6,7 +6,7 @@
     "start": "node dist/start.js",
     "dev": "pnpm build && pnpm start",
     "typecheck": "tsc --noEmit",
-    "build": "tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "build": "tsup && tsc-alias -p tsconfig.build.json",
     "format": "biome format --write src",
     "format:check": "biome ci src",
     "test": "jest",
@@ -23,19 +23,20 @@
   ],
   "exports": {
     "./start": {
+      "types": "./dist/start.d.ts",
       "require": "./dist/start.js",
-      "import": "./src/start.ts",
-      "types": "./dist/start.d.ts"
+      "import": "./src/start.ts"
     },
     ".": {
+      "types": "./dist/index.d.ts",
       "require": "./dist/index.js",
-      "import": "./src/index.ts",
-      "types": "./dist/index.d.ts"
+      "import": "./src/index.ts"
     }
   },
   "dependencies": {
     "@n8n/config": "workspace:*",
     "@n8n/di": "workspace:*",
+    "@n8n/utils": "workspace:*",
     "@sentry/node": "catalog:",
     "acorn": "8.14.0",
     "acorn-walk": "8.3.4",
@@ -48,6 +49,8 @@
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
-    "@types/lodash": "catalog:"
+    "@swc/core": "^1.11.9",
+    "@types/lodash": "catalog:",
+    "tsup": "catalog:"
   }
 }

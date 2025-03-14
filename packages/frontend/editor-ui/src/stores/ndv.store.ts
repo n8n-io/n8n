@@ -17,8 +17,8 @@ import {
 	LOCAL_STORAGE_NDV_INPUT_PANEL_DISPLAY_MODE,
 	LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE,
 	LOCAL_STORAGE_TABLE_HOVER_IS_ONBOARDED,
-	STORES,
 } from '@/constants';
+import { STORES } from '@n8n/stores/constants';
 import type { INodeIssues } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import { defineStore } from 'pinia';
@@ -269,7 +269,11 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		type,
 		data,
 		dimensions,
-	}: { type: string; data: string; dimensions: DOMRect | null }): void => {
+	}: {
+		type: string;
+		data: string;
+		dimensions: DOMRect | null;
+	}): void => {
 		draggable.value = {
 			isDragging: true,
 			type,
@@ -314,10 +318,7 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		}
 	};
 
-	const setNDVPanelDataIsEmpty = (params: {
-		panel: NodePanelType;
-		isEmpty: boolean;
-	}): void => {
+	const setNDVPanelDataIsEmpty = (params: { panel: NodePanelType; isEmpty: boolean }): void => {
 		if (params.panel === 'input') {
 			input.value.data.isEmpty = params.isEmpty;
 		} else {

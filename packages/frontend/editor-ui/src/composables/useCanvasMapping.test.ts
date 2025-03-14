@@ -13,7 +13,8 @@ import {
 	mockNodes,
 	mockNodeTypeDescription,
 } from '@/__tests__/mocks';
-import { MANUAL_TRIGGER_NODE_TYPE, SET_NODE_TYPE, STICKY_NODE_TYPE, STORES } from '@/constants';
+import { MANUAL_TRIGGER_NODE_TYPE, SET_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
+import { STORES } from '@n8n/stores/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createCanvasConnectionHandleString, createCanvasConnectionId } from '@/utils/canvasUtils';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';

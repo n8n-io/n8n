@@ -11,7 +11,7 @@ import CanvasChat from './CanvasChat.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestWorkflowObject } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
-import { STORES } from '@/constants';
+import { STORES } from '@n8n/stores/constants';
 import { ChatOptionsSymbol, ChatSymbol } from '@n8n/chat/constants';
 import { chatEventBus } from '@n8n/chat/event-buses';
 

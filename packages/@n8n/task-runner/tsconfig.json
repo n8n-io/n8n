@@ -5,6 +5,8 @@
 	],
 	"compilerOptions": {
 		"rootDir": ".",
+		"module": "esnext",
+		"moduleResolution": "bundler",
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
 		"baseUrl": "src",

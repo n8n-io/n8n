@@ -2,17 +2,17 @@ import { chatWithAssistant, replaceCode } from '@/api/ai';
 import {
 	VIEWS,
 	EDITABLE_CANVAS_VIEWS,
-	STORES,
 	AI_ASSISTANT_EXPERIMENT,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	CREDENTIAL_EDIT_MODAL_KEY,
 } from '@/constants';
+import { STORES } from '@n8n/stores/constants';
 import type { ChatRequest } from '@/types/assistant.types';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { defineStore } from 'pinia';
 import type { PushPayload } from '@n8n/api-types';
 import { computed, h, ref, watch } from 'vue';
-import { useRootStore } from './root.store';
+import { useRootStore } from '@n8n/stores/root';
 import { useUsersStore } from './users.store';
 import { useRoute } from 'vue-router';
 import { useSettingsStore } from './settings.store';

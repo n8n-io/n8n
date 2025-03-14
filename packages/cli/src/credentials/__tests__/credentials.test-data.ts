@@ -1,7 +1,7 @@
 import type { CreateCredentialDto } from '@n8n/api-types';
 import type { Scope } from '@n8n/permissions';
 import { nanoId, date } from 'minifaker';
-import { randomString } from 'n8n-workflow';
+import { randomString } from '@n8n/utils/random/randomString';
 
 type NewCredentialWithSCopes = {
 	scopes: Scope[];

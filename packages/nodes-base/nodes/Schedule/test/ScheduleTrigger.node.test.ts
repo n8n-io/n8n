@@ -1,3 +1,4 @@
+import * as randomIntModule from '@n8n/utils/random/randomInt';
 import * as n8nWorkflow from 'n8n-workflow';
 
 import { testTriggerNode } from '@test/nodes/TriggerHelpers';
@@ -5,7 +6,7 @@ import { testTriggerNode } from '@test/nodes/TriggerHelpers';
 import { ScheduleTrigger } from '../ScheduleTrigger.node';
 
 describe('ScheduleTrigger', () => {
-	Object.defineProperty(n8nWorkflow, 'randomInt', {
+	Object.defineProperty(randomIntModule, 'randomInt', {
 		value: (min: number, max: number) => Math.floor((min + max) / 2),
 	});
 

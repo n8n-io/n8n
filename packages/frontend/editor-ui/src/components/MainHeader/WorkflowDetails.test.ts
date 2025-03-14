@@ -1,6 +1,7 @@
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { EnterpriseEditionFeature, STORES, WORKFLOW_SHARE_MODAL_KEY } from '@/constants';
+import { EnterpriseEditionFeature, WORKFLOW_SHARE_MODAL_KEY } from '@/constants';
+import { STORES } from '@n8n/stores/constants';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { useUIStore } from '@/stores/ui.store';
