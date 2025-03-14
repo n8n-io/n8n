@@ -74,6 +74,7 @@ export const NEW_ASSISTANT_SESSION_MODAL = 'newAssistantSession';
 export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
 export const COMMUNITY_PLUS_ENROLLMENT_MODAL = 'communityPlusEnrollment';
 export const DELETE_FOLDER_MODAL_KEY = 'deleteFolder';
+export const MOVE_FOLDER_MODAL_KEY = 'moveFolder';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',

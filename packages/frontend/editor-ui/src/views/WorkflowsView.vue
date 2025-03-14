@@ -346,12 +346,14 @@ onMounted(async () => {
 	workflowListEventBus.on('resource-moved', fetchWorkflows);
 	workflowListEventBus.on('workflow-duplicated', fetchWorkflows);
 	workflowListEventBus.on('folder-deleted', onFolderDeleted);
+	workflowListEventBus.on('folder-moved', moveFolder);
 });
 
 onBeforeUnmount(() => {
 	workflowListEventBus.off('resource-moved', fetchWorkflows);
 	workflowListEventBus.off('workflow-duplicated', fetchWorkflows);
 	workflowListEventBus.off('folder-deleted', onFolderDeleted);
+	workflowListEventBus.off('folder-moved', moveFolder);
 });
 
 /**
@@ -804,6 +806,10 @@ const onBreadCrumbsAction = async (action: string) => {
 			if (!route.params.folderId) return;
 			await renameFolder(route.params.folderId as string);
 			break;
+		case FOLDER_LIST_ITEM_ACTIONS.MOVE:
+			if (!route.params.folderId) return;
+			uiStore.openMoveFolderModal(route.params.folderId as string, workflowListEventBus);
+			break;
 		default:
 			break;
 	}
@@ -836,6 +842,9 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 		}
 		case FOLDER_LIST_ITEM_ACTIONS.RENAME:
 			await renameFolder(clickedFolder.id);
+			break;
+		case FOLDER_LIST_ITEM_ACTIONS.MOVE:
+			uiStore.openMoveFolderModal(clickedFolder.id, workflowListEventBus);
 			break;
 		default:
 			break;
@@ -975,6 +984,37 @@ const deleteFolder = async (folderId: string, workflowCount: number, subFolderCo
 			type: 'success',
 		});
 		await onFolderDeleted({ folderId });
+	}
+};
+
+const moveFolder = async (payload: {
+	folder: { id: string; name: string };
+	newParent: { id: string; name: string };
+}) => {
+	if (!route.params.projectId) return;
+	try {
+		await foldersStore.moveFolder(
+			route.params.projectId as string,
+			payload.folder.id,
+			payload.newParent.id,
+		);
+		const newFolderURL = `/projects/${route.params.projectId}/folders/${payload.newParent.id}/workflows`;
+		toast.showToast({
+			title: i18n.baseText('folders.move.success.title'),
+			message: i18n.baseText('folders.move.success.message', {
+				interpolate: { folderName: payload.folder.name, newFolderName: payload.newParent.name },
+			}),
+			onClick: (event: MouseEvent | undefined) => {
+				if (event?.target instanceof HTMLAnchorElement) {
+					event.preventDefault();
+					void router.push(newFolderURL);
+				}
+			},
+			type: 'success',
+		});
+		await fetchWorkflows();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('folders.move.error.title'));
 	}
 };
 </script>

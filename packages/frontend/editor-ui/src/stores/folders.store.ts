@@ -1,6 +1,11 @@
 import { defineStore } from 'pinia';
 import { STORES } from '@/constants';
-import type { FolderCreateResponse, FolderShortInfo, FolderTreeResponseItem } from '@/Interface';
+import type {
+	FolderCreateResponse,
+	FolderListItem,
+	FolderShortInfo,
+	FolderTreeResponseItem,
+} from '@/Interface';
 import * as workflowsApi from '@/api/workflows';
 import { useRootStore } from './root.store';
 import { ref } from 'vue';
@@ -108,6 +113,38 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		return await workflowsApi.getProjectFolders(rootStore.restApiContext, projectId);
 	}
 
+	async function fetchFoldersAvailableForMove(
+		projectId: string,
+		folderId: string,
+		filter?: {
+			name?: string;
+		},
+	): Promise<FolderListItem[]> {
+		const folders = await workflowsApi.getProjectFolders(
+			rootStore.restApiContext,
+			projectId,
+			{
+				take: !filter?.name ? 5 : undefined,
+				sortBy: 'updatedAt:desc',
+			},
+			{
+				excludeFolderIdAndDescendants: folderId,
+				name: filter?.name ? filter.name : undefined,
+			},
+		);
+		// TODO: Cache
+		// cacheFolders(folders);
+		return folders;
+	}
+
+	async function moveFolder(
+		projectId: string,
+		folderId: string,
+		parentFolderId?: string,
+	): Promise<void> {
+		await workflowsApi.moveFolder(rootStore.restApiContext, projectId, folderId, parentFolderId);
+	}
+
 	return {
 		fetchTotalWorkflowsAndFoldersCount,
 		breadcrumbsCache,
@@ -120,5 +157,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		deleteFoldersFromCache,
 		renameFolder,
 		fetchProjectFolders,
+		fetchFoldersAvailableForMove,
+		moveFolder,
 	};
 });
