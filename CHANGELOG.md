@@ -1,3 +1,12 @@
+## [1.82.4](https://github.com/n8n-io/n8n/compare/n8n@1.82.3...n8n@1.82.4) (2025-03-14)
+
+
+### Bug Fixes
+
+* Execute method should be assigned to a Routing node even if it has webhook defined ([#13910](https://github.com/n8n-io/n8n/issues/13910)) ([8aef698](https://github.com/n8n-io/n8n/commit/8aef6985450525dbcefaae0457e86f6909431d70))
+
+
+
 ## [1.82.3](https://github.com/n8n-io/n8n/compare/n8n@1.82.2...n8n@1.82.3) (2025-03-13)
 
 
