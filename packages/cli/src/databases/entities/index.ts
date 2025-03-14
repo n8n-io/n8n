@@ -12,6 +12,9 @@ import { ExecutionEntity } from './execution-entity';
 import { ExecutionMetadata } from './execution-metadata';
 import { Folder } from './folder';
 import { FolderTagMapping } from './folder-tag-mapping';
+import { InsightsByPeriod } from './insights-by-period';
+import { InsightsMetadata } from './insights-metadata';
+import { InsightsRaw } from './insights-raw';
 import { InstalledNodes } from './installed-nodes';
 import { InstalledPackages } from './installed-packages';
 import { InvalidAuthToken } from './invalid-auth-token';
@@ -70,4 +73,7 @@ export const entities = {
 	TestCaseExecution,
 	Folder,
 	FolderTagMapping,
+	InsightsRaw,
+	InsightsMetadata,
+	InsightsByPeriod,
 };

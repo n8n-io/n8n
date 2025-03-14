@@ -82,6 +82,7 @@ import { CreateTestCaseExecutionTable1736947513045 } from '../common/17369475130
 import { AddErrorColumnsToTestRuns1737715421462 } from '../common/1737715421462-AddErrorColumnsToTestRuns';
 import { CreateFolderTable1738709609940 } from '../common/1738709609940-CreateFolderTable';
 import { CreateAnalyticsTables1739549398681 } from '../common/1739549398681-CreateAnalyticsTables';
+import { RenameAnalyticsToInsights1741167584277 } from '../common/1741167584277-RenameAnalyticsToInsights';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -166,4 +167,5 @@ export const postgresMigrations: Migration[] = [
 	CreateFolderTable1738709609940,
 	CreateAnalyticsTables1739549398681,
 	UpdateParentFolderIdColumn1740445074052,
+	RenameAnalyticsToInsights1741167584277,
 ];

@@ -99,8 +99,8 @@ export class CreateAnalyticsTables1739549398681 implements ReversibleMigration {
 	}
 
 	async down({ schemaBuilder: { dropTable } }: MigrationContext) {
-		await dropTable(names.t.analyticsMetadata);
 		await dropTable(names.t.analyticsRaw);
 		await dropTable(names.t.analyticsByPeriod);
+		await dropTable(names.t.analyticsMetadata);
 	}
 }

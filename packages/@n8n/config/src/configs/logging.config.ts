@@ -14,6 +14,7 @@ export const LOG_SCOPES = [
 	'scaling',
 	'waiting-executions',
 	'task-runner',
+	'insights',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

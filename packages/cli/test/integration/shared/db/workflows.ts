@@ -119,8 +119,9 @@ export async function shareWorkflowWithProjects(
 }
 
 export async function getWorkflowSharing(workflow: IWorkflowBase) {
-	return await Container.get(SharedWorkflowRepository).findBy({
-		workflowId: workflow.id,
+	return await Container.get(SharedWorkflowRepository).find({
+		where: { workflowId: workflow.id },
+		relations: { project: true },
 	});
 }
 
