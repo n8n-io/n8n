@@ -34,12 +34,13 @@ export class AwsDynamoDB implements INodeType {
 		name: 'awsDynamoDb',
 		icon: 'file:dynamodb.svg',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume the AWS DynamoDB API',
 		defaults: {
 			name: 'AWS DynamoDB',
 		},
+
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [
@@ -142,6 +143,9 @@ export class AwsDynamoDB implements INodeType {
 							| 'autoMapInputData';
 						const item: { [key: string]: string } = {};
 
+						const version = this.getNode().typeVersion;
+						const typeHandling = this.getNodeParameter('typeHandling', i, 'native') as string;
+
 						if (dataToSend === 'autoMapInputData') {
 							const incomingKeys = Object.keys(items[i].json);
 							const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
@@ -152,11 +156,11 @@ export class AwsDynamoDB implements INodeType {
 								item[key] = items[i].json[key] as string;
 							}
 
-							body.Item = adjustPutItem(item as PutItemUi);
+							body.Item = adjustPutItem(item as PutItemUi, version, typeHandling);
 						} else {
 							const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as FieldsUiValues;
 							fields.forEach(({ fieldId, fieldValue }) => (item[fieldId] = fieldValue));
-							body.Item = adjustPutItem(item as PutItemUi);
+							body.Item = adjustPutItem(item as PutItemUi, version, typeHandling);
 						}
 
 						const headers = {
@@ -230,7 +234,10 @@ export class AwsDynamoDB implements INodeType {
 						if (!Object.keys(responseData as IDataObject).length) {
 							responseData = { success: true };
 						} else if (simple) {
-							responseData = decodeItem(responseData.Attributes as IAttributeValue);
+							responseData = decodeItem(
+								responseData.Attributes as IAttributeValue,
+								this.getNode().typeVersion,
+							);
 						}
 					} else if (operation === 'get') {
 						// ----------------------------------
@@ -291,7 +298,10 @@ export class AwsDynamoDB implements INodeType {
 						responseData = responseData.Item;
 
 						if (simple && responseData) {
-							responseData = decodeItem(responseData as IAttributeValue);
+							responseData = decodeItem(
+								responseData as IAttributeValue,
+								this.getNode().typeVersion,
+							);
 						}
 					} else if (operation === 'getAll') {
 						// ----------------------------------
@@ -386,7 +396,9 @@ export class AwsDynamoDB implements INodeType {
 							}
 						}
 						if (simple) {
-							responseData = responseData.map(simplify);
+							responseData = responseData.map((item: IAttributeValue) =>
+								simplify(item, this.getNode().typeVersion),
+							);
 						}
 					}
 					const executionData = this.helpers.constructExecutionMetaData(
