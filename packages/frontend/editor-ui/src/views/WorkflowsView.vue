@@ -320,7 +320,11 @@ sourceControlStore.$onAction(({ name, after }) => {
 	after(async () => await initialize());
 });
 
-const onFolderDeleted = async (payload: { folderId: string }) => {
+const onFolderDeleted = async (payload: {
+	folderId: string;
+	workflowCount: number;
+	folderCount: number;
+}) => {
 	const folderInfo = foldersStore.getCachedFolder(payload.folderId);
 	foldersStore.deleteFoldersFromCache([payload.folderId, folderInfo?.parentFolder ?? '']);
 	// If the deleted folder is the current folder, navigate to the parent folder
@@ -333,6 +337,11 @@ const onFolderDeleted = async (payload: { folderId: string }) => {
 	} else {
 		await fetchWorkflows();
 	}
+	telemetry.track('User deleted folder', {
+		folder_id: payload.folderId,
+		deleted_sub_folders: payload.folderCount,
+		deleted_sub_workflows: payload.workflowCount,
+	});
 };
 
 /**
@@ -765,7 +774,7 @@ const onBreadcrumbItemClick = (item: PathItem) => {
 				loading.value = false;
 			})
 			.catch((error) => {
-				toast.showError(error, 'Error navigating to folder');
+				toast.showError(error, i18n.baseText('folders.open.error.title'));
 			});
 	}
 };
@@ -933,8 +942,11 @@ const createFolder = async (parent: { id: string; name: string; type: 'project' 
 				// Else fetch again with same filters & pagination applied
 				await fetchWorkflows();
 			}
+			telemetry.track('User created folder', {
+				folder_id: newFolder.id,
+			});
 		} catch (error) {
-			toast.showError(error, 'Error creating folder');
+			toast.showError(error, i18n.baseText('folders.create.error.title'));
 		}
 	}
 };
@@ -966,6 +978,9 @@ const renameFolder = async (folderId: string) => {
 				type: 'success',
 			});
 			await fetchWorkflows();
+			telemetry.track('User renamed folder', {
+				folder_id: folderId,
+			});
 		} catch (error) {
 			toast.showError(error, i18n.baseText('folders.rename.error.title'));
 		}
@@ -995,7 +1010,7 @@ const deleteFolder = async (folderId: string, workflowCount: number, subFolderCo
 			title: i18n.baseText('folders.delete.success.message'),
 			type: 'success',
 		});
-		await onFolderDeleted({ folderId });
+		await onFolderDeleted({ folderId, workflowCount, folderCount: subFolderCount });
 	}
 };
 
@@ -1043,7 +1058,7 @@ const moveWorkflowToFolder = async (payload: {
 };
 
 const onWorkflowMoved = async (payload: {
-	workflow: { id: string; name: string };
+	workflow: { id: string; name: string; oldParentId: string };
 	newParent: { id: string; name: string };
 }) => {
 	if (!route.params.projectId) return;
@@ -1064,6 +1079,11 @@ const onWorkflowMoved = async (payload: {
 				}
 			},
 			type: 'success',
+		});
+		telemetry.track('User moved content', {
+			workflow_id: payload.workflow.id,
+			source_folder_id: payload.workflow.oldParentId,
+			destination_folder_id: payload.newParent.id,
 		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('folders.move.workflow.error.title'));

@@ -119,7 +119,11 @@ async function onSubmit() {
 			title: i18n.baseText('folders.delete.success.message'),
 			message,
 		});
-		props.data.workflowListEventBus.emit('folder-deleted', { folderId: props.activeId });
+		props.data.workflowListEventBus.emit('folder-deleted', {
+			folderId: props.activeId,
+			workflowCount: props.data.content.workflowCount,
+			folderCount: props.data.content.subFolderCount,
+		});
 		modalBus.emit('close');
 	} catch (error) {
 		showError(error, i18n.baseText('folders.delete.error.message'));

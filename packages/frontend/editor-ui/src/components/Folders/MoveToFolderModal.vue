@@ -57,7 +57,11 @@ const onSubmit = () => {
 	} else {
 		props.data.workflowListEventBus.emit('workflow-moved', {
 			newParent: selectedFolder.value,
-			workflow: { id: props.data.resource.id, name: props.data.resource.name },
+			workflow: {
+				id: props.data.resource.id,
+				name: props.data.resource.name,
+				oldParentId: props.data.resource.parentFolderId,
+			},
 		});
 	}
 	uiStore.closeModal(MOVE_FOLDER_MODAL_KEY);
