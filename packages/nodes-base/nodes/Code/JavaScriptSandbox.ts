@@ -1,15 +1,15 @@
 import { NodeVM, makeResolverFromLegacyOptions, type Resolver } from '@n8n/vm2';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import { ValidationError } from './ValidationError';
 import { ExecutionError } from './ExecutionError';
-import type { SandboxContext } from './Sandbox';
-import { Sandbox } from './Sandbox';
 import {
 	mapItemNotDefinedErrorIfNeededForRunForEach,
 	mapItemsNotDefinedErrorIfNeededForRunForAll,
 	validateNoDisallowedMethodsInRunForEach,
 } from './JsCodeValidator';
+import type { SandboxContext } from './Sandbox';
+import { Sandbox } from './Sandbox';
+import { ValidationError } from './ValidationError';
 
 const { NODE_FUNCTION_ALLOW_BUILTIN: builtIn, NODE_FUNCTION_ALLOW_EXTERNAL: external } =
 	process.env;

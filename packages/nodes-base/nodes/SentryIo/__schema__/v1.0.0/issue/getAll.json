@@ -1,0 +1,160 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "shareId": {
+            "type": "null"
+        },
+        "shortId": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "culprit": {
+            "type": "string"
+        },
+        "permalink": {
+            "type": "string"
+        },
+        "level": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "substatus": {
+            "type": "string"
+        },
+        "isPublic": {
+            "type": "boolean"
+        },
+        "platform": {
+            "type": "string"
+        },
+        "project": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "platform": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "slug",
+                "platform"
+            ]
+        },
+        "type": {
+            "type": "string"
+        },
+        "metadata": {
+            "type": "object",
+            "properties": {
+                "initial_priority": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "initial_priority"
+            ]
+        },
+        "numComments": {
+            "type": "integer"
+        },
+        "isBookmarked": {
+            "type": "boolean"
+        },
+        "isSubscribed": {
+            "type": "boolean"
+        },
+        "hasSeen": {
+            "type": "boolean"
+        },
+        "issueType": {
+            "type": "string"
+        },
+        "issueCategory": {
+            "type": "string"
+        },
+        "priority": {
+            "type": "string"
+        },
+        "isUnhandled": {
+            "type": "boolean"
+        },
+        "count": {
+            "type": "string"
+        },
+        "userCount": {
+            "type": "integer"
+        },
+        "firstSeen": {
+            "type": "string"
+        },
+        "lastSeen": {
+            "type": "string"
+        },
+        "stats": {
+            "type": "object",
+            "properties": {
+                "24h": {
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "required": [
+        "id",
+        "shareId",
+        "shortId",
+        "title",
+        "culprit",
+        "permalink",
+        "logger",
+        "level",
+        "status",
+        "statusDetails",
+        "substatus",
+        "isPublic",
+        "platform",
+        "project",
+        "type",
+        "metadata",
+        "numComments",
+        "assignedTo",
+        "isBookmarked",
+        "isSubscribed",
+        "subscriptionDetails",
+        "hasSeen",
+        "annotations",
+        "issueType",
+        "issueCategory",
+        "priority",
+        "priorityLockedAt",
+        "isUnhandled",
+        "count",
+        "userCount",
+        "firstSeen",
+        "lastSeen",
+        "stats"
+    ]
+}

@@ -1,0 +1,75 @@
+{
+    "type": "object",
+    "properties": {
+        "text": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "ts": {
+            "type": "string"
+        },
+        "thread_ts": {
+            "type": "string"
+        },
+        "blocks": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string"
+                    },
+                    "block_id": {
+                        "type": "string"
+                    },
+                    "elements": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "type": {
+                                    "type": "string"
+                                },
+                                "elements": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "type": {
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "type"
+                                        ]
+                                    }
+                                }
+                            },
+                            "required": [
+                                "type"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "type",
+                    "block_id"
+                ]
+            }
+        },
+        "user": {
+            "type": "string"
+        },
+        "client_msg_id": {
+            "type": "string"
+        },
+        "team": {
+            "type": "string"
+        }
+    }
+}

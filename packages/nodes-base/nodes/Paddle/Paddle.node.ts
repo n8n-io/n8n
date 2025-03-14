@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -10,17 +11,11 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
 import { couponFields, couponOperations } from './CouponDescription';
-
 import { paddleApiRequest, paddleApiRequestAllItems, validateJSON } from './GenericFunctions';
-
 import { paymentFields, paymentOperations } from './PaymentDescription';
-
 import { planFields, planOperations } from './PlanDescription';
-
 import { productFields, productOperations } from './ProductDescription';
-
 import { userFields, userOperations } from './UserDescription';
 
 // import {
@@ -41,6 +36,7 @@ export class Paddle implements INodeType {
 		defaults: {
 			name: 'Paddle',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

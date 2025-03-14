@@ -1,0 +1,35 @@
+{
+    "type": "object",
+    "properties": {
+        "name": {
+            "type": "string"
+        },
+        "path_lower": {
+            "type": "string"
+        },
+        "path_display": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "client_modified": {
+            "type": "string"
+        },
+        "server_modified": {
+            "type": "string"
+        },
+        "rev": {
+            "type": "string"
+        },
+        "size": {
+            "type": "integer"
+        },
+        "is_downloadable": {
+            "type": "boolean"
+        },
+        "content_hash": {
+            "type": "string"
+        }
+    }
+}

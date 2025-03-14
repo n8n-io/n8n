@@ -24,6 +24,7 @@ export class AwsSns implements INodeType {
 		defaults: {
 			name: 'AWS SNS',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -7,10 +8,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
-import { stravaApiRequest, stravaApiRequestAllItems } from './GenericFunctions';
-
 import { activityFields, activityOperations } from './ActivityDescription';
+import { stravaApiRequest, stravaApiRequestAllItems } from './GenericFunctions';
 
 export class Strava implements INodeType {
 	description: INodeTypeDescription = {
@@ -24,6 +23,7 @@ export class Strava implements INodeType {
 		defaults: {
 			name: 'Strava',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

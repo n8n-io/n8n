@@ -1,0 +1,57 @@
+{
+    "type": "object",
+    "properties": {
+        "name": {
+            "type": "string"
+        },
+        "createdTimestamp": {
+            "type": "string"
+        },
+        "updatedTimestamp": {
+            "type": "string"
+        },
+        "owner": {
+            "type": "string"
+        },
+        "contactCount": {
+            "type": "string"
+        },
+        "dealCount": {
+            "type": "string"
+        },
+        "links": {
+            "type": "object",
+            "properties": {
+                "notes": {
+                    "type": "string"
+                },
+                "accountCustomFieldData": {
+                    "type": "string"
+                },
+                "accountContacts": {
+                    "type": "string"
+                },
+                "emailActivities": {
+                    "type": "string"
+                },
+                "contactEmails": {
+                    "type": "string"
+                },
+                "owner": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "notes",
+                "accountCustomFieldData",
+                "accountContacts",
+                "emailActivities",
+                "contactEmails",
+                "owner"
+            ]
+        },
+        "id": {
+            "type": "string"
+        }
+    }
+}

@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -9,15 +10,13 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
+import { contactFields, contactOperations } from './ContactDescription';
 import {
 	allFields,
 	cleanData,
 	googleApiRequest,
 	googleApiRequestAllItems,
 } from './GenericFunctions';
-
-import { contactFields, contactOperations } from './ContactDescription';
 
 export class GoogleContacts implements INodeType {
 	description: INodeTypeDescription = {
@@ -32,6 +31,7 @@ export class GoogleContacts implements INodeType {
 		defaults: {
 			name: 'Google Contacts',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

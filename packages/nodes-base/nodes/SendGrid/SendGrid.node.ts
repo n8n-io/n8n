@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import {
 	NodeConnectionType,
 	type IDataObject,
@@ -10,15 +11,11 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
-import { listFields, listOperations } from './ListDescription';
-
 import { contactFields, contactOperations } from './ContactDescription';
-
+import { sendGridApiRequest, sendGridApiRequestAllItems } from './GenericFunctions';
+import { listFields, listOperations } from './ListDescription';
 import type { SendMailBody } from './MailDescription';
 import { mailFields, mailOperations } from './MailDescription';
-
-import { sendGridApiRequest, sendGridApiRequestAllItems } from './GenericFunctions';
 
 export class SendGrid implements INodeType {
 	description: INodeTypeDescription = {
@@ -32,6 +29,7 @@ export class SendGrid implements INodeType {
 		defaults: {
 			name: 'SendGrid',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

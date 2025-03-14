@@ -1,6 +1,5 @@
-import type { PushType, WorkerStatus } from '@n8n/api-types';
-
-import type { IWorkflowDb } from '@/interfaces';
+import type { PushMessage, WorkerStatus } from '@n8n/api-types';
+import type { IWorkflowBase } from 'n8n-workflow';
 
 export type PubSubEventMap = PubSubCommandMap & PubSubWorkerResponseMap;
 
@@ -64,15 +63,13 @@ export type PubSubCommandMap = {
 		errorMessage: string;
 	};
 
-	'relay-execution-lifecycle-event': {
-		type: PushType;
-		args: Record<string, unknown>;
+	'relay-execution-lifecycle-event': PushMessage & {
 		pushRef: string;
 	};
 
 	'clear-test-webhooks': {
 		webhookKey: string;
-		workflowEntity: IWorkflowDb;
+		workflowEntity: IWorkflowBase;
 		pushRef: string;
 	};
 

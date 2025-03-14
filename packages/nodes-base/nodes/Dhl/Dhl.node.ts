@@ -25,6 +25,7 @@ export class Dhl implements INodeType {
 		defaults: {
 			name: 'DHL',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

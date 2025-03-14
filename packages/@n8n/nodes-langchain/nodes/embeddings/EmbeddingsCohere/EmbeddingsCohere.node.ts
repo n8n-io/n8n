@@ -1,4 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { CohereEmbeddings } from '@langchain/cohere';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -6,9 +7,9 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-import { CohereEmbeddings } from '@langchain/cohere';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 export class EmbeddingsCohere implements INodeType {
 	description: INodeTypeDescription = {

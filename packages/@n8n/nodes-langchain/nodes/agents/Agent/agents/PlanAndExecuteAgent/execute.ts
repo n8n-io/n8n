@@ -10,10 +10,11 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { getConnectedTools, getPromptInputByType } from '../../../../../utils/helpers';
-import { getOptionalOutputParsers } from '../../../../../utils/output_parsers/N8nOutputParser';
-import { throwIfToolSchema } from '../../../../../utils/schemaParsing';
-import { getTracingConfig } from '../../../../../utils/tracing';
+import { getConnectedTools, getPromptInputByType } from '@utils/helpers';
+import { getOptionalOutputParsers } from '@utils/output_parsers/N8nOutputParser';
+import { throwIfToolSchema } from '@utils/schemaParsing';
+import { getTracingConfig } from '@utils/tracing';
+
 import { checkForStructuredTools, extractParsedOutput } from '../utils';
 
 export async function planAndExecuteAgentExecute(

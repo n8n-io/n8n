@@ -1,0 +1,43 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "properties": {
+            "type": "object",
+            "properties": {
+                "createdate": {
+                    "type": "string"
+                },
+                "hs_lastmodifieddate": {
+                    "type": "string"
+                },
+                "hs_object_id": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "createdate",
+                "hs_lastmodifieddate",
+                "hs_object_id"
+            ]
+        },
+        "createdAt": {
+            "type": "string"
+        },
+        "updatedAt": {
+            "type": "string"
+        },
+        "archived": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "id",
+        "properties",
+        "createdAt",
+        "updatedAt",
+        "archived"
+    ]
+}

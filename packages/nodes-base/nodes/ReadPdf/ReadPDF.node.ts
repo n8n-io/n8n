@@ -6,6 +6,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
+
 import { extractDataFromPDF } from '@utils/binary';
 
 export class ReadPDF implements INodeType {

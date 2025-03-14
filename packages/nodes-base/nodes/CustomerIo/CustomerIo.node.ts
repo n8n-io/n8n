@@ -6,10 +6,11 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-import { customerIoApiRequest, validateJSON } from './GenericFunctions';
+
 import { campaignFields, campaignOperations } from './CampaignDescription';
 import { customerFields, customerOperations } from './CustomerDescription';
 import { eventFields, eventOperations } from './EventDescription';
+import { customerIoApiRequest, validateJSON } from './GenericFunctions';
 import { segmentFields, segmentOperations } from './SegmentDescription';
 
 export class CustomerIo implements INodeType {
@@ -24,6 +25,7 @@ export class CustomerIo implements INodeType {
 		defaults: {
 			name: 'Customer.io',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

@@ -1,0 +1,260 @@
+{
+    "type": "object",
+    "properties": {
+        "kind": {
+            "type": "string"
+        },
+        "etag": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "status": {
+            "type": "object",
+            "properties": {
+                "privacyStatus": {
+                    "type": "string"
+                },
+                "isLinked": {
+                    "type": "boolean"
+                },
+                "longUploadsStatus": {
+                    "type": "string"
+                },
+                "madeForKids": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "privacyStatus",
+                "isLinked",
+                "longUploadsStatus"
+            ]
+        },
+        "snippet": {
+            "type": "object",
+            "properties": {
+                "title": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "customUrl": {
+                    "type": "string"
+                },
+                "publishedAt": {
+                    "type": "string"
+                },
+                "thumbnails": {
+                    "type": "object",
+                    "properties": {
+                        "default": {
+                            "type": "object",
+                            "properties": {
+                                "url": {
+                                    "type": "string"
+                                },
+                                "width": {
+                                    "type": "integer"
+                                },
+                                "height": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "url",
+                                "width",
+                                "height"
+                            ]
+                        },
+                        "medium": {
+                            "type": "object",
+                            "properties": {
+                                "url": {
+                                    "type": "string"
+                                },
+                                "width": {
+                                    "type": "integer"
+                                },
+                                "height": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "url",
+                                "width",
+                                "height"
+                            ]
+                        },
+                        "high": {
+                            "type": "object",
+                            "properties": {
+                                "url": {
+                                    "type": "string"
+                                },
+                                "width": {
+                                    "type": "integer"
+                                },
+                                "height": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "url",
+                                "width",
+                                "height"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "default",
+                        "medium",
+                        "high"
+                    ]
+                },
+                "localized": {
+                    "type": "object",
+                    "properties": {
+                        "title": {
+                            "type": "string"
+                        },
+                        "description": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "title",
+                        "description"
+                    ]
+                },
+                "country": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "title",
+                "description",
+                "customUrl",
+                "publishedAt",
+                "thumbnails",
+                "localized"
+            ]
+        },
+        "contentDetails": {
+            "type": "object",
+            "properties": {
+                "relatedPlaylists": {
+                    "type": "object",
+                    "properties": {
+                        "likes": {
+                            "type": "string"
+                        },
+                        "uploads": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "likes",
+                        "uploads"
+                    ]
+                }
+            },
+            "required": [
+                "relatedPlaylists"
+            ]
+        },
+        "statistics": {
+            "type": "object",
+            "properties": {
+                "viewCount": {
+                    "type": "string"
+                },
+                "subscriberCount": {
+                    "type": "string"
+                },
+                "hiddenSubscriberCount": {
+                    "type": "boolean"
+                },
+                "videoCount": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "viewCount",
+                "subscriberCount",
+                "hiddenSubscriberCount",
+                "videoCount"
+            ]
+        },
+        "topicDetails": {
+            "type": "object",
+            "properties": {
+                "topicIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "topicCategories": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+            "required": [
+                "topicIds",
+                "topicCategories"
+            ]
+        },
+        "brandingSettings": {
+            "type": "object",
+            "properties": {
+                "channel": {
+                    "type": "object",
+                    "properties": {
+                        "title": {
+                            "type": "string"
+                        },
+                        "description": {
+                            "type": "string"
+                        },
+                        "keywords": {
+                            "type": "string"
+                        },
+                        "unsubscribedTrailer": {
+                            "type": "string"
+                        },
+                        "country": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "title"
+                    ]
+                },
+                "image": {
+                    "type": "object",
+                    "properties": {
+                        "bannerExternalUrl": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "bannerExternalUrl"
+                    ]
+                }
+            },
+            "required": [
+                "channel"
+            ]
+        }
+    },
+    "required": [
+        "kind",
+        "etag",
+        "id"
+    ]
+}

@@ -10,9 +10,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import { zendeskApiRequest, zendeskApiRequestAllItems } from './GenericFunctions';
 import { conditionFields } from './ConditionDescription';
-
+import { zendeskApiRequest, zendeskApiRequestAllItems } from './GenericFunctions';
 import { triggerPlaceholders } from './TriggerPlaceholders';
 
 export class ZendeskTrigger implements INodeType {

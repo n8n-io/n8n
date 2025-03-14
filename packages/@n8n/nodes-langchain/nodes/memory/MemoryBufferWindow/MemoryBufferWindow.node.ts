@@ -9,9 +9,10 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getSessionId } from '../../../utils/helpers';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { getSessionId } from '@utils/helpers';
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
 import {
 	sessionIdOption,
 	sessionKeyProperty,
@@ -31,14 +32,14 @@ class MemoryChatBufferSingleton {
 		this.memoryBuffer = new Map();
 	}
 
-	public static getInstance(): MemoryChatBufferSingleton {
+	static getInstance(): MemoryChatBufferSingleton {
 		if (!MemoryChatBufferSingleton.instance) {
 			MemoryChatBufferSingleton.instance = new MemoryChatBufferSingleton();
 		}
 		return MemoryChatBufferSingleton.instance;
 	}
 
-	public async getMemory(
+	async getMemory(
 		sessionKey: string,
 		memoryParams: BufferWindowMemoryInput,
 	): Promise<BufferWindowMemory> {
@@ -74,14 +75,15 @@ class MemoryChatBufferSingleton {
 
 export class MemoryBufferWindow implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Window Buffer Memory (easiest)',
+		displayName: 'Simple Memory',
 		name: 'memoryBufferWindow',
 		icon: 'fa:database',
+		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3],
 		description: 'Stores in n8n memory, so no credentials required',
 		defaults: {
-			name: 'Window Buffer Memory',
+			name: 'Simple Memory',
 		},
 		codex: {
 			categories: ['AI'],

@@ -1,4 +1,9 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type {
+	RecursiveCharacterTextSplitterParams,
+	SupportedTextSplitterLanguage,
+} from '@langchain/textsplitters';
+import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -6,13 +11,9 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-import type {
-	RecursiveCharacterTextSplitterParams,
-	SupportedTextSplitterLanguage,
-} from '@langchain/textsplitters';
-import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 const supportedLanguages: SupportedTextSplitterLanguage[] = [
 	'cpp',
@@ -36,6 +37,7 @@ export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 		displayName: 'Recursive Character Text Splitter',
 		name: 'textSplitterRecursiveCharacterTextSplitter',
 		icon: 'fa:grip-lines-vertical',
+		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
 		description: 'Split text into chunks by characters recursively, recommended for most use cases',

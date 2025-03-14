@@ -10,9 +10,7 @@ import type {
 import { NodeConnectionType } from 'n8n-workflow';
 
 import { storyblokApiRequest, storyblokApiRequestAllItems } from './GenericFunctions';
-
 import { storyContentFields, storyContentOperations } from './StoryContentDescription';
-
 import { storyManagementFields, storyManagementOperations } from './StoryManagementDescription';
 
 export class Storyblok implements INodeType {
@@ -27,6 +25,7 @@ export class Storyblok implements INodeType {
 		defaults: {
 			name: 'Storyblok',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

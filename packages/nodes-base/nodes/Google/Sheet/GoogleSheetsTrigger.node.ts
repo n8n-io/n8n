@@ -7,13 +7,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import { GOOGLE_DRIVE_FILE_URL_REGEX, GOOGLE_SHEETS_SHEET_URL_REGEX } from '../constants';
-import { apiRequest } from './v2/transport';
-import { sheetsSearch, spreadSheetsSearch } from './v2/methods/listSearch';
-import { GoogleSheet } from './v2/helpers/GoogleSheet';
-import { getSheetHeaderRowAndSkipEmpty } from './v2/methods/loadOptions';
-import type { ResourceLocator, ValueRenderOption } from './v2/helpers/GoogleSheets.types';
-
 import {
 	arrayOfArraysToJson,
 	BINARY_MIME_TYPE,
@@ -21,6 +14,12 @@ import {
 	getRevisionFile,
 	sheetBinaryToArrayOfArrays,
 } from './GoogleSheetsTrigger.utils';
+import { GoogleSheet } from './v2/helpers/GoogleSheet';
+import type { ResourceLocator, ValueRenderOption } from './v2/helpers/GoogleSheets.types';
+import { sheetsSearch, spreadSheetsSearch } from './v2/methods/listSearch';
+import { getSheetHeaderRowAndSkipEmpty } from './v2/methods/loadOptions';
+import { apiRequest } from './v2/transport';
+import { GOOGLE_DRIVE_FILE_URL_REGEX, GOOGLE_SHEETS_SHEET_URL_REGEX } from '../constants';
 
 export class GoogleSheetsTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -121,6 +120,9 @@ export class GoogleSheetsTrigger implements INodeType {
 				default: { mode: 'list', value: '' },
 				// default: '', //empty string set to progresivly reveal fields
 				required: true,
+				typeOptions: {
+					loadOptionsDependsOn: ['documentId.value'],
+				},
 				modes: [
 					{
 						displayName: 'From List',
@@ -530,6 +532,11 @@ export class GoogleSheetsTrigger implements INodeType {
 					(options.valueRender as ValueRenderOption) || 'UNFORMATTED_VALUE',
 					(options.dateTimeRenderOption as string) || 'FORMATTED_STRING',
 				);
+
+				if (Array.isArray(sheetData) && sheetData.length !== 0) {
+					const zeroBasedKeyRow = keyRow - 1;
+					sheetData.splice(zeroBasedKeyRow, 1); // Remove key row
+				}
 
 				if (this.getMode() === 'manual') {
 					if (Array.isArray(sheetData)) {

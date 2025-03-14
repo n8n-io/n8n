@@ -1,0 +1,134 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "deleted": {
+            "type": "boolean"
+        },
+        "orderindex": {
+            "type": "integer"
+        },
+        "content": {
+            "type": "string"
+        },
+        "priority": {
+            "type": "null"
+        },
+        "assignee": {
+            "type": "null"
+        },
+        "due_date": {
+            "type": "null"
+        },
+        "start_date": {
+            "type": "null"
+        },
+        "folder": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "hidden": {
+                    "type": "boolean"
+                },
+                "access": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "hidden",
+                "access"
+            ]
+        },
+        "space": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "access": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "access"
+            ]
+        },
+        "inbound_address": {
+            "type": "string"
+        },
+        "archived": {
+            "type": "boolean"
+        },
+        "statuses": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "orderindex": {
+                        "type": "integer"
+                    },
+                    "color": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "status_group": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "status",
+                    "orderindex",
+                    "color",
+                    "type",
+                    "status_group"
+                ]
+            }
+        },
+        "permission_level": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "id",
+        "name",
+        "deleted",
+        "orderindex",
+        "priority",
+        "assignee",
+        "due_date",
+        "start_date",
+        "folder",
+        "space",
+        "inbound_address",
+        "archived",
+        "override_statuses",
+        "statuses",
+        "permission_level"
+    ]
+}

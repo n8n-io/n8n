@@ -26,6 +26,7 @@ export class Mocean implements INodeType {
 		defaults: {
 			name: 'Mocean',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

@@ -72,6 +72,12 @@ export class LinearTrigger implements INodeType {
 				default: 'apiToken',
 			},
 			{
+				displayName: 'Make sure your credential has the "Admin" scope to create webhooks.',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'Team Name or ID',
 				name: 'teamId',
 				type: 'options',

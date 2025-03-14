@@ -9,10 +9,11 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeApiError } from 'n8n-workflow';
+
+import { controlFields, controlOperations } from './ControlDescription';
+import { formulaFields, formulaOperations } from './FormulaDescription';
 import { codaApiRequest, codaApiRequestAllItems } from './GenericFunctions';
 import { tableFields, tableOperations } from './TableDescription';
-import { formulaFields, formulaOperations } from './FormulaDescription';
-import { controlFields, controlOperations } from './ControlDescription';
 import { viewFields, viewOperations } from './ViewDescription';
 
 export class Coda implements INodeType {
@@ -27,6 +28,7 @@ export class Coda implements INodeType {
 		defaults: {
 			name: 'Coda',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

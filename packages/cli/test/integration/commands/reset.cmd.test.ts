@@ -1,4 +1,4 @@
-import { Container } from 'typedi';
+import { Container } from '@n8n/di';
 
 import { Reset } from '@/commands/user-management/reset';
 import { CredentialsEntity } from '@/databases/entities/credentials-entity';

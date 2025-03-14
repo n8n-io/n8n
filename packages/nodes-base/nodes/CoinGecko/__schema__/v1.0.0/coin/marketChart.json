@@ -1,0 +1,20 @@
+{
+    "type": "object",
+    "properties": {
+        "time": {
+            "type": "string"
+        },
+        "price": {
+            "type": "number"
+        },
+        "totalVolume": {
+            "type": "number"
+        }
+    },
+    "required": [
+        "time",
+        "price",
+        "marketCaps",
+        "totalVolume"
+    ]
+}

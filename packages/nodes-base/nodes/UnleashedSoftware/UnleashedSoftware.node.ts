@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import {
 	type IExecuteFunctions,
 	type IDataObject,
@@ -7,15 +8,12 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
 import {
 	convertNETDates,
 	unleashedApiRequest,
 	unleashedApiRequestAllItems,
 } from './GenericFunctions';
-
 import { salesOrderFields, salesOrderOperations } from './SalesOrderDescription';
-
 import { stockOnHandFields, stockOnHandOperations } from './StockOnHandDescription';
 
 export class UnleashedSoftware implements INodeType {
@@ -31,6 +29,7 @@ export class UnleashedSoftware implements INodeType {
 		defaults: {
 			name: 'Unleashed Software',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

@@ -25,6 +25,7 @@ export class Peekalink extends Node {
 		defaults: {
 			name: 'Peekalink',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

@@ -1,8 +1,10 @@
 import { NodeConnectionType } from 'n8n-workflow';
-import { apiUrl } from '../Peekalink.node';
-import type { WorkflowTestData } from '@test/nodes/types';
+
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import * as Helpers from '@test/nodes/Helpers';
+import type { WorkflowTestData } from '@test/nodes/types';
+
+import { apiUrl } from '../Peekalink.node';
 
 describe('Peekalink Node', () => {
 	const exampleComPreview = {

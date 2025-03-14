@@ -20,9 +20,7 @@ import {
 	sort,
 	validateCredentials,
 } from './GenericFunctions';
-
 import { issueFields, issueOperations } from './IssueDescription';
-
 import { query } from './Queries';
 interface IGraphqlBody {
 	query: string;
@@ -40,6 +38,7 @@ export class Linear implements INodeType {
 		defaults: {
 			name: 'Linear',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

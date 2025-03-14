@@ -1,4 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { OpenAIEmbeddings } from '@langchain/openai';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -7,11 +8,10 @@ import {
 	type ISupplyDataFunctions,
 	type INodeProperties,
 } from 'n8n-workflow';
-
 import type { ClientOptions } from 'openai';
-import { OpenAIEmbeddings } from '@langchain/openai';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 const modelParameter: INodeProperties = {
 	displayName: 'Model',
@@ -24,7 +24,7 @@ const modelParameter: INodeProperties = {
 			routing: {
 				request: {
 					method: 'GET',
-					url: '={{ $parameter.options?.baseURL?.split("/").slice(-1).pop() || "v1"  }}/models',
+					url: '={{ $parameter.options?.baseURL?.split("/").slice(-1).pop() || $credentials?.url?.split("/").slice(-1).pop() || "v1" }}/models',
 				},
 				output: {
 					postReceive: [
@@ -79,7 +79,7 @@ export class EmbeddingsOpenAi implements INodeType {
 			},
 		],
 		group: ['transform'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Use Embeddings OpenAI',
 		defaults: {
 			name: 'Embeddings OpenAI',
@@ -106,7 +106,7 @@ export class EmbeddingsOpenAi implements INodeType {
 		requestDefaults: {
 			ignoreHttpStatusErrors: true,
 			baseURL:
-				'={{ $parameter.options?.baseURL?.split("/").slice(0,-1).join("/") || "https://api.openai.com" }}',
+				'={{ $parameter.options?.baseURL?.split("/").slice(0,-1).join("/") || $credentials.url?.split("/").slice(0,-1).join("/") || "https://api.openai.com" }}',
 		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]),
@@ -171,6 +171,11 @@ export class EmbeddingsOpenAi implements INodeType {
 						default: 'https://api.openai.com/v1',
 						description: 'Override the default base URL for the API',
 						type: 'string',
+						displayOptions: {
+							hide: {
+								'@version': [{ _cnd: { gte: 1.2 } }],
+							},
+						},
 					},
 					{
 						displayName: 'Batch Size',
@@ -219,6 +224,8 @@ export class EmbeddingsOpenAi implements INodeType {
 		const configuration: ClientOptions = {};
 		if (options.baseURL) {
 			configuration.baseURL = options.baseURL;
+		} else if (credentials.url) {
+			configuration.baseURL = credentials.url as string;
 		}
 
 		const embeddings = new OpenAIEmbeddings(

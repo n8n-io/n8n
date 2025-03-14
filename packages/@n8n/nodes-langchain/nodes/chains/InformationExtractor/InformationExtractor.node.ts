@@ -13,15 +13,12 @@ import type {
 } from 'n8n-workflow';
 import type { z } from 'zod';
 
+import { inputSchemaField, jsonSchemaExampleField, schemaTypeField } from '@utils/descriptions';
+import { convertJsonSchemaToZod, generateSchema } from '@utils/schemaParsing';
+import { getTracingConfig } from '@utils/tracing';
+
 import { makeZodSchemaFromAttributes } from './helpers';
 import type { AttributeDefinition } from './types';
-import {
-	inputSchemaField,
-	jsonSchemaExampleField,
-	schemaTypeField,
-} from '../../../utils/descriptions';
-import { convertJsonSchemaToZod, generateSchema } from '../../../utils/schemaParsing';
-import { getTracingConfig } from '../../../utils/tracing';
 
 const SYSTEM_PROMPT_TEMPLATE = `You are an expert extraction algorithm.
 Only extract relevant information from the text.

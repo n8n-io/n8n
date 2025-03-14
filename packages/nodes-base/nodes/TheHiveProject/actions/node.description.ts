@@ -6,9 +6,9 @@ import * as case_ from './case';
 import * as comment from './comment';
 import * as log from './log';
 import * as observable from './observable';
+import * as page from './page';
 import * as query from './query';
 import * as task from './task';
-import * as page from './page';
 
 export const description: INodeTypeDescription = {
 	displayName: 'TheHive 5',
@@ -21,6 +21,7 @@ export const description: INodeTypeDescription = {
 	defaults: {
 		name: 'TheHive 5',
 	},
+	usableAsTool: true,
 	inputs: [NodeConnectionType.Main],
 	outputs: [NodeConnectionType.Main],
 	credentials: [

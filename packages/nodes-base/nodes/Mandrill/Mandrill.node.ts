@@ -1,3 +1,6 @@
+import isEmpty from 'lodash/isEmpty';
+import map from 'lodash/map';
+import moment from 'moment-timezone';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -10,10 +13,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeApiError } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
-
-import map from 'lodash/map';
-import isEmpty from 'lodash/isEmpty';
 import {
 	getGoogleAnalyticsDomainsArray,
 	getTags,
@@ -106,6 +105,7 @@ export class Mandrill implements INodeType {
 		defaults: {
 			name: 'Mandrill',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [
@@ -838,7 +838,6 @@ export class Mandrill implements INodeType {
 								// @ts-ignore
 								attachmentsValues = map(attachmentsUi.attachmentsValues, (o: IDataObject) => {
 									const aux: IDataObject = {};
-									// @ts-ignore
 									aux.name = o.name;
 									aux.content = o.content;
 									aux.type = o.type;

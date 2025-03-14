@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -7,17 +8,12 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
+import { aliasFields, aliasOperations } from './AliasDescription';
+import { eventFields, eventOperations } from './EventDescription';
 import type { IAlias, IEvent, IIdentity, ITrack } from './GenericFunctions';
 import { posthogApiRequest } from './GenericFunctions';
-
-import { aliasFields, aliasOperations } from './AliasDescription';
-
-import { eventFields, eventOperations } from './EventDescription';
-
-import { trackFields, trackOperations } from './TrackDescription';
-
 import { identityFields, identityOperations } from './IdentityDescription';
+import { trackFields, trackOperations } from './TrackDescription';
 
 export class PostHog implements INodeType {
 	description: INodeTypeDescription = {
@@ -31,6 +27,7 @@ export class PostHog implements INodeType {
 		defaults: {
 			name: 'PostHog',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

@@ -1,6 +1,9 @@
 import type { User } from '@/databases/entities/user';
-import { setSamlLoginEnabled } from '@/sso/saml/saml-helpers';
-import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/sso-helpers';
+import { setSamlLoginEnabled } from '@/sso.ee/saml/saml-helpers';
+import {
+	getCurrentAuthenticationMethod,
+	setCurrentAuthenticationMethod,
+} from '@/sso.ee/sso-helpers';
 
 import { sampleConfig } from './sample-metadata';
 import { createOwner, createUser } from '../shared/db/users';
@@ -30,6 +33,8 @@ beforeAll(async () => {
 	authOwnerAgent = testServer.authAgentFor(owner);
 	authMemberAgent = testServer.authAgentFor(someUser);
 });
+
+beforeEach(async () => await enableSaml(false));
 
 describe('Instance owner', () => {
 	describe('PATCH /me', () => {
@@ -85,6 +90,17 @@ describe('Instance owner', () => {
 				})
 				.expect(200);
 			expect(getCurrentAuthenticationMethod()).toBe('saml');
+		});
+
+		test('should return 400 on invalid config', async () => {
+			await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					loginBinding: 'invalid',
+				})
+				.expect(400);
+			expect(getCurrentAuthenticationMethod()).toBe('email');
 		});
 	});
 

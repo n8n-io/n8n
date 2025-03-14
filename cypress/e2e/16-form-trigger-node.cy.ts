@@ -44,8 +44,7 @@ describe('n8n Form Trigger', () => {
 			':nth-child(3) > .border-top-dashed > .parameter-input-list-wrapper > :nth-child(1) > .parameter-item',
 		)
 			.find('input[placeholder*="e.g. What is your name?"]')
-			.type('Test Field 3')
-			.blur();
+			.type('Test Field 3');
 		cy.get(
 			':nth-child(3) > .border-top-dashed > .parameter-input-list-wrapper > :nth-child(2) > .parameter-item',
 		).click();
@@ -56,27 +55,26 @@ describe('n8n Form Trigger', () => {
 			':nth-child(4) > .border-top-dashed > .parameter-input-list-wrapper > :nth-child(1) > .parameter-item',
 		)
 			.find('input[placeholder*="e.g. What is your name?"]')
-			.type('Test Field 4')
-			.blur();
+			.type('Test Field 4');
 		cy.get(
 			':nth-child(4) > .border-top-dashed > .parameter-input-list-wrapper > :nth-child(2) > .parameter-item',
 		).click();
 		getVisibleSelect().contains('Dropdown').click();
-		cy.get(
-			'.border-top-dashed > :nth-child(2) > :nth-child(3) > .multi-parameter > .fixed-collection-parameter > :nth-child(2) > .button',
-		).click();
-		cy.get(
-			':nth-child(4) > :nth-child(1) > :nth-child(2) > :nth-child(3) > .multi-parameter > .fixed-collection-parameter > .fixed-collection-parameter-property > :nth-child(1) > :nth-child(1)',
-		)
-			.find('input')
-			.type('Option 1')
-			.blur();
-		cy.get(
-			':nth-child(4) > :nth-child(1) > :nth-child(2) > :nth-child(3) > .multi-parameter > .fixed-collection-parameter > .fixed-collection-parameter-property > :nth-child(1) > :nth-child(2)',
-		)
-			.find('input')
-			.type('Option 2')
-			.blur();
+		cy.contains('button', 'Add Field Option').click();
+		cy.contains('label', 'Field Options')
+			.parent()
+			.parent()
+			.nextAll()
+			.find('[data-test-id="parameter-input-field"]')
+			.eq(0)
+			.type('Option 1');
+		cy.contains('label', 'Field Options')
+			.parent()
+			.parent()
+			.nextAll()
+			.find('[data-test-id="parameter-input-field"]')
+			.eq(1)
+			.type('Option 2');
 
 		//add optional submitted message
 		cy.get('.param-options').click();
@@ -94,7 +92,6 @@ describe('n8n Form Trigger', () => {
 			.children()
 			.children()
 			.first()
-			.clear()
 			.type('Your test form was successfully submitted');
 
 		ndv.getters.backToCanvas().click();

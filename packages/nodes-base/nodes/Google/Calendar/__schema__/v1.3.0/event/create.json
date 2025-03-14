@@ -1,0 +1,97 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "start": {
+            "type": "object",
+            "properties": {
+                "dateTime": {
+                    "type": "string"
+                },
+                "timeZone": {
+                    "type": "string"
+                }
+            }
+        },
+        "end": {
+            "type": "object",
+            "properties": {
+                "dateTime": {
+                    "type": "string"
+                },
+                "timeZone": {
+                    "type": "string"
+                }
+            }
+        },
+        "creator": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "self": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "email"
+            ]
+        },
+        "organizer": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "self": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "email",
+                "self"
+            ]
+        },
+        "created": {
+            "type": "string"
+        },
+        "updated": {
+            "type": "string"
+        },
+        "etag": {
+            "type": "string"
+        },
+        "eventType": {
+            "type": "string"
+        },
+        "htmlLink": {
+            "type": "string"
+        },
+        "iCalUID": {
+            "type": "string"
+        },
+        "kind": {
+            "type": "string"
+        },
+        "reminders": {
+            "type": "object",
+            "properties": {
+                "useDefault": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "useDefault"
+            ]
+        },
+        "sequence": {
+            "type": "integer"
+        },
+        "status": {
+            "type": "string"
+        }
+    }
+}

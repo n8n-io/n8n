@@ -10,14 +10,10 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
-import { autopilotApiRequest, autopilotApiRequestAllItems } from './GenericFunctions';
-
 import { contactFields, contactOperations } from './ContactDescription';
-
 import { contactJourneyFields, contactJourneyOperations } from './ContactJourneyDescription';
-
 import { contactListFields, contactListOperations } from './ContactListDescription';
-
+import { autopilotApiRequest, autopilotApiRequestAllItems } from './GenericFunctions';
 import { listFields, listOperations } from './ListDescription';
 
 export class Autopilot implements INodeType {
@@ -32,6 +28,7 @@ export class Autopilot implements INodeType {
 		defaults: {
 			name: 'Autopilot',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

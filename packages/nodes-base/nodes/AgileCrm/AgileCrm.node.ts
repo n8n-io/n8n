@@ -7,14 +7,12 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, jsonParse, NodeOperationError } from 'n8n-workflow';
 
-import { contactFields, contactOperations } from './ContactDescription';
-
 import { companyFields, companyOperations } from './CompanyDescription';
-
-import { dealFields, dealOperations } from './DealDescription';
-
+import { contactFields, contactOperations } from './ContactDescription';
 import type { IContact, IContactUpdate } from './ContactInterface';
-
+import { dealFields, dealOperations } from './DealDescription';
+import type { IDeal } from './DealInterface';
+import type { IFilter, ISearchConditions } from './FilterInterface';
 import {
 	agileCrmApiRequest,
 	agileCrmApiRequestAllItems,
@@ -23,10 +21,6 @@ import {
 	simplifyResponse,
 	validateJSON,
 } from './GenericFunctions';
-
-import type { IDeal } from './DealInterface';
-
-import type { IFilter, ISearchConditions } from './FilterInterface';
 
 export class AgileCrm implements INodeType {
 	description: INodeTypeDescription = {
@@ -41,6 +35,7 @@ export class AgileCrm implements INodeType {
 		defaults: {
 			name: 'Agile CRM',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

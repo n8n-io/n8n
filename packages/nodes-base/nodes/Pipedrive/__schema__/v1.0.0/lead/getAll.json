@@ -1,0 +1,73 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "owner_id": {
+            "type": "integer"
+        },
+        "creator_id": {
+            "type": "integer"
+        },
+        "label_ids": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "is_archived": {
+            "type": "boolean"
+        },
+        "source_name": {
+            "type": "string"
+        },
+        "origin": {
+            "type": "string"
+        },
+        "channel_id": {
+            "type": "null"
+        },
+        "was_seen": {
+            "type": "boolean"
+        },
+        "add_time": {
+            "type": "string"
+        },
+        "update_time": {
+            "type": "string"
+        },
+        "visible_to": {
+            "type": "string"
+        },
+        "cc_email": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "id",
+        "title",
+        "owner_id",
+        "creator_id",
+        "label_ids",
+        "value",
+        "expected_close_date",
+        "person_id",
+        "organization_id",
+        "is_archived",
+        "source_name",
+        "origin",
+        "origin_id",
+        "channel",
+        "channel_id",
+        "was_seen",
+        "next_activity_id",
+        "add_time",
+        "update_time",
+        "visible_to",
+        "cc_email"
+    ]
+}

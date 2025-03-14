@@ -1,5 +1,5 @@
-import nock from 'nock';
 import type { IHttpRequestMethods } from 'n8n-workflow';
+
 import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
 
 const API_RESPONSE = [
@@ -77,16 +77,6 @@ jest.mock('../../../../shared/GenericFunctions', () => {
 describe('Test NotionV2, databasePage => getAll', () => {
 	const workflows = ['nodes/Notion/test/node/v2/databasePage/getAll.workflow.json'];
 	const tests = workflowToTests(workflows);
-
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.unmock('../../../../shared/GenericFunctions');
-	});
-
 	const nodeTypes = setup(tests);
 
 	for (const testData of tests) {

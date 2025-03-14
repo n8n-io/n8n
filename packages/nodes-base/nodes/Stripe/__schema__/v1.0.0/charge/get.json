@@ -1,0 +1,480 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "object": {
+            "type": "string"
+        },
+        "amount": {
+            "type": "integer"
+        },
+        "amount_captured": {
+            "type": "integer"
+        },
+        "amount_refunded": {
+            "type": "integer"
+        },
+        "application_fee": {
+            "type": "null"
+        },
+        "application_fee_amount": {
+            "type": "null"
+        },
+        "billing_details": {
+            "type": "object",
+            "properties": {
+                "phone": {
+                    "type": "null"
+                }
+            },
+            "required": [
+                "address",
+                "email",
+                "name",
+                "phone"
+            ]
+        },
+        "calculated_statement_descriptor": {
+            "type": "string"
+        },
+        "captured": {
+            "type": "boolean"
+        },
+        "created": {
+            "type": "integer"
+        },
+        "currency": {
+            "type": "string"
+        },
+        "destination": {
+            "type": "null"
+        },
+        "dispute": {
+            "type": "null"
+        },
+        "disputed": {
+            "type": "boolean"
+        },
+        "failure_balance_transaction": {
+            "type": "null"
+        },
+        "livemode": {
+            "type": "boolean"
+        },
+        "metadata": {
+            "type": "object",
+            "properties": {
+                "date_due": {
+                    "type": "string"
+                },
+                "erp_provider_dimension_id": {
+                    "type": "string"
+                },
+                "invoice_id": {
+                    "type": "string"
+                },
+                "period_end": {
+                    "type": "string"
+                },
+                "period_start": {
+                    "type": "string"
+                },
+                "reservation_id": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "on_behalf_of": {
+            "type": "null"
+        },
+        "order": {
+            "type": "null"
+        },
+        "outcome": {
+            "type": "object",
+            "properties": {
+                "advice_code": {
+                    "type": "null"
+                },
+                "network_status": {
+                    "type": "string"
+                },
+                "risk_level": {
+                    "type": "string"
+                },
+                "risk_score": {
+                    "type": "integer"
+                },
+                "seller_message": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "network_status",
+                "reason",
+                "risk_level",
+                "seller_message",
+                "type"
+            ]
+        },
+        "paid": {
+            "type": "boolean"
+        },
+        "payment_intent": {
+            "type": "string"
+        },
+        "payment_method": {
+            "type": "string"
+        },
+        "payment_method_details": {
+            "type": "object",
+            "properties": {
+                "card": {
+                    "type": "object",
+                    "properties": {
+                        "brand": {
+                            "type": "string"
+                        },
+                        "country": {
+                            "type": "string"
+                        },
+                        "exp_month": {
+                            "type": "integer"
+                        },
+                        "exp_year": {
+                            "type": "integer"
+                        },
+                        "extended_authorization": {
+                            "type": "object",
+                            "properties": {
+                                "status": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "status"
+                            ]
+                        },
+                        "fingerprint": {
+                            "type": "string"
+                        },
+                        "funding": {
+                            "type": "string"
+                        },
+                        "incremental_authorization": {
+                            "type": "object",
+                            "properties": {
+                                "status": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "status"
+                            ]
+                        },
+                        "installments": {
+                            "type": "null"
+                        },
+                        "last4": {
+                            "type": "string"
+                        },
+                        "mandate": {
+                            "type": "null"
+                        },
+                        "multicapture": {
+                            "type": "object",
+                            "properties": {
+                                "status": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "status"
+                            ]
+                        },
+                        "network": {
+                            "type": "string"
+                        },
+                        "network_token": {
+                            "type": "object",
+                            "properties": {
+                                "used": {
+                                    "type": "boolean"
+                                }
+                            },
+                            "required": [
+                                "used"
+                            ]
+                        },
+                        "network_transaction_id": {
+                            "type": "string"
+                        },
+                        "overcapture": {
+                            "type": "object",
+                            "properties": {
+                                "maximum_amount_capturable": {
+                                    "type": "integer"
+                                },
+                                "status": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "maximum_amount_capturable",
+                                "status"
+                            ]
+                        },
+                        "regulated_status": {
+                            "type": "string"
+                        },
+                        "three_d_secure": {
+                            "type": "null"
+                        },
+                        "capture_before": {
+                            "type": "integer"
+                        }
+                    },
+                    "required": [
+                        "amount_authorized",
+                        "authorization_code",
+                        "brand",
+                        "checks",
+                        "country",
+                        "exp_month",
+                        "exp_year",
+                        "extended_authorization",
+                        "fingerprint",
+                        "funding",
+                        "incremental_authorization",
+                        "installments",
+                        "last4",
+                        "mandate",
+                        "multicapture",
+                        "network",
+                        "network_token",
+                        "overcapture",
+                        "three_d_secure",
+                        "wallet"
+                    ]
+                },
+                "type": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "card",
+                "type"
+            ]
+        },
+        "refunded": {
+            "type": "boolean"
+        },
+        "refunds": {
+            "type": "object",
+            "properties": {
+                "object": {
+                    "type": "string"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "object": {
+                                "type": "string"
+                            },
+                            "amount": {
+                                "type": "integer"
+                            },
+                            "balance_transaction": {
+                                "type": "string"
+                            },
+                            "charge": {
+                                "type": "string"
+                            },
+                            "created": {
+                                "type": "integer"
+                            },
+                            "currency": {
+                                "type": "string"
+                            },
+                            "destination_details": {
+                                "type": "object",
+                                "properties": {
+                                    "card": {
+                                        "type": "object",
+                                        "properties": {
+                                            "reference": {
+                                                "type": "string"
+                                            },
+                                            "reference_status": {
+                                                "type": "string"
+                                            },
+                                            "reference_type": {
+                                                "type": "string"
+                                            },
+                                            "type": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "reference",
+                                            "reference_status",
+                                            "reference_type",
+                                            "type"
+                                        ]
+                                    },
+                                    "type": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "card",
+                                    "type"
+                                ]
+                            },
+                            "payment_intent": {
+                                "type": "string"
+                            },
+                            "reason": {
+                                "type": "null"
+                            },
+                            "receipt_number": {
+                                "type": "string"
+                            },
+                            "source_transfer_reversal": {
+                                "type": "null"
+                            },
+                            "status": {
+                                "type": "string"
+                            },
+                            "transfer_reversal": {
+                                "type": "null"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "object",
+                            "amount",
+                            "balance_transaction",
+                            "charge",
+                            "created",
+                            "currency",
+                            "destination_details",
+                            "metadata",
+                            "payment_intent",
+                            "reason",
+                            "receipt_number",
+                            "source_transfer_reversal",
+                            "status",
+                            "transfer_reversal"
+                        ]
+                    }
+                },
+                "has_more": {
+                    "type": "boolean"
+                },
+                "total_count": {
+                    "type": "integer"
+                },
+                "url": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "object",
+                "data",
+                "has_more",
+                "total_count",
+                "url"
+            ]
+        },
+        "review": {
+            "type": "null"
+        },
+        "shipping": {
+            "type": "null"
+        },
+        "source": {
+            "type": "null"
+        },
+        "source_transfer": {
+            "type": "null"
+        },
+        "statement_descriptor": {
+            "type": "null"
+        },
+        "statement_descriptor_suffix": {
+            "type": "null"
+        },
+        "status": {
+            "type": "string"
+        },
+        "transfer_data": {
+            "type": "null"
+        },
+        "transfer_group": {
+            "type": "null"
+        }
+    },
+    "required": [
+        "id",
+        "object",
+        "amount",
+        "amount_captured",
+        "amount_refunded",
+        "application",
+        "application_fee",
+        "application_fee_amount",
+        "balance_transaction",
+        "billing_details",
+        "calculated_statement_descriptor",
+        "captured",
+        "created",
+        "currency",
+        "customer",
+        "description",
+        "destination",
+        "dispute",
+        "disputed",
+        "failure_balance_transaction",
+        "failure_code",
+        "failure_message",
+        "fraud_details",
+        "invoice",
+        "livemode",
+        "metadata",
+        "on_behalf_of",
+        "order",
+        "outcome",
+        "paid",
+        "payment_intent",
+        "payment_method",
+        "payment_method_details",
+        "radar_options",
+        "receipt_email",
+        "receipt_number",
+        "receipt_url",
+        "refunded",
+        "review",
+        "shipping",
+        "source",
+        "source_transfer",
+        "statement_descriptor",
+        "statement_descriptor_suffix",
+        "status",
+        "transfer_data",
+        "transfer_group"
+    ]
+}

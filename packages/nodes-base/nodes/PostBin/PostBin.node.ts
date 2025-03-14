@@ -2,7 +2,6 @@ import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
 import { binFields, binOperations } from './BinDescription';
-
 import { requestFields, requestOperations } from './RequestDescription';
 
 export class PostBin implements INodeType {
@@ -17,6 +16,7 @@ export class PostBin implements INodeType {
 		defaults: {
 			name: 'PostBin',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [],

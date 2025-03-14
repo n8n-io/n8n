@@ -1,0 +1,127 @@
+{
+    "type": "object",
+    "properties": {
+        "name": {
+            "type": "string"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "uuid": {
+            "type": "string"
+        },
+        "slug": {
+            "type": "string"
+        },
+        "full_slug": {
+            "type": "string"
+        },
+        "sort_by_date": {
+            "type": "null"
+        },
+        "position": {
+            "type": "integer"
+        },
+        "tag_list": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "is_startpage": {
+            "type": "boolean"
+        },
+        "group_id": {
+            "type": "string"
+        },
+        "path": {
+            "type": "null"
+        },
+        "deleted_at": {
+            "type": "null"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "is_folder": {
+            "type": "boolean"
+        },
+        "published": {
+            "type": "boolean"
+        },
+        "unpublished_changes": {
+            "type": "boolean"
+        },
+        "pinned": {
+            "type": "boolean"
+        },
+        "publish_at": {
+            "type": "null"
+        },
+        "expire_at": {
+            "type": "null"
+        },
+        "default_root": {
+            "type": "null"
+        },
+        "disble_fe_editor": {
+            "type": "boolean"
+        },
+        "disable_fe_editor": {
+            "type": "boolean"
+        },
+        "last_author": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "userid": {
+                    "type": "string"
+                },
+                "friendly_name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "userid",
+                "friendly_name",
+                "avatar"
+            ]
+        },
+        "last_author_id": {
+            "type": "integer"
+        },
+        "content_type": {
+            "type": "string"
+        },
+        "can_not_view": {
+            "type": "boolean"
+        },
+        "scheduled_dates": {
+            "type": "null"
+        }
+    },
+    "required": [
+        "name",
+        "created_at",
+        "published_at",
+        "alternates",
+        "id",
+        "uuid",
+        "slug",
+        "full_slug",
+        "sort_by_date",
+        "position",
+        "tag_list",
+        "is_startpage",
+        "parent_id",
+        "group_id",
+        "first_published_at",
+        "path"
+    ]
+}

@@ -1,4 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { OllamaEmbeddings } from '@langchain/ollama';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -6,9 +7,10 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-import { OllamaEmbeddings } from '@langchain/ollama';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
 import { ollamaDescription, ollamaModel } from '../../llms/LMOllama/description';
 
 export class EmbeddingsOllama implements INodeType {

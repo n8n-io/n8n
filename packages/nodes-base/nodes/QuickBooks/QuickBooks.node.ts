@@ -1,4 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
+import { capitalCase } from 'change-case';
+import isEmpty from 'lodash/isEmpty';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -9,8 +11,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import { capitalCase } from 'change-case';
-import isEmpty from 'lodash/isEmpty';
 import {
 	billFields,
 	billOperations,
@@ -33,7 +33,6 @@ import {
 	vendorFields,
 	vendorOperations,
 } from './descriptions';
-
 import {
 	adjustTransactionDates,
 	getRefAndSyncToken,
@@ -46,7 +45,6 @@ import {
 	quickBooksApiRequest,
 	simplifyTransactionReport,
 } from './GenericFunctions';
-
 import type { QuickBooksOAuth2Credentials, TransactionFields, TransactionReport } from './types';
 
 export class QuickBooks implements INodeType {
@@ -61,6 +59,7 @@ export class QuickBooks implements INodeType {
 		defaults: {
 			name: 'QuickBooks Online',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [
@@ -191,9 +190,8 @@ export class QuickBooks implements INodeType {
 		let responseData;
 		const returnData: INodeExecutionData[] = [];
 
-		const { oauthTokenData } = (await this.getCredentials(
-			'quickBooksOAuth2Api',
-		)) as QuickBooksOAuth2Credentials;
+		const { oauthTokenData } =
+			await this.getCredentials<QuickBooksOAuth2Credentials>('quickBooksOAuth2Api');
 		const companyId = oauthTokenData.callbackQueryString.realmId;
 
 		for (let i = 0; i < items.length; i++) {

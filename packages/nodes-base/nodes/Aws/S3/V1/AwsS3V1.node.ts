@@ -1,8 +1,5 @@
-import { createHash } from 'crypto';
 import { paramCase, snakeCase } from 'change-case';
-
-import { Builder } from 'xml2js';
-
+import { createHash } from 'crypto';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -12,13 +9,11 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { Builder } from 'xml2js';
 
 import { bucketFields, bucketOperations } from './BucketDescription';
-
-import { folderFields, folderOperations } from './FolderDescription';
-
 import { fileFields, fileOperations } from './FileDescription';
-
+import { folderFields, folderOperations } from './FolderDescription';
 import {
 	awsApiRequestREST,
 	awsApiRequestSOAP,

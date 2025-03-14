@@ -10,6 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionType } from 'n8n-workflow';
 
+import { documentFields, documentOperations } from './DocumentDescription';
 import {
 	extractID,
 	googleApiRequest,
@@ -17,9 +18,6 @@ import {
 	hasKeys,
 	upperFirst,
 } from './GenericFunctions';
-
-import { documentFields, documentOperations } from './DocumentDescription';
-
 import type { IUpdateBody, IUpdateFields } from './interfaces';
 
 export class GoogleDocs implements INodeType {

@@ -10,20 +10,13 @@ import {
 } from 'n8n-workflow';
 
 import { eventFields, eventOperations } from './EventDescription';
-
-import { issueFields, issueOperations } from './IssueDescription';
-
-import { organizationFields, organizationOperations } from './OrganizationDescription';
-
-import { projectFields, projectOperations } from './ProjectDescription';
-
-import { releaseFields, releaseOperations } from './ReleaseDescription';
-
-import { teamFields, teamOperations } from './TeamDescription';
-
 import { sentryApiRequestAllItems, sentryIoApiRequest } from './GenericFunctions';
-
 import type { ICommit, IPatchSet, IRef } from './Interface';
+import { issueFields, issueOperations } from './IssueDescription';
+import { organizationFields, organizationOperations } from './OrganizationDescription';
+import { projectFields, projectOperations } from './ProjectDescription';
+import { releaseFields, releaseOperations } from './ReleaseDescription';
+import { teamFields, teamOperations } from './TeamDescription';
 
 export class SentryIo implements INodeType {
 	description: INodeTypeDescription = {
@@ -37,6 +30,7 @@ export class SentryIo implements INodeType {
 		defaults: {
 			name: 'Sentry.io',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

@@ -26,6 +26,7 @@ export class Mqtt implements INodeType {
 		defaults: {
 			name: 'MQTT',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

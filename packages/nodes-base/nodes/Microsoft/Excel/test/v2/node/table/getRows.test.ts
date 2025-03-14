@@ -1,10 +1,10 @@
 import type { IHttpRequestMethods, INodeTypes } from 'n8n-workflow';
 
-import nock from 'nock';
-import * as transport from '../../../../v2/transport';
+import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import { getResultNodeData, setup, workflowToTests } from '@test/nodes/Helpers';
 import type { WorkflowTestData } from '@test/nodes/types';
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
+
+import * as transport from '../../../../v2/transport';
 
 jest.mock('../../../../v2/transport', () => {
 	const originalModule = jest.requireActual('../../../../v2/transport');
@@ -48,16 +48,6 @@ jest.mock('../../../../v2/transport', () => {
 describe('Test MicrosoftExcelV2, table => getRows', () => {
 	const workflows = ['nodes/Microsoft/Excel/test/v2/node/table/getRows.workflow.json'];
 	const tests = workflowToTests(workflows);
-
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.unmock('../../../../v2/transport');
-	});
-
 	const nodeTypes = setup(tests);
 
 	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {

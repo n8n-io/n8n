@@ -1,0 +1,90 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "object": {
+            "type": "string"
+        },
+        "balance": {
+            "type": "integer"
+        },
+        "created": {
+            "type": "integer"
+        },
+        "currency": {
+            "type": "null"
+        },
+        "default_source": {
+            "type": "null"
+        },
+        "delinquent": {
+            "type": "boolean"
+        },
+        "discount": {
+            "type": "null"
+        },
+        "invoice_prefix": {
+            "type": "string"
+        },
+        "invoice_settings": {
+            "type": "object",
+            "properties": {
+                "custom_fields": {
+                    "type": "null"
+                },
+                "default_payment_method": {
+                    "type": "null"
+                },
+                "footer": {
+                    "type": "null"
+                },
+                "rendering_options": {
+                    "type": "null"
+                }
+            },
+            "required": [
+                "custom_fields",
+                "default_payment_method",
+                "footer",
+                "rendering_options"
+            ]
+        },
+        "livemode": {
+            "type": "boolean"
+        },
+        "tax_exempt": {
+            "type": "string"
+        },
+        "test_clock": {
+            "type": "null"
+        },
+        "next_invoice_sequence": {
+            "type": "integer"
+        }
+    },
+    "required": [
+        "id",
+        "object",
+        "address",
+        "balance",
+        "created",
+        "currency",
+        "default_source",
+        "delinquent",
+        "description",
+        "discount",
+        "email",
+        "invoice_prefix",
+        "invoice_settings",
+        "livemode",
+        "metadata",
+        "name",
+        "phone",
+        "preferred_locales",
+        "shipping",
+        "tax_exempt",
+        "test_clock"
+    ]
+}

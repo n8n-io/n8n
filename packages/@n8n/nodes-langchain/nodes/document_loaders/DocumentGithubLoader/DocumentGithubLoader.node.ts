@@ -1,4 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { GithubRepoLoader } from '@langchain/community/document_loaders/web/github';
+import type { CharacterTextSplitter } from '@langchain/textsplitters';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -6,10 +8,9 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-import { GithubRepoLoader } from '@langchain/community/document_loaders/web/github';
-import type { CharacterTextSplitter } from '@langchain/textsplitters';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 export class DocumentGithubLoader implements INodeType {
 	description: INodeTypeDescription = {

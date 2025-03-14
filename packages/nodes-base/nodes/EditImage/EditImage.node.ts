@@ -1,5 +1,6 @@
-import { parse as pathParse } from 'path';
 import { writeFile as fsWriteFile } from 'fs/promises';
+import getSystemFonts from 'get-system-fonts';
+import gm from 'gm';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -11,9 +12,8 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeOperationError, NodeConnectionType, deepCopy } from 'n8n-workflow';
-import gm from 'gm';
+import { parse as pathParse } from 'path';
 import { file } from 'tmp-promise';
-import getSystemFonts from 'get-system-fonts';
 
 const nodeOperations: INodePropertyOptions[] = [
 	{
@@ -1244,7 +1244,7 @@ export class EditImage implements INodeType {
 						gmInstance = gmInstance!
 							.fill(operationData.fontColor as string)
 							.fontSize(operationData.fontSize as number)
-							.font(font as string)
+							.font(font)
 							.drawText(
 								operationData.positionX as number,
 								operationData.positionY as number,

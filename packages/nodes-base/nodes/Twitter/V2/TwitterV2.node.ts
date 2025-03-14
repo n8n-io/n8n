@@ -1,3 +1,5 @@
+import ISO6391 from 'iso-639-1';
+import { DateTime } from 'luxon';
 import {
 	NodeConnectionType,
 	type IDataObject,
@@ -12,19 +14,16 @@ import {
 	type JsonObject,
 } from 'n8n-workflow';
 
-import ISO6391 from 'iso-639-1';
-import { DateTime } from 'luxon';
 import { directMessageFields, directMessageOperations } from './DirectMessageDescription';
-import { listFields, listOperations } from './ListDescription';
-import { tweetFields, tweetOperations } from './TweetDescription';
-import { userFields, userOperations } from './UserDescription';
-
 import {
 	returnId,
 	returnIdFromUsername,
 	twitterApiRequest,
 	twitterApiRequestAllItems,
 } from './GenericFunctions';
+import { listFields, listOperations } from './ListDescription';
+import { tweetFields, tweetOperations } from './TweetDescription';
+import { userFields, userOperations } from './UserDescription';
 
 export class TwitterV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -39,6 +38,7 @@ export class TwitterV2 implements INodeType {
 			defaults: {
 				name: 'X',
 			},
+			usableAsTool: true,
 			inputs: [NodeConnectionType.Main],
 			outputs: [NodeConnectionType.Main],
 			credentials: [

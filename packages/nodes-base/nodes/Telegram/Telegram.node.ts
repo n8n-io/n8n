@@ -1,5 +1,3 @@
-import type { Readable } from 'stream';
-
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -8,10 +6,24 @@ import type {
 	INodeTypeDescription,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import {
+	BINARY_ENCODING,
+	SEND_AND_WAIT_OPERATION,
+	NodeConnectionType,
+	NodeOperationError,
+} from 'n8n-workflow';
+import type { Readable } from 'stream';
 
+import {
+	addAdditionalFields,
+	apiRequest,
+	createSendAndWaitMessageBody,
+	getPropertyName,
+} from './GenericFunctions';
 import { appendAttributionOption } from '../../utils/descriptions';
-import { addAdditionalFields, apiRequest, getPropertyName } from './GenericFunctions';
+import { configureWaitTillDate } from '../../utils/sendAndWait/configureWaitTillDate.util';
+import { sendAndWaitWebhooksDescription } from '../../utils/sendAndWait/descriptions';
+import { getSendAndWaitProperties, sendAndWaitWebhook } from '../../utils/sendAndWait/utils';
 
 export class Telegram implements INodeType {
 	description: INodeTypeDescription = {
@@ -34,6 +46,7 @@ export class Telegram implements INodeType {
 				required: true,
 			},
 		],
+		webhooks: sendAndWaitWebhooksDescription,
 		properties: [
 			{
 				displayName: 'Resource',
@@ -265,6 +278,12 @@ export class Telegram implements INodeType {
 						action: 'Send a text message',
 					},
 					{
+						name: 'Send and Wait for Response',
+						value: SEND_AND_WAIT_OPERATION,
+						description: 'Send a message and wait for response',
+						action: 'Send message and wait for response',
+					},
+					{
 						name: 'Send Photo',
 						value: 'sendPhoto',
 						description: 'Send a photo',
@@ -329,7 +348,7 @@ export class Telegram implements INodeType {
 				},
 				required: true,
 				description:
-					'Unique identifier for the target chat or username of the target channel (in the format @channelusername)',
+					'Unique identifier for the target chat or username, To find your chat ID ask @get_id_bot',
 			},
 
 			// ----------------------------------
@@ -684,7 +703,7 @@ export class Telegram implements INodeType {
 				},
 				required: true,
 				description:
-					'Unique identifier for the target chat or username of the target channel (in the format @channelusername). To find your chat ID ask @get_id_bot.',
+					'Unique identifier for the target chat or username, To find your chat ID ask @get_id_bot',
 			},
 			// ----------------------------------
 			//         message:sendAnimation/sendAudio/sendDocument/sendPhoto/sendSticker/sendVideo
@@ -1736,8 +1755,30 @@ export class Telegram implements INodeType {
 					},
 				],
 			},
+			...getSendAndWaitProperties(
+				[
+					{
+						displayName: 'Chat ID',
+						name: 'chatId',
+						type: 'string',
+						default: '',
+						required: true,
+						description:
+							'Unique identifier for the target chat or username of the target channel (in the format @channelusername). To find your chat ID ask @get_id_bot.',
+					},
+				],
+				'message',
+				undefined,
+				{
+					noButtonStyle: true,
+					defaultApproveLabel: '✅ Approve',
+					defaultDisapproveLabel: '❌ Decline',
+				},
+			).filter((p) => p.name !== 'subject'),
 		],
 	};
+
+	webhook = sendAndWaitWebhook;
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -1757,6 +1798,17 @@ export class Telegram implements INodeType {
 
 		const nodeVersion = this.getNode().typeVersion;
 		const instanceId = this.getInstanceId();
+
+		if (resource === 'message' && operation === SEND_AND_WAIT_OPERATION) {
+			body = createSendAndWaitMessageBody(this);
+
+			await apiRequest.call(this, 'POST', 'sendMessage', body);
+
+			const waitTill = configureWaitTillDate(this);
+
+			await this.putExecutionToWait(waitTill);
+			return [this.getInputData()];
+		}
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -2086,7 +2138,9 @@ export class Telegram implements INodeType {
 						},
 					};
 
-					responseData = await apiRequest.call(this, requestMethod, endpoint, {}, qs, { formData });
+					responseData = await apiRequest.call(this, requestMethod, endpoint, {}, qs, {
+						formData,
+					});
 				} else {
 					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 				}

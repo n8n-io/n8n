@@ -25,6 +25,7 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 		defaults: {
 			name: 'Google Cloud Realtime Database',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

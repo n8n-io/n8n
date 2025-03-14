@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -8,20 +9,16 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
-
 import { v4 as uuid } from 'uuid';
-import moment from 'moment-timezone';
-import { twistApiRequest } from './GenericFunctions';
 
 import { channelFields, channelOperations } from './ChannelDescription';
-
+import { commentFields, commentOperations } from './CommentDescription';
+import { twistApiRequest } from './GenericFunctions';
 import {
 	messageConversationFields,
 	messageConversationOperations,
 } from './MessageConversationDescription';
-
 import { threadFields, threadOperations } from './ThreadDescription';
-import { commentFields, commentOperations } from './CommentDescription';
 
 export class Twist implements INodeType {
 	description: INodeTypeDescription = {
@@ -36,6 +33,7 @@ export class Twist implements INodeType {
 		defaults: {
 			name: 'Twist',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

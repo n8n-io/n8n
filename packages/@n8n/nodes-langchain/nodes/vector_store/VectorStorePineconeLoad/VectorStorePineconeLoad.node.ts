@@ -1,3 +1,7 @@
+import type { Embeddings } from '@langchain/core/embeddings';
+import type { PineconeStoreParams } from '@langchain/pinecone';
+import { PineconeStore } from '@langchain/pinecone';
+import { Pinecone } from '@pinecone-database/pinecone';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -5,16 +9,13 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-import type { PineconeStoreParams } from '@langchain/pinecone';
-import { PineconeStore } from '@langchain/pinecone';
-import { Pinecone } from '@pinecone-database/pinecone';
 
-import type { Embeddings } from '@langchain/core/embeddings';
-import { logWrapper } from '../../../utils/logWrapper';
-import { metadataFilterField } from '../../../utils/sharedFields';
-import { getMetadataFiltersValues } from '../../../utils/helpers';
+import { getMetadataFiltersValues } from '@utils/helpers';
+import { logWrapper } from '@utils/logWrapper';
+import { metadataFilterField } from '@utils/sharedFields';
+
+import { pineconeIndexSearch } from '../shared/createVectorStoreNode/methods/listSearch';
 import { pineconeIndexRLC } from '../shared/descriptions';
-import { pineconeIndexSearch } from '../shared/methods/listSearch';
 
 // This node is deprecated. Use VectorStorePinecone instead.
 export class VectorStorePineconeLoad implements INodeType {

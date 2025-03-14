@@ -11,9 +11,7 @@ import {
 } from 'n8n-workflow';
 
 import { awsApiRequest, awsApiRequestAllItems } from './GenericFunctions';
-
 import { itemFields, itemOperations } from './ItemDescription';
-
 import type {
 	FieldsUiValues,
 	IAttributeNameUi,
@@ -22,7 +20,6 @@ import type {
 	IRequestBody,
 	PutItemUi,
 } from './types';
-
 import {
 	adjustExpressionAttributeName,
 	adjustExpressionAttributeValues,

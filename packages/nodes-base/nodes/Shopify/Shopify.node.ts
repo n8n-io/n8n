@@ -10,13 +10,9 @@ import type {
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { keysToSnakeCase, shopifyApiRequest, shopifyApiRequestAllItems } from './GenericFunctions';
-
 import { orderFields, orderOperations } from './OrderDescription';
-
-import { productFields, productOperations } from './ProductDescription';
-
 import type { IAddress, IDiscountCode, ILineItem, IOrder } from './OrderInterface';
-
+import { productFields, productOperations } from './ProductDescription';
 import type { IProduct } from './ProductInterface';
 
 export class Shopify implements INodeType {
@@ -31,6 +27,7 @@ export class Shopify implements INodeType {
 		defaults: {
 			name: 'Shopify',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

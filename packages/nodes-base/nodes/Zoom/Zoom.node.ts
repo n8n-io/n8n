@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import {
 	type IExecuteFunctions,
 	type IDataObject,
@@ -9,9 +10,7 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
 import { zoomApiRequest, zoomApiRequestAllItems } from './GenericFunctions';
-
 import { meetingFields, meetingOperations } from './MeetingDescription';
 
 // import {
@@ -54,6 +53,7 @@ export class Zoom implements INodeType {
 			name: 'Zoom',
 		},
 		icon: 'file:zoom.svg',
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

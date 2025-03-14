@@ -1,0 +1,126 @@
+{
+    "type": "object",
+    "properties": {
+        "url": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "type": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "raw_title": {
+            "type": "string"
+        },
+        "description": {
+            "type": "string"
+        },
+        "raw_description": {
+            "type": "string"
+        },
+        "position": {
+            "type": "integer"
+        },
+        "active": {
+            "type": "boolean"
+        },
+        "required": {
+            "type": "boolean"
+        },
+        "collapsed_for_agents": {
+            "type": "boolean"
+        },
+        "regexp_for_validation": {
+            "type": "null"
+        },
+        "title_in_portal": {
+            "type": "string"
+        },
+        "raw_title_in_portal": {
+            "type": "string"
+        },
+        "visible_in_portal": {
+            "type": "boolean"
+        },
+        "editable_in_portal": {
+            "type": "boolean"
+        },
+        "required_in_portal": {
+            "type": "boolean"
+        },
+        "tag": {
+            "type": "null"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "removable": {
+            "type": "boolean"
+        },
+        "key": {
+            "type": "null"
+        },
+        "custom_field_options": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "raw_name": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "type": "string"
+                    },
+                    "default": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "raw_name",
+                    "value",
+                    "default"
+                ]
+            }
+        }
+    },
+    "required": [
+        "url",
+        "id",
+        "type",
+        "title",
+        "raw_title",
+        "description",
+        "raw_description",
+        "position",
+        "active",
+        "required",
+        "collapsed_for_agents",
+        "regexp_for_validation",
+        "title_in_portal",
+        "raw_title_in_portal",
+        "visible_in_portal",
+        "editable_in_portal",
+        "required_in_portal",
+        "tag",
+        "created_at",
+        "updated_at",
+        "removable",
+        "key",
+        "agent_description"
+    ]
+}

@@ -16,7 +16,7 @@ import type {
 	ISupplyDataFunctions,
 	ITaskMetadata,
 } from 'n8n-workflow';
-import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
+import { NodeOperationError, NodeConnectionType, parseErrorMetadata } from 'n8n-workflow';
 
 import { logAiEvent, isToolsInstance, isBaseChatMemory, isBaseChatMessageHistory } from './helpers';
 import { N8nBinaryLoader } from './N8nBinaryLoader';
@@ -41,10 +41,12 @@ export async function callMethodAsync<T>(
 			functionality: 'configuration-node',
 		});
 
+		const metadata = parseErrorMetadata(error);
 		parameters.executeFunctions.addOutputData(
 			parameters.connectionType,
 			parameters.currentNodeRunIndex,
 			error,
+			metadata,
 		);
 
 		if (error.message) {
@@ -394,7 +396,6 @@ export function logWrapper(
 					return async (
 						query: string,
 						k?: number,
-						// @ts-ignore
 						filter?: BiquadFilterType | undefined,
 						_callbacks?: Callbacks | undefined,
 					): Promise<Document[]> => {

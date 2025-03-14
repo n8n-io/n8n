@@ -8,7 +8,6 @@ import type {
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { bubbleApiRequest, bubbleApiRequestAllItems, validateJSON } from './GenericFunctions';
-
 import { objectFields, objectOperations } from './ObjectDescription';
 
 export class Bubble implements INodeType {
@@ -23,6 +22,7 @@ export class Bubble implements INodeType {
 		defaults: {
 			name: 'Bubble',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

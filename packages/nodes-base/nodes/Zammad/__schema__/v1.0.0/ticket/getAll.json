@@ -1,0 +1,122 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "group_id": {
+            "type": "integer"
+        },
+        "priority_id": {
+            "type": "integer"
+        },
+        "state_id": {
+            "type": "integer"
+        },
+        "number": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "owner_id": {
+            "type": "integer"
+        },
+        "customer_id": {
+            "type": "integer"
+        },
+        "note": {
+            "type": "null"
+        },
+        "first_response_escalation_at": {
+            "type": "null"
+        },
+        "first_response_in_min": {
+            "type": "null"
+        },
+        "first_response_diff_in_min": {
+            "type": "null"
+        },
+        "close_escalation_at": {
+            "type": "null"
+        },
+        "update_escalation_at": {
+            "type": "null"
+        },
+        "update_in_min": {
+            "type": "null"
+        },
+        "update_diff_in_min": {
+            "type": "null"
+        },
+        "create_article_type_id": {
+            "type": "integer"
+        },
+        "create_article_sender_id": {
+            "type": "integer"
+        },
+        "article_count": {
+            "type": "integer"
+        },
+        "escalation_at": {
+            "type": "null"
+        },
+        "pending_time": {
+            "type": "null"
+        },
+        "type": {
+            "type": "null"
+        },
+        "updated_by_id": {
+            "type": "integer"
+        },
+        "created_by_id": {
+            "type": "integer"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "id",
+        "group_id",
+        "priority_id",
+        "state_id",
+        "organization_id",
+        "number",
+        "title",
+        "owner_id",
+        "customer_id",
+        "note",
+        "first_response_at",
+        "first_response_escalation_at",
+        "first_response_in_min",
+        "first_response_diff_in_min",
+        "close_at",
+        "close_escalation_at",
+        "close_in_min",
+        "close_diff_in_min",
+        "update_escalation_at",
+        "update_in_min",
+        "update_diff_in_min",
+        "last_contact_at",
+        "last_contact_agent_at",
+        "last_contact_customer_at",
+        "last_owner_update_at",
+        "create_article_type_id",
+        "create_article_sender_id",
+        "article_count",
+        "escalation_at",
+        "pending_time",
+        "type",
+        "time_unit",
+        "preferences",
+        "updated_by_id",
+        "created_by_id",
+        "created_at",
+        "updated_at"
+    ]
+}

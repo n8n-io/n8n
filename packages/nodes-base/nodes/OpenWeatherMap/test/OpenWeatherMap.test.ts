@@ -10,16 +10,10 @@ describe('OpenWeatherMap', () => {
 		const tests = workflowToTests(workflows);
 
 		beforeAll(() => {
-			nock.disableNetConnect();
-
 			nock('https://api.openweathermap.org')
 				.get('/data/2.5/weather')
 				.query({ units: 'metric', q: 'berlin,de', lang: 'en' })
 				.reply(200, currentWeatherResponse);
-		});
-
-		afterAll(() => {
-			nock.restore();
 		});
 
 		const nodeTypes = setup(tests);

@@ -1,3 +1,6 @@
+import { camelCase, capitalCase, snakeCase } from 'change-case';
+import set from 'lodash/set';
+import moment from 'moment-timezone';
 import type {
 	IBinaryKeyData,
 	IDataObject,
@@ -16,15 +19,10 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import { camelCase, capitalCase, snakeCase } from 'change-case';
-
-import moment from 'moment-timezone';
-
 import { validate as uuidValidate } from 'uuid';
-import set from 'lodash/set';
-import { filters } from './descriptions/Filters';
+
 import { blockUrlExtractionRegexp, databasePageUrlValidationRegexp } from './constants';
+import { filters } from './descriptions/Filters';
 
 function uuidValidateWithoutDashes(this: IExecuteFunctions, value: string) {
 	if (uuidValidate(value)) return true;

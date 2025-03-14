@@ -1,5 +1,6 @@
+import isEmpty from 'lodash/isEmpty';
+import { DateTime } from 'luxon';
 import { simpleParser } from 'mailparser';
-
 import type {
 	IBinaryKeyData,
 	IDataObject,
@@ -13,21 +14,17 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import MailComposer from 'nodemailer/lib/mail-composer';
 
-import { DateTime } from 'luxon';
-
-import isEmpty from 'lodash/isEmpty';
+import type { IEmail } from '../../../utils/sendAndWait/interfaces';
+import { createUtmCampaignLink, escapeHtml } from '../../../utils/utilities';
+import { getGoogleAccessToken } from '../GenericFunctions';
 
 export interface IAttachments {
 	type: string;
 	name: string;
 	content: string;
 }
-
-import MailComposer from 'nodemailer/lib/mail-composer';
-import { getGoogleAccessToken } from '../GenericFunctions';
-import { escapeHtml } from '../../../utils/utilities';
-import type { IEmail } from '../../../utils/sendAndWait/interfaces';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
@@ -436,9 +433,7 @@ export function prepareEmailBody(
 
 	if (appendAttribution) {
 		const attributionText = 'This email was sent automatically with ';
-		const link = `https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
-			'n8n-nodes-base.gmail',
-		)}${instanceId ? '_' + instanceId : ''}`;
+		const link = createUtmCampaignLink('n8n-nodes-base.gmail', instanceId);
 		if (emailType === 'html') {
 			message = `
 			${message}

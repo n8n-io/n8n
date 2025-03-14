@@ -21,6 +21,7 @@ export class FacebookGraphApi implements INodeType {
 		defaults: {
 			name: 'Facebook Graph API',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [
@@ -79,6 +80,14 @@ export class FacebookGraphApi implements INodeType {
 					{
 						name: 'Default',
 						value: '',
+					},
+					{
+						name: 'v22.0',
+						value: 'v22.0',
+					},
+					{
+						name: 'v21.0',
+						value: 'v21.0',
 					},
 					{
 						name: 'v20.0',

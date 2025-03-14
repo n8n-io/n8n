@@ -1,0 +1,90 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "first_name": {
+            "type": "string"
+        },
+        "last_name": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "telephone": {
+            "type": "string"
+        },
+        "timezone": {
+            "type": "string"
+        },
+        "weekly_capacity": {
+            "type": "integer"
+        },
+        "has_access_to_all_future_projects": {
+            "type": "boolean"
+        },
+        "is_contractor": {
+            "type": "boolean"
+        },
+        "is_active": {
+            "type": "boolean"
+        },
+        "calendar_integration_enabled": {
+            "type": "boolean"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "can_create_projects": {
+            "type": "boolean"
+        },
+        "roles": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "access_roles": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "permissions_claims": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "avatar_url": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "id",
+        "first_name",
+        "last_name",
+        "email",
+        "telephone",
+        "timezone",
+        "weekly_capacity",
+        "has_access_to_all_future_projects",
+        "is_contractor",
+        "is_active",
+        "calendar_integration_enabled",
+        "calendar_integration_source",
+        "created_at",
+        "updated_at",
+        "can_create_projects",
+        "default_hourly_rate",
+        "roles",
+        "access_roles",
+        "permissions_claims",
+        "avatar_url"
+    ]
+}

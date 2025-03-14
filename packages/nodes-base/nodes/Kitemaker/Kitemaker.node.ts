@@ -17,10 +17,9 @@ import {
 	workItemFields,
 	workItemOperations,
 } from './descriptions';
-
 import type { LoadOptions } from './GenericFunctions';
 import { createLoadOptions, kitemakerRequest, kitemakerRequestAllItems } from './GenericFunctions';
-
+import { createWorkItem, editWorkItem } from './mutations';
 import {
 	getAllSpaces,
 	getAllUsers,
@@ -34,8 +33,6 @@ import {
 	getWorkItems,
 } from './queries';
 
-import { createWorkItem, editWorkItem } from './mutations';
-
 export class Kitemaker implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Kitemaker',
@@ -48,6 +45,7 @@ export class Kitemaker implements INodeType {
 		defaults: {
 			name: 'Kitemaker',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

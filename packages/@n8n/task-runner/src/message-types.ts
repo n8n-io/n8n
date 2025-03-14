@@ -2,7 +2,7 @@ import type { INodeTypeBaseDescription } from 'n8n-workflow';
 
 import type {
 	NeededNodeType,
-	RPC_ALLOW_LIST,
+	AVAILABLE_RPC_METHODS,
 	TaskDataRequestParams,
 	TaskResultData,
 } from './runner-types';
@@ -105,7 +105,7 @@ export namespace BrokerMessage {
 			type: 'broker:rpc';
 			callId: string;
 			taskId: string;
-			name: (typeof RPC_ALLOW_LIST)[number];
+			name: (typeof AVAILABLE_RPC_METHODS)[number];
 			params: unknown[];
 		}
 
@@ -239,7 +239,7 @@ export namespace RunnerMessage {
 			type: 'runner:rpc';
 			callId: string;
 			taskId: string;
-			name: (typeof RPC_ALLOW_LIST)[number];
+			name: (typeof AVAILABLE_RPC_METHODS)[number];
 			params: unknown[];
 		}
 

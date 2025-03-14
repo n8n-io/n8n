@@ -8,7 +8,6 @@ import {
 } from 'n8n-workflow';
 
 import { yourlsApiRequest } from './GenericFunctions';
-
 import { urlFields, urlOperations } from './UrlDescription';
 
 export class Yourls implements INodeType {
@@ -24,6 +23,7 @@ export class Yourls implements INodeType {
 		defaults: {
 			name: 'Yourls',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

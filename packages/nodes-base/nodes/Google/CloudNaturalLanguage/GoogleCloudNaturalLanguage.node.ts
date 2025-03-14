@@ -6,9 +6,8 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
-import type { IData } from './Interface';
-
 import { googleApiRequest } from './GenericFunctions';
+import type { IData } from './Interface';
 
 export class GoogleCloudNaturalLanguage implements INodeType {
 	description: INodeTypeDescription = {
@@ -23,6 +22,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 		defaults: {
 			name: 'Google Cloud Natural Language',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

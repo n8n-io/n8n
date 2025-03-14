@@ -11,13 +11,11 @@ import type {
 import { NodeConnectionType } from 'n8n-workflow';
 
 import { awsApiRequestSOAP, awsApiRequestSOAPAllItems } from './GenericFunctions';
-
-import { loadBalancerFields, loadBalancerOperations } from './LoadBalancerDescription';
-
 import {
 	listenerCertificateFields,
 	listenerCertificateOperations,
 } from './ListenerCertificateDescription';
+import { loadBalancerFields, loadBalancerOperations } from './LoadBalancerDescription';
 
 export class AwsElb implements INodeType {
 	description: INodeTypeDescription = {

@@ -1,7 +1,7 @@
 import type { OpenAIEmbeddings } from '@langchain/openai';
+import { mock } from 'jest-mock-extended';
 
 import { MemoryVectorStoreManager } from './MemoryVectorStoreManager';
-import { mock } from 'jest-mock-extended';
 
 describe('MemoryVectorStoreManager', () => {
 	it('should create an instance of MemoryVectorStoreManager', () => {

@@ -9,16 +9,14 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
+import { contactFields, contactOperations } from './ContactDescription';
+import type { ICreateContactBody } from './ContactInterface';
 import {
 	capitalize,
 	freshdeskApiRequest,
 	freshdeskApiRequestAllItems,
 	// validateJSON,
 } from './GenericFunctions';
-
-import type { ICreateContactBody } from './ContactInterface';
-
-import { contactFields, contactOperations } from './ContactDescription';
 
 const enum Status {
 	Open = 2,
@@ -83,6 +81,7 @@ export class Freshdesk implements INodeType {
 		defaults: {
 			name: 'Freshdesk',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [
@@ -1205,7 +1204,6 @@ export class Freshdesk implements INodeType {
 						if (updateFields.requester) {
 							const value = updateFields.requesterIdentificationValue as string;
 							if (updateFields.requester === 'requesterId') {
-								// @ts-ignore
 								if (isNaN(parseInt(value, 10))) {
 									throw new NodeOperationError(this.getNode(), 'Requester Id must be a number', {
 										itemIndex: i,

@@ -1,3 +1,8 @@
+import type { Document } from '@langchain/core/documents';
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import { PromptTemplate } from '@langchain/core/prompts';
+import type { SummarizationChainParams } from 'langchain/chains';
+import { loadSummarizationChain } from 'langchain/chains';
 import {
 	NodeConnectionType,
 	type INodeTypeBaseDescription,
@@ -7,14 +12,10 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
-import type { SummarizationChainParams } from 'langchain/chains';
-import { loadSummarizationChain } from 'langchain/chains';
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import type { Document } from '@langchain/core/documents';
-import { PromptTemplate } from '@langchain/core/prompts';
-import { N8nJsonLoader } from '../../../../utils/N8nJsonLoader';
-import { N8nBinaryLoader } from '../../../../utils/N8nBinaryLoader';
-import { getTemplateNoticeField } from '../../../../utils/sharedFields';
+import { N8nBinaryLoader } from '@utils/N8nBinaryLoader';
+import { N8nJsonLoader } from '@utils/N8nJsonLoader';
+import { getTemplateNoticeField } from '@utils/sharedFields';
+
 import { REFINE_PROMPT_TEMPLATE, DEFAULT_PROMPT_TEMPLATE } from '../prompt';
 
 export class ChainSummarizationV1 implements INodeType {

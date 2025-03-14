@@ -1,4 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { HuggingFaceInference } from '@langchain/community/llms/hf';
 import {
 	NodeConnectionType,
 	type INodeType,
@@ -7,10 +8,10 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { HuggingFaceInference } from '@langchain/community/llms/hf';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { N8nLlmTracing } from '../N8nLlmTracing';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmOpenHuggingFaceInference implements INodeType {
 	description: INodeTypeDescription = {

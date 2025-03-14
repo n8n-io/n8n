@@ -1,8 +1,8 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import convict from 'convict';
 import { InstanceSettings } from 'n8n-core';
 import path from 'path';
-import { Container } from 'typedi';
 
 import { ensureStringArray } from './utils';
 
@@ -34,6 +34,12 @@ export const schema = {
 				format: Number,
 				default: -1,
 				env: 'N8N_CONCURRENCY_PRODUCTION_LIMIT',
+			},
+			evaluationLimit: {
+				doc: 'Max evaluation executions allowed to run concurrently.',
+				format: Number,
+				default: -1,
+				env: 'N8N_CONCURRENCY_EVALUATION_LIMIT',
 			},
 		},
 
@@ -139,13 +145,6 @@ export const schema = {
 		doc: 'Public URL where the editor is accessible. Also used for emails sent from n8n.',
 	},
 
-	workflowTagsDisabled: {
-		format: Boolean,
-		default: false,
-		env: 'N8N_WORKFLOW_TAGS_DISABLED',
-		doc: 'Disable workflow tags.',
-	},
-
 	userManagement: {
 		jwtSecret: {
 			doc: 'Set a specific JWT secret (optional - n8n can generate one)', // Generated @ start.ts
@@ -188,13 +187,6 @@ export const schema = {
 		format: String,
 		default: '',
 		env: 'EXTERNAL_FRONTEND_HOOKS_URLS',
-	},
-
-	externalHookFiles: {
-		doc: 'Files containing external hooks. Multiple files can be separated by colon (":")',
-		format: String,
-		default: '',
-		env: 'EXTERNAL_HOOK_FILES',
 	},
 
 	push: {
@@ -341,15 +333,6 @@ export const schema = {
 		},
 	},
 
-	aiAssistant: {
-		baseUrl: {
-			doc: 'Base URL of the AI assistant service',
-			format: String,
-			default: '',
-			env: 'N8N_AI_ASSISTANT_BASE_URL',
-		},
-	},
-
 	expression: {
 		evaluator: {
 			doc: 'Expression evaluator to use',
@@ -362,15 +345,6 @@ export const schema = {
 			format: Boolean,
 			default: false,
 			env: 'N8N_EXPRESSION_REPORT_DIFFERENCE',
-		},
-	},
-
-	sourceControl: {
-		defaultKeyPairType: {
-			doc: 'Default SSH key type to use when generating SSH keys',
-			format: ['rsa', 'ed25519'] as const,
-			default: 'ed25519',
-			env: 'N8N_SOURCECONTROL_DEFAULT_SSH_KEY_TYPE',
 		},
 	},
 
@@ -397,12 +371,12 @@ export const schema = {
 		doc: 'Number of reverse-proxies n8n is running behind',
 	},
 
-	featureFlags: {
-		partialExecutionVersionDefault: {
-			format: String,
-			default: '0',
-			env: 'PARTIAL_EXECUTION_VERSION_DEFAULT',
-			doc: 'Set this to 1 to enable the new partial execution logic by default.',
+	folders: {
+		enabled: {
+			format: Boolean,
+			default: false,
+			env: 'N8N_FOLDERS_ENABLED',
+			doc: 'Temporary env variable to enable folders feature',
 		},
 	},
 };

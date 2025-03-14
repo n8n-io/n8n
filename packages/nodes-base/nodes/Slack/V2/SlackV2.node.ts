@@ -1,5 +1,4 @@
-import type { Readable } from 'stream';
-
+import moment from 'moment-timezone';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -14,29 +13,16 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-
 import {
 	BINARY_ENCODING,
 	NodeConnectionType,
 	NodeOperationError,
 	SEND_AND_WAIT_OPERATION,
-	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
+import type { Readable } from 'stream';
 
-import moment from 'moment-timezone';
 import { channelFields, channelOperations } from './ChannelDescription';
-import {
-	channelRLC,
-	messageFields,
-	messageOperations,
-	sendToSelector,
-	userRLC,
-} from './MessageDescription';
-import { starFields, starOperations } from './StarDescription';
 import { fileFields, fileOperations } from './FileDescription';
-import { reactionFields, reactionOperations } from './ReactionDescription';
-import { userGroupFields, userGroupOperations } from './UserGroupDescription';
-import { userFields, userOperations } from './UserDescription';
 import {
 	slackApiRequest,
 	slackApiRequestAllItems,
@@ -44,6 +30,19 @@ import {
 	getTarget,
 	createSendAndWaitMessageBody,
 } from './GenericFunctions';
+import {
+	channelRLC,
+	messageFields,
+	messageOperations,
+	sendToSelector,
+	userRLC,
+} from './MessageDescription';
+import { reactionFields, reactionOperations } from './ReactionDescription';
+import { starFields, starOperations } from './StarDescription';
+import { userFields, userOperations } from './UserDescription';
+import { userGroupFields, userGroupOperations } from './UserGroupDescription';
+import { configureWaitTillDate } from '../../../utils/sendAndWait/configureWaitTillDate.util';
+import { sendAndWaitWebhooksDescription } from '../../../utils/sendAndWait/descriptions';
 import { getSendAndWaitProperties, sendAndWaitWebhook } from '../../../utils/sendAndWait/utils';
 
 export class SlackV2 implements INodeType {
@@ -79,17 +78,7 @@ export class SlackV2 implements INodeType {
 					},
 				},
 			],
-			webhooks: [
-				{
-					name: 'default',
-					httpMethod: 'GET',
-					responseMode: 'onReceived',
-					responseData: '',
-					path: '={{ $nodeId }}',
-					restartWebhook: true,
-					isFullPath: true,
-				},
-			],
+			webhooks: sendAndWaitWebhooksDescription,
 			properties: [
 				{
 					displayName: 'Authentication',
@@ -379,7 +368,9 @@ export class SlackV2 implements INodeType {
 				createSendAndWaitMessageBody(this),
 			);
 
-			await this.putExecutionToWait(WAIT_INDEFINITELY);
+			const waitTill = configureWaitTillDate(this);
+
+			await this.putExecutionToWait(waitTill);
 			return [this.getInputData()];
 		}
 

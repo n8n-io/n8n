@@ -1,3 +1,4 @@
+import { snakeCase } from 'change-case';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -8,13 +9,13 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-import { snakeCase } from 'change-case';
+
 import { validateJSON, zulipApiRequest } from './GenericFunctions';
 import { messageFields, messageOperations } from './MessageDescription';
 import type { IMessage } from './MessageInterface';
 import { streamFields, streamOperations } from './StreamDescription';
-import { userFields, userOperations } from './UserDescription';
 import type { IPrincipal, IStream } from './StreamInterface';
+import { userFields, userOperations } from './UserDescription';
 import type { IUser } from './UserInterface';
 
 export class Zulip implements INodeType {
@@ -29,6 +30,7 @@ export class Zulip implements INodeType {
 		defaults: {
 			name: 'Zulip',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

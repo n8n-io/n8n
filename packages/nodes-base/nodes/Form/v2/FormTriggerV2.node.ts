@@ -9,7 +9,6 @@ import {
 	type IWebhookFunctions,
 } from 'n8n-workflow';
 
-import { formWebhook } from '../utils';
 import {
 	appendAttributionToForm,
 	formDescription,
@@ -20,7 +19,9 @@ import {
 	respondWithOptions,
 	webhookPath,
 } from '../common.descriptions';
+import { cssVariables } from '../cssVariables';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
+import { formWebhook } from '../utils';
 
 const useWorkflowTimezone: INodeProperties = {
 	displayName: 'Use Workflow Timezone',
@@ -179,6 +180,22 @@ const descriptionV2: INodeTypeDescription = {
 							'@version': [{ _cnd: { gt: 2 } }],
 						},
 					},
+				},
+				{
+					displayName: 'Custom Form Styling',
+					name: 'customCss',
+					type: 'string',
+					typeOptions: {
+						rows: 10,
+						editor: 'cssEditor',
+					},
+					displayOptions: {
+						show: {
+							'@version': [{ _cnd: { gt: 2 } }],
+						},
+					},
+					default: cssVariables.trim(),
+					description: 'Override default styling of the public form interface with CSS',
 				},
 			],
 		},

@@ -1,3 +1,4 @@
+import jwt from 'jsonwebtoken';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -6,8 +7,6 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-
-import jwt from 'jsonwebtoken';
 
 import { formatPrivateKey } from '../../utils/utilities';
 import { parseJsonParameter } from '../Set/v2/helpers/utils';
@@ -53,6 +52,7 @@ export class Jwt implements INodeType {
 		defaults: {
 			name: 'JWT',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

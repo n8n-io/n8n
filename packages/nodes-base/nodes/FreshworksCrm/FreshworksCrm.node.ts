@@ -1,3 +1,4 @@
+import { tz } from 'moment-timezone';
 import {
 	type IExecuteFunctions,
 	type IDataObject,
@@ -7,17 +8,6 @@ import {
 	type INodeTypeDescription,
 	NodeConnectionType,
 } from 'n8n-workflow';
-
-import { tz } from 'moment-timezone';
-import {
-	adjustAccounts,
-	adjustAttendees,
-	freshworksCrmApiRequest,
-	getAllItemsViewId,
-	handleListing,
-	loadResource,
-	throwOnEmptyUpdate,
-} from './GenericFunctions';
 
 import {
 	accountFields,
@@ -37,7 +27,15 @@ import {
 	taskFields,
 	taskOperations,
 } from './descriptions';
-
+import {
+	adjustAccounts,
+	adjustAttendees,
+	freshworksCrmApiRequest,
+	getAllItemsViewId,
+	handleListing,
+	loadResource,
+	throwOnEmptyUpdate,
+} from './GenericFunctions';
 import type { FreshworksConfigResponse, LoadedCurrency, LoadedUser, LoadOption } from './types';
 
 export class FreshworksCrm implements INodeType {
@@ -52,6 +50,7 @@ export class FreshworksCrm implements INodeType {
 		defaults: {
 			name: 'Freshworks CRM',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

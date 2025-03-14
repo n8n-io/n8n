@@ -1,0 +1,133 @@
+{
+    "type": "object",
+    "properties": {
+        "company_id": {
+            "type": "integer"
+        },
+        "related_open_deals_count": {
+            "type": "integer"
+        },
+        "related_closed_deals_count": {
+            "type": "integer"
+        },
+        "files_count": {
+            "type": "integer"
+        },
+        "notes_count": {
+            "type": "integer"
+        },
+        "followers_count": {
+            "type": "integer"
+        },
+        "related_won_deals_count": {
+            "type": "integer"
+        },
+        "related_lost_deals_count": {
+            "type": "integer"
+        },
+        "active_flag": {
+            "type": "boolean"
+        },
+        "country_code": {
+            "type": "null"
+        },
+        "first_char": {
+            "type": "string"
+        },
+        "delete_time": {
+            "type": "null"
+        },
+        "label_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "cc_email": {
+            "type": "string"
+        },
+        "owner_name": {
+            "type": "string"
+        },
+        "category_id": {
+            "type": "null"
+        },
+        "ID": {
+            "type": "integer"
+        },
+        "Owner": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "has_pic": {
+                    "type": "integer"
+                },
+                "active_flag": {
+                    "type": "boolean"
+                },
+                "value": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "email",
+                "has_pic",
+                "pic_hash",
+                "active_flag",
+                "value"
+            ]
+        },
+        "Name": {
+            "type": "string"
+        },
+        "Open deals": {
+            "type": "integer"
+        },
+        "Closed deals": {
+            "type": "integer"
+        },
+        "Email messages count": {
+            "type": "integer"
+        },
+        "People": {
+            "type": "integer"
+        },
+        "Total activities": {
+            "type": "integer"
+        },
+        "Done activities": {
+            "type": "integer"
+        },
+        "Activities to do": {
+            "type": "integer"
+        },
+        "Won deals": {
+            "type": "integer"
+        },
+        "Lost deals": {
+            "type": "integer"
+        },
+        "Profile picture": {
+            "type": "null"
+        },
+        "Update time": {
+            "type": "string"
+        },
+        "Organization created": {
+            "type": "string"
+        },
+        "Visible to": {
+            "type": "string"
+        }
+    }
+}

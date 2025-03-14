@@ -9,10 +9,13 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
+
 import type {
 	WhatsAppAppWebhookSubscriptionsResponse,
 	WhatsAppAppWebhookSubscription,
 } from './types';
+import type { SendAndWaitConfig } from '../../utils/sendAndWait/utils';
+export const WHATSAPP_BASE_URL = 'https://graph.facebook.com/v13.0/';
 
 async function appAccessTokenRead(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -101,3 +104,27 @@ export async function appWebhookSubscriptionDelete(
 		payload: { object },
 	});
 }
+
+export const createMessage = (
+	sendAndWaitConfig: SendAndWaitConfig,
+	phoneNumberId: string,
+	recipientPhoneNumber: string,
+): IHttpRequestOptions => {
+	const buttons = sendAndWaitConfig.options.map((option) => {
+		return `*${option.label}:*\n_${sendAndWaitConfig.url}?approved=${option.value}_\n\n`;
+	});
+
+	return {
+		baseURL: WHATSAPP_BASE_URL,
+		method: 'POST',
+		url: `${phoneNumberId}/messages`,
+		body: {
+			messaging_product: 'whatsapp',
+			text: {
+				body: `${sendAndWaitConfig.message}\n\n${buttons.join('')}`,
+			},
+			type: 'text',
+			to: recipientPhoneNumber,
+		},
+	};
+};

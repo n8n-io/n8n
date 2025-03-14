@@ -1,0 +1,141 @@
+{
+	"type": "object",
+	"properties": {
+		"name": {
+			"type": "string"
+		},
+		"sender": {
+			"type": "object",
+			"properties": {
+				"name": {
+					"type": "string"
+				},
+				"displayName": {
+					"type": "string"
+				},
+				"type": {
+					"type": "string"
+				},
+				"domainId": {
+					"type": "string"
+				}
+			},
+			"required": [
+				"name",
+				"displayName",
+				"type",
+				"domainId"
+			]
+		},
+		"createTime": {
+			"type": "string"
+		},
+		"thread": {
+			"type": "object",
+			"properties": {
+				"name": {
+					"type": "string"
+				}
+			},
+			"required": [
+				"name"
+			]
+		},
+		"space": {
+			"type": "object",
+			"properties": {
+				"name": {
+					"type": "string"
+				},
+				"type": {
+					"type": "string"
+				},
+				"singleUserBotDm": {
+					"type": "boolean"
+				},
+				"spaceThreadingState": {
+					"type": "string"
+				},
+				"spaceType": {
+					"type": "string"
+				},
+				"spaceHistoryState": {
+					"type": "string"
+				},
+				"lastActiveTime": {
+					"type": "string"
+				},
+				"membershipCount": {
+					"type": "object",
+					"properties": {
+						"joinedDirectHumanUserCount": {
+							"type": "integer"
+						}
+					},
+					"required": [
+						"joinedDirectHumanUserCount"
+					]
+				},
+				"spaceUri": {
+					"type": "string"
+				}
+			},
+			"required": [
+				"name",
+				"type",
+				"spaceThreadingState",
+				"spaceType",
+				"spaceHistoryState",
+				"lastActiveTime",
+				"membershipCount",
+				"spaceUri"
+			]
+		},
+		"attachment": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"contentName": {
+						"type": "string"
+					},
+					"contentType": {
+						"type": "string"
+					},
+					"attachmentDataRef": {
+						"type": "object",
+						"properties": {
+							"resourceName": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"resourceName"
+						]
+					},
+					"thumbnailUri": {
+						"type": "string"
+					},
+					"downloadUri": {
+						"type": "string"
+					},
+					"source": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"name",
+					"contentName",
+					"contentType",
+					"attachmentDataRef",
+					"thumbnailUri",
+					"downloadUri",
+					"source"
+				]
+			}
+		}
+	}
+}

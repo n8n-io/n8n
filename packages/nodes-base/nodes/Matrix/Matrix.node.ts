@@ -9,18 +9,12 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
-import { handleMatrixCall, matrixApiRequest } from './GenericFunctions';
-
 import { accountOperations } from './AccountDescription';
-
 import { eventFields, eventOperations } from './EventDescription';
-
+import { handleMatrixCall, matrixApiRequest } from './GenericFunctions';
 import { mediaFields, mediaOperations } from './MediaDescription';
-
 import { messageFields, messageOperations } from './MessageDescription';
-
 import { roomFields, roomOperations } from './RoomDescription';
-
 import { roomMemberFields, roomMemberOperations } from './RoomMemberDescription';
 
 export class Matrix implements INodeType {
@@ -36,6 +30,7 @@ export class Matrix implements INodeType {
 		defaults: {
 			name: 'Matrix',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

@@ -1,4 +1,5 @@
-import { promisify } from 'util';
+import * as fflate from 'fflate';
+import * as mime from 'mime-types';
 import {
 	NodeConnectionType,
 	type IBinaryKeyData,
@@ -7,15 +8,12 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
-
-import * as fflate from 'fflate';
+import { promisify } from 'util';
 
 const gunzip = promisify(fflate.gunzip);
 const gzip = promisify(fflate.gzip);
 const unzip = promisify(fflate.unzip);
 const zip = promisify(fflate.zip);
-
-import * as mime from 'mime-types';
 
 const ALREADY_COMPRESSED = [
 	'7z',
@@ -58,6 +56,7 @@ export class Compression implements INodeType {
 			name: 'Compression',
 			color: '#408000',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		properties: [

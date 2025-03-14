@@ -1,12 +1,11 @@
 import { ExecutionsConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { BinaryDataService, InstanceSettings } from 'n8n-core';
-import type { ExecutionStatus } from 'n8n-workflow';
-import Container from 'typedi';
+import type { ExecutionStatus, IWorkflowBase } from 'n8n-workflow';
 
 import { Time } from '@/constants';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { PruningService } from '@/services/pruning/pruning.service';
 
@@ -21,12 +20,12 @@ import { mockInstance, mockLogger } from '../shared/mocking';
 
 describe('softDeleteOnPruningCycle()', () => {
 	let pruningService: PruningService;
-	const instanceSettings = new InstanceSettings(mock());
+	const instanceSettings = Container.get(InstanceSettings);
 	instanceSettings.markAsLeader();
 
 	const now = new Date();
 	const yesterday = new Date(Date.now() - 1 * Time.days.toMilliseconds);
-	let workflow: WorkflowEntity;
+	let workflow: IWorkflowBase;
 	let executionsConfig: ExecutionsConfig;
 
 	beforeAll(async () => {

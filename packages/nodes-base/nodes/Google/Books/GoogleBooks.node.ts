@@ -26,6 +26,7 @@ export class GoogleBooks implements INodeType {
 		defaults: {
 			name: 'Google Books',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

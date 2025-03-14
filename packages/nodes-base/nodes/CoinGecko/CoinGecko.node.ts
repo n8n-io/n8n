@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -9,11 +10,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
 import { coinFields, coinOperations } from './CoinDescription';
-
 import { eventFields, eventOperations } from './EventDescription';
-
 import { coinGeckoApiRequest, coinGeckoRequestAllItems } from './GenericFunctions';
 
 export class CoinGecko implements INodeType {
@@ -28,6 +26,7 @@ export class CoinGecko implements INodeType {
 		defaults: {
 			name: 'CoinGecko',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		properties: [

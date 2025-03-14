@@ -1,23 +1,21 @@
 import type { WorkerStatus } from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
-import type { Workflow } from 'n8n-workflow';
+import type { IWorkflowBase, Workflow } from 'n8n-workflow';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
-import type { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
-import type { IWorkflowDb } from '@/interfaces';
+import type { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
 import type { License } from '@/license';
 import type { Push } from '@/push';
-import type { WebSocketPush } from '@/push/websocket.push';
 import type { CommunityPackagesService } from '@/services/community-packages.service';
 import type { TestWebhooks } from '@/webhooks/test-webhooks';
 
 import type { Publisher } from '../pubsub/publisher.service';
 import { PubSubHandler } from '../pubsub/pubsub-handler';
-import type { WorkerStatusService } from '../worker-status.service';
+import type { WorkerStatusService } from '../worker-status.service.ee';
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
 
@@ -620,7 +618,10 @@ describe('PubSubHandler', () => {
 				expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflowId, 'activate', undefined, {
 					shouldPublish: false,
 				});
-				expect(push.broadcast).toHaveBeenCalledWith('workflowActivated', { workflowId });
+				expect(push.broadcast).toHaveBeenCalledWith({
+					type: 'workflowActivated',
+					data: { workflowId },
+				});
 				expect(publisher.publishCommand).toHaveBeenCalledWith({
 					command: 'display-workflow-activation',
 					payload: { workflowId },
@@ -680,7 +681,10 @@ describe('PubSubHandler', () => {
 				expect(activeWorkflowManager.removeWorkflowTriggersAndPollers).toHaveBeenCalledWith(
 					workflowId,
 				);
-				expect(push.broadcast).toHaveBeenCalledWith('workflowDeactivated', { workflowId });
+				expect(push.broadcast).toHaveBeenCalledWith({
+					type: 'workflowDeactivated',
+					data: { workflowId },
+				});
 				expect(publisher.publishCommand).toHaveBeenCalledWith({
 					command: 'display-workflow-deactivation',
 					payload: { workflowId },
@@ -735,7 +739,10 @@ describe('PubSubHandler', () => {
 
 				eventService.emit('display-workflow-activation', { workflowId });
 
-				expect(push.broadcast).toHaveBeenCalledWith('workflowActivated', { workflowId });
+				expect(push.broadcast).toHaveBeenCalledWith({
+					type: 'workflowActivated',
+					data: { workflowId },
+				});
 			});
 
 			it('should handle `display-workflow-deactivation` event', () => {
@@ -758,7 +765,10 @@ describe('PubSubHandler', () => {
 
 				eventService.emit('display-workflow-deactivation', { workflowId });
 
-				expect(push.broadcast).toHaveBeenCalledWith('workflowDeactivated', { workflowId });
+				expect(push.broadcast).toHaveBeenCalledWith({
+					type: 'workflowDeactivated',
+					data: { workflowId },
+				});
 			});
 
 			it('should handle `display-workflow-activation-error` event', () => {
@@ -782,9 +792,12 @@ describe('PubSubHandler', () => {
 
 				eventService.emit('display-workflow-activation-error', { workflowId, errorMessage });
 
-				expect(push.broadcast).toHaveBeenCalledWith('workflowFailedToActivate', {
-					workflowId,
-					errorMessage,
+				expect(push.broadcast).toHaveBeenCalledWith({
+					type: 'workflowFailedToActivate',
+					data: {
+						workflowId,
+						errorMessage,
+					},
 				});
 			});
 
@@ -806,15 +819,19 @@ describe('PubSubHandler', () => {
 
 				const pushRef = 'test-push-ref';
 				const type = 'executionStarted';
-				const args = { testArg: 'value' };
+				const data = {
+					executionId: '123',
+					mode: 'webhook' as const,
+					startedAt: new Date(),
+					workflowId: '456',
+					flattedRunData: '[]',
+				};
 
-				push.getBackend.mockReturnValue(
-					mock<WebSocketPush>({ hasPushRef: jest.fn().mockReturnValue(true) }),
-				);
+				push.hasPushRef.mockReturnValue(true);
 
-				eventService.emit('relay-execution-lifecycle-event', { type, args, pushRef });
+				eventService.emit('relay-execution-lifecycle-event', { type, data, pushRef });
 
-				expect(push.send).toHaveBeenCalledWith(type, args, pushRef);
+				expect(push.send).toHaveBeenCalledWith({ type, data }, pushRef);
 			});
 
 			it('should handle `clear-test-webhooks` event', () => {
@@ -834,12 +851,10 @@ describe('PubSubHandler', () => {
 				).init();
 
 				const webhookKey = 'test-webhook-key';
-				const workflowEntity = mock<IWorkflowDb>({ id: 'test-workflow-id' });
+				const workflowEntity = mock<IWorkflowBase>({ id: 'test-workflow-id' });
 				const pushRef = 'test-push-ref';
 
-				push.getBackend.mockReturnValue(
-					mock<WebSocketPush>({ hasPushRef: jest.fn().mockReturnValue(true) }),
-				);
+				push.hasPushRef.mockReturnValue(true);
 				testWebhooks.toWorkflow.mockReturnValue(mock<Workflow>({ id: 'test-workflow-id' }));
 
 				eventService.emit('clear-test-webhooks', { webhookKey, workflowEntity, pushRef });
@@ -868,9 +883,12 @@ describe('PubSubHandler', () => {
 
 				eventService.emit('response-to-get-worker-status', workerStatus);
 
-				expect(push.broadcast).toHaveBeenCalledWith('sendWorkerStatusMessage', {
-					workerId: workerStatus.senderId,
-					status: workerStatus,
+				expect(push.broadcast).toHaveBeenCalledWith({
+					type: 'sendWorkerStatusMessage',
+					data: {
+						workerId: workerStatus.senderId,
+						status: workerStatus,
+					},
 				});
 			});
 		});

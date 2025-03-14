@@ -20,9 +20,7 @@ import {
 	parseSortProperties,
 	throwOnZeroDefinedFields,
 } from './GenericFunctions';
-
 import { operationFields } from './OperationDescription';
-
 import type {
 	FieldsToSend,
 	GristColumns,
@@ -45,6 +43,7 @@ export class Grist implements INodeType {
 		defaults: {
 			name: 'Grist',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

@@ -14,12 +14,13 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	NodeOperationError,
+	parseErrorMetadata,
 } from 'n8n-workflow';
 
-import { promptTypeOptions, textFromPreviousNode } from '../../../utils/descriptions';
-import { getPromptInputByType, isChatInstance } from '../../../utils/helpers';
-import { getTemplateNoticeField } from '../../../utils/sharedFields';
-import { getTracingConfig } from '../../../utils/tracing';
+import { promptTypeOptions, textFromPreviousNode } from '@utils/descriptions';
+import { getPromptInputByType, isChatInstance } from '@utils/helpers';
+import { getTemplateNoticeField } from '@utils/sharedFields';
+import { getTracingConfig } from '@utils/tracing';
 
 const SYSTEM_PROMPT_TEMPLATE = `Use the following pieces of context to answer the users question.
 If you don't know the answer, just say that you don't know, don't try to make up an answer.
@@ -31,6 +32,7 @@ export class ChainRetrievalQa implements INodeType {
 		displayName: 'Question and Answer Chain',
 		name: 'chainRetrievalQa',
 		icon: 'fa:link',
+		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3, 1.4],
 		description: 'Answer questions about retrieved documents',
@@ -121,11 +123,12 @@ export class ChainRetrievalQa implements INodeType {
 				displayOptions: { show: { promptType: ['auto'], '@version': [{ _cnd: { gte: 1.4 } }] } },
 			},
 			{
-				displayName: 'Text',
+				displayName: 'Prompt (User Message)',
 				name: 'text',
 				type: 'string',
 				required: true,
 				default: '',
+				placeholder: 'e.g. Hello, how can you help me?',
 				typeOptions: {
 					rows: 2,
 				},
@@ -161,23 +164,21 @@ export class ChainRetrievalQa implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		this.logger.debug('Executing Retrieval QA Chain');
 
-		const model = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
-			0,
-		)) as BaseLanguageModel;
-
-		const retriever = (await this.getInputConnectionData(
-			NodeConnectionType.AiRetriever,
-			0,
-		)) as BaseRetriever;
-
 		const items = this.getInputData();
-
 		const returnData: INodeExecutionData[] = [];
-
 		// Run for each item
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
+				const model = (await this.getInputConnectionData(
+					NodeConnectionType.AiLanguageModel,
+					0,
+				)) as BaseLanguageModel;
+
+				const retriever = (await this.getInputConnectionData(
+					NodeConnectionType.AiRetriever,
+					0,
+				)) as BaseRetriever;
+
 				let query;
 
 				if (this.getNode().typeVersion <= 1.2) {
@@ -224,11 +225,18 @@ export class ChainRetrievalQa implements INodeType {
 
 				const chain = RetrievalQAChain.fromLLM(model, retriever, chainParameters);
 
-				const response = await chain.withConfig(getTracingConfig(this)).invoke({ query });
+				const response = await chain
+					.withConfig(getTracingConfig(this))
+					.invoke({ query }, { signal: this.getExecutionCancelSignal() });
 				returnData.push({ json: { response } });
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
+					const metadata = parseErrorMetadata(error);
+					returnData.push({
+						json: { error: error.message },
+						pairedItem: { item: itemIndex },
+						metadata,
+					});
 					continue;
 				}
 

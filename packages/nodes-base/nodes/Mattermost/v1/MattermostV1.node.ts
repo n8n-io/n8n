@@ -5,9 +5,9 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import { router } from './actions/router';
 import { versionDescription } from './actions/versionDescription';
 import { loadOptions } from './methods';
-import { router } from './actions/router';
 
 export class MattermostV1 implements INodeType {
 	description: INodeTypeDescription;
@@ -16,6 +16,7 @@ export class MattermostV1 implements INodeType {
 		this.description = {
 			...baseDescription,
 			...versionDescription,
+			usableAsTool: true,
 		};
 	}
 

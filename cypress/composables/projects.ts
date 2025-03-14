@@ -29,7 +29,11 @@ export const getAddProjectButton = () => {
 
 	return cy.get('@button');
 };
-
+export const getAddFirstProjectButton = () => cy.getByTestId('add-first-project-button');
+export const getIconPickerButton = () => cy.getByTestId('icon-picker-button');
+export const getIconPickerTab = (tab: string) => cy.getByTestId('icon-picker-tabs').contains(tab);
+export const getIconPickerIcons = () => cy.getByTestId('icon-picker-icon');
+export const getIconPickerEmojis = () => cy.getByTestId('icon-picker-emoji');
 // export const getAddProjectButton = () =>
 // 	cy.getByTestId('universal-add').should('contain', 'Add project').should('be.visible');
 export const getProjectTabs = () => cy.getByTestId('project-tabs').find('a');

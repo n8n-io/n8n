@@ -6,6 +6,7 @@ import {
 	type INodeTypeDescription,
 	NodeConnectionType,
 } from 'n8n-workflow';
+
 import {
 	checkInput,
 	checkInputAndThrowError,

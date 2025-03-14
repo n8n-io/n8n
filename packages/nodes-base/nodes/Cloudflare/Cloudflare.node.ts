@@ -10,7 +10,6 @@ import type {
 import { NodeConnectionType } from 'n8n-workflow';
 
 import { cloudflareApiRequest, cloudflareApiRequestAllItems } from './GenericFunctions';
-
 import { zoneCertificateFields, zoneCertificateOperations } from './ZoneCertificateDescription';
 
 export class Cloudflare implements INodeType {
@@ -25,6 +24,7 @@ export class Cloudflare implements INodeType {
 		defaults: {
 			name: 'Cloudflare',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

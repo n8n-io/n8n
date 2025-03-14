@@ -1,5 +1,5 @@
-import { hasScope } from '@/hasScope';
-import type { Scope } from '@/types';
+import { hasScope } from '@/hasScope.ee';
+import type { Scope } from '@/types.ee';
 
 const ownerPermissions: Scope[] = [
 	'workflow:create',

@@ -20,6 +20,7 @@ export class Mailgun implements INodeType {
 		defaults: {
 			name: 'Mailgun',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [
@@ -163,7 +164,6 @@ export class Mailgun implements INodeType {
 					}
 
 					if (attachments.length) {
-						// @ts-ignore
 						formData.attachment = attachments;
 					}
 				}

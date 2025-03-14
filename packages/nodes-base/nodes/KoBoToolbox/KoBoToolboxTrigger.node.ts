@@ -15,7 +15,6 @@ import {
 	loadForms,
 	parseStringList,
 } from './GenericFunctions';
-
 import { options } from './Options';
 
 export class KoBoToolboxTrigger implements INodeType {

@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -7,22 +8,15 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
 import { companyFields, companyOperations } from './descriptions/CompanyDescription';
-
 import { industryFields, industryOperations } from './descriptions/IndustryDescription';
-
 import { inviteFields, inviteOperations } from './descriptions/InviteDescription';
-
-import { portfolioFields, portfolioOperations } from './descriptions/PortfolioDescription';
-
 import {
 	portfolioCompanyFields,
 	portfolioCompanyOperations,
 } from './descriptions/PortfolioCompanyDescription';
-
+import { portfolioFields, portfolioOperations } from './descriptions/PortfolioDescription';
 import { reportFields, reportOperations } from './descriptions/ReportDescription';
-
 import { scorecardApiRequest, simplify } from './GenericFunctions';
 
 export class SecurityScorecard implements INodeType {
@@ -37,6 +31,7 @@ export class SecurityScorecard implements INodeType {
 		defaults: {
 			name: 'SecurityScorecard',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

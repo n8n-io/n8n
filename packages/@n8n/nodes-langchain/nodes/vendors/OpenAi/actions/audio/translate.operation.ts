@@ -1,6 +1,7 @@
+import FormData from 'form-data';
 import type { INodeProperties, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
-import FormData from 'form-data';
+
 import { apiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [

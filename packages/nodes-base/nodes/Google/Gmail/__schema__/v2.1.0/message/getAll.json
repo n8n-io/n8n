@@ -1,0 +1,66 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "threadId": {
+            "type": "string"
+        },
+        "sizeEstimate": {
+            "type": "integer"
+        },
+        "snippet": {
+            "type": "string"
+        },
+        "payload": {
+            "type": "object",
+            "properties": {
+                "mimeType": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "mimeType"
+            ]
+        },
+        "historyId": {
+            "type": "string"
+        },
+        "internalDate": {
+            "type": "string"
+        },
+        "labels": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name"
+                ]
+            }
+        },
+        "Subject": {
+            "type": "string"
+        },
+        "From": {
+            "type": "string"
+        },
+        "To": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "id",
+        "threadId",
+        "sizeEstimate"
+    ]
+}

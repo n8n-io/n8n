@@ -10,9 +10,10 @@ import type {
 } from 'n8n-workflow';
 import { OpenAI as OpenAIClient } from 'openai';
 
+import { getConnectedTools } from '@utils/helpers';
+import { getTracingConfig } from '@utils/tracing';
+
 import { formatToOpenAIAssistantTool } from './utils';
-import { getConnectedTools } from '../../../utils/helpers';
-import { getTracingConfig } from '../../../utils/tracing';
 
 export class OpenAiAssistant implements INodeType {
 	description: INodeTypeDescription = {

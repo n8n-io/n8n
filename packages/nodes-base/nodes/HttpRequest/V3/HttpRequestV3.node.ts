@@ -16,7 +16,6 @@ import type {
 import {
 	BINARY_ENCODING,
 	NodeApiError,
-	NodeExecutionOutput,
 	NodeConnectionType,
 	NodeOperationError,
 	jsonParse,
@@ -27,6 +26,7 @@ import type { Readable } from 'stream';
 
 import { keysToLowercase } from '@utils/utilities';
 
+import { mainProperties } from './Description';
 import type { BodyParameter, IAuthDataSanitizeKeys } from '../GenericFunctions';
 import {
 	binaryContentTypes,
@@ -38,7 +38,6 @@ import {
 	sanitizeUiMessage,
 	setAgentOptions,
 } from '../GenericFunctions';
-import { mainProperties } from './Description';
 
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {
@@ -1002,16 +1001,11 @@ export class HttpRequestV3 implements INodeType {
 			returnItems[0].json.data &&
 			Array.isArray(returnItems[0].json.data)
 		) {
-			return new NodeExecutionOutput(
-				[returnItems],
-				[
-					{
-						message:
-							'To split the contents of ‘data’ into separate items for easier processing, add a ‘Spilt Out’ node after this one',
-						location: 'outputPane',
-					},
-				],
-			);
+			this.addExecutionHints({
+				message:
+					'To split the contents of ‘data’ into separate items for easier processing, add a ‘Split Out’ node after this one',
+				location: 'outputPane',
+			});
 		}
 
 		return [returnItems];

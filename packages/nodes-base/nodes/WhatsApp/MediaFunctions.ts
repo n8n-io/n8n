@@ -1,7 +1,6 @@
+import FormData from 'form-data';
 import type { IDataObject, IExecuteSingleFunctions, IHttpRequestOptions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-
-import FormData from 'form-data';
 
 export async function getUploadFormData(
 	this: IExecuteSingleFunctions,

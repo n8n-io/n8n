@@ -1,0 +1,17 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "messageListVisibility": {
+            "type": "string"
+        },
+        "labelListVisibility": {
+            "type": "string"
+        }
+    }
+}

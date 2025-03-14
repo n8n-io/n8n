@@ -20,12 +20,9 @@ import {
 	split,
 	updateAble,
 } from './GenericFunctions';
-
-import { rowFields, rowOperations } from './RowDescription';
-
-import type { TColumnsUiValues, TColumnValue } from './types';
-
 import type { ICtx, IRow, IRowObject } from './Interfaces';
+import { rowFields, rowOperations } from './RowDescription';
+import type { TColumnsUiValues, TColumnValue } from './types';
 
 export class SeaTable implements INodeType {
 	description: INodeTypeDescription = {
@@ -39,6 +36,7 @@ export class SeaTable implements INodeType {
 		defaults: {
 			name: 'SeaTable',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

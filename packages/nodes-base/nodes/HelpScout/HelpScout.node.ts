@@ -10,22 +10,16 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import { conversationFields, conversationOperations } from './ConversationDescription';
-
-import { customerFields, customerOperations } from './CustomerDescription';
-
-import type { ICustomer } from './CustomerInterface';
-
-import type { IConversation } from './ConversationInterface';
-
-import { helpscoutApiRequest, helpscoutApiRequestAllItems } from './GenericFunctions';
-
-import { mailboxFields, mailboxOperations } from './MailboxDescription';
-
-import { threadFields, threadOperations } from './ThreadDescription';
-
-import type { IAttachment, IThread } from './ThreadInterface';
 import { isoCountryCodes } from '@utils/ISOCountryCodes';
+
+import { conversationFields, conversationOperations } from './ConversationDescription';
+import type { IConversation } from './ConversationInterface';
+import { customerFields, customerOperations } from './CustomerDescription';
+import type { ICustomer } from './CustomerInterface';
+import { helpscoutApiRequest, helpscoutApiRequestAllItems } from './GenericFunctions';
+import { mailboxFields, mailboxOperations } from './MailboxDescription';
+import { threadFields, threadOperations } from './ThreadDescription';
+import type { IAttachment, IThread } from './ThreadInterface';
 
 export class HelpScout implements INodeType {
 	description: INodeTypeDescription = {
@@ -39,6 +33,7 @@ export class HelpScout implements INodeType {
 		defaults: {
 			name: 'HelpScout',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

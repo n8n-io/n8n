@@ -1,3 +1,4 @@
+import isEmpty from 'lodash/isEmpty';
 import {
 	NodeConnectionType,
 	type IBinaryKeyData,
@@ -12,7 +13,12 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
-import isEmpty from 'lodash/isEmpty';
+import { oldVersionNotice } from '@utils/descriptions';
+
+import { draftFields, draftOperations } from './DraftDescription';
+import { labelFields, labelOperations } from './LabelDescription';
+import { messageFields, messageOperations } from './MessageDescription';
+import { messageLabelFields, messageLabelOperations } from './MessageLabelDescription';
 import type { IEmail } from '../../../../utils/sendAndWait/interfaces';
 import {
 	encodeEmail,
@@ -21,16 +27,6 @@ import {
 	googleApiRequestAllItems,
 	parseRawEmail,
 } from '../GenericFunctions';
-
-import { messageFields, messageOperations } from './MessageDescription';
-
-import { messageLabelFields, messageLabelOperations } from './MessageLabelDescription';
-
-import { labelFields, labelOperations } from './LabelDescription';
-
-import { draftFields, draftOperations } from './DraftDescription';
-
-import { oldVersionNotice } from '@utils/descriptions';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Gmail',

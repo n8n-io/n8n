@@ -8,6 +8,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
+
 import { collectionFields, collectionOperations } from './CollectionDescription';
 import {
 	createCollectionEntry,
@@ -32,6 +33,7 @@ export class Cockpit implements INodeType {
 		defaults: {
 			name: 'Cockpit',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

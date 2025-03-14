@@ -1,5 +1,5 @@
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import Container from 'typedi';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
@@ -35,6 +35,7 @@ beforeAll(async () => {
 		orchestrationService,
 		mock(),
 		activeWorkflowManager,
+		mock(),
 		mock(),
 		mock(),
 		mock(),

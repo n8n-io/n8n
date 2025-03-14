@@ -10,9 +10,8 @@ import { NodeConnectionType } from 'n8n-workflow';
 
 import type { IncludeMods, SetField, SetNodeOptions } from './helpers/interfaces';
 import { INCLUDE } from './helpers/interfaces';
-
-import * as raw from './raw.mode';
 import * as manual from './manual.mode';
+import * as raw from './raw.mode';
 
 type Mode = 'manual' | 'raw';
 

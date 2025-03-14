@@ -14,8 +14,8 @@ import {
 	sleep,
 } from 'n8n-workflow';
 
-import { oldVersionNotice } from '../../../utils/descriptions';
 import type { DiscordAttachment, DiscordWebhook } from './Interfaces';
+import { oldVersionNotice } from '../../../utils/descriptions';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Discord',

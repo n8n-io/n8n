@@ -12,6 +12,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import { cssVariables } from './constants';
 import { validateAuth } from './GenericFunctions';
 import { createPage } from './templates';
 import type { LoadPreviousSessionChatOption } from './types';
@@ -378,6 +379,29 @@ export class ChatTrigger extends Node {
 						placeholder: 'e.g. Welcome',
 						description: 'Shown at the top of the chat',
 					},
+					{
+						displayName: 'Custom Chat Styling',
+						name: 'customCss',
+						type: 'string',
+						typeOptions: {
+							rows: 10,
+							editor: 'cssEditor',
+						},
+						displayOptions: {
+							show: {
+								'/mode': ['hostedChat'],
+							},
+						},
+						default: `
+${cssVariables}
+
+/* You can override any class styles, too. Right-click inspect in Chat UI to find class to override. */
+.chat-message {
+	max-width: 50%;
+}
+`.trim(),
+						description: 'Override default styling of the public chat interface with CSS',
+					},
 				],
 			},
 		],
@@ -466,6 +490,7 @@ export class ChatTrigger extends Node {
 			title?: string;
 			allowFileUploads?: boolean;
 			allowedFilesMimeTypes?: string;
+			customCss?: string;
 		};
 
 		const req = ctx.getRequestObject();
@@ -517,6 +542,7 @@ export class ChatTrigger extends Node {
 					authentication,
 					allowFileUploads: options.allowFileUploads,
 					allowedFilesMimeTypes: options.allowedFilesMimeTypes,
+					customCss: options.customCss,
 				});
 
 				res.status(200).send(page).end();

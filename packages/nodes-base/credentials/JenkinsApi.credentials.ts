@@ -9,7 +9,7 @@ export class JenkinsApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Jenking Username',
+			displayName: 'Jenkins Username',
 			name: 'username',
 			type: 'string',
 			default: '',

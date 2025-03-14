@@ -10,7 +10,6 @@ import type {
 import { NodeConnectionType } from 'n8n-workflow';
 
 import { apiRequest, getImageBySize, getSecretToken } from './GenericFunctions';
-
 import type { IEvent } from './IEvent';
 
 export class TelegramTrigger implements INodeType {

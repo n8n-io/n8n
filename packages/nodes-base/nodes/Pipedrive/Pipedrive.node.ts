@@ -19,7 +19,6 @@ import {
 	pipedriveResolveCustomProperties,
 	sortOptionParameters,
 } from './GenericFunctions';
-
 import { currencies } from './utils';
 
 interface CustomProperty {
@@ -61,6 +60,7 @@ export class Pipedrive implements INodeType {
 		defaults: {
 			name: 'Pipedrive',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

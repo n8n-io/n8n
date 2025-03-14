@@ -7,13 +7,13 @@ import type {
 	IDataObject,
 } from 'n8n-workflow';
 
-import { loadOptions } from './methods';
 import {
 	executionDurationProperty,
 	iconSelector,
 	jsonOutputProperty,
 	subtitleProperty,
 } from './descriptions';
+import { loadOptions } from './methods';
 
 export class Simulate implements INodeType {
 	description: INodeTypeDescription = {

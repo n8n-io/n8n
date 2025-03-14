@@ -1,0 +1,180 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "symbol": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "web_slug": {
+            "type": "string"
+        },
+        "platforms": {
+            "type": "object",
+            "properties": {
+                "": {
+                    "type": "string"
+                }
+            }
+        },
+        "detail_platforms": {
+            "type": "object",
+            "properties": {
+                "": {
+                    "type": "object",
+                    "properties": {
+                        "decimal_place": {
+                            "type": "null"
+                        },
+                        "contract_address": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "decimal_place",
+                        "contract_address"
+                    ]
+                }
+            }
+        },
+        "block_time_in_minutes": {
+            "type": "integer"
+        },
+        "categories": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "preview_listing": {
+            "type": "boolean"
+        },
+        "additional_notices": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "description": {
+            "type": "object",
+            "properties": {
+                "en": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "en"
+            ]
+        },
+        "links": {
+            "type": "object",
+            "properties": {
+                "homepage": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "whitepaper": {
+                    "type": "string"
+                },
+                "official_forum_url": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "chat_url": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "twitter_screen_name": {
+                    "type": "string"
+                },
+                "repos_url": {
+                    "type": "object",
+                    "properties": {
+                        "github": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "required": [
+                        "github",
+                        "bitbucket"
+                    ]
+                }
+            },
+            "required": [
+                "homepage",
+                "whitepaper",
+                "blockchain_site",
+                "official_forum_url",
+                "chat_url",
+                "announcement_url",
+                "twitter_screen_name",
+                "facebook_username",
+                "bitcointalk_thread_identifier",
+                "telegram_channel_identifier",
+                "subreddit_url",
+                "repos_url"
+            ]
+        },
+        "image": {
+            "type": "object",
+            "properties": {
+                "thumb": {
+                    "type": "string"
+                },
+                "small": {
+                    "type": "string"
+                },
+                "large": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "thumb",
+                "small",
+                "large"
+            ]
+        },
+        "watchlist_portfolio_users": {
+            "type": "integer"
+        }
+    },
+    "required": [
+        "id",
+        "symbol",
+        "name",
+        "web_slug",
+        "asset_platform_id",
+        "platforms",
+        "detail_platforms",
+        "block_time_in_minutes",
+        "hashing_algorithm",
+        "categories",
+        "preview_listing",
+        "public_notice",
+        "additional_notices",
+        "description",
+        "links",
+        "image",
+        "country_origin",
+        "genesis_date",
+        "sentiment_votes_up_percentage",
+        "sentiment_votes_down_percentage",
+        "watchlist_portfolio_users",
+        "market_cap_rank",
+        "status_updates",
+        "last_updated"
+    ]
+}

@@ -21,6 +21,7 @@ export class AwsTranscribe implements INodeType {
 		defaults: {
 			name: 'AWS Transcribe',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

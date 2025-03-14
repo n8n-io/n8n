@@ -1,4 +1,5 @@
 import { TaskRunnersConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import set from 'lodash/set';
 import {
 	NodeConnectionType,
@@ -9,7 +10,6 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
-import Container from 'typedi';
 
 import { javascriptCodeDescription } from './descriptions/JavascriptCodeDescription';
 import { pythonCodeDescription } from './descriptions/PythonCodeDescription';
@@ -165,7 +165,8 @@ export class Code implements INodeType {
 				standardizeOutput(item.json);
 			}
 
-			return addPostExecutionWarning(items, inputDataItems?.length);
+			addPostExecutionWarning(this, items, inputDataItems?.length);
+			return [items];
 		}
 
 		// ----------------------------------
@@ -201,6 +202,7 @@ export class Code implements INodeType {
 			}
 		}
 
-		return addPostExecutionWarning(returnData, inputDataItems?.length);
+		addPostExecutionWarning(this, returnData, inputDataItems?.length);
+		return [returnData];
 	}
 }

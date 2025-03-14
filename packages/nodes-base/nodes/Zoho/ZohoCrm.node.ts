@@ -9,6 +9,28 @@ import {
 } from 'n8n-workflow';
 
 import {
+	accountFields,
+	accountOperations,
+	contactFields,
+	contactOperations,
+	dealFields,
+	dealOperations,
+	invoiceFields,
+	invoiceOperations,
+	leadFields,
+	leadOperations,
+	productFields,
+	productOperations,
+	purchaseOrderFields,
+	purchaseOrderOperations,
+	quoteFields,
+	quoteOperations,
+	salesOrderFields,
+	salesOrderOperations,
+	vendorFields,
+	vendorOperations,
+} from './descriptions';
+import {
 	addGetAllFilterOptions,
 	adjustAccountPayload,
 	adjustContactPayload,
@@ -31,7 +53,6 @@ import {
 	zohoApiRequest,
 	zohoApiRequestAllItems,
 } from './GenericFunctions';
-
 import type {
 	CamelCaseResource,
 	GetAllFilterOptions,
@@ -42,29 +63,6 @@ import type {
 	LoadedVendors,
 	ProductDetails,
 } from './types';
-
-import {
-	accountFields,
-	accountOperations,
-	contactFields,
-	contactOperations,
-	dealFields,
-	dealOperations,
-	invoiceFields,
-	invoiceOperations,
-	leadFields,
-	leadOperations,
-	productFields,
-	productOperations,
-	purchaseOrderFields,
-	purchaseOrderOperations,
-	quoteFields,
-	quoteOperations,
-	salesOrderFields,
-	salesOrderOperations,
-	vendorFields,
-	vendorOperations,
-} from './descriptions';
 
 export class ZohoCrm implements INodeType {
 	description: INodeTypeDescription = {
@@ -78,6 +76,7 @@ export class ZohoCrm implements INodeType {
 		defaults: {
 			name: 'Zoho CRM',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

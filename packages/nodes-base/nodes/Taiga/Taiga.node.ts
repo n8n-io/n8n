@@ -10,14 +10,6 @@ import type {
 import { NodeConnectionType } from 'n8n-workflow';
 
 import {
-	getVersionForUpdate,
-	handleListing,
-	taigaApiRequest,
-	throwOnEmptyUpdate,
-	toOptions,
-} from './GenericFunctions';
-
-import {
 	epicFields,
 	epicOperations,
 	issueFields,
@@ -27,6 +19,13 @@ import {
 	userStoryFields,
 	userStoryOperations,
 } from './descriptions';
+import {
+	getVersionForUpdate,
+	handleListing,
+	taigaApiRequest,
+	throwOnEmptyUpdate,
+	toOptions,
+} from './GenericFunctions';
 
 export class Taiga implements INodeType {
 	description: INodeTypeDescription = {
@@ -40,6 +39,7 @@ export class Taiga implements INodeType {
 		defaults: {
 			name: 'Taiga',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import {
 	type IExecuteFunctions,
 	type IDataObject,
@@ -10,14 +11,12 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
 import {
 	createDatapoint,
 	deleteDatapoint,
 	getAllDatapoints,
 	updateDatapoint,
 } from './Beeminder.node.functions';
-
 import { beeminderApiRequest } from './GenericFunctions';
 
 export class Beeminder implements INodeType {
@@ -31,6 +30,7 @@ export class Beeminder implements INodeType {
 		defaults: {
 			name: 'Beeminder',
 		},
+		usableAsTool: true,
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:beeminder.png',
 		inputs: [NodeConnectionType.Main],

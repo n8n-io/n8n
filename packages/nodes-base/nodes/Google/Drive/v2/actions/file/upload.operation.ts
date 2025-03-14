@@ -5,8 +5,8 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { googleApiRequest } from '../../transport';
-import { driveRLC, folderRLC, updateCommonOptions } from '../common.descriptions';
+import { updateDisplayOptions } from '@utils/utilities';
+
 import {
 	getItemBinaryData,
 	setFileProperties,
@@ -14,7 +14,8 @@ import {
 	setParentFolder,
 	processInChunks,
 } from '../../helpers/utils';
-import { updateDisplayOptions } from '@utils/utilities';
+import { googleApiRequest } from '../../transport';
+import { driveRLC, folderRLC, updateCommonOptions } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{

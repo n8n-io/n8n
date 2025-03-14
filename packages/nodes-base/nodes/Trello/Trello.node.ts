@@ -10,22 +10,14 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import { apiRequest, apiRequestAllItems } from './GenericFunctions';
-
 import { attachmentFields, attachmentOperations } from './AttachmentDescription';
-
 import { boardFields, boardOperations } from './BoardDescription';
-
 import { boardMemberFields, boardMemberOperations } from './BoardMemberDescription';
-
-import { cardFields, cardOperations } from './CardDescription';
-
 import { cardCommentFields, cardCommentOperations } from './CardCommentDescription';
-
+import { cardFields, cardOperations } from './CardDescription';
 import { checklistFields, checklistOperations } from './ChecklistDescription';
-
+import { apiRequest, apiRequestAllItems } from './GenericFunctions';
 import { labelFields, labelOperations } from './LabelDescription';
-
 import { listFields, listOperations } from './ListDescription';
 
 interface TrelloBoardType {
@@ -47,6 +39,7 @@ export class Trello implements INodeType {
 		defaults: {
 			name: 'Trello',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

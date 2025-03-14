@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -9,10 +10,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
-import { getresponseApiRequest, getResponseApiRequestAllItems } from './GenericFunctions';
-
 import { contactFields, contactOperations } from './ContactDescription';
+import { getresponseApiRequest, getResponseApiRequestAllItems } from './GenericFunctions';
 
 export class GetResponse implements INodeType {
 	description: INodeTypeDescription = {
@@ -27,6 +26,7 @@ export class GetResponse implements INodeType {
 		defaults: {
 			name: 'GetResponse',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

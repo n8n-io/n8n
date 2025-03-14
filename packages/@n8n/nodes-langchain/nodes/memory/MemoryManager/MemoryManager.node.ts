@@ -1,4 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
+import { AIMessage, SystemMessage, HumanMessage, type BaseMessage } from '@langchain/core/messages';
 import { NodeConnectionType } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -7,8 +9,6 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
-import { AIMessage, SystemMessage, HumanMessage, type BaseMessage } from '@langchain/core/messages';
 
 type MessageRole = 'ai' | 'system' | 'user';
 interface MessageRecord {

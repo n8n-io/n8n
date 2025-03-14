@@ -6,14 +6,11 @@ import { CombiningOutputParser } from 'langchain/output_parsers';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import {
-	isChatInstance,
-	getPromptInputByType,
-	getConnectedTools,
-} from '../../../../../utils/helpers';
-import { getOptionalOutputParsers } from '../../../../../utils/output_parsers/N8nOutputParser';
-import { throwIfToolSchema } from '../../../../../utils/schemaParsing';
-import { getTracingConfig } from '../../../../../utils/tracing';
+import { isChatInstance, getPromptInputByType, getConnectedTools } from '@utils/helpers';
+import { getOptionalOutputParsers } from '@utils/output_parsers/N8nOutputParser';
+import { throwIfToolSchema } from '@utils/schemaParsing';
+import { getTracingConfig } from '@utils/tracing';
+
 import { checkForStructuredTools, extractParsedOutput } from '../utils';
 
 export async function conversationalAgentExecute(

@@ -1,0 +1,92 @@
+{
+    "type": "object",
+    "properties": {
+        "account_sid": {
+            "type": "string"
+        },
+        "api_version": {
+            "type": "string"
+        },
+        "body": {
+            "type": "string"
+        },
+        "date_created": {
+            "type": "string"
+        },
+        "date_sent": {
+            "type": "null"
+        },
+        "date_updated": {
+            "type": "string"
+        },
+        "direction": {
+            "type": "string"
+        },
+        "error_code": {
+            "type": "null"
+        },
+        "error_message": {
+            "type": "null"
+        },
+        "from": {
+            "type": "string"
+        },
+        "messaging_service_sid": {
+            "type": "null"
+        },
+        "num_media": {
+            "type": "string"
+        },
+        "num_segments": {
+            "type": "string"
+        },
+        "price": {
+            "type": "null"
+        },
+        "sid": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "subresource_uris": {
+            "type": "object",
+            "properties": {
+                "media": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "media"
+            ]
+        },
+        "to": {
+            "type": "string"
+        },
+        "uri": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "account_sid",
+        "api_version",
+        "body",
+        "date_created",
+        "date_sent",
+        "date_updated",
+        "direction",
+        "error_code",
+        "error_message",
+        "from",
+        "messaging_service_sid",
+        "num_media",
+        "num_segments",
+        "price",
+        "price_unit",
+        "sid",
+        "status",
+        "subresource_uris",
+        "to",
+        "uri"
+    ]
+}

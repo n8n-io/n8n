@@ -1,0 +1,167 @@
+{
+    "type": "object",
+    "properties": {
+        "Taxable": {
+            "type": "boolean"
+        },
+        "BillAddr": {
+            "type": "object",
+            "properties": {
+                "Id": {
+                    "type": "string"
+                },
+                "Line1": {
+                    "type": "string"
+                },
+                "City": {
+                    "type": "string"
+                },
+                "CountrySubDivisionCode": {
+                    "type": "string"
+                },
+                "PostalCode": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Id"
+            ]
+        },
+        "ShipAddr": {
+            "type": "object",
+            "properties": {
+                "Id": {
+                    "type": "string"
+                },
+                "Line1": {
+                    "type": "string"
+                },
+                "City": {
+                    "type": "string"
+                },
+                "CountrySubDivisionCode": {
+                    "type": "string"
+                },
+                "PostalCode": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Id"
+            ]
+        },
+        "Job": {
+            "type": "boolean"
+        },
+        "BillWithParent": {
+            "type": "boolean"
+        },
+        "CurrencyRef": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "value",
+                "name"
+            ]
+        },
+        "PreferredDeliveryMethod": {
+            "type": "string"
+        },
+        "domain": {
+            "type": "string"
+        },
+        "sparse": {
+            "type": "boolean"
+        },
+        "Id": {
+            "type": "string"
+        },
+        "SyncToken": {
+            "type": "string"
+        },
+        "MetaData": {
+            "type": "object",
+            "properties": {
+                "CreateTime": {
+                    "type": "string"
+                },
+                "LastUpdatedTime": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "CreateTime",
+                "LastUpdatedTime"
+            ]
+        },
+        "FullyQualifiedName": {
+            "type": "string"
+        },
+        "CompanyName": {
+            "type": "string"
+        },
+        "DisplayName": {
+            "type": "string"
+        },
+        "PrintOnCheckName": {
+            "type": "string"
+        },
+        "Active": {
+            "type": "boolean"
+        },
+        "PrimaryPhone": {
+            "type": "object",
+            "properties": {
+                "FreeFormNumber": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "FreeFormNumber"
+            ]
+        },
+        "PrimaryEmailAddr": {
+            "type": "object",
+            "properties": {
+                "Address": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Address"
+            ]
+        },
+        "SalesTermRef": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "value"
+            ]
+        },
+        "Notes": {
+            "type": "string"
+        },
+        "WebAddr": {
+            "type": "object",
+            "properties": {
+                "URI": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "URI"
+            ]
+        }
+    }
+}

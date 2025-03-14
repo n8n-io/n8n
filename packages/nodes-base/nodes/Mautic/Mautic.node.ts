@@ -1,3 +1,4 @@
+import { snakeCase } from 'change-case';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -10,20 +11,13 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { snakeCase } from 'change-case';
-import { mauticApiRequest, mauticApiRequestAllItems, validateJSON } from './GenericFunctions';
-
-import { contactFields, contactOperations } from './ContactDescription';
-
-import { segmentEmailFields, segmentEmailOperations } from './SegmentEmailDescription';
-
-import { companyFields, companyOperations } from './CompanyDescription';
-
-import { companyContactFields, companyContactOperations } from './CompanyContactDescription';
-
-import { contactSegmentFields, contactSegmentOperations } from './ContactSegmentDescription';
-
 import { campaignContactFields, campaignContactOperations } from './CampaignContactDescription';
+import { companyContactFields, companyContactOperations } from './CompanyContactDescription';
+import { companyFields, companyOperations } from './CompanyDescription';
+import { contactFields, contactOperations } from './ContactDescription';
+import { contactSegmentFields, contactSegmentOperations } from './ContactSegmentDescription';
+import { mauticApiRequest, mauticApiRequestAllItems, validateJSON } from './GenericFunctions';
+import { segmentEmailFields, segmentEmailOperations } from './SegmentEmailDescription';
 
 export class Mautic implements INodeType {
 	description: INodeTypeDescription = {
@@ -37,6 +31,7 @@ export class Mautic implements INodeType {
 		defaults: {
 			name: 'Mautic',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

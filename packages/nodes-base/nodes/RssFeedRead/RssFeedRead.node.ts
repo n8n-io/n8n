@@ -1,4 +1,3 @@
-import { URL } from 'url';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -7,8 +6,9 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-
 import Parser from 'rss-parser';
+import { URL } from 'url';
+
 import { generatePairedItemData } from '../../utils/utilities';
 
 // Utility function
@@ -35,6 +35,7 @@ export class RssFeedRead implements INodeType {
 			name: 'RSS Read',
 			color: '#b02020',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		properties: [

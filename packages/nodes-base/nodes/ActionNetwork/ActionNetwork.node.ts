@@ -8,17 +8,6 @@ import type {
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import {
-	actionNetworkApiRequest,
-	adjustEventPayload,
-	adjustPersonPayload,
-	adjustPetitionPayload,
-	handleListing,
-	makeOsdiLink,
-	resourceLoaders,
-	simplifyResponse,
-} from './GenericFunctions';
-
-import {
 	attendanceFields,
 	attendanceOperations,
 	eventFields,
@@ -34,7 +23,16 @@ import {
 	tagFields,
 	tagOperations,
 } from './descriptions';
-
+import {
+	actionNetworkApiRequest,
+	adjustEventPayload,
+	adjustPersonPayload,
+	adjustPetitionPayload,
+	handleListing,
+	makeOsdiLink,
+	resourceLoaders,
+	simplifyResponse,
+} from './GenericFunctions';
 import type {
 	AllFieldsUi,
 	EmailAddressUi,
@@ -56,6 +54,7 @@ export class ActionNetwork implements INodeType {
 		defaults: {
 			name: 'Action Network',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [

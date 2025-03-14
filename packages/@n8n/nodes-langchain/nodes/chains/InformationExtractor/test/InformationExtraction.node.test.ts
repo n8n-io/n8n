@@ -1,10 +1,10 @@
-import type { IDataObject, IExecuteFunctions } from 'n8n-workflow/src';
-import get from 'lodash/get';
-
-import { FakeLLM, FakeListChatModel } from '@langchain/core/utils/testing';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import { InformationExtractor } from '../InformationExtractor.node';
+import { FakeLLM, FakeListChatModel } from '@langchain/core/utils/testing';
+import get from 'lodash/get';
+import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
+
 import { makeZodSchemaFromAttributes } from '../helpers';
+import { InformationExtractor } from '../InformationExtractor.node';
 import type { AttributeDefinition } from '../types';
 
 const mockPersonAttributes: AttributeDefinition[] = [

@@ -1,3 +1,4 @@
+import { snakeCase } from 'change-case';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -8,7 +9,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import { snakeCase } from 'change-case';
 import {
 	getFileSha,
 	githubApiRequest,
@@ -30,6 +30,7 @@ export class Github implements INodeType {
 		defaults: {
 			name: 'GitHub',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
 		credentials: [
@@ -456,14 +457,12 @@ export class Github implements INodeType {
 				required: true,
 				modes: [
 					{
-						displayName: 'Workflow',
+						displayName: 'From List',
 						name: 'list',
 						type: 'list',
 						placeholder: 'Select a workflow...',
 						typeOptions: {
 							searchListMethod: 'getWorkflows',
-							searchable: true,
-							searchFilterRequired: true,
 						},
 					},
 					{
@@ -477,6 +476,21 @@ export class Github implements INodeType {
 								properties: {
 									regex: '\\d+',
 									errorMessage: 'Not a valid Github Workflow ID',
+								},
+							},
+						],
+					},
+					{
+						displayName: 'By File Name',
+						name: 'filename',
+						type: 'string',
+						placeholder: 'e.g. main.yaml or main.yml',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[a-zA-Z0-9_-]+.(yaml|yml)',
+									errorMessage: 'Not a valid Github Workflow File Name',
 								},
 							},
 						],
@@ -2128,7 +2142,7 @@ export class Github implements INodeType {
 							}
 						}
 
-						endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
+						endpoint = `/repos/${owner}/${repository}/contents/${encodeURIComponent(filePath)}`;
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -2165,7 +2179,7 @@ export class Github implements INodeType {
 							body.branch as string | undefined,
 						);
 
-						endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
+						endpoint = `/repos/${owner}/${repository}/contents/${encodeURIComponent(filePath)}`;
 					} else if (operation === 'get') {
 						requestMethod = 'GET';
 
@@ -2179,11 +2193,11 @@ export class Github implements INodeType {
 							qs.ref = additionalParameters.reference;
 						}
 
-						endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
+						endpoint = `/repos/${owner}/${repository}/contents/${encodeURIComponent(filePath)}`;
 					} else if (operation === 'list') {
 						requestMethod = 'GET';
 						const filePath = this.getNodeParameter('filePath', i);
-						endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
+						endpoint = `/repos/${owner}/${repository}/contents/${encodeURIComponent(filePath)}`;
 					}
 				} else if (resource === 'issue') {
 					if (operation === 'create') {
@@ -2500,7 +2514,9 @@ export class Github implements INodeType {
 
 						requestMethod = 'POST';
 
-						const workflowId = this.getNodeParameter('workflowId', i) as string;
+						const workflowId = this.getNodeParameter('workflowId', i, undefined, {
+							extractValue: true,
+						}) as string;
 
 						endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}/dispatches`;
 						body.ref = this.getNodeParameter('ref', i) as string;
