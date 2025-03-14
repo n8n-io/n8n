@@ -63,20 +63,29 @@ const properties: INodeProperties[] = [
 		description: 'Name of the binary property which contains the data for the file to be written',
 	},
 	{
-		displayName: 'Replace Existing File',
-		name: 'replace',
-		type: 'boolean',
-		default: true,
-		description:
-			'Whether to replace the existing asset with the same name (true). Otherwise, a new version with a different name (numeral in parentheses) will be uploaded (false).',
-	},
-	{
-		displayName: 'Append to Column',
-		name: 'append',
-		type: 'boolean',
-		default: true,
-		description:
-			'Whether to keep existing files/images in the column and append the new asset (true). Otherwise, the existing files/images are removed from the column (false).',
+		displayName: 'Additional Options',
+		name: 'additionalOptions',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [
+			{
+				displayName: 'Replace Existing File',
+				name: 'replace',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to replace the existing asset with the same name (true). Otherwise, a new version with a different name (numeral in parentheses) will be uploaded (false).',
+			},
+			{
+				displayName: 'Append to Column',
+				name: 'append',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to keep existing files/images in the column and append the new asset (true). Otherwise, the existing files/images are removed from the column (false).',
+			},
+		],
 	},
 ];
 
@@ -93,7 +102,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	const uploadColumn = this.getNodeParameter('uploadColumn', index) as any;
+	const uploadColumn = this.getNodeParameter('uploadColumn', index) as string;
 	const uploadColumnType = uploadColumn.split(':::')[1];
 	const uploadColumnName = uploadColumn.split(':::')[0];
 	const dataPropertyName = this.getNodeParameter('dataPropertyName', index);
@@ -107,8 +116,8 @@ export async function execute(
 	)) as IUploadLink;
 	const relativePath =
 		uploadColumnType === 'image' ? uploadLink.img_relative_path : uploadLink.file_relative_path;
-	const replace = this.getNodeParameter('replace', index) as string;
-	const append = this.getNodeParameter('append', index) as string;
+
+	const additionalOptions = this.getNodeParameter('additionalOptions', index) as IDataObject;
 
 	// get server url
 	const credentials: any = await this.getCredentials('seaTableApi');
@@ -118,17 +127,18 @@ export async function execute(
 
 	// get workspaceId
 	const workspaceId = (
-		await this.helpers.request({
+		await this.helpers.httpRequest({
 			headers: {
 				Authorization: `Token ${credentials.token}`,
 			},
-			uri: `${serverURL}/api/v2.1/dtable/app-access-token/`,
+			url: `${serverURL}/api/v2.1/dtable/app-access-token/`,
 			json: true,
 		})
 	).workspace_id;
 
 	// if there are already assets attached to the column
 	let existingAssetArray = [];
+	const append = additionalOptions.append ?? true;
 	if (append) {
 		const rowToUpdate = await seaTableApiRequest.call(
 			this,
@@ -157,7 +167,7 @@ export async function execute(
 				},
 			},
 			parent_dir: uploadLink.parent_path,
-			replace: replace ? '1' : '0',
+			replace: additionalOptions.replace ? '1' : '0',
 			relative_path: relativePath,
 		},
 	};

@@ -2,7 +2,7 @@ import type { AllEntities, Entity, PropertiesOf } from 'n8n-workflow';
 
 type SeaTableMap = {
 	row: 'create' | 'get' | 'search' | 'update' | 'remove' | 'lock' | 'unlock' | 'list';
-	base: 'snapshot' | 'metadata' | 'apiCall' | 'collaborator';
+	base: 'snapshot' | 'metadata' | 'collaborator';
 	link: 'add' | 'list' | 'remove';
 	asset: 'upload' | 'getPublicURL';
 };

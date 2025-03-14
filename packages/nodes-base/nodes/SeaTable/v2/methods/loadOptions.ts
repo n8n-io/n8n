@@ -212,10 +212,21 @@ export async function getTableUpdateAbleColumns(
 
 export async function getRowIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const table = this.getCurrentNodeParameter('tableName') as string;
+	const operation = this.getCurrentNodeParameter('operation') as string;
 	let tableName = table;
 
 	if (table.indexOf(':::') !== -1) {
 		tableName = table.split(':::')[0];
+	}
+
+	let lockQuery = '';
+
+	if (operation === 'lock') {
+		lockQuery = 'WHERE _locked is null';
+	}
+
+	if (operation === 'unlock') {
+		lockQuery = 'WHERE _locked = true';
 	}
 
 	const returnData: INodePropertyOptions[] = [];
@@ -226,7 +237,7 @@ export async function getRowIds(this: ILoadOptionsFunctions): Promise<INodePrope
 			'POST',
 			'/api-gateway/api/v2/dtables/{{dtable_uuid}}/sql',
 			{
-				sql: `SELECT * FROM \`${tableName}\` LIMIT 1000`,
+				sql: `SELECT * FROM \`${tableName}\` ${lockQuery} LIMIT 1000`,
 				convert_keys: false,
 			},
 		);

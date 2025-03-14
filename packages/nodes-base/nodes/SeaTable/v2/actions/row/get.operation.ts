@@ -16,18 +16,28 @@ import type { IRowResponse, IDtableMetadataColumn } from '../Interfaces';
 
 export const properties: INodeProperties[] = [
 	{
-		displayName: 'Simplify',
-		name: 'simple',
-		type: 'boolean',
-		default: true,
-		description: 'Whether to return a simplified version of the response instead of the raw data',
-	},
-	{
-		displayName: 'Return Column Names',
-		name: 'convert',
-		type: 'boolean',
-		default: true,
-		description: 'Whether to return the column keys (false) or the column names (true)',
+		displayName: 'Additional Options',
+		name: 'additionalOptions',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [
+			{
+				displayName: 'Simplify',
+				name: 'simple',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to return a simplified version of the response instead of the raw data',
+			},
+			{
+				displayName: 'Return Column Names',
+				name: 'convert',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to return the column keys (false) or the column names (true)',
+			},
+		],
 	},
 ];
 
@@ -47,8 +57,7 @@ export async function execute(
 	// get parameters
 	const tableName = this.getNodeParameter('tableName', index) as string;
 	const rowId = this.getNodeParameter('rowId', index) as string;
-	const simple = this.getNodeParameter('simple', index) as boolean;
-	const convert = this.getNodeParameter('convert', index) as boolean;
+	const additionalOptions = this.getNodeParameter('additionalOptions', index) as IDataObject;
 
 	// get collaborators
 	const collaborators = await getBaseCollaborators.call(this);
@@ -61,7 +70,7 @@ export async function execute(
 		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/sql/',
 		{
 			sql: `SELECT * FROM \`${tableName}\` WHERE _id = '${rowId}'`,
-			convert_keys: convert,
+			convert_keys: additionalOptions.convert ?? true,
 		},
 	)) as IRowResponse;
 	const metadata = sqlResult.metadata as IDtableMetadataColumn[];
@@ -69,7 +78,7 @@ export async function execute(
 
 	// hide columns like button
 	rows.map((row) => enrichColumns(row, metadata, collaborators));
-
+	const simple = additionalOptions.simple ?? true;
 	// remove columns starting with _ if simple;
 	if (simple) {
 		rows.map((row) => simplify_new(row));
