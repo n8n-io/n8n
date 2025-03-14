@@ -30,8 +30,6 @@ import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 import { validateUser } from './shared/utils/users';
 import { mockInstance } from '../shared/mocking';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { SharedWorkflow } from '@/databases/entities/shared-workflow';
 
 mockInstance(Telemetry);
 mockInstance(ExecutionService);
