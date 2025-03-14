@@ -132,7 +132,9 @@ export class MemoryRedisChat implements INodeType {
 			},
 			database: credentials.database as number,
 		};
-
+		if (credentials.user) {
+			redisOptions.username = credentials.user as string;
+		}
 		if (credentials.password) {
 			redisOptions.password = credentials.password as string;
 		}
