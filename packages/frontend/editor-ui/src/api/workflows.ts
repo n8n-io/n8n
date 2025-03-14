@@ -169,3 +169,16 @@ export async function moveFolder(
 		parentFolderId,
 	});
 }
+
+export async function getFolderContent(
+	context: IRestApiContext,
+	projectId: string,
+	folderId: string,
+): Promise<{ totalSubFolders: number; totalWorkflows: number }> {
+	const res = await getFullApiResponse<{ totalSubFolders: number; totalWorkflows: number }>(
+		context,
+		'GET',
+		`/projects/${projectId}/folders/${folderId}/content`,
+	);
+	return res.data;
+}

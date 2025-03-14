@@ -907,7 +907,7 @@
 	"folders.delete.typeToConfirm": "delete {folderName}",
 	"folders.delete.confirm.message": "Are to sure you want to delete this folder?",
 	"folders.delete.success.message": "Folder deleted",
-	"folder.delete.modal.confirmation": "What should we do with the folders and workflows within this folder?",
+	"folder.delete.modal.confirmation": "What should we do with {folders} {workflows} in this folder?",
 	"folder.count": "the {count} folder | the {count} folders",
 	"workflow.count": "the {count} workflow | the {count} workflows",
 	"folder.and.workflow.separator": "and",

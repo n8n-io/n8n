@@ -145,6 +145,13 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		await workflowsApi.moveFolder(rootStore.restApiContext, projectId, folderId, parentFolderId);
 	}
 
+	async function fetchFolderContent(
+		projectId: string,
+		folderId: string,
+	): Promise<{ totalWorkflows: number; totalSubFolders: number }> {
+		return await workflowsApi.getFolderContent(rootStore.restApiContext, projectId, folderId);
+	}
+
 	return {
 		fetchTotalWorkflowsAndFoldersCount,
 		breadcrumbsCache,
@@ -159,5 +166,6 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		fetchProjectFolders,
 		fetchFoldersAvailableForMove,
 		moveFolder,
+		fetchFolderContent,
 	};
 });

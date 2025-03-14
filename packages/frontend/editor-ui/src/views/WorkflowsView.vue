@@ -673,25 +673,20 @@ const getFolderListItem = (folderId: string): FolderListItem | undefined => {
 			resource.resource === 'folder' && resource.id === folderId,
 	);
 };
-// TODO: This will only count the workflows and folders in the current page
-// Check if we need to add counts to /tree endpoint or not show them in modal
-const getCurrentFolderWorkflowCount = () => {
-	const workflows = workflowsAndFolders.value.filter(
-		(resource): resource is WorkflowListItem => resource.resource === 'workflow',
-	);
-	return workflows.length;
-};
 
-const getCurrentFolderSubFolderCount = () => {
-	const folders = workflowsAndFolders.value.filter(
-		(resource): resource is FolderListItem => resource.resource === 'folder',
-	);
-	return folders.length;
-};
-
-const getFolderContent = (folderId: string) => {
+const getFolderContent = async (folderId: string) => {
 	const folderListItem = getFolderListItem(folderId);
-	if (!folderListItem) {
+	if (folderListItem) {
+		return {
+			workflowCount: folderListItem.workflowCount,
+			subFolderCount: folderListItem.subFolderCount,
+		};
+	}
+	try {
+		// Fetch the folder content from API
+		const content = await foldersStore.fetchFolderContent(currentProject.value?.id ?? '', folderId);
+		return { workflowCount: content.totalWorkflows, subFolderCount: content.totalSubFolders };
+	} catch (error) {
 		toast.showMessage({
 			title: i18n.baseText('folders.delete.error.message'),
 			message: i18n.baseText('folders.not.found.message'),
@@ -699,10 +694,6 @@ const getFolderContent = (folderId: string) => {
 		});
 		return { workflowCount: 0, subFolderCount: 0 };
 	}
-	return {
-		workflowCount: folderListItem.workflowCount,
-		subFolderCount: folderListItem.subFolderCount,
-	};
 };
 
 // Breadcrumbs methods
@@ -800,9 +791,12 @@ const onBreadCrumbsAction = async (action: string) => {
 			break;
 		case FOLDER_LIST_ITEM_ACTIONS.DELETE:
 			if (!route.params.folderId) return;
-			const subFolderCount = getCurrentFolderSubFolderCount();
-			const workflowCount = getCurrentFolderWorkflowCount();
-			await deleteFolder(route.params.folderId as string, workflowCount, subFolderCount);
+			const content = await getFolderContent(route.params.folderId as string);
+			await deleteFolder(
+				route.params.folderId as string,
+				content.workflowCount,
+				content.subFolderCount,
+			);
 			break;
 		case FOLDER_LIST_ITEM_ACTIONS.RENAME:
 			if (!route.params.folderId) return;
@@ -846,7 +840,7 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 			});
 			break;
 		case FOLDER_LIST_ITEM_ACTIONS.DELETE: {
-			const content = getFolderContent(clickedFolder.id);
+			const content = await getFolderContent(clickedFolder.id);
 			await deleteFolder(clickedFolder.id, content.workflowCount, content.subFolderCount);
 			break;
 		}
