@@ -22,7 +22,7 @@ jobs:
 
       - name: Push to GitHub
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUBTOKEN }}
         run: |
           git add .
           git commit -m "Auto-sync from Railway" || echo "No changes to commit"
