@@ -16,7 +16,7 @@ export const unwrapExpression = (expr: string) => {
 	return expr.replace(/\{\{(.*)\}\}/, '$1').trim();
 };
 
-export const removeExpressionPrefix = (expr: unknown) => {
+export const removeExpressionPrefix = <T = unknown>(expr: T): T | string => {
 	return typeof expr === 'string' && expr.startsWith('=') ? expr.slice(1) : (expr ?? '');
 };
 
