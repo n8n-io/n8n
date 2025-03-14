@@ -74,7 +74,7 @@ export abstract class BaseCommand extends Command {
 			serverType: this.instanceSettings.instanceType,
 			dsn: backendDsn,
 			environment,
-			release: N8N_VERSION,
+			release: `n8n@${N8N_VERSION}`,
 			serverName: deploymentName,
 			releaseDate: N8N_RELEASE_DATE,
 		});
