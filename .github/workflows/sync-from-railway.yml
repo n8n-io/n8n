@@ -14,7 +14,7 @@ jobs:
       - name: Set up Git
         run: |
           git config --global user.email "hugparra88@gmail.com"
-          git config --global user.name "hugparra88"
+          git config --global user.name "hugparra"
 
       - name: Pull latest changes from Railway
         run: |
