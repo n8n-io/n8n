@@ -1207,7 +1207,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		nodeMetadata.value = remainingNodeMetadata;
 
 		// If chat trigger node is removed, close chat
-		if (node.type === CHAT_TRIGGER_NODE_TYPE) {
+		if (node.type === CHAT_TRIGGER_NODE_TYPE && !settingsStore.isNewLogsEnabled) {
 			setPanelState('closed');
 		}
 
