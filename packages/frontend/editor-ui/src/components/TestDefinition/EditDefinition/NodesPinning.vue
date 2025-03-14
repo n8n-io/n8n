@@ -175,8 +175,10 @@ onMounted(loadData);
 									:class="{ [$style.customSecondary]: isMocked(data) }"
 									data-test-id="node-pin-button"
 								>
-									<template v-if="isMocked(data)"> Unpin </template>
-									<template v-else> Pin </template>
+									<template v-if="isMocked(data)">
+										{{ locale.baseText('contextMenu.unpin') }}
+									</template>
+									<template v-else> {{ locale.baseText('contextMenu.pin') }}</template>
 								</N8nButton>
 							</div>
 						</template>
