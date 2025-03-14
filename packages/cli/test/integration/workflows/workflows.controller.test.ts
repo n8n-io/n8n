@@ -2044,6 +2044,48 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(updatedWorkflow.id).toBe(workflow.id);
 		expect(updatedWorkflow.meta).toEqual(payload.meta);
 	});
+
+	test('should update workflow parent folder', async () => {
+		const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+		const folder1 = await createFolder(ownerPersonalProject, { name: 'folder1' });
+
+		const workflow = await createWorkflow({}, owner);
+		const payload = {
+			versionId: workflow.versionId,
+			parentFolderId: folder1.id,
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const updatedWorkflow = await Container.get(WorkflowRepository).findOneOrFail({
+			where: { id: workflow.id },
+			relations: ['parentFolder'],
+		});
+
+		expect(updatedWorkflow.parentFolder?.id).toBe(folder1.id);
+	});
+
+	test('should fail if trying update workflow parent folder with a folder that does not belong to project', async () => {
+		const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+		const memberPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+			member.id,
+		);
+
+		await createFolder(ownerPersonalProject, { name: 'folder1' });
+		const folder2 = await createFolder(memberPersonalProject, { name: 'folder2' });
+
+		const workflow = await createWorkflow({}, owner);
+		const payload = {
+			versionId: workflow.versionId,
+			parentFolderId: folder2.id,
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(500);
+	});
 });
 
 describe('POST /workflows/:workflowId/run', () => {
