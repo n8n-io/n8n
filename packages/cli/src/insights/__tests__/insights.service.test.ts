@@ -4,12 +4,15 @@ import { DateTime } from 'luxon';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 import type { ExecutionStatus, IRun, WorkflowExecuteMode } from 'n8n-workflow';
 
+import type { InsightsMetadata } from '@/databases/entities/insights-metadata';
 import type { TypeUnits } from '@/databases/entities/insights-shared';
 import type { Project } from '@/databases/entities/project';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import { InsightsByPeriodRepository } from '@/databases/repositories/insights-by-period.repository';
 import { InsightsMetadataRepository } from '@/databases/repositories/insights-metadata.repository';
 import { InsightsRawRepository } from '@/databases/repositories/insights-raw.repository';
 import type { IWorkflowDb } from '@/interfaces';
+import { createCompactedInsightsEvent, createMetadata } from '@test-integration/db/insights';
 import { createTeamProject } from '@test-integration/db/projects';
 import { createWorkflow } from '@test-integration/db/workflows';
 
@@ -210,5 +213,84 @@ describe('workflowExecuteAfterHandler', () => {
 		await expect(insightsService.workflowExecuteAfterHandler(ctx, run)).rejects.toThrowError(
 			`Could not find an owner for the workflow with the name '${workflow.name}' and the id '${workflow.id}'`,
 		);
+	});
+});
+
+describe('getInsightsSummary', () => {
+	let insightsService: InsightsService;
+	let insightsRawRepository: InsightsRawRepository;
+	let insightsByPeriodRepository: InsightsByPeriodRepository;
+	let insightsMetadataRepository: InsightsMetadataRepository;
+	beforeAll(async () => {
+		await testDb.init();
+
+		insightsService = Container.get(InsightsService);
+		insightsRawRepository = Container.get(InsightsRawRepository);
+		insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+		insightsMetadataRepository = Container.get(InsightsMetadataRepository);
+	});
+
+	let project: Project;
+	let workflow: IWorkflowDb & WorkflowEntity;
+	let metadata: InsightsMetadata;
+
+	beforeEach(async () => {
+		await testDb.truncate(['InsightsRaw', 'InsightsMetadata', 'InsightsByPeriod']);
+
+		project = await createTeamProject();
+		workflow = await createWorkflow({}, project);
+		metadata = await createMetadata(workflow);
+	});
+
+	afterAll(async () => {
+		await testDb.terminate();
+	});
+
+	test('simple test', async () => {
+		// ARRANGE
+		// last 7 days
+		await createCompactedInsightsEvent(workflow, {
+			type: 'success',
+			value: 1,
+			periodUnit: 'day',
+			periodStart: DateTime.utc(),
+		});
+		await createCompactedInsightsEvent(workflow, {
+			type: 'success',
+			value: 1,
+			periodUnit: 'day',
+			periodStart: DateTime.utc().minus({ day: 2 }),
+		});
+		await createCompactedInsightsEvent(workflow, {
+			type: 'failure',
+			value: 2,
+			periodUnit: 'day',
+			periodStart: DateTime.utc(),
+		});
+		// last 14 days
+		await createCompactedInsightsEvent(workflow, {
+			type: 'success',
+			value: 1,
+			periodUnit: 'day',
+			periodStart: DateTime.utc().minus({ days: 10 }),
+		});
+		await createCompactedInsightsEvent(workflow, {
+			type: 'runtime_ms',
+			value: 123,
+			periodUnit: 'day',
+			periodStart: DateTime.utc().minus({ days: 10 }),
+		});
+
+		// ACT
+		const summary = await insightsService.getInsightsSummary();
+
+		// ASSERT
+		expect(summary).toEqual({
+			averageRunTime: { deviation: -123, unit: 'time', value: 0 },
+			failed: { deviation: 2, unit: 'count', value: 2 },
+			failureRate: { deviation: 0.5, unit: 'ratio', value: 0.5 },
+			timeSaved: { deviation: 0, unit: 'time', value: 0 },
+			total: { deviation: 3, unit: 'count', value: 4 },
+		});
 	});
 });

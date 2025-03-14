@@ -6,6 +6,8 @@ import { N8nModule } from '@/decorators/module';
 
 import { InsightsService } from './insights.service';
 
+import './controller';
+
 @N8nModule()
 export class InsightsModule implements BaseN8nModule {
 	constructor(

@@ -1,3 +1,4 @@
+import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { DateTime } from 'luxon';
 
@@ -10,6 +11,8 @@ import { InsightsMetadataRepository } from '@/databases/repositories/insights-me
 import { InsightsRawRepository } from '@/databases/repositories/insights-raw.repository';
 
 import { getWorkflowSharing } from './workflows';
+
+export const { type: dbType } = Container.get(GlobalConfig).database;
 
 export async function createMetadata(workflow: WorkflowEntity) {
 	const insightsMetadataRepository = Container.get(InsightsMetadataRepository);
@@ -52,7 +55,11 @@ export async function createRawInsightsEvent(
 	event.type = parameters.type;
 	event.value = parameters.value;
 	if (parameters.timestamp) {
-		event.timestamp = parameters.timestamp.toUTC().toJSDate();
+		if (dbType === 'sqlite') {
+			event.timestamp = parameters.timestamp.toUTC().toSeconds() as any;
+		} else {
+			event.timestamp = parameters.timestamp.toUTC().toJSDate();
+		}
 	}
 	return await insightsRawRepository.save(event);
 }
@@ -74,7 +81,14 @@ export async function createCompactedInsightsEvent(
 	event.type = parameters.type;
 	event.value = parameters.value;
 	event.periodUnit = parameters.periodUnit;
-	event.periodStart = parameters.periodStart.toUTC().startOf(parameters.periodUnit).toJSDate();
+	if (dbType === 'sqlite') {
+		event.periodStart = parameters.periodStart
+			.toUTC()
+			.startOf(parameters.periodUnit)
+			.toSeconds() as any;
+	} else {
+		event.periodStart = parameters.periodStart.toUTC().startOf(parameters.periodUnit).toJSDate();
+	}
 
 	return await insightsByPeriodRepository.save(event);
 }
