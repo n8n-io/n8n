@@ -28,6 +28,7 @@ import type { IOdooFilterOperations } from './GenericFunctions';
 import {
 	odooCreate,
 	odooDelete,
+	odooExecuteMethod,
 	odooGet,
 	odooGetAll,
 	odooGetDBName,
@@ -525,6 +526,61 @@ export class Odoo implements INodeType {
 							url,
 							customResourceId,
 							processNameValueFields(fields),
+						);
+					}
+
+					if (operation === 'executeMethod') {
+						const methodName = this.getNodeParameter('methodName', i) as string;
+
+						const methodArgsArray = (this.getNodeParameter('methodArgs', i) as IDataObject)?.args;
+						const methodArgsValues = Array.isArray(methodArgsArray)
+							? methodArgsArray
+									.map((arg) => {
+										const value = arg.argValue;
+
+										if (typeof value === 'string') {
+											if (!isNaN(Number(value))) {
+												return Number(value);
+											} else {
+												try {
+													const cleanedValue = value
+														.replace(/\(/g, '[') // Replace '(' with '['
+														.replace(/\)/g, ']'); // Replace ')' with ']'
+													const parsed = JSON.parse(cleanedValue);
+													if (Array.isArray(parsed)) {
+														return parsed;
+													}
+												} catch (error) {
+													return value;
+												}
+											}
+										}
+									})
+									.filter((val) => val != undefined)
+							: [];
+
+						const methodKwargsArray = (this.getNodeParameter('methodKwargs', i) as IDataObject)
+							?.kwargs;
+						const methodKwargs = Array.isArray(methodKwargsArray)
+							? methodKwargsArray.reduce(
+									(acc, { kwargName, kwargValue }) => {
+										acc[kwargName] = kwargValue;
+										return acc;
+									},
+									{} as Record<string, string>,
+								)
+							: {};
+
+						responseData = await odooExecuteMethod.call(
+							this,
+							db,
+							userID,
+							password,
+							customResource,
+							methodName,
+							methodArgsValues,
+							methodKwargs,
+							url,
 						);
 					}
 				}
