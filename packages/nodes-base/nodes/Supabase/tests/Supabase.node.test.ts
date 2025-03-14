@@ -105,7 +105,57 @@ describe('Test Supabase Node', () => {
 		supabaseApiRequest.mockRestore();
 	});
 
-	it('should set the correct headers for the schema in GET calls', async () => {
+	it('should set "public" schema in the headers for GET calls if no custom schema is used', async () => {
+		const fakeExecuteFunction = createMockExecuteFunction({
+			resource: 'row',
+			operation: 'getAll',
+			returnAll: true,
+			useCustomSchema: false,
+			schema: 'public',
+			tableId: 'my_table',
+		});
+
+		await node.execute.call(fakeExecuteFunction);
+
+		expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+			'supabaseApi',
+			expect.objectContaining({
+				method: 'GET',
+				headers: expect.objectContaining({
+					'Accept-Profile': 'public',
+					Prefer: 'return=representation',
+				}),
+				uri: 'https://api.supabase.io/rest/v1/my_table',
+			}),
+		);
+	});
+
+	it('should set "public" schema in the headers for POST calls if no custom schema is used', async () => {
+		const fakeExecuteFunction = createMockExecuteFunction({
+			resource: 'row',
+			operation: 'create',
+			returnAll: true,
+			useCustomSchema: false,
+			schema: 'public',
+			tableId: 'my_table',
+		});
+
+		await node.execute.call(fakeExecuteFunction);
+
+		expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+			'supabaseApi',
+			expect.objectContaining({
+				method: 'POST',
+				headers: expect.objectContaining({
+					'Content-Profile': 'public',
+					Prefer: 'return=representation',
+				}),
+				uri: 'https://api.supabase.io/rest/v1/my_table',
+			}),
+		);
+	});
+
+	it('should set the correct headers for GET calls if custom schema is used', async () => {
 		const fakeExecuteFunction = createMockExecuteFunction({
 			resource: 'row',
 			operation: 'getAll',
@@ -129,7 +179,7 @@ describe('Test Supabase Node', () => {
 		);
 	});
 
-	it('should set the correct headers for the schema in POST calls', async () => {
+	it('should set the correct headers for POST calls if custom schema is used', async () => {
 		const fakeExecuteFunction = createMockExecuteFunction({
 			resource: 'row',
 			operation: 'create',
