@@ -57,7 +57,7 @@ const showSettings = computed(
 
 const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
 const isFoldersFeatureEnabled = computed(() => settingsStore.settings.folders.enabled);
-const isOverviewPage = computed(() => route.name === VIEWS.WORKFLOWS);
+const isProjectPage = computed(() => route.name === VIEWS.PROJECTS_WORKFLOWS);
 
 const ACTION_TYPES = {
 	WORKFLOW: 'workflow',
@@ -85,11 +85,13 @@ const menu = computed(() => {
 				!getResourcePermissions(homeProject.value?.scopes).credential.create,
 		},
 	];
-	if (isFoldersFeatureEnabled.value && !isOverviewPage.value) {
+	if (isFoldersFeatureEnabled.value && isProjectPage.value) {
 		items.push({
 			value: ACTION_TYPES.FOLDER,
 			label: i18n.baseText('projects.header.create.folder'),
-			disabled: false,
+			disabled:
+				sourceControlStore.preferences.branchReadOnly ||
+				!getResourcePermissions(homeProject.value?.scopes).folder.create,
 		});
 	}
 	return items;
