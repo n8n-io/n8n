@@ -1,4 +1,4 @@
-import { computed } from 'vue';
+import { computed, reactive } from 'vue';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/constants';
 
@@ -14,7 +14,7 @@ export const useOverview = () => {
 			route.name === VIEWS.FOLDERS,
 	);
 
-	return {
+	return reactive({
 		isOverviewSubPage,
-	};
+	});
 };
