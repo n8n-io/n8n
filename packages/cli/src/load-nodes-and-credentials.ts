@@ -26,7 +26,7 @@ import type {
 	IVersionedNodeType,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeConnectionType, UnexpectedError, UserError } from 'n8n-workflow';
+import { deepCopy, NodeConnectionType, UnexpectedError, UserError } from 'n8n-workflow';
 import path from 'path';
 import picocolors from 'picocolors';
 
@@ -315,12 +315,11 @@ export class LoadNodesAndCredentials {
 			this.types.nodes.filter((nodetype) => nodetype.usableAsTool === true);
 
 		for (const usableNode of usableNodes) {
-			const description: INodeTypeBaseDescription | INodeTypeDescription =
-				structuredClone(usableNode);
+			const description = deepCopy(usableNode);
 			const wrapped = this.convertNodeToAiTool({ description }).description;
 
 			this.types.nodes.push(wrapped);
-			this.known.nodes[wrapped.name] = structuredClone(this.known.nodes[usableNode.name]);
+			this.known.nodes[wrapped.name] = { ...this.known.nodes[usableNode.name] };
 
 			const credentialNames = Object.entries(this.known.credentials)
 				.filter(([_, credential]) => credential?.supportedNodes?.includes(usableNode.name))

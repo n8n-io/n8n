@@ -15,7 +15,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import type { UrlService } from '@/services/url.service';
 import { mockInstance } from '@test/mocking';
 
-import { SubworkflowPolicyChecker } from '../subworkflow-policy-checker.service';
+import { SubworkflowPolicyChecker } from '../subworkflow-policy-checker';
 
 describe('SubworkflowPolicyChecker', () => {
 	const ownershipService = mockInstance(OwnershipService);

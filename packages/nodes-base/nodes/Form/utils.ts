@@ -72,6 +72,28 @@ export function sanitizeHtml(text: string) {
 	});
 }
 
+export const prepareFormFields = (context: IWebhookFunctions, fields: FormFieldsParameter) => {
+	return fields.map((field) => {
+		if (field.fieldType === 'html') {
+			let { html } = field;
+
+			if (!html) return field;
+
+			for (const resolvable of getResolvables(html)) {
+				html = html.replace(resolvable, context.evaluateExpression(resolvable) as string);
+			}
+
+			field.html = sanitizeHtml(html as string);
+		}
+
+		if (field.fieldType === 'hiddenField') {
+			field.fieldLabel = field.fieldName as string;
+		}
+
+		return field;
+	});
+};
+
 export function sanitizeCustomCss(css: string | undefined): string | undefined {
 	if (!css) return undefined;
 
@@ -411,6 +433,8 @@ export function renderForm({
 		} catch (error) {}
 	}
 
+	formFields = prepareFormFields(context, formFields);
+
 	const data = prepareFormData({
 		formTitle,
 		formDescription,
@@ -476,17 +500,8 @@ export async function formWebhook(
 	}
 
 	const mode = context.getMode() === 'manual' ? 'test' : 'production';
-	const formFields = (context.getNodeParameter('formFields.values', []) as FormFieldsParameter).map(
-		(field) => {
-			if (field.fieldType === 'html') {
-				field.html = sanitizeHtml(field.html as string);
-			}
-			if (field.fieldType === 'hiddenField') {
-				field.fieldLabel = field.fieldName as string;
-			}
-			return field;
-		},
-	);
+	const formFields = context.getNodeParameter('formFields.values', []) as FormFieldsParameter;
+
 	const method = context.getRequestObject().method;
 
 	validateResponseModeConfiguration(context);
