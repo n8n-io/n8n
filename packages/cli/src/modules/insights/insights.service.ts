@@ -42,12 +42,16 @@ export class InsightsService {
 
 	private readonly hourToDayBatchSize = 500;
 
+	// TODO: make this configurable and default to 1 hour
+	private readonly compactInsightsInterval = 1000 * 60;
+
 	constructor(
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
 		private readonly insightsRawRepository: InsightsRawRepository,
 	) {
-		setInterval(async () => await this.compactInsights(), 1000 * 60);
+		// TODO: check if there is a better way to schedule this
+		setInterval(async () => await this.compactInsights(), this.compactInsightsInterval);
 	}
 
 	async workflowExecuteAfterHandler(ctx: ExecutionLifecycleHooks, fullRunData: IRun) {
@@ -127,17 +131,17 @@ export class InsightsService {
 		do {
 			numberOfCompactedData = await this.compactRawToHour();
 		} while (numberOfCompactedData > 0);
+
+		// TODO: compact hour to day as well
 	}
 
 	private escapeField(fieldName: string) {
 		return this.insightsByPeriodRepository.manager.connection.driver.escape(fieldName);
 	}
 
-	/**
-	 * Compacts raw data to hourly aggregates
-	 */
+	// Compacts raw data to hourly aggregates
 	async compactRawToHour() {
-		// Get the query builder function for raw insights
+		// Build the query to gather raw insights data for the batch
 		const batchQuery = this.insightsRawRepository
 			.createQueryBuilder()
 			.select(['id', 'metaId', 'type', 'value'].map((fieldName) => this.escapeField(fieldName)))
@@ -152,11 +156,9 @@ export class InsightsService {
 		});
 	}
 
-	/**
-	 * Compacts hourly data to daily aggregates
-	 */
+	// Compacts hourly data to daily aggregates
 	async compactHourToDay() {
-		// Get the query builder function for hourly insights
+		// Build the query to gather period insights data for the batch
 		const batchQuery = this.insightsByPeriodRepository
 			.createQueryBuilder()
 			.select(
@@ -167,6 +169,8 @@ export class InsightsService {
 			.where(`${this.escapeField('periodUnit')} = 0`)
 			.orderBy(this.escapeField('periodStart'), 'ASC')
 			.limit(this.hourToDayBatchSize);
+
+		// TODO : add a date filter to compact only the data that is older than a certain date
 
 		return await this.compactSourceDataIntoInsightPeriod({
 			sourceBatchQuery: batchQuery.getSql(),
@@ -214,6 +218,7 @@ export class InsightsService {
 			.join(', ');
 		const targetColumnNamesWithValue = `${targetColumnNamesStr}, value`;
 
+		// Get the start period expression depending on the period unit and database type
 		const periodStartExpr = this.getPeriodStartExpr(periodUnit);
 
 		// Function to get the aggregation query
