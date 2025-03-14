@@ -3,15 +3,16 @@ import type { TestMetricRecord } from '@/api/testDefinition.ee';
 import BlockArrow from '@/components/TestDefinition/EditDefinition/BlockArrow.vue';
 import EvaluationStep from '@/components/TestDefinition/EditDefinition/EvaluationStep.vue';
 import MetricsInput from '@/components/TestDefinition/EditDefinition/MetricsInput.vue';
+import NodesPinning from '@/components/TestDefinition/EditDefinition/NodesPinning.vue';
 import WorkflowSelector from '@/components/TestDefinition/EditDefinition/WorkflowSelector.vue';
 import type { EditableFormState, EvaluationFormState } from '@/components/TestDefinition/types';
 import { useI18n } from '@/composables/useI18n';
 import { useMessage } from '@/composables/useMessage';
 import { NODE_PINNING_MODAL_KEY } from '@/constants';
-import type { ITag, ModalState } from '@/Interface';
-import { N8nButton, N8nTag, N8nText } from '@n8n/design-system';
+import type { ITag } from '@/Interface';
+import { N8nButton, N8nHeading, N8nTag, N8nText } from '@n8n/design-system';
 import type { IPinData } from 'n8n-workflow';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 
 const props = defineProps<{
 	tagsById: Record<string, ITag>;
@@ -67,8 +68,6 @@ const metrics = defineModel<EvaluationFormState['metrics']>('metrics', { require
 const mockedNodes = defineModel<EvaluationFormState['mockedNodes']>('mockedNodes', {
 	required: true,
 });
-
-const nodePinningModal = ref<ModalState | null>(null);
 
 const selectedTag = computed(() => props.tagsById[tags.value.value[0]] ?? {});
 
@@ -198,13 +197,17 @@ function openExecutionsView() {
 				</template>
 			</EvaluationStep>
 		</div>
-		<Modal ref="nodePinningModal" width="80vw" height="85vh" :name="NODE_PINNING_MODAL_KEY">
+		<Modal
+			width="calc(100% - (48px * 2))"
+			height="calc(100% - (48px * 2))"
+			:custom-class="$style.pinnigModal"
+			:name="NODE_PINNING_MODAL_KEY"
+		>
 			<template #header>
-				<N8nHeading size="large" :bold="true">
+				<N8nHeading tag="h3" size="xlarge" color="text-dark" class="mb-2xs">
 					{{ locale.baseText('testDefinition.edit.selectNodes') }}
 				</N8nHeading>
-				<br />
-				<N8nText>
+				<N8nText color="text-base">
 					{{ locale.baseText('testDefinition.edit.modal.description') }}
 				</N8nText>
 			</template>
@@ -216,6 +219,11 @@ function openExecutionsView() {
 </template>
 
 <style module lang="scss">
+.pinnigModal {
+	--dialog-max-width: none;
+	margin: 0;
+}
+
 .nestedSteps {
 	display: grid;
 	grid-template-columns: 20% 1fr;
