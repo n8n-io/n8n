@@ -1018,10 +1018,6 @@ export class WorkflowExecute {
 	private getCustomOperation(node: INode, type: INodeType) {
 		if (!type.customOperations) return undefined;
 
-		if (type.execute) {
-			throw new UnexpectedError('Node type cannot have both customOperations and execute defined');
-		}
-
 		if (!node.parameters) return undefined;
 
 		const { customOperations } = type;
