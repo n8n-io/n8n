@@ -16,8 +16,8 @@ import RunsSection from '@/components/TestDefinition/EditDefinition/sections/Run
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useDocumentVisibility } from '@vueuse/core';
 import { N8nButton, N8nIconButton, N8nText } from '@n8n/design-system';
+import { useDocumentVisibility } from '@vueuse/core';
 import type { IDataObject, IPinData } from 'n8n-workflow';
 
 const props = defineProps<{
@@ -59,7 +59,6 @@ const {
 const isLoading = computed(() => tagsStore.isLoading);
 const tagsById = computed(() => tagsStore.tagsById);
 const currentWorkflowId = computed(() => props.name);
-const appliedTheme = computed(() => uiStore.appliedTheme);
 const workflowName = computed(() => workflowStore.workflow.name);
 const hasRuns = computed(() => runs.value.length > 0);
 const fieldsIssues = computed(() => testDefinitionStore.getFieldIssues(props.testId) ?? []);
@@ -245,7 +244,6 @@ function onEvaluationWorkflowCreated(workflowId: string) {
 					:class="$style.runs"
 					:runs="runs"
 					:test-id="testId"
-					:applied-theme="appliedTheme"
 					@delete-runs="onDeleteRuns"
 				/>
 

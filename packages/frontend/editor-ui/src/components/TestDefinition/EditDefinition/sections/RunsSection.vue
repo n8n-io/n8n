@@ -4,14 +4,12 @@ import MetricsChart from '@/components/TestDefinition/ListRuns/MetricsChart.vue'
 import TestRunsTable from '@/components/TestDefinition/ListRuns/TestRunsTable.vue';
 import { useI18n } from '@/composables/useI18n';
 import { VIEWS } from '@/constants';
-import type { AppliedThemeOption } from '@/Interface';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 
 const props = defineProps<{
 	runs: TestRunRecord[];
 	testId: string;
-	appliedTheme: AppliedThemeOption;
 }>();
 
 const emit = defineEmits<{
@@ -79,7 +77,7 @@ const handleRowClick = (row: TestRunRecord) => {
 
 <template>
 	<div :class="$style.runs">
-		<MetricsChart v-model:selectedMetric="selectedMetric" :runs="runs" :theme="appliedTheme" />
+		<MetricsChart v-model:selectedMetric="selectedMetric" :runs="runs" />
 
 		<TestRunsTable
 			:class="$style.runsTable"
@@ -97,7 +95,7 @@ const handleRowClick = (row: TestRunRecord) => {
 .runs {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-m);
+	gap: var(--spacing-s);
 	flex: 1;
 	overflow: auto;
 	margin-bottom: 20px;

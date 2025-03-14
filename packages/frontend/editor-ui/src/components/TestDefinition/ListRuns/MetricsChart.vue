@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import type { TestRunRecord } from '@/api/testDefinition.ee';
-import { useI18n } from '@/composables/useI18n';
-import type { AppliedThemeOption } from '@/Interface';
 import { computed, watchEffect } from 'vue';
 import { Line } from 'vue-chartjs';
 import { useMetricsChart } from '../composables/useMetricsChart';
@@ -13,11 +11,9 @@ const emit = defineEmits<{
 const props = defineProps<{
 	selectedMetric: string;
 	runs: TestRunRecord[];
-	theme?: AppliedThemeOption;
 }>();
 
-const locale = useI18n();
-const metricsChart = useMetricsChart(props.theme);
+const metricsChart = useMetricsChart();
 
 const availableMetrics = computed(() => {
 	return props.runs.reduce((acc, run) => {
@@ -31,7 +27,6 @@ const chartData = computed(() => metricsChart.generateChartData(props.runs, prop
 const chartOptions = computed(() =>
 	metricsChart.generateChartOptions({
 		metric: props.selectedMetric,
-		xTitle: locale.baseText('testDefinition.listRuns.runDate'),
 	}),
 );
 
@@ -43,7 +38,7 @@ watchEffect(() => {
 </script>
 
 <template>
-	<div v-if="availableMetrics.length > 0" :class="$style.metricsChartContainer">
+	<div :class="$style.metricsChartContainer">
 		<div :class="$style.chartHeader">
 			<N8nSelect
 				:model-value="selectedMetric"
@@ -62,7 +57,6 @@ watchEffect(() => {
 		</div>
 		<div :class="$style.chartWrapper">
 			<Line
-				v-if="availableMetrics.length > 0"
 				:key="selectedMetric"
 				:data="chartData"
 				:options="chartOptions"
@@ -76,15 +70,10 @@ watchEffect(() => {
 .metricsChartContainer {
 	background: var(--color-background-xlight);
 	border-radius: var(--border-radius-large);
-	box-shadow: var(--box-shadow-base);
+	border: 1px solid var(--color-foreground-base);
 
 	.chartHeader {
-		display: flex;
-		justify-content: flex-start;
-		align-items: center;
-		gap: var(--spacing-s);
-		padding: var(--spacing-xs) var(--spacing-s);
-		border-bottom: 1px solid var(--color-foreground-base);
+		padding: var(--spacing-xs) var(--spacing-s) 0;
 	}
 
 	.chartTitle {
@@ -99,7 +88,7 @@ watchEffect(() => {
 
 	.chartWrapper {
 		position: relative;
-		height: var(--metrics-chart-height, 200px);
+		height: var(--metrics-chart-height, 147px);
 		width: 100%;
 		padding: var(--spacing-s);
 	}
