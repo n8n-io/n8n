@@ -8,7 +8,12 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
-import { getPath, microsoftApiRequest, microsoftApiRequestAllItemsDelta } from './GenericFunctions';
+import {
+	getGraphEndpoint,
+	getPath,
+	microsoftApiRequest,
+	microsoftApiRequestAllItemsDelta,
+} from './GenericFunctions';
 import { triggerDescription } from './TriggerDescription';
 
 export class MicrosoftOneDriveTrigger implements INodeType {
@@ -41,11 +46,12 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
 		const workflowData = this.getWorkflowStaticData('node');
+		const graphEndpoint = await getGraphEndpoint.call(this);
+
 		let responseData: IDataObject[];
 
 		const lastLink: string =
-			(workflowData.LastLink as string) ||
-			'https://graph.microsoft.com/v1.0/me/drive/root/delta?token=latest';
+			(workflowData.LastLink as string) || `${graphEndpoint}/v1.0/me/drive/root/delta?token=latest`;
 
 		const now = DateTime.now().toUTC();
 		const start = DateTime.fromISO(workflowData.lastTimeChecked as string) || now;
@@ -72,7 +78,7 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 						'',
 						{},
 						{},
-						'https://graph.microsoft.com/v1.0/me/drive/root/delta',
+						`${graphEndpoint}/v1.0/me/drive/root/delta`,
 					)
 				).value as IDataObject[];
 			} else {
