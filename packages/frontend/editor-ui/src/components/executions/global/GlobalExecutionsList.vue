@@ -8,7 +8,7 @@ import { useMessage } from '@/composables/useMessage';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
-import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/constants';
+import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
 import type { ExecutionFilterType, ExecutionSummaryWithScopes, IWorkflowDb } from '@/Interface';
 import type { PermissionsRecord } from '@/permissions';
 import { getResourcePermissions } from '@/permissions';
@@ -19,17 +19,7 @@ import { N8nButton, N8nCheckbox, N8nTableBase } from '@n8n/design-system';
 import { useIntersectionObserver } from '@vueuse/core';
 import { ElSkeletonItem } from 'element-plus';
 import type { ExecutionSummary } from 'n8n-workflow';
-import {
-	computed,
-	ref,
-	useTemplateRef,
-	watch,
-	type ComponentPublicInstance,
-	onBeforeMount,
-} from 'vue';
-import { useRoute } from 'vue-router';
-import { useInsightsStore } from '@/features/insights/insights.store';
-import InsightsSummary from '@/features/insights/InsightsSummary.vue';
+import { computed, ref, useTemplateRef, watch, type ComponentPublicInstance } from 'vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -49,7 +39,6 @@ const emit = defineEmits<{
 	'execution:stop': [];
 }>();
 
-const route = useRoute();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
@@ -63,16 +52,6 @@ const selectedItems = ref<Record<string, boolean>>({});
 
 const message = useMessage();
 const toast = useToast();
-
-const insightsStore = useInsightsStore();
-const isOverviewSubPage = computed(
-	() =>
-		route.name === VIEWS.WORKFLOWS ||
-		route.name === VIEWS.HOMEPAGE ||
-		route.name === VIEWS.CREDENTIALS ||
-		route.name === VIEWS.EXECUTIONS ||
-		route.name === VIEWS.FOLDERS,
-);
 
 const selectedCount = computed(() => {
 	if (allExistingSelected.value) {
@@ -116,10 +95,6 @@ watch(
 		adjustSelectionAfterMoreItemsLoaded();
 	},
 );
-
-onBeforeMount(() => {
-	void insightsStore.summary.execute();
-});
 
 function handleCheckAllExistingChange() {
 	allExistingSelected.value = !allExistingSelected.value;
@@ -359,9 +334,7 @@ const goToUpgrade = () => {
 
 <template>
 	<div :class="$style.execListWrapper">
-		<ProjectHeader>
-			<InsightsSummary v-if="isOverviewSubPage" :summary="insightsStore.summary.state" />
-		</ProjectHeader>
+		<slot />
 		<div :class="$style.execListHeaderControls">
 			<ExecutionsFilter
 				:workflows="workflows"

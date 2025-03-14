@@ -1,12 +1,16 @@
 <script lang="ts" setup>
-import { onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
+import { computed, onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
+import { VIEWS } from '@/constants';
 import GlobalExecutionsList from '@/components/executions/global/GlobalExecutionsList.vue';
+import InsightsSummary from '@/features/insights/InsightsSummary.vue';
+import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExecutionsStore } from '@/stores/executions.store';
+import { useInsightsStore } from '@/features/insights/insights.store';
 import { useToast } from '@/composables/useToast';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { storeToRefs } from 'pinia';
@@ -18,8 +22,18 @@ const telemetry = useTelemetry();
 const externalHooks = useExternalHooks();
 const workflowsStore = useWorkflowsStore();
 const executionsStore = useExecutionsStore();
+const insightsStore = useInsightsStore();
 const documentTitle = useDocumentTitle();
 const toast = useToast();
+
+const isOverviewSubPage = computed(
+	() =>
+		route.name === VIEWS.WORKFLOWS ||
+		route.name === VIEWS.HOMEPAGE ||
+		route.name === VIEWS.CREDENTIALS ||
+		route.name === VIEWS.EXECUTIONS ||
+		route.name === VIEWS.FOLDERS,
+);
 
 const { executionsCount, executionsCountEstimated, filters, allExecutions } =
 	storeToRefs(executionsStore);
@@ -28,6 +42,7 @@ onBeforeMount(async () => {
 	await loadWorkflows();
 
 	void externalHooks.run('executionsList.openDialog');
+	void insightsStore.summary.execute();
 	telemetry.track('User opened Executions log', {
 		workflow_id: workflowsStore.workflowId,
 	});
@@ -87,5 +102,9 @@ async function onExecutionStop() {
 		:estimated-total="executionsCountEstimated"
 		@execution:stop="onExecutionStop"
 		@update:filters="onUpdateFilters"
-	/>
+	>
+		<ProjectHeader>
+			<InsightsSummary v-if="isOverviewSubPage" :summary="insightsStore.summary.state" />
+		</ProjectHeader>
+	</GlobalExecutionsList>
 </template>
