@@ -162,7 +162,7 @@ export const customResourceDescription: INodeProperties[] = [
 						name: 'argValue',
 						type: 'string',
 						default: '',
-						// TODO: Add placeholders
+						placeholder: 'Could be a number, a string, an array or a tupple',
 					},
 				],
 			},
@@ -196,14 +196,14 @@ export const customResourceDescription: INodeProperties[] = [
 						name: 'kwargName',
 						type: 'string',
 						default: '',
-						// TODO: Add placeholders
+						placeholder: 'limit',
 					},
 					{
 						displayName: 'Keyword Argument Value',
 						name: 'kwargValue',
 						type: 'string',
 						default: '',
-						// TODO: Add placeholders
+						placeholder: '10',
 					},
 				],
 			},
