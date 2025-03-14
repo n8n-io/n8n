@@ -189,6 +189,68 @@ export class FolderService {
 		return rootNode ? [rootNode] : [];
 	}
 
+	async getFolderAndWorkflowCount(
+		folderId: string,
+		projectId: string,
+	): Promise<{ totalSubFolders: number; totalWorkflows: number }> {
+		await this.findFolderInProjectOrFail(folderId, projectId);
+
+		const baseQuery = this.folderRepository
+			.createQueryBuilder('folder')
+			.select('folder.id', 'id')
+			.where('folder.id = :folderId', { folderId });
+
+		const recursiveQuery = this.folderRepository
+			.createQueryBuilder('f')
+			.select('f.id', 'id')
+			.innerJoin('folder_path', 'fp', 'f.parentFolderId = fp.id');
+
+		// Count all folders in the hierarchy (excluding the root folder)
+		const subFolderCountQuery = this.folderRepository
+			.createQueryBuilder('folder')
+			.addCommonTableExpression(
+				`${baseQuery.getQuery()} UNION ALL ${recursiveQuery.getQuery()}`,
+				'folder_path',
+				{ recursive: true },
+			)
+			.select('COUNT(DISTINCT folder.id) - 1', 'count')
+			.where((qb) => {
+				const subQuery = qb.subQuery().select('fp.id').from('folder_path', 'fp').getQuery();
+				return `folder.id IN ${subQuery}`;
+			})
+			.setParameters({
+				folderId,
+			});
+
+		// Count workflows in the folder and all subfolders
+		const workflowCountQuery = this.workflowRepository
+			.createQueryBuilder('workflow')
+			.select('COUNT(workflow.id)', 'count')
+			.where((qb) => {
+				const folderQuery = qb.subQuery().from('folder_path', 'fp').select('fp.id').getQuery();
+				return `workflow.parentFolderId IN ${folderQuery}`;
+			})
+			.addCommonTableExpression(
+				`${baseQuery.getQuery()} UNION ALL ${recursiveQuery.getQuery()}`,
+				'folder_path',
+				{ recursive: true },
+			)
+			.setParameters({
+				folderId,
+			});
+
+		// Execute both queries in parallel
+		const [subFolderResult, workflowResult] = await Promise.all([
+			subFolderCountQuery.getRawOne<{ count: string }>(),
+			workflowCountQuery.getRawOne<{ count: string }>(),
+		]);
+
+		return {
+			totalSubFolders: parseInt(subFolderResult?.count ?? '0', 10),
+			totalWorkflows: parseInt(workflowResult?.count ?? '0', 10),
+		};
+	}
+
 	async getManyAndCount(projectId: string, options: ListQuery.Options) {
 		options.filter = { ...options.filter, projectId };
 		return await this.folderRepository.getManyAndCount(options);

@@ -115,4 +115,25 @@ export class ProjectController {
 
 		res.json({ count, data });
 	}
+
+	@Get('/:folderId/content')
+	@ProjectScope('folder:read')
+	async getFolderContent(req: AuthenticatedRequest<{ projectId: string; folderId: string }>) {
+		const { projectId, folderId } = req.params;
+
+		try {
+			const { totalSubFolders, totalWorkflows } =
+				await this.folderService.getFolderAndWorkflowCount(folderId, projectId);
+
+			return {
+				totalSubFolders,
+				totalWorkflows,
+			};
+		} catch (e) {
+			if (e instanceof FolderNotFoundError) {
+				throw new NotFoundError(e.message);
+			}
+			throw new InternalServerError(undefined, e);
+		}
+	}
 }

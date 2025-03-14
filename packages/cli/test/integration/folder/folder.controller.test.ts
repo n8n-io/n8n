@@ -1014,6 +1014,39 @@ describe('GET /projects/:projectId/folders', () => {
 		expect(response.body.data[0].name).toBe('Folder 3');
 	});
 
+	test('should filter folders by excludeFolderIdAndDescendants', async () => {
+		const folder1 = await createFolder(ownerProject, { name: 'folder level 1' });
+		await createFolder(ownerProject, {
+			name: 'folder level 1.1',
+			parentFolder: folder1,
+		});
+		const folder12 = await createFolder(ownerProject, {
+			name: 'folder level 1.2',
+			parentFolder: folder1,
+		});
+		await createFolder(ownerProject, {
+			name: 'folder level 1.2.1',
+			parentFolder: folder12,
+		});
+		const folder122 = await createFolder(ownerProject, {
+			name: 'folder level 1.2.2',
+			parentFolder: folder12,
+		});
+		await createFolder(ownerProject, {
+			name: 'folder level 1.2.2.1',
+			parentFolder: folder122,
+		});
+
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/folders`)
+			.query({ filter: `{ "excludeFolderIdAndDescendants": "${folder122.id}" }` });
+
+		expect(response.body.data.length).toBe(4);
+		expect(response.body.data.map((f: any) => f.name).sort()).toEqual(
+			['folder level 1', 'folder level 1.1', 'folder level 1.2.1', 'folder level 1.2'].sort(),
+		);
+	});
+
 	test('should apply pagination with take parameter', async () => {
 		// Create folders with consistent timestamps
 		for (let i = 1; i <= 5; i++) {
@@ -1210,327 +1243,61 @@ describe('GET /projects/:projectId/folders', () => {
 	});
 });
 
-describe('GET /projects/:projectId/folders', () => {
+describe('GET /projects/:projectId/folders/content', () => {
 	test('should not list folders when project does not exist', async () => {
-		await authOwnerAgent.get('/projects/non-existing-id/folders').expect(403);
+		await authOwnerAgent
+			.get('/projects/non-existing-id/folders/no-existing-id/content')
+			.expect(403);
 	});
 
-	test('should not list folders if user has no access to project', async () => {
+	test('should not return folder content if user has no access to project', async () => {
 		const project = await createTeamProject('test project', owner);
 
-		await authMemberAgent.get(`/projects/${project.id}/folders`).expect(403);
+		await authMemberAgent
+			.get(`/projects/${project.id}/folders/non-existing-id/content`)
+			.expect(403);
 	});
 
-	test("should not allow listing folders from another user's personal project", async () => {
-		await authMemberAgent.get(`/projects/${ownerProject.id}/folders`).expect(403);
+	test('should not return folder content if folder does not belong to project', async () => {
+		const project = await createTeamProject('test project', owner);
+
+		await authOwnerAgent.get(`/projects/${project.id}/folders/non-existing-id/content`).expect(404);
 	});
 
-	test('should list folders if user has project:viewer role in team project', async () => {
+	test('should return folder content if user has project:viewer role in team project', async () => {
 		const project = await createTeamProject('test project', owner);
 		await linkUserToProject(member, project, 'project:viewer');
-		await createFolder(project, { name: 'Test Folder' });
+		const folder = await createFolder(project, { name: 'Test Folder' });
 
-		const response = await authMemberAgent.get(`/projects/${project.id}/folders`).expect(200);
+		const response = await authMemberAgent
+			.get(`/projects/${project.id}/folders/${folder.id}/content`)
+			.expect(200);
 
-		expect(response.body.count).toBe(1);
-		expect(response.body.data).toHaveLength(1);
-		expect(response.body.data[0].name).toBe('Test Folder');
+		expect(response.body.data.totalWorkflows).toBeDefined();
+		expect(response.body.data.totalSubFolders).toBeDefined();
 	});
 
-	test('should list folders from personal project', async () => {
-		await createFolder(ownerProject, { name: 'Personal Folder 1' });
+	test('should return folder content', async () => {
+		const personalFolder1 = await createFolder(ownerProject, { name: 'Personal Folder 1' });
 		await createFolder(ownerProject, { name: 'Personal Folder 2' });
-
-		const response = await authOwnerAgent.get(`/projects/${ownerProject.id}/folders`).expect(200);
-
-		expect(response.body.count).toBe(2);
-		expect(response.body.data).toHaveLength(2);
-		expect(response.body.data.map((f: any) => f.name).sort()).toEqual(
-			['Personal Folder 1', 'Personal Folder 2'].sort(),
-		);
-	});
-
-	test('should filter folders by name', async () => {
-		await createFolder(ownerProject, { name: 'Test Folder' });
-		await createFolder(ownerProject, { name: 'Another Folder' });
-		await createFolder(ownerProject, { name: 'Test Something Else' });
-
-		const response = await authOwnerAgent
-			.get(`/projects/${ownerProject.id}/folders`)
-			.query({ filter: '{ "name": "test" }' })
-			.expect(200);
-
-		expect(response.body.count).toBe(2);
-		expect(response.body.data).toHaveLength(2);
-		expect(response.body.data.map((f: any) => f.name).sort()).toEqual(
-			['Test Folder', 'Test Something Else'].sort(),
-		);
-	});
-
-	test('should filter folders by parent folder ID', async () => {
-		const parentFolder = await createFolder(ownerProject, { name: 'Parent' });
-		await createFolder(ownerProject, { name: 'Child 1', parentFolder });
-		await createFolder(ownerProject, { name: 'Child 2', parentFolder });
-		await createFolder(ownerProject, { name: 'Standalone' });
-
-		const response = await authOwnerAgent
-			.get(`/projects/${ownerProject.id}/folders`)
-			.query({ filter: `{ "parentFolderId": "${parentFolder.id}" }` })
-			.expect(200);
-
-		expect(response.body.count).toBe(2);
-		expect(response.body.data).toHaveLength(2);
-		expect(response.body.data.map((f: any) => f.name).sort()).toEqual(
-			['Child 1', 'Child 2'].sort(),
-		);
-	});
-
-	test('should filter root-level folders when parentFolderId=0', async () => {
-		const parentFolder = await createFolder(ownerProject, { name: 'Parent' });
-		await createFolder(ownerProject, { name: 'Child 1', parentFolder });
-		await createFolder(ownerProject, { name: 'Standalone 1' });
-		await createFolder(ownerProject, { name: 'Standalone 2' });
-
-		const response = await authOwnerAgent
-			.get(`/projects/${ownerProject.id}/folders`)
-			.query({ filter: '{ "parentFolderId": "0" }' })
-			.expect(200);
-
-		expect(response.body.count).toBe(3);
-		expect(response.body.data).toHaveLength(3);
-		expect(response.body.data.map((f: any) => f.name).sort()).toEqual(
-			['Parent', 'Standalone 1', 'Standalone 2'].sort(),
-		);
-	});
-
-	test('should filter folders by tag', async () => {
-		const tag1 = await createTag({ name: 'important' });
-		const tag2 = await createTag({ name: 'archived' });
-
-		await createFolder(ownerProject, { name: 'Folder 1', tags: [tag1] });
-		await createFolder(ownerProject, { name: 'Folder 2', tags: [tag2] });
-		await createFolder(ownerProject, { name: 'Folder 3', tags: [tag1, tag2] });
-
-		const response = await authOwnerAgent.get(
-			`/projects/${ownerProject.id}/folders?filter={ "tags": ["important"]}`,
-		);
-
-		expect(response.body.count).toBe(2);
-		expect(response.body.data).toHaveLength(2);
-		expect(response.body.data.map((f: any) => f.name).sort()).toEqual(
-			['Folder 1', 'Folder 3'].sort(),
-		);
-	});
-
-	test('should filter folders by multiple tags (AND operator)', async () => {
-		const tag1 = await createTag({ name: 'important' });
-		const tag2 = await createTag({ name: 'active' });
-
-		await createFolder(ownerProject, { name: 'Folder 1', tags: [tag1] });
-		await createFolder(ownerProject, { name: 'Folder 2', tags: [tag2] });
-		await createFolder(ownerProject, { name: 'Folder 3', tags: [tag1, tag2] });
-
-		const response = await authOwnerAgent
-			.get(`/projects/${ownerProject.id}/folders?filter={ "tags": ["important", "active"]}`)
-			.expect(200);
-
-		expect(response.body.count).toBe(1);
-		expect(response.body.data).toHaveLength(1);
-		expect(response.body.data[0].name).toBe('Folder 3');
-	});
-
-	test('should apply pagination with take parameter', async () => {
-		// Create folders with consistent timestamps
-		for (let i = 1; i <= 5; i++) {
-			await createFolder(ownerProject, {
-				name: `Folder ${i}`,
-				updatedAt: DateTime.now()
-					.minus({ minutes: 6 - i })
-					.toJSDate(),
-			});
-		}
-
-		const response = await authOwnerAgent
-			.get(`/projects/${ownerProject.id}/folders`)
-			.query({ take: 3 })
-			.expect(200);
-
-		expect(response.body.count).toBe(5); // Total count should be 5
-		expect(response.body.data).toHaveLength(3); // But only 3 returned
-		expect(response.body.data.map((f: any) => f.name)).toEqual([
-			'Folder 5',
-			'Folder 4',
-			'Folder 3',
-		]);
-	});
-
-	test('should apply pagination with skip parameter', async () => {
-		// Create folders with consistent timestamps
-		for (let i = 1; i <= 5; i++) {
-			await createFolder(ownerProject, {
-				name: `Folder ${i}`,
-				updatedAt: DateTime.now()
-					.minus({ minutes: 6 - i })
-					.toJSDate(),
-			});
-		}
-
-		const response = await authOwnerAgent
-			.get(`/projects/${ownerProject.id}/folders`)
-			.query({ skip: 2 })
-			.expect(200);
-
-		expect(response.body.count).toBe(5);
-		expect(response.body.data).toHaveLength(3);
-		expect(response.body.data.map((f: any) => f.name)).toEqual([
-			'Folder 3',
-			'Folder 2',
-			'Folder 1',
-		]);
-	});
-
-	test('should apply combined skip and take parameters', async () => {
-		// Create folders with consistent timestamps
-		for (let i = 1; i <= 5; i++) {
-			await createFolder(ownerProject, {
-				name: `Folder ${i}`,
-				updatedAt: DateTime.now()
-					.minus({ minutes: 6 - i })
-					.toJSDate(),
-			});
-		}
-
-		const response = await authOwnerAgent
-			.get(`/projects/${ownerProject.id}/folders`)
-			.query({ skip: 1, take: 2 })
-			.expect(200);
-
-		expect(response.body.count).toBe(5);
-		expect(response.body.data).toHaveLength(2);
-		expect(response.body.data.map((f: any) => f.name)).toEqual(['Folder 4', 'Folder 3']);
-	});
-
-	test('should sort folders by name ascending', async () => {
-		await createFolder(ownerProject, { name: 'Z Folder' });
-		await createFolder(ownerProject, { name: 'A Folder' });
-		await createFolder(ownerProject, { name: 'M Folder' });
-
-		const response = await authOwnerAgent
-			.get(`/projects/${ownerProject.id}/folders`)
-			.query({ sortBy: 'name:asc' })
-			.expect(200);
-
-		expect(response.body.data.map((f: any) => f.name)).toEqual([
-			'A Folder',
-			'M Folder',
-			'Z Folder',
-		]);
-	});
-
-	test('should sort folders by name descending', async () => {
-		await createFolder(ownerProject, { name: 'Z Folder' });
-		await createFolder(ownerProject, { name: 'A Folder' });
-		await createFolder(ownerProject, { name: 'M Folder' });
-
-		const response = await authOwnerAgent
-			.get(`/projects/${ownerProject.id}/folders`)
-			.query({ sortBy: 'name:desc' })
-			.expect(200);
-
-		expect(response.body.data.map((f: any) => f.name)).toEqual([
-			'Z Folder',
-			'M Folder',
-			'A Folder',
-		]);
-	});
-
-	test('should sort folders by updatedAt', async () => {
-		await createFolder(ownerProject, {
-			name: 'Older Folder',
-			updatedAt: DateTime.now().minus({ days: 2 }).toJSDate(),
+		const personalProjectSubfolder1 = await createFolder(ownerProject, {
+			name: 'Personal Folder 1 Subfolder 1',
+			parentFolder: personalFolder1,
 		});
-		await createFolder(ownerProject, {
-			name: 'Newest Folder',
-			updatedAt: DateTime.now().toJSDate(),
-		});
-		await createFolder(ownerProject, {
-			name: 'Middle Folder',
-			updatedAt: DateTime.now().minus({ days: 1 }).toJSDate(),
+		const personalProjectSubfolder2 = await createFolder(ownerProject, {
+			name: 'Personal Folder 1 Subfolder 2',
+			parentFolder: personalFolder1,
 		});
 
-		const response = await authOwnerAgent
-			.get(`/projects/${ownerProject.id}/folders`)
-			.query({ sortBy: 'updatedAt:desc' })
-			.expect(200);
-
-		expect(response.body.data.map((f: any) => f.name)).toEqual([
-			'Newest Folder',
-			'Middle Folder',
-			'Older Folder',
-		]);
-	});
-
-	test('should select specific fields when requested', async () => {
-		await createFolder(ownerProject, { name: 'Test Folder' });
+		await createWorkflow({ parentFolder: personalFolder1 }, ownerProject);
+		await createWorkflow({ parentFolder: personalProjectSubfolder1 }, ownerProject);
+		await createWorkflow({ parentFolder: personalProjectSubfolder2 }, ownerProject);
 
 		const response = await authOwnerAgent
-			.get(`/projects/${ownerProject.id}/folders?select=["id","name"]`)
+			.get(`/projects/${ownerProject.id}/folders/${personalFolder1.id}/content`)
 			.expect(200);
 
-		expect(response.body.data[0]).toEqual({
-			id: expect.any(String),
-			name: 'Test Folder',
-		});
-
-		// Other fields should not be present
-		expect(response.body.data[0].createdAt).toBeUndefined();
-		expect(response.body.data[0].updatedAt).toBeUndefined();
-		expect(response.body.data[0].parentFolder).toBeUndefined();
-	});
-
-	test('should combine multiple query parameters correctly', async () => {
-		const tag = await createTag({ name: 'important' });
-		const parentFolder = await createFolder(ownerProject, { name: 'Parent' });
-
-		await createFolder(ownerProject, {
-			name: 'Test Child 1',
-			parentFolder,
-			tags: [tag],
-		});
-
-		await createFolder(ownerProject, {
-			name: 'Another Child',
-			parentFolder,
-		});
-
-		await createFolder(ownerProject, {
-			name: 'Test Standalone',
-			tags: [tag],
-		});
-
-		const response = await authOwnerAgent
-			.get(
-				`/projects/${ownerProject.id}/folders?filter={"name": "test", "parentFolderId": "${parentFolder.id}", "tags": ["important"]}&sortBy=name:asc`,
-			)
-			.expect(200);
-
-		expect(response.body.count).toBe(1);
-		expect(response.body.data).toHaveLength(1);
-		expect(response.body.data[0].name).toBe('Test Child 1');
-	});
-
-	test('should filter by projectId automatically based on URL', async () => {
-		// Create folders in both owner and member projects
-		await createFolder(ownerProject, { name: 'Owner Folder 1' });
-		await createFolder(ownerProject, { name: 'Owner Folder 2' });
-		await createFolder(memberProject, { name: 'Member Folder' });
-
-		const response = await authOwnerAgent.get(`/projects/${ownerProject.id}/folders`).expect(200);
-
-		expect(response.body.count).toBe(2);
-		expect(response.body.data).toHaveLength(2);
-		expect(response.body.data.map((f: any) => f.name).sort()).toEqual(
-			['Owner Folder 1', 'Owner Folder 2'].sort(),
-		);
+		expect(response.body.data.totalWorkflows).toBe(3);
+		expect(response.body.data.totalSubFolders).toBe(2);
 	});
 });
