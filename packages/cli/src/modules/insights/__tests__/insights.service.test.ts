@@ -20,6 +20,7 @@ import {
 	createCompactedInsightsEvent,
 	createRawInsightsEvents,
 } from '../entities/__tests__/db-utils';
+import type { InsightsMetadata } from '../entities/insights-metadata';
 import { InsightsService } from '../insights.service';
 import { InsightsByPeriodRepository } from '../repositories/insights-by-period.repository';
 
@@ -599,6 +600,85 @@ describe('compaction', () => {
 			for (const [index, compacted] of allCompacted.entries()) {
 				expect(compacted.value).toBe(batches[index]);
 			}
+		});
+	});
+});
+
+describe('getInsightsSummary', () => {
+	let insightsService: InsightsService;
+	let insightsRawRepository: InsightsRawRepository;
+	let insightsByPeriodRepository: InsightsByPeriodRepository;
+	let insightsMetadataRepository: InsightsMetadataRepository;
+	beforeAll(async () => {
+		await testDb.init();
+
+		insightsService = Container.get(InsightsService);
+		insightsRawRepository = Container.get(InsightsRawRepository);
+		insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+		insightsMetadataRepository = Container.get(InsightsMetadataRepository);
+	});
+
+	let project: Project;
+	let workflow: IWorkflowDb & WorkflowEntity;
+	let metadata: InsightsMetadata;
+
+	beforeEach(async () => {
+		await testDb.truncate(['InsightsRaw', 'InsightsMetadata', 'InsightsByPeriod']);
+
+		project = await createTeamProject();
+		workflow = await createWorkflow({}, project);
+		metadata = await createMetadata(workflow);
+	});
+
+	afterAll(async () => {
+		await testDb.terminate();
+	});
+
+	test('simple test', async () => {
+		// ARRANGE
+		// last 7 days
+		await createCompactedInsightsEvent(workflow, {
+			type: 'success',
+			value: 1,
+			periodUnit: 'day',
+			periodStart: DateTime.utc(),
+		});
+		await createCompactedInsightsEvent(workflow, {
+			type: 'success',
+			value: 1,
+			periodUnit: 'day',
+			periodStart: DateTime.utc().minus({ day: 2 }),
+		});
+		await createCompactedInsightsEvent(workflow, {
+			type: 'failure',
+			value: 2,
+			periodUnit: 'day',
+			periodStart: DateTime.utc(),
+		});
+		// last 14 days
+		await createCompactedInsightsEvent(workflow, {
+			type: 'success',
+			value: 1,
+			periodUnit: 'day',
+			periodStart: DateTime.utc().minus({ days: 10 }),
+		});
+		await createCompactedInsightsEvent(workflow, {
+			type: 'runtime_ms',
+			value: 123,
+			periodUnit: 'day',
+			periodStart: DateTime.utc().minus({ days: 10 }),
+		});
+
+		// ACT
+		const summary = await insightsService.getInsightsSummary();
+
+		// ASSERT
+		expect(summary).toEqual({
+			averageRunTime: { deviation: -123, unit: 'time', value: 0 },
+			failed: { deviation: 2, unit: 'count', value: 2 },
+			failureRate: { deviation: 0.5, unit: 'ratio', value: 0.5 },
+			timeSaved: { deviation: 0, unit: 'time', value: 0 },
+			total: { deviation: 3, unit: 'count', value: 4 },
 		});
 	});
 });

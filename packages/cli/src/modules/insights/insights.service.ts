@@ -1,16 +1,22 @@
 import { Container, Service } from '@n8n/di';
+import { GlobalConfig } from '@n8n/config';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 import type { ExecutionStatus, IRun, WorkflowExecuteMode } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
+import { z } from 'zod';
 
 import { SharedWorkflow } from '@/databases/entities/shared-workflow';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { OnShutdown } from '@/decorators/on-shutdown';
 import { InsightsMetadata } from '@/modules/insights/entities/insights-metadata';
 import { InsightsRaw } from '@/modules/insights/entities/insights-raw';
+import { sql } from '@/utils/sql';
+
+import type { TypeUnits } from './entities/insights-shared';
+import { NumberToType } from './entities/insights-shared';
+import { InsightsByPeriodRepository } from './repositories/insights-by-period.repository';
 
 import { InsightsConfig } from './insights.config';
-import { InsightsByPeriodRepository } from './repositories/insights-by-period.repository';
 import { InsightsRawRepository } from './repositories/insights-raw.repository';
 
 const config = Container.get(InsightsConfig);
@@ -39,6 +45,23 @@ const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
 	internal: true,
 	manual: true,
 };
+
+const parser = z
+	.object({
+		period: z.enum(['previous', 'current']),
+		// TODO: extract to abstract-entity
+		type: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]),
+		// TODO: improve, it's either or
+		total_value: z.union([
+			z.string().transform((value) => Number.parseInt(value)),
+			z.number().nullable(),
+		]),
+		avg_runtime: z.union([
+			z.number().nullable(),
+			z.string().transform((value) => Number.parseFloat(value)),
+		]),
+	})
+	.array();
 
 @Service()
 export class InsightsService {
@@ -177,5 +200,130 @@ export class InsightsService {
 			sourceBatchQuery: batchQuery.getSql(),
 			periodUnit: 'day',
 		});
+	}
+
+	// TODO: add return type once rebased on master and InsightsSummary is
+	// available
+	async getInsightsSummary(): Promise<any> {
+		const dbType = this.globalConfig.database.type;
+		const cte =
+			dbType === 'sqlite'
+				? sql`
+				SELECT
+					strftime('%s', date('now', '-7 days')) AS current_start,
+					strftime('%s', date('now')) AS current_end,
+					strftime('%s', date('now', '-14 days')) AS previous_start
+			`
+				: dbType === 'postgresdb'
+					? sql`
+						SELECT
+						(CURRENT_DATE - INTERVAL '7 days')::timestamptz AS current_start,
+						CURRENT_DATE::timestamptz AS current_end,
+						(CURRENT_DATE - INTERVAL '14 days')::timestamptz AS previous_start
+					`
+					: sql`
+						SELECT
+							DATE_SUB(CURDATE(), INTERVAL 7 DAY) AS current_start,
+							CURDATE() AS current_end,
+							DATE_SUB(CURDATE(), INTERVAL 14 DAY) AS previous_start
+					`;
+
+		const rawRows = await this.insightsByPeriodRepository
+			.createQueryBuilder('insights')
+			.addCommonTableExpression(cte, 'date_ranges')
+			.select(
+				sql`
+				CASE
+					WHEN insights.periodStart >= date_ranges.current_start AND insights.periodStart <= date_ranges.current_end
+					THEN 'current'
+					ELSE 'previous'
+				END
+			`,
+				'period',
+			)
+			.addSelect('insights.type', 'type')
+			.addSelect('SUM(CASE WHEN type = 1 THEN NULL ELSE value END)', 'total_value')
+			.addSelect(
+				'AVG(CASE WHEN insights.type = 1 THEN insights.value ELSE NULL END)',
+				'avg_runtime',
+			)
+			// Use a cross join with the CTE
+			.innerJoin('date_ranges', 'date_ranges', '1=1')
+			// Filter to only include data from the last 14 days
+			.where('insights.periodStart >= date_ranges.previous_start')
+			.andWhere('insights.periodStart <= date_ranges.current_end')
+			// Group by both period and type
+			.groupBy('period')
+			.addGroupBy('insights.type')
+			.getRawMany();
+
+		const rows = parser.parse(rawRows);
+
+		// Initialize data structures for both periods
+		const data = {
+			current: { byType: {} as Record<TypeUnits, number> },
+			previous: { byType: {} as Record<TypeUnits, number> },
+		};
+
+		// Organize data by period and type
+		rows.forEach((row) => {
+			const { period, type, total_value, avg_runtime } = row;
+			if (!data[period]) return;
+
+			data[period].byType[NumberToType[type]] = (total_value ? total_value : avg_runtime) ?? 0;
+		});
+
+		// Get values with defaults for missing data
+		const getValueByType = (period: 'current' | 'previous', type: TypeUnits) =>
+			data[period]?.byType[type] ?? 0;
+
+		// Calculate metrics
+		const currentSuccesses = getValueByType('current', 'success');
+		const currentFailures = getValueByType('current', 'failure');
+		const previousSuccesses = getValueByType('previous', 'success');
+		const previousFailures = getValueByType('previous', 'failure');
+
+		const currentTotal = currentSuccesses + currentFailures;
+		const previousTotal = previousSuccesses + previousFailures;
+
+		const currentFailureRate = currentTotal > 0 ? currentFailures / currentTotal : 0;
+		const previousFailureRate = previousTotal > 0 ? previousFailures / previousTotal : 0;
+
+		const currentAvgRuntime = getValueByType('current', 'runtime_ms') ?? 0;
+		const previousAvgRuntime = getValueByType('previous', 'runtime_ms') ?? 0;
+
+		const currentTimeSaved = getValueByType('current', 'time_saved_min');
+		const previousTimeSaved = getValueByType('previous', 'time_saved_min');
+
+		// Return the formatted result
+		const result = {
+			averageRunTime: {
+				value: currentAvgRuntime,
+				unit: 'time',
+				deviation: currentAvgRuntime - previousAvgRuntime,
+			},
+			failed: {
+				value: currentFailures,
+				unit: 'count',
+				deviation: currentFailures - previousFailures,
+			},
+			failureRate: {
+				value: currentFailureRate,
+				unit: 'ratio',
+				deviation: currentFailureRate - previousFailureRate,
+			},
+			timeSaved: {
+				value: currentTimeSaved,
+				unit: 'time',
+				deviation: currentTimeSaved - previousTimeSaved,
+			},
+			total: {
+				value: currentTotal,
+				unit: 'count',
+				deviation: currentTotal - previousTotal,
+			},
+		};
+
+		return result;
 	}
 }
