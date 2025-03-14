@@ -14,7 +14,9 @@ const getBinaryDataFromNode = (context: IWebhookFunctions, nodeName: string): ID
 	return context.evaluateExpression(`{{ $('${nodeName}').first().binary }}`) as IDataObject;
 };
 
-export const binaryResponse = async (context: IWebhookFunctions): Promise<string> => {
+export const binaryResponse = async (
+	context: IWebhookFunctions,
+): Promise<{ data: string; fileName: string }> => {
 	const inputDataFieldName = context.getNodeParameter('inputDataFieldName', '') as string;
 	const parentNodes = context.getParentNodes(context.getNode().name);
 	const binaryNode = parentNodes.find((node) =>
@@ -27,14 +29,14 @@ export const binaryResponse = async (context: IWebhookFunctions): Promise<string
 		inputDataFieldName
 	] as IBinaryData;
 
-	// N8N_DEFAULT_BINARY_DATA_MODE=filesystem
-	if (binaryData.id) {
-		const bdFilesystem = await context.helpers.getBinaryStream(binaryData.id);
-
-		return await context.helpers.binaryToString(bdFilesystem);
-	}
-
-	return atob(binaryData.data);
+	return {
+		// If a binaryData has an id, the following field is set:
+		// N8N_DEFAULT_BINARY_DATA_MODE=filesystem
+		data: binaryData.id
+			? await context.helpers.binaryToString(await context.helpers.getBinaryStream(binaryData.id))
+			: atob(binaryData.data),
+		fileName: binaryData.fileName || 'file',
+	};
 };
 
 export const renderFormCompletion = async (
@@ -69,7 +71,7 @@ export const renderFormCompletion = async (
 		formTitle: title,
 		appendAttribution,
 		responseText: sanitizeHtml(responseText),
-		responseBinary: encodeURIComponent(binary),
+		responseBinary: encodeURIComponent(JSON.stringify(binary)),
 		dangerousCustomCss: sanitizeCustomCss(options.customCss),
 		redirectUrl,
 	});

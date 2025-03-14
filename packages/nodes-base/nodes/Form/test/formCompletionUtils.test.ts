@@ -16,16 +16,53 @@ describe('formCompletionUtils', () => {
 		parameters: {},
 	});
 
-	const expectedBinaryResponse = {
-		inputData: {
-			data: 'IyAxLiBHbyBpbiBwb3N0Z3',
-			fileExtension: 'txt',
-			fileName: 'file.txt',
-			fileSize: '458 B',
-			fileType: 'text',
-			mimeType: 'text/plain',
+	const nodeNameWithFileToDownload = 'prevNode0';
+	const nodeNameWithFile = 'prevNode2';
+
+	const parentNodesWithAndWithoutFiles = [
+		{
+			name: nodeNameWithFileToDownload,
+			type: '',
+			typeVersion: 0,
+			disabled: false,
 		},
-	};
+		{
+			name: 'prevNode1',
+			type: '',
+			typeVersion: 0,
+			disabled: false,
+		},
+	];
+
+	const parentNodesWithMultipleBinaryFiles = [
+		{
+			name: nodeNameWithFileToDownload,
+			type: '',
+			typeVersion: 0,
+			disabled: false,
+		},
+		{
+			name: nodeNameWithFile,
+			type: '',
+			typeVersion: 0,
+			disabled: false,
+		},
+	];
+
+	const parentNodesWithSingleNodeFile = [
+		{
+			name: nodeNameWithFileToDownload,
+			type: '',
+			typeVersion: 0,
+			disabled: false,
+		},
+	];
+
+	const parentNodesTestCases = [
+		parentNodesWithAndWithoutFiles,
+		parentNodesWithMultipleBinaryFiles,
+		parentNodesWithSingleNodeFile,
+	];
 
 	beforeEach(() => {
 		mockWebhookFunctions = mock<IWebhookFunctions>();
@@ -71,7 +108,7 @@ describe('formCompletionUtils', () => {
 				formTitle: 'Form Title',
 				message: 'Form has been submitted successfully',
 				redirectUrl: undefined,
-				responseBinary: '',
+				responseBinary: encodeURIComponent(JSON.stringify('')),
 				responseText: '',
 				title: 'Form Completion',
 			});
@@ -95,54 +132,76 @@ describe('formCompletionUtils', () => {
 			).rejects.toThrowError('No binary data with field inputData found.');
 		});
 
-		it('should render if respond with binary is set', async () => {
-			const nodeNameWithFileToDownload = 'prevNode0';
-			const nodeNameWithFile = 'prevNode2';
+		it('should render if respond with binary is set and binary mode is filesystem', async () => {
+			const expectedBinaryResponse = {
+				inputData: {
+					data: 'IyAxLiBHbyBpbiBwb3N0Z3',
+					fileExtension: 'txt',
+					fileName: 'file.txt',
+					fileSize: '458 B',
+					fileType: 'text',
+					mimeType: 'text/plain',
+					id: 555,
+				},
+			};
 
-			const parentNodesWithAndWithoutFiles = [
-				{
-					name: nodeNameWithFileToDownload,
-					type: '',
-					typeVersion: 0,
-					disabled: false,
-				},
-				{
-					name: 'prevNode1',
-					type: '',
-					typeVersion: 0,
-					disabled: false,
-				},
-			];
+			for (const parentNodes of parentNodesTestCases) {
+				mockWebhookFunctions.getParentNodes.mockReturnValueOnce(parentNodes);
+				mockWebhookFunctions.evaluateExpression.mockImplementation((arg) => {
+					if (arg === `{{ $('${nodeNameWithFileToDownload}').first().binary }}`) {
+						return expectedBinaryResponse;
+					} else if (arg === `{{ $('${nodeNameWithFile}').first().binary }}`) {
+						return { someData: {} };
+					} else {
+						return undefined;
+					}
+				});
+				mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+					const params: { [key: string]: any } = {
+						inputDataFieldName: 'inputData',
+						completionTitle: 'Form Completion',
+						completionMessage: 'Form has been submitted successfully',
+						options: { formTitle: 'Form Title' },
+						respondWith: 'returnBinary',
+					};
+					return params[parameterName];
+				});
 
-			const parentNodesWithMultipleBinaryFiles = [
-				{
-					name: nodeNameWithFileToDownload,
-					type: '',
-					typeVersion: 0,
-					disabled: false,
-				},
-				{
-					name: nodeNameWithFile,
-					type: '',
-					typeVersion: 0,
-					disabled: false,
-				},
-			];
+				mockWebhookFunctions.helpers.getBinaryStream = jest.fn().mockImplementation(() => {});
+				mockWebhookFunctions.helpers.binaryToString = jest
+					.fn()
+					.mockResolvedValue(expectedBinaryResponse.inputData.data);
 
-			const parentNodesWithSingleNodeFile = [
-				{
-					name: nodeNameWithFileToDownload,
-					type: '',
-					typeVersion: 0,
-					disabled: false,
-				},
-			];
+				await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger);
 
-			const parentNodesTestCases = [
-				parentNodesWithAndWithoutFiles,
-				parentNodesWithMultipleBinaryFiles,
-				parentNodesWithSingleNodeFile,
-			];
+				expect(mockResponse.render).toHaveBeenCalledWith('form-trigger-completion', {
+					appendAttribution: undefined,
+					formTitle: 'Form Title',
+					message: 'Form has been submitted successfully',
+					redirectUrl: undefined,
+					responseBinary: encodeURIComponent(
+						JSON.stringify({
+							data: expectedBinaryResponse.inputData.data,
+							fileName: expectedBinaryResponse.inputData.fileName,
+						}),
+					),
+					responseText: '',
+					title: 'Form Completion',
+				});
+			}
+		});
+
+		it('should render if respond with binary is set and binary mode is default', async () => {
+			const expectedBinaryResponse = {
+				inputData: {
+					data: 'IyAxLiBHbyBpbiBwb3N0Z3',
+					fileExtension: 'txt',
+					fileName: 'file.txt',
+					fileSize: '458 B',
+					fileType: 'text',
+					mimeType: 'text/plain',
+				},
+			};
 
 			for (const parentNodes of parentNodesTestCases) {
 				mockWebhookFunctions.getParentNodes.mockReturnValueOnce(parentNodes);
@@ -173,7 +232,12 @@ describe('formCompletionUtils', () => {
 					formTitle: 'Form Title',
 					message: 'Form has been submitted successfully',
 					redirectUrl: undefined,
-					responseBinary: encodeURIComponent(atob(expectedBinaryResponse.inputData.data)),
+					responseBinary: encodeURIComponent(
+						JSON.stringify({
+							data: atob(expectedBinaryResponse.inputData.data),
+							fileName: expectedBinaryResponse.inputData.fileName,
+						}),
+					),
 					responseText: '',
 					title: 'Form Completion',
 				});

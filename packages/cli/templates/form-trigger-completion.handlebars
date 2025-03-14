@@ -158,15 +158,18 @@
 		{{/if}}
 	<script>
 		document.addEventListener('DOMContentLoaded', function () {
-			const binary = "{{{responseBinary}}}" ? decodeURIComponent("{{{responseBinary}}}") : '';
+			const binary = "{{{responseBinary}}}"
+				?	JSON.parse(decodeURIComponent("{{{responseBinary}}}"))
+				: '';
 
 			if (binary) {
-				const blob = new Blob([binary]);
+				const blob = new Blob([binary.data]);
 
 				const link = document.createElement("a");
 				link.href = URL.createObjectURL(blob);
-				link.download = binary.fileName ?? "file";
+				link.download = binary.fileName;
 				document.body.appendChild(link);
+
 				link.click();
 				document.body.removeChild(link);
 			}
