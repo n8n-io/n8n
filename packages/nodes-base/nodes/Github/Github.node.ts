@@ -6,8 +6,16 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	IWebhookFunctions,
+	IWebhookResponseData,
+	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import {
+	NodeApiError,
+	NodeConnectionType,
+	NodeOperationError,
+	WAIT_INDEFINITELY,
+} from 'n8n-workflow';
 
 import {
 	getFileSha,
@@ -16,7 +24,8 @@ import {
 	isBase64,
 	validateJSON,
 } from './GenericFunctions';
-import { getRepositories, getUsers, getWorkflows } from './SearchFunctions';
+import { getRefs, getRepositories, getUsers, getWorkflows } from './SearchFunctions';
+import { defaultWebhookDescription } from '../Webhook/description';
 
 export class Github implements INodeType {
 	description: INodeTypeDescription = {
@@ -33,6 +42,15 @@ export class Github implements INodeType {
 		usableAsTool: true,
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
+		webhooks: [
+			{
+				...defaultWebhookDescription,
+				path: '',
+				restartWebhook: true,
+				httpMethod: 'POST',
+				responseMode: 'onReceived',
+			},
+		],
 		credentials: [
 			{
 				name: 'githubApi',
@@ -396,9 +414,6 @@ export class Github implements INodeType {
 				default: 'create',
 			},
 
-			// ----------------------------------
-			//         workflow
-			// ----------------------------------
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -417,7 +432,7 @@ export class Github implements INodeType {
 						action: 'Disable a workflow',
 					},
 					{
-						name: 'Dispatch',
+						name: 'Dispatch Workflow Event',
 						value: 'dispatch',
 						description: 'Dispatch a workflow event',
 						action: 'Dispatch a workflow event',
@@ -448,88 +463,6 @@ export class Github implements INodeType {
 					},
 				],
 				default: 'dispatch',
-			},
-			{
-				displayName: 'Workflow',
-				name: 'workflowId',
-				type: 'resourceLocator',
-				default: { mode: 'list', value: '' },
-				required: true,
-				modes: [
-					{
-						displayName: 'From List',
-						name: 'list',
-						type: 'list',
-						placeholder: 'Select a workflow...',
-						typeOptions: {
-							searchListMethod: 'getWorkflows',
-						},
-					},
-					{
-						displayName: 'By ID',
-						name: 'name',
-						type: 'string',
-						placeholder: 'e.g. 12345678',
-						validation: [
-							{
-								type: 'regex',
-								properties: {
-									regex: '\\d+',
-									errorMessage: 'Not a valid Github Workflow ID',
-								},
-							},
-						],
-					},
-					{
-						displayName: 'By File Name',
-						name: 'filename',
-						type: 'string',
-						placeholder: 'e.g. main.yaml or main.yml',
-						validation: [
-							{
-								type: 'regex',
-								properties: {
-									regex: '[a-zA-Z0-9_-]+.(yaml|yml)',
-									errorMessage: 'Not a valid Github Workflow File Name',
-								},
-							},
-						],
-					},
-				],
-				displayOptions: {
-					show: {
-						resource: ['workflow'],
-						operation: ['disable', 'dispatch', 'get', 'getUsage', 'enable'],
-					},
-				},
-				description: 'The workflow to dispatch',
-			},
-			{
-				displayName: 'Ref',
-				name: 'ref',
-				type: 'string',
-				default: 'main',
-				required: true,
-				displayOptions: {
-					show: {
-						resource: ['workflow'],
-						operation: ['dispatch'],
-					},
-				},
-				description: 'The git reference for the workflow dispatch (branch, tag, or commit SHA)',
-			},
-			{
-				displayName: 'Inputs',
-				name: 'inputs',
-				type: 'json',
-				default: '{}',
-				displayOptions: {
-					show: {
-						resource: ['workflow'],
-						operation: ['dispatch'],
-					},
-				},
-				description: 'JSON object with input parameters for the workflow',
 			},
 
 			// ----------------------------------
@@ -654,6 +587,133 @@ export class Github implements INodeType {
 						operation: ['getRepositories'],
 					},
 				},
+			},
+
+			// ----------------------------------
+			//         workflow
+			// ----------------------------------
+			{
+				displayName: 'Workflow',
+				name: 'workflowId',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: true,
+				modes: [
+					{
+						displayName: 'Workflow',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a workflow...',
+						typeOptions: {
+							searchListMethod: 'getWorkflows',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'By ID',
+						name: 'name',
+						type: 'string',
+						placeholder: 'e.g. 12345678',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '\\d+',
+									errorMessage: 'Not a valid Github Workflow ID',
+								},
+							},
+						],
+					},
+				],
+				displayOptions: {
+					show: {
+						resource: ['workflow'],
+						operation: ['disable', 'dispatch', 'get', 'getUsage', 'enable'],
+					},
+				},
+				description: 'The workflow to dispatch',
+			},
+			{
+				displayName: 'Ref',
+				name: 'ref',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: true,
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a branch, tag, or commit...',
+						typeOptions: {
+							searchListMethod: 'getRefs',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'By Name',
+						name: 'name',
+						type: 'string',
+						placeholder: 'e.g. main',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '^[a-zA-Z0-9/._-]+$',
+									errorMessage: 'Not a valid branch, tag',
+								},
+							},
+						],
+					},
+				],
+				displayOptions: {
+					show: {
+						resource: ['workflow'],
+						operation: ['dispatch'],
+					},
+				},
+				description: 'The git reference for the workflow dispatch (branch, tag, or commit SHA)',
+			},
+			{
+				displayName: 'Inputs',
+				name: 'inputs',
+				type: 'json',
+				default: '{}',
+				displayOptions: {
+					show: {
+						resource: ['workflow'],
+						operation: ['dispatch'],
+					},
+				},
+				description: 'JSON object with input parameters for the workflow',
+			},
+			{
+				displayName: 'Wait for Workflow Completion',
+				name: 'waitForCompletion',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to wait for the GitHub action workflow to complete before resuming the n8n workflow',
+				displayOptions: {
+					show: {
+						resource: ['workflow'],
+						operation: ['dispatch'],
+					},
+				},
+			},
+			{
+				displayName:
+					'Your execution will pause until a webhook is called. This URL will be generated at runtime and passed to your Github workflow as a resumeUrl input.',
+				name: 'webhookNotice',
+				type: 'notice',
+				displayOptions: {
+					show: {
+						resource: ['workflow'],
+						operation: ['dispatch'],
+						waitForCompletion: [true],
+					},
+				},
+				default: '',
 			},
 
 			// ----------------------------------
@@ -1996,8 +2056,17 @@ export class Github implements INodeType {
 			getUsers,
 			getRepositories,
 			getWorkflows,
+			getRefs,
 		},
 	};
+
+	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		const requestObject = this.getRequestObject();
+
+		return {
+			workflowData: [this.helpers.returnJsonArray(requestObject.body)],
+		};
+	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -2504,22 +2573,26 @@ export class Github implements INodeType {
 
 						requestMethod = 'PUT';
 
-						const workflowId = this.getNodeParameter('workflowId', i) as string;
+						const workflowIdObj = this.getNodeParameter('workflowId', i);
+						const workflowId = (workflowIdObj as IDataObject)?.value as string;
 
 						endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}/disable`;
-					} else if (operation === 'dispatch') {
+					}
+					if (operation === 'dispatch') {
 						// ----------------------------------
 						//         dispatch
 						// ----------------------------------
 
 						requestMethod = 'POST';
 
-						const workflowId = this.getNodeParameter('workflowId', i, undefined, {
-							extractValue: true,
-						}) as string;
+						const workflowIdObj = this.getNodeParameter('workflowId', i);
+						const workflowId = (workflowIdObj as IDataObject)?.value as string;
 
 						endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}/dispatches`;
-						body.ref = this.getNodeParameter('ref', i) as string;
+
+						const refResourceLocator = this.getNodeParameter('ref', i) as { value: string };
+						const ref = refResourceLocator.value;
+						body.ref = ref;
 
 						const inputs = validateJSON(
 							this.getNodeParameter('inputs', i) as string,
@@ -2530,6 +2603,36 @@ export class Github implements INodeType {
 							});
 						}
 						body.inputs = inputs;
+
+						const waitForCompletion = this.getNodeParameter('waitForCompletion', i) as boolean;
+
+						if (waitForCompletion) {
+							// Generate a webhook URL for the GitHub workflow to call when done
+							const resumeUrl = this.getWorkflowDataProxy(0).$execution.resumeUrl;
+
+							body.inputs = {
+								...body.inputs,
+								resumeUrl,
+							};
+
+							try {
+								responseData = await githubApiRequest.call(this, requestMethod, endpoint, body);
+							} catch (error) {
+								// Check if the error is a 404 (Not Found)
+								if (error.httpCode === '404' || error.statusCode === 404) {
+									throw new NodeOperationError(
+										this.getNode(),
+										'The workflow to dispatch could not be found. Adjust the "workflow" parameter setting to dispatch the workflow correctly.',
+										{ itemIndex: i },
+									);
+								} else {
+									throw new NodeApiError(this.getNode(), error as JsonObject);
+								}
+							}
+
+							await this.putExecutionToWait(WAIT_INDEFINITELY);
+							return [this.getInputData()];
+						}
 					} else if (operation === 'enable') {
 						// ----------------------------------
 						//         enable
@@ -2537,7 +2640,8 @@ export class Github implements INodeType {
 
 						requestMethod = 'PUT';
 
-						const workflowId = this.getNodeParameter('workflowId', i) as string;
+						const workflowIdObj = this.getNodeParameter('workflowId', i);
+						const workflowId = (workflowIdObj as IDataObject)?.value as string;
 
 						endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}/enable`;
 					} else if (operation === 'get') {
@@ -2547,7 +2651,8 @@ export class Github implements INodeType {
 
 						requestMethod = 'GET';
 
-						const workflowId = this.getNodeParameter('workflowId', i) as string;
+						const workflowIdObj = this.getNodeParameter('workflowId', i);
+						const workflowId = (workflowIdObj as IDataObject)?.value as string;
 
 						endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}`;
 					} else if (operation === 'getUsage') {
@@ -2557,7 +2662,8 @@ export class Github implements INodeType {
 
 						requestMethod = 'GET';
 
-						const workflowId = this.getNodeParameter('workflowId', i) as string;
+						const workflowIdObj = this.getNodeParameter('workflowId', i);
+						const workflowId = (workflowIdObj as IDataObject)?.value as string;
 
 						endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}/timing`;
 					} else if (operation === 'list') {

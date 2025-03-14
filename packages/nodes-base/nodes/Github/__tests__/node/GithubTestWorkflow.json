@@ -11,6 +11,7 @@
 		{
 			"parameters": {
 				"resource": "workflow",
+				"operation": "dispatch",
 				"workflowId": {
 					"__rl": true,
 					"value": 147025216,
@@ -26,7 +27,14 @@
 					"__rl": true,
 					"value": "testRepository",
 					"mode": "name"
-				}
+				},
+				"ref": {
+					"__rl": true,
+					"value": "main",
+					"mode": "name"
+				},
+				"inputs": "{}",
+				"waitForCompletion": false
 			},
 			"type": "n8n-nodes-base.github",
 			"typeVersion": 1,
