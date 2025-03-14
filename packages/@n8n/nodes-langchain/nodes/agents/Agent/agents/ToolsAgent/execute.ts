@@ -18,7 +18,7 @@ import { z } from 'zod';
 
 import { isChatInstance, getPromptInputByType, getConnectedTools } from '@utils/helpers';
 import {
-	getOptionalOutputParsers,
+	getOptionalOutputParser,
 	type N8nOutputParser,
 } from '@utils/output_parsers/N8nOutputParser';
 
@@ -392,8 +392,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 
 	const returnData: INodeExecutionData[] = [];
 	const items = this.getInputData();
-	const outputParsers = await getOptionalOutputParsers(this);
-	const outputParser = outputParsers?.[0];
+	const outputParser = await getOptionalOutputParser(this);
 	const tools = await getTools(this, outputParser);
 
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
