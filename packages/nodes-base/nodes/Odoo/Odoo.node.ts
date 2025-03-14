@@ -305,6 +305,7 @@ export class Odoo implements INodeType {
 		//                            Main loop
 		//----------------------------------------------------------------------
 
+		// TODO : Refactor this loop to remove duplicate code.
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if (resource === 'contact') {
