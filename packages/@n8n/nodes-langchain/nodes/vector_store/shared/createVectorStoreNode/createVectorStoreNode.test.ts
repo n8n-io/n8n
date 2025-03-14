@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/unbound-method */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { DocumentInterface } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
@@ -5,8 +7,8 @@ import { mock } from 'jest-mock-extended';
 import type { DynamicTool } from 'langchain/tools';
 import type { ISupplyDataFunctions, NodeParameterValueType } from 'n8n-workflow';
 
-import type { VectorStoreNodeConstructorArgs } from './createVectorStoreNode';
 import { createVectorStoreNode } from './createVectorStoreNode';
+import type { VectorStoreNodeConstructorArgs } from './types';
 
 jest.mock('@utils/logWrapper', () => ({
 	logWrapper: jest.fn().mockImplementation((val: DynamicTool) => ({ logWrapped: val })),

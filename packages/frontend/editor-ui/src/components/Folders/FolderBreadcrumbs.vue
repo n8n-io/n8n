@@ -57,7 +57,7 @@ const onAction = (action: string) => {
 			<template v-if="currentProject" #prepend>
 				<div :class="$style['home-project']" data-test-id="home-project">
 					<n8n-link :to="`/projects/${currentProject.id}`">
-						<N8nText size="large" color="text-base">{{ projectName }}</N8nText>
+						<N8nText size="medium" color="text-base">{{ projectName }}</N8nText>
 					</n8n-link>
 				</div>
 			</template>
