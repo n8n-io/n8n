@@ -37,7 +37,6 @@ const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
 export class InsightsService {
 	constructor(private readonly sharedWorkflowRepository: SharedWorkflowRepository) {}
 
-	// TODO: Add project caching the corresponding projects and maybe batching.
 	async workflowExecuteAfterHandler(ctx: ExecutionLifecycleHooks, fullRunData: IRun) {
 		if (shouldSkipStatus[fullRunData.status] || shouldSkipMode[fullRunData.mode]) {
 			return;
