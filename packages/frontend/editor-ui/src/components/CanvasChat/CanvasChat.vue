@@ -305,7 +305,6 @@ watchEffect(() => {
 				<div ref="container" :class="[$style.container, 'ignore-key-press-canvas']" tabindex="0">
 					<div v-if="chatPanelState !== 'closed'" :class="$style.chatResizer">
 						<N8nResizeWrapper
-							key="String(!!pipWindow)"
 							:supported-directions="['right']"
 							:width="chatWidth"
 							:class="$style.chat"
