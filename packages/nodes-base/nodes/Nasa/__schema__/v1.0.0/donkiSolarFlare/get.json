@@ -1,68 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "flrID": {
-            "type": "string"
-        },
-        "catalog": {
-            "type": "string"
-        },
-        "instruments": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "displayName": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "displayName"
-                ]
-            }
-        },
-        "beginTime": {
-            "type": "string"
-        },
-        "peakTime": {
-            "type": "string"
-        },
-        "endTime": {
-            "type": "string"
-        },
-        "classType": {
-            "type": "string"
-        },
-        "sourceLocation": {
-            "type": "string"
-        },
-        "note": {
-            "type": "string"
-        },
-        "submissionTime": {
-            "type": "string"
-        },
-        "versionId": {
-            "type": "integer"
-        },
-        "link": {
-            "type": "string"
-        }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Nasa/__schema__/v1.0.0/donkiSolarFlare/get.json",
+    "sha": "b1a1e72f0891282ef2800f1d1c392ac43fa33460",
+    "size": 1425,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Nasa/__schema__/v1.0.0/donkiSolarFlare/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Nasa/__schema__/v1.0.0/donkiSolarFlare/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/b1a1e72f0891282ef2800f1d1c392ac43fa33460",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Nasa/__schema__/v1.0.0/donkiSolarFlare/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJmbHJJRCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgIH0sCiAgICAgICAgImNhdGFsb2ciOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJpbnN0cnVt\nZW50cyI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYXJyYXkiLAogICAgICAg\nICAgICAiaXRlbXMiOiB7CiAgICAgICAgICAgICAgICAidHlwZSI6ICJvYmpl\nY3QiLAogICAgICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAg\nICAgICAgICAgICAgImRpc3BsYXlOYW1lIjogewogICAgICAgICAgICAgICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAg\nfQogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJyZXF1aXJl\nZCI6IFsKICAgICAgICAgICAgICAgICAgICAiZGlzcGxheU5hbWUiCiAgICAg\nICAgICAgICAgICBdCiAgICAgICAgICAgIH0KICAgICAgICB9LAogICAgICAg\nICJiZWdpblRpbWUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJwZWFrVGltZSI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImVuZFRpbWUi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAog\nICAgICAgICJjbGFzc1R5cGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJzb3VyY2VMb2NhdGlvbiI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAg\nICAgIm5vdGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICB9LAogICAgICAgICJzdWJtaXNzaW9uVGltZSI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInZlcnNp\nb25JZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAg\nICB9LAogICAgICAgICJsaW5rIjogewogICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgfQogICAgfSwKICAgICJyZXF1aXJlZCI6IFsKICAg\nICAgICAiZmxySUQiLAogICAgICAgICJjYXRhbG9nIiwKICAgICAgICAiaW5z\ndHJ1bWVudHMiLAogICAgICAgICJiZWdpblRpbWUiLAogICAgICAgICJwZWFr\nVGltZSIsCiAgICAgICAgImVuZFRpbWUiLAogICAgICAgICJjbGFzc1R5cGUi\nLAogICAgICAgICJzb3VyY2VMb2NhdGlvbiIsCiAgICAgICAgImFjdGl2ZVJl\nZ2lvbk51bSIsCiAgICAgICAgIm5vdGUiLAogICAgICAgICJzdWJtaXNzaW9u\nVGltZSIsCiAgICAgICAgInZlcnNpb25JZCIsCiAgICAgICAgImxpbmsiLAog\nICAgICAgICJsaW5rZWRFdmVudHMiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Nasa/__schema__/v1.0.0/donkiSolarFlare/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/b1a1e72f0891282ef2800f1d1c392ac43fa33460",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Nasa/__schema__/v1.0.0/donkiSolarFlare/get.json"
     },
-    "required": [
-        "flrID",
-        "catalog",
-        "instruments",
-        "beginTime",
-        "peakTime",
-        "endTime",
-        "classType",
-        "sourceLocation",
-        "activeRegionNum",
-        "note",
-        "submissionTime",
-        "versionId",
-        "link",
-        "linkedEvents"
-    ]
+    "version": 1
 }

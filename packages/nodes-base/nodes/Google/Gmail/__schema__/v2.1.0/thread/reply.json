@@ -1,22 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "threadId": {
-            "type": "string"
-        },
-        "labelIds": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        }
+    "name": "reply.json",
+    "path": "packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/thread/reply.json",
+    "sha": "323b3628bb3fa11bed28010cfb59379b51c93fa0",
+    "size": 379,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/thread/reply.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/thread/reply.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/323b3628bb3fa11bed28010cfb59379b51c93fa0",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/thread/reply.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInRocmVhZElkIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAibGFiZWxJZHMi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogImFycmF5IiwKICAgICAgICAgICAg\nIml0ZW1zIjogewogICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICB9CiAgICAgICAgfQogICAgfSwKICAgICJyZXF1aXJlZCI6\nIFsKICAgICAgICAiaWQiLAogICAgICAgICJ0aHJlYWRJZCIsCiAgICAgICAg\nImxhYmVsSWRzIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/thread/reply.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/323b3628bb3fa11bed28010cfb59379b51c93fa0",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/thread/reply.json"
     },
-    "required": [
-        "id",
-        "threadId",
-        "labelIds"
-    ]
+    "version": 1
 }

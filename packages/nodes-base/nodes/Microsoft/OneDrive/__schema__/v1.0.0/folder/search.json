@@ -1,123 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "createdDateTime": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "lastModifiedDateTime": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "size": {
-            "type": "integer"
-        },
-        "webUrl": {
-            "type": "string"
-        },
-        "createdBy": {
-            "type": "object",
-            "properties": {
-                "user": {
-                    "type": "object",
-                    "properties": {
-                        "displayName": {
-                            "type": "string"
-                        },
-                        "email": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "displayName"
-                    ]
-                }
-            },
-            "required": [
-                "user"
-            ]
-        },
-        "lastModifiedBy": {
-            "type": "object",
-            "properties": {
-                "user": {
-                    "type": "object",
-                    "properties": {
-                        "displayName": {
-                            "type": "string"
-                        },
-                        "email": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "displayName"
-                    ]
-                }
-            },
-            "required": [
-                "user"
-            ]
-        },
-        "parentReference": {
-            "type": "object",
-            "properties": {
-                "driveId": {
-                    "type": "string"
-                },
-                "driveType": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "siteId": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "driveId",
-                "driveType",
-                "id"
-            ]
-        },
-        "fileSystemInfo": {
-            "type": "object",
-            "properties": {
-                "createdDateTime": {
-                    "type": "string"
-                },
-                "lastModifiedDateTime": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "createdDateTime",
-                "lastModifiedDateTime"
-            ]
-        },
-        "folder": {
-            "type": "object",
-            "properties": {
-                "childCount": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "childCount"
-            ]
-        }
+    "name": "search.json",
+    "path": "packages/nodes-base/nodes/Microsoft/OneDrive/__schema__/v1.0.0/folder/search.json",
+    "sha": "b8e4cb5a4c911b912d0972f08c96ba9605f1b973",
+    "size": 3080,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Microsoft/OneDrive/__schema__/v1.0.0/folder/search.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Microsoft/OneDrive/__schema__/v1.0.0/folder/search.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/b8e4cb5a4c911b912d0972f08c96ba9605f1b973",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Microsoft/OneDrive/__schema__/v1.0.0/folder/search.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJjcmVhdGVkRGF0ZVRpbWUiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJpZCI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImxh\nc3RNb2RpZmllZERhdGVUaW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgfSwKICAgICAgICAibmFtZSI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInNpemUi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwK\nICAgICAgICAid2ViVXJsIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgfSwKICAgICAgICAiY3JlYXRlZEJ5IjogewogICAgICAg\nICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGll\ncyI6IHsKICAgICAgICAgICAgICAgICJ1c2VyIjogewogICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICAgICAgICAg\nInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJkaXNw\nbGF5TmFtZSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAg\nICAgICAgICAgICAgICAgICAgImVtYWlsIjogewogICAgICAgICAgICAgICAg\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAg\nICAgICAgICB9CiAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAgICAgICAg\nICJkaXNwbGF5TmFtZSIKICAgICAgICAgICAgICAgICAgICBdCiAgICAgICAg\nICAgICAgICB9CiAgICAgICAgICAgIH0sCiAgICAgICAgICAgICJyZXF1aXJl\nZCI6IFsKICAgICAgICAgICAgICAgICJ1c2VyIgogICAgICAgICAgICBdCiAg\nICAgICAgfSwKICAgICAgICAibGFzdE1vZGlmaWVkQnkiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVz\nIjogewogICAgICAgICAgICAgICAgInVzZXIiOiB7CiAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgICAgICAgICAi\ncHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgImRpc3Bs\nYXlOYW1lIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAgICAgICB9LAogICAgICAg\nICAgICAgICAgICAgICAgICAiZW1haWwiOiB7CiAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAg\nICAgICAgIH0KICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAg\nICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICAgICAgICAg\nImRpc3BsYXlOYW1lIgogICAgICAgICAgICAgICAgICAgIF0KICAgICAgICAg\nICAgICAgIH0KICAgICAgICAgICAgfSwKICAgICAgICAgICAgInJlcXVpcmVk\nIjogWwogICAgICAgICAgICAgICAgInVzZXIiCiAgICAgICAgICAgIF0KICAg\nICAgICB9LAogICAgICAgICJwYXJlbnRSZWZlcmVuY2UiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVz\nIjogewogICAgICAgICAgICAgICAgImRyaXZlSWQiOiB7CiAgICAgICAgICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwK\nICAgICAgICAgICAgICAgICJkcml2ZVR5cGUiOiB7CiAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgICAgICJpZCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAg\nICAgInNpdGVJZCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0sCiAgICAg\nICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICJkcml2ZUlk\nIiwKICAgICAgICAgICAgICAgICJkcml2ZVR5cGUiLAogICAgICAgICAgICAg\nICAgImlkIgogICAgICAgICAgICBdCiAgICAgICAgfSwKICAgICAgICAiZmls\nZVN5c3RlbUluZm8iOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIs\nCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAg\nImNyZWF0ZWREYXRlVGltZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAg\nICAgImxhc3RNb2RpZmllZERhdGVUaW1lIjogewogICAgICAgICAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0KICAgICAg\nICAgICAgfSwKICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAg\nICAgICAgImNyZWF0ZWREYXRlVGltZSIsCiAgICAgICAgICAgICAgICAibGFz\ndE1vZGlmaWVkRGF0ZVRpbWUiCiAgICAgICAgICAgIF0KICAgICAgICB9LAog\nICAgICAgICJmb2xkZXIiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9iamVj\ndCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAg\nICAgImNoaWxkQ291bnQiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUi\nOiAiaW50ZWdlciIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfSwK\nICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgImNo\naWxkQ291bnQiCiAgICAgICAgICAgIF0KICAgICAgICB9CiAgICB9LAogICAg\nInJlcXVpcmVkIjogWwogICAgICAgICJjcmVhdGVkRGF0ZVRpbWUiLAogICAg\nICAgICJpZCIsCiAgICAgICAgImxhc3RNb2RpZmllZERhdGVUaW1lIiwKICAg\nICAgICAibmFtZSIsCiAgICAgICAgIndlYlVybCIsCiAgICAgICAgInBhcmVu\ndFJlZmVyZW5jZSIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Microsoft/OneDrive/__schema__/v1.0.0/folder/search.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/b8e4cb5a4c911b912d0972f08c96ba9605f1b973",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Microsoft/OneDrive/__schema__/v1.0.0/folder/search.json"
     },
-    "required": [
-        "createdDateTime",
-        "id",
-        "lastModifiedDateTime",
-        "name",
-        "webUrl",
-        "parentReference"
-    ]
+    "version": 1
 }

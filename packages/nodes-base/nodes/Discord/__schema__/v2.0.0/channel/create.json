@@ -1,32 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "type": {
-            "type": "integer"
-        },
-        "last_message_id": {
-            "type": "null"
-        },
-        "flags": {
-            "type": "integer"
-        },
-        "guild_id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "rate_limit_per_user": {
-            "type": "integer"
-        },
-        "position": {
-            "type": "integer"
-        },
-        "nsfw": {
-            "type": "boolean"
-        }
-    }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/Discord/__schema__/v2.0.0/channel/create.json",
+    "sha": "adadfdda1b301dfbc23e550b5faed7b633a39b9a",
+    "size": 609,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Discord/__schema__/v2.0.0/channel/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Discord/__schema__/v2.0.0/channel/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/adadfdda1b301dfbc23e550b5faed7b633a39b9a",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Discord/__schema__/v2.0.0/channel/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInR5cGUiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAgICAibGFzdF9tZXNzYWdl\nX2lkIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0s\nCiAgICAgICAgImZsYWdzIjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRl\nZ2VyIgogICAgICAgIH0sCiAgICAgICAgImd1aWxkX2lkIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAibmFt\nZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0s\nCiAgICAgICAgInJhdGVfbGltaXRfcGVyX3VzZXIiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAgICAicG9zaXRp\nb24iOiB7CiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAg\nfSwKICAgICAgICAibnNmdyI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9v\nbGVhbiIKICAgICAgICB9CiAgICB9Cn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Discord/__schema__/v2.0.0/channel/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/adadfdda1b301dfbc23e550b5faed7b633a39b9a",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Discord/__schema__/v2.0.0/channel/create.json"
+    },
+    "version": 1
 }

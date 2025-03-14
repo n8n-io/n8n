@@ -1,54 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "integer"
-        },
-        "username": {
-            "type": "string"
-        },
-        "email": {
-            "type": "string"
-        },
-        "initials": {
-            "type": "string"
-        },
-        "profileInfo": {
-            "type": "object",
-            "properties": {
-                "verified_ambassador": {
-                    "type": "null"
-                },
-                "verified_consultant": {
-                    "type": "null"
-                },
-                "viewed_verified_ambassador": {
-                    "type": "null"
-                },
-                "viewed_verified_consultant": {
-                    "type": "null"
-                }
-            },
-            "required": [
-                "display_profile",
-                "verified_ambassador",
-                "verified_consultant",
-                "top_tier_user",
-                "ai_expert",
-                "viewed_verified_ambassador",
-                "viewed_verified_consultant",
-                "viewed_top_tier_user",
-                "viewed_ai_expert"
-            ]
-        }
+    "name": "member.json",
+    "path": "packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/list/member.json",
+    "sha": "5937a25098b3c588381c464d03db9c61971a06c5",
+    "size": 1336,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/list/member.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/list/member.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5937a25098b3c588381c464d03db9c61971a06c5",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/list/member.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIK\nICAgICAgICB9LAogICAgICAgICJ1c2VybmFtZSI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImVtYWlsIjog\newogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAg\nICAgICAiaW5pdGlhbHMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJwcm9maWxlSW5mbyI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgInByb3BlcnRp\nZXMiOiB7CiAgICAgICAgICAgICAgICAidmVyaWZpZWRfYW1iYXNzYWRvciI6\nIHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAg\nICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJ2ZXJpZmllZF9jb25zdWx0\nYW50IjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInZpZXdlZF92ZXJp\nZmllZF9hbWJhc3NhZG9yIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogIm51bGwiCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAg\nInZpZXdlZF92ZXJpZmllZF9jb25zdWx0YW50IjogewogICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgICAgICAgICB9CiAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAg\nICAgICAgICJkaXNwbGF5X3Byb2ZpbGUiLAogICAgICAgICAgICAgICAgInZl\ncmlmaWVkX2FtYmFzc2Fkb3IiLAogICAgICAgICAgICAgICAgInZlcmlmaWVk\nX2NvbnN1bHRhbnQiLAogICAgICAgICAgICAgICAgInRvcF90aWVyX3VzZXIi\nLAogICAgICAgICAgICAgICAgImFpX2V4cGVydCIsCiAgICAgICAgICAgICAg\nICAidmlld2VkX3ZlcmlmaWVkX2FtYmFzc2Fkb3IiLAogICAgICAgICAgICAg\nICAgInZpZXdlZF92ZXJpZmllZF9jb25zdWx0YW50IiwKICAgICAgICAgICAg\nICAgICJ2aWV3ZWRfdG9wX3RpZXJfdXNlciIsCiAgICAgICAgICAgICAgICAi\ndmlld2VkX2FpX2V4cGVydCIKICAgICAgICAgICAgXQogICAgICAgIH0KICAg\nIH0sCiAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgImlkIiwKICAgICAgICAi\ndXNlcm5hbWUiLAogICAgICAgICJlbWFpbCIsCiAgICAgICAgImNvbG9yIiwK\nICAgICAgICAiaW5pdGlhbHMiLAogICAgICAgICJwcm9maWxlUGljdHVyZSIs\nCiAgICAgICAgInByb2ZpbGVJbmZvIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/list/member.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5937a25098b3c588381c464d03db9c61971a06c5",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/list/member.json"
     },
-    "required": [
-        "id",
-        "username",
-        "email",
-        "color",
-        "initials",
-        "profilePicture",
-        "profileInfo"
-    ]
+    "version": 1
 }

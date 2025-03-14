@@ -1,23 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "gid": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "resource_type": {
-            "type": "string"
-        },
-        "resource_subtype": {
-            "type": "string"
-        }
+    "name": "search.json",
+    "path": "packages/nodes-base/nodes/Asana/__schema__/v1.0.0/task/search.json",
+    "sha": "6926dd991f149f32bd51a62f06ba5c057687e1f3",
+    "size": 411,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Asana/__schema__/v1.0.0/task/search.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Asana/__schema__/v1.0.0/task/search.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/6926dd991f149f32bd51a62f06ba5c057687e1f3",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Asana/__schema__/v1.0.0/task/search.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJnaWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJuYW1lIjogewogICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAicmVzb3VyY2VfdHlw\nZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0s\nCiAgICAgICAgInJlc291cmNlX3N1YnR5cGUiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9CiAgICB9LAogICAgInJlcXVpcmVk\nIjogWwogICAgICAgICJnaWQiLAogICAgICAgICJuYW1lIiwKICAgICAgICAi\ncmVzb3VyY2VfdHlwZSIsCiAgICAgICAgInJlc291cmNlX3N1YnR5cGUiCiAg\nICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Asana/__schema__/v1.0.0/task/search.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/6926dd991f149f32bd51a62f06ba5c057687e1f3",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Asana/__schema__/v1.0.0/task/search.json"
     },
-    "required": [
-        "gid",
-        "name",
-        "resource_type",
-        "resource_subtype"
-    ]
+    "version": 1
 }

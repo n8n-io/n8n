@@ -1,0 +1,142 @@
+{
+    "type": "object",
+    "properties": {
+        "content": {
+            "type": "null"
+        },
+        "commit": {
+            "type": "object",
+            "properties": {
+                "sha": {
+                    "type": "string"
+                },
+                "node_id": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                },
+                "html_url": {
+                    "type": "string"
+                },
+                "author": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "email": {
+                            "type": "string"
+                        },
+                        "date": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "email",
+                        "date"
+                    ]
+                },
+                "committer": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "email": {
+                            "type": "string"
+                        },
+                        "date": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "email",
+                        "date"
+                    ]
+                },
+                "tree": {
+                    "type": "object",
+                    "properties": {
+                        "sha": {
+                            "type": "string"
+                        },
+                        "url": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "sha",
+                        "url"
+                    ]
+                },
+                "message": {
+                    "type": "string"
+                },
+                "parents": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "sha": {
+                                "type": "string"
+                            },
+                            "url": {
+                                "type": "string"
+                            },
+                            "html_url": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "sha",
+                            "url",
+                            "html_url"
+                        ]
+                    }
+                },
+                "verification": {
+                    "type": "object",
+                    "properties": {
+                        "verified": {
+                            "type": "boolean"
+                        },
+                        "reason": {
+                            "type": "string"
+                        },
+                        "signature": {
+                            "type": "null"
+                        },
+                        "payload": {
+                            "type": "null"
+                        },
+                        "verified_at": {
+                            "type": "null"
+                        }
+                    },
+                    "required": [
+                        "verified",
+                        "reason",
+                        "signature",
+                        "payload"
+                    ]
+                }
+            },
+            "required": [
+                "sha",
+                "node_id",
+                "url",
+                "html_url",
+                "author",
+                "committer",
+                "tree",
+                "message",
+                "parents",
+                "verification"
+            ]
+        }
+    },
+    "version": 1
+}

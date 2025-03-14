@@ -1,108 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "name": {
-            "type": "string"
-        },
-        "sender": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "displayName": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "name",
-                "displayName",
-                "type"
-            ]
-        },
-        "createTime": {
-            "type": "string"
-        },
-        "text": {
-            "type": "string"
-        },
-        "thread": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "name"
-            ]
-        },
-        "space": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "displayName": {
-                    "type": "string"
-                },
-                "spaceThreadingState": {
-                    "type": "string"
-                },
-                "spaceType": {
-                    "type": "string"
-                },
-                "spaceHistoryState": {
-                    "type": "string"
-                },
-                "createTime": {
-                    "type": "string"
-                },
-                "lastActiveTime": {
-                    "type": "string"
-                },
-                "membershipCount": {
-                    "type": "object",
-                    "properties": {
-                        "joinedDirectHumanUserCount": {
-                            "type": "integer"
-                        }
-                    },
-                    "required": [
-                        "joinedDirectHumanUserCount"
-                    ]
-                },
-                "spaceUri": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "name",
-                "type",
-                "spaceThreadingState",
-                "spaceType",
-                "spaceHistoryState",
-                "spaceUri"
-            ]
-        },
-        "argumentText": {
-            "type": "string"
-        },
-        "formattedText": {
-            "type": "string"
-        }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/Google/Chat/__schema__/v1.0.0/message/create.json",
+    "sha": "7572b1fb9bd1271252445ccc4062fdf03187a038",
+    "size": 2711,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Chat/__schema__/v1.0.0/message/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Chat/__schema__/v1.0.0/message/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/7572b1fb9bd1271252445ccc4062fdf03187a038",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/Chat/__schema__/v1.0.0/message/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJuYW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAic2VuZGVyIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsK\nICAgICAgICAgICAgICAgICJuYW1lIjogewogICAgICAgICAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAg\nICAgICAgICAiZGlzcGxheU5hbWUiOiB7CiAgICAgICAgICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAg\nICAgICAgICJ0eXBlIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgIm5hbWUi\nLAogICAgICAgICAgICAgICAgImRpc3BsYXlOYW1lIiwKICAgICAgICAgICAg\nICAgICJ0eXBlIgogICAgICAgICAgICBdCiAgICAgICAgfSwKICAgICAgICAi\nY3JlYXRlVGltZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInRleHQiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJ0aHJlYWQiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJwcm9w\nZXJ0aWVzIjogewogICAgICAgICAgICAgICAgIm5hbWUiOiB7CiAgICAgICAg\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAg\nfQogICAgICAgICAgICB9LAogICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAg\nICAgICAgICAgICAgICAibmFtZSIKICAgICAgICAgICAgXQogICAgICAgIH0s\nCiAgICAgICAgInNwYWNlIjogewogICAgICAgICAgICAidHlwZSI6ICJvYmpl\nY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAg\nICAgICJuYW1lIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAidHlw\nZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImRpc3BsYXlOYW1l\nIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAic3BhY2VUaHJlYWRp\nbmdTdGF0ZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInNwYWNl\nVHlwZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInNwYWNlSGlz\ndG9yeVN0YXRlIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiY3Jl\nYXRlVGltZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImxhc3RB\nY3RpdmVUaW1lIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAibWVt\nYmVyc2hpcENvdW50IjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nIm9iamVjdCIsCiAgICAgICAgICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7\nCiAgICAgICAgICAgICAgICAgICAgICAgICJqb2luZWREaXJlY3RIdW1hblVz\nZXJDb3VudCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogImludGVnZXIiCiAgICAgICAgICAgICAgICAgICAgICAgIH0KICAgICAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICJyZXF1aXJl\nZCI6IFsKICAgICAgICAgICAgICAgICAgICAgICAgImpvaW5lZERpcmVjdEh1\nbWFuVXNlckNvdW50IgogICAgICAgICAgICAgICAgICAgIF0KICAgICAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICAgICAic3BhY2VVcmkiOiB7CiAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAg\nICAgfQogICAgICAgICAgICB9LAogICAgICAgICAgICAicmVxdWlyZWQiOiBb\nCiAgICAgICAgICAgICAgICAibmFtZSIsCiAgICAgICAgICAgICAgICAidHlw\nZSIsCiAgICAgICAgICAgICAgICAic3BhY2VUaHJlYWRpbmdTdGF0ZSIsCiAg\nICAgICAgICAgICAgICAic3BhY2VUeXBlIiwKICAgICAgICAgICAgICAgICJz\ncGFjZUhpc3RvcnlTdGF0ZSIsCiAgICAgICAgICAgICAgICAic3BhY2VVcmki\nCiAgICAgICAgICAgIF0KICAgICAgICB9LAogICAgICAgICJhcmd1bWVudFRl\neHQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9\nLAogICAgICAgICJmb3JtYXR0ZWRUZXh0IjogewogICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgfQogICAgfSwKICAgICJyZXF1aXJlZCI6\nIFsKICAgICAgICAibmFtZSIsCiAgICAgICAgInNlbmRlciIsCiAgICAgICAg\nImNyZWF0ZVRpbWUiLAogICAgICAgICJ0aHJlYWQiLAogICAgICAgICJzcGFj\nZSIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Chat/__schema__/v1.0.0/message/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/7572b1fb9bd1271252445ccc4062fdf03187a038",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Chat/__schema__/v1.0.0/message/create.json"
     },
-    "required": [
-        "name",
-        "sender",
-        "createTime",
-        "thread",
-        "space"
-    ]
+    "version": 1
 }

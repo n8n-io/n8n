@@ -1,19 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "kind": {
-            "type": "string"
-        }
+    "name": "list.json",
+    "path": "packages/nodes-base/nodes/Google/Drive/__schema__/v3.0.0/drive/list.json",
+    "sha": "5e156717d9de6cab799bc941f365d2cccc2c916e",
+    "size": 293,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Drive/__schema__/v3.0.0/drive/list.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Drive/__schema__/v3.0.0/drive/list.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5e156717d9de6cab799bc941f365d2cccc2c916e",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/Drive/__schema__/v3.0.0/drive/list.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgIm5hbWUiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJraW5kIjogewogICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfQogICAgfSwKICAg\nICJyZXF1aXJlZCI6IFsKICAgICAgICAiaWQiLAogICAgICAgICJuYW1lIiwK\nICAgICAgICAia2luZCIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Drive/__schema__/v3.0.0/drive/list.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5e156717d9de6cab799bc941f365d2cccc2c916e",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Drive/__schema__/v3.0.0/drive/list.json"
     },
-    "required": [
-        "id",
-        "name",
-        "kind"
-    ]
+    "version": 1
 }

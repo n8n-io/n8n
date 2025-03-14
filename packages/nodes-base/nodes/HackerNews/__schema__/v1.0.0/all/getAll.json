@@ -1,122 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "_highlightResult": {
-            "type": "object",
-            "properties": {
-                "author": {
-                    "type": "object",
-                    "properties": {
-                        "matchLevel": {
-                            "type": "string"
-                        },
-                        "value": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "matchLevel",
-                        "matchedWords",
-                        "value"
-                    ]
-                },
-                "title": {
-                    "type": "object",
-                    "properties": {
-                        "matchLevel": {
-                            "type": "string"
-                        },
-                        "matchedWords": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
-                        },
-                        "value": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "matchLevel",
-                        "matchedWords",
-                        "value"
-                    ]
-                },
-                "url": {
-                    "type": "object",
-                    "properties": {
-                        "matchLevel": {
-                            "type": "string"
-                        },
-                        "matchedWords": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
-                        },
-                        "value": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "matchLevel",
-                        "matchedWords",
-                        "value"
-                    ]
-                }
-            },
-            "required": [
-                "author"
-            ]
-        },
-        "_tags": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "author": {
-            "type": "string"
-        },
-        "children": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
-        },
-        "created_at": {
-            "type": "string"
-        },
-        "created_at_i": {
-            "type": "integer"
-        },
-        "num_comments": {
-            "type": "integer"
-        },
-        "objectID": {
-            "type": "string"
-        },
-        "story_id": {
-            "type": "integer"
-        },
-        "title": {
-            "type": "string"
-        },
-        "updated_at": {
-            "type": "string"
-        },
-        "url": {
-            "type": "string"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/HackerNews/__schema__/v1.0.0/all/getAll.json",
+    "sha": "e6b27f6e47adbdb3cb3fd79ae98ac467797443c5",
+    "size": 3293,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/HackerNews/__schema__/v1.0.0/all/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/HackerNews/__schema__/v1.0.0/all/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/e6b27f6e47adbdb3cb3fd79ae98ac467797443c5",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/HackerNews/__schema__/v1.0.0/all/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJfaGlnaGxpZ2h0UmVzdWx0IjogewogICAgICAgICAgICAidHlw\nZSI6ICJvYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAg\nICAgICAgICAgICAgICJhdXRob3IiOiB7CiAgICAgICAgICAgICAgICAgICAg\nInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgICAgICAgICAicHJvcGVy\ndGllcyI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgIm1hdGNoTGV2ZWwi\nOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAg\nICAgICAgICAgICJ2YWx1ZSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAgICAg\nfQogICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAg\nInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgICAgICAgICAibWF0Y2hM\nZXZlbCIsCiAgICAgICAgICAgICAgICAgICAgICAgICJtYXRjaGVkV29yZHMi\nLAogICAgICAgICAgICAgICAgICAgICAgICAidmFsdWUiCiAgICAgICAgICAg\nICAgICAgICAgXQogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAg\nICJ0aXRsZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJvYmpl\nY3QiLAogICAgICAgICAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAg\nICAgICAgICAgICAgICAgICAgICAibWF0Y2hMZXZlbCI6IHsKICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAg\nICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAgICAgIm1h\ndGNoZWRXb3JkcyI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0\neXBlIjogImFycmF5IiwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJp\ndGVtcyI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgICAgICAgICB9CiAg\nICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAg\nICAgICJ2YWx1ZSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAgICAgfQogICAg\nICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgInJlcXVp\ncmVkIjogWwogICAgICAgICAgICAgICAgICAgICAgICAibWF0Y2hMZXZlbCIs\nCiAgICAgICAgICAgICAgICAgICAgICAgICJtYXRjaGVkV29yZHMiLAogICAg\nICAgICAgICAgICAgICAgICAgICAidmFsdWUiCiAgICAgICAgICAgICAgICAg\nICAgXQogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJ1cmwi\nOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAg\nICAgICAgICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAg\nICAgICAgICAgICAgIm1hdGNoTGV2ZWwiOiB7CiAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgICAgICJtYXRjaGVkV29y\nZHMiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJh\ncnJheSIsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAiaXRlbXMiOiB7\nCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgICAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAidmFs\ndWUiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAg\nICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICJyZXF1aXJlZCI6IFsK\nICAgICAgICAgICAgICAgICAgICAgICAgIm1hdGNoTGV2ZWwiLAogICAgICAg\nICAgICAgICAgICAgICAgICAibWF0Y2hlZFdvcmRzIiwKICAgICAgICAgICAg\nICAgICAgICAgICAgInZhbHVlIgogICAgICAgICAgICAgICAgICAgIF0KICAg\nICAgICAgICAgICAgIH0KICAgICAgICAgICAgfSwKICAgICAgICAgICAgInJl\ncXVpcmVkIjogWwogICAgICAgICAgICAgICAgImF1dGhvciIKICAgICAgICAg\nICAgXQogICAgICAgIH0sCiAgICAgICAgIl90YWdzIjogewogICAgICAgICAg\nICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAgICJpdGVtcyI6IHsKICAg\nICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgfQog\nICAgICAgIH0sCiAgICAgICAgImF1dGhvciI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImNoaWxkcmVuIjog\newogICAgICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAgICJp\ndGVtcyI6IHsKICAgICAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAg\nICAgICAgICAgIH0KICAgICAgICB9LAogICAgICAgICJjcmVhdGVkX2F0Ijog\newogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAg\nICAgICAiY3JlYXRlZF9hdF9pIjogewogICAgICAgICAgICAidHlwZSI6ICJp\nbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgIm51bV9jb21tZW50cyI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAogICAg\nICAgICJvYmplY3RJRCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgIH0sCiAgICAgICAgInN0b3J5X2lkIjogewogICAgICAgICAg\nICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgInRpdGxl\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwK\nICAgICAgICAidXBkYXRlZF9hdCI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInVybCI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0KICAgIH0sCiAgICAicmVx\ndWlyZWQiOiBbCiAgICAgICAgIl9oaWdobGlnaHRSZXN1bHQiLAogICAgICAg\nICJfdGFncyIsCiAgICAgICAgImF1dGhvciIsCiAgICAgICAgImNyZWF0ZWRf\nYXQiLAogICAgICAgICJjcmVhdGVkX2F0X2kiLAogICAgICAgICJvYmplY3RJ\nRCIsCiAgICAgICAgInN0b3J5X2lkIiwKICAgICAgICAidXBkYXRlZF9hdCIK\nICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/HackerNews/__schema__/v1.0.0/all/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/e6b27f6e47adbdb3cb3fd79ae98ac467797443c5",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/HackerNews/__schema__/v1.0.0/all/getAll.json"
     },
-    "required": [
-        "_highlightResult",
-        "_tags",
-        "author",
-        "created_at",
-        "created_at_i",
-        "objectID",
-        "story_id",
-        "updated_at"
-    ]
+    "version": 1
 }

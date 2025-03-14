@@ -1,0 +1,46 @@
+{
+    "type": "object",
+    "properties": {
+        "name": {
+            "type": "string"
+        },
+        "state": {
+            "type": "string"
+        },
+        "member": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "displayName": {
+                    "type": "string"
+                },
+                "domainId": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "type"
+            ]
+        },
+        "createTime": {
+            "type": "string"
+        },
+        "role": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "name",
+        "state",
+        "member",
+        "createTime",
+        "role"
+    ],
+    "version": 1
+}

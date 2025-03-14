@@ -1,32 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "kind": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "etag": {
-            "type": "string"
-        },
-        "title": {
-            "type": "string"
-        },
-        "updated": {
-            "type": "string"
-        },
-        "selfLink": {
-            "type": "string"
-        },
-        "position": {
-            "type": "string"
-        },
-        "status": {
-            "type": "string"
-        },
-        "webViewLink": {
-            "type": "string"
-        }
-    }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/Google/Task/__schema__/v1.0.0/task/create.json",
+    "sha": "1d8fc5722cd3e935928dbd456c49c2569883a5a5",
+    "size": 592,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Task/__schema__/v1.0.0/task/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Task/__schema__/v1.0.0/task/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/1d8fc5722cd3e935928dbd456c49c2569883a5a5",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/Task/__schema__/v1.0.0/task/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJraW5kIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAiaWQiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJldGFnIjogewogICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAi\ndGl0bGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICB9LAogICAgICAgICJ1cGRhdGVkIjogewogICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAic2VsZkxpbmsiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAg\nICJwb3NpdGlvbiI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInN0YXR1cyI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIndlYlZpZXdMaW5r\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfQog\nICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Task/__schema__/v1.0.0/task/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/1d8fc5722cd3e935928dbd456c49c2569883a5a5",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Task/__schema__/v1.0.0/task/create.json"
+    },
+    "version": 1
 }

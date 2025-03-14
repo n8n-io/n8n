@@ -1,42 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"@odata.context": {
-			"type": "string"
-		},
-		"id": {
-			"type": "string"
-		},
-		"createdDateTime": {
-			"type": "string"
-		},
-		"displayName": {
-			"type": "string"
-		},
-		"tenantId": {
-			"type": "string"
-		},
-		"webUrl": {
-			"type": "string"
-		},
-		"membershipType": {
-			"type": "string"
-		},
-		"isArchived": {
-			"type": "boolean"
-		}
-	},
-	"required": [
-		"@odata.context",
-		"id",
-		"createdDateTime",
-		"displayName",
-		"description",
-		"isFavoriteByDefault",
-		"email",
-		"tenantId",
-		"webUrl",
-		"membershipType",
-		"isArchived"
-	]
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/channel/get.json",
+    "sha": "a50b830fae659343d0beda08fb1433cbdbb25c64",
+    "size": 586,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/channel/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/channel/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/a50b830fae659343d0beda08fb1433cbdbb25c64",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/channel/get.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJAb2Rh\ndGEuY29udGV4dCI6IHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJImlk\nIjogewoJCQkidHlwZSI6ICJzdHJpbmciCgkJfSwKCQkiY3JlYXRlZERhdGVU\naW1lIjogewoJCQkidHlwZSI6ICJzdHJpbmciCgkJfSwKCQkiZGlzcGxheU5h\nbWUiOiB7CgkJCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJCSJ0ZW5hbnRJZCI6\nIHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJIndlYlVybCI6IHsKCQkJ\nInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJIm1lbWJlcnNoaXBUeXBlIjogewoJ\nCQkidHlwZSI6ICJzdHJpbmciCgkJfSwKCQkiaXNBcmNoaXZlZCI6IHsKCQkJ\nInR5cGUiOiAiYm9vbGVhbiIKCQl9Cgl9LAoJInJlcXVpcmVkIjogWwoJCSJA\nb2RhdGEuY29udGV4dCIsCgkJImlkIiwKCQkiY3JlYXRlZERhdGVUaW1lIiwK\nCQkiZGlzcGxheU5hbWUiLAoJCSJkZXNjcmlwdGlvbiIsCgkJImlzRmF2b3Jp\ndGVCeURlZmF1bHQiLAoJCSJlbWFpbCIsCgkJInRlbmFudElkIiwKCQkid2Vi\nVXJsIiwKCQkibWVtYmVyc2hpcFR5cGUiLAoJCSJpc0FyY2hpdmVkIgoJXQp9\nCg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/channel/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/a50b830fae659343d0beda08fb1433cbdbb25c64",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/channel/get.json"
+    },
+    "version": 1
 }

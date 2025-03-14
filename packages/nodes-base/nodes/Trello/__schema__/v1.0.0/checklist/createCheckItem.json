@@ -1,41 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"id": {
-			"type": "string"
-		},
-		"name": {
-			"type": "string"
-		},
-		"pos": {
-			"type": "integer"
-		},
-		"state": {
-			"type": "string"
-		},
-		"due": {
-			"type": "null"
-		},
-		"dueReminder": {
-			"type": "null"
-		},
-		"idMember": {
-			"type": "null"
-		},
-		"idChecklist": {
-			"type": "string"
-		}
-	},
-	"required": [
-		"id",
-		"name",
-		"nameData",
-		"pos",
-		"state",
-		"due",
-		"dueReminder",
-		"idMember",
-		"idChecklist",
-		"limits"
-	]
+    "name": "createCheckItem.json",
+    "path": "packages/nodes-base/nodes/Trello/__schema__/v1.0.0/checklist/createCheckItem.json",
+    "sha": "1347cdf429c3b7ed7a2504bbe5bc6df2f4a48956",
+    "size": 487,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Trello/__schema__/v1.0.0/checklist/createCheckItem.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Trello/__schema__/v1.0.0/checklist/createCheckItem.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/1347cdf429c3b7ed7a2504bbe5bc6df2f4a48956",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Trello/__schema__/v1.0.0/checklist/createCheckItem.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJpZCI6\nIHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJIm5hbWUiOiB7CgkJCSJ0\neXBlIjogInN0cmluZyIKCQl9LAoJCSJwb3MiOiB7CgkJCSJ0eXBlIjogImlu\ndGVnZXIiCgkJfSwKCQkic3RhdGUiOiB7CgkJCSJ0eXBlIjogInN0cmluZyIK\nCQl9LAoJCSJkdWUiOiB7CgkJCSJ0eXBlIjogIm51bGwiCgkJfSwKCQkiZHVl\nUmVtaW5kZXIiOiB7CgkJCSJ0eXBlIjogIm51bGwiCgkJfSwKCQkiaWRNZW1i\nZXIiOiB7CgkJCSJ0eXBlIjogIm51bGwiCgkJfSwKCQkiaWRDaGVja2xpc3Qi\nOiB7CgkJCSJ0eXBlIjogInN0cmluZyIKCQl9Cgl9LAoJInJlcXVpcmVkIjog\nWwoJCSJpZCIsCgkJIm5hbWUiLAoJCSJuYW1lRGF0YSIsCgkJInBvcyIsCgkJ\nInN0YXRlIiwKCQkiZHVlIiwKCQkiZHVlUmVtaW5kZXIiLAoJCSJpZE1lbWJl\nciIsCgkJImlkQ2hlY2tsaXN0IiwKCQkibGltaXRzIgoJXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Trello/__schema__/v1.0.0/checklist/createCheckItem.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/1347cdf429c3b7ed7a2504bbe5bc6df2f4a48956",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Trello/__schema__/v1.0.0/checklist/createCheckItem.json"
+    },
+    "version": 1
 }

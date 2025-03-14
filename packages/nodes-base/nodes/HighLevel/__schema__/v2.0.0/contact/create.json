@@ -1,96 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "tags": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "dateAdded": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
-        },
-        "locationId": {
-            "type": "string"
-        },
-        "firstName": {
-            "type": "string"
-        },
-        "firstNameLowerCase": {
-            "type": "string"
-        },
-        "fullNameLowerCase": {
-            "type": "string"
-        },
-        "lastName": {
-            "type": "string"
-        },
-        "lastNameLowerCase": {
-            "type": "string"
-        },
-        "email": {
-            "type": "string"
-        },
-        "emailLowerCase": {
-            "type": "string"
-        },
-        "phone": {
-            "type": "string"
-        },
-        "country": {
-            "type": "string"
-        },
-        "createdBy": {
-            "type": "object",
-            "properties": {
-                "source": {
-                    "type": "string"
-                },
-                "channel": {
-                    "type": "string"
-                },
-                "sourceId": {
-                    "type": "string"
-                },
-                "timestamp": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "source",
-                "channel",
-                "sourceId",
-                "timestamp"
-            ]
-        },
-        "dateUpdated": {
-            "type": "string"
-        },
-        "followers": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "customFields": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "id"
-                ]
-            }
-        }
-    }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/HighLevel/__schema__/v2.0.0/contact/create.json",
+    "sha": "e32af9488d6bb2defa65c2be443e5316a9fe0925",
+    "size": 2153,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/HighLevel/__schema__/v2.0.0/contact/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/HighLevel/__schema__/v2.0.0/contact/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/e32af9488d6bb2defa65c2be443e5316a9fe0925",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/HighLevel/__schema__/v2.0.0/contact/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInRhZ3MiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogImFycmF5IiwKICAgICAgICAgICAgIml0ZW1zIjogewogICAgICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICB9CiAgICAgICAg\nfSwKICAgICAgICAiZGF0ZUFkZGVkIjogewogICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAidHlwZSI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImxv\nY2F0aW9uSWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICB9LAogICAgICAgICJmaXJzdE5hbWUiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJmaXJzdE5hbWVM\nb3dlckNhc2UiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICB9LAogICAgICAgICJmdWxsTmFtZUxvd2VyQ2FzZSI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImxh\nc3ROYW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgfSwKICAgICAgICAibGFzdE5hbWVMb3dlckNhc2UiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJlbWFp\nbCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0s\nCiAgICAgICAgImVtYWlsTG93ZXJDYXNlIjogewogICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAicGhvbmUiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAg\nICJjb3VudHJ5IjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgfSwKICAgICAgICAiY3JlYXRlZEJ5IjogewogICAgICAgICAgICAi\ndHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsK\nICAgICAgICAgICAgICAgICJzb3VyY2UiOiB7CiAgICAgICAgICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAg\nICAgICAgICAgICJjaGFubmVsIjogewogICAgICAgICAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAg\nICAgICAic291cmNlSWQiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAg\nICJ0aW1lc3RhbXAiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9LAogICAg\nICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAic291cmNl\nIiwKICAgICAgICAgICAgICAgICJjaGFubmVsIiwKICAgICAgICAgICAgICAg\nICJzb3VyY2VJZCIsCiAgICAgICAgICAgICAgICAidGltZXN0YW1wIgogICAg\nICAgICAgICBdCiAgICAgICAgfSwKICAgICAgICAiZGF0ZVVwZGF0ZWQiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAg\nICAgICJmb2xsb3dlcnMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImFycmF5\nIiwKICAgICAgICAgICAgIml0ZW1zIjogewogICAgICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgICAgICB9CiAgICAgICAgfSwKICAgICAg\nICAiY3VzdG9tRmllbGRzIjogewogICAgICAgICAgICAidHlwZSI6ICJhcnJh\neSIsCiAgICAgICAgICAgICJpdGVtcyI6IHsKICAgICAgICAgICAgICAgICJ0\neXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICAgICAicHJvcGVydGllcyI6\nIHsKICAgICAgICAgICAgICAgICAgICAiaWQiOiB7CiAgICAgICAgICAgICAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAg\nICB9CiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInJlcXVp\ncmVkIjogWwogICAgICAgICAgICAgICAgICAgICJpZCIKICAgICAgICAgICAg\nICAgIF0KICAgICAgICAgICAgfQogICAgICAgIH0KICAgIH0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/HighLevel/__schema__/v2.0.0/contact/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/e32af9488d6bb2defa65c2be443e5316a9fe0925",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/HighLevel/__schema__/v2.0.0/contact/create.json"
+    },
+    "version": 1
 }

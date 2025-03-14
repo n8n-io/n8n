@@ -1,41 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "integer"
-        },
-        "name": {
-            "type": "string"
-        },
-        "domain": {
-            "type": "string"
-        },
-        "domains": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "crunchbase_uuid": {
-            "type": "null"
-        },
-        "global": {
-            "type": "boolean"
-        },
-        "person_ids": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
-        }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/Affinity/__schema__/v1.0.0/organization/create.json",
+    "sha": "7ace9d76bfcd82e6c79b7f5e41d47af2fda0fb3e",
+    "size": 778,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Affinity/__schema__/v1.0.0/organization/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Affinity/__schema__/v1.0.0/organization/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/7ace9d76bfcd82e6c79b7f5e41d47af2fda0fb3e",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Affinity/__schema__/v1.0.0/organization/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIK\nICAgICAgICB9LAogICAgICAgICJuYW1lIjogewogICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiZG9tYWluIjogewog\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAg\nICAiZG9tYWlucyI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYXJyYXkiLAog\nICAgICAgICAgICAiaXRlbXMiOiB7CiAgICAgICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgICAgIH0KICAgICAgICB9LAogICAgICAgICJj\ncnVuY2hiYXNlX3V1aWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwi\nCiAgICAgICAgfSwKICAgICAgICAiZ2xvYmFsIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgInBlcnNvbl9p\nZHMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImFycmF5IiwKICAgICAgICAg\nICAgIml0ZW1zIjogewogICAgICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdl\nciIKICAgICAgICAgICAgfQogICAgICAgIH0KICAgIH0sCiAgICAicmVxdWly\nZWQiOiBbCiAgICAgICAgImlkIiwKICAgICAgICAibmFtZSIsCiAgICAgICAg\nImRvbWFpbiIsCiAgICAgICAgImRvbWFpbnMiLAogICAgICAgICJjcnVuY2hi\nYXNlX3V1aWQiLAogICAgICAgICJnbG9iYWwiLAogICAgICAgICJwZXJzb25f\naWRzIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Affinity/__schema__/v1.0.0/organization/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/7ace9d76bfcd82e6c79b7f5e41d47af2fda0fb3e",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Affinity/__schema__/v1.0.0/organization/create.json"
     },
-    "required": [
-        "id",
-        "name",
-        "domain",
-        "domains",
-        "crunchbase_uuid",
-        "global",
-        "person_ids"
-    ]
+    "version": 1
 }

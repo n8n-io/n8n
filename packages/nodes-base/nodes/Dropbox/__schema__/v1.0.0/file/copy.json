@@ -1,72 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"metadata": {
-			"type": "object",
-			"properties": {
-				".tag": {
-					"type": "string"
-				},
-				"name": {
-					"type": "string"
-				},
-				"path_lower": {
-					"type": "string"
-				},
-				"path_display": {
-					"type": "string"
-				},
-				"id": {
-					"type": "string"
-				},
-				"client_modified": {
-					"type": "string"
-				},
-				"server_modified": {
-					"type": "string"
-				},
-				"rev": {
-					"type": "string"
-				},
-				"size": {
-					"type": "integer"
-				},
-				"is_downloadable": {
-					"type": "boolean"
-				},
-				"content_hash": {
-					"type": "string"
-				},
-				"parent_shared_folder_id": {
-					"type": "string"
-				},
-				"sharing_info": {
-					"type": "object",
-					"properties": {
-						"read_only": {
-							"type": "boolean"
-						},
-						"parent_shared_folder_id": {
-							"type": "string"
-						},
-						"modified_by": {
-							"type": "string"
-						}
-					},
-					"required": [
-						"read_only",
-						"parent_shared_folder_id",
-						"modified_by"
-					]
-				}
-			},
-			"required": [
-				".tag",
-				"name",
-				"path_lower",
-				"path_display",
-				"id"
-			]
-		}
-	}
+    "name": "copy.json",
+    "path": "packages/nodes-base/nodes/Dropbox/__schema__/v1.0.0/file/copy.json",
+    "sha": "1d426f9f22f77c755e37beb70543ad0c5bf6270e",
+    "size": 1147,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Dropbox/__schema__/v1.0.0/file/copy.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Dropbox/__schema__/v1.0.0/file/copy.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/1d426f9f22f77c755e37beb70543ad0c5bf6270e",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Dropbox/__schema__/v1.0.0/file/copy.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJtZXRh\nZGF0YSI6IHsKCQkJInR5cGUiOiAib2JqZWN0IiwKCQkJInByb3BlcnRpZXMi\nOiB7CgkJCQkiLnRhZyI6IHsKCQkJCQkidHlwZSI6ICJzdHJpbmciCgkJCQl9\nLAoJCQkJIm5hbWUiOiB7CgkJCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJfSwK\nCQkJCSJwYXRoX2xvd2VyIjogewoJCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJ\nCX0sCgkJCQkicGF0aF9kaXNwbGF5IjogewoJCQkJCSJ0eXBlIjogInN0cmlu\nZyIKCQkJCX0sCgkJCQkiaWQiOiB7CgkJCQkJInR5cGUiOiAic3RyaW5nIgoJ\nCQkJfSwKCQkJCSJjbGllbnRfbW9kaWZpZWQiOiB7CgkJCQkJInR5cGUiOiAi\nc3RyaW5nIgoJCQkJfSwKCQkJCSJzZXJ2ZXJfbW9kaWZpZWQiOiB7CgkJCQkJ\nInR5cGUiOiAic3RyaW5nIgoJCQkJfSwKCQkJCSJyZXYiOiB7CgkJCQkJInR5\ncGUiOiAic3RyaW5nIgoJCQkJfSwKCQkJCSJzaXplIjogewoJCQkJCSJ0eXBl\nIjogImludGVnZXIiCgkJCQl9LAoJCQkJImlzX2Rvd25sb2FkYWJsZSI6IHsK\nCQkJCQkidHlwZSI6ICJib29sZWFuIgoJCQkJfSwKCQkJCSJjb250ZW50X2hh\nc2giOiB7CgkJCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJfSwKCQkJCSJwYXJl\nbnRfc2hhcmVkX2ZvbGRlcl9pZCI6IHsKCQkJCQkidHlwZSI6ICJzdHJpbmci\nCgkJCQl9LAoJCQkJInNoYXJpbmdfaW5mbyI6IHsKCQkJCQkidHlwZSI6ICJv\nYmplY3QiLAoJCQkJCSJwcm9wZXJ0aWVzIjogewoJCQkJCQkicmVhZF9vbmx5\nIjogewoJCQkJCQkJInR5cGUiOiAiYm9vbGVhbiIKCQkJCQkJfSwKCQkJCQkJ\nInBhcmVudF9zaGFyZWRfZm9sZGVyX2lkIjogewoJCQkJCQkJInR5cGUiOiAi\nc3RyaW5nIgoJCQkJCQl9LAoJCQkJCQkibW9kaWZpZWRfYnkiOiB7CgkJCQkJ\nCQkidHlwZSI6ICJzdHJpbmciCgkJCQkJCX0KCQkJCQl9LAoJCQkJCSJyZXF1\naXJlZCI6IFsKCQkJCQkJInJlYWRfb25seSIsCgkJCQkJCSJwYXJlbnRfc2hh\ncmVkX2ZvbGRlcl9pZCIsCgkJCQkJCSJtb2RpZmllZF9ieSIKCQkJCQldCgkJ\nCQl9CgkJCX0sCgkJCSJyZXF1aXJlZCI6IFsKCQkJCSIudGFnIiwKCQkJCSJu\nYW1lIiwKCQkJCSJwYXRoX2xvd2VyIiwKCQkJCSJwYXRoX2Rpc3BsYXkiLAoJ\nCQkJImlkIgoJCQldCgkJfQoJfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Dropbox/__schema__/v1.0.0/file/copy.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/1d426f9f22f77c755e37beb70543ad0c5bf6270e",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Dropbox/__schema__/v1.0.0/file/copy.json"
+    },
+    "version": 1
 }

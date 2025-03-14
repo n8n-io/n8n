@@ -1,31 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "finished": {
-            "type": "boolean"
-        },
-        "mode": {
-            "type": "string"
-        },
-        "stoppedAt": {
-            "type": "string"
-        },
-        "workflowId": {
-            "type": "string"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/N8nTrainingCustomerDatastore/__schema__/v1.0.0/execution/getAll.json",
+    "sha": "77e45e01fdac47bfe01170b4241f944536b36480",
+    "size": 558,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/N8nTrainingCustomerDatastore/__schema__/v1.0.0/execution/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/N8nTrainingCustomerDatastore/__schema__/v1.0.0/execution/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/77e45e01fdac47bfe01170b4241f944536b36480",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/N8nTrainingCustomerDatastore/__schema__/v1.0.0/execution/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgImZpbmlzaGVkIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgIm1vZGUiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAg\nICAgICJzdG9wcGVkQXQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJ3b3JrZmxvd0lkIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfQogICAgfSwKICAgICJy\nZXF1aXJlZCI6IFsKICAgICAgICAiaWQiLAogICAgICAgICJmaW5pc2hlZCIs\nCiAgICAgICAgIm1vZGUiLAogICAgICAgICJyZXRyeU9mIiwKICAgICAgICAi\ncmV0cnlTdWNjZXNzSWQiLAogICAgICAgICJzdGFydGVkQXQiLAogICAgICAg\nICJzdG9wcGVkQXQiLAogICAgICAgICJ3b3JrZmxvd0lkIiwKICAgICAgICAi\nd2FpdFRpbGwiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/N8nTrainingCustomerDatastore/__schema__/v1.0.0/execution/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/77e45e01fdac47bfe01170b4241f944536b36480",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/N8nTrainingCustomerDatastore/__schema__/v1.0.0/execution/getAll.json"
     },
-    "required": [
-        "id",
-        "finished",
-        "mode",
-        "retryOf",
-        "retrySuccessId",
-        "startedAt",
-        "stoppedAt",
-        "workflowId",
-        "waitTill"
-    ]
+    "version": 1
 }

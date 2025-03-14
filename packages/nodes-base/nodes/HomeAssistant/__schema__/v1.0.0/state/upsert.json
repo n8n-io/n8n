@@ -1,48 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"entity_id": {
-			"type": "string"
-		},
-		"state": {
-			"type": "string"
-		},
-		"last_changed": {
-			"type": "string"
-		},
-		"last_reported": {
-			"type": "string"
-		},
-		"last_updated": {
-			"type": "string"
-		},
-		"context": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "string"
-				},
-				"parent_id": {
-					"type": "null"
-				},
-				"user_id": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"id",
-				"parent_id",
-				"user_id"
-			]
-		}
-	},
-	"required": [
-		"entity_id",
-		"state",
-		"attributes",
-		"last_changed",
-		"last_reported",
-		"last_updated",
-		"context"
-	]
+    "name": "upsert.json",
+    "path": "packages/nodes-base/nodes/HomeAssistant/__schema__/v1.0.0/state/upsert.json",
+    "sha": "5db40462d66dbf848512c15d8a57966abfb18917",
+    "size": 647,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/HomeAssistant/__schema__/v1.0.0/state/upsert.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/HomeAssistant/__schema__/v1.0.0/state/upsert.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5db40462d66dbf848512c15d8a57966abfb18917",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/HomeAssistant/__schema__/v1.0.0/state/upsert.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJlbnRp\ndHlfaWQiOiB7CgkJCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJCSJzdGF0ZSI6\nIHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJImxhc3RfY2hhbmdlZCI6\nIHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJImxhc3RfcmVwb3J0ZWQi\nOiB7CgkJCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJCSJsYXN0X3VwZGF0ZWQi\nOiB7CgkJCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJCSJjb250ZXh0IjogewoJ\nCQkidHlwZSI6ICJvYmplY3QiLAoJCQkicHJvcGVydGllcyI6IHsKCQkJCSJp\nZCI6IHsKCQkJCQkidHlwZSI6ICJzdHJpbmciCgkJCQl9LAoJCQkJInBhcmVu\ndF9pZCI6IHsKCQkJCQkidHlwZSI6ICJudWxsIgoJCQkJfSwKCQkJCSJ1c2Vy\nX2lkIjogewoJCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJCX0KCQkJfSwKCQkJ\nInJlcXVpcmVkIjogWwoJCQkJImlkIiwKCQkJCSJwYXJlbnRfaWQiLAoJCQkJ\nInVzZXJfaWQiCgkJCV0KCQl9Cgl9LAoJInJlcXVpcmVkIjogWwoJCSJlbnRp\ndHlfaWQiLAoJCSJzdGF0ZSIsCgkJImF0dHJpYnV0ZXMiLAoJCSJsYXN0X2No\nYW5nZWQiLAoJCSJsYXN0X3JlcG9ydGVkIiwKCQkibGFzdF91cGRhdGVkIiwK\nCQkiY29udGV4dCIKCV0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/HomeAssistant/__schema__/v1.0.0/state/upsert.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5db40462d66dbf848512c15d8a57966abfb18917",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/HomeAssistant/__schema__/v1.0.0/state/upsert.json"
+    },
+    "version": 1
 }

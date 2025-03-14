@@ -1,59 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "integer"
-        },
-        "list_id": {
-            "type": "integer"
-        },
-        "creator_id": {
-            "type": "integer"
-        },
-        "entity_id": {
-            "type": "integer"
-        },
-        "entity_type": {
-            "type": "integer"
-        },
-        "created_at": {
-            "type": "string"
-        },
-        "entity": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "domains": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "crunchbase_uuid": {
-                    "type": "null"
-                },
-                "global": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "id",
-                "name"
-            ]
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Affinity/__schema__/v1.0.0/listEntry/getAll.json",
+    "sha": "db7b0aa8091fe2bf0f61dc829cb44f733161d175",
+    "size": 1298,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Affinity/__schema__/v1.0.0/listEntry/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Affinity/__schema__/v1.0.0/listEntry/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/db7b0aa8091fe2bf0f61dc829cb44f733161d175",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Affinity/__schema__/v1.0.0/listEntry/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIK\nICAgICAgICB9LAogICAgICAgICJsaXN0X2lkIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgImNyZWF0b3Jf\naWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAg\nfSwKICAgICAgICAiZW50aXR5X2lkIjogewogICAgICAgICAgICAidHlwZSI6\nICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgImVudGl0eV90eXBlIjog\newogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAg\nICAgICAgImNyZWF0ZWRfYXQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJlbnRpdHkiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVz\nIjogewogICAgICAgICAgICAgICAgImlkIjogewogICAgICAgICAgICAgICAg\nICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgICAgICAgICB9LAogICAg\nICAgICAgICAgICAgIm5hbWUiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nICAgICJkb21haW5zIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nImFycmF5IiwKICAgICAgICAgICAgICAgICAgICAiaXRlbXMiOiB7CiAgICAg\nICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAg\nICAgICAgICAgICB9CiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAg\nICAgImNydW5jaGJhc2VfdXVpZCI6IHsKICAgICAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJudWxsIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nICAgICJnbG9iYWwiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAi\nYm9vbGVhbiIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgImlkIiwK\nICAgICAgICAgICAgICAgICJuYW1lIgogICAgICAgICAgICBdCiAgICAgICAg\nfQogICAgfSwKICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAiaWQiLAogICAg\nICAgICJsaXN0X2lkIiwKICAgICAgICAiY3JlYXRvcl9pZCIsCiAgICAgICAg\nImVudGl0eV9pZCIsCiAgICAgICAgImVudGl0eV90eXBlIiwKICAgICAgICAi\nY3JlYXRlZF9hdCIsCiAgICAgICAgImVudGl0eSIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Affinity/__schema__/v1.0.0/listEntry/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/db7b0aa8091fe2bf0f61dc829cb44f733161d175",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Affinity/__schema__/v1.0.0/listEntry/getAll.json"
     },
-    "required": [
-        "id",
-        "list_id",
-        "creator_id",
-        "entity_id",
-        "entity_type",
-        "created_at",
-        "entity"
-    ]
+    "version": 1
 }

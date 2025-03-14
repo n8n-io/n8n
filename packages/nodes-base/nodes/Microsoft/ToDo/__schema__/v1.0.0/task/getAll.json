@@ -1,81 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "@odata.etag": {
-            "type": "string"
-        },
-        "importance": {
-            "type": "string"
-        },
-        "isReminderOn": {
-            "type": "boolean"
-        },
-        "status": {
-            "type": "string"
-        },
-        "title": {
-            "type": "string"
-        },
-        "createdDateTime": {
-            "type": "string"
-        },
-        "lastModifiedDateTime": {
-            "type": "string"
-        },
-        "hasAttachments": {
-            "type": "boolean"
-        },
-        "categories": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "id": {
-            "type": "string"
-        },
-        "body": {
-            "type": "object",
-            "properties": {
-                "content": {
-                    "type": "string"
-                },
-                "contentType": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "content",
-                "contentType"
-            ]
-        },
-        "completedDateTime": {
-            "type": "object",
-            "properties": {
-                "dateTime": {
-                    "type": "string"
-                },
-                "timeZone": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "dateTime",
-                "timeZone"
-            ]
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Microsoft/ToDo/__schema__/v1.0.0/task/getAll.json",
+    "sha": "e3e3a3f6f84102543512f820f93e79fe4d9e52ec",
+    "size": 1786,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Microsoft/ToDo/__schema__/v1.0.0/task/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Microsoft/ToDo/__schema__/v1.0.0/task/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/e3e3a3f6f84102543512f820f93e79fe4d9e52ec",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Microsoft/ToDo/__schema__/v1.0.0/task/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJAb2RhdGEuZXRhZyI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImltcG9ydGFuY2UiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAg\nICJpc1JlbWluZGVyT24iOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJvb2xl\nYW4iCiAgICAgICAgfSwKICAgICAgICAic3RhdHVzIjogewogICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAidGl0bGUi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAog\nICAgICAgICJjcmVhdGVkRGF0ZVRpbWUiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJsYXN0TW9kaWZpZWRE\nYXRlVGltZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgIH0sCiAgICAgICAgImhhc0F0dGFjaG1lbnRzIjogewogICAgICAgICAg\nICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgImNhdGVn\nb3JpZXMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImFycmF5IiwKICAgICAg\nICAgICAgIml0ZW1zIjogewogICAgICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgICAgICB9CiAgICAgICAgfSwKICAgICAgICAiaWQiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAg\nICAgICJib2R5IjogewogICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAog\nICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICJj\nb250ZW50IjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiY29udGVu\ndFR5cGUiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9LAogICAgICAgICAg\nICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAiY29udGVudCIsCiAg\nICAgICAgICAgICAgICAiY29udGVudFR5cGUiCiAgICAgICAgICAgIF0KICAg\nICAgICB9LAogICAgICAgICJjb21wbGV0ZWREYXRlVGltZSI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgInByb3BlcnRp\nZXMiOiB7CiAgICAgICAgICAgICAgICAiZGF0ZVRpbWUiOiB7CiAgICAgICAg\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAg\nfSwKICAgICAgICAgICAgICAgICJ0aW1lWm9uZSI6IHsKICAgICAgICAgICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9CiAg\nICAgICAgICAgIH0sCiAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAg\nICAgICAgICAgICJkYXRlVGltZSIsCiAgICAgICAgICAgICAgICAidGltZVpv\nbmUiCiAgICAgICAgICAgIF0KICAgICAgICB9CiAgICB9LAogICAgInJlcXVp\ncmVkIjogWwogICAgICAgICJAb2RhdGEuZXRhZyIsCiAgICAgICAgImltcG9y\ndGFuY2UiLAogICAgICAgICJpc1JlbWluZGVyT24iLAogICAgICAgICJzdGF0\ndXMiLAogICAgICAgICJ0aXRsZSIsCiAgICAgICAgImNyZWF0ZWREYXRlVGlt\nZSIsCiAgICAgICAgImxhc3RNb2RpZmllZERhdGVUaW1lIiwKICAgICAgICAi\naGFzQXR0YWNobWVudHMiLAogICAgICAgICJjYXRlZ29yaWVzIiwKICAgICAg\nICAiaWQiLAogICAgICAgICJib2R5IgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Microsoft/ToDo/__schema__/v1.0.0/task/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/e3e3a3f6f84102543512f820f93e79fe4d9e52ec",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Microsoft/ToDo/__schema__/v1.0.0/task/getAll.json"
     },
-    "required": [
-        "@odata.etag",
-        "importance",
-        "isReminderOn",
-        "status",
-        "title",
-        "createdDateTime",
-        "lastModifiedDateTime",
-        "hasAttachments",
-        "categories",
-        "id",
-        "body"
-    ]
+    "version": 1
 }

@@ -1,45 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "lastUpdated": {
-            "type": "string"
-        },
-        "createdOn": {
-            "type": "string"
-        },
-        "isArchived": {
-            "type": "boolean"
-        },
-        "fieldData": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "slug": {
-                    "type": "string"
-                },
-                "body": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "name",
-                "slug"
-            ]
-        }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Webflow/__schema__/v2.0.0/item/get.json",
+    "sha": "c1aae54925e44f3102a7b0e2986bb1440b295a61",
+    "size": 931,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Webflow/__schema__/v2.0.0/item/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Webflow/__schema__/v2.0.0/item/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/c1aae54925e44f3102a7b0e2986bb1440b295a61",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Webflow/__schema__/v2.0.0/item/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgImxhc3RVcGRhdGVkIjogewogICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiY3JlYXRl\nZE9uIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nfSwKICAgICAgICAiaXNBcmNoaXZlZCI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAiYm9vbGVhbiIKICAgICAgICB9LAogICAgICAgICJmaWVsZERhdGEiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJw\ncm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgIm5hbWUiOiB7CiAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAg\nICAgfSwKICAgICAgICAgICAgICAgICJzbHVnIjogewogICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAg\nICAgICAgICAgICAgICAiYm9keSI6IHsKICAgICAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAg\nIH0sCiAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAg\nICJuYW1lIiwKICAgICAgICAgICAgICAgICJzbHVnIgogICAgICAgICAgICBd\nCiAgICAgICAgfQogICAgfSwKICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAi\naWQiLAogICAgICAgICJjbXNMb2NhbGVJZCIsCiAgICAgICAgImxhc3RQdWJs\naXNoZWQiLAogICAgICAgICJsYXN0VXBkYXRlZCIsCiAgICAgICAgImNyZWF0\nZWRPbiIsCiAgICAgICAgImlzQXJjaGl2ZWQiLAogICAgICAgICJpc0RyYWZ0\nIiwKICAgICAgICAiZmllbGREYXRhIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Webflow/__schema__/v2.0.0/item/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/c1aae54925e44f3102a7b0e2986bb1440b295a61",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Webflow/__schema__/v2.0.0/item/get.json"
     },
-    "required": [
-        "id",
-        "cmsLocaleId",
-        "lastPublished",
-        "lastUpdated",
-        "createdOn",
-        "isArchived",
-        "isDraft",
-        "fieldData"
-    ]
+    "version": 1
 }

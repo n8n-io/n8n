@@ -1,11 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "success": {
-            "type": "boolean"
-        },
-        "error": {
-            "type": "string"
-        }
-    }
+    "name": "resume.json",
+    "path": "packages/nodes-base/nodes/Spotify/__schema__/v1.0.0/player/resume.json",
+    "sha": "9f6e8389bdcb280e44bceb4f042d817d09fc2983",
+    "size": 172,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Spotify/__schema__/v1.0.0/player/resume.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Spotify/__schema__/v1.0.0/player/resume.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/9f6e8389bdcb280e44bceb4f042d817d09fc2983",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Spotify/__schema__/v1.0.0/player/resume.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJzdWNjZXNzIjogewogICAgICAgICAgICAidHlwZSI6ICJib29s\nZWFuIgogICAgICAgIH0sCiAgICAgICAgImVycm9yIjogewogICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfQogICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Spotify/__schema__/v1.0.0/player/resume.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/9f6e8389bdcb280e44bceb4f042d817d09fc2983",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Spotify/__schema__/v1.0.0/player/resume.json"
+    },
+    "version": 1
 }

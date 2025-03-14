@@ -1,75 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "text": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
-        },
-        "ts": {
-            "type": "string"
-        },
-        "thread_ts": {
-            "type": "string"
-        },
-        "blocks": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "type": {
-                        "type": "string"
-                    },
-                    "block_id": {
-                        "type": "string"
-                    },
-                    "elements": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "type": {
-                                    "type": "string"
-                                },
-                                "elements": {
-                                    "type": "array",
-                                    "items": {
-                                        "type": "object",
-                                        "properties": {
-                                            "type": {
-                                                "type": "string"
-                                            },
-                                            "text": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "required": [
-                                            "type"
-                                        ]
-                                    }
-                                }
-                            },
-                            "required": [
-                                "type"
-                            ]
-                        }
-                    }
-                },
-                "required": [
-                    "type",
-                    "block_id"
-                ]
-            }
-        },
-        "user": {
-            "type": "string"
-        },
-        "client_msg_id": {
-            "type": "string"
-        },
-        "team": {
-            "type": "string"
-        }
-    }
+    "name": "replies.json",
+    "path": "packages/nodes-base/nodes/Slack/__schema__/v2.3.0/channel/replies.json",
+    "sha": "5d99a2d273d88856c5283e60ebf5cc7ee789c91f",
+    "size": 2323,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/channel/replies.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/channel/replies.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5d99a2d273d88856c5283e60ebf5cc7ee789c91f",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/channel/replies.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJ0ZXh0IjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAidHlwZSI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInRzIjogewogICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAi\ndGhyZWFkX3RzIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgfSwKICAgICAgICAiYmxvY2tzIjogewogICAgICAgICAgICAidHlw\nZSI6ICJhcnJheSIsCiAgICAgICAgICAgICJpdGVtcyI6IHsKICAgICAgICAg\nICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICAgICAicHJv\ncGVydGllcyI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6IHsKICAg\nICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgImJsb2NrX2lk\nIjogewogICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAi\nZWxlbWVudHMiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nImFycmF5IiwKICAgICAgICAgICAgICAgICAgICAgICAgIml0ZW1zIjogewog\nICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwK\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogewogICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAiZWxlbWVudHMiOiB7CiAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImFycmF5\nIiwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIml0ZW1z\nIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogewogICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAidGV4dCI6IHsKICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0K\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAicmVxdWly\nZWQiOiBbCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgInR5cGUiCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICBdCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nIH0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAg\nICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICJ0eXBlIgogICAgICAgICAgICAgICAgICAgICAgICAgICAgXQog\nICAgICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICAgICAg\nfQogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJyZXF1aXJl\nZCI6IFsKICAgICAgICAgICAgICAgICAgICAidHlwZSIsCiAgICAgICAgICAg\nICAgICAgICAgImJsb2NrX2lkIgogICAgICAgICAgICAgICAgXQogICAgICAg\nICAgICB9CiAgICAgICAgfSwKICAgICAgICAidXNlciI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImNsaWVu\ndF9tc2dfaWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICB9LAogICAgICAgICJ0ZWFtIjogewogICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgfQogICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/channel/replies.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5d99a2d273d88856c5283e60ebf5cc7ee789c91f",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/channel/replies.json"
+    },
+    "version": 1
 }

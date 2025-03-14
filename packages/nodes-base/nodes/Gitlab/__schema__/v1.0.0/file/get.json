@@ -1,38 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "file_name": {
-            "type": "string"
-        },
-        "file_path": {
-            "type": "string"
-        },
-        "size": {
-            "type": "integer"
-        },
-        "encoding": {
-            "type": "string"
-        },
-        "content_sha256": {
-            "type": "string"
-        },
-        "ref": {
-            "type": "string"
-        },
-        "blob_id": {
-            "type": "string"
-        },
-        "commit_id": {
-            "type": "string"
-        },
-        "last_commit_id": {
-            "type": "string"
-        },
-        "execute_filemode": {
-            "type": "boolean"
-        },
-        "content": {
-            "type": "string"
-        }
-    }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Gitlab/__schema__/v1.0.0/file/get.json",
+    "sha": "7923992b81f04a873b1f93a0af589aff1da3116f",
+    "size": 747,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Gitlab/__schema__/v1.0.0/file/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Gitlab/__schema__/v1.0.0/file/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/7923992b81f04a873b1f93a0af589aff1da3116f",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Gitlab/__schema__/v1.0.0/file/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJmaWxlX25hbWUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJmaWxlX3BhdGgiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJz\naXplIjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAg\nIH0sCiAgICAgICAgImVuY29kaW5nIjogewogICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiY29udGVudF9zaGEyNTYi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAog\nICAgICAgICJyZWYiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJibG9iX2lkIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiY29tbWl0X2lk\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwK\nICAgICAgICAibGFzdF9jb21taXRfaWQiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJleGVjdXRlX2ZpbGVt\nb2RlIjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAg\nIH0sCiAgICAgICAgImNvbnRlbnQiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICB9CiAgICB9Cn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Gitlab/__schema__/v1.0.0/file/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/7923992b81f04a873b1f93a0af589aff1da3116f",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Gitlab/__schema__/v1.0.0/file/get.json"
+    },
+    "version": 1
 }

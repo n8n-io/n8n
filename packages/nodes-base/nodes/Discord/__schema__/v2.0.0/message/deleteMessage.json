@@ -1,8 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "success": {
-            "type": "boolean"
-        }
-    }
+    "name": "deleteMessage.json",
+    "path": "packages/nodes-base/nodes/Discord/__schema__/v2.0.0/message/deleteMessage.json",
+    "sha": "7283b69893df3efbd76db2255f34d73f310d345e",
+    "size": 113,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Discord/__schema__/v2.0.0/message/deleteMessage.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Discord/__schema__/v2.0.0/message/deleteMessage.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/7283b69893df3efbd76db2255f34d73f310d345e",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Discord/__schema__/v2.0.0/message/deleteMessage.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJzdWNjZXNzIjogewogICAgICAgICAgICAidHlwZSI6ICJib29s\nZWFuIgogICAgICAgIH0KICAgIH0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Discord/__schema__/v2.0.0/message/deleteMessage.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/7283b69893df3efbd76db2255f34d73f310d345e",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Discord/__schema__/v2.0.0/message/deleteMessage.json"
+    },
+    "version": 1
 }

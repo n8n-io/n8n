@@ -1,11 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "event_id": {
-            "type": "string"
-        }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/Matrix/__schema__/v1.0.0/message/create.json",
+    "sha": "f87c5266d963db49fb12c1e1bd8bbdca877149b6",
+    "size": 157,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Matrix/__schema__/v1.0.0/message/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Matrix/__schema__/v1.0.0/message/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/f87c5266d963db49fb12c1e1bd8bbdca877149b6",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Matrix/__schema__/v1.0.0/message/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJldmVudF9pZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgIH0KICAgIH0sCiAgICAicmVxdWlyZWQiOiBbCiAgICAg\nICAgImV2ZW50X2lkIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Matrix/__schema__/v1.0.0/message/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/f87c5266d963db49fb12c1e1bd8bbdca877149b6",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Matrix/__schema__/v1.0.0/message/create.json"
     },
-    "required": [
-        "event_id"
-    ]
+    "version": 1
 }

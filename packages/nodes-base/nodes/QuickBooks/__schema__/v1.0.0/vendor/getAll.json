@@ -1,168 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"Vendor1099": {
-			"type": "boolean"
-		},
-		"CurrencyRef": {
-			"type": "object",
-			"properties": {
-				"value": {
-					"type": "string"
-				},
-				"name": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"value",
-				"name"
-			]
-		},
-		"domain": {
-			"type": "string"
-		},
-		"sparse": {
-			"type": "boolean"
-		},
-		"Id": {
-			"type": "string"
-		},
-		"SyncToken": {
-			"type": "string"
-		},
-		"MetaData": {
-			"type": "object",
-			"properties": {
-				"CreateTime": {
-					"type": "string"
-				},
-				"LastUpdatedTime": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"CreateTime",
-				"LastUpdatedTime"
-			]
-		},
-		"DisplayName": {
-			"type": "string"
-		},
-		"PrintOnCheckName": {
-			"type": "string"
-		},
-		"Active": {
-			"type": "boolean"
-		},
-		"BillAddr": {
-			"type": "object",
-			"properties": {
-				"Id": {
-					"type": "string"
-				},
-				"Line1": {
-					"type": "string"
-				},
-				"City": {
-					"type": "string"
-				},
-				"CountrySubDivisionCode": {
-					"type": "string"
-				},
-				"PostalCode": {
-					"type": "string"
-				},
-				"Lat": {
-					"type": "string"
-				},
-				"Long": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"Id"
-			]
-		},
-		"AcctNum": {
-			"type": "string"
-		},
-		"GivenName": {
-			"type": "string"
-		},
-		"FamilyName": {
-			"type": "string"
-		},
-		"CompanyName": {
-			"type": "string"
-		},
-		"PrimaryPhone": {
-			"type": "object",
-			"properties": {
-				"FreeFormNumber": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"FreeFormNumber"
-			]
-		},
-		"PrimaryEmailAddr": {
-			"type": "object",
-			"properties": {
-				"Address": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"Address"
-			]
-		},
-		"WebAddr": {
-			"type": "object",
-			"properties": {
-				"URI": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"URI"
-			]
-		},
-		"Mobile": {
-			"type": "object",
-			"properties": {
-				"FreeFormNumber": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"FreeFormNumber"
-			]
-		},
-		"Fax": {
-			"type": "object",
-			"properties": {
-				"FreeFormNumber": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"FreeFormNumber"
-			]
-		}
-	},
-	"required": [
-		"Balance",
-		"Vendor1099",
-		"CurrencyRef",
-		"domain",
-		"sparse",
-		"Id",
-		"SyncToken",
-		"MetaData",
-		"DisplayName",
-		"PrintOnCheckName",
-		"Active"
-	]
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/QuickBooks/__schema__/v1.0.0/vendor/getAll.json",
+    "sha": "647cd3250e1ca2e6fbcf3efc59df1b09924adad2",
+    "size": 2351,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/QuickBooks/__schema__/v1.0.0/vendor/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/QuickBooks/__schema__/v1.0.0/vendor/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/647cd3250e1ca2e6fbcf3efc59df1b09924adad2",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/QuickBooks/__schema__/v1.0.0/vendor/getAll.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJWZW5k\nb3IxMDk5IjogewoJCQkidHlwZSI6ICJib29sZWFuIgoJCX0sCgkJIkN1cnJl\nbmN5UmVmIjogewoJCQkidHlwZSI6ICJvYmplY3QiLAoJCQkicHJvcGVydGll\ncyI6IHsKCQkJCSJ2YWx1ZSI6IHsKCQkJCQkidHlwZSI6ICJzdHJpbmciCgkJ\nCQl9LAoJCQkJIm5hbWUiOiB7CgkJCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJ\nfQoJCQl9LAoJCQkicmVxdWlyZWQiOiBbCgkJCQkidmFsdWUiLAoJCQkJIm5h\nbWUiCgkJCV0KCQl9LAoJCSJkb21haW4iOiB7CgkJCSJ0eXBlIjogInN0cmlu\nZyIKCQl9LAoJCSJzcGFyc2UiOiB7CgkJCSJ0eXBlIjogImJvb2xlYW4iCgkJ\nfSwKCQkiSWQiOiB7CgkJCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJCSJTeW5j\nVG9rZW4iOiB7CgkJCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJCSJNZXRhRGF0\nYSI6IHsKCQkJInR5cGUiOiAib2JqZWN0IiwKCQkJInByb3BlcnRpZXMiOiB7\nCgkJCQkiQ3JlYXRlVGltZSI6IHsKCQkJCQkidHlwZSI6ICJzdHJpbmciCgkJ\nCQl9LAoJCQkJIkxhc3RVcGRhdGVkVGltZSI6IHsKCQkJCQkidHlwZSI6ICJz\ndHJpbmciCgkJCQl9CgkJCX0sCgkJCSJyZXF1aXJlZCI6IFsKCQkJCSJDcmVh\ndGVUaW1lIiwKCQkJCSJMYXN0VXBkYXRlZFRpbWUiCgkJCV0KCQl9LAoJCSJE\naXNwbGF5TmFtZSI6IHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJIlBy\naW50T25DaGVja05hbWUiOiB7CgkJCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJ\nCSJBY3RpdmUiOiB7CgkJCSJ0eXBlIjogImJvb2xlYW4iCgkJfSwKCQkiQmls\nbEFkZHIiOiB7CgkJCSJ0eXBlIjogIm9iamVjdCIsCgkJCSJwcm9wZXJ0aWVz\nIjogewoJCQkJIklkIjogewoJCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJCX0s\nCgkJCQkiTGluZTEiOiB7CgkJCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJfSwK\nCQkJCSJDaXR5IjogewoJCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJCX0sCgkJ\nCQkiQ291bnRyeVN1YkRpdmlzaW9uQ29kZSI6IHsKCQkJCQkidHlwZSI6ICJz\ndHJpbmciCgkJCQl9LAoJCQkJIlBvc3RhbENvZGUiOiB7CgkJCQkJInR5cGUi\nOiAic3RyaW5nIgoJCQkJfSwKCQkJCSJMYXQiOiB7CgkJCQkJInR5cGUiOiAi\nc3RyaW5nIgoJCQkJfSwKCQkJCSJMb25nIjogewoJCQkJCSJ0eXBlIjogInN0\ncmluZyIKCQkJCX0KCQkJfSwKCQkJInJlcXVpcmVkIjogWwoJCQkJIklkIgoJ\nCQldCgkJfSwKCQkiQWNjdE51bSI6IHsKCQkJInR5cGUiOiAic3RyaW5nIgoJ\nCX0sCgkJIkdpdmVuTmFtZSI6IHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0s\nCgkJIkZhbWlseU5hbWUiOiB7CgkJCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJ\nCSJDb21wYW55TmFtZSI6IHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJ\nIlByaW1hcnlQaG9uZSI6IHsKCQkJInR5cGUiOiAib2JqZWN0IiwKCQkJInBy\nb3BlcnRpZXMiOiB7CgkJCQkiRnJlZUZvcm1OdW1iZXIiOiB7CgkJCQkJInR5\ncGUiOiAic3RyaW5nIgoJCQkJfQoJCQl9LAoJCQkicmVxdWlyZWQiOiBbCgkJ\nCQkiRnJlZUZvcm1OdW1iZXIiCgkJCV0KCQl9LAoJCSJQcmltYXJ5RW1haWxB\nZGRyIjogewoJCQkidHlwZSI6ICJvYmplY3QiLAoJCQkicHJvcGVydGllcyI6\nIHsKCQkJCSJBZGRyZXNzIjogewoJCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJ\nCX0KCQkJfSwKCQkJInJlcXVpcmVkIjogWwoJCQkJIkFkZHJlc3MiCgkJCV0K\nCQl9LAoJCSJXZWJBZGRyIjogewoJCQkidHlwZSI6ICJvYmplY3QiLAoJCQki\ncHJvcGVydGllcyI6IHsKCQkJCSJVUkkiOiB7CgkJCQkJInR5cGUiOiAic3Ry\naW5nIgoJCQkJfQoJCQl9LAoJCQkicmVxdWlyZWQiOiBbCgkJCQkiVVJJIgoJ\nCQldCgkJfSwKCQkiTW9iaWxlIjogewoJCQkidHlwZSI6ICJvYmplY3QiLAoJ\nCQkicHJvcGVydGllcyI6IHsKCQkJCSJGcmVlRm9ybU51bWJlciI6IHsKCQkJ\nCQkidHlwZSI6ICJzdHJpbmciCgkJCQl9CgkJCX0sCgkJCSJyZXF1aXJlZCI6\nIFsKCQkJCSJGcmVlRm9ybU51bWJlciIKCQkJXQoJCX0sCgkJIkZheCI6IHsK\nCQkJInR5cGUiOiAib2JqZWN0IiwKCQkJInByb3BlcnRpZXMiOiB7CgkJCQki\nRnJlZUZvcm1OdW1iZXIiOiB7CgkJCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJ\nfQoJCQl9LAoJCQkicmVxdWlyZWQiOiBbCgkJCQkiRnJlZUZvcm1OdW1iZXIi\nCgkJCV0KCQl9Cgl9LAoJInJlcXVpcmVkIjogWwoJCSJCYWxhbmNlIiwKCQki\nVmVuZG9yMTA5OSIsCgkJIkN1cnJlbmN5UmVmIiwKCQkiZG9tYWluIiwKCQki\nc3BhcnNlIiwKCQkiSWQiLAoJCSJTeW5jVG9rZW4iLAoJCSJNZXRhRGF0YSIs\nCgkJIkRpc3BsYXlOYW1lIiwKCQkiUHJpbnRPbkNoZWNrTmFtZSIsCgkJIkFj\ndGl2ZSIKCV0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/QuickBooks/__schema__/v1.0.0/vendor/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/647cd3250e1ca2e6fbcf3efc59df1b09924adad2",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/QuickBooks/__schema__/v1.0.0/vendor/getAll.json"
+    },
+    "version": 1
 }

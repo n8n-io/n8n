@@ -1,155 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "@odata.context": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "etag": {
-            "type": "string"
-        },
-        "messageType": {
-            "type": "string"
-        },
-        "createdDateTime": {
-            "type": "string"
-        },
-        "lastModifiedDateTime": {
-            "type": "string"
-        },
-        "lastEditedDateTime": {
-            "type": "null"
-        },
-        "deletedDateTime": {
-            "type": "null"
-        },
-        "subject": {
-            "type": "null"
-        },
-        "summary": {
-            "type": "null"
-        },
-        "chatId": {
-            "type": "null"
-        },
-        "importance": {
-            "type": "string"
-        },
-        "locale": {
-            "type": "string"
-        },
-        "webUrl": {
-            "type": "string"
-        },
-        "onBehalfOf": {
-            "type": "null"
-        },
-        "policyViolation": {
-            "type": "null"
-        },
-        "eventDetail": {
-            "type": "null"
-        },
-        "from": {
-            "type": "object",
-            "properties": {
-                "application": {
-                    "type": "null"
-                },
-                "device": {
-                    "type": "null"
-                },
-                "user": {
-                    "type": "object",
-                    "properties": {
-                        "@odata.type": {
-                            "type": "string"
-                        },
-                        "id": {
-                            "type": "string"
-                        },
-                        "displayName": {
-                            "type": "string"
-                        },
-                        "userIdentityType": {
-                            "type": "string"
-                        },
-                        "tenantId": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "@odata.type",
-                        "id",
-                        "displayName",
-                        "userIdentityType",
-                        "tenantId"
-                    ]
-                }
-            },
-            "required": [
-                "application",
-                "device",
-                "user"
-            ]
-        },
-        "body": {
-            "type": "object",
-            "properties": {
-                "contentType": {
-                    "type": "string"
-                },
-                "content": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "contentType",
-                "content"
-            ]
-        },
-        "channelIdentity": {
-            "type": "object",
-            "properties": {
-                "teamId": {
-                    "type": "string"
-                },
-                "channelId": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "teamId",
-                "channelId"
-            ]
-        }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/channelMessage/create.json",
+    "sha": "6a18ffedebd652fe7cea98c14add390c782f48e8",
+    "size": 3760,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/channelMessage/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/channelMessage/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/6a18ffedebd652fe7cea98c14add390c782f48e8",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/channelMessage/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJAb2RhdGEuY29udGV4dCI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImlkIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiZXRh\nZyI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0s\nCiAgICAgICAgIm1lc3NhZ2VUeXBlIjogewogICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiY3JlYXRlZERhdGVUaW1l\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwK\nICAgICAgICAibGFzdE1vZGlmaWVkRGF0ZVRpbWUiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJsYXN0RWRp\ndGVkRGF0ZVRpbWUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAg\nICAgICAgfSwKICAgICAgICAiZGVsZXRlZERhdGVUaW1lIjogewogICAgICAg\nICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAgInN1Ympl\nY3QiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwK\nICAgICAgICAic3VtbWFyeSI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVs\nbCIKICAgICAgICB9LAogICAgICAgICJjaGF0SWQiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAiaW1wb3J0YW5j\nZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0s\nCiAgICAgICAgImxvY2FsZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgIH0sCiAgICAgICAgIndlYlVybCI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIm9uQmVo\nYWxmT2YiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAg\nfSwKICAgICAgICAicG9saWN5VmlvbGF0aW9uIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAgImV2ZW50RGV0YWls\nIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAg\nICAgICAgImZyb20iOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIs\nCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAg\nImFwcGxpY2F0aW9uIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nIm51bGwiCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImRl\ndmljZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJudWxsIgog\nICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJ1c2VyIjogewog\nICAgICAgICAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAg\nICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAg\nICAgICAgICJAb2RhdGEudHlwZSI6IHsKICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAg\nICAgfSwKICAgICAgICAgICAgICAgICAgICAgICAgImlkIjogewogICAgICAg\nICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAi\nZGlzcGxheU5hbWUiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAg\nICAgICAgICAgICAgICAgICAgICAgICJ1c2VySWRlbnRpdHlUeXBlIjogewog\nICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAg\nICAgICAidGVuYW50SWQiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgICAgIH0K\nICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICJy\nZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICAgICAgICAgIkBvZGF0YS50\neXBlIiwKICAgICAgICAgICAgICAgICAgICAgICAgImlkIiwKICAgICAgICAg\nICAgICAgICAgICAgICAgImRpc3BsYXlOYW1lIiwKICAgICAgICAgICAgICAg\nICAgICAgICAgInVzZXJJZGVudGl0eVR5cGUiLAogICAgICAgICAgICAgICAg\nICAgICAgICAidGVuYW50SWQiCiAgICAgICAgICAgICAgICAgICAgXQogICAg\nICAgICAgICAgICAgfQogICAgICAgICAgICB9LAogICAgICAgICAgICAicmVx\ndWlyZWQiOiBbCiAgICAgICAgICAgICAgICAiYXBwbGljYXRpb24iLAogICAg\nICAgICAgICAgICAgImRldmljZSIsCiAgICAgICAgICAgICAgICAidXNlciIK\nICAgICAgICAgICAgXQogICAgICAgIH0sCiAgICAgICAgImJvZHkiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJwcm9w\nZXJ0aWVzIjogewogICAgICAgICAgICAgICAgImNvbnRlbnRUeXBlIjogewog\nICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICAgICAiY29udGVudCI6IHsKICAgICAg\nICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAg\nICB9CiAgICAgICAgICAgIH0sCiAgICAgICAgICAgICJyZXF1aXJlZCI6IFsK\nICAgICAgICAgICAgICAgICJjb250ZW50VHlwZSIsCiAgICAgICAgICAgICAg\nICAiY29udGVudCIKICAgICAgICAgICAgXQogICAgICAgIH0sCiAgICAgICAg\nImNoYW5uZWxJZGVudGl0eSI6IHsKICAgICAgICAgICAgInR5cGUiOiAib2Jq\nZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAg\nICAgICAidGVhbUlkIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAi\nY2hhbm5lbElkIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfSwKICAgICAg\nICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgInRlYW1JZCIs\nCiAgICAgICAgICAgICAgICAiY2hhbm5lbElkIgogICAgICAgICAgICBdCiAg\nICAgICAgfQogICAgfSwKICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAiQG9k\nYXRhLmNvbnRleHQiLAogICAgICAgICJpZCIsCiAgICAgICAgInJlcGx5VG9J\nZCIsCiAgICAgICAgImV0YWciLAogICAgICAgICJtZXNzYWdlVHlwZSIsCiAg\nICAgICAgImNyZWF0ZWREYXRlVGltZSIsCiAgICAgICAgImxhc3RNb2RpZmll\nZERhdGVUaW1lIiwKICAgICAgICAibGFzdEVkaXRlZERhdGVUaW1lIiwKICAg\nICAgICAiZGVsZXRlZERhdGVUaW1lIiwKICAgICAgICAic3ViamVjdCIsCiAg\nICAgICAgInN1bW1hcnkiLAogICAgICAgICJjaGF0SWQiLAogICAgICAgICJp\nbXBvcnRhbmNlIiwKICAgICAgICAibG9jYWxlIiwKICAgICAgICAid2ViVXJs\nIiwKICAgICAgICAib25CZWhhbGZPZiIsCiAgICAgICAgInBvbGljeVZpb2xh\ndGlvbiIsCiAgICAgICAgImV2ZW50RGV0YWlsIiwKICAgICAgICAiZnJvbSIs\nCiAgICAgICAgImJvZHkiLAogICAgICAgICJjaGFubmVsSWRlbnRpdHkiLAog\nICAgICAgICJhdHRhY2htZW50cyIsCiAgICAgICAgIm1lbnRpb25zIiwKICAg\nICAgICAicmVhY3Rpb25zIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/channelMessage/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/6a18ffedebd652fe7cea98c14add390c782f48e8",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/channelMessage/create.json"
     },
-    "required": [
-        "@odata.context",
-        "id",
-        "replyToId",
-        "etag",
-        "messageType",
-        "createdDateTime",
-        "lastModifiedDateTime",
-        "lastEditedDateTime",
-        "deletedDateTime",
-        "subject",
-        "summary",
-        "chatId",
-        "importance",
-        "locale",
-        "webUrl",
-        "onBehalfOf",
-        "policyViolation",
-        "eventDetail",
-        "from",
-        "body",
-        "channelIdentity",
-        "attachments",
-        "mentions",
-        "reactions"
-    ]
+    "version": 1
 }

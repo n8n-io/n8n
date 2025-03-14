@@ -1,96 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "user": {
-            "type": "string"
-        },
-        "text": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
-        },
-        "ts": {
-            "type": "string"
-        },
-        "thread_ts": {
-            "type": "string"
-        },
-        "reply_count": {
-            "type": "integer"
-        },
-        "reply_users_count": {
-            "type": "integer"
-        },
-        "latest_reply": {
-            "type": "string"
-        },
-        "reply_users": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "is_locked": {
-            "type": "boolean"
-        },
-        "subscribed": {
-            "type": "boolean"
-        },
-        "blocks": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "type": {
-                        "type": "string"
-                    },
-                    "block_id": {
-                        "type": "string"
-                    },
-                    "elements": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "type": {
-                                    "type": "string"
-                                },
-                                "elements": {
-                                    "type": "array",
-                                    "items": {
-                                        "type": "object",
-                                        "properties": {
-                                            "type": {
-                                                "type": "string"
-                                            },
-                                            "text": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "required": [
-                                            "type"
-                                        ]
-                                    }
-                                }
-                            },
-                            "required": [
-                                "type"
-                            ]
-                        }
-                    }
-                },
-                "required": [
-                    "type",
-                    "block_id"
-                ]
-            }
-        },
-        "client_msg_id": {
-            "type": "string"
-        },
-        "team": {
-            "type": "string"
-        }
-    }
+    "name": "history.json",
+    "path": "packages/nodes-base/nodes/Slack/__schema__/v2.3.0/channel/history.json",
+    "sha": "83e7c110a366968fdf2103523852170d9f869436",
+    "size": 2791,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/channel/history.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/channel/history.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/83e7c110a366968fdf2103523852170d9f869436",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/channel/history.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJ1c2VyIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAidGV4dCI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInR5cGUiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAg\nICJ0cyI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nIH0sCiAgICAgICAgInRocmVhZF90cyI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInJlcGx5X2NvdW50Ijog\newogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAg\nICAgICAgInJlcGx5X3VzZXJzX2NvdW50IjogewogICAgICAgICAgICAidHlw\nZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgImxhdGVzdF9yZXBs\neSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0s\nCiAgICAgICAgInJlcGx5X3VzZXJzIjogewogICAgICAgICAgICAidHlwZSI6\nICJhcnJheSIsCiAgICAgICAgICAgICJpdGVtcyI6IHsKICAgICAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgfQogICAgICAgIH0s\nCiAgICAgICAgImlzX2xvY2tlZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nYm9vbGVhbiIKICAgICAgICB9LAogICAgICAgICJzdWJzY3JpYmVkIjogewog\nICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAg\nICAgImJsb2NrcyI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYXJyYXkiLAog\nICAgICAgICAgICAiaXRlbXMiOiB7CiAgICAgICAgICAgICAgICAidHlwZSI6\nICJvYmplY3QiLAogICAgICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiB7CiAgICAgICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICB9\nLAogICAgICAgICAgICAgICAgICAgICJibG9ja19pZCI6IHsKICAgICAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgImVsZW1lbnRzIjogewog\nICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAg\nICAgICAgICAgICAgICAgICAgICJpdGVtcyI6IHsKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAidHlwZSI6IHsKICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgImVsZW1lbnRzIjogewogICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICJpdGVtcyI6IHsKICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogIm9iamVj\ndCIsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAi\ncHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAidHlwZSI6IHsKICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0s\nCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nInRleHQiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIgog\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgXQogICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJyZXF1aXJl\nZCI6IFsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSIK\nICAgICAgICAgICAgICAgICAgICAgICAgICAgIF0KICAgICAgICAgICAgICAg\nICAgICAgICAgfQogICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAg\nICAgIH0sCiAgICAgICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAg\nICAgICAgICAgICAgInR5cGUiLAogICAgICAgICAgICAgICAgICAgICJibG9j\na19pZCIKICAgICAgICAgICAgICAgIF0KICAgICAgICAgICAgfQogICAgICAg\nIH0sCiAgICAgICAgImNsaWVudF9tc2dfaWQiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJ0ZWFtIjogewog\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfQogICAgfQp9\nCg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/channel/history.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/83e7c110a366968fdf2103523852170d9f869436",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/channel/history.json"
+    },
+    "version": 1
 }

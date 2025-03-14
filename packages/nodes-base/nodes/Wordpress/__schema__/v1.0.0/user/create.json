@@ -1,0 +1,146 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "username": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "first_name": {
+            "type": "string"
+        },
+        "last_name": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
+        },
+        "description": {
+            "type": "string"
+        },
+        "link": {
+            "type": "string"
+        },
+        "locale": {
+            "type": "string"
+        },
+        "nickname": {
+            "type": "string"
+        },
+        "slug": {
+            "type": "string"
+        },
+        "roles": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "registered_date": {
+            "type": "string"
+        },
+        "capabilities": {
+            "type": "object",
+            "properties": {
+                "level_0": {
+                    "type": "boolean"
+                },
+                "read": {
+                    "type": "boolean"
+                },
+                "subscriber": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "read"
+            ]
+        },
+        "extra_capabilities": {
+            "type": "object",
+            "properties": {
+                "subscriber": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "_links": {
+            "type": "object",
+            "properties": {
+                "self": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            },
+                            "targetHints": {
+                                "type": "object",
+                                "properties": {
+                                    "allow": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                },
+                                "required": [
+                                    "allow"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "href"
+                        ]
+                    }
+                },
+                "collection": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "href"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "self",
+                "collection"
+            ]
+        },
+        "avatar_urls": {
+            "type": "object",
+            "properties": {
+                "24": {
+                    "type": "string"
+                },
+                "48": {
+                    "type": "string"
+                },
+                "96": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "24",
+                "48",
+                "96"
+            ]
+        }
+    },
+    "version": 1
+}

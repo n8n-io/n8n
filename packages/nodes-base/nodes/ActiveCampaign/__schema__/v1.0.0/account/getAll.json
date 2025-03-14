@@ -1,57 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "name": {
-            "type": "string"
-        },
-        "createdTimestamp": {
-            "type": "string"
-        },
-        "updatedTimestamp": {
-            "type": "string"
-        },
-        "owner": {
-            "type": "string"
-        },
-        "contactCount": {
-            "type": "string"
-        },
-        "dealCount": {
-            "type": "string"
-        },
-        "links": {
-            "type": "object",
-            "properties": {
-                "notes": {
-                    "type": "string"
-                },
-                "accountCustomFieldData": {
-                    "type": "string"
-                },
-                "accountContacts": {
-                    "type": "string"
-                },
-                "emailActivities": {
-                    "type": "string"
-                },
-                "contactEmails": {
-                    "type": "string"
-                },
-                "owner": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "notes",
-                "accountCustomFieldData",
-                "accountContacts",
-                "emailActivities",
-                "contactEmails",
-                "owner"
-            ]
-        },
-        "id": {
-            "type": "string"
-        }
-    }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/account/getAll.json",
+    "sha": "acccfe301029eb1688e3b5e2282810091164e966",
+    "size": 1372,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/account/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/account/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/acccfe301029eb1688e3b5e2282810091164e966",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/account/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJuYW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAiY3JlYXRlZFRpbWVzdGFtcCI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAg\nInVwZGF0ZWRUaW1lc3RhbXAiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJvd25lciI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImNvbnRh\nY3RDb3VudCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgIH0sCiAgICAgICAgImRlYWxDb3VudCI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImxpbmtzIjogewog\nICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAicHJv\ncGVydGllcyI6IHsKICAgICAgICAgICAgICAgICJub3RlcyI6IHsKICAgICAg\nICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAg\nICB9LAogICAgICAgICAgICAgICAgImFjY291bnRDdXN0b21GaWVsZERhdGEi\nOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJhY2NvdW50Q29udGFj\ndHMiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJlbWFpbEFjdGl2\naXRpZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJjb250YWN0\nRW1haWxzIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAib3duZXIi\nOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgICAgICAgICAgfQogICAgICAgICAgICB9LAogICAgICAgICAgICAicmVx\ndWlyZWQiOiBbCiAgICAgICAgICAgICAgICAibm90ZXMiLAogICAgICAgICAg\nICAgICAgImFjY291bnRDdXN0b21GaWVsZERhdGEiLAogICAgICAgICAgICAg\nICAgImFjY291bnRDb250YWN0cyIsCiAgICAgICAgICAgICAgICAiZW1haWxB\nY3Rpdml0aWVzIiwKICAgICAgICAgICAgICAgICJjb250YWN0RW1haWxzIiwK\nICAgICAgICAgICAgICAgICJvd25lciIKICAgICAgICAgICAgXQogICAgICAg\nIH0sCiAgICAgICAgImlkIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgfQogICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/account/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/acccfe301029eb1688e3b5e2282810091164e966",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/account/getAll.json"
+    },
+    "version": 1
 }

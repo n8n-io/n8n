@@ -1,152 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"deal": {
-			"type": "object",
-			"properties": {
-				"hash": {
-					"type": "string"
-				},
-				"owner": {
-					"type": "string"
-				},
-				"group": {
-					"type": "string"
-				},
-				"stage": {
-					"type": "string"
-				},
-				"title": {
-					"type": "string"
-				},
-				"description": {
-					"type": "string"
-				},
-				"percent": {
-					"type": "string"
-				},
-				"cdate": {
-					"type": "string"
-				},
-				"mdate": {
-					"type": "string"
-				},
-				"value": {
-					"type": "string"
-				},
-				"currency": {
-					"type": "string"
-				},
-				"status": {
-					"type": "string"
-				},
-				"activitycount": {
-					"type": "string"
-				},
-				"nextdealid": {
-					"type": "string"
-				},
-				"links": {
-					"type": "object",
-					"properties": {
-						"dealActivities": {
-							"type": "string"
-						},
-						"contact": {
-							"type": "string"
-						},
-						"contactDeals": {
-							"type": "string"
-						},
-						"group": {
-							"type": "string"
-						},
-						"nextTask": {
-							"type": "string"
-						},
-						"notes": {
-							"type": "string"
-						},
-						"account": {
-							"type": "string"
-						},
-						"customerAccount": {
-							"type": "string"
-						},
-						"organization": {
-							"type": "string"
-						},
-						"owner": {
-							"type": "string"
-						},
-						"scoreValues": {
-							"type": "string"
-						},
-						"stage": {
-							"type": "string"
-						},
-						"tasks": {
-							"type": "string"
-						},
-						"dealCustomFieldData": {
-							"type": "string"
-						}
-					},
-					"required": [
-						"dealActivities",
-						"contact",
-						"contactDeals",
-						"group",
-						"nextTask",
-						"notes",
-						"account",
-						"customerAccount",
-						"organization",
-						"owner",
-						"scoreValues",
-						"stage",
-						"tasks",
-						"dealCustomFieldData"
-					]
-				},
-				"id": {
-					"type": "string"
-				},
-				"isDisabled": {
-					"type": "boolean"
-				}
-			},
-			"required": [
-				"hash",
-				"owner",
-				"contact",
-				"organization",
-				"group",
-				"stage",
-				"title",
-				"description",
-				"percent",
-				"cdate",
-				"mdate",
-				"nextdate",
-				"nexttaskid",
-				"value",
-				"currency",
-				"winProbability",
-				"winProbabilityMdate",
-				"status",
-				"activitycount",
-				"nextdealid",
-				"edate",
-				"links",
-				"id",
-				"isDisabled",
-				"account",
-				"customerAccount"
-			]
-		}
-	},
-	"required": [
-		"deal"
-	]
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/deal/get.json",
+    "sha": "d2b4aa44dbcd836daf78210a02a0c96b8fbdb83c",
+    "size": 2428,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/deal/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/deal/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/d2b4aa44dbcd836daf78210a02a0c96b8fbdb83c",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/deal/get.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJkZWFs\nIjogewoJCQkidHlwZSI6ICJvYmplY3QiLAoJCQkicHJvcGVydGllcyI6IHsK\nCQkJCSJoYXNoIjogewoJCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJCX0sCgkJ\nCQkib3duZXIiOiB7CgkJCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJfSwKCQkJ\nCSJncm91cCI6IHsKCQkJCQkidHlwZSI6ICJzdHJpbmciCgkJCQl9LAoJCQkJ\nInN0YWdlIjogewoJCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJCX0sCgkJCQki\ndGl0bGUiOiB7CgkJCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJfSwKCQkJCSJk\nZXNjcmlwdGlvbiI6IHsKCQkJCQkidHlwZSI6ICJzdHJpbmciCgkJCQl9LAoJ\nCQkJInBlcmNlbnQiOiB7CgkJCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJfSwK\nCQkJCSJjZGF0ZSI6IHsKCQkJCQkidHlwZSI6ICJzdHJpbmciCgkJCQl9LAoJ\nCQkJIm1kYXRlIjogewoJCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJCX0sCgkJ\nCQkidmFsdWUiOiB7CgkJCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJfSwKCQkJ\nCSJjdXJyZW5jeSI6IHsKCQkJCQkidHlwZSI6ICJzdHJpbmciCgkJCQl9LAoJ\nCQkJInN0YXR1cyI6IHsKCQkJCQkidHlwZSI6ICJzdHJpbmciCgkJCQl9LAoJ\nCQkJImFjdGl2aXR5Y291bnQiOiB7CgkJCQkJInR5cGUiOiAic3RyaW5nIgoJ\nCQkJfSwKCQkJCSJuZXh0ZGVhbGlkIjogewoJCQkJCSJ0eXBlIjogInN0cmlu\nZyIKCQkJCX0sCgkJCQkibGlua3MiOiB7CgkJCQkJInR5cGUiOiAib2JqZWN0\nIiwKCQkJCQkicHJvcGVydGllcyI6IHsKCQkJCQkJImRlYWxBY3Rpdml0aWVz\nIjogewoJCQkJCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJCQl9LAoJCQkJCQki\nY29udGFjdCI6IHsKCQkJCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJCQkJfSwK\nCQkJCQkJImNvbnRhY3REZWFscyI6IHsKCQkJCQkJCSJ0eXBlIjogInN0cmlu\nZyIKCQkJCQkJfSwKCQkJCQkJImdyb3VwIjogewoJCQkJCQkJInR5cGUiOiAi\nc3RyaW5nIgoJCQkJCQl9LAoJCQkJCQkibmV4dFRhc2siOiB7CgkJCQkJCQki\ndHlwZSI6ICJzdHJpbmciCgkJCQkJCX0sCgkJCQkJCSJub3RlcyI6IHsKCQkJ\nCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJCQkJfSwKCQkJCQkJImFjY291bnQi\nOiB7CgkJCQkJCQkidHlwZSI6ICJzdHJpbmciCgkJCQkJCX0sCgkJCQkJCSJj\ndXN0b21lckFjY291bnQiOiB7CgkJCQkJCQkidHlwZSI6ICJzdHJpbmciCgkJ\nCQkJCX0sCgkJCQkJCSJvcmdhbml6YXRpb24iOiB7CgkJCQkJCQkidHlwZSI6\nICJzdHJpbmciCgkJCQkJCX0sCgkJCQkJCSJvd25lciI6IHsKCQkJCQkJCSJ0\neXBlIjogInN0cmluZyIKCQkJCQkJfSwKCQkJCQkJInNjb3JlVmFsdWVzIjog\newoJCQkJCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJCQl9LAoJCQkJCQkic3Rh\nZ2UiOiB7CgkJCQkJCQkidHlwZSI6ICJzdHJpbmciCgkJCQkJCX0sCgkJCQkJ\nCSJ0YXNrcyI6IHsKCQkJCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJCQkJfSwK\nCQkJCQkJImRlYWxDdXN0b21GaWVsZERhdGEiOiB7CgkJCQkJCQkidHlwZSI6\nICJzdHJpbmciCgkJCQkJCX0KCQkJCQl9LAoJCQkJCSJyZXF1aXJlZCI6IFsK\nCQkJCQkJImRlYWxBY3Rpdml0aWVzIiwKCQkJCQkJImNvbnRhY3QiLAoJCQkJ\nCQkiY29udGFjdERlYWxzIiwKCQkJCQkJImdyb3VwIiwKCQkJCQkJIm5leHRU\nYXNrIiwKCQkJCQkJIm5vdGVzIiwKCQkJCQkJImFjY291bnQiLAoJCQkJCQki\nY3VzdG9tZXJBY2NvdW50IiwKCQkJCQkJIm9yZ2FuaXphdGlvbiIsCgkJCQkJ\nCSJvd25lciIsCgkJCQkJCSJzY29yZVZhbHVlcyIsCgkJCQkJCSJzdGFnZSIs\nCgkJCQkJCSJ0YXNrcyIsCgkJCQkJCSJkZWFsQ3VzdG9tRmllbGREYXRhIgoJ\nCQkJCV0KCQkJCX0sCgkJCQkiaWQiOiB7CgkJCQkJInR5cGUiOiAic3RyaW5n\nIgoJCQkJfSwKCQkJCSJpc0Rpc2FibGVkIjogewoJCQkJCSJ0eXBlIjogImJv\nb2xlYW4iCgkJCQl9CgkJCX0sCgkJCSJyZXF1aXJlZCI6IFsKCQkJCSJoYXNo\nIiwKCQkJCSJvd25lciIsCgkJCQkiY29udGFjdCIsCgkJCQkib3JnYW5pemF0\naW9uIiwKCQkJCSJncm91cCIsCgkJCQkic3RhZ2UiLAoJCQkJInRpdGxlIiwK\nCQkJCSJkZXNjcmlwdGlvbiIsCgkJCQkicGVyY2VudCIsCgkJCQkiY2RhdGUi\nLAoJCQkJIm1kYXRlIiwKCQkJCSJuZXh0ZGF0ZSIsCgkJCQkibmV4dHRhc2tp\nZCIsCgkJCQkidmFsdWUiLAoJCQkJImN1cnJlbmN5IiwKCQkJCSJ3aW5Qcm9i\nYWJpbGl0eSIsCgkJCQkid2luUHJvYmFiaWxpdHlNZGF0ZSIsCgkJCQkic3Rh\ndHVzIiwKCQkJCSJhY3Rpdml0eWNvdW50IiwKCQkJCSJuZXh0ZGVhbGlkIiwK\nCQkJCSJlZGF0ZSIsCgkJCQkibGlua3MiLAoJCQkJImlkIiwKCQkJCSJpc0Rp\nc2FibGVkIiwKCQkJCSJhY2NvdW50IiwKCQkJCSJjdXN0b21lckFjY291bnQi\nCgkJCV0KCQl9Cgl9LAoJInJlcXVpcmVkIjogWwoJCSJkZWFsIgoJXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/deal/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/d2b4aa44dbcd836daf78210a02a0c96b8fbdb83c",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ActiveCampaign/__schema__/v1.0.0/deal/get.json"
+    },
+    "version": 1
 }

@@ -1,100 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "collaborative": {
-            "type": "boolean"
-        },
-        "description": {
-            "type": "string"
-        },
-        "external_urls": {
-            "type": "object",
-            "properties": {
-                "spotify": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "spotify"
-            ]
-        },
-        "href": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "owner": {
-            "type": "object",
-            "properties": {
-                "display_name": {
-                    "type": "string"
-                },
-                "external_urls": {
-                    "type": "object",
-                    "properties": {
-                        "spotify": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "spotify"
-                    ]
-                },
-                "href": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "uri": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "display_name",
-                "external_urls",
-                "href",
-                "id",
-                "type",
-                "uri"
-            ]
-        },
-        "public": {
-            "type": "boolean"
-        },
-        "snapshot_id": {
-            "type": "string"
-        },
-        "tracks": {
-            "type": "object",
-            "properties": {
-                "href": {
-                    "type": "string"
-                },
-                "total": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "href",
-                "total"
-            ]
-        },
-        "type": {
-            "type": "string"
-        },
-        "uri": {
-            "type": "string"
-        }
+    "name": "getUserPlaylists.json",
+    "path": "packages/nodes-base/nodes/Spotify/__schema__/v1.0.0/playlist/getUserPlaylists.json",
+    "sha": "1ec8c4bf5c58183e113eb622b47a5a12680fefe3",
+    "size": 2327,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Spotify/__schema__/v1.0.0/playlist/getUserPlaylists.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Spotify/__schema__/v1.0.0/playlist/getUserPlaylists.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/1ec8c4bf5c58183e113eb622b47a5a12680fefe3",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Spotify/__schema__/v1.0.0/playlist/getUserPlaylists.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJjb2xsYWJvcmF0aXZlIjogewogICAgICAgICAgICAidHlwZSI6\nICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgImRlc2NyaXB0aW9uIjog\newogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAg\nICAgICAiZXh0ZXJuYWxfdXJscyI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nb2JqZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAg\nICAgICAgICAic3BvdGlmeSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0s\nCiAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICJz\ncG90aWZ5IgogICAgICAgICAgICBdCiAgICAgICAgfSwKICAgICAgICAiaHJl\nZiI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0s\nCiAgICAgICAgImlkIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAibmFtZSI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIm93bmVyIjogewog\nICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAicHJv\ncGVydGllcyI6IHsKICAgICAgICAgICAgICAgICJkaXNwbGF5X25hbWUiOiB7\nCiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJleHRlcm5hbF91cmxzIjog\newogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAg\nICAgICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAg\nICAgICAgICAgICJzcG90aWZ5IjogewogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAgICAg\nICB9CiAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAg\nICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAgICAgICAgICJzcG90\naWZ5IgogICAgICAgICAgICAgICAgICAgIF0KICAgICAgICAgICAgICAgIH0s\nCiAgICAgICAgICAgICAgICAiaHJlZiI6IHsKICAgICAgICAgICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAg\nICAgICAgICAgImlkIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAi\ndHlwZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInVyaSI6IHsK\nICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nICAgICAgICB9CiAgICAgICAgICAgIH0sCiAgICAgICAgICAgICJyZXF1aXJl\nZCI6IFsKICAgICAgICAgICAgICAgICJkaXNwbGF5X25hbWUiLAogICAgICAg\nICAgICAgICAgImV4dGVybmFsX3VybHMiLAogICAgICAgICAgICAgICAgImhy\nZWYiLAogICAgICAgICAgICAgICAgImlkIiwKICAgICAgICAgICAgICAgICJ0\neXBlIiwKICAgICAgICAgICAgICAgICJ1cmkiCiAgICAgICAgICAgIF0KICAg\nICAgICB9LAogICAgICAgICJwdWJsaWMiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAic25hcHNob3RfaWQi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAog\nICAgICAgICJ0cmFja3MiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9iamVj\ndCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAg\nICAgImhyZWYiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJ0b3Rh\nbCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgog\nICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9LAogICAgICAgICAgICAi\ncmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAiaHJlZiIsCiAgICAgICAg\nICAgICAgICAidG90YWwiCiAgICAgICAgICAgIF0KICAgICAgICB9LAogICAg\nICAgICJ0eXBlIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgfSwKICAgICAgICAidXJpIjogewogICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgfQogICAgfSwKICAgICJyZXF1aXJlZCI6IFsK\nICAgICAgICAicHJpbWFyeV9jb2xvciIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Spotify/__schema__/v1.0.0/playlist/getUserPlaylists.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/1ec8c4bf5c58183e113eb622b47a5a12680fefe3",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Spotify/__schema__/v1.0.0/playlist/getUserPlaylists.json"
     },
-    "required": [
-        "primary_color"
-    ]
+    "version": 1
 }

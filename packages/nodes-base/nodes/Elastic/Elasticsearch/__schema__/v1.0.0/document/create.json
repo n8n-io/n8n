@@ -1,51 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "_index": {
-            "type": "string"
-        },
-        "_id": {
-            "type": "string"
-        },
-        "_version": {
-            "type": "integer"
-        },
-        "result": {
-            "type": "string"
-        },
-        "_shards": {
-            "type": "object",
-            "properties": {
-                "total": {
-                    "type": "integer"
-                },
-                "successful": {
-                    "type": "integer"
-                },
-                "failed": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "total",
-                "successful",
-                "failed"
-            ]
-        },
-        "_seq_no": {
-            "type": "integer"
-        },
-        "_primary_term": {
-            "type": "integer"
-        }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/Elastic/Elasticsearch/__schema__/v1.0.0/document/create.json",
+    "sha": "5bf621427b8a456341354725c0604e3b4166154e",
+    "size": 1061,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Elastic/Elasticsearch/__schema__/v1.0.0/document/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Elastic/Elasticsearch/__schema__/v1.0.0/document/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5bf621427b8a456341354725c0604e3b4166154e",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Elastic/Elasticsearch/__schema__/v1.0.0/document/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJfaW5kZXgiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJfaWQiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJfdmVyc2lvbiI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAog\nICAgICAgICJyZXN1bHQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJfc2hhcmRzIjogewogICAgICAgICAg\nICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6\nIHsKICAgICAgICAgICAgICAgICJ0b3RhbCI6IHsKICAgICAgICAgICAgICAg\nICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgICAgICJzdWNjZXNzZnVsIjogewogICAgICAgICAgICAgICAg\nICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgICAgICAgICB9LAogICAg\nICAgICAgICAgICAgImZhaWxlZCI6IHsKICAgICAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJpbnRlZ2VyIgogICAgICAgICAgICAgICAgfQogICAgICAgICAg\nICB9LAogICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAg\nICAidG90YWwiLAogICAgICAgICAgICAgICAgInN1Y2Nlc3NmdWwiLAogICAg\nICAgICAgICAgICAgImZhaWxlZCIKICAgICAgICAgICAgXQogICAgICAgIH0s\nCiAgICAgICAgIl9zZXFfbm8iOiB7CiAgICAgICAgICAgICJ0eXBlIjogImlu\ndGVnZXIiCiAgICAgICAgfSwKICAgICAgICAiX3ByaW1hcnlfdGVybSI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9CiAgICB9\nLAogICAgInJlcXVpcmVkIjogWwogICAgICAgICJfaW5kZXgiLAogICAgICAg\nICJfaWQiLAogICAgICAgICJfdmVyc2lvbiIsCiAgICAgICAgInJlc3VsdCIs\nCiAgICAgICAgIl9zaGFyZHMiLAogICAgICAgICJfc2VxX25vIiwKICAgICAg\nICAiX3ByaW1hcnlfdGVybSIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Elastic/Elasticsearch/__schema__/v1.0.0/document/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5bf621427b8a456341354725c0604e3b4166154e",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Elastic/Elasticsearch/__schema__/v1.0.0/document/create.json"
     },
-    "required": [
-        "_index",
-        "_id",
-        "_version",
-        "result",
-        "_shards",
-        "_seq_no",
-        "_primary_term"
-    ]
+    "version": 1
 }

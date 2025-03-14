@@ -1,35 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "updated": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
-        },
-        "discarded": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
-        },
-        "invalidVids": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
-        },
-        "invalidEmails": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        }
+    "name": "add.json",
+    "path": "packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/contactList/add.json",
+    "sha": "a19166e71672043dd220266247779c8ca79e7eec",
+    "size": 702,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/contactList/add.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/contactList/add.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/a19166e71672043dd220266247779c8ca79e7eec",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/contactList/add.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJ1cGRhdGVkIjogewogICAgICAgICAgICAidHlwZSI6ICJhcnJh\neSIsCiAgICAgICAgICAgICJpdGVtcyI6IHsKICAgICAgICAgICAgICAgICJ0\neXBlIjogImludGVnZXIiCiAgICAgICAgICAgIH0KICAgICAgICB9LAogICAg\nICAgICJkaXNjYXJkZWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImFycmF5\nIiwKICAgICAgICAgICAgIml0ZW1zIjogewogICAgICAgICAgICAgICAgInR5\ncGUiOiAiaW50ZWdlciIKICAgICAgICAgICAgfQogICAgICAgIH0sCiAgICAg\nICAgImludmFsaWRWaWRzIjogewogICAgICAgICAgICAidHlwZSI6ICJhcnJh\neSIsCiAgICAgICAgICAgICJpdGVtcyI6IHsKICAgICAgICAgICAgICAgICJ0\neXBlIjogImludGVnZXIiCiAgICAgICAgICAgIH0KICAgICAgICB9LAogICAg\nICAgICJpbnZhbGlkRW1haWxzIjogewogICAgICAgICAgICAidHlwZSI6ICJh\ncnJheSIsCiAgICAgICAgICAgICJpdGVtcyI6IHsKICAgICAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgfQogICAgICAgIH0KICAg\nIH0sCiAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgInVwZGF0ZWQiLAogICAg\nICAgICJkaXNjYXJkZWQiLAogICAgICAgICJpbnZhbGlkVmlkcyIsCiAgICAg\nICAgImludmFsaWRFbWFpbHMiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/contactList/add.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/a19166e71672043dd220266247779c8ca79e7eec",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Hubspot/__schema__/v2.1.0/contactList/add.json"
     },
-    "required": [
-        "updated",
-        "discarded",
-        "invalidVids",
-        "invalidEmails"
-    ]
+    "version": 1
 }

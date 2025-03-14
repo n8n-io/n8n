@@ -1,40 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "messaging_product": {
-            "type": "string"
-        },
-        "contacts": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "input": {
-                        "type": "string"
-                    },
-                    "wa_id": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "input",
-                    "wa_id"
-                ]
-            }
-        },
-        "messages": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "id"
-                ]
-            }
-        }
-    }
+    "name": "send.json",
+    "path": "packages/nodes-base/nodes/WhatsApp/__schema__/v1.0.0/message/send.json",
+    "sha": "cf61ed7efc012a7b77b7f6df2287db92e96518f9",
+    "size": 948,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/WhatsApp/__schema__/v1.0.0/message/send.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/WhatsApp/__schema__/v1.0.0/message/send.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/cf61ed7efc012a7b77b7f6df2287db92e96518f9",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/WhatsApp/__schema__/v1.0.0/message/send.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJtZXNzYWdpbmdfcHJvZHVjdCI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImNvbnRhY3RzIjog\newogICAgICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAgICJp\ndGVtcyI6IHsKICAgICAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAg\nICAgICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAg\nICAgICAiaW5wdXQiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAg\nICAgICAgICAgICJ3YV9pZCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAgIH0KICAgICAg\nICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAg\nICAgICAgICAgICAgICAgICAgImlucHV0IiwKICAgICAgICAgICAgICAgICAg\nICAid2FfaWQiCiAgICAgICAgICAgICAgICBdCiAgICAgICAgICAgIH0KICAg\nICAgICB9LAogICAgICAgICJtZXNzYWdlcyI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAiYXJyYXkiLAogICAgICAgICAgICAiaXRlbXMiOiB7CiAgICAgICAg\nICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAgInBy\nb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgImlkIjogewogICAg\nICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICAgICAiaWQiCiAg\nICAgICAgICAgICAgICBdCiAgICAgICAgICAgIH0KICAgICAgICB9CiAgICB9\nCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/WhatsApp/__schema__/v1.0.0/message/send.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/cf61ed7efc012a7b77b7f6df2287db92e96518f9",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/WhatsApp/__schema__/v1.0.0/message/send.json"
+    },
+    "version": 1
 }

@@ -1,145 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "@odata.context": {
-            "type": "string"
-        },
-        "@odata.etag": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "createdDateTime": {
-            "type": "string"
-        },
-        "lastModifiedDateTime": {
-            "type": "string"
-        },
-        "changeKey": {
-            "type": "string"
-        },
-        "parentFolderId": {
-            "type": "string"
-        },
-        "birthday": {
-            "type": "null"
-        },
-        "fileAs": {
-            "type": "string"
-        },
-        "displayName": {
-            "type": "string"
-        },
-        "initials": {
-            "type": "null"
-        },
-        "middleName": {
-            "type": "null"
-        },
-        "nickName": {
-            "type": "null"
-        },
-        "title": {
-            "type": "null"
-        },
-        "yomiGivenName": {
-            "type": "null"
-        },
-        "yomiSurname": {
-            "type": "null"
-        },
-        "yomiCompanyName": {
-            "type": "null"
-        },
-        "generation": {
-            "type": "null"
-        },
-        "department": {
-            "type": "null"
-        },
-        "officeLocation": {
-            "type": "null"
-        },
-        "profession": {
-            "type": "null"
-        },
-        "assistantName": {
-            "type": "null"
-        },
-        "manager": {
-            "type": "null"
-        },
-        "businessPhones": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "spouseName": {
-            "type": "null"
-        },
-        "personalNotes": {
-            "type": "string"
-        },
-        "emailAddresses": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string"
-                    },
-                    "address": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "address"
-                ]
-            }
-        }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/contact/create.json",
+    "sha": "598b9286ec39783c500522d8b4fd71d751882407",
+    "size": 3172,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/contact/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/contact/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/598b9286ec39783c500522d8b4fd71d751882407",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/contact/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJAb2RhdGEuY29udGV4dCI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIkBvZGF0YS5ldGFnIjog\newogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAg\nICAgICAiaWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICB9LAogICAgICAgICJjcmVhdGVkRGF0ZVRpbWUiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJsYXN0\nTW9kaWZpZWREYXRlVGltZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgIH0sCiAgICAgICAgImNoYW5nZUtleSI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInBh\ncmVudEZvbGRlcklkIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAiYmlydGhkYXkiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAiZmlsZUFzIjog\newogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAg\nICAgICAiZGlzcGxheU5hbWUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJpbml0aWFscyI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAgICAgICJtaWRk\nbGVOYW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAg\nIH0sCiAgICAgICAgIm5pY2tOYW1lIjogewogICAgICAgICAgICAidHlwZSI6\nICJudWxsIgogICAgICAgIH0sCiAgICAgICAgInRpdGxlIjogewogICAgICAg\nICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAgInlvbWlH\naXZlbk5hbWUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAg\nICAgfSwKICAgICAgICAieW9taVN1cm5hbWUiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAieW9taUNvbXBhbnlO\nYW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0s\nCiAgICAgICAgImdlbmVyYXRpb24iOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nIm51bGwiCiAgICAgICAgfSwKICAgICAgICAiZGVwYXJ0bWVudCI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAgICAgICJv\nZmZpY2VMb2NhdGlvbiI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIK\nICAgICAgICB9LAogICAgICAgICJwcm9mZXNzaW9uIjogewogICAgICAgICAg\nICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAgImFzc2lzdGFu\ndE5hbWUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAg\nfSwKICAgICAgICAibWFuYWdlciI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nbnVsbCIKICAgICAgICB9LAogICAgICAgICJidXNpbmVzc1Bob25lcyI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAiYXJyYXkiLAogICAgICAgICAgICAiaXRl\nbXMiOiB7CiAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgICAgIH0KICAgICAgICB9LAogICAgICAgICJzcG91c2VOYW1lIjogewog\nICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAg\nInBlcnNvbmFsTm90ZXMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJlbWFpbEFkZHJlc3NlcyI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAiYXJyYXkiLAogICAgICAgICAgICAiaXRlbXMi\nOiB7CiAgICAgICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAg\nICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAgICAg\nIm5hbWUiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAg\nICAgICJhZGRyZXNzIjogewogICAgICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAg\nICAgICAgfSwKICAgICAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAg\nICAgICAgICAgICAgICAiYWRkcmVzcyIKICAgICAgICAgICAgICAgIF0KICAg\nICAgICAgICAgfQogICAgICAgIH0KICAgIH0sCiAgICAicmVxdWlyZWQiOiBb\nCiAgICAgICAgIkBvZGF0YS5jb250ZXh0IiwKICAgICAgICAiQG9kYXRhLmV0\nYWciLAogICAgICAgICJpZCIsCiAgICAgICAgImNyZWF0ZWREYXRlVGltZSIs\nCiAgICAgICAgImxhc3RNb2RpZmllZERhdGVUaW1lIiwKICAgICAgICAiY2hh\nbmdlS2V5IiwKICAgICAgICAiY2F0ZWdvcmllcyIsCiAgICAgICAgInBhcmVu\ndEZvbGRlcklkIiwKICAgICAgICAiYmlydGhkYXkiLAogICAgICAgICJmaWxl\nQXMiLAogICAgICAgICJkaXNwbGF5TmFtZSIsCiAgICAgICAgImdpdmVuTmFt\nZSIsCiAgICAgICAgImluaXRpYWxzIiwKICAgICAgICAibWlkZGxlTmFtZSIs\nCiAgICAgICAgIm5pY2tOYW1lIiwKICAgICAgICAic3VybmFtZSIsCiAgICAg\nICAgInRpdGxlIiwKICAgICAgICAieW9taUdpdmVuTmFtZSIsCiAgICAgICAg\nInlvbWlTdXJuYW1lIiwKICAgICAgICAieW9taUNvbXBhbnlOYW1lIiwKICAg\nICAgICAiZ2VuZXJhdGlvbiIsCiAgICAgICAgImltQWRkcmVzc2VzIiwKICAg\nICAgICAiam9iVGl0bGUiLAogICAgICAgICJjb21wYW55TmFtZSIsCiAgICAg\nICAgImRlcGFydG1lbnQiLAogICAgICAgICJvZmZpY2VMb2NhdGlvbiIsCiAg\nICAgICAgInByb2Zlc3Npb24iLAogICAgICAgICJidXNpbmVzc0hvbWVQYWdl\nIiwKICAgICAgICAiYXNzaXN0YW50TmFtZSIsCiAgICAgICAgIm1hbmFnZXIi\nLAogICAgICAgICJob21lUGhvbmVzIiwKICAgICAgICAibW9iaWxlUGhvbmUi\nLAogICAgICAgICJidXNpbmVzc1Bob25lcyIsCiAgICAgICAgInNwb3VzZU5h\nbWUiLAogICAgICAgICJwZXJzb25hbE5vdGVzIiwKICAgICAgICAiY2hpbGRy\nZW4iLAogICAgICAgICJlbWFpbEFkZHJlc3NlcyIsCiAgICAgICAgImhvbWVB\nZGRyZXNzIiwKICAgICAgICAiYnVzaW5lc3NBZGRyZXNzIiwKICAgICAgICAi\nb3RoZXJBZGRyZXNzIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/contact/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/598b9286ec39783c500522d8b4fd71d751882407",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/contact/create.json"
     },
-    "required": [
-        "@odata.context",
-        "@odata.etag",
-        "id",
-        "createdDateTime",
-        "lastModifiedDateTime",
-        "changeKey",
-        "categories",
-        "parentFolderId",
-        "birthday",
-        "fileAs",
-        "displayName",
-        "givenName",
-        "initials",
-        "middleName",
-        "nickName",
-        "surname",
-        "title",
-        "yomiGivenName",
-        "yomiSurname",
-        "yomiCompanyName",
-        "generation",
-        "imAddresses",
-        "jobTitle",
-        "companyName",
-        "department",
-        "officeLocation",
-        "profession",
-        "businessHomePage",
-        "assistantName",
-        "manager",
-        "homePhones",
-        "mobilePhone",
-        "businessPhones",
-        "spouseName",
-        "personalNotes",
-        "children",
-        "emailAddresses",
-        "homeAddress",
-        "businessAddress",
-        "otherAddress"
-    ]
+    "version": 1
 }

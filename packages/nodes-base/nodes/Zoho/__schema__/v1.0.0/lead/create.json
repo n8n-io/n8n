@@ -1,51 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "Modified_Time": {
-            "type": "string"
-        },
-        "Modified_By": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "name",
-                "id"
-            ]
-        },
-        "Created_Time": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "Created_By": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "name",
-                "id"
-            ]
-        }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/Zoho/__schema__/v1.0.0/lead/create.json",
+    "sha": "15496beeb7a7b4a05f062d001051cf816e7882af",
+    "size": 1081,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Zoho/__schema__/v1.0.0/lead/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Zoho/__schema__/v1.0.0/lead/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/15496beeb7a7b4a05f062d001051cf816e7882af",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Zoho/__schema__/v1.0.0/lead/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJNb2RpZmllZF9UaW1lIjogewogICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiTW9kaWZpZWRfQnkiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJw\ncm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgIm5hbWUiOiB7CiAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAg\nICAgfSwKICAgICAgICAgICAgICAgICJpZCI6IHsKICAgICAgICAgICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9CiAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAg\nICAgICAgICJuYW1lIiwKICAgICAgICAgICAgICAgICJpZCIKICAgICAgICAg\nICAgXQogICAgICAgIH0sCiAgICAgICAgIkNyZWF0ZWRfVGltZSI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAg\nImlkIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nfSwKICAgICAgICAiQ3JlYXRlZF9CeSI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAib2JqZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAg\nICAgICAgICAgICAibmFtZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAg\nICAgImlkIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfSwKICAgICAgICAg\nICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgIm5hbWUiLAogICAg\nICAgICAgICAgICAgImlkIgogICAgICAgICAgICBdCiAgICAgICAgfQogICAg\nfSwKICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAiTW9kaWZpZWRfVGltZSIs\nCiAgICAgICAgIk1vZGlmaWVkX0J5IiwKICAgICAgICAiQ3JlYXRlZF9UaW1l\nIiwKICAgICAgICAiaWQiLAogICAgICAgICJDcmVhdGVkX0J5IgogICAgXQp9\nCg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Zoho/__schema__/v1.0.0/lead/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/15496beeb7a7b4a05f062d001051cf816e7882af",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Zoho/__schema__/v1.0.0/lead/create.json"
     },
-    "required": [
-        "Modified_Time",
-        "Modified_By",
-        "Created_Time",
-        "id",
-        "Created_By"
-    ]
+    "version": 1
 }

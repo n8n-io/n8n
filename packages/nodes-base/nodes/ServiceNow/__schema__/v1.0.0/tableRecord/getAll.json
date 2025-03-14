@@ -1,56 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "number": {
-            "type": "string"
-        },
-        "short_description": {
-            "type": "string"
-        },
-        "sys_id": {
-            "type": "string"
-        },
-        "author": {
-            "type": "object",
-            "properties": {
-                "link": {
-                    "type": "string"
-                },
-                "value": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "link",
-                "value"
-            ]
-        },
-        "rating": {
-            "type": "string"
-        },
-        "language": {
-            "type": "string"
-        },
-        "embedded_media": {
-            "type": "string"
-        },
-        "content": {
-            "type": "string"
-        },
-        "helpful_text": {
-            "type": "string"
-        },
-        "last_updated_on": {
-            "type": "string"
-        },
-        "last_helpful_rating": {
-            "type": "string"
-        },
-        "last_rating": {
-            "type": "string"
-        },
-        "view_count": {
-            "type": "string"
-        }
-    }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/ServiceNow/__schema__/v1.0.0/tableRecord/getAll.json",
+    "sha": "042fdbfec602570dd26bb36fa55e109d7dbe0c7a",
+    "size": 1186,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ServiceNow/__schema__/v1.0.0/tableRecord/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ServiceNow/__schema__/v1.0.0/tableRecord/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/042fdbfec602570dd26bb36fa55e109d7dbe0c7a",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/ServiceNow/__schema__/v1.0.0/tableRecord/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJudW1iZXIiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJzaG9ydF9kZXNjcmlwdGlvbiI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAg\nICAgInN5c19pZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgImF1dGhvciI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAg\nICAgICAgICAgICAgICAibGluayI6IHsKICAgICAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAg\nICAgICAgInZhbHVlIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgImxpbmsi\nLAogICAgICAgICAgICAgICAgInZhbHVlIgogICAgICAgICAgICBdCiAgICAg\nICAgfSwKICAgICAgICAicmF0aW5nIjogewogICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAibGFuZ3VhZ2UiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAg\nICJlbWJlZGRlZF9tZWRpYSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgIH0sCiAgICAgICAgImNvbnRlbnQiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJoZWxw\nZnVsX3RleHQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICB9LAogICAgICAgICJsYXN0X3VwZGF0ZWRfb24iOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJsYXN0\nX2hlbHBmdWxfcmF0aW5nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgfSwKICAgICAgICAibGFzdF9yYXRpbmciOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJ2\naWV3X2NvdW50IjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgfQogICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ServiceNow/__schema__/v1.0.0/tableRecord/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/042fdbfec602570dd26bb36fa55e109d7dbe0c7a",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ServiceNow/__schema__/v1.0.0/tableRecord/getAll.json"
+    },
+    "version": 1
 }

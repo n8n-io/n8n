@@ -1,104 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "ok": {
-            "type": "boolean"
-        },
-        "result": {
-            "type": "object",
-            "properties": {
-                "message_id": {
-                    "type": "integer"
-                },
-                "from": {
-                    "type": "object",
-                    "properties": {
-                        "id": {
-                            "type": "integer"
-                        },
-                        "is_bot": {
-                            "type": "boolean"
-                        },
-                        "first_name": {
-                            "type": "string"
-                        },
-                        "username": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "id",
-                        "is_bot",
-                        "first_name",
-                        "username"
-                    ]
-                },
-                "chat": {
-                    "type": "object",
-                    "properties": {
-                        "id": {
-                            "type": "integer"
-                        },
-                        "first_name": {
-                            "type": "string"
-                        },
-                        "type": {
-                            "type": "string"
-                        },
-                        "last_name": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "id",
-                        "type"
-                    ]
-                },
-                "date": {
-                    "type": "integer"
-                },
-                "audio": {
-                    "type": "object",
-                    "properties": {
-                        "duration": {
-                            "type": "integer"
-                        },
-                        "file_name": {
-                            "type": "string"
-                        },
-                        "mime_type": {
-                            "type": "string"
-                        },
-                        "file_id": {
-                            "type": "string"
-                        },
-                        "file_unique_id": {
-                            "type": "string"
-                        },
-                        "file_size": {
-                            "type": "integer"
-                        }
-                    },
-                    "required": [
-                        "duration",
-                        "file_name",
-                        "mime_type",
-                        "file_id",
-                        "file_unique_id",
-                        "file_size"
-                    ]
-                }
-            },
-            "required": [
-                "message_id",
-                "from",
-                "chat",
-                "date"
-            ]
-        }
+    "name": "sendAudio.json",
+    "path": "packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/message/sendAudio.json",
+    "sha": "b09b01b05a150b2e91ce21631fb96a56369c83e9",
+    "size": 3133,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/message/sendAudio.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/message/sendAudio.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/b09b01b05a150b2e91ce21631fb96a56369c83e9",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/message/sendAudio.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJvayI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIK\nICAgICAgICB9LAogICAgICAgICJyZXN1bHQiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICAgICAgICAgIm1lc3NhZ2VfaWQiOiB7CiAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICAgICAgICAgIH0sCiAg\nICAgICAgICAgICAgICAiZnJvbSI6IHsKICAgICAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAgICAgICJwcm9wZXJ0\naWVzIjogewogICAgICAgICAgICAgICAgICAgICAgICAiaWQiOiB7CiAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAg\nICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAg\nICAiaXNfYm90IjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5\ncGUiOiAiYm9vbGVhbiIKICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgICAgICAgICAgICAgImZpcnN0X25hbWUiOiB7CiAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgICAgICJ1\nc2VybmFtZSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAgICAgfQogICAgICAg\nICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgInJlcXVpcmVk\nIjogWwogICAgICAgICAgICAgICAgICAgICAgICAiaWQiLAogICAgICAgICAg\nICAgICAgICAgICAgICAiaXNfYm90IiwKICAgICAgICAgICAgICAgICAgICAg\nICAgImZpcnN0X25hbWUiLAogICAgICAgICAgICAgICAgICAgICAgICAidXNl\ncm5hbWUiCiAgICAgICAgICAgICAgICAgICAgXQogICAgICAgICAgICAgICAg\nfSwKICAgICAgICAgICAgICAgICJjaGF0IjogewogICAgICAgICAgICAgICAg\nICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICAgICAgICAgInBy\nb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJpZCI6IHsK\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIi\nCiAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAg\nICAgICAgICJmaXJzdF9uYW1lIjogewogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAgICAg\nICB9LAogICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6IHsKICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAgICAg\nImxhc3RfbmFtZSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAgICAgfQogICAg\nICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgInJlcXVp\ncmVkIjogWwogICAgICAgICAgICAgICAgICAgICAgICAiaWQiLAogICAgICAg\nICAgICAgICAgICAgICAgICAidHlwZSIKICAgICAgICAgICAgICAgICAgICBd\nCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImRhdGUiOiB7\nCiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAg\nICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiYXVkaW8iOiB7CiAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAg\nICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICAgICAg\nICAgImR1cmF0aW9uIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAg\nInR5cGUiOiAiaW50ZWdlciIKICAgICAgICAgICAgICAgICAgICAgICAgfSwK\nICAgICAgICAgICAgICAgICAgICAgICAgImZpbGVfbmFtZSI6IHsKICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAgICAg\nIm1pbWVfdHlwZSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgICAgICAgICAgICAgImZpbGVfaWQiOiB7CiAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAg\nICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgICAgICJmaWxl\nX3VuaXF1ZV9pZCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgICAgICAgICAgICAgImZpbGVfc2l6ZSI6IHsKICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAg\nICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgICAgICB9LAogICAg\nICAgICAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAg\nICAgICAgICAgImR1cmF0aW9uIiwKICAgICAgICAgICAgICAgICAgICAgICAg\nImZpbGVfbmFtZSIsCiAgICAgICAgICAgICAgICAgICAgICAgICJtaW1lX3R5\ncGUiLAogICAgICAgICAgICAgICAgICAgICAgICAiZmlsZV9pZCIsCiAgICAg\nICAgICAgICAgICAgICAgICAgICJmaWxlX3VuaXF1ZV9pZCIsCiAgICAgICAg\nICAgICAgICAgICAgICAgICJmaWxlX3NpemUiCiAgICAgICAgICAgICAgICAg\nICAgXQogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9LAogICAgICAg\nICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAibWVzc2FnZV9p\nZCIsCiAgICAgICAgICAgICAgICAiZnJvbSIsCiAgICAgICAgICAgICAgICAi\nY2hhdCIsCiAgICAgICAgICAgICAgICAiZGF0ZSIKICAgICAgICAgICAgXQog\nICAgICAgIH0KICAgIH0sCiAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgIm9r\nIiwKICAgICAgICAicmVzdWx0IgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/message/sendAudio.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/b09b01b05a150b2e91ce21631fb96a56369c83e9",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/message/sendAudio.json"
     },
-    "required": [
-        "ok",
-        "result"
-    ]
+    "version": 1
 }

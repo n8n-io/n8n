@@ -1,181 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "Owner": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "name",
-                "id",
-                "email"
-            ]
-        },
-        "$currency_symbol": {
-            "type": "string"
-        },
-        "$field_states": {
-            "type": "null"
-        },
-        "$state": {
-            "type": "string"
-        },
-        "Unsubscribed_Mode": {
-            "type": "null"
-        },
-        "$converted": {
-            "type": "boolean"
-        },
-        "$process_flow": {
-            "type": "boolean"
-        },
-        "$locked_for_me": {
-            "type": "boolean"
-        },
-        "id": {
-            "type": "string"
-        },
-        "$approved": {
-            "type": "boolean"
-        },
-        "$approval": {
-            "type": "object",
-            "properties": {
-                "delegate": {
-                    "type": "boolean"
-                },
-                "takeover": {
-                    "type": "boolean"
-                },
-                "approve": {
-                    "type": "boolean"
-                },
-                "reject": {
-                    "type": "boolean"
-                },
-                "resubmit": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "delegate",
-                "approve",
-                "reject",
-                "resubmit"
-            ]
-        },
-        "$editable": {
-            "type": "boolean"
-        },
-        "$review_process": {
-            "type": "object",
-            "properties": {
-                "approve": {
-                    "type": "boolean"
-                },
-                "reject": {
-                    "type": "boolean"
-                },
-                "resubmit": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "approve",
-                "reject",
-                "resubmit"
-            ]
-        },
-        "$layout_id": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "name",
-                "id"
-            ]
-        },
-        "Full_Name": {
-            "type": "string"
-        },
-        "Modified_By": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "name",
-                "id",
-                "email"
-            ]
-        },
-        "$review": {
-            "type": "null"
-        },
-        "Email_Opt_Out": {
-            "type": "boolean"
-        },
-        "Modified_Time": {
-            "type": "string"
-        },
-        "Unsubscribed_Time": {
-            "type": "null"
-        },
-        "Last_Name": {
-            "type": "string"
-        },
-        "$in_merge": {
-            "type": "boolean"
-        },
-        "Locked__s": {
-            "type": "boolean"
-        },
-        "Tag": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string"
-                    },
-                    "id": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "name",
-                    "id"
-                ]
-            }
-        },
-        "$approval_state": {
-            "type": "string"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Zoho/__schema__/v1.0.0/lead/getAll.json",
+    "sha": "83eff4259c4c0628a192e3ba6ea0406df0bf2826",
+    "size": 4240,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Zoho/__schema__/v1.0.0/lead/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Zoho/__schema__/v1.0.0/lead/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/83eff4259c4c0628a192e3ba6ea0406df0bf2826",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Zoho/__schema__/v1.0.0/lead/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJPd25lciI6IHsKICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0\nIiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAg\nICAibmFtZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImlkIjog\newogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiZW1haWwiOiB7CiAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAg\nICAgfQogICAgICAgICAgICB9LAogICAgICAgICAgICAicmVxdWlyZWQiOiBb\nCiAgICAgICAgICAgICAgICAibmFtZSIsCiAgICAgICAgICAgICAgICAiaWQi\nLAogICAgICAgICAgICAgICAgImVtYWlsIgogICAgICAgICAgICBdCiAgICAg\nICAgfSwKICAgICAgICAiJGN1cnJlbmN5X3N5bWJvbCI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIiRmaWVs\nZF9zdGF0ZXMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAg\nICAgfSwKICAgICAgICAiJHN0YXRlIjogewogICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiVW5zdWJzY3JpYmVkX01v\nZGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwK\nICAgICAgICAiJGNvbnZlcnRlZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nYm9vbGVhbiIKICAgICAgICB9LAogICAgICAgICIkcHJvY2Vzc19mbG93Ijog\newogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAg\nICAgICAgIiRsb2NrZWRfZm9yX21lIjogewogICAgICAgICAgICAidHlwZSI6\nICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgImlkIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiJGFw\ncHJvdmVkIjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAg\nICAgIH0sCiAgICAgICAgIiRhcHByb3ZhbCI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAg\nICAgICAgICAgICAgICAiZGVsZWdhdGUiOiB7CiAgICAgICAgICAgICAgICAg\nICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICAgICAgICAgIH0sCiAgICAg\nICAgICAgICAgICAidGFrZW92ZXIiOiB7CiAgICAgICAgICAgICAgICAgICAg\nInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAg\nICAgICAgICAiYXBwcm92ZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJib29sZWFuIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nICAgICJyZWplY3QiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAi\nYm9vbGVhbiIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAi\ncmVzdWJtaXQiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiYm9v\nbGVhbiIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfSwKICAgICAg\nICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgImRlbGVnYXRl\nIiwKICAgICAgICAgICAgICAgICJhcHByb3ZlIiwKICAgICAgICAgICAgICAg\nICJyZWplY3QiLAogICAgICAgICAgICAgICAgInJlc3VibWl0IgogICAgICAg\nICAgICBdCiAgICAgICAgfSwKICAgICAgICAiJGVkaXRhYmxlIjogewogICAg\nICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAg\nIiRyZXZpZXdfcHJvY2VzcyI6IHsKICAgICAgICAgICAgInR5cGUiOiAib2Jq\nZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAg\nICAgICAiYXBwcm92ZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6\nICJib29sZWFuIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAg\nICJyZWplY3QiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiYm9v\nbGVhbiIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAicmVz\ndWJtaXQiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVh\nbiIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfSwKICAgICAgICAg\nICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgImFwcHJvdmUiLAog\nICAgICAgICAgICAgICAgInJlamVjdCIsCiAgICAgICAgICAgICAgICAicmVz\ndWJtaXQiCiAgICAgICAgICAgIF0KICAgICAgICB9LAogICAgICAgICIkbGF5\nb3V0X2lkIjogewogICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAg\nICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICJuYW1l\nIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiaWQiOiB7CiAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAg\nICAgfQogICAgICAgICAgICB9LAogICAgICAgICAgICAicmVxdWlyZWQiOiBb\nCiAgICAgICAgICAgICAgICAibmFtZSIsCiAgICAgICAgICAgICAgICAiaWQi\nCiAgICAgICAgICAgIF0KICAgICAgICB9LAogICAgICAgICJGdWxsX05hbWUi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAog\nICAgICAgICJNb2RpZmllZF9CeSI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nb2JqZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAg\nICAgICAgICAibmFtZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAg\nImlkIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiZW1haWwiOiB7\nCiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nICAgICAgICAgfQogICAgICAgICAgICB9LAogICAgICAgICAgICAicmVxdWly\nZWQiOiBbCiAgICAgICAgICAgICAgICAibmFtZSIsCiAgICAgICAgICAgICAg\nICAiaWQiLAogICAgICAgICAgICAgICAgImVtYWlsIgogICAgICAgICAgICBd\nCiAgICAgICAgfSwKICAgICAgICAiJHJldmlldyI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAgICAgICJFbWFpbF9PcHRf\nT3V0IjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAg\nIH0sCiAgICAgICAgIk1vZGlmaWVkX1RpbWUiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJVbnN1YnNjcmli\nZWRfVGltZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAg\nICB9LAogICAgICAgICJMYXN0X05hbWUiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICIkaW5fbWVyZ2UiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAg\nICAgICAiTG9ja2VkX19zIjogewogICAgICAgICAgICAidHlwZSI6ICJib29s\nZWFuIgogICAgICAgIH0sCiAgICAgICAgIlRhZyI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAiYXJyYXkiLAogICAgICAgICAgICAiaXRlbXMiOiB7CiAgICAg\nICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAg\nInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgIm5hbWUiOiB7\nCiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICJpZCI6\nIHsKICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgIH0sCiAgICAg\nICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAgICAg\nIm5hbWUiLAogICAgICAgICAgICAgICAgICAgICJpZCIKICAgICAgICAgICAg\nICAgIF0KICAgICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAgIiRhcHBy\nb3ZhbF9zdGF0ZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0KICAgIH0sCiAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgImlk\nIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Zoho/__schema__/v1.0.0/lead/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/83eff4259c4c0628a192e3ba6ea0406df0bf2826",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Zoho/__schema__/v1.0.0/lead/getAll.json"
     },
-    "required": [
-        "id"
-    ]
+    "version": 1
 }

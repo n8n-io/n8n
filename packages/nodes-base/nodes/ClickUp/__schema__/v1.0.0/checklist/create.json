@@ -1,32 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "task_id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "orderindex": {
-            "type": "integer"
-        },
-        "resolved": {
-            "type": "integer"
-        },
-        "unresolved": {
-            "type": "integer"
-        }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/checklist/create.json",
+    "sha": "ec2a667a385cf29bb2e73fd4ff9687dc58d60287",
+    "size": 573,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/checklist/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/checklist/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/ec2a667a385cf29bb2e73fd4ff9687dc58d60287",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/checklist/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInRhc2tfaWQiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJuYW1lIjogewog\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAg\nICAib3JkZXJpbmRleCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdl\nciIKICAgICAgICB9LAogICAgICAgICJyZXNvbHZlZCI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJ1bnJl\nc29sdmVkIjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAg\nICAgIH0KICAgIH0sCiAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgImlkIiwK\nICAgICAgICAidGFza19pZCIsCiAgICAgICAgIm5hbWUiLAogICAgICAgICJv\ncmRlcmluZGV4IiwKICAgICAgICAicmVzb2x2ZWQiLAogICAgICAgICJ1bnJl\nc29sdmVkIiwKICAgICAgICAiaXRlbXMiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/checklist/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/ec2a667a385cf29bb2e73fd4ff9687dc58d60287",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/checklist/create.json"
     },
-    "required": [
-        "id",
-        "task_id",
-        "name",
-        "orderindex",
-        "resolved",
-        "unresolved",
-        "items"
-    ]
+    "version": 1
 }

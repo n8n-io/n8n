@@ -1,93 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "self": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "filename": {
-            "type": "string"
-        },
-        "author": {
-            "type": "object",
-            "properties": {
-                "self": {
-                    "type": "string"
-                },
-                "accountId": {
-                    "type": "string"
-                },
-                "emailAddress": {
-                    "type": "string"
-                },
-                "avatarUrls": {
-                    "type": "object",
-                    "properties": {
-                        "48x48": {
-                            "type": "string"
-                        },
-                        "24x24": {
-                            "type": "string"
-                        },
-                        "16x16": {
-                            "type": "string"
-                        },
-                        "32x32": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "48x48",
-                        "24x24",
-                        "16x16",
-                        "32x32"
-                    ]
-                },
-                "displayName": {
-                    "type": "string"
-                },
-                "active": {
-                    "type": "boolean"
-                },
-                "timeZone": {
-                    "type": "string"
-                },
-                "accountType": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "self",
-                "emailAddress",
-                "avatarUrls",
-                "displayName",
-                "active",
-                "timeZone"
-            ]
-        },
-        "created": {
-            "type": "string"
-        },
-        "size": {
-            "type": "integer"
-        },
-        "mimeType": {
-            "type": "string"
-        },
-        "content": {
-            "type": "string"
-        }
+    "name": "add.json",
+    "path": "packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issueAttachment/add.json",
+    "sha": "0cf85c5ec336f1fcce7589d13fd789cd1ea66703",
+    "size": 2319,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issueAttachment/add.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issueAttachment/add.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/0cf85c5ec336f1fcce7589d13fd789cd1ea66703",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issueAttachment/add.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJzZWxmIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAiaWQiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJmaWxlbmFtZSI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAg\nICAgImF1dGhvciI6IHsKICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwK\nICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAi\nc2VsZiI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImFjY291bnRJ\nZCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImVtYWlsQWRkcmVz\ncyI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImF2YXRhclVybHMi\nOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAg\nICAgICAgICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAg\nICAgICAgICAgICAgIjQ4eDQ4IjogewogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAgICAg\nICB9LAogICAgICAgICAgICAgICAgICAgICAgICAiMjR4MjQiOiB7CiAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgICAg\nICIxNngxNiI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAg\nICAgICAgICAgICAgICAgICAgIjMyeDMyIjogewogICAgICAgICAgICAgICAg\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAg\nICAgICAgICB9CiAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAgICAgICAg\nICI0OHg0OCIsCiAgICAgICAgICAgICAgICAgICAgICAgICIyNHgyNCIsCiAg\nICAgICAgICAgICAgICAgICAgICAgICIxNngxNiIsCiAgICAgICAgICAgICAg\nICAgICAgICAgICIzMngzMiIKICAgICAgICAgICAgICAgICAgICBdCiAgICAg\nICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImRpc3BsYXlOYW1lIjog\newogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiYWN0aXZlIjogewogICAg\nICAgICAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgICAg\nICAgICB9LAogICAgICAgICAgICAgICAgInRpbWVab25lIjogewogICAgICAg\nICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAg\nIH0sCiAgICAgICAgICAgICAgICAiYWNjb3VudFR5cGUiOiB7CiAgICAgICAg\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAg\nfQogICAgICAgICAgICB9LAogICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAg\nICAgICAgICAgICAgICAic2VsZiIsCiAgICAgICAgICAgICAgICAiZW1haWxB\nZGRyZXNzIiwKICAgICAgICAgICAgICAgICJhdmF0YXJVcmxzIiwKICAgICAg\nICAgICAgICAgICJkaXNwbGF5TmFtZSIsCiAgICAgICAgICAgICAgICAiYWN0\naXZlIiwKICAgICAgICAgICAgICAgICJ0aW1lWm9uZSIKICAgICAgICAgICAg\nXQogICAgICAgIH0sCiAgICAgICAgImNyZWF0ZWQiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJzaXplIjog\newogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAg\nICAgICAgIm1pbWVUeXBlIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgfSwKICAgICAgICAiY29udGVudCI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0KICAgIH0sCiAgICAicmVx\ndWlyZWQiOiBbCiAgICAgICAgInNlbGYiLAogICAgICAgICJpZCIsCiAgICAg\nICAgImZpbGVuYW1lIiwKICAgICAgICAiYXV0aG9yIiwKICAgICAgICAiY3Jl\nYXRlZCIsCiAgICAgICAgInNpemUiLAogICAgICAgICJtaW1lVHlwZSIsCiAg\nICAgICAgImNvbnRlbnQiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issueAttachment/add.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/0cf85c5ec336f1fcce7589d13fd789cd1ea66703",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issueAttachment/add.json"
     },
-    "required": [
-        "self",
-        "id",
-        "filename",
-        "author",
-        "created",
-        "size",
-        "mimeType",
-        "content"
-    ]
+    "version": 1
 }

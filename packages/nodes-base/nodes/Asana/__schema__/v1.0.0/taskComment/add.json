@@ -1,110 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "gid": {
-            "type": "string"
-        },
-        "resource_type": {
-            "type": "string"
-        },
-        "created_at": {
-            "type": "string"
-        },
-        "num_likes": {
-            "type": "integer"
-        },
-        "num_hearts": {
-            "type": "integer"
-        },
-        "resource_subtype": {
-            "type": "string"
-        },
-        "is_edited": {
-            "type": "boolean"
-        },
-        "text": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
-        },
-        "is_pinned": {
-            "type": "boolean"
-        },
-        "source": {
-            "type": "string"
-        },
-        "hearted": {
-            "type": "boolean"
-        },
-        "liked": {
-            "type": "boolean"
-        },
-        "is_editable": {
-            "type": "boolean"
-        },
-        "created_by": {
-            "type": "object",
-            "properties": {
-                "gid": {
-                    "type": "string"
-                },
-                "resource_type": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "gid",
-                "resource_type",
-                "name"
-            ]
-        },
-        "target": {
-            "type": "object",
-            "properties": {
-                "gid": {
-                    "type": "string"
-                },
-                "resource_type": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "resource_subtype": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "gid",
-                "resource_type",
-                "name",
-                "resource_subtype"
-            ]
-        }
+    "name": "add.json",
+    "path": "packages/nodes-base/nodes/Asana/__schema__/v1.0.0/taskComment/add.json",
+    "sha": "3fac8feccaf9cb64854ea04cf164270c11879a0e",
+    "size": 2419,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Asana/__schema__/v1.0.0/taskComment/add.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Asana/__schema__/v1.0.0/taskComment/add.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/3fac8feccaf9cb64854ea04cf164270c11879a0e",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Asana/__schema__/v1.0.0/taskComment/add.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJnaWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJyZXNvdXJjZV90eXBlIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiY3Jl\nYXRlZF9hdCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgIH0sCiAgICAgICAgIm51bV9saWtlcyI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJudW1faGVhcnRz\nIjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0s\nCiAgICAgICAgInJlc291cmNlX3N1YnR5cGUiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJpc19lZGl0ZWQi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwK\nICAgICAgICAidGV4dCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgIH0sCiAgICAgICAgInR5cGUiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJpc19waW5uZWQi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwK\nICAgICAgICAic291cmNlIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgfSwKICAgICAgICAiaGVhcnRlZCI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9LAogICAgICAgICJsaWtl\nZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9\nLAogICAgICAgICJpc19lZGl0YWJsZSI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAiYm9vbGVhbiIKICAgICAgICB9LAogICAgICAgICJjcmVhdGVkX2J5Ijog\newogICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAi\ncHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICJnaWQiOiB7CiAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAg\nICAgfSwKICAgICAgICAgICAgICAgICJyZXNvdXJjZV90eXBlIjogewogICAg\nICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAg\nICAgIH0sCiAgICAgICAgICAgICAgICAibmFtZSI6IHsKICAgICAgICAgICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9CiAg\nICAgICAgICAgIH0sCiAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAg\nICAgICAgICAgICJnaWQiLAogICAgICAgICAgICAgICAgInJlc291cmNlX3R5\ncGUiLAogICAgICAgICAgICAgICAgIm5hbWUiCiAgICAgICAgICAgIF0KICAg\nICAgICB9LAogICAgICAgICJ0YXJnZXQiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogIm9iamVjdCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAg\nICAgICAgICAgICAgImdpZCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAg\nICAgInJlc291cmNlX3R5cGUiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nICAgICJuYW1lIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAicmVz\nb3VyY2Vfc3VidHlwZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0sCiAg\nICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICJnaWQi\nLAogICAgICAgICAgICAgICAgInJlc291cmNlX3R5cGUiLAogICAgICAgICAg\nICAgICAgIm5hbWUiLAogICAgICAgICAgICAgICAgInJlc291cmNlX3N1YnR5\ncGUiCiAgICAgICAgICAgIF0KICAgICAgICB9CiAgICB9LAogICAgInJlcXVp\ncmVkIjogWwogICAgICAgICJnaWQiLAogICAgICAgICJyZXNvdXJjZV90eXBl\nIiwKICAgICAgICAiY3JlYXRlZF9hdCIsCiAgICAgICAgIm51bV9saWtlcyIs\nCiAgICAgICAgIm51bV9oZWFydHMiLAogICAgICAgICJyZXNvdXJjZV9zdWJ0\neXBlIiwKICAgICAgICAiaXNfZWRpdGVkIiwKICAgICAgICAidGV4dCIsCiAg\nICAgICAgInR5cGUiLAogICAgICAgICJpc19waW5uZWQiLAogICAgICAgICJz\nb3VyY2UiLAogICAgICAgICJoZWFydHMiLAogICAgICAgICJsaWtlcyIsCiAg\nICAgICAgImhlYXJ0ZWQiLAogICAgICAgICJsaWtlZCIsCiAgICAgICAgInBy\nZXZpZXdzIiwKICAgICAgICAiaXNfZWRpdGFibGUiLAogICAgICAgICJjcmVh\ndGVkX2J5IiwKICAgICAgICAidGFyZ2V0IgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Asana/__schema__/v1.0.0/taskComment/add.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/3fac8feccaf9cb64854ea04cf164270c11879a0e",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Asana/__schema__/v1.0.0/taskComment/add.json"
     },
-    "required": [
-        "gid",
-        "resource_type",
-        "created_at",
-        "num_likes",
-        "num_hearts",
-        "resource_subtype",
-        "is_edited",
-        "text",
-        "type",
-        "is_pinned",
-        "source",
-        "hearts",
-        "likes",
-        "hearted",
-        "liked",
-        "previews",
-        "is_editable",
-        "created_by",
-        "target"
-    ]
+    "version": 1
 }

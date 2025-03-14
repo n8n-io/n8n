@@ -1,56 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "first_name": {
-            "type": "string"
-        },
-        "last_name": {
-            "type": "string"
-        },
-        "full_name": {
-            "type": "string"
-        },
-        "civility": {
-            "type": "string"
-        },
-        "linkedin": {
-            "type": "string"
-        },
-        "email": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "email": {
-                        "type": "string"
-                    },
-                    "qualification": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "email",
-                    "qualification"
-                ]
-            }
-        },
-        "company": {
-            "type": "string"
-        },
-        "website": {
-            "type": "string"
-        },
-        "country": {
-            "type": "string"
-        },
-        "company_linkedin": {
-            "type": "string"
-        },
-        "phone": {
-            "type": "string"
-        },
-        "nb_employees": {
-            "type": "string"
-        }
-    }
+    "name": "enrich.json",
+    "path": "packages/nodes-base/nodes/Dropcontact/__schema__/v1.0.0/contact/enrich.json",
+    "sha": "a3a703ecaa177f509bcf6f21e61ad7fb7e8ee0f9",
+    "size": 1234,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Dropcontact/__schema__/v1.0.0/contact/enrich.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Dropcontact/__schema__/v1.0.0/contact/enrich.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/a3a703ecaa177f509bcf6f21e61ad7fb7e8ee0f9",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Dropcontact/__schema__/v1.0.0/contact/enrich.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJmaXJzdF9uYW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgfSwKICAgICAgICAibGFzdF9uYW1lIjogewogICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAi\nZnVsbF9uYW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgfSwKICAgICAgICAiY2l2aWxpdHkiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJsaW5rZWRpbiI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAg\nICAgICAgImVtYWlsIjogewogICAgICAgICAgICAidHlwZSI6ICJhcnJheSIs\nCiAgICAgICAgICAgICJpdGVtcyI6IHsKICAgICAgICAgICAgICAgICJ0eXBl\nIjogIm9iamVjdCIsCiAgICAgICAgICAgICAgICAicHJvcGVydGllcyI6IHsK\nICAgICAgICAgICAgICAgICAgICAiZW1haWwiOiB7CiAgICAgICAgICAgICAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAg\nICB9LAogICAgICAgICAgICAgICAgICAgICJxdWFsaWZpY2F0aW9uIjogewog\nICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgfSwKICAgICAgICAg\nICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICAgICAiZW1h\naWwiLAogICAgICAgICAgICAgICAgICAgICJxdWFsaWZpY2F0aW9uIgogICAg\nICAgICAgICAgICAgXQogICAgICAgICAgICB9CiAgICAgICAgfSwKICAgICAg\nICAiY29tcGFueSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgIndlYnNpdGUiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJjb3VudHJ5Ijog\newogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAg\nICAgICAiY29tcGFueV9saW5rZWRpbiI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInBob25lIjogewogICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAi\nbmJfZW1wbG95ZWVzIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfQogICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Dropcontact/__schema__/v1.0.0/contact/enrich.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/a3a703ecaa177f509bcf6f21e61ad7fb7e8ee0f9",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Dropcontact/__schema__/v1.0.0/contact/enrich.json"
+    },
+    "version": 1
 }

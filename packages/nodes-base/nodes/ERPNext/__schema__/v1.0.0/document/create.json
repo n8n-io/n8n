@@ -1,45 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "owner": {
-            "type": "string"
-        },
-        "creation": {
-            "type": "string"
-        },
-        "modified": {
-            "type": "string"
-        },
-        "modified_by": {
-            "type": "string"
-        },
-        "docstatus": {
-            "type": "integer"
-        },
-        "idx": {
-            "type": "integer"
-        },
-        "naming_series": {
-            "type": "string"
-        },
-        "language": {
-            "type": "string"
-        },
-        "disabled": {
-            "type": "integer"
-        },
-        "doctype": {
-            "type": "string"
-        }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/ERPNext/__schema__/v1.0.0/document/create.json",
+    "sha": "2104275117b8b3f5f8b824e3ca34058ab8481397",
+    "size": 849,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ERPNext/__schema__/v1.0.0/document/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ERPNext/__schema__/v1.0.0/document/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/2104275117b8b3f5f8b824e3ca34058ab8481397",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/ERPNext/__schema__/v1.0.0/document/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJvd25lciI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgIH0sCiAgICAgICAgImNyZWF0aW9uIjogewogICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAibW9kaWZp\nZWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9\nLAogICAgICAgICJtb2RpZmllZF9ieSI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImRvY3N0YXR1cyI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAogICAg\nICAgICJpZHgiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAg\nICAgICAgfSwKICAgICAgICAibmFtaW5nX3NlcmllcyI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImxhbmd1\nYWdlIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nfSwKICAgICAgICAiZGlzYWJsZWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nImludGVnZXIiCiAgICAgICAgfSwKICAgICAgICAiZG9jdHlwZSI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0KICAgIH0sCiAg\nICAicmVxdWlyZWQiOiBbCiAgICAgICAgIm5hbWUiLAogICAgICAgICJvd25l\nciIsCiAgICAgICAgImNyZWF0aW9uIiwKICAgICAgICAibW9kaWZpZWQiLAog\nICAgICAgICJtb2RpZmllZF9ieSIsCiAgICAgICAgImRvY3N0YXR1cyIsCiAg\nICAgICAgImlkeCIsCiAgICAgICAgImRvY3R5cGUiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ERPNext/__schema__/v1.0.0/document/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/2104275117b8b3f5f8b824e3ca34058ab8481397",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ERPNext/__schema__/v1.0.0/document/create.json"
     },
-    "required": [
-        "name",
-        "owner",
-        "creation",
-        "modified",
-        "modified_by",
-        "docstatus",
-        "idx",
-        "doctype"
-    ]
+    "version": 1
 }

@@ -1,141 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"name": {
-			"type": "string"
-		},
-		"sender": {
-			"type": "object",
-			"properties": {
-				"name": {
-					"type": "string"
-				},
-				"displayName": {
-					"type": "string"
-				},
-				"type": {
-					"type": "string"
-				},
-				"domainId": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"name",
-				"displayName",
-				"type",
-				"domainId"
-			]
-		},
-		"createTime": {
-			"type": "string"
-		},
-		"thread": {
-			"type": "object",
-			"properties": {
-				"name": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"name"
-			]
-		},
-		"space": {
-			"type": "object",
-			"properties": {
-				"name": {
-					"type": "string"
-				},
-				"type": {
-					"type": "string"
-				},
-				"singleUserBotDm": {
-					"type": "boolean"
-				},
-				"spaceThreadingState": {
-					"type": "string"
-				},
-				"spaceType": {
-					"type": "string"
-				},
-				"spaceHistoryState": {
-					"type": "string"
-				},
-				"lastActiveTime": {
-					"type": "string"
-				},
-				"membershipCount": {
-					"type": "object",
-					"properties": {
-						"joinedDirectHumanUserCount": {
-							"type": "integer"
-						}
-					},
-					"required": [
-						"joinedDirectHumanUserCount"
-					]
-				},
-				"spaceUri": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"name",
-				"type",
-				"spaceThreadingState",
-				"spaceType",
-				"spaceHistoryState",
-				"lastActiveTime",
-				"membershipCount",
-				"spaceUri"
-			]
-		},
-		"attachment": {
-			"type": "array",
-			"items": {
-				"type": "object",
-				"properties": {
-					"name": {
-						"type": "string"
-					},
-					"contentName": {
-						"type": "string"
-					},
-					"contentType": {
-						"type": "string"
-					},
-					"attachmentDataRef": {
-						"type": "object",
-						"properties": {
-							"resourceName": {
-								"type": "string"
-							}
-						},
-						"required": [
-							"resourceName"
-						]
-					},
-					"thumbnailUri": {
-						"type": "string"
-					},
-					"downloadUri": {
-						"type": "string"
-					},
-					"source": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"name",
-					"contentName",
-					"contentType",
-					"attachmentDataRef",
-					"thumbnailUri",
-					"downloadUri",
-					"source"
-				]
-			}
-		}
-	}
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Google/Chat/__schema__/v1.0.0/message/get.json",
+    "sha": "4896250fa485d6c73f0f35edbd7aca4e41ac4fa0",
+    "size": 2221,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Chat/__schema__/v1.0.0/message/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Chat/__schema__/v1.0.0/message/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/4896250fa485d6c73f0f35edbd7aca4e41ac4fa0",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/Chat/__schema__/v1.0.0/message/get.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJuYW1l\nIjogewoJCQkidHlwZSI6ICJzdHJpbmciCgkJfSwKCQkic2VuZGVyIjogewoJ\nCQkidHlwZSI6ICJvYmplY3QiLAoJCQkicHJvcGVydGllcyI6IHsKCQkJCSJu\nYW1lIjogewoJCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJCX0sCgkJCQkiZGlz\ncGxheU5hbWUiOiB7CgkJCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJfSwKCQkJ\nCSJ0eXBlIjogewoJCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJCX0sCgkJCQki\nZG9tYWluSWQiOiB7CgkJCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJfQoJCQl9\nLAoJCQkicmVxdWlyZWQiOiBbCgkJCQkibmFtZSIsCgkJCQkiZGlzcGxheU5h\nbWUiLAoJCQkJInR5cGUiLAoJCQkJImRvbWFpbklkIgoJCQldCgkJfSwKCQki\nY3JlYXRlVGltZSI6IHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJInRo\ncmVhZCI6IHsKCQkJInR5cGUiOiAib2JqZWN0IiwKCQkJInByb3BlcnRpZXMi\nOiB7CgkJCQkibmFtZSI6IHsKCQkJCQkidHlwZSI6ICJzdHJpbmciCgkJCQl9\nCgkJCX0sCgkJCSJyZXF1aXJlZCI6IFsKCQkJCSJuYW1lIgoJCQldCgkJfSwK\nCQkic3BhY2UiOiB7CgkJCSJ0eXBlIjogIm9iamVjdCIsCgkJCSJwcm9wZXJ0\naWVzIjogewoJCQkJIm5hbWUiOiB7CgkJCQkJInR5cGUiOiAic3RyaW5nIgoJ\nCQkJfSwKCQkJCSJ0eXBlIjogewoJCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJ\nCX0sCgkJCQkic2luZ2xlVXNlckJvdERtIjogewoJCQkJCSJ0eXBlIjogImJv\nb2xlYW4iCgkJCQl9LAoJCQkJInNwYWNlVGhyZWFkaW5nU3RhdGUiOiB7CgkJ\nCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJfSwKCQkJCSJzcGFjZVR5cGUiOiB7\nCgkJCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJfSwKCQkJCSJzcGFjZUhpc3Rv\ncnlTdGF0ZSI6IHsKCQkJCQkidHlwZSI6ICJzdHJpbmciCgkJCQl9LAoJCQkJ\nImxhc3RBY3RpdmVUaW1lIjogewoJCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJ\nCX0sCgkJCQkibWVtYmVyc2hpcENvdW50IjogewoJCQkJCSJ0eXBlIjogIm9i\namVjdCIsCgkJCQkJInByb3BlcnRpZXMiOiB7CgkJCQkJCSJqb2luZWREaXJl\nY3RIdW1hblVzZXJDb3VudCI6IHsKCQkJCQkJCSJ0eXBlIjogImludGVnZXIi\nCgkJCQkJCX0KCQkJCQl9LAoJCQkJCSJyZXF1aXJlZCI6IFsKCQkJCQkJImpv\naW5lZERpcmVjdEh1bWFuVXNlckNvdW50IgoJCQkJCV0KCQkJCX0sCgkJCQki\nc3BhY2VVcmkiOiB7CgkJCQkJInR5cGUiOiAic3RyaW5nIgoJCQkJfQoJCQl9\nLAoJCQkicmVxdWlyZWQiOiBbCgkJCQkibmFtZSIsCgkJCQkidHlwZSIsCgkJ\nCQkic3BhY2VUaHJlYWRpbmdTdGF0ZSIsCgkJCQkic3BhY2VUeXBlIiwKCQkJ\nCSJzcGFjZUhpc3RvcnlTdGF0ZSIsCgkJCQkibGFzdEFjdGl2ZVRpbWUiLAoJ\nCQkJIm1lbWJlcnNoaXBDb3VudCIsCgkJCQkic3BhY2VVcmkiCgkJCV0KCQl9\nLAoJCSJhdHRhY2htZW50IjogewoJCQkidHlwZSI6ICJhcnJheSIsCgkJCSJp\ndGVtcyI6IHsKCQkJCSJ0eXBlIjogIm9iamVjdCIsCgkJCQkicHJvcGVydGll\ncyI6IHsKCQkJCQkibmFtZSI6IHsKCQkJCQkJInR5cGUiOiAic3RyaW5nIgoJ\nCQkJCX0sCgkJCQkJImNvbnRlbnROYW1lIjogewoJCQkJCQkidHlwZSI6ICJz\ndHJpbmciCgkJCQkJfSwKCQkJCQkiY29udGVudFR5cGUiOiB7CgkJCQkJCSJ0\neXBlIjogInN0cmluZyIKCQkJCQl9LAoJCQkJCSJhdHRhY2htZW50RGF0YVJl\nZiI6IHsKCQkJCQkJInR5cGUiOiAib2JqZWN0IiwKCQkJCQkJInByb3BlcnRp\nZXMiOiB7CgkJCQkJCQkicmVzb3VyY2VOYW1lIjogewoJCQkJCQkJCSJ0eXBl\nIjogInN0cmluZyIKCQkJCQkJCX0KCQkJCQkJfSwKCQkJCQkJInJlcXVpcmVk\nIjogWwoJCQkJCQkJInJlc291cmNlTmFtZSIKCQkJCQkJXQoJCQkJCX0sCgkJ\nCQkJInRodW1ibmFpbFVyaSI6IHsKCQkJCQkJInR5cGUiOiAic3RyaW5nIgoJ\nCQkJCX0sCgkJCQkJImRvd25sb2FkVXJpIjogewoJCQkJCQkidHlwZSI6ICJz\ndHJpbmciCgkJCQkJfSwKCQkJCQkic291cmNlIjogewoJCQkJCQkidHlwZSI6\nICJzdHJpbmciCgkJCQkJfQoJCQkJfSwKCQkJCSJyZXF1aXJlZCI6IFsKCQkJ\nCQkibmFtZSIsCgkJCQkJImNvbnRlbnROYW1lIiwKCQkJCQkiY29udGVudFR5\ncGUiLAoJCQkJCSJhdHRhY2htZW50RGF0YVJlZiIsCgkJCQkJInRodW1ibmFp\nbFVyaSIsCgkJCQkJImRvd25sb2FkVXJpIiwKCQkJCQkic291cmNlIgoJCQkJ\nXQoJCQl9CgkJfQoJfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Chat/__schema__/v1.0.0/message/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/4896250fa485d6c73f0f35edbd7aca4e41ac4fa0",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Chat/__schema__/v1.0.0/message/get.json"
+    },
+    "version": 1
 }

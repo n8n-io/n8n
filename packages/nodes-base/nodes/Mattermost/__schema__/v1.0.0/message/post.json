@@ -1,92 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "create_at": {
-            "type": "integer"
-        },
-        "update_at": {
-            "type": "integer"
-        },
-        "edit_at": {
-            "type": "integer"
-        },
-        "delete_at": {
-            "type": "integer"
-        },
-        "is_pinned": {
-            "type": "boolean"
-        },
-        "user_id": {
-            "type": "string"
-        },
-        "channel_id": {
-            "type": "string"
-        },
-        "root_id": {
-            "type": "string"
-        },
-        "original_id": {
-            "type": "string"
-        },
-        "message": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
-        },
-        "props": {
-            "type": "object",
-            "properties": {
-                "from_bot": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "attachments"
-            ]
-        },
-        "hashtags": {
-            "type": "string"
-        },
-        "pending_post_id": {
-            "type": "string"
-        },
-        "remote_id": {
-            "type": "string"
-        },
-        "reply_count": {
-            "type": "integer"
-        },
-        "last_reply_at": {
-            "type": "integer"
-        },
-        "participants": {
-            "type": "null"
-        },
-        "metadata": {
-            "type": "object",
-            "properties": {
-                "embeds": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "type": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "type"
-                        ]
-                    }
-                }
-            },
-            "required": [
-                "embeds"
-            ]
-        }
-    }
+    "name": "post.json",
+    "path": "packages/nodes-base/nodes/Mattermost/__schema__/v1.0.0/message/post.json",
+    "sha": "a6a20bee2b84b90edc1fb721ce840e55f6d8d892",
+    "size": 2077,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Mattermost/__schema__/v1.0.0/message/post.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Mattermost/__schema__/v1.0.0/message/post.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/a6a20bee2b84b90edc1fb721ce840e55f6d8d892",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Mattermost/__schema__/v1.0.0/message/post.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgImNyZWF0ZV9hdCI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJ1cGRhdGVf\nYXQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAg\nfSwKICAgICAgICAiZWRpdF9hdCI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\naW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJkZWxldGVfYXQiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAg\nICAiaXNfcGlubmVkIjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFu\nIgogICAgICAgIH0sCiAgICAgICAgInVzZXJfaWQiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJjaGFubmVs\nX2lkIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nfSwKICAgICAgICAicm9vdF9pZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIm9yaWdpbmFsX2lkIjogewog\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAg\nICAibWVzc2FnZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInR5cGUiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJwcm9wcyI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgInByb3Bl\ncnRpZXMiOiB7CiAgICAgICAgICAgICAgICAiZnJvbV9ib3QiOiB7CiAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAg\nICAgfQogICAgICAgICAgICB9LAogICAgICAgICAgICAicmVxdWlyZWQiOiBb\nCiAgICAgICAgICAgICAgICAiYXR0YWNobWVudHMiCiAgICAgICAgICAgIF0K\nICAgICAgICB9LAogICAgICAgICJoYXNodGFncyI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInBlbmRpbmdf\ncG9zdF9pZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgIH0sCiAgICAgICAgInJlbW90ZV9pZCI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInJlcGx5X2NvdW50\nIjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0s\nCiAgICAgICAgImxhc3RfcmVwbHlfYXQiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAgICAicGFydGljaXBhbnRz\nIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAg\nICAgICAgIm1ldGFkYXRhIjogewogICAgICAgICAgICAidHlwZSI6ICJvYmpl\nY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAg\nICAgICJlbWJlZHMiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAi\nYXJyYXkiLAogICAgICAgICAgICAgICAgICAgICJpdGVtcyI6IHsKICAgICAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAg\nICAgICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAidHlwZSI6IHsKICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAg\nICAgICAgICAgICB9CiAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAg\nICAgICAgICAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICJ0eXBlIgogICAgICAgICAgICAgICAgICAgICAg\nICBdCiAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgfQog\nICAgICAgICAgICB9LAogICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAg\nICAgICAgICAgICAiZW1iZWRzIgogICAgICAgICAgICBdCiAgICAgICAgfQog\nICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Mattermost/__schema__/v1.0.0/message/post.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/a6a20bee2b84b90edc1fb721ce840e55f6d8d892",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Mattermost/__schema__/v1.0.0/message/post.json"
+    },
+    "version": 1
 }

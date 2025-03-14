@@ -1,50 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "accepted": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "ehlo": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "envelopeTime": {
-            "type": "integer"
-        },
-        "messageTime": {
-            "type": "integer"
-        },
-        "messageSize": {
-            "type": "integer"
-        },
-        "response": {
-            "type": "string"
-        },
-        "envelope": {
-            "type": "object",
-            "properties": {
-                "from": {
-                    "type": "string"
-                },
-                "to": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            },
-            "required": [
-                "from",
-                "to"
-            ]
-        },
-        "messageId": {
-            "type": "string"
-        }
-    }
+    "name": "send.json",
+    "path": "packages/nodes-base/nodes/EmailSend/__schema__/v2.1.0/email/send.json",
+    "sha": "30f7c880014576d5eaa6bf5d1ef9a88e3fea45cc",
+    "size": 1081,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/EmailSend/__schema__/v2.1.0/email/send.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/EmailSend/__schema__/v2.1.0/email/send.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/30f7c880014576d5eaa6bf5d1ef9a88e3fea45cc",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/EmailSend/__schema__/v2.1.0/email/send.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJhY2NlcHRlZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYXJy\nYXkiLAogICAgICAgICAgICAiaXRlbXMiOiB7CiAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgIH0KICAgICAgICB9LAogICAg\nICAgICJlaGxvIjogewogICAgICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAg\nICAgICAgICAgICJpdGVtcyI6IHsKICAgICAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAgImVu\ndmVsb3BlVGltZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIK\nICAgICAgICB9LAogICAgICAgICJtZXNzYWdlVGltZSI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJtZXNz\nYWdlU2l6ZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAg\nICAgICB9LAogICAgICAgICJyZXNwb25zZSI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImVudmVsb3BlIjog\newogICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAi\ncHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICJmcm9tIjogewogICAg\nICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAg\nICAgIH0sCiAgICAgICAgICAgICAgICAidG8iOiB7CiAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAiYXJyYXkiLAogICAgICAgICAgICAgICAgICAgICJp\ndGVtcyI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgIH0K\nICAgICAgICAgICAgfSwKICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAg\nICAgICAgICAgICAgImZyb20iLAogICAgICAgICAgICAgICAgInRvIgogICAg\nICAgICAgICBdCiAgICAgICAgfSwKICAgICAgICAibWVzc2FnZUlkIjogewog\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfQogICAgfQp9\nCg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/EmailSend/__schema__/v2.1.0/email/send.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/30f7c880014576d5eaa6bf5d1ef9a88e3fea45cc",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/EmailSend/__schema__/v2.1.0/email/send.json"
+    },
+    "version": 1
 }

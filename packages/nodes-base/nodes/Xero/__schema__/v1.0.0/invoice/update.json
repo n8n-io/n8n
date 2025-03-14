@@ -1,0 +1,235 @@
+{
+    "type": "object",
+    "properties": {
+        "Type": {
+            "type": "string"
+        },
+        "InvoiceID": {
+            "type": "string"
+        },
+        "InvoiceNumber": {
+            "type": "string"
+        },
+        "Reference": {
+            "type": "string"
+        },
+        "AmountPaid": {
+            "type": "integer"
+        },
+        "SentToContact": {
+            "type": "boolean"
+        },
+        "CurrencyRate": {
+            "type": "integer"
+        },
+        "IsDiscounted": {
+            "type": "boolean"
+        },
+        "HasErrors": {
+            "type": "boolean"
+        },
+        "Contact": {
+            "type": "object",
+            "properties": {
+                "ContactID": {
+                    "type": "string"
+                },
+                "ContactStatus": {
+                    "type": "string"
+                },
+                "Name": {
+                    "type": "string"
+                },
+                "EmailAddress": {
+                    "type": "string"
+                },
+                "BankAccountDetails": {
+                    "type": "string"
+                },
+                "Addresses": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "AddressType": {
+                                "type": "string"
+                            },
+                            "City": {
+                                "type": "string"
+                            },
+                            "Region": {
+                                "type": "string"
+                            },
+                            "PostalCode": {
+                                "type": "string"
+                            },
+                            "Country": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "AddressType"
+                        ]
+                    }
+                },
+                "Phones": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "PhoneType": {
+                                "type": "string"
+                            },
+                            "PhoneNumber": {
+                                "type": "string"
+                            },
+                            "PhoneAreaCode": {
+                                "type": "string"
+                            },
+                            "PhoneCountryCode": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "PhoneType"
+                        ]
+                    }
+                },
+                "UpdatedDateUTC": {
+                    "type": "string"
+                },
+                "IsSupplier": {
+                    "type": "boolean"
+                },
+                "IsCustomer": {
+                    "type": "boolean"
+                },
+                "HasValidationErrors": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "ContactID",
+                "ContactStatus",
+                "Name",
+                "Addresses",
+                "Phones",
+                "UpdatedDateUTC",
+                "ContactGroups",
+                "IsSupplier",
+                "IsCustomer",
+                "SalesTrackingCategories",
+                "PurchasesTrackingCategories",
+                "ContactPersons",
+                "HasValidationErrors"
+            ]
+        },
+        "DateString": {
+            "type": "string"
+        },
+        "Date": {
+            "type": "string"
+        },
+        "DueDateString": {
+            "type": "string"
+        },
+        "DueDate": {
+            "type": "string"
+        },
+        "BrandingThemeID": {
+            "type": "string"
+        },
+        "Status": {
+            "type": "string"
+        },
+        "LineAmountTypes": {
+            "type": "string"
+        },
+        "LineItems": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "ItemCode": {
+                        "type": "string"
+                    },
+                    "Description": {
+                        "type": "string"
+                    },
+                    "TaxType": {
+                        "type": "string"
+                    },
+                    "AccountCode": {
+                        "type": "string"
+                    },
+                    "Item": {
+                        "type": "object",
+                        "properties": {
+                            "ItemID": {
+                                "type": "string"
+                            },
+                            "Name": {
+                                "type": "string"
+                            },
+                            "Code": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "ItemID",
+                            "Name",
+                            "Code"
+                        ]
+                    },
+                    "Quantity": {
+                        "type": "integer"
+                    },
+                    "LineItemID": {
+                        "type": "string"
+                    },
+                    "AccountID": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "Description",
+                    "Tracking",
+                    "LineItemID",
+                    "ValidationErrors"
+                ]
+            }
+        },
+        "UpdatedDateUTC": {
+            "type": "string"
+        },
+        "CurrencyCode": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Type",
+        "InvoiceID",
+        "Reference",
+        "Prepayments",
+        "Overpayments",
+        "AmountDue",
+        "AmountPaid",
+        "SentToContact",
+        "CurrencyRate",
+        "IsDiscounted",
+        "HasErrors",
+        "InvoicePaymentServices",
+        "Contact",
+        "DateString",
+        "Date",
+        "Status",
+        "LineAmountTypes",
+        "LineItems",
+        "SubTotal",
+        "TotalTax",
+        "Total",
+        "UpdatedDateUTC",
+        "CurrencyCode"
+    ],
+    "version": 1
+}

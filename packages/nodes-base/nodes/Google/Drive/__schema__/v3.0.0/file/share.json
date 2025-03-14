@@ -1,26 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "kind": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
-        },
-        "role": {
-            "type": "string"
-        },
-        "allowFileDiscovery": {
-            "type": "boolean"
-        }
+    "name": "share.json",
+    "path": "packages/nodes-base/nodes/Google/Drive/__schema__/v3.0.0/file/share.json",
+    "sha": "82a7d5795be0ea2c02745ed4e871e086bfc147b3",
+    "size": 440,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Drive/__schema__/v3.0.0/file/share.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Drive/__schema__/v3.0.0/file/share.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/82a7d5795be0ea2c02745ed4e871e086bfc147b3",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/Drive/__schema__/v3.0.0/file/share.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJraW5kIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAiaWQiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJ0eXBlIjogewogICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAi\ncm9sZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nIH0sCiAgICAgICAgImFsbG93RmlsZURpc2NvdmVyeSI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9CiAgICB9LAogICAgInJl\ncXVpcmVkIjogWwogICAgICAgICJraW5kIiwKICAgICAgICAiaWQiLAogICAg\nICAgICJ0eXBlIiwKICAgICAgICAicm9sZSIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Drive/__schema__/v3.0.0/file/share.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/82a7d5795be0ea2c02745ed4e871e086bfc147b3",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Drive/__schema__/v3.0.0/file/share.json"
     },
-    "required": [
-        "kind",
-        "id",
-        "type",
-        "role"
-    ]
+    "version": 1
 }

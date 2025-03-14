@@ -1,72 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"success": {
-			"type": "string"
-		},
-		"debug": {
-			"type": "string"
-		},
-		"sms_type": {
-			"type": "string"
-		},
-		"messages": {
-			"type": "array",
-			"items": {
-				"type": "object",
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"sender": {
-						"type": "string"
-					},
-					"text": {
-						"type": "string"
-					},
-					"encoding": {
-						"type": "string"
-					},
-					"label": {
-						"type": "null"
-					},
-					"parts": {
-						"type": "integer"
-					},
-					"udh": {
-						"type": "null"
-					},
-					"is_binary": {
-						"type": "boolean"
-					},
-					"success": {
-						"type": "boolean"
-					}
-				},
-				"required": [
-					"id",
-					"sender",
-					"recipient",
-					"text",
-					"encoding",
-					"label",
-					"parts",
-					"udh",
-					"is_binary",
-					"price",
-					"success",
-					"error",
-					"error_text"
-				]
-			}
-		}
-	},
-	"required": [
-		"success",
-		"total_price",
-		"balance",
-		"debug",
-		"sms_type",
-		"messages"
-	]
+    "name": "send.json",
+    "path": "packages/nodes-base/nodes/Sms77/__schema__/v1.0.0/sms/send.json",
+    "sha": "f2903a9e80a08144971267b7c261a77726e51343",
+    "size": 1013,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Sms77/__schema__/v1.0.0/sms/send.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Sms77/__schema__/v1.0.0/sms/send.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/f2903a9e80a08144971267b7c261a77726e51343",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Sms77/__schema__/v1.0.0/sms/send.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJzdWNj\nZXNzIjogewoJCQkidHlwZSI6ICJzdHJpbmciCgkJfSwKCQkiZGVidWciOiB7\nCgkJCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJCSJzbXNfdHlwZSI6IHsKCQkJ\nInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJIm1lc3NhZ2VzIjogewoJCQkidHlw\nZSI6ICJhcnJheSIsCgkJCSJpdGVtcyI6IHsKCQkJCSJ0eXBlIjogIm9iamVj\ndCIsCgkJCQkicHJvcGVydGllcyI6IHsKCQkJCQkiaWQiOiB7CgkJCQkJCSJ0\neXBlIjogInN0cmluZyIKCQkJCQl9LAoJCQkJCSJzZW5kZXIiOiB7CgkJCQkJ\nCSJ0eXBlIjogInN0cmluZyIKCQkJCQl9LAoJCQkJCSJ0ZXh0IjogewoJCQkJ\nCQkidHlwZSI6ICJzdHJpbmciCgkJCQkJfSwKCQkJCQkiZW5jb2RpbmciOiB7\nCgkJCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJCQl9LAoJCQkJCSJsYWJlbCI6\nIHsKCQkJCQkJInR5cGUiOiAibnVsbCIKCQkJCQl9LAoJCQkJCSJwYXJ0cyI6\nIHsKCQkJCQkJInR5cGUiOiAiaW50ZWdlciIKCQkJCQl9LAoJCQkJCSJ1ZGgi\nOiB7CgkJCQkJCSJ0eXBlIjogIm51bGwiCgkJCQkJfSwKCQkJCQkiaXNfYmlu\nYXJ5IjogewoJCQkJCQkidHlwZSI6ICJib29sZWFuIgoJCQkJCX0sCgkJCQkJ\nInN1Y2Nlc3MiOiB7CgkJCQkJCSJ0eXBlIjogImJvb2xlYW4iCgkJCQkJfQoJ\nCQkJfSwKCQkJCSJyZXF1aXJlZCI6IFsKCQkJCQkiaWQiLAoJCQkJCSJzZW5k\nZXIiLAoJCQkJCSJyZWNpcGllbnQiLAoJCQkJCSJ0ZXh0IiwKCQkJCQkiZW5j\nb2RpbmciLAoJCQkJCSJsYWJlbCIsCgkJCQkJInBhcnRzIiwKCQkJCQkidWRo\nIiwKCQkJCQkiaXNfYmluYXJ5IiwKCQkJCQkicHJpY2UiLAoJCQkJCSJzdWNj\nZXNzIiwKCQkJCQkiZXJyb3IiLAoJCQkJCSJlcnJvcl90ZXh0IgoJCQkJXQoJ\nCQl9CgkJfQoJfSwKCSJyZXF1aXJlZCI6IFsKCQkic3VjY2VzcyIsCgkJInRv\ndGFsX3ByaWNlIiwKCQkiYmFsYW5jZSIsCgkJImRlYnVnIiwKCQkic21zX3R5\ncGUiLAoJCSJtZXNzYWdlcyIKCV0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Sms77/__schema__/v1.0.0/sms/send.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/f2903a9e80a08144971267b7c261a77726e51343",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Sms77/__schema__/v1.0.0/sms/send.json"
+    },
+    "version": 1
 }

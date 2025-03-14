@@ -1,133 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "company_id": {
-            "type": "integer"
-        },
-        "related_open_deals_count": {
-            "type": "integer"
-        },
-        "related_closed_deals_count": {
-            "type": "integer"
-        },
-        "files_count": {
-            "type": "integer"
-        },
-        "notes_count": {
-            "type": "integer"
-        },
-        "followers_count": {
-            "type": "integer"
-        },
-        "related_won_deals_count": {
-            "type": "integer"
-        },
-        "related_lost_deals_count": {
-            "type": "integer"
-        },
-        "active_flag": {
-            "type": "boolean"
-        },
-        "country_code": {
-            "type": "null"
-        },
-        "first_char": {
-            "type": "string"
-        },
-        "delete_time": {
-            "type": "null"
-        },
-        "label_ids": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
-        },
-        "cc_email": {
-            "type": "string"
-        },
-        "owner_name": {
-            "type": "string"
-        },
-        "category_id": {
-            "type": "null"
-        },
-        "ID": {
-            "type": "integer"
-        },
-        "Owner": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "has_pic": {
-                    "type": "integer"
-                },
-                "active_flag": {
-                    "type": "boolean"
-                },
-                "value": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "id",
-                "name",
-                "email",
-                "has_pic",
-                "pic_hash",
-                "active_flag",
-                "value"
-            ]
-        },
-        "Name": {
-            "type": "string"
-        },
-        "Open deals": {
-            "type": "integer"
-        },
-        "Closed deals": {
-            "type": "integer"
-        },
-        "Email messages count": {
-            "type": "integer"
-        },
-        "People": {
-            "type": "integer"
-        },
-        "Total activities": {
-            "type": "integer"
-        },
-        "Done activities": {
-            "type": "integer"
-        },
-        "Activities to do": {
-            "type": "integer"
-        },
-        "Won deals": {
-            "type": "integer"
-        },
-        "Lost deals": {
-            "type": "integer"
-        },
-        "Profile picture": {
-            "type": "null"
-        },
-        "Update time": {
-            "type": "string"
-        },
-        "Organization created": {
-            "type": "string"
-        },
-        "Visible to": {
-            "type": "string"
-        }
-    }
+    "name": "update.json",
+    "path": "packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/organization/update.json",
+    "sha": "9506dadd0f1e5e75bef03ddef892053701836941",
+    "size": 3038,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/organization/update.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/organization/update.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/9506dadd0f1e5e75bef03ddef892053701836941",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/organization/update.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJjb21wYW55X2lkIjogewogICAgICAgICAgICAidHlwZSI6ICJp\nbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgInJlbGF0ZWRfb3Blbl9kZWFs\nc19jb3VudCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAg\nICAgICB9LAogICAgICAgICJyZWxhdGVkX2Nsb3NlZF9kZWFsc19jb3VudCI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAog\nICAgICAgICJmaWxlc19jb3VudCI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\naW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJub3Rlc19jb3VudCI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAogICAg\nICAgICJmb2xsb3dlcnNfY291bnQiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nImludGVnZXIiCiAgICAgICAgfSwKICAgICAgICAicmVsYXRlZF93b25fZGVh\nbHNfY291bnQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAg\nICAgICAgfSwKICAgICAgICAicmVsYXRlZF9sb3N0X2RlYWxzX2NvdW50Ijog\newogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAg\nICAgICAgImFjdGl2ZV9mbGFnIjogewogICAgICAgICAgICAidHlwZSI6ICJi\nb29sZWFuIgogICAgICAgIH0sCiAgICAgICAgImNvdW50cnlfY29kZSI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAgICAg\nICJmaXJzdF9jaGFyIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAiZGVsZXRlX3RpbWUiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAibGFiZWxf\naWRzIjogewogICAgICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAg\nICAgICJpdGVtcyI6IHsKICAgICAgICAgICAgICAgICJ0eXBlIjogImludGVn\nZXIiCiAgICAgICAgICAgIH0KICAgICAgICB9LAogICAgICAgICJjY19lbWFp\nbCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0s\nCiAgICAgICAgIm93bmVyX25hbWUiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJjYXRlZ29yeV9pZCI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAgICAg\nICJJRCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAg\nICB9LAogICAgICAgICJPd25lciI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nb2JqZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAg\nICAgICAgICAiaWQiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAi\naW50ZWdlciIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAi\nbmFtZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImVtYWlsIjog\newogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiaGFzX3BpYyI6IHsKICAg\nICAgICAgICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgICAg\nICAgICAgfSwKICAgICAgICAgICAgICAgICJhY3RpdmVfZmxhZyI6IHsKICAg\nICAgICAgICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgICAg\nICAgICAgfSwKICAgICAgICAgICAgICAgICJ2YWx1ZSI6IHsKICAgICAgICAg\nICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgICAgICAgICAg\nfQogICAgICAgICAgICB9LAogICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAg\nICAgICAgICAgICAgICAiaWQiLAogICAgICAgICAgICAgICAgIm5hbWUiLAog\nICAgICAgICAgICAgICAgImVtYWlsIiwKICAgICAgICAgICAgICAgICJoYXNf\ncGljIiwKICAgICAgICAgICAgICAgICJwaWNfaGFzaCIsCiAgICAgICAgICAg\nICAgICAiYWN0aXZlX2ZsYWciLAogICAgICAgICAgICAgICAgInZhbHVlIgog\nICAgICAgICAgICBdCiAgICAgICAgfSwKICAgICAgICAiTmFtZSI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAg\nIk9wZW4gZGVhbHMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIi\nCiAgICAgICAgfSwKICAgICAgICAiQ2xvc2VkIGRlYWxzIjogewogICAgICAg\nICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgIkVt\nYWlsIG1lc3NhZ2VzIGNvdW50IjogewogICAgICAgICAgICAidHlwZSI6ICJp\nbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgIlBlb3BsZSI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJU\nb3RhbCBhY3Rpdml0aWVzIjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRl\nZ2VyIgogICAgICAgIH0sCiAgICAgICAgIkRvbmUgYWN0aXZpdGllcyI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAogICAg\nICAgICJBY3Rpdml0aWVzIHRvIGRvIjogewogICAgICAgICAgICAidHlwZSI6\nICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgIldvbiBkZWFscyI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAogICAg\nICAgICJMb3N0IGRlYWxzIjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRl\nZ2VyIgogICAgICAgIH0sCiAgICAgICAgIlByb2ZpbGUgcGljdHVyZSI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAgICAg\nICJVcGRhdGUgdGltZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgIH0sCiAgICAgICAgIk9yZ2FuaXphdGlvbiBjcmVhdGVkIjog\newogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAg\nICAgICAiVmlzaWJsZSB0byI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgIH0KICAgIH0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/organization/update.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/9506dadd0f1e5e75bef03ddef892053701836941",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/organization/update.json"
+    },
+    "version": 1
 }

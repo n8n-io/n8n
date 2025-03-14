@@ -1,61 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "orderindex": {
-            "type": "integer"
-        },
-        "override_statuses": {
-            "type": "boolean"
-        },
-        "hidden": {
-            "type": "boolean"
-        },
-        "space": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "access": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "id",
-                "name",
-                "access"
-            ]
-        },
-        "task_count": {
-            "type": "string"
-        },
-        "archived": {
-            "type": "boolean"
-        },
-        "permission_level": {
-            "type": "string"
-        }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/folder/create.json",
+    "sha": "c41ef10dedc3ccdeaf61644cb6ce6a44c763c3b0",
+    "size": 1267,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/folder/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/folder/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/c41ef10dedc3ccdeaf61644cb6ce6a44c763c3b0",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/folder/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgIm5hbWUiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJvcmRlcmluZGV4Ijog\newogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAg\nICAgICAgIm92ZXJyaWRlX3N0YXR1c2VzIjogewogICAgICAgICAgICAidHlw\nZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgImhpZGRlbiI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9LAogICAg\nICAgICJzcGFjZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwK\nICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAi\naWQiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJuYW1lIjogewog\nICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICAgICAiYWNjZXNzIjogewogICAgICAg\nICAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgICAgICAg\nICB9CiAgICAgICAgICAgIH0sCiAgICAgICAgICAgICJyZXF1aXJlZCI6IFsK\nICAgICAgICAgICAgICAgICJpZCIsCiAgICAgICAgICAgICAgICAibmFtZSIs\nCiAgICAgICAgICAgICAgICAiYWNjZXNzIgogICAgICAgICAgICBdCiAgICAg\nICAgfSwKICAgICAgICAidGFza19jb3VudCI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImFyY2hpdmVkIjog\newogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAg\nICAgICAgInBlcm1pc3Npb25fbGV2ZWwiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9CiAgICB9LAogICAgInJlcXVpcmVkIjog\nWwogICAgICAgICJpZCIsCiAgICAgICAgIm5hbWUiLAogICAgICAgICJvcmRl\ncmluZGV4IiwKICAgICAgICAib3ZlcnJpZGVfc3RhdHVzZXMiLAogICAgICAg\nICJoaWRkZW4iLAogICAgICAgICJzcGFjZSIsCiAgICAgICAgInRhc2tfY291\nbnQiLAogICAgICAgICJhcmNoaXZlZCIsCiAgICAgICAgInN0YXR1c2VzIiwK\nICAgICAgICAibGlzdHMiLAogICAgICAgICJwZXJtaXNzaW9uX2xldmVsIgog\nICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/folder/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/c41ef10dedc3ccdeaf61644cb6ce6a44c763c3b0",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/folder/create.json"
     },
-    "required": [
-        "id",
-        "name",
-        "orderindex",
-        "override_statuses",
-        "hidden",
-        "space",
-        "task_count",
-        "archived",
-        "statuses",
-        "lists",
-        "permission_level"
-    ]
+    "version": 1
 }

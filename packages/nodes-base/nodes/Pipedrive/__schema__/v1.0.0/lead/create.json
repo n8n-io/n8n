@@ -1,59 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "title": {
-            "type": "string"
-        },
-        "owner_id": {
-            "type": "integer"
-        },
-        "creator_id": {
-            "type": "integer"
-        },
-        "label_ids": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "is_archived": {
-            "type": "boolean"
-        },
-        "source_name": {
-            "type": "string"
-        },
-        "origin": {
-            "type": "string"
-        },
-        "origin_id": {
-            "type": "null"
-        },
-        "channel": {
-            "type": "null"
-        },
-        "channel_id": {
-            "type": "null"
-        },
-        "was_seen": {
-            "type": "boolean"
-        },
-        "next_activity_id": {
-            "type": "null"
-        },
-        "add_time": {
-            "type": "string"
-        },
-        "update_time": {
-            "type": "string"
-        },
-        "visible_to": {
-            "type": "string"
-        },
-        "cc_email": {
-            "type": "string"
-        }
-    }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/lead/create.json",
+    "sha": "8790d0d79b5006f5fed95f27046e32cff9b92dfd",
+    "size": 1184,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/lead/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/lead/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/8790d0d79b5006f5fed95f27046e32cff9b92dfd",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/lead/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInRpdGxlIjogewogICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAib3duZXJfaWQiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAg\nICAgICAiY3JlYXRvcl9pZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50\nZWdlciIKICAgICAgICB9LAogICAgICAgICJsYWJlbF9pZHMiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogImFycmF5IiwKICAgICAgICAgICAgIml0ZW1zIjog\newogICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAg\nICB9CiAgICAgICAgfSwKICAgICAgICAiaXNfYXJjaGl2ZWQiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAi\nc291cmNlX25hbWUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJvcmlnaW4iOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJvcmlnaW5faWQi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwKICAg\nICAgICAiY2hhbm5lbCI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIK\nICAgICAgICB9LAogICAgICAgICJjaGFubmVsX2lkIjogewogICAgICAgICAg\nICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAgIndhc19zZWVu\nIjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0s\nCiAgICAgICAgIm5leHRfYWN0aXZpdHlfaWQiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAiYWRkX3RpbWUiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAg\nICAgICJ1cGRhdGVfdGltZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgIH0sCiAgICAgICAgInZpc2libGVfdG8iOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJj\nY19lbWFpbCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgIH0KICAgIH0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/lead/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/8790d0d79b5006f5fed95f27046e32cff9b92dfd",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/lead/create.json"
+    },
+    "version": 1
 }

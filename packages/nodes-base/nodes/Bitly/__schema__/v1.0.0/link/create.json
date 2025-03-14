@@ -1,42 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "created_at": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "link": {
-            "type": "string"
-        },
-        "long_url": {
-            "type": "string"
-        },
-        "archived": {
-            "type": "boolean"
-        },
-        "references": {
-            "type": "object",
-            "properties": {
-                "group": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "group"
-            ]
-        }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/Bitly/__schema__/v1.0.0/link/create.json",
+    "sha": "2a6c19207d8975fae15dc8739a1dce709948dca2",
+    "size": 810,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Bitly/__schema__/v1.0.0/link/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Bitly/__schema__/v1.0.0/link/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/2a6c19207d8975fae15dc8739a1dce709948dca2",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Bitly/__schema__/v1.0.0/link/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJjcmVhdGVkX2F0IjogewogICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgfSwKICAgICAgICAiaWQiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJsaW5rIjog\newogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAg\nICAgICAibG9uZ191cmwiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJhcmNoaXZlZCI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9LAogICAgICAgICJyZWZl\ncmVuY2VzIjogewogICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAg\nICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICJncm91\ncCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0sCiAgICAgICAgICAgICJy\nZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICJncm91cCIKICAgICAgICAg\nICAgXQogICAgICAgIH0KICAgIH0sCiAgICAicmVxdWlyZWQiOiBbCiAgICAg\nICAgImNyZWF0ZWRfYXQiLAogICAgICAgICJpZCIsCiAgICAgICAgImxpbmsi\nLAogICAgICAgICJjdXN0b21fYml0bGlua3MiLAogICAgICAgICJsb25nX3Vy\nbCIsCiAgICAgICAgImFyY2hpdmVkIiwKICAgICAgICAidGFncyIsCiAgICAg\nICAgImRlZXBsaW5rcyIsCiAgICAgICAgInJlZmVyZW5jZXMiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Bitly/__schema__/v1.0.0/link/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/2a6c19207d8975fae15dc8739a1dce709948dca2",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Bitly/__schema__/v1.0.0/link/create.json"
     },
-    "required": [
-        "created_at",
-        "id",
-        "link",
-        "custom_bitlinks",
-        "long_url",
-        "archived",
-        "tags",
-        "deeplinks",
-        "references"
-    ]
+    "version": 1
 }

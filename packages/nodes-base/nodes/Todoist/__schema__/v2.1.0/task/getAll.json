@@ -1,82 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "project_id": {
-            "type": "string"
-        },
-        "order": {
-            "type": "integer"
-        },
-        "content": {
-            "type": "string"
-        },
-        "description": {
-            "type": "string"
-        },
-        "is_completed": {
-            "type": "boolean"
-        },
-        "priority": {
-            "type": "integer"
-        },
-        "comment_count": {
-            "type": "integer"
-        },
-        "creator_id": {
-            "type": "string"
-        },
-        "created_at": {
-            "type": "string"
-        },
-        "due": {
-            "type": "object",
-            "properties": {
-                "date": {
-                    "type": "string"
-                },
-                "string": {
-                    "type": "string"
-                },
-                "lang": {
-                    "type": "string"
-                },
-                "is_recurring": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "date",
-                "string",
-                "lang",
-                "is_recurring"
-            ]
-        },
-        "url": {
-            "type": "string"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Todoist/__schema__/v2.1.0/task/getAll.json",
+    "sha": "835589945852b4ab053934f337e2fef35addccad",
+    "size": 1733,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Todoist/__schema__/v2.1.0/task/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Todoist/__schema__/v2.1.0/task/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/835589945852b4ab053934f337e2fef35addccad",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Todoist/__schema__/v2.1.0/task/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInByb2plY3RfaWQiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJvcmRlciI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAog\nICAgICAgICJjb250ZW50IjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgfSwKICAgICAgICAiZGVzY3JpcHRpb24iOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJp\nc19jb21wbGV0ZWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4i\nCiAgICAgICAgfSwKICAgICAgICAicHJpb3JpdHkiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAgICAiY29tbWVu\ndF9jb3VudCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAg\nICAgICB9LAogICAgICAgICJjcmVhdG9yX2lkIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiY3JlYXRlZF9h\ndCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0s\nCiAgICAgICAgImR1ZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0\nIiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAg\nICAiZGF0ZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInN0cmlu\nZyI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImxhbmciOiB7CiAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAg\nICAgICAgfSwKICAgICAgICAgICAgICAgICJpc19yZWN1cnJpbmciOiB7CiAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICAg\nICAgICAgIH0KICAgICAgICAgICAgfSwKICAgICAgICAgICAgInJlcXVpcmVk\nIjogWwogICAgICAgICAgICAgICAgImRhdGUiLAogICAgICAgICAgICAgICAg\nInN0cmluZyIsCiAgICAgICAgICAgICAgICAibGFuZyIsCiAgICAgICAgICAg\nICAgICAiaXNfcmVjdXJyaW5nIgogICAgICAgICAgICBdCiAgICAgICAgfSwK\nICAgICAgICAidXJsIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfQogICAgfSwKICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAi\naWQiLAogICAgICAgICJhc3NpZ25lcl9pZCIsCiAgICAgICAgImFzc2lnbmVl\nX2lkIiwKICAgICAgICAicHJvamVjdF9pZCIsCiAgICAgICAgInNlY3Rpb25f\naWQiLAogICAgICAgICJwYXJlbnRfaWQiLAogICAgICAgICJvcmRlciIsCiAg\nICAgICAgImNvbnRlbnQiLAogICAgICAgICJkZXNjcmlwdGlvbiIsCiAgICAg\nICAgImlzX2NvbXBsZXRlZCIsCiAgICAgICAgImxhYmVscyIsCiAgICAgICAg\nInByaW9yaXR5IiwKICAgICAgICAiY29tbWVudF9jb3VudCIsCiAgICAgICAg\nImNyZWF0b3JfaWQiLAogICAgICAgICJjcmVhdGVkX2F0IiwKICAgICAgICAi\nZHVlIiwKICAgICAgICAidXJsIiwKICAgICAgICAiZHVyYXRpb24iLAogICAg\nICAgICJkZWFkbGluZSIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Todoist/__schema__/v2.1.0/task/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/835589945852b4ab053934f337e2fef35addccad",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Todoist/__schema__/v2.1.0/task/getAll.json"
     },
-    "required": [
-        "id",
-        "assigner_id",
-        "assignee_id",
-        "project_id",
-        "section_id",
-        "parent_id",
-        "order",
-        "content",
-        "description",
-        "is_completed",
-        "labels",
-        "priority",
-        "comment_count",
-        "creator_id",
-        "created_at",
-        "due",
-        "url",
-        "duration",
-        "deadline"
-    ]
+    "version": 1
 }

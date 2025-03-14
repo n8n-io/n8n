@@ -1,17 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "integer"
-        },
-        "name": {
-            "type": "string"
-        },
-        "expected_revenue": {
-            "type": "integer"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Odoo/__schema__/v1.0.0/opportunity/getAll.json",
+    "sha": "a5ac28b392a237162a72f8bd325d9c353cba6e42",
+    "size": 275,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Odoo/__schema__/v1.0.0/opportunity/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Odoo/__schema__/v1.0.0/opportunity/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/a5ac28b392a237162a72f8bd325d9c353cba6e42",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Odoo/__schema__/v1.0.0/opportunity/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIK\nICAgICAgICB9LAogICAgICAgICJuYW1lIjogewogICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiZXhwZWN0ZWRfcmV2\nZW51ZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAg\nICB9CiAgICB9LAogICAgInJlcXVpcmVkIjogWwogICAgICAgICJpZCIKICAg\nIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Odoo/__schema__/v1.0.0/opportunity/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/a5ac28b392a237162a72f8bd325d9c353cba6e42",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Odoo/__schema__/v1.0.0/opportunity/getAll.json"
     },
-    "required": [
-        "id"
-    ]
+    "version": 1
 }

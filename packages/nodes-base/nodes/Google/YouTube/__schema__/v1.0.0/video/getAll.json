@@ -1,129 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "kind": {
-            "type": "string"
-        },
-        "etag": {
-            "type": "string"
-        },
-        "id": {
-            "type": "object",
-            "properties": {
-                "kind": {
-                    "type": "string"
-                },
-                "videoId": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "kind",
-                "videoId"
-            ]
-        },
-        "snippet": {
-            "type": "object",
-            "properties": {
-                "publishedAt": {
-                    "type": "string"
-                },
-                "channelId": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "thumbnails": {
-                    "type": "object",
-                    "properties": {
-                        "default": {
-                            "type": "object",
-                            "properties": {
-                                "url": {
-                                    "type": "string"
-                                },
-                                "width": {
-                                    "type": "integer"
-                                },
-                                "height": {
-                                    "type": "integer"
-                                }
-                            },
-                            "required": [
-                                "url",
-                                "width",
-                                "height"
-                            ]
-                        },
-                        "medium": {
-                            "type": "object",
-                            "properties": {
-                                "url": {
-                                    "type": "string"
-                                },
-                                "width": {
-                                    "type": "integer"
-                                },
-                                "height": {
-                                    "type": "integer"
-                                }
-                            },
-                            "required": [
-                                "url",
-                                "width",
-                                "height"
-                            ]
-                        },
-                        "high": {
-                            "type": "object",
-                            "properties": {
-                                "url": {
-                                    "type": "string"
-                                },
-                                "width": {
-                                    "type": "integer"
-                                },
-                                "height": {
-                                    "type": "integer"
-                                }
-                            },
-                            "required": [
-                                "url",
-                                "width",
-                                "height"
-                            ]
-                        }
-                    },
-                    "required": [
-                        "default",
-                        "medium",
-                        "high"
-                    ]
-                },
-                "channelTitle": {
-                    "type": "string"
-                },
-                "liveBroadcastContent": {
-                    "type": "string"
-                },
-                "publishTime": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "publishedAt",
-                "channelId",
-                "title",
-                "description",
-                "thumbnails",
-                "channelTitle",
-                "liveBroadcastContent",
-                "publishTime"
-            ]
-        }
-    }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Google/YouTube/__schema__/v1.0.0/video/getAll.json",
+    "sha": "bb4bf6c573a5b3ff2a3464c9ea5325d726c8559f",
+    "size": 4152,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/YouTube/__schema__/v1.0.0/video/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/YouTube/__schema__/v1.0.0/video/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/bb4bf6c573a5b3ff2a3464c9ea5325d726c8559f",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/YouTube/__schema__/v1.0.0/video/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJraW5kIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAiZXRhZyI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImlkIjogewogICAg\nICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAicHJvcGVy\ndGllcyI6IHsKICAgICAgICAgICAgICAgICJraW5kIjogewogICAgICAgICAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0s\nCiAgICAgICAgICAgICAgICAidmlkZW9JZCI6IHsKICAgICAgICAgICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9CiAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAg\nICAgICAgICJraW5kIiwKICAgICAgICAgICAgICAgICJ2aWRlb0lkIgogICAg\nICAgICAgICBdCiAgICAgICAgfSwKICAgICAgICAic25pcHBldCI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgInByb3Bl\ncnRpZXMiOiB7CiAgICAgICAgICAgICAgICAicHVibGlzaGVkQXQiOiB7CiAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAg\nICAgICAgfSwKICAgICAgICAgICAgICAgICJjaGFubmVsSWQiOiB7CiAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAg\nICAgfSwKICAgICAgICAgICAgICAgICJ0aXRsZSI6IHsKICAgICAgICAgICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAog\nICAgICAgICAgICAgICAgImRlc2NyaXB0aW9uIjogewogICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAg\nICAgICAgICAgICAgICAidGh1bWJuYWlscyI6IHsKICAgICAgICAgICAgICAg\nICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAgICAgICJw\ncm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgICAgICAgICAiZGVmYXVs\ndCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogIm9i\namVjdCIsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAicHJvcGVydGll\ncyI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidXJsIjog\newogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwK\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAid2lkdGgiOiB7CiAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImlu\ndGVnZXIiCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAiaGVpZ2h0IjogewogICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJpbnRl\nZ2VyIgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0KICAgICAg\nICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgInVybCIsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgIndpZHRoIiwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAi\naGVpZ2h0IgogICAgICAgICAgICAgICAgICAgICAgICAgICAgXQogICAgICAg\nICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAi\nbWVkaXVtIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUi\nOiAib2JqZWN0IiwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJwcm9w\nZXJ0aWVzIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ1\ncmwiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICB9LAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ3aWR0aCI6\nIHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUi\nOiAiaW50ZWdlciIKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9\nLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJoZWlnaHQiOiB7\nCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nImludGVnZXIiCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfQog\nICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAidXJsIiwKICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAid2lkdGgiLAogICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICJoZWlnaHQiCiAgICAgICAgICAgICAgICAgICAgICAgICAgICBdCiAg\nICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAg\nICAgICJoaWdoIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5\ncGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJw\ncm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICJ1cmwiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ3aWR0\naCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5\ncGUiOiAiaW50ZWdlciIKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICB9LAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJoZWlnaHQi\nOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogImludGVnZXIiCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nfQogICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAidXJsIiwKICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAid2lkdGgiLAogICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICJoZWlnaHQiCiAgICAgICAgICAgICAgICAgICAgICAgICAgICBd\nCiAgICAgICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgICAg\nICB9LAogICAgICAgICAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAg\nICAgICAgICAgICAgICAgICAgImRlZmF1bHQiLAogICAgICAgICAgICAgICAg\nICAgICAgICAibWVkaXVtIiwKICAgICAgICAgICAgICAgICAgICAgICAgImhp\nZ2giCiAgICAgICAgICAgICAgICAgICAgXQogICAgICAgICAgICAgICAgfSwK\nICAgICAgICAgICAgICAgICJjaGFubmVsVGl0bGUiOiB7CiAgICAgICAgICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwK\nICAgICAgICAgICAgICAgICJsaXZlQnJvYWRjYXN0Q29udGVudCI6IHsKICAg\nICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAg\nICAgICB9LAogICAgICAgICAgICAgICAgInB1Ymxpc2hUaW1lIjogewogICAg\nICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAg\nICAgIH0KICAgICAgICAgICAgfSwKICAgICAgICAgICAgInJlcXVpcmVkIjog\nWwogICAgICAgICAgICAgICAgInB1Ymxpc2hlZEF0IiwKICAgICAgICAgICAg\nICAgICJjaGFubmVsSWQiLAogICAgICAgICAgICAgICAgInRpdGxlIiwKICAg\nICAgICAgICAgICAgICJkZXNjcmlwdGlvbiIsCiAgICAgICAgICAgICAgICAi\ndGh1bWJuYWlscyIsCiAgICAgICAgICAgICAgICAiY2hhbm5lbFRpdGxlIiwK\nICAgICAgICAgICAgICAgICJsaXZlQnJvYWRjYXN0Q29udGVudCIsCiAgICAg\nICAgICAgICAgICAicHVibGlzaFRpbWUiCiAgICAgICAgICAgIF0KICAgICAg\nICB9CiAgICB9Cn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/YouTube/__schema__/v1.0.0/video/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/bb4bf6c573a5b3ff2a3464c9ea5325d726c8559f",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/YouTube/__schema__/v1.0.0/video/getAll.json"
+    },
+    "version": 1
 }

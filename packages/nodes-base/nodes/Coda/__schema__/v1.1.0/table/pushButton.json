@@ -1,19 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"rowId": {
-			"type": "string"
-		},
-		"columnId": {
-			"type": "string"
-		},
-		"requestId": {
-			"type": "string"
-		}
-	},
-	"required": [
-		"rowId",
-		"columnId",
-		"requestId"
-	]
+    "name": "pushButton.json",
+    "path": "packages/nodes-base/nodes/Coda/__schema__/v1.1.0/table/pushButton.json",
+    "sha": "bf62e04793341411b4b85627e5d78cc49a314e6d",
+    "size": 221,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Coda/__schema__/v1.1.0/table/pushButton.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Coda/__schema__/v1.1.0/table/pushButton.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/bf62e04793341411b4b85627e5d78cc49a314e6d",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Coda/__schema__/v1.1.0/table/pushButton.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJyb3dJ\nZCI6IHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJImNvbHVtbklkIjog\newoJCQkidHlwZSI6ICJzdHJpbmciCgkJfSwKCQkicmVxdWVzdElkIjogewoJ\nCQkidHlwZSI6ICJzdHJpbmciCgkJfQoJfSwKCSJyZXF1aXJlZCI6IFsKCQki\ncm93SWQiLAoJCSJjb2x1bW5JZCIsCgkJInJlcXVlc3RJZCIKCV0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Coda/__schema__/v1.1.0/table/pushButton.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/bf62e04793341411b4b85627e5d78cc49a314e6d",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Coda/__schema__/v1.1.0/table/pushButton.json"
+    },
+    "version": 1
 }

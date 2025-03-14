@@ -1,97 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "start": {
-            "type": "object",
-            "properties": {
-                "dateTime": {
-                    "type": "string"
-                },
-                "timeZone": {
-                    "type": "string"
-                }
-            }
-        },
-        "end": {
-            "type": "object",
-            "properties": {
-                "dateTime": {
-                    "type": "string"
-                },
-                "timeZone": {
-                    "type": "string"
-                }
-            }
-        },
-        "creator": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "self": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "email"
-            ]
-        },
-        "organizer": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "self": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "email",
-                "self"
-            ]
-        },
-        "created": {
-            "type": "string"
-        },
-        "updated": {
-            "type": "string"
-        },
-        "etag": {
-            "type": "string"
-        },
-        "eventType": {
-            "type": "string"
-        },
-        "htmlLink": {
-            "type": "string"
-        },
-        "iCalUID": {
-            "type": "string"
-        },
-        "kind": {
-            "type": "string"
-        },
-        "reminders": {
-            "type": "object",
-            "properties": {
-                "useDefault": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "useDefault"
-            ]
-        },
-        "sequence": {
-            "type": "integer"
-        },
-        "status": {
-            "type": "string"
-        }
-    }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/Google/Calendar/__schema__/v1.3.0/event/create.json",
+    "sha": "dd2b74838e6e9dca4142fd7a2d2807770a518e63",
+    "size": 2156,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Calendar/__schema__/v1.3.0/event/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Calendar/__schema__/v1.3.0/event/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/dd2b74838e6e9dca4142fd7a2d2807770a518e63",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/Calendar/__schema__/v1.3.0/event/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInN0YXJ0IjogewogICAgICAgICAgICAidHlw\nZSI6ICJvYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAg\nICAgICAgICAgICAgICJkYXRlVGltZSI6IHsKICAgICAgICAgICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAg\nICAgICAgICAgInRpbWVab25lIjogewogICAgICAgICAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAg\nfQogICAgICAgIH0sCiAgICAgICAgImVuZCI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAg\nICAgICAgICAgICAgICAiZGF0ZVRpbWUiOiB7CiAgICAgICAgICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAg\nICAgICAgICAgICJ0aW1lWm9uZSI6IHsKICAgICAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAg\nIH0KICAgICAgICB9LAogICAgICAgICJjcmVhdG9yIjogewogICAgICAgICAg\nICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6\nIHsKICAgICAgICAgICAgICAgICJlbWFpbCI6IHsKICAgICAgICAgICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAg\nICAgICAgICAgICAgInNlbGYiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5\ncGUiOiAiYm9vbGVhbiIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAg\nfSwKICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAg\nImVtYWlsIgogICAgICAgICAgICBdCiAgICAgICAgfSwKICAgICAgICAib3Jn\nYW5pemVyIjogewogICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAg\nICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICJlbWFp\nbCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInNlbGYiOiB7CiAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICAg\nICAgICAgIH0KICAgICAgICAgICAgfSwKICAgICAgICAgICAgInJlcXVpcmVk\nIjogWwogICAgICAgICAgICAgICAgImVtYWlsIiwKICAgICAgICAgICAgICAg\nICJzZWxmIgogICAgICAgICAgICBdCiAgICAgICAgfSwKICAgICAgICAiY3Jl\nYXRlZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nIH0sCiAgICAgICAgInVwZGF0ZWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJldGFnIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiZXZl\nbnRUeXBlIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgfSwKICAgICAgICAiaHRtbExpbmsiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJpQ2FsVUlEIjogewog\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAg\nICAia2luZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgIH0sCiAgICAgICAgInJlbWluZGVycyI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAg\nICAgICAgICAgICAgICAidXNlRGVmYXVsdCI6IHsKICAgICAgICAgICAgICAg\nICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgICAgICAgICAgfQogICAg\nICAgICAgICB9LAogICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAg\nICAgICAgICAidXNlRGVmYXVsdCIKICAgICAgICAgICAgXQogICAgICAgIH0s\nCiAgICAgICAgInNlcXVlbmNlIjogewogICAgICAgICAgICAidHlwZSI6ICJp\nbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgInN0YXR1cyI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0KICAgIH0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Calendar/__schema__/v1.3.0/event/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/dd2b74838e6e9dca4142fd7a2d2807770a518e63",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Calendar/__schema__/v1.3.0/event/create.json"
+    },
+    "version": 1
 }

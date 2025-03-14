@@ -1,48 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "SendEmailResponse": {
-            "type": "object",
-            "properties": {
-                "$": {
-                    "type": "object",
-                    "properties": {
-                        "xmlns": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "xmlns"
-                    ]
-                },
-                "SendEmailResult": {
-                    "type": "object",
-                    "properties": {
-                        "MessageId": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "MessageId"
-                    ]
-                },
-                "ResponseMetadata": {
-                    "type": "object",
-                    "properties": {
-                        "RequestId": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "RequestId"
-                    ]
-                }
-            },
-            "required": [
-                "$",
-                "SendEmailResult",
-                "ResponseMetadata"
-            ]
-        }
-    }
+    "name": "send.json",
+    "path": "packages/nodes-base/nodes/Aws/SES/__schema__/v1.0.0/email/send.json",
+    "sha": "d61b8ba6772e71d93587d999af970a07c0263af2",
+    "size": 1340,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Aws/SES/__schema__/v1.0.0/email/send.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Aws/SES/__schema__/v1.0.0/email/send.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/d61b8ba6772e71d93587d999af970a07c0263af2",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Aws/SES/__schema__/v1.0.0/email/send.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJTZW5kRW1haWxSZXNwb25zZSI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAg\nICAgICAgICAgICAgICAiJCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAgICAgICJwcm9wZXJ0aWVz\nIjogewogICAgICAgICAgICAgICAgICAgICAgICAieG1sbnMiOiB7CiAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgICAgICB9LAog\nICAgICAgICAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAg\nICAgICAgICAgICAgInhtbG5zIgogICAgICAgICAgICAgICAgICAgIF0KICAg\nICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiU2VuZEVtYWlsUmVz\ndWx0IjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIs\nCiAgICAgICAgICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAg\nICAgICAgICAgICAgICAgICJNZXNzYWdlSWQiOiB7CiAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAg\nICAgICAgICAgIH0KICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAg\nICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICAgICAg\nICAgIk1lc3NhZ2VJZCIKICAgICAgICAgICAgICAgICAgICBdCiAgICAgICAg\nICAgICAgICB9LAogICAgICAgICAgICAgICAgIlJlc3BvbnNlTWV0YWRhdGEi\nOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAg\nICAgICAgICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAg\nICAgICAgICAgICAgIlJlcXVlc3RJZCI6IHsKICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAg\nICAgICAgfQogICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAg\nICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgICAgICAgICAi\nUmVxdWVzdElkIgogICAgICAgICAgICAgICAgICAgIF0KICAgICAgICAgICAg\nICAgIH0KICAgICAgICAgICAgfSwKICAgICAgICAgICAgInJlcXVpcmVkIjog\nWwogICAgICAgICAgICAgICAgIiQiLAogICAgICAgICAgICAgICAgIlNlbmRF\nbWFpbFJlc3VsdCIsCiAgICAgICAgICAgICAgICAiUmVzcG9uc2VNZXRhZGF0\nYSIKICAgICAgICAgICAgXQogICAgICAgIH0KICAgIH0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Aws/SES/__schema__/v1.0.0/email/send.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/d61b8ba6772e71d93587d999af970a07c0263af2",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Aws/SES/__schema__/v1.0.0/email/send.json"
+    },
+    "version": 1
 }

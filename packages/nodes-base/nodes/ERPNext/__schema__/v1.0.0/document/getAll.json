@@ -1,8 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"name": {
-			"type": "string"
-		}
-	}
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/ERPNext/__schema__/v1.0.0/document/getAll.json",
+    "sha": "a309c45115cbc053a91d1141e00d44307227a6d3",
+    "size": 79,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ERPNext/__schema__/v1.0.0/document/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ERPNext/__schema__/v1.0.0/document/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/a309c45115cbc053a91d1141e00d44307227a6d3",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/ERPNext/__schema__/v1.0.0/document/getAll.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJuYW1l\nIjogewoJCQkidHlwZSI6ICJzdHJpbmciCgkJfQoJfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/ERPNext/__schema__/v1.0.0/document/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/a309c45115cbc053a91d1141e00d44307227a6d3",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ERPNext/__schema__/v1.0.0/document/getAll.json"
+    },
+    "version": 1
 }

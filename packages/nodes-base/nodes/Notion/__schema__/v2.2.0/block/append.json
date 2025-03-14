@@ -1,181 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "object": {
-            "type": "string"
-        },
-        "results": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "object": {
-                        "type": "string"
-                    },
-                    "id": {
-                        "type": "string"
-                    },
-                    "parent": {
-                        "type": "object",
-                        "properties": {
-                            "type": {
-                                "type": "string"
-                            },
-                            "page_id": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "type"
-                        ]
-                    },
-                    "created_time": {
-                        "type": "string"
-                    },
-                    "last_edited_time": {
-                        "type": "string"
-                    },
-                    "created_by": {
-                        "type": "object",
-                        "properties": {
-                            "object": {
-                                "type": "string"
-                            },
-                            "id": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "object",
-                            "id"
-                        ]
-                    },
-                    "last_edited_by": {
-                        "type": "object",
-                        "properties": {
-                            "object": {
-                                "type": "string"
-                            },
-                            "id": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "object",
-                            "id"
-                        ]
-                    },
-                    "has_children": {
-                        "type": "boolean"
-                    },
-                    "archived": {
-                        "type": "boolean"
-                    },
-                    "in_trash": {
-                        "type": "boolean"
-                    },
-                    "type": {
-                        "type": "string"
-                    },
-                    "paragraph": {
-                        "type": "object",
-                        "properties": {
-                            "color": {
-                                "type": "string"
-                            },
-                            "text": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "type": {
-                                            "type": "string"
-                                        },
-                                        "text": {
-                                            "type": "object",
-                                            "properties": {
-                                                "content": {
-                                                    "type": "string"
-                                                }
-                                            },
-                                            "required": [
-                                                "content",
-                                                "link"
-                                            ]
-                                        },
-                                        "annotations": {
-                                            "type": "object",
-                                            "properties": {
-                                                "bold": {
-                                                    "type": "boolean"
-                                                },
-                                                "italic": {
-                                                    "type": "boolean"
-                                                },
-                                                "strikethrough": {
-                                                    "type": "boolean"
-                                                },
-                                                "underline": {
-                                                    "type": "boolean"
-                                                },
-                                                "code": {
-                                                    "type": "boolean"
-                                                },
-                                                "color": {
-                                                    "type": "string"
-                                                }
-                                            },
-                                            "required": [
-                                                "bold",
-                                                "italic",
-                                                "strikethrough",
-                                                "underline",
-                                                "code",
-                                                "color"
-                                            ]
-                                        },
-                                        "plain_text": {
-                                            "type": "string"
-                                        }
-                                    },
-                                    "required": [
-                                        "type",
-                                        "annotations",
-                                        "plain_text",
-                                        "href"
-                                    ]
-                                }
-                            }
-                        },
-                        "required": [
-                            "color",
-                            "text"
-                        ]
-                    }
-                },
-                "required": [
-                    "object",
-                    "id",
-                    "parent",
-                    "created_time",
-                    "last_edited_time",
-                    "created_by",
-                    "last_edited_by",
-                    "has_children",
-                    "archived",
-                    "in_trash",
-                    "type"
-                ]
-            }
-        },
-        "next_cursor": {
-            "type": "null"
-        },
-        "has_more": {
-            "type": "boolean"
-        },
-        "request_id": {
-            "type": "string"
-        }
-    }
+    "name": "append.json",
+    "path": "packages/nodes-base/nodes/Notion/__schema__/v2.2.0/block/append.json",
+    "sha": "7639597673606afb2b1f9466f21f013b1811621c",
+    "size": 7104,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Notion/__schema__/v2.2.0/block/append.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Notion/__schema__/v2.2.0/block/append.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/7639597673606afb2b1f9466f21f013b1811621c",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Notion/__schema__/v2.2.0/block/append.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJvYmplY3QiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJyZXN1bHRzIjogewogICAgICAgICAg\nICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAgICJpdGVtcyI6IHsKICAg\nICAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICAg\nICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICAgICAib2JqZWN0\nIjogewogICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAi\naWQiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAg\nICJwYXJlbnQiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nIm9iamVjdCIsCiAgICAgICAgICAgICAgICAgICAgICAgICJwcm9wZXJ0aWVz\nIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiB7CiAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICJwYWdlX2lkIjogewogICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAg\nICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgICAgICAgICAgfSwK\nICAgICAgICAgICAgICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAg\nICAgICAgICAgICAgICAgICAgICAgInR5cGUiCiAgICAgICAgICAgICAgICAg\nICAgICAgIF0KICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAg\nICAgICAgICJjcmVhdGVkX3RpbWUiOiB7CiAgICAgICAgICAgICAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICB9LAog\nICAgICAgICAgICAgICAgICAgICJsYXN0X2VkaXRlZF90aW1lIjogewogICAg\nICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAiY3JlYXRlZF9i\neSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0\nIiwKICAgICAgICAgICAgICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAib2JqZWN0IjogewogICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAiaWQiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgfQogICAgICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAg\nICAgICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAib2JqZWN0IiwKICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICJpZCIKICAgICAgICAgICAgICAgICAgICAgICAgXQogICAgICAgICAg\nICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgImxhc3RfZWRpdGVk\nX2J5IjogewogICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJvYmpl\nY3QiLAogICAgICAgICAgICAgICAgICAgICAgICAicHJvcGVydGllcyI6IHsK\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICJvYmplY3QiOiB7CiAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICJpZCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAg\nICAgICAgICB9CiAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAg\nICAgICAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICJvYmplY3QiLAogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgImlkIgogICAgICAgICAgICAgICAgICAgICAgICBdCiAgICAgICAg\nICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAiaGFzX2NoaWxk\ncmVuIjogewogICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJib29s\nZWFuIgogICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAg\nICAgImFyY2hpdmVkIjogewogICAgICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJib29sZWFuIgogICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAg\nICAgICAgICAgICAgImluX3RyYXNoIjogewogICAgICAgICAgICAgICAgICAg\nICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgICAgICAgICAgICAgIH0s\nCiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiB7CiAgICAgICAgICAgICAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAg\nICB9LAogICAgICAgICAgICAgICAgICAgICJwYXJhZ3JhcGgiOiB7CiAgICAg\nICAgICAgICAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAg\nICAgICAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAg\nICAgICAgICAgICAgICAgImNvbG9yIjogewogICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAi\ndGV4dCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJhcnJheSIsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nIml0ZW1zIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogewogICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0s\nCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidGV4\ndCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAiY29u\ndGVudCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfQogICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInJlcXVp\ncmVkIjogWwogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAiY29udGVudCIsCiAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICJsaW5rIgogICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIF0KICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAiYW5ub3RhdGlvbnMiOiB7CiAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5\ncGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgImJvbGQiOiB7CiAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAiaXRhbGljIjogewog\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInN0cmlrZXRocm91\nZ2giOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9LAogICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidW5k\nZXJsaW5lIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nImNvZGUiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9LAogICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAi\nY29sb3IiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0KICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9LAogICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJyZXF1\naXJlZCI6IFsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgImJvbGQiLAogICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAiaXRhbGljIiwKICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInN0cmlrZXRo\ncm91Z2giLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAidW5kZXJsaW5lIiwKICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgImNvZGUiLAogICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAiY29sb3Ii\nCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nXQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfSwK\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJwbGFp\nbl90ZXh0IjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgInR5cGUiLAogICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgImFubm90YXRpb25zIiwKICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJwbGFpbl90ZXh0IiwK\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJocmVm\nIgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBdCiAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAg\nICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgICAgICAgICB9LAogICAg\nICAgICAgICAgICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAiY29sb3IiLAogICAgICAgICAgICAgICAgICAg\nICAgICAgICAgInRleHQiCiAgICAgICAgICAgICAgICAgICAgICAgIF0KICAg\nICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICB9LAogICAgICAg\nICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgICAgICJv\nYmplY3QiLAogICAgICAgICAgICAgICAgICAgICJpZCIsCiAgICAgICAgICAg\nICAgICAgICAgInBhcmVudCIsCiAgICAgICAgICAgICAgICAgICAgImNyZWF0\nZWRfdGltZSIsCiAgICAgICAgICAgICAgICAgICAgImxhc3RfZWRpdGVkX3Rp\nbWUiLAogICAgICAgICAgICAgICAgICAgICJjcmVhdGVkX2J5IiwKICAgICAg\nICAgICAgICAgICAgICAibGFzdF9lZGl0ZWRfYnkiLAogICAgICAgICAgICAg\nICAgICAgICJoYXNfY2hpbGRyZW4iLAogICAgICAgICAgICAgICAgICAgICJh\ncmNoaXZlZCIsCiAgICAgICAgICAgICAgICAgICAgImluX3RyYXNoIiwKICAg\nICAgICAgICAgICAgICAgICAidHlwZSIKICAgICAgICAgICAgICAgIF0KICAg\nICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAgIm5leHRfY3Vyc29yIjog\newogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAg\nICAgImhhc19tb3JlIjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFu\nIgogICAgICAgIH0sCiAgICAgICAgInJlcXVlc3RfaWQiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9CiAgICB9Cn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Notion/__schema__/v2.2.0/block/append.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/7639597673606afb2b1f9466f21f013b1811621c",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Notion/__schema__/v2.2.0/block/append.json"
+    },
+    "version": 1
 }

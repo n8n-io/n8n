@@ -1,14 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "ok": {
-            "type": "boolean"
-        },
-        "channel": {
-            "type": "string"
-        },
-        "message_timestamp": {
-            "type": "string"
-        }
-    }
+    "name": "delete.json",
+    "path": "packages/nodes-base/nodes/Slack/__schema__/v2.3.0/message/delete.json",
+    "sha": "64f167c461b76dc60ee5c9c616737649615b768f",
+    "size": 240,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/message/delete.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/message/delete.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/64f167c461b76dc60ee5c9c616737649615b768f",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/message/delete.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJvayI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIK\nICAgICAgICB9LAogICAgICAgICJjaGFubmVsIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAibWVzc2FnZV90\naW1lc3RhbXAiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICB9CiAgICB9Cn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/message/delete.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/64f167c461b76dc60ee5c9c616737649615b768f",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/message/delete.json"
+    },
+    "version": 1
 }

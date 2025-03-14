@@ -1,14 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "name": {
-            "type": "string"
-        },
-        "code": {
-            "type": "string"
-        },
-        "inventoryStatus": {
-            "type": "string"
-        }
-    }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Contentful/__schema__/v1.0.0/entry/getAll.json",
+    "sha": "5139002e20efc92867b15e5e0cc1e4525f85f7a3",
+    "size": 236,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Contentful/__schema__/v1.0.0/entry/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Contentful/__schema__/v1.0.0/entry/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5139002e20efc92867b15e5e0cc1e4525f85f7a3",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Contentful/__schema__/v1.0.0/entry/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJuYW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAiY29kZSI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImludmVudG9yeVN0\nYXR1cyI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nIH0KICAgIH0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Contentful/__schema__/v1.0.0/entry/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5139002e20efc92867b15e5e0cc1e4525f85f7a3",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Contentful/__schema__/v1.0.0/entry/getAll.json"
+    },
+    "version": 1
 }

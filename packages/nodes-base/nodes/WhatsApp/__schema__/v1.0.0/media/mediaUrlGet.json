@@ -1,31 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "url": {
-            "type": "string"
-        },
-        "mime_type": {
-            "type": "string"
-        },
-        "sha256": {
-            "type": "string"
-        },
-        "file_size": {
-            "type": "integer"
-        },
-        "id": {
-            "type": "string"
-        },
-        "messaging_product": {
-            "type": "string"
-        }
+    "name": "mediaUrlGet.json",
+    "path": "packages/nodes-base/nodes/WhatsApp/__schema__/v1.0.0/media/mediaUrlGet.json",
+    "sha": "d41bd4b9238c020fe6cc96d00240baeb2e8b7f66",
+    "size": 564,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/WhatsApp/__schema__/v1.0.0/media/mediaUrlGet.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/WhatsApp/__schema__/v1.0.0/media/mediaUrlGet.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/d41bd4b9238c020fe6cc96d00240baeb2e8b7f66",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/WhatsApp/__schema__/v1.0.0/media/mediaUrlGet.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJ1cmwiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJtaW1lX3R5cGUiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJzaGEyNTYi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAog\nICAgICAgICJmaWxlX3NpemUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImlu\ndGVnZXIiCiAgICAgICAgfSwKICAgICAgICAiaWQiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJtZXNzYWdp\nbmdfcHJvZHVjdCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0KICAgIH0sCiAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgInVy\nbCIsCiAgICAgICAgIm1pbWVfdHlwZSIsCiAgICAgICAgInNoYTI1NiIsCiAg\nICAgICAgImZpbGVfc2l6ZSIsCiAgICAgICAgImlkIiwKICAgICAgICAibWVz\nc2FnaW5nX3Byb2R1Y3QiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/WhatsApp/__schema__/v1.0.0/media/mediaUrlGet.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/d41bd4b9238c020fe6cc96d00240baeb2e8b7f66",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/WhatsApp/__schema__/v1.0.0/media/mediaUrlGet.json"
     },
-    "required": [
-        "url",
-        "mime_type",
-        "sha256",
-        "file_size",
-        "id",
-        "messaging_product"
-    ]
+    "version": 1
 }

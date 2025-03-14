@@ -1,27 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "BeginOffset": {
-            "type": "integer"
-        },
-        "EndOffset": {
-            "type": "integer"
-        },
-        "Score": {
-            "type": "number"
-        },
-        "Text": {
-            "type": "string"
-        },
-        "Type": {
-            "type": "string"
-        }
+    "name": "detectEntities.json",
+    "path": "packages/nodes-base/nodes/Aws/Comprehend/__schema__/v1.0.0/text/detectEntities.json",
+    "sha": "c87b74f2e3e34f96b7d7af601abb9da8a1b51462",
+    "size": 473,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Aws/Comprehend/__schema__/v1.0.0/text/detectEntities.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Aws/Comprehend/__schema__/v1.0.0/text/detectEntities.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/c87b74f2e3e34f96b7d7af601abb9da8a1b51462",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Aws/Comprehend/__schema__/v1.0.0/text/detectEntities.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJCZWdpbk9mZnNldCI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\naW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJFbmRPZmZzZXQiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAgICAg\nICAiU2NvcmUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bWJlciIKICAg\nICAgICB9LAogICAgICAgICJUZXh0IjogewogICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiVHlwZSI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0KICAgIH0sCiAgICAi\ncmVxdWlyZWQiOiBbCiAgICAgICAgIkJlZ2luT2Zmc2V0IiwKICAgICAgICAi\nRW5kT2Zmc2V0IiwKICAgICAgICAiU2NvcmUiLAogICAgICAgICJUZXh0IiwK\nICAgICAgICAiVHlwZSIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Aws/Comprehend/__schema__/v1.0.0/text/detectEntities.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/c87b74f2e3e34f96b7d7af601abb9da8a1b51462",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Aws/Comprehend/__schema__/v1.0.0/text/detectEntities.json"
     },
-    "required": [
-        "BeginOffset",
-        "EndOffset",
-        "Score",
-        "Text",
-        "Type"
-    ]
+    "version": 1
 }

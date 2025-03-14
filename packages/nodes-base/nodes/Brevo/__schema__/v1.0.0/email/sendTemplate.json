@@ -1,8 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "messageId": {
-            "type": "string"
-        }
-    }
+    "name": "sendTemplate.json",
+    "path": "packages/nodes-base/nodes/Brevo/__schema__/v1.0.0/email/sendTemplate.json",
+    "sha": "efce3a11cc599e21d53cab1a996c870b372af2f5",
+    "size": 114,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Brevo/__schema__/v1.0.0/email/sendTemplate.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Brevo/__schema__/v1.0.0/email/sendTemplate.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/efce3a11cc599e21d53cab1a996c870b372af2f5",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Brevo/__schema__/v1.0.0/email/sendTemplate.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJtZXNzYWdlSWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9CiAgICB9Cn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Brevo/__schema__/v1.0.0/email/sendTemplate.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/efce3a11cc599e21d53cab1a996c870b372af2f5",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Brevo/__schema__/v1.0.0/email/sendTemplate.json"
+    },
+    "version": 1
 }

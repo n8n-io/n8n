@@ -1,73 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "title": {
-            "type": "string"
-        },
-        "owner_id": {
-            "type": "integer"
-        },
-        "creator_id": {
-            "type": "integer"
-        },
-        "label_ids": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "is_archived": {
-            "type": "boolean"
-        },
-        "source_name": {
-            "type": "string"
-        },
-        "origin": {
-            "type": "string"
-        },
-        "channel_id": {
-            "type": "null"
-        },
-        "was_seen": {
-            "type": "boolean"
-        },
-        "add_time": {
-            "type": "string"
-        },
-        "update_time": {
-            "type": "string"
-        },
-        "visible_to": {
-            "type": "string"
-        },
-        "cc_email": {
-            "type": "string"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/lead/getAll.json",
+    "sha": "feeb21ca9c1b78e7324a39d7a6749c35eb67424b",
+    "size": 1469,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/lead/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/lead/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/feeb21ca9c1b78e7324a39d7a6749c35eb67424b",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/lead/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInRpdGxlIjogewogICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAib3duZXJfaWQiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAg\nICAgICAiY3JlYXRvcl9pZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50\nZWdlciIKICAgICAgICB9LAogICAgICAgICJsYWJlbF9pZHMiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogImFycmF5IiwKICAgICAgICAgICAgIml0ZW1zIjog\newogICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAg\nICB9CiAgICAgICAgfSwKICAgICAgICAiaXNfYXJjaGl2ZWQiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAi\nc291cmNlX25hbWUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJvcmlnaW4iOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJjaGFubmVsX2lk\nIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAg\nICAgICAgIndhc19zZWVuIjogewogICAgICAgICAgICAidHlwZSI6ICJib29s\nZWFuIgogICAgICAgIH0sCiAgICAgICAgImFkZF90aW1lIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAidXBk\nYXRlX3RpbWUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICB9LAogICAgICAgICJ2aXNpYmxlX3RvIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiY2NfZW1haWwi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9CiAg\nICB9LAogICAgInJlcXVpcmVkIjogWwogICAgICAgICJpZCIsCiAgICAgICAg\nInRpdGxlIiwKICAgICAgICAib3duZXJfaWQiLAogICAgICAgICJjcmVhdG9y\nX2lkIiwKICAgICAgICAibGFiZWxfaWRzIiwKICAgICAgICAidmFsdWUiLAog\nICAgICAgICJleHBlY3RlZF9jbG9zZV9kYXRlIiwKICAgICAgICAicGVyc29u\nX2lkIiwKICAgICAgICAib3JnYW5pemF0aW9uX2lkIiwKICAgICAgICAiaXNf\nYXJjaGl2ZWQiLAogICAgICAgICJzb3VyY2VfbmFtZSIsCiAgICAgICAgIm9y\naWdpbiIsCiAgICAgICAgIm9yaWdpbl9pZCIsCiAgICAgICAgImNoYW5uZWwi\nLAogICAgICAgICJjaGFubmVsX2lkIiwKICAgICAgICAid2FzX3NlZW4iLAog\nICAgICAgICJuZXh0X2FjdGl2aXR5X2lkIiwKICAgICAgICAiYWRkX3RpbWUi\nLAogICAgICAgICJ1cGRhdGVfdGltZSIsCiAgICAgICAgInZpc2libGVfdG8i\nLAogICAgICAgICJjY19lbWFpbCIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/lead/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/feeb21ca9c1b78e7324a39d7a6749c35eb67424b",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/lead/getAll.json"
     },
-    "required": [
-        "id",
-        "title",
-        "owner_id",
-        "creator_id",
-        "label_ids",
-        "value",
-        "expected_close_date",
-        "person_id",
-        "organization_id",
-        "is_archived",
-        "source_name",
-        "origin",
-        "origin_id",
-        "channel",
-        "channel_id",
-        "was_seen",
-        "next_activity_id",
-        "add_time",
-        "update_time",
-        "visible_to",
-        "cc_email"
-    ]
+    "version": 1
 }

@@ -1,14 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "success": {
-            "type": "boolean"
-        },
-        "created": {
-            "type": "boolean"
-        }
-    }
+    "name": "upsert.json",
+    "path": "packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/contact/upsert.json",
+    "sha": "753b1518713f5ebcdd18302061cb498c06282df5",
+    "size": 231,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/contact/upsert.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/contact/upsert.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/753b1518713f5ebcdd18302061cb498c06282df5",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/contact/upsert.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInN1Y2Nlc3MiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAiY3JlYXRlZCI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9CiAg\nICB9Cn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/contact/upsert.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/753b1518713f5ebcdd18302061cb498c06282df5",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/contact/upsert.json"
+    },
+    "version": 1
 }

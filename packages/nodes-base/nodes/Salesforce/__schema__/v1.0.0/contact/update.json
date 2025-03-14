@@ -1,12 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "success": {
-            "type": "boolean"
-        }
+    "name": "update.json",
+    "path": "packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/contact/update.json",
+    "sha": "36eb1aeed9590906550a632c0ecfe3bfec9ae6cf",
+    "size": 174,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/contact/update.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/contact/update.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/36eb1aeed9590906550a632c0ecfe3bfec9ae6cf",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/contact/update.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJzdWNjZXNzIjogewogICAgICAgICAgICAidHlwZSI6ICJib29s\nZWFuIgogICAgICAgIH0KICAgIH0sCiAgICAicmVxdWlyZWQiOiBbCiAgICAg\nICAgImVycm9ycyIsCiAgICAgICAgInN1Y2Nlc3MiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/contact/update.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/36eb1aeed9590906550a632c0ecfe3bfec9ae6cf",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/contact/update.json"
     },
-    "required": [
-        "errors",
-        "success"
-    ]
+    "version": 1
 }

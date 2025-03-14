@@ -1,123 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "data": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "integer"
-                    },
-                    "documentId": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "description": {
-                        "type": "string"
-                    },
-                    "category": {
-                        "type": "string"
-                    },
-                    "vendor": {
-                        "type": "string"
-                    },
-                    "createdAt": {
-                        "type": "string"
-                    },
-                    "updatedAt": {
-                        "type": "string"
-                    },
-                    "publishedAt": {
-                        "type": "string"
-                    },
-                    "locale": {
-                        "type": "null"
-                    },
-                    "price_list": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "id": {
-                                    "type": "integer"
-                                },
-                                "price": {
-                                    "type": "integer"
-                                },
-                                "user_level": {
-                                    "type": "string"
-                                }
-                            },
-                            "required": [
-                                "id",
-                                "price",
-                                "min_quantity",
-                                "max_quantity",
-                                "user_level"
-                            ]
-                        }
-                    },
-                    "inventory": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "id": {
-                                    "type": "integer"
-                                },
-                                "location": {
-                                    "type": "string"
-                                },
-                                "quantity": {
-                                    "type": "integer"
-                                }
-                            },
-                            "required": [
-                                "id",
-                                "location",
-                                "quantity"
-                            ]
-                        }
-                    }
-                },
-                "required": [
-                    "id"
-                ]
-            }
-        },
-        "meta": {
-            "type": "object",
-            "properties": {
-                "pagination": {
-                    "type": "object",
-                    "properties": {
-                        "page": {
-                            "type": "integer"
-                        },
-                        "pageSize": {
-                            "type": "integer"
-                        },
-                        "pageCount": {
-                            "type": "integer"
-                        },
-                        "total": {
-                            "type": "integer"
-                        }
-                    },
-                    "required": [
-                        "page",
-                        "pageSize",
-                        "pageCount",
-                        "total"
-                    ]
-                }
-            },
-            "required": [
-                "pagination"
-            ]
-        }
-    }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Strapi/__schema__/v1.0.0/entry/getAll.json",
+    "sha": "de107b059917c8563e3796210a23e241f6015554",
+    "size": 4071,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Strapi/__schema__/v1.0.0/entry/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Strapi/__schema__/v1.0.0/entry/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/de107b059917c8563e3796210a23e241f6015554",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Strapi/__schema__/v1.0.0/entry/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJkYXRhIjogewogICAgICAgICAgICAidHlwZSI6ICJhcnJheSIs\nCiAgICAgICAgICAgICJpdGVtcyI6IHsKICAgICAgICAgICAgICAgICJ0eXBl\nIjogIm9iamVjdCIsCiAgICAgICAgICAgICAgICAicHJvcGVydGllcyI6IHsK\nICAgICAgICAgICAgICAgICAgICAiaWQiOiB7CiAgICAgICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgICAgICAgICAgICAg\nfSwKICAgICAgICAgICAgICAgICAgICAiZG9jdW1lbnRJZCI6IHsKICAgICAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAg\nICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgIm5hbWUiOiB7CiAg\nICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICJkZXNjcmlw\ndGlvbiI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAg\nICAgImNhdGVnb3J5IjogewogICAgICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAg\nICAgICAgICAgICAidmVuZG9yIjogewogICAgICAgICAgICAgICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgICAgICAgICAiY3JlYXRlZEF0IjogewogICAgICAgICAgICAg\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAg\nICAgfSwKICAgICAgICAgICAgICAgICAgICAidXBkYXRlZEF0IjogewogICAg\nICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAicHVibGlzaGVk\nQXQiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAg\nICJsb2NhbGUiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nIm51bGwiCiAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAg\nICAgICAicHJpY2VfbGlzdCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAg\nInR5cGUiOiAiYXJyYXkiLAogICAgICAgICAgICAgICAgICAgICAgICAiaXRl\nbXMiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJv\nYmplY3QiLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgInByb3BlcnRp\nZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgImlkIjog\newogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6\nICJpbnRlZ2VyIgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0s\nCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInByaWNlIjogewog\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJp\nbnRlZ2VyIgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInVzZXJfbGV2ZWwiOiB7\nCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9CiAg\nICAgICAgICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAg\nICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICJpZCIsCiAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgInByaWNlIiwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAibWluX3F1YW50aXR5IiwKICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAibWF4X3F1YW50aXR5IiwKICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAidXNlcl9sZXZlbCIKICAgICAgICAgICAgICAgICAgICAgICAg\nICAgIF0KICAgICAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgImludmVudG9yeSI6IHsK\nICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiYXJyYXkiLAogICAg\nICAgICAgICAgICAgICAgICAgICAiaXRlbXMiOiB7CiAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAg\nICAgICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgImlkIjogewogICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgImxvY2F0aW9uIjogewogICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAicXVhbnRpdHkiOiB7CiAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJyZXF1aXJl\nZCI6IFsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAiaWQiLAog\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJsb2NhdGlvbiIsCiAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInF1YW50aXR5IgogICAg\nICAgICAgICAgICAgICAgICAgICAgICAgXQogICAgICAgICAgICAgICAgICAg\nICAgICB9CiAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAg\nfSwKICAgICAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAg\nICAgICAgICAiaWQiCiAgICAgICAgICAgICAgICBdCiAgICAgICAgICAgIH0K\nICAgICAgICB9LAogICAgICAgICJtZXRhIjogewogICAgICAgICAgICAidHlw\nZSI6ICJvYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAg\nICAgICAgICAgICAgICJwYWdpbmF0aW9uIjogewogICAgICAgICAgICAgICAg\nICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICAgICAgICAgInBy\nb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJwYWdlIjog\newogICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdl\nciIKICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAg\nICAgICAgICAgInBhZ2VTaXplIjogewogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICAgICAgICAgICAgICAg\nICAgfSwKICAgICAgICAgICAgICAgICAgICAgICAgInBhZ2VDb3VudCI6IHsK\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIi\nCiAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAg\nICAgICAgICJ0b3RhbCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgICAgICAgICAgICAgICAgIH0K\nICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICJy\nZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICAgICAgICAgInBhZ2UiLAog\nICAgICAgICAgICAgICAgICAgICAgICAicGFnZVNpemUiLAogICAgICAgICAg\nICAgICAgICAgICAgICAicGFnZUNvdW50IiwKICAgICAgICAgICAgICAgICAg\nICAgICAgInRvdGFsIgogICAgICAgICAgICAgICAgICAgIF0KICAgICAgICAg\nICAgICAgIH0KICAgICAgICAgICAgfSwKICAgICAgICAgICAgInJlcXVpcmVk\nIjogWwogICAgICAgICAgICAgICAgInBhZ2luYXRpb24iCiAgICAgICAgICAg\nIF0KICAgICAgICB9CiAgICB9Cn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Strapi/__schema__/v1.0.0/entry/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/de107b059917c8563e3796210a23e241f6015554",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Strapi/__schema__/v1.0.0/entry/getAll.json"
+    },
+    "version": 1
 }

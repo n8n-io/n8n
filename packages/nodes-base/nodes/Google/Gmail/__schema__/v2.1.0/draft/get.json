@@ -1,147 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "threadId": {
-            "type": "string"
-        },
-        "labelIds": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "sizeEstimate": {
-            "type": "integer"
-        },
-        "headers": {
-            "type": "object",
-            "properties": {
-                "content-type": {
-                    "type": "string"
-                },
-                "subject": {
-                    "type": "string"
-                },
-                "message-id": {
-                    "type": "string"
-                },
-                "date": {
-                    "type": "string"
-                },
-                "mime-version": {
-                    "type": "string"
-                },
-                "from": {
-                    "type": "string"
-                },
-                "to": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "content-type",
-                "message-id",
-                "date",
-                "mime-version",
-                "from"
-            ]
-        },
-        "text": {
-            "type": "string"
-        },
-        "textAsHtml": {
-            "type": "string"
-        },
-        "subject": {
-            "type": "string"
-        },
-        "date": {
-            "type": "string"
-        },
-        "from": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "address": {
-                                "type": "string"
-                            },
-                            "name": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "address",
-                            "name"
-                        ]
-                    }
-                },
-                "html": {
-                    "type": "string"
-                },
-                "text": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "value",
-                "html",
-                "text"
-            ]
-        },
-        "messageId": {
-            "type": "string"
-        },
-        "to": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "address": {
-                                "type": "string"
-                            },
-                            "name": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "address",
-                            "name"
-                        ]
-                    }
-                },
-                "html": {
-                    "type": "string"
-                },
-                "text": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "value",
-                "html",
-                "text"
-            ]
-        }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/draft/get.json",
+    "sha": "0f401bd3a35f58b6d0967aa66f60cc4813d79a15",
+    "size": 3738,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/draft/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/draft/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/0f401bd3a35f58b6d0967aa66f60cc4813d79a15",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/draft/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInRocmVhZElkIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAibGFiZWxJZHMi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogImFycmF5IiwKICAgICAgICAgICAg\nIml0ZW1zIjogewogICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICB9CiAgICAgICAgfSwKICAgICAgICAic2l6ZUVzdGltYXRl\nIjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0s\nCiAgICAgICAgImhlYWRlcnMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9i\namVjdCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAg\nICAgICAgImNvbnRlbnQtdHlwZSI6IHsKICAgICAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAg\nICAgICAgInN1YmplY3QiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAg\nICJtZXNzYWdlLWlkIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAi\nZGF0ZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgIm1pbWUtdmVy\nc2lvbiI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImZyb20iOiB7\nCiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJ0byI6IHsKICAgICAgICAg\nICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9\nCiAgICAgICAgICAgIH0sCiAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAg\nICAgICAgICAgICAgICJjb250ZW50LXR5cGUiLAogICAgICAgICAgICAgICAg\nIm1lc3NhZ2UtaWQiLAogICAgICAgICAgICAgICAgImRhdGUiLAogICAgICAg\nICAgICAgICAgIm1pbWUtdmVyc2lvbiIsCiAgICAgICAgICAgICAgICAiZnJv\nbSIKICAgICAgICAgICAgXQogICAgICAgIH0sCiAgICAgICAgInRleHQiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAg\nICAgICJ0ZXh0QXNIdG1sIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgfSwKICAgICAgICAic3ViamVjdCI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImRhdGUi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAog\nICAgICAgICJmcm9tIjogewogICAgICAgICAgICAidHlwZSI6ICJvYmplY3Qi\nLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAg\nICJ2YWx1ZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJhcnJh\neSIsCiAgICAgICAgICAgICAgICAgICAgIml0ZW1zIjogewogICAgICAgICAg\nICAgICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAg\nICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICJhZGRyZXNzIjogewogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAg\nICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAibmFt\nZSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgICAgICAgICB9CiAgICAg\nICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgICAg\nICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJh\nZGRyZXNzIiwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJuYW1lIgog\nICAgICAgICAgICAgICAgICAgICAgICBdCiAgICAgICAgICAgICAgICAgICAg\nfQogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJodG1sIjog\newogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAidGV4dCI6IHsKICAgICAg\nICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAg\nICB9CiAgICAgICAgICAgIH0sCiAgICAgICAgICAgICJyZXF1aXJlZCI6IFsK\nICAgICAgICAgICAgICAgICJ2YWx1ZSIsCiAgICAgICAgICAgICAgICAiaHRt\nbCIsCiAgICAgICAgICAgICAgICAidGV4dCIKICAgICAgICAgICAgXQogICAg\nICAgIH0sCiAgICAgICAgIm1lc3NhZ2VJZCI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInRvIjogewogICAg\nICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAicHJvcGVy\ndGllcyI6IHsKICAgICAgICAgICAgICAgICJ2YWx1ZSI6IHsKICAgICAgICAg\nICAgICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAgICAgICAg\nICAgIml0ZW1zIjogewogICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6\nICJvYmplY3QiLAogICAgICAgICAgICAgICAgICAgICAgICAicHJvcGVydGll\ncyI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJhZGRyZXNzIjog\newogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAibmFtZSI6IHsKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAg\nICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICAgICAgICAgIH0s\nCiAgICAgICAgICAgICAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICJhZGRyZXNzIiwKICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICJuYW1lIgogICAgICAgICAgICAgICAgICAgICAg\nICBdCiAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgfSwK\nICAgICAgICAgICAgICAgICJodG1sIjogewogICAgICAgICAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAg\nICAgICAgICAidGV4dCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0sCiAg\nICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICJ2YWx1\nZSIsCiAgICAgICAgICAgICAgICAiaHRtbCIsCiAgICAgICAgICAgICAgICAi\ndGV4dCIKICAgICAgICAgICAgXQogICAgICAgIH0KICAgIH0sCiAgICAicmVx\ndWlyZWQiOiBbCiAgICAgICAgImlkIiwKICAgICAgICAidGhyZWFkSWQiLAog\nICAgICAgICJsYWJlbElkcyIsCiAgICAgICAgInNpemVFc3RpbWF0ZSIsCiAg\nICAgICAgImhlYWRlcnMiLAogICAgICAgICJkYXRlIiwKICAgICAgICAiZnJv\nbSIsCiAgICAgICAgIm1lc3NhZ2VJZCIsCiAgICAgICAgImh0bWwiCiAgICBd\nCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/draft/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/0f401bd3a35f58b6d0967aa66f60cc4813d79a15",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/draft/get.json"
     },
-    "required": [
-        "id",
-        "threadId",
-        "labelIds",
-        "sizeEstimate",
-        "headers",
-        "date",
-        "from",
-        "messageId",
-        "html"
-    ]
+    "version": 1
 }

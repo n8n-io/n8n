@@ -1,12 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "updateTime": {
-            "type": "string"
-        }
+    "name": "upsert.json",
+    "path": "packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__schema__/v1.1.0/document/upsert.json",
+    "sha": "a703727ea3384d6f5dd61b0e7ef3757580acf1f3",
+    "size": 179,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__schema__/v1.1.0/document/upsert.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__schema__/v1.1.0/document/upsert.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/a703727ea3384d6f5dd61b0e7ef3757580acf1f3",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__schema__/v1.1.0/document/upsert.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJ1cGRhdGVUaW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgfQogICAgfSwKICAgICJyZXF1aXJlZCI6IFsKICAg\nICAgICAidXBkYXRlVGltZSIsCiAgICAgICAgInN0YXR1cyIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__schema__/v1.1.0/document/upsert.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/a703727ea3384d6f5dd61b0e7ef3757580acf1f3",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__schema__/v1.1.0/document/upsert.json"
     },
-    "required": [
-        "updateTime",
-        "status"
-    ]
+    "version": 1
 }

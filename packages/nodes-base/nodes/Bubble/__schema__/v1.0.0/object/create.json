@@ -1,15 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "status": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/Bubble/__schema__/v1.0.0/object/create.json",
+    "sha": "322865c1112efbafb8d571104569ffc28df9ea85",
+    "size": 223,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Bubble/__schema__/v1.0.0/object/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Bubble/__schema__/v1.0.0/object/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/322865c1112efbafb8d571104569ffc28df9ea85",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Bubble/__schema__/v1.0.0/object/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJzdGF0dXMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0KICAgIH0sCiAgICAicmVxdWlyZWQi\nOiBbCiAgICAgICAgInN0YXR1cyIsCiAgICAgICAgImlkIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Bubble/__schema__/v1.0.0/object/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/322865c1112efbafb8d571104569ffc28df9ea85",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Bubble/__schema__/v1.0.0/object/create.json"
     },
-    "required": [
-        "status",
-        "id"
-    ]
+    "version": 1
 }

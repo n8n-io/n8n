@@ -1,8 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "urn": {
-            "type": "string"
-        }
-    }
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/LinkedIn/__schema__/v1.0.0/post/create.json",
+    "sha": "5930544d5f8f222b8214b84e37ee4ad478d32505",
+    "size": 108,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/LinkedIn/__schema__/v1.0.0/post/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/LinkedIn/__schema__/v1.0.0/post/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5930544d5f8f222b8214b84e37ee4ad478d32505",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/LinkedIn/__schema__/v1.0.0/post/create.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJ1cm4iOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9CiAgICB9Cn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/LinkedIn/__schema__/v1.0.0/post/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5930544d5f8f222b8214b84e37ee4ad478d32505",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/LinkedIn/__schema__/v1.0.0/post/create.json"
+    },
+    "version": 1
 }

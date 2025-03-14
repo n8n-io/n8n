@@ -1,13 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "data": {
-            "type": "object",
-            "properties": {
-                "approved": {
-                    "type": "boolean"
-                }
-            }
-        }
-    }
+    "name": "sendAndWait.json",
+    "path": "packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/message/sendAndWait.json",
+    "sha": "ef2c004121e8447eb0423aef94051e9d9c55b50a",
+    "size": 238,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/message/sendAndWait.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/message/sendAndWait.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/ef2c004121e8447eb0423aef94051e9d9c55b50a",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/message/sendAndWait.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJkYXRhIjogewogICAgICAgICAgICAidHlwZSI6ICJvYmplY3Qi\nLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAg\nICJhcHByb3ZlZCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJi\nb29sZWFuIgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9CiAgICAg\nICAgfQogICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/message/sendAndWait.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/ef2c004121e8447eb0423aef94051e9d9c55b50a",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Gmail/__schema__/v2.1.0/message/sendAndWait.json"
+    },
+    "version": 1
 }

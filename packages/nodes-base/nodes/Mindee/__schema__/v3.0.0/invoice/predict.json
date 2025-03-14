@@ -1,77 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"id": {
-			"type": "string"
-		},
-		"name": {
-			"type": "string"
-		},
-		"number_of_pages": {
-			"type": "integer"
-		},
-		"customer_name": {
-			"type": "string"
-		},
-		"date": {
-			"type": "string"
-		},
-		"document_type": {
-			"type": "string"
-		},
-		"invoice_number": {
-			"type": "string"
-		},
-		"line_items": {
-			"type": "array",
-			"items": {
-				"type": "object",
-				"properties": {
-					"description": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"description",
-					"product_code",
-					"quantity",
-					"tax_amount",
-					"tax_rate",
-					"total_amount",
-					"unit_price"
-				]
-			}
-		},
-		"currency": {
-			"type": "string"
-		},
-		"supplier_address": {
-			"type": "string"
-		},
-		"supplier_name": {
-			"type": "string"
-		},
-		"supplier_email": {
-			"type": "string"
-		},
-		"supplier_phone_number": {
-			"type": "string"
-		},
-		"customer_id": {
-			"type": "string"
-		},
-		"supplier_website": {
-			"type": "string"
-		}
-	},
-	"required": [
-		"id",
-		"name",
-		"number_of_pages",
-		"document_type",
-		"line_items",
-		"currency",
-		"total_amount",
-		"total_net"
-	]
+    "name": "predict.json",
+    "path": "packages/nodes-base/nodes/Mindee/__schema__/v3.0.0/invoice/predict.json",
+    "sha": "ad1463a469af1123b0b8e59e1085f22f58d4c0b0",
+    "size": 1128,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Mindee/__schema__/v3.0.0/invoice/predict.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Mindee/__schema__/v3.0.0/invoice/predict.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/ad1463a469af1123b0b8e59e1085f22f58d4c0b0",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Mindee/__schema__/v3.0.0/invoice/predict.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJpZCI6\nIHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJIm5hbWUiOiB7CgkJCSJ0\neXBlIjogInN0cmluZyIKCQl9LAoJCSJudW1iZXJfb2ZfcGFnZXMiOiB7CgkJ\nCSJ0eXBlIjogImludGVnZXIiCgkJfSwKCQkiY3VzdG9tZXJfbmFtZSI6IHsK\nCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJImRhdGUiOiB7CgkJCSJ0eXBl\nIjogInN0cmluZyIKCQl9LAoJCSJkb2N1bWVudF90eXBlIjogewoJCQkidHlw\nZSI6ICJzdHJpbmciCgkJfSwKCQkiaW52b2ljZV9udW1iZXIiOiB7CgkJCSJ0\neXBlIjogInN0cmluZyIKCQl9LAoJCSJsaW5lX2l0ZW1zIjogewoJCQkidHlw\nZSI6ICJhcnJheSIsCgkJCSJpdGVtcyI6IHsKCQkJCSJ0eXBlIjogIm9iamVj\ndCIsCgkJCQkicHJvcGVydGllcyI6IHsKCQkJCQkiZGVzY3JpcHRpb24iOiB7\nCgkJCQkJCSJ0eXBlIjogInN0cmluZyIKCQkJCQl9CgkJCQl9LAoJCQkJInJl\ncXVpcmVkIjogWwoJCQkJCSJkZXNjcmlwdGlvbiIsCgkJCQkJInByb2R1Y3Rf\nY29kZSIsCgkJCQkJInF1YW50aXR5IiwKCQkJCQkidGF4X2Ftb3VudCIsCgkJ\nCQkJInRheF9yYXRlIiwKCQkJCQkidG90YWxfYW1vdW50IiwKCQkJCQkidW5p\ndF9wcmljZSIKCQkJCV0KCQkJfQoJCX0sCgkJImN1cnJlbmN5IjogewoJCQki\ndHlwZSI6ICJzdHJpbmciCgkJfSwKCQkic3VwcGxpZXJfYWRkcmVzcyI6IHsK\nCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJInN1cHBsaWVyX25hbWUiOiB7\nCgkJCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJCSJzdXBwbGllcl9lbWFpbCI6\nIHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJInN1cHBsaWVyX3Bob25l\nX251bWJlciI6IHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJImN1c3Rv\nbWVyX2lkIjogewoJCQkidHlwZSI6ICJzdHJpbmciCgkJfSwKCQkic3VwcGxp\nZXJfd2Vic2l0ZSI6IHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0KCX0sCgki\ncmVxdWlyZWQiOiBbCgkJImlkIiwKCQkibmFtZSIsCgkJIm51bWJlcl9vZl9w\nYWdlcyIsCgkJImRvY3VtZW50X3R5cGUiLAoJCSJsaW5lX2l0ZW1zIiwKCQki\nY3VycmVuY3kiLAoJCSJ0b3RhbF9hbW91bnQiLAoJCSJ0b3RhbF9uZXQiCgld\nCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Mindee/__schema__/v3.0.0/invoice/predict.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/ad1463a469af1123b0b8e59e1085f22f58d4c0b0",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Mindee/__schema__/v3.0.0/invoice/predict.json"
+    },
+    "version": 1
 }

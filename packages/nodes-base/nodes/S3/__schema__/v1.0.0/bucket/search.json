@@ -1,30 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "Key": {
-            "type": "string"
-        },
-        "LastModified": {
-            "type": "string"
-        },
-        "ETag": {
-            "type": "string"
-        },
-        "Size": {
-            "type": "string"
-        },
-        "StorageClass": {
-            "type": "string"
-        },
-        "Type": {
-            "type": "string"
-        }
+    "name": "search.json",
+    "path": "packages/nodes-base/nodes/S3/__schema__/v1.0.0/bucket/search.json",
+    "sha": "722997ebf491e5958017b3e9b2014b602f0a1508",
+    "size": 533,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/S3/__schema__/v1.0.0/bucket/search.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/S3/__schema__/v1.0.0/bucket/search.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/722997ebf491e5958017b3e9b2014b602f0a1508",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/S3/__schema__/v1.0.0/bucket/search.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJLZXkiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJMYXN0TW9kaWZpZWQiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJFVGFn\nIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwK\nICAgICAgICAiU2l6ZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgIH0sCiAgICAgICAgIlN0b3JhZ2VDbGFzcyI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIlR5\ncGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9\nCiAgICB9LAogICAgInJlcXVpcmVkIjogWwogICAgICAgICJLZXkiLAogICAg\nICAgICJMYXN0TW9kaWZpZWQiLAogICAgICAgICJFVGFnIiwKICAgICAgICAi\nU2l6ZSIsCiAgICAgICAgIlN0b3JhZ2VDbGFzcyIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/S3/__schema__/v1.0.0/bucket/search.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/722997ebf491e5958017b3e9b2014b602f0a1508",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/S3/__schema__/v1.0.0/bucket/search.json"
     },
-    "required": [
-        "Key",
-        "LastModified",
-        "ETag",
-        "Size",
-        "StorageClass"
-    ]
+    "version": 1
 }

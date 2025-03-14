@@ -1,80 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "locationId": {
-            "type": "string"
-        },
-        "contactName": {
-            "type": "string"
-        },
-        "dnd": {
-            "type": "boolean"
-        },
-        "type": {
-            "type": "string"
-        },
-        "dateAdded": {
-            "type": "string"
-        },
-        "dateUpdated": {
-            "type": "string"
-        },
-        "tags": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "followers": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "country": {
-            "type": "string"
-        },
-        "website": {
-            "type": "null"
-        },
-        "attributions": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "utmSessionSource": {
-                        "type": "string"
-                    },
-                    "isFirst": {
-                        "type": "boolean"
-                    },
-                    "medium": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "utmSessionSource",
-                    "medium"
-                ]
-            }
-        },
-        "customFields": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "id",
-                    "value"
-                ]
-            }
-        }
-    }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/HighLevel/__schema__/v2.0.0/contact/getAll.json",
+    "sha": "2a9ed746799f4a765a85a063b032407a075f7ea8",
+    "size": 1846,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/HighLevel/__schema__/v2.0.0/contact/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/HighLevel/__schema__/v2.0.0/contact/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/2a9ed746799f4a765a85a063b032407a075f7ea8",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/HighLevel/__schema__/v2.0.0/contact/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgImxvY2F0aW9uSWQiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJjb250YWN0\nTmFtZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nIH0sCiAgICAgICAgImRuZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9v\nbGVhbiIKICAgICAgICB9LAogICAgICAgICJ0eXBlIjogewogICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiZGF0ZUFk\nZGVkIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nfSwKICAgICAgICAiZGF0ZVVwZGF0ZWQiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJ0YWdzIjogewogICAg\nICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAgICJpdGVtcyI6\nIHsKICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAg\nICAgfQogICAgICAgIH0sCiAgICAgICAgImZvbGxvd2VycyI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAiYXJyYXkiLAogICAgICAgICAgICAiaXRlbXMiOiB7\nCiAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAg\nIH0KICAgICAgICB9LAogICAgICAgICJjb3VudHJ5IjogewogICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAid2Vic2l0\nZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9LAog\nICAgICAgICJhdHRyaWJ1dGlvbnMiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nImFycmF5IiwKICAgICAgICAgICAgIml0ZW1zIjogewogICAgICAgICAgICAg\nICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgICAgICJwcm9wZXJ0\naWVzIjogewogICAgICAgICAgICAgICAgICAgICJ1dG1TZXNzaW9uU291cmNl\nIjogewogICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAi\naXNGaXJzdCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAi\nYm9vbGVhbiIKICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAg\nICAgICAgICJtZWRpdW0iOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAg\nICAgICAgICB9LAogICAgICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAg\nICAgICAgICAgICAgICAgICJ1dG1TZXNzaW9uU291cmNlIiwKICAgICAgICAg\nICAgICAgICAgICAibWVkaXVtIgogICAgICAgICAgICAgICAgXQogICAgICAg\nICAgICB9CiAgICAgICAgfSwKICAgICAgICAiY3VzdG9tRmllbGRzIjogewog\nICAgICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAgICJpdGVt\ncyI6IHsKICAgICAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAg\nICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICAg\nICAiaWQiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICB9\nLAogICAgICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAg\nICAgICAgICJpZCIsCiAgICAgICAgICAgICAgICAgICAgInZhbHVlIgogICAg\nICAgICAgICAgICAgXQogICAgICAgICAgICB9CiAgICAgICAgfQogICAgfQp9\nCg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/HighLevel/__schema__/v2.0.0/contact/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/2a9ed746799f4a765a85a063b032407a075f7ea8",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/HighLevel/__schema__/v2.0.0/contact/getAll.json"
+    },
+    "version": 1
 }

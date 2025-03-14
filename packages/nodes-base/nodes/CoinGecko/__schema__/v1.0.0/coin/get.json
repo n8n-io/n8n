@@ -1,180 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "symbol": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "web_slug": {
-            "type": "string"
-        },
-        "platforms": {
-            "type": "object",
-            "properties": {
-                "": {
-                    "type": "string"
-                }
-            }
-        },
-        "detail_platforms": {
-            "type": "object",
-            "properties": {
-                "": {
-                    "type": "object",
-                    "properties": {
-                        "decimal_place": {
-                            "type": "null"
-                        },
-                        "contract_address": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "decimal_place",
-                        "contract_address"
-                    ]
-                }
-            }
-        },
-        "block_time_in_minutes": {
-            "type": "integer"
-        },
-        "categories": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "preview_listing": {
-            "type": "boolean"
-        },
-        "additional_notices": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "description": {
-            "type": "object",
-            "properties": {
-                "en": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "en"
-            ]
-        },
-        "links": {
-            "type": "object",
-            "properties": {
-                "homepage": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "whitepaper": {
-                    "type": "string"
-                },
-                "official_forum_url": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "chat_url": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "twitter_screen_name": {
-                    "type": "string"
-                },
-                "repos_url": {
-                    "type": "object",
-                    "properties": {
-                        "github": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "required": [
-                        "github",
-                        "bitbucket"
-                    ]
-                }
-            },
-            "required": [
-                "homepage",
-                "whitepaper",
-                "blockchain_site",
-                "official_forum_url",
-                "chat_url",
-                "announcement_url",
-                "twitter_screen_name",
-                "facebook_username",
-                "bitcointalk_thread_identifier",
-                "telegram_channel_identifier",
-                "subreddit_url",
-                "repos_url"
-            ]
-        },
-        "image": {
-            "type": "object",
-            "properties": {
-                "thumb": {
-                    "type": "string"
-                },
-                "small": {
-                    "type": "string"
-                },
-                "large": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "thumb",
-                "small",
-                "large"
-            ]
-        },
-        "watchlist_portfolio_users": {
-            "type": "integer"
-        }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/CoinGecko/__schema__/v1.0.0/coin/get.json",
+    "sha": "aaa90165703bb42fe67111cd56f4d847e6258f7f",
+    "size": 4750,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/CoinGecko/__schema__/v1.0.0/coin/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/CoinGecko/__schema__/v1.0.0/coin/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/aaa90165703bb42fe67111cd56f4d847e6258f7f",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/CoinGecko/__schema__/v1.0.0/coin/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInN5bWJvbCI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIm5hbWUiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAg\nICJ3ZWJfc2x1ZyI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInBsYXRmb3JtcyI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7\nCiAgICAgICAgICAgICAgICAiIjogewogICAgICAgICAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAg\nfQogICAgICAgIH0sCiAgICAgICAgImRldGFpbF9wbGF0Zm9ybXMiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJwcm9w\nZXJ0aWVzIjogewogICAgICAgICAgICAgICAgIiI6IHsKICAgICAgICAgICAg\nICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAgICAg\nICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgICAgICAgICAiZGVj\naW1hbF9wbGFjZSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0\neXBlIjogIm51bGwiCiAgICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAg\nICAgICAgICAgICAgICAgICAgICJjb250cmFjdF9hZGRyZXNzIjogewogICAg\nICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAg\nICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICAgICAgfSwK\nICAgICAgICAgICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAg\nICAgICAgICAgICAgICJkZWNpbWFsX3BsYWNlIiwKICAgICAgICAgICAgICAg\nICAgICAgICAgImNvbnRyYWN0X2FkZHJlc3MiCiAgICAgICAgICAgICAgICAg\nICAgXQogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9CiAgICAgICAg\nfSwKICAgICAgICAiYmxvY2tfdGltZV9pbl9taW51dGVzIjogewogICAgICAg\nICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgImNh\ndGVnb3JpZXMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImFycmF5IiwKICAg\nICAgICAgICAgIml0ZW1zIjogewogICAgICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgICAgICB9CiAgICAgICAgfSwKICAgICAgICAicHJl\ndmlld19saXN0aW5nIjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFu\nIgogICAgICAgIH0sCiAgICAgICAgImFkZGl0aW9uYWxfbm90aWNlcyI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAiYXJyYXkiLAogICAgICAgICAgICAiaXRl\nbXMiOiB7CiAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgICAgIH0KICAgICAgICB9LAogICAgICAgICJkZXNjcmlwdGlvbiI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgInBy\nb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAiZW4iOiB7CiAgICAgICAg\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAg\nfQogICAgICAgICAgICB9LAogICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAg\nICAgICAgICAgICAgICAiZW4iCiAgICAgICAgICAgIF0KICAgICAgICB9LAog\nICAgICAgICJsaW5rcyI6IHsKICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0\nIiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAg\nICAiaG9tZXBhZ2UiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAi\nYXJyYXkiLAogICAgICAgICAgICAgICAgICAgICJpdGVtcyI6IHsKICAgICAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAg\nICAgICAgICAgIH0KICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAg\nICAid2hpdGVwYXBlciI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAg\nIm9mZmljaWFsX2ZvcnVtX3VybCI6IHsKICAgICAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAgICAgICAgICAgIml0ZW1zIjog\newogICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgfSwKICAgICAg\nICAgICAgICAgICJjaGF0X3VybCI6IHsKICAgICAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAgICAgICAgICAgIml0ZW1zIjog\newogICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgfSwKICAgICAg\nICAgICAgICAgICJ0d2l0dGVyX3NjcmVlbl9uYW1lIjogewogICAgICAgICAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0s\nCiAgICAgICAgICAgICAgICAicmVwb3NfdXJsIjogewogICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICAgICAgICAg\nInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJnaXRo\ndWIiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJh\ncnJheSIsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAiaXRlbXMiOiB7\nCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgICAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAg\nICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICAgICAgfSwKICAgICAg\nICAgICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAg\nICAgICAgICJnaXRodWIiLAogICAgICAgICAgICAgICAgICAgICAgICAiYml0\nYnVja2V0IgogICAgICAgICAgICAgICAgICAgIF0KICAgICAgICAgICAgICAg\nIH0KICAgICAgICAgICAgfSwKICAgICAgICAgICAgInJlcXVpcmVkIjogWwog\nICAgICAgICAgICAgICAgImhvbWVwYWdlIiwKICAgICAgICAgICAgICAgICJ3\naGl0ZXBhcGVyIiwKICAgICAgICAgICAgICAgICJibG9ja2NoYWluX3NpdGUi\nLAogICAgICAgICAgICAgICAgIm9mZmljaWFsX2ZvcnVtX3VybCIsCiAgICAg\nICAgICAgICAgICAiY2hhdF91cmwiLAogICAgICAgICAgICAgICAgImFubm91\nbmNlbWVudF91cmwiLAogICAgICAgICAgICAgICAgInR3aXR0ZXJfc2NyZWVu\nX25hbWUiLAogICAgICAgICAgICAgICAgImZhY2Vib29rX3VzZXJuYW1lIiwK\nICAgICAgICAgICAgICAgICJiaXRjb2ludGFsa190aHJlYWRfaWRlbnRpZmll\nciIsCiAgICAgICAgICAgICAgICAidGVsZWdyYW1fY2hhbm5lbF9pZGVudGlm\naWVyIiwKICAgICAgICAgICAgICAgICJzdWJyZWRkaXRfdXJsIiwKICAgICAg\nICAgICAgICAgICJyZXBvc191cmwiCiAgICAgICAgICAgIF0KICAgICAgICB9\nLAogICAgICAgICJpbWFnZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAib2Jq\nZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAg\nICAgICAidGh1bWIiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJz\nbWFsbCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImxhcmdlIjog\newogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICAgICAgICAgIH0KICAgICAgICAgICAgfSwKICAgICAgICAgICAgInJlcXVp\ncmVkIjogWwogICAgICAgICAgICAgICAgInRodW1iIiwKICAgICAgICAgICAg\nICAgICJzbWFsbCIsCiAgICAgICAgICAgICAgICAibGFyZ2UiCiAgICAgICAg\nICAgIF0KICAgICAgICB9LAogICAgICAgICJ3YXRjaGxpc3RfcG9ydGZvbGlv\nX3VzZXJzIjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAg\nICAgIH0KICAgIH0sCiAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgImlkIiwK\nICAgICAgICAic3ltYm9sIiwKICAgICAgICAibmFtZSIsCiAgICAgICAgIndl\nYl9zbHVnIiwKICAgICAgICAiYXNzZXRfcGxhdGZvcm1faWQiLAogICAgICAg\nICJwbGF0Zm9ybXMiLAogICAgICAgICJkZXRhaWxfcGxhdGZvcm1zIiwKICAg\nICAgICAiYmxvY2tfdGltZV9pbl9taW51dGVzIiwKICAgICAgICAiaGFzaGlu\nZ19hbGdvcml0aG0iLAogICAgICAgICJjYXRlZ29yaWVzIiwKICAgICAgICAi\ncHJldmlld19saXN0aW5nIiwKICAgICAgICAicHVibGljX25vdGljZSIsCiAg\nICAgICAgImFkZGl0aW9uYWxfbm90aWNlcyIsCiAgICAgICAgImRlc2NyaXB0\naW9uIiwKICAgICAgICAibGlua3MiLAogICAgICAgICJpbWFnZSIsCiAgICAg\nICAgImNvdW50cnlfb3JpZ2luIiwKICAgICAgICAiZ2VuZXNpc19kYXRlIiwK\nICAgICAgICAic2VudGltZW50X3ZvdGVzX3VwX3BlcmNlbnRhZ2UiLAogICAg\nICAgICJzZW50aW1lbnRfdm90ZXNfZG93bl9wZXJjZW50YWdlIiwKICAgICAg\nICAid2F0Y2hsaXN0X3BvcnRmb2xpb191c2VycyIsCiAgICAgICAgIm1hcmtl\ndF9jYXBfcmFuayIsCiAgICAgICAgInN0YXR1c191cGRhdGVzIiwKICAgICAg\nICAibGFzdF91cGRhdGVkIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/CoinGecko/__schema__/v1.0.0/coin/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/aaa90165703bb42fe67111cd56f4d847e6258f7f",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/CoinGecko/__schema__/v1.0.0/coin/get.json"
     },
-    "required": [
-        "id",
-        "symbol",
-        "name",
-        "web_slug",
-        "asset_platform_id",
-        "platforms",
-        "detail_platforms",
-        "block_time_in_minutes",
-        "hashing_algorithm",
-        "categories",
-        "preview_listing",
-        "public_notice",
-        "additional_notices",
-        "description",
-        "links",
-        "image",
-        "country_origin",
-        "genesis_date",
-        "sentiment_votes_up_percentage",
-        "sentiment_votes_down_percentage",
-        "watchlist_portfolio_users",
-        "market_cap_rank",
-        "status_updates",
-        "last_updated"
-    ]
+    "version": 1
 }

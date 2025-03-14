@@ -1,178 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "url": {
-            "type": "string"
-        },
-        "html_url": {
-            "type": "string"
-        },
-        "issue_url": {
-            "type": "string"
-        },
-        "id": {
-            "type": "integer"
-        },
-        "node_id": {
-            "type": "string"
-        },
-        "user": {
-            "type": "object",
-            "properties": {
-                "login": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "node_id": {
-                    "type": "string"
-                },
-                "avatar_url": {
-                    "type": "string"
-                },
-                "gravatar_id": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                },
-                "html_url": {
-                    "type": "string"
-                },
-                "followers_url": {
-                    "type": "string"
-                },
-                "following_url": {
-                    "type": "string"
-                },
-                "gists_url": {
-                    "type": "string"
-                },
-                "starred_url": {
-                    "type": "string"
-                },
-                "subscriptions_url": {
-                    "type": "string"
-                },
-                "organizations_url": {
-                    "type": "string"
-                },
-                "repos_url": {
-                    "type": "string"
-                },
-                "events_url": {
-                    "type": "string"
-                },
-                "received_events_url": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "user_view_type": {
-                    "type": "string"
-                },
-                "site_admin": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "login",
-                "id",
-                "node_id",
-                "avatar_url",
-                "gravatar_id",
-                "url",
-                "html_url",
-                "followers_url",
-                "following_url",
-                "gists_url",
-                "starred_url",
-                "subscriptions_url",
-                "organizations_url",
-                "repos_url",
-                "events_url",
-                "received_events_url",
-                "type",
-                "site_admin"
-            ]
-        },
-        "created_at": {
-            "type": "string"
-        },
-        "updated_at": {
-            "type": "string"
-        },
-        "author_association": {
-            "type": "string"
-        },
-        "body": {
-            "type": "string"
-        },
-        "reactions": {
-            "type": "object",
-            "properties": {
-                "url": {
-                    "type": "string"
-                },
-                "total_count": {
-                    "type": "integer"
-                },
-                "+1": {
-                    "type": "integer"
-                },
-                "-1": {
-                    "type": "integer"
-                },
-                "laugh": {
-                    "type": "integer"
-                },
-                "hooray": {
-                    "type": "integer"
-                },
-                "confused": {
-                    "type": "integer"
-                },
-                "heart": {
-                    "type": "integer"
-                },
-                "rocket": {
-                    "type": "integer"
-                },
-                "eyes": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "url",
-                "total_count",
-                "+1",
-                "-1",
-                "laugh",
-                "hooray",
-                "confused",
-                "heart",
-                "rocket",
-                "eyes"
-            ]
-        },
-        "performed_via_github_app": {
-            "type": "null"
-        }
+    "name": "createComment.json",
+    "path": "packages/nodes-base/nodes/Github/__schema__/v1.0.0/issue/createComment.json",
+    "sha": "34175f8c63b4cc40c83af698f5bc0a74f870781a",
+    "size": 4553,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Github/__schema__/v1.0.0/issue/createComment.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Github/__schema__/v1.0.0/issue/createComment.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/34175f8c63b4cc40c83af698f5bc0a74f870781a",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Github/__schema__/v1.0.0/issue/createComment.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJ1cmwiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICB9LAogICAgICAgICJodG1sX3VybCI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImlzc3VlX3Vy\nbCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0s\nCiAgICAgICAgImlkIjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2Vy\nIgogICAgICAgIH0sCiAgICAgICAgIm5vZGVfaWQiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJ1c2VyIjog\newogICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAi\ncHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICJsb2dpbiI6IHsKICAg\nICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAg\nICAgICB9LAogICAgICAgICAgICAgICAgImlkIjogewogICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgICAgICAgICB9LAog\nICAgICAgICAgICAgICAgIm5vZGVfaWQiOiB7CiAgICAgICAgICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAg\nICAgICAgICAgICJhdmF0YXJfdXJsIjogewogICAgICAgICAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAg\nICAgICAgICAiZ3JhdmF0YXJfaWQiOiB7CiAgICAgICAgICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAg\nICAgICAgICJ1cmwiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJo\ndG1sX3VybCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImZvbGxv\nd2Vyc191cmwiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJmb2xs\nb3dpbmdfdXJsIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiZ2lz\ndHNfdXJsIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAic3RhcnJl\nZF91cmwiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5n\nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJzdWJzY3Jp\ncHRpb25zX3VybCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgIm9y\nZ2FuaXphdGlvbnNfdXJsIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAg\nICAicmVwb3NfdXJsIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAi\nZXZlbnRzX3VybCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInJl\nY2VpdmVkX2V2ZW50c191cmwiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nICAgICJ0eXBlIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAidXNl\ncl92aWV3X3R5cGUiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJz\naXRlX2FkbWluIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImJv\nb2xlYW4iCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0sCiAgICAg\nICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICJsb2dpbiIs\nCiAgICAgICAgICAgICAgICAiaWQiLAogICAgICAgICAgICAgICAgIm5vZGVf\naWQiLAogICAgICAgICAgICAgICAgImF2YXRhcl91cmwiLAogICAgICAgICAg\nICAgICAgImdyYXZhdGFyX2lkIiwKICAgICAgICAgICAgICAgICJ1cmwiLAog\nICAgICAgICAgICAgICAgImh0bWxfdXJsIiwKICAgICAgICAgICAgICAgICJm\nb2xsb3dlcnNfdXJsIiwKICAgICAgICAgICAgICAgICJmb2xsb3dpbmdfdXJs\nIiwKICAgICAgICAgICAgICAgICJnaXN0c191cmwiLAogICAgICAgICAgICAg\nICAgInN0YXJyZWRfdXJsIiwKICAgICAgICAgICAgICAgICJzdWJzY3JpcHRp\nb25zX3VybCIsCiAgICAgICAgICAgICAgICAib3JnYW5pemF0aW9uc191cmwi\nLAogICAgICAgICAgICAgICAgInJlcG9zX3VybCIsCiAgICAgICAgICAgICAg\nICAiZXZlbnRzX3VybCIsCiAgICAgICAgICAgICAgICAicmVjZWl2ZWRfZXZl\nbnRzX3VybCIsCiAgICAgICAgICAgICAgICAidHlwZSIsCiAgICAgICAgICAg\nICAgICAic2l0ZV9hZG1pbiIKICAgICAgICAgICAgXQogICAgICAgIH0sCiAg\nICAgICAgImNyZWF0ZWRfYXQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJ1cGRhdGVkX2F0IjogewogICAg\nICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAi\nYXV0aG9yX2Fzc29jaWF0aW9uIjogewogICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgfSwKICAgICAgICAiYm9keSI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInJlYWN0\naW9ucyI6IHsKICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAg\nICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAidXJsIjog\newogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAidG90YWxfY291bnQiOiB7\nCiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAg\nICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiKzEiOiB7CiAgICAgICAg\nICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICAgICAgICAg\nIH0sCiAgICAgICAgICAgICAgICAiLTEiOiB7CiAgICAgICAgICAgICAgICAg\nICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICAgICAgICAgIH0sCiAgICAg\nICAgICAgICAgICAibGF1Z2giOiB7CiAgICAgICAgICAgICAgICAgICAgInR5\ncGUiOiAiaW50ZWdlciIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAg\nICAgICAiaG9vcmF5IjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjog\nImludGVnZXIiCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAg\nImNvbmZ1c2VkIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImlu\ndGVnZXIiCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImhl\nYXJ0IjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIi\nCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInJvY2tldCI6\nIHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAg\nICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJleWVzIjogewogICAg\nICAgICAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgICAg\nICAgICB9CiAgICAgICAgICAgIH0sCiAgICAgICAgICAgICJyZXF1aXJlZCI6\nIFsKICAgICAgICAgICAgICAgICJ1cmwiLAogICAgICAgICAgICAgICAgInRv\ndGFsX2NvdW50IiwKICAgICAgICAgICAgICAgICIrMSIsCiAgICAgICAgICAg\nICAgICAiLTEiLAogICAgICAgICAgICAgICAgImxhdWdoIiwKICAgICAgICAg\nICAgICAgICJob29yYXkiLAogICAgICAgICAgICAgICAgImNvbmZ1c2VkIiwK\nICAgICAgICAgICAgICAgICJoZWFydCIsCiAgICAgICAgICAgICAgICAicm9j\na2V0IiwKICAgICAgICAgICAgICAgICJleWVzIgogICAgICAgICAgICBdCiAg\nICAgICAgfSwKICAgICAgICAicGVyZm9ybWVkX3ZpYV9naXRodWJfYXBwIjog\newogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0KICAgIH0s\nCiAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgInVybCIsCiAgICAgICAgImh0\nbWxfdXJsIiwKICAgICAgICAiaXNzdWVfdXJsIiwKICAgICAgICAiaWQiLAog\nICAgICAgICJub2RlX2lkIiwKICAgICAgICAidXNlciIsCiAgICAgICAgImNy\nZWF0ZWRfYXQiLAogICAgICAgICJ1cGRhdGVkX2F0IiwKICAgICAgICAiYXV0\naG9yX2Fzc29jaWF0aW9uIiwKICAgICAgICAiYm9keSIsCiAgICAgICAgInJl\nYWN0aW9ucyIsCiAgICAgICAgInBlcmZvcm1lZF92aWFfZ2l0aHViX2FwcCIK\nICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Github/__schema__/v1.0.0/issue/createComment.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/34175f8c63b4cc40c83af698f5bc0a74f870781a",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Github/__schema__/v1.0.0/issue/createComment.json"
     },
-    "required": [
-        "url",
-        "html_url",
-        "issue_url",
-        "id",
-        "node_id",
-        "user",
-        "created_at",
-        "updated_at",
-        "author_association",
-        "body",
-        "reactions",
-        "performed_via_github_app"
-    ]
+    "version": 1
 }

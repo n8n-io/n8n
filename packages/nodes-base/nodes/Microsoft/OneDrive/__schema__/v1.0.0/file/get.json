@@ -1,171 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "@odata.context": {
-            "type": "string"
-        },
-        "@microsoft.graph.downloadUrl": {
-            "type": "string"
-        },
-        "createdBy": {
-            "type": "object",
-            "properties": {
-                "user": {
-                    "type": "object",
-                    "properties": {
-                        "email": {
-                            "type": "string"
-                        },
-                        "id": {
-                            "type": "string"
-                        },
-                        "displayName": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "displayName"
-                    ]
-                }
-            },
-            "required": [
-                "user"
-            ]
-        },
-        "createdDateTime": {
-            "type": "string"
-        },
-        "eTag": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "lastModifiedBy": {
-            "type": "object",
-            "properties": {
-                "user": {
-                    "type": "object",
-                    "properties": {
-                        "email": {
-                            "type": "string"
-                        },
-                        "id": {
-                            "type": "string"
-                        },
-                        "displayName": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "displayName"
-                    ]
-                }
-            },
-            "required": [
-                "user"
-            ]
-        },
-        "lastModifiedDateTime": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "parentReference": {
-            "type": "object",
-            "properties": {
-                "driveType": {
-                    "type": "string"
-                },
-                "driveId": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "path": {
-                    "type": "string"
-                },
-                "siteId": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "driveType",
-                "driveId"
-            ]
-        },
-        "webUrl": {
-            "type": "string"
-        },
-        "cTag": {
-            "type": "string"
-        },
-        "file": {
-            "type": "object",
-            "properties": {
-                "hashes": {
-                    "type": "object",
-                    "properties": {
-                        "quickXorHash": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "quickXorHash"
-                    ]
-                },
-                "mimeType": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "hashes",
-                "mimeType"
-            ]
-        },
-        "fileSystemInfo": {
-            "type": "object",
-            "properties": {
-                "createdDateTime": {
-                    "type": "string"
-                },
-                "lastModifiedDateTime": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "createdDateTime",
-                "lastModifiedDateTime"
-            ]
-        },
-        "size": {
-            "type": "integer"
-        },
-        "shared": {
-            "type": "object",
-            "properties": {
-                "scope": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "scope"
-            ]
-        }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Microsoft/OneDrive/__schema__/v1.0.0/file/get.json",
+    "sha": "864db490813832b5c5e3cdc1342ca148244a3e4c",
+    "size": 4359,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Microsoft/OneDrive/__schema__/v1.0.0/file/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Microsoft/OneDrive/__schema__/v1.0.0/file/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/864db490813832b5c5e3cdc1342ca148244a3e4c",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Microsoft/OneDrive/__schema__/v1.0.0/file/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJAb2RhdGEuY29udGV4dCI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIkBtaWNyb3NvZnQuZ3Jh\ncGguZG93bmxvYWRVcmwiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJjcmVhdGVkQnkiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVz\nIjogewogICAgICAgICAgICAgICAgInVzZXIiOiB7CiAgICAgICAgICAgICAg\nICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgICAgICAgICAi\ncHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgImVtYWls\nIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAg\nICAgICAgICAgICAiaWQiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgICAgIH0s\nCiAgICAgICAgICAgICAgICAgICAgICAgICJkaXNwbGF5TmFtZSI6IHsKICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgICAgIH0s\nCiAgICAgICAgICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAg\nICAgICAgICAgICAgICAiZGlzcGxheU5hbWUiCiAgICAgICAgICAgICAgICAg\nICAgXQogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9LAogICAgICAg\nICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAidXNlciIKICAg\nICAgICAgICAgXQogICAgICAgIH0sCiAgICAgICAgImNyZWF0ZWREYXRlVGlt\nZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0s\nCiAgICAgICAgImVUYWciOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImxhc3RNb2RpZmll\nZEJ5IjogewogICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAg\nICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICJ1c2VyIjog\newogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAg\nICAgICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAg\nICAgICAgICAgICJlbWFpbCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAgICAg\nfSwKICAgICAgICAgICAgICAgICAgICAgICAgImlkIjogewogICAgICAgICAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAiZGlz\ncGxheU5hbWUiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICAgICAgICAgIH0KICAgICAg\nICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICJyZXF1aXJl\nZCI6IFsKICAgICAgICAgICAgICAgICAgICAgICAgImRpc3BsYXlOYW1lIgog\nICAgICAgICAgICAgICAgICAgIF0KICAgICAgICAgICAgICAgIH0KICAgICAg\nICAgICAgfSwKICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAg\nICAgICAgInVzZXIiCiAgICAgICAgICAgIF0KICAgICAgICB9LAogICAgICAg\nICJsYXN0TW9kaWZpZWREYXRlVGltZSI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIm5hbWUiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJw\nYXJlbnRSZWZlcmVuY2UiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9iamVj\ndCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAg\nICAgImRyaXZlVHlwZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6\nICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAg\nImRyaXZlSWQiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJpZCI6\nIHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgIm5hbWUiOiB7CiAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAg\nICAgfSwKICAgICAgICAgICAgICAgICJwYXRoIjogewogICAgICAgICAgICAg\nICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAg\nICAgICAgICAgICAgICAic2l0ZUlkIjogewogICAgICAgICAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0KICAgICAgICAg\nICAgfSwKICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAg\nICAgImRyaXZlVHlwZSIsCiAgICAgICAgICAgICAgICAiZHJpdmVJZCIKICAg\nICAgICAgICAgXQogICAgICAgIH0sCiAgICAgICAgIndlYlVybCI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAg\nImNUYWciOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICB9LAogICAgICAgICJmaWxlIjogewogICAgICAgICAgICAidHlwZSI6ICJv\nYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAg\nICAgICAgICJoYXNoZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUi\nOiAib2JqZWN0IiwKICAgICAgICAgICAgICAgICAgICAicHJvcGVydGllcyI6\nIHsKICAgICAgICAgICAgICAgICAgICAgICAgInF1aWNrWG9ySGFzaCI6IHsK\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgICAg\nIH0sCiAgICAgICAgICAgICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAg\nICAgICAgICAgICAgICAgICAicXVpY2tYb3JIYXNoIgogICAgICAgICAgICAg\nICAgICAgIF0KICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAi\nbWltZVR5cGUiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9LAogICAgICAg\nICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAiaGFzaGVzIiwK\nICAgICAgICAgICAgICAgICJtaW1lVHlwZSIKICAgICAgICAgICAgXQogICAg\nICAgIH0sCiAgICAgICAgImZpbGVTeXN0ZW1JbmZvIjogewogICAgICAgICAg\nICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6\nIHsKICAgICAgICAgICAgICAgICJjcmVhdGVkRGF0ZVRpbWUiOiB7CiAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAg\nICAgfSwKICAgICAgICAgICAgICAgICJsYXN0TW9kaWZpZWREYXRlVGltZSI6\nIHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgICAgICAgICB9CiAgICAgICAgICAgIH0sCiAgICAgICAgICAgICJyZXF1\naXJlZCI6IFsKICAgICAgICAgICAgICAgICJjcmVhdGVkRGF0ZVRpbWUiLAog\nICAgICAgICAgICAgICAgImxhc3RNb2RpZmllZERhdGVUaW1lIgogICAgICAg\nICAgICBdCiAgICAgICAgfSwKICAgICAgICAic2l6ZSI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJzaGFy\nZWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAg\nICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgInNjb3BlIjog\newogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICAgICAgICAgIH0KICAgICAgICAgICAgfSwKICAgICAgICAgICAgInJlcXVp\ncmVkIjogWwogICAgICAgICAgICAgICAgInNjb3BlIgogICAgICAgICAgICBd\nCiAgICAgICAgfQogICAgfSwKICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAi\nY3JlYXRlZERhdGVUaW1lIiwKICAgICAgICAiaWQiLAogICAgICAgICJsYXN0\nTW9kaWZpZWREYXRlVGltZSIsCiAgICAgICAgIm5hbWUiLAogICAgICAgICJw\nYXJlbnRSZWZlcmVuY2UiLAogICAgICAgICJ3ZWJVcmwiLAogICAgICAgICJm\naWxlU3lzdGVtSW5mbyIsCiAgICAgICAgInNpemUiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Microsoft/OneDrive/__schema__/v1.0.0/file/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/864db490813832b5c5e3cdc1342ca148244a3e4c",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Microsoft/OneDrive/__schema__/v1.0.0/file/get.json"
     },
-    "required": [
-        "createdDateTime",
-        "id",
-        "lastModifiedDateTime",
-        "name",
-        "parentReference",
-        "webUrl",
-        "fileSystemInfo",
-        "size"
-    ]
+    "version": 1
 }

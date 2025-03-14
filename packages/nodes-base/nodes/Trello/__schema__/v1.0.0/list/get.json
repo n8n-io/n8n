@@ -1,34 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "closed": {
-            "type": "boolean"
-        },
-        "idBoard": {
-            "type": "string"
-        },
-        "type": {
-            "type": "null"
-        },
-        "datasource": {
-            "type": "object",
-            "properties": {
-                "filter": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "filter"
-            ]
-        }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Trello/__schema__/v1.0.0/list/get.json",
+    "sha": "c1d60b0a932d17d2ecec600bcbe0a6825cdcbb28",
+    "size": 638,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Trello/__schema__/v1.0.0/list/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Trello/__schema__/v1.0.0/list/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/c1d60b0a932d17d2ecec600bcbe0a6825cdcbb28",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Trello/__schema__/v1.0.0/list/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgIm5hbWUiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJjbG9zZWQiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAg\nICAiaWRCb2FyZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgInR5cGUiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAiZGF0YXNvdXJjZSI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgInBy\nb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAiZmlsdGVyIjogewogICAg\nICAgICAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgICAg\nICAgICB9CiAgICAgICAgICAgIH0sCiAgICAgICAgICAgICJyZXF1aXJlZCI6\nIFsKICAgICAgICAgICAgICAgICJmaWx0ZXIiCiAgICAgICAgICAgIF0KICAg\nICAgICB9CiAgICB9LAogICAgInJlcXVpcmVkIjogWwogICAgICAgICJpZCIK\nICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Trello/__schema__/v1.0.0/list/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/c1d60b0a932d17d2ecec600bcbe0a6825cdcbb28",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Trello/__schema__/v1.0.0/list/get.json"
     },
-    "required": [
-        "id"
-    ]
+    "version": 1
 }

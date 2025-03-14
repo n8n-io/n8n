@@ -1,35 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"id": {
-			"type": "string"
-		},
-		"roomId": {
-			"type": "string"
-		},
-		"roomType": {
-			"type": "string"
-		},
-		"text": {
-			"type": "string"
-		},
-		"personId": {
-			"type": "string"
-		},
-		"personEmail": {
-			"type": "string"
-		},
-		"created": {
-			"type": "string"
-		}
-	},
-	"required": [
-		"id",
-		"roomId",
-		"roomType",
-		"text",
-		"personId",
-		"personEmail",
-		"created"
-	]
+    "name": "create.json",
+    "path": "packages/nodes-base/nodes/Cisco/Webex/__schema__/v1.0.0/message/create.json",
+    "sha": "655ba1117431be71d918b8e44a8495570c96645a",
+    "size": 425,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Cisco/Webex/__schema__/v1.0.0/message/create.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Cisco/Webex/__schema__/v1.0.0/message/create.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/655ba1117431be71d918b8e44a8495570c96645a",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Cisco/Webex/__schema__/v1.0.0/message/create.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJpZCI6\nIHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJInJvb21JZCI6IHsKCQkJ\nInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJInJvb21UeXBlIjogewoJCQkidHlw\nZSI6ICJzdHJpbmciCgkJfSwKCQkidGV4dCI6IHsKCQkJInR5cGUiOiAic3Ry\naW5nIgoJCX0sCgkJInBlcnNvbklkIjogewoJCQkidHlwZSI6ICJzdHJpbmci\nCgkJfSwKCQkicGVyc29uRW1haWwiOiB7CgkJCSJ0eXBlIjogInN0cmluZyIK\nCQl9LAoJCSJjcmVhdGVkIjogewoJCQkidHlwZSI6ICJzdHJpbmciCgkJfQoJ\nfSwKCSJyZXF1aXJlZCI6IFsKCQkiaWQiLAoJCSJyb29tSWQiLAoJCSJyb29t\nVHlwZSIsCgkJInRleHQiLAoJCSJwZXJzb25JZCIsCgkJInBlcnNvbkVtYWls\nIiwKCQkiY3JlYXRlZCIKCV0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Cisco/Webex/__schema__/v1.0.0/message/create.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/655ba1117431be71d918b8e44a8495570c96645a",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Cisco/Webex/__schema__/v1.0.0/message/create.json"
+    },
+    "version": 1
 }

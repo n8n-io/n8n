@@ -1,78 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"id": {
-			"type": "string"
-		},
-		"url": {
-			"type": "string"
-		},
-		"title": {
-			"type": "string"
-		},
-		"scheduled": {
-			"type": "string"
-		},
-		"started": {
-			"type": "string"
-		},
-		"duration": {
-			"type": "integer"
-		},
-		"primaryUserId": {
-			"type": "string"
-		},
-		"direction": {
-			"type": "string"
-		},
-		"system": {
-			"type": "string"
-		},
-		"scope": {
-			"type": "string"
-		},
-		"media": {
-			"type": "string"
-		},
-		"language": {
-			"type": "string"
-		},
-		"workspaceId": {
-			"type": "string"
-		},
-		"customData": {
-			"type": "null"
-		},
-		"purpose": {
-			"type": "null"
-		},
-		"meetingUrl": {
-			"type": "string"
-		},
-		"isPrivate": {
-			"type": "boolean"
-		}
-	},
-	"required": [
-		"id",
-		"url",
-		"title",
-		"scheduled",
-		"started",
-		"duration",
-		"primaryUserId",
-		"direction",
-		"system",
-		"scope",
-		"media",
-		"language",
-		"workspaceId",
-		"sdrDisposition",
-		"clientUniqueId",
-		"customData",
-		"purpose",
-		"meetingUrl",
-		"isPrivate",
-		"calendarEventId"
-	]
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Gong/__schema__/v1.0.0/call/getAll.json",
+    "sha": "f041f8948bd648bf139efc3549e2d1a74cf86a34",
+    "size": 1036,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Gong/__schema__/v1.0.0/call/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Gong/__schema__/v1.0.0/call/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/f041f8948bd648bf139efc3549e2d1a74cf86a34",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Gong/__schema__/v1.0.0/call/getAll.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJpZCI6\nIHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJInVybCI6IHsKCQkJInR5\ncGUiOiAic3RyaW5nIgoJCX0sCgkJInRpdGxlIjogewoJCQkidHlwZSI6ICJz\ndHJpbmciCgkJfSwKCQkic2NoZWR1bGVkIjogewoJCQkidHlwZSI6ICJzdHJp\nbmciCgkJfSwKCQkic3RhcnRlZCI6IHsKCQkJInR5cGUiOiAic3RyaW5nIgoJ\nCX0sCgkJImR1cmF0aW9uIjogewoJCQkidHlwZSI6ICJpbnRlZ2VyIgoJCX0s\nCgkJInByaW1hcnlVc2VySWQiOiB7CgkJCSJ0eXBlIjogInN0cmluZyIKCQl9\nLAoJCSJkaXJlY3Rpb24iOiB7CgkJCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJ\nCSJzeXN0ZW0iOiB7CgkJCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJCSJzY29w\nZSI6IHsKCQkJInR5cGUiOiAic3RyaW5nIgoJCX0sCgkJIm1lZGlhIjogewoJ\nCQkidHlwZSI6ICJzdHJpbmciCgkJfSwKCQkibGFuZ3VhZ2UiOiB7CgkJCSJ0\neXBlIjogInN0cmluZyIKCQl9LAoJCSJ3b3Jrc3BhY2VJZCI6IHsKCQkJInR5\ncGUiOiAic3RyaW5nIgoJCX0sCgkJImN1c3RvbURhdGEiOiB7CgkJCSJ0eXBl\nIjogIm51bGwiCgkJfSwKCQkicHVycG9zZSI6IHsKCQkJInR5cGUiOiAibnVs\nbCIKCQl9LAoJCSJtZWV0aW5nVXJsIjogewoJCQkidHlwZSI6ICJzdHJpbmci\nCgkJfSwKCQkiaXNQcml2YXRlIjogewoJCQkidHlwZSI6ICJib29sZWFuIgoJ\nCX0KCX0sCgkicmVxdWlyZWQiOiBbCgkJImlkIiwKCQkidXJsIiwKCQkidGl0\nbGUiLAoJCSJzY2hlZHVsZWQiLAoJCSJzdGFydGVkIiwKCQkiZHVyYXRpb24i\nLAoJCSJwcmltYXJ5VXNlcklkIiwKCQkiZGlyZWN0aW9uIiwKCQkic3lzdGVt\nIiwKCQkic2NvcGUiLAoJCSJtZWRpYSIsCgkJImxhbmd1YWdlIiwKCQkid29y\na3NwYWNlSWQiLAoJCSJzZHJEaXNwb3NpdGlvbiIsCgkJImNsaWVudFVuaXF1\nZUlkIiwKCQkiY3VzdG9tRGF0YSIsCgkJInB1cnBvc2UiLAoJCSJtZWV0aW5n\nVXJsIiwKCQkiaXNQcml2YXRlIiwKCQkiY2FsZW5kYXJFdmVudElkIgoJXQp9\nCg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Gong/__schema__/v1.0.0/call/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/f041f8948bd648bf139efc3549e2d1a74cf86a34",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Gong/__schema__/v1.0.0/call/getAll.json"
+    },
+    "version": 1
 }

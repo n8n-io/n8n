@@ -1,0 +1,93 @@
+{
+    "type": "object",
+    "properties": {
+        "created_at": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "self": {
+            "type": "string"
+        },
+        "uid": {
+            "type": "string"
+        },
+        "template": {
+            "type": "string"
+        },
+        "template_version": {
+            "type": "null"
+        },
+        "modifications": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "image_url": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "name"
+                ]
+            }
+        },
+        "webhook_url": {
+            "type": "null"
+        },
+        "webhook_response_code": {
+            "type": "null"
+        },
+        "transparent": {
+            "type": "boolean"
+        },
+        "metadata": {
+            "type": "null"
+        },
+        "template_name": {
+            "type": "string"
+        },
+        "width": {
+            "type": "integer"
+        },
+        "height": {
+            "type": "integer"
+        },
+        "render_pdf": {
+            "type": "boolean"
+        },
+        "pdf_url": {
+            "type": "null"
+        },
+        "pdf_url_compressed": {
+            "type": "null"
+        }
+    },
+    "required": [
+        "created_at",
+        "status",
+        "self",
+        "uid",
+        "image_url",
+        "image_url_png",
+        "image_url_jpg",
+        "template",
+        "template_version",
+        "modifications",
+        "webhook_url",
+        "webhook_response_code",
+        "transparent",
+        "metadata",
+        "template_name",
+        "width",
+        "height",
+        "render_pdf",
+        "pdf_url",
+        "pdf_url_compressed"
+    ],
+    "version": 1
+}

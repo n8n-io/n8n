@@ -1,180 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "company_id": {
-            "type": "integer"
-        },
-        "reference_id": {
-            "type": "null"
-        },
-        "last_notification_user_id": {
-            "type": "null"
-        },
-        "active_flag": {
-            "type": "boolean"
-        },
-        "rec_rule": {
-            "type": "null"
-        },
-        "rec_rule_extension": {
-            "type": "null"
-        },
-        "rec_master_activity_id": {
-            "type": "null"
-        },
-        "conference_meeting_id": {
-            "type": "null"
-        },
-        "original_start_time": {
-            "type": "null"
-        },
-        "private": {
-            "type": "boolean"
-        },
-        "series": {
-            "type": "null"
-        },
-        "is_recurring": {
-            "type": "null"
-        },
-        "lead_title": {
-            "type": "null"
-        },
-        "owner_name": {
-            "type": "string"
-        },
-        "assigned_to_user_id": {
-            "type": "integer"
-        },
-        "type_name": {
-            "type": "string"
-        },
-        "lead": {
-            "type": "null"
-        },
-        "ID": {
-            "type": "integer"
-        },
-        "Assigned to user": {
-            "type": "integer"
-        },
-        "Done": {
-            "type": "string"
-        },
-        "Type": {
-            "type": "string"
-        },
-        "Due date": {
-            "type": "string"
-        },
-        "Due time": {
-            "type": "string"
-        },
-        "Duration": {
-            "type": "string"
-        },
-        "Free/busy": {
-            "type": "string"
-        },
-        "Add time": {
-            "type": "string"
-        },
-        "Marked as done time": {
-            "type": "string"
-        },
-        "Last notification time": {
-            "type": "null"
-        },
-        "Subject": {
-            "type": "string"
-        },
-        "Location": {
-            "type": "null"
-        },
-        "Organisation": {
-            "type": "integer"
-        },
-        "Contact person": {
-            "type": "integer"
-        },
-        "Lead": {
-            "type": "null"
-        },
-        "Update time": {
-            "type": "string"
-        },
-        "Priority": {
-            "type": "null"
-        },
-        "Note": {
-            "type": "string"
-        },
-        "Creator": {
-            "type": "integer"
-        },
-        "Apartment/suite no of Location": {
-            "type": "null"
-        },
-        "House number of Location": {
-            "type": "null"
-        },
-        "Street/road name of Location": {
-            "type": "null"
-        },
-        "District/sublocality of Location": {
-            "type": "null"
-        },
-        "City/town/village/locality of Location": {
-            "type": "null"
-        },
-        "State/county of Location": {
-            "type": "null"
-        },
-        "Region of Location": {
-            "type": "null"
-        },
-        "Country of Location": {
-            "type": "null"
-        },
-        "ZIP/Postal code of Location": {
-            "type": "null"
-        },
-        "Full/combined address of Location": {
-            "type": "null"
-        }
+    "name": "get.json",
+    "path": "packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/activity/get.json",
+    "sha": "ac6fade9de76e8b5d497bf73afcb118d223c7e12",
+    "size": 4092,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/activity/get.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/activity/get.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/ac6fade9de76e8b5d497bf73afcb118d223c7e12",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/activity/get.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJjb21wYW55X2lkIjogewogICAgICAgICAgICAidHlwZSI6ICJp\nbnRlZ2VyIgogICAgICAgIH0sCiAgICAgICAgInJlZmVyZW5jZV9pZCI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAgICAg\nICJsYXN0X25vdGlmaWNhdGlvbl91c2VyX2lkIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAgImFjdGl2ZV9mbGFn\nIjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0s\nCiAgICAgICAgInJlY19ydWxlIjogewogICAgICAgICAgICAidHlwZSI6ICJu\ndWxsIgogICAgICAgIH0sCiAgICAgICAgInJlY19ydWxlX2V4dGVuc2lvbiI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAg\nICAgICJyZWNfbWFzdGVyX2FjdGl2aXR5X2lkIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAgImNvbmZlcmVuY2Vf\nbWVldGluZ19pZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAg\nICAgICB9LAogICAgICAgICJvcmlnaW5hbF9zdGFydF90aW1lIjogewogICAg\nICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAgInBy\naXZhdGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAg\nICAgfSwKICAgICAgICAic2VyaWVzIjogewogICAgICAgICAgICAidHlwZSI6\nICJudWxsIgogICAgICAgIH0sCiAgICAgICAgImlzX3JlY3VycmluZyI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAgICAg\nICJsZWFkX3RpdGxlIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgog\nICAgICAgIH0sCiAgICAgICAgIm93bmVyX25hbWUiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJhc3NpZ25l\nZF90b191c2VyX2lkIjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2Vy\nIgogICAgICAgIH0sCiAgICAgICAgInR5cGVfbmFtZSI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImxlYWQi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwKICAg\nICAgICAiSUQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAg\nICAgICAgfSwKICAgICAgICAiQXNzaWduZWQgdG8gdXNlciI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJE\nb25lIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nfSwKICAgICAgICAiVHlwZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3Ry\naW5nIgogICAgICAgIH0sCiAgICAgICAgIkR1ZSBkYXRlIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiRHVl\nIHRpbWUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICB9LAogICAgICAgICJEdXJhdGlvbiI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIkZyZWUvYnVzeSI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAg\nICAgIkFkZCB0aW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAiTWFya2VkIGFzIGRvbmUgdGltZSI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAg\nICAgIkxhc3Qgbm90aWZpY2F0aW9uIHRpbWUiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAiU3ViamVjdCI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAg\nICAgIkxvY2F0aW9uIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgog\nICAgICAgIH0sCiAgICAgICAgIk9yZ2FuaXNhdGlvbiI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJDb250\nYWN0IHBlcnNvbiI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIK\nICAgICAgICB9LAogICAgICAgICJMZWFkIjogewogICAgICAgICAgICAidHlw\nZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAgIlVwZGF0ZSB0aW1lIjog\newogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAg\nICAgICAiUHJpb3JpdHkiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51bGwi\nCiAgICAgICAgfSwKICAgICAgICAiTm90ZSI6IHsKICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIkNyZWF0b3IiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfSwKICAg\nICAgICAiQXBhcnRtZW50L3N1aXRlIG5vIG9mIExvY2F0aW9uIjogewogICAg\nICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAgIkhv\ndXNlIG51bWJlciBvZiBMb2NhdGlvbiI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAibnVsbCIKICAgICAgICB9LAogICAgICAgICJTdHJlZXQvcm9hZCBuYW1l\nIG9mIExvY2F0aW9uIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgog\nICAgICAgIH0sCiAgICAgICAgIkRpc3RyaWN0L3N1YmxvY2FsaXR5IG9mIExv\nY2F0aW9uIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAg\nIH0sCiAgICAgICAgIkNpdHkvdG93bi92aWxsYWdlL2xvY2FsaXR5IG9mIExv\nY2F0aW9uIjogewogICAgICAgICAgICAidHlwZSI6ICJudWxsIgogICAgICAg\nIH0sCiAgICAgICAgIlN0YXRlL2NvdW50eSBvZiBMb2NhdGlvbiI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAgICAgICJS\nZWdpb24gb2YgTG9jYXRpb24iOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm51\nbGwiCiAgICAgICAgfSwKICAgICAgICAiQ291bnRyeSBvZiBMb2NhdGlvbiI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAg\nICAgICJaSVAvUG9zdGFsIGNvZGUgb2YgTG9jYXRpb24iOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogIm51bGwiCiAgICAgICAgfSwKICAgICAgICAiRnVsbC9j\nb21iaW5lZCBhZGRyZXNzIG9mIExvY2F0aW9uIjogewogICAgICAgICAgICAi\ndHlwZSI6ICJudWxsIgogICAgICAgIH0KICAgIH0sCiAgICAicmVxdWlyZWQi\nOiBbCiAgICAgICAgImNvbXBhbnlfaWQiLAogICAgICAgICJyZWZlcmVuY2Vf\ndHlwZSIsCiAgICAgICAgInJlZmVyZW5jZV9pZCIsCiAgICAgICAgImNvbmZl\ncmVuY2VfbWVldGluZ19jbGllbnQiLAogICAgICAgICJjb25mZXJlbmNlX21l\nZXRpbmdfdXJsIiwKICAgICAgICAibGFzdF9ub3RpZmljYXRpb25fdXNlcl9p\nZCIsCiAgICAgICAgIm5vdGlmaWNhdGlvbl9sYW5ndWFnZV9pZCIsCiAgICAg\nICAgImNhbGVuZGFyX3N5bmNfaW5jbHVkZV9jb250ZXh0IiwKICAgICAgICAi\nZGVhbF9pZCIsCiAgICAgICAgImFjdGl2ZV9mbGFnIiwKICAgICAgICAidXBk\nYXRlX3VzZXJfaWQiLAogICAgICAgICJzb3VyY2VfdGltZXpvbmUiLAogICAg\nICAgICJyZWNfcnVsZSIsCiAgICAgICAgInJlY19ydWxlX2V4dGVuc2lvbiIs\nCiAgICAgICAgInJlY19tYXN0ZXJfYWN0aXZpdHlfaWQiLAogICAgICAgICJj\nb25mZXJlbmNlX21lZXRpbmdfaWQiLAogICAgICAgICJvcmlnaW5hbF9zdGFy\ndF90aW1lIiwKICAgICAgICAicHJpdmF0ZSIsCiAgICAgICAgImF0dGVuZGVl\ncyIsCiAgICAgICAgInBhcnRpY2lwYW50cyIsCiAgICAgICAgInNlcmllcyIs\nCiAgICAgICAgImlzX3JlY3VycmluZyIsCiAgICAgICAgIm9yZ19uYW1lIiwK\nICAgICAgICAicGVyc29uX25hbWUiLAogICAgICAgICJkZWFsX3RpdGxlIiwK\nICAgICAgICAibGVhZF90aXRsZSIsCiAgICAgICAgIm93bmVyX25hbWUiLAog\nICAgICAgICJwZXJzb25fZHJvcGJveF9iY2MiLAogICAgICAgICJkZWFsX2Ry\nb3Bib3hfYmNjIiwKICAgICAgICAiYXNzaWduZWRfdG9fdXNlcl9pZCIsCiAg\nICAgICAgInR5cGVfbmFtZSIsCiAgICAgICAgImxlYWQiCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/activity/get.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/ac6fade9de76e8b5d497bf73afcb118d223c7e12",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/activity/get.json"
     },
-    "required": [
-        "company_id",
-        "reference_type",
-        "reference_id",
-        "conference_meeting_client",
-        "conference_meeting_url",
-        "last_notification_user_id",
-        "notification_language_id",
-        "calendar_sync_include_context",
-        "deal_id",
-        "active_flag",
-        "update_user_id",
-        "source_timezone",
-        "rec_rule",
-        "rec_rule_extension",
-        "rec_master_activity_id",
-        "conference_meeting_id",
-        "original_start_time",
-        "private",
-        "attendees",
-        "participants",
-        "series",
-        "is_recurring",
-        "org_name",
-        "person_name",
-        "deal_title",
-        "lead_title",
-        "owner_name",
-        "person_dropbox_bcc",
-        "deal_dropbox_bcc",
-        "assigned_to_user_id",
-        "type_name",
-        "lead"
-    ]
+    "version": 1
 }

@@ -1,11 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "ok": {
-            "type": "boolean"
-        },
-        "result": {
-            "type": "boolean"
-        }
-    }
+    "name": "deleteMessage.json",
+    "path": "packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/message/deleteMessage.json",
+    "sha": "986fc4cb251859715ca05bef9e72c6431d6e6b54",
+    "size": 169,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/message/deleteMessage.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/message/deleteMessage.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/986fc4cb251859715ca05bef9e72c6431d6e6b54",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/message/deleteMessage.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJvayI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIK\nICAgICAgICB9LAogICAgICAgICJyZXN1bHQiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogImJvb2xlYW4iCiAgICAgICAgfQogICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/message/deleteMessage.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/986fc4cb251859715ca05bef9e72c6431d6e6b54",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/message/deleteMessage.json"
+    },
+    "version": 1
 }

@@ -1,156 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "is_channel": {
-            "type": "boolean"
-        },
-        "is_group": {
-            "type": "boolean"
-        },
-        "is_im": {
-            "type": "boolean"
-        },
-        "is_mpim": {
-            "type": "boolean"
-        },
-        "is_private": {
-            "type": "boolean"
-        },
-        "created": {
-            "type": "integer"
-        },
-        "is_archived": {
-            "type": "boolean"
-        },
-        "is_general": {
-            "type": "boolean"
-        },
-        "unlinked": {
-            "type": "integer"
-        },
-        "name_normalized": {
-            "type": "string"
-        },
-        "is_shared": {
-            "type": "boolean"
-        },
-        "is_org_shared": {
-            "type": "boolean"
-        },
-        "is_pending_ext_shared": {
-            "type": "boolean"
-        },
-        "context_team_id": {
-            "type": "string"
-        },
-        "updated": {
-            "type": "integer"
-        },
-        "parent_conversation": {
-            "type": "null"
-        },
-        "creator": {
-            "type": "string"
-        },
-        "is_ext_shared": {
-            "type": "boolean"
-        },
-        "shared_team_ids": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "is_member": {
-            "type": "boolean"
-        },
-        "topic": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                },
-                "creator": {
-                    "type": "string"
-                },
-                "last_set": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "value",
-                "creator",
-                "last_set"
-            ]
-        },
-        "purpose": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                },
-                "creator": {
-                    "type": "string"
-                },
-                "last_set": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "value",
-                "creator",
-                "last_set"
-            ]
-        },
-        "properties": {
-            "type": "object",
-            "properties": {
-                "canvas": {
-                    "type": "object",
-                    "properties": {
-                        "file_id": {
-                            "type": "string"
-                        },
-                        "is_empty": {
-                            "type": "boolean"
-                        },
-                        "quip_thread_id": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "file_id",
-                        "quip_thread_id"
-                    ]
-                },
-                "use_case": {
-                    "type": "string"
-                }
-            }
-        },
-        "previous_names": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "num_members": {
-            "type": "integer"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Slack/__schema__/v2.3.0/channel/getAll.json",
+    "sha": "110a65556f6f905acf75234fab2dcc912baf5d32",
+    "size": 3676,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/channel/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/channel/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/110a65556f6f905acf75234fab2dcc912baf5d32",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/channel/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgIm5hbWUiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJpc19jaGFubmVsIjog\newogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAg\nICAgICAgImlzX2dyb3VwIjogewogICAgICAgICAgICAidHlwZSI6ICJib29s\nZWFuIgogICAgICAgIH0sCiAgICAgICAgImlzX2ltIjogewogICAgICAgICAg\nICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgImlzX21w\naW0iOiB7CiAgICAgICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAg\nfSwKICAgICAgICAiaXNfcHJpdmF0ZSI6IHsKICAgICAgICAgICAgInR5cGUi\nOiAiYm9vbGVhbiIKICAgICAgICB9LAogICAgICAgICJjcmVhdGVkIjogewog\nICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAgIH0sCiAgICAg\nICAgImlzX2FyY2hpdmVkIjogewogICAgICAgICAgICAidHlwZSI6ICJib29s\nZWFuIgogICAgICAgIH0sCiAgICAgICAgImlzX2dlbmVyYWwiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAi\ndW5saW5rZWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAg\nICAgICAgfSwKICAgICAgICAibmFtZV9ub3JtYWxpemVkIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiaXNf\nc2hhcmVkIjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAg\nICAgIH0sCiAgICAgICAgImlzX29yZ19zaGFyZWQiOiB7CiAgICAgICAgICAg\nICJ0eXBlIjogImJvb2xlYW4iCiAgICAgICAgfSwKICAgICAgICAiaXNfcGVu\nZGluZ19leHRfc2hhcmVkIjogewogICAgICAgICAgICAidHlwZSI6ICJib29s\nZWFuIgogICAgICAgIH0sCiAgICAgICAgImNvbnRleHRfdGVhbV9pZCI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAg\nICAgInVwZGF0ZWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIi\nCiAgICAgICAgfSwKICAgICAgICAicGFyZW50X2NvbnZlcnNhdGlvbiI6IHsK\nICAgICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAgICAg\nICJjcmVhdG9yIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgfSwKICAgICAgICAiaXNfZXh0X3NoYXJlZCI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9LAogICAgICAgICJzaGFy\nZWRfdGVhbV9pZHMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImFycmF5IiwK\nICAgICAgICAgICAgIml0ZW1zIjogewogICAgICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgICAgICB9CiAgICAgICAgfSwKICAgICAgICAi\naXNfbWVtYmVyIjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgog\nICAgICAgIH0sCiAgICAgICAgInRvcGljIjogewogICAgICAgICAgICAidHlw\nZSI6ICJvYmplY3QiLAogICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAg\nICAgICAgICAgICAgICJ2YWx1ZSI6IHsKICAgICAgICAgICAgICAgICAgICAi\ndHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAg\nICAgICAgImNyZWF0b3IiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUi\nOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAg\nICJsYXN0X3NldCI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJp\nbnRlZ2VyIgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9LAogICAg\nICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAidmFsdWUi\nLAogICAgICAgICAgICAgICAgImNyZWF0b3IiLAogICAgICAgICAgICAgICAg\nImxhc3Rfc2V0IgogICAgICAgICAgICBdCiAgICAgICAgfSwKICAgICAgICAi\ncHVycG9zZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAg\nICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAidmFs\ndWUiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJjcmVhdG9yIjog\newogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAg\nICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAibGFzdF9zZXQiOiB7CiAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICAg\nICAgICAgIH0KICAgICAgICAgICAgfSwKICAgICAgICAgICAgInJlcXVpcmVk\nIjogWwogICAgICAgICAgICAgICAgInZhbHVlIiwKICAgICAgICAgICAgICAg\nICJjcmVhdG9yIiwKICAgICAgICAgICAgICAgICJsYXN0X3NldCIKICAgICAg\nICAgICAgXQogICAgICAgIH0sCiAgICAgICAgInByb3BlcnRpZXMiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJwcm9w\nZXJ0aWVzIjogewogICAgICAgICAgICAgICAgImNhbnZhcyI6IHsKICAgICAg\nICAgICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAg\nICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgICAgICAg\nICAiZmlsZV9pZCI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAg\nICAgICAgICAgICAgICAgICAgICAgImlzX2VtcHR5IjogewogICAgICAgICAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICAg\nICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAgICAgInF1\naXBfdGhyZWFkX2lkIjogewogICAgICAgICAgICAgICAgICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAgICAgICB9CiAg\nICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAicmVx\ndWlyZWQiOiBbCiAgICAgICAgICAgICAgICAgICAgICAgICJmaWxlX2lkIiwK\nICAgICAgICAgICAgICAgICAgICAgICAgInF1aXBfdGhyZWFkX2lkIgogICAg\nICAgICAgICAgICAgICAgIF0KICAgICAgICAgICAgICAgIH0sCiAgICAgICAg\nICAgICAgICAidXNlX2Nhc2UiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5\ncGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9\nCiAgICAgICAgfSwKICAgICAgICAicHJldmlvdXNfbmFtZXMiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogImFycmF5IiwKICAgICAgICAgICAgIml0ZW1zIjog\newogICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAg\nICB9CiAgICAgICAgfSwKICAgICAgICAibnVtX21lbWJlcnMiOiB7CiAgICAg\nICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAgfQogICAgfSwKICAg\nICJyZXF1aXJlZCI6IFsKICAgICAgICAiaWQiLAogICAgICAgICJpc19pbSIs\nCiAgICAgICAgImNyZWF0ZWQiLAogICAgICAgICJpc19hcmNoaXZlZCIsCiAg\nICAgICAgImlzX29yZ19zaGFyZWQiLAogICAgICAgICJjb250ZXh0X3RlYW1f\naWQiLAogICAgICAgICJ1cGRhdGVkIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/channel/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/110a65556f6f905acf75234fab2dcc912baf5d32",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Slack/__schema__/v2.3.0/channel/getAll.json"
     },
-    "required": [
-        "id",
-        "is_im",
-        "created",
-        "is_archived",
-        "is_org_shared",
-        "context_team_id",
-        "updated"
-    ]
+    "version": 1
 }

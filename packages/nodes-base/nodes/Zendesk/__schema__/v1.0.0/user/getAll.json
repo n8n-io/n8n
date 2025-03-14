@@ -1,110 +1,19 @@
 {
-	"type": "object",
-	"properties": {
-		"id": {
-			"type": "integer"
-		},
-		"url": {
-			"type": "string"
-		},
-		"name": {
-			"type": "string"
-		},
-		"created_at": {
-			"type": "string"
-		},
-		"updated_at": {
-			"type": "string"
-		},
-		"time_zone": {
-			"type": "string"
-		},
-		"iana_time_zone": {
-			"type": "string"
-		},
-		"locale_id": {
-			"type": "integer"
-		},
-		"locale": {
-			"type": "string"
-		},
-		"role": {
-			"type": "string"
-		},
-		"verified": {
-			"type": "boolean"
-		},
-		"tags": {
-			"type": "array",
-			"items": {
-				"type": "string"
-			}
-		},
-		"active": {
-			"type": "boolean"
-		},
-		"shared": {
-			"type": "boolean"
-		},
-		"shared_agent": {
-			"type": "boolean"
-		},
-		"two_factor_auth_enabled": {
-			"type": "null"
-		},
-		"moderator": {
-			"type": "boolean"
-		},
-		"only_private_comments": {
-			"type": "boolean"
-		},
-		"restricted_agent": {
-			"type": "boolean"
-		},
-		"suspended": {
-			"type": "boolean"
-		},
-		"report_csv": {
-			"type": "boolean"
-		}
-	},
-	"required": [
-		"id",
-		"url",
-		"name",
-		"email",
-		"created_at",
-		"updated_at",
-		"time_zone",
-		"iana_time_zone",
-		"phone",
-		"shared_phone_number",
-		"photo",
-		"locale_id",
-		"locale",
-		"organization_id",
-		"role",
-		"verified",
-		"external_id",
-		"tags",
-		"alias",
-		"active",
-		"shared",
-		"shared_agent",
-		"last_login_at",
-		"two_factor_auth_enabled",
-		"signature",
-		"details",
-		"notes",
-		"role_type",
-		"custom_role_id",
-		"moderator",
-		"ticket_restriction",
-		"only_private_comments",
-		"restricted_agent",
-		"suspended",
-		"default_group_id",
-		"report_csv",
-		"user_fields"
-	]
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Zendesk/__schema__/v1.0.0/user/getAll.json",
+    "sha": "a657774fcaa5ef8e573d7ead5a3d5c030d33d0f9",
+    "size": 1581,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Zendesk/__schema__/v1.0.0/user/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Zendesk/__schema__/v1.0.0/user/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/a657774fcaa5ef8e573d7ead5a3d5c030d33d0f9",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Zendesk/__schema__/v1.0.0/user/getAll.json",
+    "type": "file",
+    "content": "ewoJInR5cGUiOiAib2JqZWN0IiwKCSJwcm9wZXJ0aWVzIjogewoJCSJpZCI6\nIHsKCQkJInR5cGUiOiAiaW50ZWdlciIKCQl9LAoJCSJ1cmwiOiB7CgkJCSJ0\neXBlIjogInN0cmluZyIKCQl9LAoJCSJuYW1lIjogewoJCQkidHlwZSI6ICJz\ndHJpbmciCgkJfSwKCQkiY3JlYXRlZF9hdCI6IHsKCQkJInR5cGUiOiAic3Ry\naW5nIgoJCX0sCgkJInVwZGF0ZWRfYXQiOiB7CgkJCSJ0eXBlIjogInN0cmlu\nZyIKCQl9LAoJCSJ0aW1lX3pvbmUiOiB7CgkJCSJ0eXBlIjogInN0cmluZyIK\nCQl9LAoJCSJpYW5hX3RpbWVfem9uZSI6IHsKCQkJInR5cGUiOiAic3RyaW5n\nIgoJCX0sCgkJImxvY2FsZV9pZCI6IHsKCQkJInR5cGUiOiAiaW50ZWdlciIK\nCQl9LAoJCSJsb2NhbGUiOiB7CgkJCSJ0eXBlIjogInN0cmluZyIKCQl9LAoJ\nCSJyb2xlIjogewoJCQkidHlwZSI6ICJzdHJpbmciCgkJfSwKCQkidmVyaWZp\nZWQiOiB7CgkJCSJ0eXBlIjogImJvb2xlYW4iCgkJfSwKCQkidGFncyI6IHsK\nCQkJInR5cGUiOiAiYXJyYXkiLAoJCQkiaXRlbXMiOiB7CgkJCQkidHlwZSI6\nICJzdHJpbmciCgkJCX0KCQl9LAoJCSJhY3RpdmUiOiB7CgkJCSJ0eXBlIjog\nImJvb2xlYW4iCgkJfSwKCQkic2hhcmVkIjogewoJCQkidHlwZSI6ICJib29s\nZWFuIgoJCX0sCgkJInNoYXJlZF9hZ2VudCI6IHsKCQkJInR5cGUiOiAiYm9v\nbGVhbiIKCQl9LAoJCSJ0d29fZmFjdG9yX2F1dGhfZW5hYmxlZCI6IHsKCQkJ\nInR5cGUiOiAibnVsbCIKCQl9LAoJCSJtb2RlcmF0b3IiOiB7CgkJCSJ0eXBl\nIjogImJvb2xlYW4iCgkJfSwKCQkib25seV9wcml2YXRlX2NvbW1lbnRzIjog\newoJCQkidHlwZSI6ICJib29sZWFuIgoJCX0sCgkJInJlc3RyaWN0ZWRfYWdl\nbnQiOiB7CgkJCSJ0eXBlIjogImJvb2xlYW4iCgkJfSwKCQkic3VzcGVuZGVk\nIjogewoJCQkidHlwZSI6ICJib29sZWFuIgoJCX0sCgkJInJlcG9ydF9jc3Yi\nOiB7CgkJCSJ0eXBlIjogImJvb2xlYW4iCgkJfQoJfSwKCSJyZXF1aXJlZCI6\nIFsKCQkiaWQiLAoJCSJ1cmwiLAoJCSJuYW1lIiwKCQkiZW1haWwiLAoJCSJj\ncmVhdGVkX2F0IiwKCQkidXBkYXRlZF9hdCIsCgkJInRpbWVfem9uZSIsCgkJ\nImlhbmFfdGltZV96b25lIiwKCQkicGhvbmUiLAoJCSJzaGFyZWRfcGhvbmVf\nbnVtYmVyIiwKCQkicGhvdG8iLAoJCSJsb2NhbGVfaWQiLAoJCSJsb2NhbGUi\nLAoJCSJvcmdhbml6YXRpb25faWQiLAoJCSJyb2xlIiwKCQkidmVyaWZpZWQi\nLAoJCSJleHRlcm5hbF9pZCIsCgkJInRhZ3MiLAoJCSJhbGlhcyIsCgkJImFj\ndGl2ZSIsCgkJInNoYXJlZCIsCgkJInNoYXJlZF9hZ2VudCIsCgkJImxhc3Rf\nbG9naW5fYXQiLAoJCSJ0d29fZmFjdG9yX2F1dGhfZW5hYmxlZCIsCgkJInNp\nZ25hdHVyZSIsCgkJImRldGFpbHMiLAoJCSJub3RlcyIsCgkJInJvbGVfdHlw\nZSIsCgkJImN1c3RvbV9yb2xlX2lkIiwKCQkibW9kZXJhdG9yIiwKCQkidGlj\na2V0X3Jlc3RyaWN0aW9uIiwKCQkib25seV9wcml2YXRlX2NvbW1lbnRzIiwK\nCQkicmVzdHJpY3RlZF9hZ2VudCIsCgkJInN1c3BlbmRlZCIsCgkJImRlZmF1\nbHRfZ3JvdXBfaWQiLAoJCSJyZXBvcnRfY3N2IiwKCQkidXNlcl9maWVsZHMi\nCgldCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Zendesk/__schema__/v1.0.0/user/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/a657774fcaa5ef8e573d7ead5a3d5c030d33d0f9",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Zendesk/__schema__/v1.0.0/user/getAll.json"
+    },
+    "version": 1
 }

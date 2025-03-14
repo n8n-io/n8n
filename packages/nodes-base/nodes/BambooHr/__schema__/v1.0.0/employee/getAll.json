@@ -1,43 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "displayName": {
-            "type": "string"
-        },
-        "firstName": {
-            "type": "string"
-        },
-        "lastName": {
-            "type": "string"
-        },
-        "pronouns": {
-            "type": "null"
-        },
-        "photoUploaded": {
-            "type": "boolean"
-        },
-        "photoUrl": {
-            "type": "string"
-        },
-        "canUploadPhoto": {
-            "type": "integer"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/BambooHr/__schema__/v1.0.0/employee/getAll.json",
+    "sha": "64d8fff6a18eea543791d3af53480958186166df",
+    "size": 837,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/BambooHr/__schema__/v1.0.0/employee/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/BambooHr/__schema__/v1.0.0/employee/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/64d8fff6a18eea543791d3af53480958186166df",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/BambooHr/__schema__/v1.0.0/employee/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgImRpc3BsYXlOYW1lIjogewogICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiZmlyc3RO\nYW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nfSwKICAgICAgICAibGFzdE5hbWUiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJwcm9ub3VucyI6IHsKICAg\nICAgICAgICAgInR5cGUiOiAibnVsbCIKICAgICAgICB9LAogICAgICAgICJw\naG90b1VwbG9hZGVkIjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFu\nIgogICAgICAgIH0sCiAgICAgICAgInBob3RvVXJsIjogewogICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfSwKICAgICAgICAiY2FuVXBs\nb2FkUGhvdG8iOiB7CiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAg\nICAgICAgfQogICAgfSwKICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAiaWQi\nLAogICAgICAgICJkaXNwbGF5TmFtZSIsCiAgICAgICAgImZpcnN0TmFtZSIs\nCiAgICAgICAgImxhc3ROYW1lIiwKICAgICAgICAicHJlZmVycmVkTmFtZSIs\nCiAgICAgICAgImpvYlRpdGxlIiwKICAgICAgICAid29ya0VtYWlsIiwKICAg\nICAgICAiZGVwYXJ0bWVudCIsCiAgICAgICAgInByb25vdW5zIiwKICAgICAg\nICAicGhvdG9VcGxvYWRlZCIsCiAgICAgICAgInBob3RvVXJsIiwKICAgICAg\nICAiY2FuVXBsb2FkUGhvdG8iCiAgICBdCn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/BambooHr/__schema__/v1.0.0/employee/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/64d8fff6a18eea543791d3af53480958186166df",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/BambooHr/__schema__/v1.0.0/employee/getAll.json"
     },
-    "required": [
-        "id",
-        "displayName",
-        "firstName",
-        "lastName",
-        "preferredName",
-        "jobTitle",
-        "workEmail",
-        "department",
-        "pronouns",
-        "photoUploaded",
-        "photoUrl",
-        "canUploadPhoto"
-    ]
+    "version": 1
 }

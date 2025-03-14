@@ -1,11 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "name": {
-            "type": "string"
-        },
-        "rev": {
-            "type": "string"
-        }
-    }
+    "name": "download.json",
+    "path": "packages/nodes-base/nodes/Dropbox/__schema__/v1.0.0/file/download.json",
+    "sha": "3d343c7062de1d2cabcbe50d1c10c7f1d6e1885b",
+    "size": 166,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Dropbox/__schema__/v1.0.0/file/download.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Dropbox/__schema__/v1.0.0/file/download.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/3d343c7062de1d2cabcbe50d1c10c7f1d6e1885b",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Dropbox/__schema__/v1.0.0/file/download.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJuYW1lIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmci\nCiAgICAgICAgfSwKICAgICAgICAicmV2IjogewogICAgICAgICAgICAidHlw\nZSI6ICJzdHJpbmciCiAgICAgICAgfQogICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Dropbox/__schema__/v1.0.0/file/download.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/3d343c7062de1d2cabcbe50d1c10c7f1d6e1885b",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Dropbox/__schema__/v1.0.0/file/download.json"
+    },
+    "version": 1
 }

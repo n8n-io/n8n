@@ -1,23 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "createdAt": {
-            "type": "integer"
-        },
-        "launchedAt": {
-            "type": "integer"
-        },
-        "status": {
-            "type": "string"
-        },
-        "launchType": {
-            "type": "string"
-        },
-        "retryNumber": {
-            "type": "integer"
-        }
-    }
+    "name": "launch.json",
+    "path": "packages/nodes-base/nodes/Phantombuster/__schema__/v1.0.0/agent/launch.json",
+    "sha": "165fa1fd026f41ce4245fe9a63e13979500d2412",
+    "size": 426,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Phantombuster/__schema__/v1.0.0/agent/launch.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Phantombuster/__schema__/v1.0.0/agent/launch.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/165fa1fd026f41ce4245fe9a63e13979500d2412",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Phantombuster/__schema__/v1.0.0/agent/launch.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgImNyZWF0ZWRBdCI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAiaW50ZWdlciIKICAgICAgICB9LAogICAgICAgICJsYXVuY2hl\nZEF0IjogewogICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIgogICAgICAg\nIH0sCiAgICAgICAgInN0YXR1cyI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgImxhdW5jaFR5cGUiOiB7CiAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAg\nICJyZXRyeU51bWJlciI6IHsKICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdl\nciIKICAgICAgICB9CiAgICB9Cn0K\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Phantombuster/__schema__/v1.0.0/agent/launch.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/165fa1fd026f41ce4245fe9a63e13979500d2412",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Phantombuster/__schema__/v1.0.0/agent/launch.json"
+    },
+    "version": 1
 }

@@ -1,156 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "hourlyRate": {
-            "type": "object",
-            "properties": {
-                "amount": {
-                    "type": "integer"
-                },
-                "currency": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "amount",
-                "currency"
-            ]
-        },
-        "clientId": {
-            "type": "string"
-        },
-        "workspaceId": {
-            "type": "string"
-        },
-        "billable": {
-            "type": "boolean"
-        },
-        "memberships": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "userId": {
-                        "type": "string"
-                    },
-                    "hourlyRate": {
-                        "type": "null"
-                    },
-                    "costRate": {
-                        "type": "null"
-                    },
-                    "targetId": {
-                        "type": "string"
-                    },
-                    "membershipType": {
-                        "type": "string"
-                    },
-                    "membershipStatus": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "userId",
-                    "hourlyRate",
-                    "costRate",
-                    "targetId",
-                    "membershipType",
-                    "membershipStatus"
-                ]
-            }
-        },
-        "color": {
-            "type": "string"
-        },
-        "estimate": {
-            "type": "object",
-            "properties": {
-                "estimate": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "estimate",
-                "type"
-            ]
-        },
-        "archived": {
-            "type": "boolean"
-        },
-        "duration": {
-            "type": "string"
-        },
-        "clientName": {
-            "type": "string"
-        },
-        "note": {
-            "type": "string"
-        },
-        "timeEstimate": {
-            "type": "object",
-            "properties": {
-                "estimate": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "resetOption": {
-                    "type": "null"
-                },
-                "active": {
-                    "type": "boolean"
-                },
-                "includeNonBillable": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "estimate",
-                "type",
-                "resetOption",
-                "active",
-                "includeNonBillable"
-            ]
-        },
-        "estimateReset": {
-            "type": "null"
-        },
-        "template": {
-            "type": "boolean"
-        },
-        "public": {
-            "type": "boolean"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Clockify/__schema__/v1.0.0/project/getAll.json",
+    "sha": "5d884d819b86e4f860faa1fd36e14038bcd68013",
+    "size": 3764,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Clockify/__schema__/v1.0.0/project/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Clockify/__schema__/v1.0.0/project/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5d884d819b86e4f860faa1fd36e14038bcd68013",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Clockify/__schema__/v1.0.0/project/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJpZCI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgIH0sCiAgICAgICAgIm5hbWUiOiB7CiAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJob3VybHlSYXRlIjog\newogICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAi\ncHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAgICJhbW91bnQiOiB7CiAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIKICAgICAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICAgICAiY3VycmVuY3kiOiB7CiAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAg\nICAgfQogICAgICAgICAgICB9LAogICAgICAgICAgICAicmVxdWlyZWQiOiBb\nCiAgICAgICAgICAgICAgICAiYW1vdW50IiwKICAgICAgICAgICAgICAgICJj\ndXJyZW5jeSIKICAgICAgICAgICAgXQogICAgICAgIH0sCiAgICAgICAgImNs\naWVudElkIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgfSwKICAgICAgICAid29ya3NwYWNlSWQiOiB7CiAgICAgICAgICAgICJ0\neXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJiaWxsYWJsZSI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAgICB9LAog\nICAgICAgICJtZW1iZXJzaGlwcyI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nYXJyYXkiLAogICAgICAgICAgICAiaXRlbXMiOiB7CiAgICAgICAgICAgICAg\nICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAgInByb3BlcnRp\nZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgInVzZXJJZCI6IHsKICAgICAg\nICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAg\nICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAgImhvdXJseVJhdGUi\nOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogIm51bGwiCiAg\nICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAiY29z\ndFJhdGUiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogIm51\nbGwiCiAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAg\nICAidGFyZ2V0SWQiOiB7CiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICAgICAgICAgICAgICB9LAogICAgICAgICAg\nICAgICAgICAgICJtZW1iZXJzaGlwVHlwZSI6IHsKICAgICAgICAgICAgICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgICAg\nIH0sCiAgICAgICAgICAgICAgICAgICAgIm1lbWJlcnNoaXBTdGF0dXMiOiB7\nCiAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAg\nICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICB9LAogICAgICAg\nICAgICAgICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgICAgICJ1\nc2VySWQiLAogICAgICAgICAgICAgICAgICAgICJob3VybHlSYXRlIiwKICAg\nICAgICAgICAgICAgICAgICAiY29zdFJhdGUiLAogICAgICAgICAgICAgICAg\nICAgICJ0YXJnZXRJZCIsCiAgICAgICAgICAgICAgICAgICAgIm1lbWJlcnNo\naXBUeXBlIiwKICAgICAgICAgICAgICAgICAgICAibWVtYmVyc2hpcFN0YXR1\ncyIKICAgICAgICAgICAgICAgIF0KICAgICAgICAgICAgfQogICAgICAgIH0s\nCiAgICAgICAgImNvbG9yIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgfSwKICAgICAgICAiZXN0aW1hdGUiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVz\nIjogewogICAgICAgICAgICAgICAgImVzdGltYXRlIjogewogICAgICAgICAg\nICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0s\nCiAgICAgICAgICAgICAgICAidHlwZSI6IHsKICAgICAgICAgICAgICAgICAg\nICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9CiAgICAgICAg\nICAgIH0sCiAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAg\nICAgICJlc3RpbWF0ZSIsCiAgICAgICAgICAgICAgICAidHlwZSIKICAgICAg\nICAgICAgXQogICAgICAgIH0sCiAgICAgICAgImFyY2hpdmVkIjogewogICAg\nICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAg\nImR1cmF0aW9uIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAg\nICAgICAgfSwKICAgICAgICAiY2xpZW50TmFtZSI6IHsKICAgICAgICAgICAg\nInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIm5vdGUiOiB7\nCiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAg\nICAgICJ0aW1lRXN0aW1hdGUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9i\namVjdCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAg\nICAgICAgImVzdGltYXRlIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBl\nIjogInN0cmluZyIKICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAg\nICAidHlwZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInJlc2V0\nT3B0aW9uIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogIm51bGwi\nCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImFjdGl2ZSI6\nIHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAg\nICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJpbmNsdWRlTm9uQmls\nbGFibGUiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVh\nbiIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfSwKICAgICAgICAg\nICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgImVzdGltYXRlIiwK\nICAgICAgICAgICAgICAgICJ0eXBlIiwKICAgICAgICAgICAgICAgICJyZXNl\ndE9wdGlvbiIsCiAgICAgICAgICAgICAgICAiYWN0aXZlIiwKICAgICAgICAg\nICAgICAgICJpbmNsdWRlTm9uQmlsbGFibGUiCiAgICAgICAgICAgIF0KICAg\nICAgICB9LAogICAgICAgICJlc3RpbWF0ZVJlc2V0IjogewogICAgICAgICAg\nICAidHlwZSI6ICJudWxsIgogICAgICAgIH0sCiAgICAgICAgInRlbXBsYXRl\nIjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0s\nCiAgICAgICAgInB1YmxpYyI6IHsKICAgICAgICAgICAgInR5cGUiOiAiYm9v\nbGVhbiIKICAgICAgICB9CiAgICB9LAogICAgInJlcXVpcmVkIjogWwogICAg\nICAgICJpZCIsCiAgICAgICAgIm5hbWUiLAogICAgICAgICJob3VybHlSYXRl\nIiwKICAgICAgICAiY2xpZW50SWQiLAogICAgICAgICJ3b3Jrc3BhY2VJZCIs\nCiAgICAgICAgImJpbGxhYmxlIiwKICAgICAgICAibWVtYmVyc2hpcHMiLAog\nICAgICAgICJjb2xvciIsCiAgICAgICAgImVzdGltYXRlIiwKICAgICAgICAi\nYXJjaGl2ZWQiLAogICAgICAgICJkdXJhdGlvbiIsCiAgICAgICAgImNsaWVu\ndE5hbWUiLAogICAgICAgICJub3RlIiwKICAgICAgICAiY29zdFJhdGUiLAog\nICAgICAgICJ0aW1lRXN0aW1hdGUiLAogICAgICAgICJidWRnZXRFc3RpbWF0\nZSIsCiAgICAgICAgImVzdGltYXRlUmVzZXQiLAogICAgICAgICJ0ZW1wbGF0\nZSIsCiAgICAgICAgInB1YmxpYyIKICAgIF0KfQo=\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Clockify/__schema__/v1.0.0/project/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/5d884d819b86e4f860faa1fd36e14038bcd68013",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Clockify/__schema__/v1.0.0/project/getAll.json"
     },
-    "required": [
-        "id",
-        "name",
-        "hourlyRate",
-        "clientId",
-        "workspaceId",
-        "billable",
-        "memberships",
-        "color",
-        "estimate",
-        "archived",
-        "duration",
-        "clientName",
-        "note",
-        "costRate",
-        "timeEstimate",
-        "budgetEstimate",
-        "estimateReset",
-        "template",
-        "public"
-    ]
+    "version": 1
 }

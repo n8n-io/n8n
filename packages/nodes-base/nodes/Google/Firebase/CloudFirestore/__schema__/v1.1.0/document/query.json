@@ -1,81 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "document": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "fields": {
-                    "type": "object",
-                    "properties": {
-                        "user_id": {
-                            "type": "object",
-                            "properties": {
-                                "referenceValue": {
-                                    "type": "string"
-                                }
-                            },
-                            "required": [
-                                "referenceValue"
-                            ]
-                        },
-                        "deleted": {
-                            "type": "object",
-                            "properties": {
-                                "booleanValue": {
-                                    "type": "boolean"
-                                }
-                            },
-                            "required": [
-                                "booleanValue"
-                            ]
-                        },
-                        "time_created": {
-                            "type": "object",
-                            "properties": {
-                                "timestampValue": {
-                                    "type": "string"
-                                }
-                            },
-                            "required": [
-                                "timestampValue"
-                            ]
-                        },
-                        "word_count": {
-                            "type": "object",
-                            "properties": {
-                                "integerValue": {
-                                    "type": "string"
-                                }
-                            },
-                            "required": [
-                                "integerValue"
-                            ]
-                        }
-                    }
-                },
-                "createTime": {
-                    "type": "string"
-                },
-                "updateTime": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "name",
-                "fields",
-                "createTime",
-                "updateTime",
-                "id"
-            ]
-        },
-        "readTime": {
-            "type": "string"
-        }
-    }
+    "name": "query.json",
+    "path": "packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__schema__/v1.1.0/document/query.json",
+    "sha": "00e682f931d8585fb4bd880e30a092e9cab7ee15",
+    "size": 2650,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__schema__/v1.1.0/document/query.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__schema__/v1.1.0/document/query.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/00e682f931d8585fb4bd880e30a092e9cab7ee15",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__schema__/v1.1.0/document/query.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJkb2N1bWVudCI6IHsKICAgICAgICAgICAgInR5cGUiOiAib2Jq\nZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAg\nICAgICAibmFtZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJz\ndHJpbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImZp\nZWxkcyI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJvYmplY3Qi\nLAogICAgICAgICAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAg\nICAgICAgICAgICAgICAgICAidXNlcl9pZCI6IHsKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAicmVmZXJlbmNlVmFsdWUiOiB7CiAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIK\nICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAg\nICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAg\nICAgInJlcXVpcmVkIjogWwogICAgICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICJyZWZlcmVuY2VWYWx1ZSIKICAgICAgICAgICAgICAgICAgICAgICAg\nICAgIF0KICAgICAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAg\nICAgICAgICAgICAgImRlbGV0ZWQiOiB7CiAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAgICAg\nICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgImJvb2xlYW5WYWx1ZSI6IHsKICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiYm9vbGVhbiIKICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICAg\nICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAgICAgInJl\ncXVpcmVkIjogWwogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJi\nb29sZWFuVmFsdWUiCiAgICAgICAgICAgICAgICAgICAgICAgICAgICBdCiAg\nICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAg\nICAgICJ0aW1lX2NyZWF0ZWQiOiB7CiAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAgICAgICAg\nICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgInRpbWVzdGFtcFZhbHVlIjogewogICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAg\nICAgICAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgICAg\nICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICJyZXF1\naXJlZCI6IFsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidGlt\nZXN0YW1wVmFsdWUiCiAgICAgICAgICAgICAgICAgICAgICAgICAgICBdCiAg\nICAgICAgICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAgICAg\nICAgICJ3b3JkX2NvdW50IjogewogICAgICAgICAgICAgICAgICAgICAgICAg\nICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgICAgICAgICAg\nICAgICAgICJpbnRlZ2VyVmFsdWUiOiB7CiAgICAgICAgICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAgICAg\nICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICAgICAgICAg\nICAgICB9LAogICAgICAgICAgICAgICAgICAgICAgICAgICAgInJlcXVpcmVk\nIjogWwogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJpbnRlZ2Vy\nVmFsdWUiCiAgICAgICAgICAgICAgICAgICAgICAgICAgICBdCiAgICAgICAg\nICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgICAgICB9CiAgICAg\nICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImNyZWF0ZVRpbWUiOiB7\nCiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAg\nICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJ1cGRhdGVUaW1lIjogewog\nICAgICAgICAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICAgICAiaWQiOiB7CiAgICAgICAgICAg\nICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAgICAgfQog\nICAgICAgICAgICB9LAogICAgICAgICAgICAicmVxdWlyZWQiOiBbCiAgICAg\nICAgICAgICAgICAibmFtZSIsCiAgICAgICAgICAgICAgICAiZmllbGRzIiwK\nICAgICAgICAgICAgICAgICJjcmVhdGVUaW1lIiwKICAgICAgICAgICAgICAg\nICJ1cGRhdGVUaW1lIiwKICAgICAgICAgICAgICAgICJpZCIKICAgICAgICAg\nICAgXQogICAgICAgIH0sCiAgICAgICAgInJlYWRUaW1lIjogewogICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgfQogICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__schema__/v1.1.0/document/query.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/00e682f931d8585fb4bd880e30a092e9cab7ee15",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__schema__/v1.1.0/document/query.json"
+    },
+    "version": 1
 }

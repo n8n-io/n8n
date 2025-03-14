@@ -1,29 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "@odata.type": {
-            "type": "string"
-        },
-        "@odata.mediaContentType": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "lastModifiedDateTime": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "contentType": {
-            "type": "string"
-        },
-        "size": {
-            "type": "integer"
-        },
-        "isInline": {
-            "type": "boolean"
-        }
-    }
+    "name": "download.json",
+    "path": "packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/messageAttachment/download.json",
+    "sha": "77d6744505ad54349c051d8814aa576712e9f1dd",
+    "size": 568,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/messageAttachment/download.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/messageAttachment/download.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/77d6744505ad54349c051d8814aa576712e9f1dd",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/messageAttachment/download.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJAb2RhdGEudHlwZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAi\nc3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgIkBvZGF0YS5tZWRpYUNvbnRl\nbnRUeXBlIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAg\nICAgfSwKICAgICAgICAiaWQiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0\ncmluZyIKICAgICAgICB9LAogICAgICAgICJsYXN0TW9kaWZpZWREYXRlVGlt\nZSI6IHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0s\nCiAgICAgICAgIm5hbWUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJjb250ZW50VHlwZSI6IHsKICAgICAg\nICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAgICAgICAgInNp\nemUiOiB7CiAgICAgICAgICAgICJ0eXBlIjogImludGVnZXIiCiAgICAgICAg\nfSwKICAgICAgICAiaXNJbmxpbmUiOiB7CiAgICAgICAgICAgICJ0eXBlIjog\nImJvb2xlYW4iCiAgICAgICAgfQogICAgfQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/messageAttachment/download.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/77d6744505ad54349c051d8814aa576712e9f1dd",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/messageAttachment/download.json"
+    },
+    "version": 1
 }

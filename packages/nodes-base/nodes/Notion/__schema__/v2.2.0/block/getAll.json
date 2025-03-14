@@ -1,64 +1,19 @@
 {
-    "type": "object",
-    "properties": {
-        "object": {
-            "type": "string"
-        },
-        "parent_id": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "parent": {
-            "type": "object",
-            "properties": {
-                "type": {
-                    "type": "string"
-                },
-                "page_id": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "type"
-            ]
-        },
-        "last_edited_by": {
-            "type": "object",
-            "properties": {
-                "object": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "object",
-                "id"
-            ]
-        },
-        "has_children": {
-            "type": "boolean"
-        },
-        "archived": {
-            "type": "boolean"
-        },
-        "in_trash": {
-            "type": "boolean"
-        },
-        "type": {
-            "type": "string"
-        },
-        "root_id": {
-            "type": "string"
-        },
-        "content": {
-            "type": "string"
-        }
+    "name": "getAll.json",
+    "path": "packages/nodes-base/nodes/Notion/__schema__/v2.2.0/block/getAll.json",
+    "sha": "fc466f894833b54de9cfe106224c9304ab441af7",
+    "size": 1336,
+    "url": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Notion/__schema__/v2.2.0/block/getAll.json?ref=master",
+    "html_url": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Notion/__schema__/v2.2.0/block/getAll.json",
+    "git_url": "https://api.github.com/repos/n8n-io/n8n/git/blobs/fc466f894833b54de9cfe106224c9304ab441af7",
+    "download_url": "https://raw.githubusercontent.com/n8n-io/n8n/master/packages/nodes-base/nodes/Notion/__schema__/v2.2.0/block/getAll.json",
+    "type": "file",
+    "content": "ewogICAgInR5cGUiOiAib2JqZWN0IiwKICAgICJwcm9wZXJ0aWVzIjogewog\nICAgICAgICJvYmplY3QiOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmlu\nZyIKICAgICAgICB9LAogICAgICAgICJwYXJlbnRfaWQiOiB7CiAgICAgICAg\nICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAogICAgICAgICJpZCI6\nIHsKICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0sCiAg\nICAgICAgInBhcmVudCI6IHsKICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0\nIiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAg\nICAidHlwZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgInBhZ2Vf\naWQiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgog\nICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9LAogICAgICAgICAgICAi\ncmVxdWlyZWQiOiBbCiAgICAgICAgICAgICAgICAidHlwZSIKICAgICAgICAg\nICAgXQogICAgICAgIH0sCiAgICAgICAgImxhc3RfZWRpdGVkX2J5Ijogewog\nICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAicHJv\ncGVydGllcyI6IHsKICAgICAgICAgICAgICAgICJvYmplY3QiOiB7CiAgICAg\nICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgICAgICAg\nICAgfSwKICAgICAgICAgICAgICAgICJpZCI6IHsKICAgICAgICAgICAgICAg\nICAgICAidHlwZSI6ICJzdHJpbmciCiAgICAgICAgICAgICAgICB9CiAgICAg\nICAgICAgIH0sCiAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAg\nICAgICAgICJvYmplY3QiLAogICAgICAgICAgICAgICAgImlkIgogICAgICAg\nICAgICBdCiAgICAgICAgfSwKICAgICAgICAiaGFzX2NoaWxkcmVuIjogewog\nICAgICAgICAgICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAg\nICAgImFyY2hpdmVkIjogewogICAgICAgICAgICAidHlwZSI6ICJib29sZWFu\nIgogICAgICAgIH0sCiAgICAgICAgImluX3RyYXNoIjogewogICAgICAgICAg\nICAidHlwZSI6ICJib29sZWFuIgogICAgICAgIH0sCiAgICAgICAgInR5cGUi\nOiB7CiAgICAgICAgICAgICJ0eXBlIjogInN0cmluZyIKICAgICAgICB9LAog\nICAgICAgICJyb290X2lkIjogewogICAgICAgICAgICAidHlwZSI6ICJzdHJp\nbmciCiAgICAgICAgfSwKICAgICAgICAiY29udGVudCI6IHsKICAgICAgICAg\nICAgInR5cGUiOiAic3RyaW5nIgogICAgICAgIH0KICAgIH0sCiAgICAicmVx\ndWlyZWQiOiBbCiAgICAgICAgImlkIgogICAgXQp9Cg==\n",
+    "encoding": "base64",
+    "_links": {
+        "self": "https://api.github.com/repos/n8n-io/n8n/contents/packages/nodes-base/nodes/Notion/__schema__/v2.2.0/block/getAll.json?ref=master",
+        "git": "https://api.github.com/repos/n8n-io/n8n/git/blobs/fc466f894833b54de9cfe106224c9304ab441af7",
+        "html": "https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/Notion/__schema__/v2.2.0/block/getAll.json"
     },
-    "required": [
-        "id"
-    ]
+    "version": 1
 }
