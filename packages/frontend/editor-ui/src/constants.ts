@@ -9,7 +9,7 @@ import type {
 	CanvasNodeHandleInjectionData,
 	CanvasNodeInjectionData,
 } from '@/types';
-import type { InjectionKey } from 'vue';
+import type { InjectionKey, MaybeRefOrGetter } from 'vue';
 
 export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16; // Workflow size limit in bytes
 export const MAX_EXPECTED_REQUEST_SIZE = 2048; // Expected maximum workflow request metadata (i.e. headers) size in bytes
@@ -909,6 +909,9 @@ export const CanvasKey = 'canvas' as unknown as InjectionKey<CanvasInjectionData
 export const CanvasNodeKey = 'canvasNode' as unknown as InjectionKey<CanvasNodeInjectionData>;
 export const CanvasNodeHandleKey =
 	'canvasNodeHandle' as unknown as InjectionKey<CanvasNodeHandleInjectionData>;
+export const IsInPiPWindowSymbol = 'IsInPipWindow' as unknown as InjectionKey<
+	MaybeRefOrGetter<boolean>
+>;
 
 /** Auth */
 export const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';

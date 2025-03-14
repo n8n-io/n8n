@@ -3,15 +3,13 @@ import type { INode, Workflow } from 'n8n-workflow';
 import RunDataAi from '@/components/RunDataAi/RunDataAi.vue';
 import { useI18n } from '@/composables/useI18n';
 
-const emit = defineEmits<{
-	close: [];
-}>();
-
 defineProps<{
 	node: INode | null;
 	slim?: boolean;
 	workflow: Workflow;
 }>();
+
+defineSlots<{ actions: {} }>();
 
 const locale = useI18n();
 </script>
@@ -27,14 +25,9 @@ const locale = useI18n();
 					}}
 				</span>
 			</div>
-			<n8n-icon-button
-				:class="$style.close"
-				outline
-				icon="times"
-				type="secondary"
-				size="mini"
-				@click="emit('close')"
-			/>
+			<div :class="$style.actions">
+				<slot name="actions"></slot>
+			</div>
 		</header>
 		<div :class="$style.logs">
 			<RunDataAi
@@ -62,10 +55,6 @@ const locale = useI18n();
 	justify-content: space-between;
 	align-items: center;
 
-	.close {
-		border: none;
-	}
-
 	span {
 		font-weight: 100;
 	}
@@ -87,5 +76,14 @@ const locale = useI18n();
 	padding: var(--spacing-s) 0;
 	flex-grow: 1;
 	overflow: auto;
+}
+
+.actions {
+	display: flex;
+	align-items: center;
+
+	button {
+		border: none;
+	}
 }
 </style>

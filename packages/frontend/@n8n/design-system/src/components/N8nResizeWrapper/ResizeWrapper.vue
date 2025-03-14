@@ -33,6 +33,7 @@ interface ResizeProps {
 	gridSize?: number;
 	supportedDirections?: Direction[];
 	outset?: boolean;
+	window?: Window;
 }
 
 const props = withDefaults(defineProps<ResizeProps>(), {
@@ -44,6 +45,7 @@ const props = withDefaults(defineProps<ResizeProps>(), {
 	scale: 1,
 	gridSize: 20,
 	outset: false,
+	window: undefined,
 	supportedDirections: () => [],
 });
 
@@ -125,8 +127,8 @@ const mouseUp = (event: MouseEvent) => {
 	event.preventDefault();
 	event.stopPropagation();
 	emit('resizeend');
-	window.removeEventListener('mousemove', mouseMove);
-	window.removeEventListener('mouseup', mouseUp);
+	(props.window ?? window).removeEventListener('mousemove', mouseMove);
+	(props.window ?? window).removeEventListener('mouseup', mouseUp);
 	document.body.style.cursor = 'unset';
 	state.dir.value = '';
 };
@@ -149,8 +151,8 @@ const resizerMove = (event: MouseEvent) => {
 	state.vHeight.value = props.height;
 	state.vWidth.value = props.width;
 
-	window.addEventListener('mousemove', mouseMove);
-	window.addEventListener('mouseup', mouseUp);
+	(props.window ?? window).addEventListener('mousemove', mouseMove);
+	(props.window ?? window).addEventListener('mouseup', mouseUp);
 	emit('resizestart');
 };
 </script>

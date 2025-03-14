@@ -7,8 +7,6 @@ import MessageOptionAction from './MessageOptionAction.vue';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import type { ArrowKeyDownPayload } from '@n8n/chat/components/Input.vue';
 import ChatInput from '@n8n/chat/components/Input.vue';
-import { useMessage } from '@/composables/useMessage';
-import { MODAL_CONFIRM } from '@/constants';
 import { computed, ref } from 'vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useToast } from '@/composables/useToast';
@@ -29,7 +27,6 @@ const emit = defineEmits<{
 	close: [];
 }>();
 
-const messageComposable = useMessage();
 const clipboard = useClipboard();
 const locale = useI18n();
 const toast = useToast();
@@ -62,25 +59,8 @@ function sendMessage(message: string) {
 	emit('sendMessage', message);
 }
 
-async function onRefreshSession() {
-	// If there are no messages, refresh the session without asking
-	if (props.messages.length === 0) {
-		emit('refreshSession');
-		return;
-	}
-
-	const confirmResult = await messageComposable.confirm(
-		locale.baseText('chat.window.session.reset.warning'),
-		{
-			title: locale.baseText('chat.window.session.reset.title'),
-			type: 'warning',
-			confirmButtonText: locale.baseText('chat.window.session.reset.confirm'),
-			showClose: true,
-		},
-	);
-	if (confirmResult === MODAL_CONFIRM) {
-		emit('refreshSession');
-	}
+function onRefreshSession() {
+	emit('refreshSession');
 }
 
 function onArrowKeyDown({ currentInputValue, key }: ArrowKeyDownPayload) {
@@ -131,8 +111,9 @@ function onArrowKeyDown({ currentInputValue, key }: ArrowKeyDownPayload) {
 		previousMessageIndex.value = 0;
 	}
 }
-function copySessionId() {
-	void clipboard.copy(props.sessionId);
+
+async function copySessionId() {
+	await clipboard.copy(props.sessionId);
 	toast.showMessage({
 		title: locale.baseText('generic.copiedToClipboard'),
 		message: '',
@@ -151,9 +132,12 @@ function copySessionId() {
 					<template #content>
 						{{ sessionId }}
 					</template>
-					<span :class="$style.sessionId" data-test-id="chat-session-id" @click="copySessionId">{{
-						sessionId
-					}}</span>
+					<span
+						:class="[$style.sessionId, clipboard.isSupported.value ? $style.copyable : '']"
+						data-test-id="chat-session-id"
+						@click="clipboard.isSupported.value ? copySessionId() : null"
+						>{{ sessionId }}</span
+					>
 				</n8n-tooltip>
 				<n8n-icon-button
 					:class="$style.headerButton"
@@ -162,7 +146,7 @@ function copySessionId() {
 					type="secondary"
 					size="mini"
 					icon="undo"
-					:title="locale.baseText('chat.window.session.reset.confirm')"
+					:title="locale.baseText('chat.window.session.reset')"
 					@click="onRefreshSession"
 				/>
 				<n8n-icon-button
@@ -293,7 +277,9 @@ function copySessionId() {
 	text-overflow: ellipsis;
 	overflow: hidden;
 
-	cursor: pointer;
+	&.copyable {
+		cursor: pointer;
+	}
 }
 .headerButton {
 	max-height: 1.1rem;

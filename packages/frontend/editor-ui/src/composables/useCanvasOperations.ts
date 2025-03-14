@@ -1970,7 +1970,9 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	async function toggleChatOpen(source: 'node' | 'main') {
 		const workflow = workflowsStore.getCurrentWorkflow();
 
-		workflowsStore.setPanelOpen('chat', !workflowsStore.isChatPanelOpen);
+		workflowsStore.setPanelState(
+			workflowsStore.chatPanelState === 'closed' ? 'attached' : 'closed',
+		);
 
 		const payload = {
 			workflow_id: workflow.id,
