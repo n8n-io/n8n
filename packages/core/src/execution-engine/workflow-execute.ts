@@ -404,7 +404,7 @@ export class WorkflowExecute {
 		const filteredNodes = graph.getNodes();
 
 		// 3. Find the Start Nodes
-		const dirtyNodes = new Set(workflow.getNodes(dirtyNodeNames));
+		const dirtyNodes = graph.getNodesByNames(dirtyNodeNames);
 		runData = cleanRunData(runData, graph, dirtyNodes);
 		let startNodes = findStartNodes({ graph, trigger, destination, runData, pinData });
 
