@@ -1,3 +1,13 @@
+## [1.83.2](https://github.com/n8n-io/n8n/compare/n8n@1.83.1...n8n@1.83.2) (2025-03-14)
+
+
+### Bug Fixes
+
+* **editor:** Fix options parameters that have extra displayName field ([#13928](https://github.com/n8n-io/n8n/issues/13928)) ([90113e9](https://github.com/n8n-io/n8n/commit/90113e94874362c07a80d2da1b9e4e2fd48b4705))
+* Execute method should be assigned to a Routing node even if it has webhook defined ([#13910](https://github.com/n8n-io/n8n/issues/13910)) ([3593114](https://github.com/n8n-io/n8n/commit/35931146a7268c8a26fad605b5cec1e7cf1467b0))
+
+
+
 ## [1.83.1](https://github.com/n8n-io/n8n/compare/n8n@1.83.0...n8n@1.83.1) (2025-03-12)
 
 
