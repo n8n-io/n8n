@@ -16,7 +16,7 @@ const getBinaryDataFromNode = (context: IWebhookFunctions, nodeName: string): ID
 
 export const binaryResponse = async (
 	context: IWebhookFunctions,
-): Promise<{ data: string; fileName: string }> => {
+): Promise<{ data: string | Buffer; fileName: string; type: string }> => {
 	const inputDataFieldName = context.getNodeParameter('inputDataFieldName', '') as string;
 	const parentNodes = context.getParentNodes(context.getNode().name);
 	const binaryNode = parentNodes.find((node) =>
@@ -33,9 +33,10 @@ export const binaryResponse = async (
 		// If a binaryData has an id, the following field is set:
 		// N8N_DEFAULT_BINARY_DATA_MODE=filesystem
 		data: binaryData.id
-			? await context.helpers.binaryToString(await context.helpers.getBinaryStream(binaryData.id))
+			? await context.helpers.binaryToBuffer(await context.helpers.getBinaryStream(binaryData.id))
 			: atob(binaryData.data),
-		fileName: binaryData.fileName || 'file',
+		fileName: binaryData.fileName ?? 'file',
+		type: binaryData.mimeType,
 	};
 };
 

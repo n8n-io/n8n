@@ -145,6 +145,8 @@ describe('formCompletionUtils', () => {
 				},
 			};
 
+			const buffer = Buffer.from(expectedBinaryResponse.inputData.data);
+
 			for (const parentNodes of parentNodesTestCases) {
 				mockWebhookFunctions.getParentNodes.mockReturnValueOnce(parentNodes);
 				mockWebhookFunctions.evaluateExpression.mockImplementation((arg) => {
@@ -167,10 +169,13 @@ describe('formCompletionUtils', () => {
 					return params[parameterName];
 				});
 
-				mockWebhookFunctions.helpers.getBinaryStream = jest.fn().mockImplementation(() => {});
-				mockWebhookFunctions.helpers.binaryToString = jest
+				mockWebhookFunctions.helpers.getBinaryStream = jest
 					.fn()
-					.mockResolvedValue(expectedBinaryResponse.inputData.data);
+					.mockResolvedValue(Promise.resolve({}));
+
+				mockWebhookFunctions.helpers.binaryToBuffer = jest
+					.fn()
+					.mockResolvedValue(Promise.resolve(buffer));
 
 				await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger);
 
@@ -181,8 +186,9 @@ describe('formCompletionUtils', () => {
 					redirectUrl: undefined,
 					responseBinary: encodeURIComponent(
 						JSON.stringify({
-							data: expectedBinaryResponse.inputData.data,
+							data: buffer,
 							fileName: expectedBinaryResponse.inputData.fileName,
+							type: expectedBinaryResponse.inputData.mimeType,
 						}),
 					),
 					responseText: '',
@@ -236,6 +242,7 @@ describe('formCompletionUtils', () => {
 						JSON.stringify({
 							data: atob(expectedBinaryResponse.inputData.data),
 							fileName: expectedBinaryResponse.inputData.fileName,
+							type: expectedBinaryResponse.inputData.mimeType,
 						}),
 					),
 					responseText: '',

@@ -162,8 +162,15 @@
 				?	JSON.parse(decodeURIComponent("{{{responseBinary}}}"))
 				: '';
 
+			const byteArray = binary.data.type === 'Buffer'
+				? new Uint8Array(binary.data.data)
+				: Uint8Array.from(binary.data, c => c.charCodeAt(0));
+
 			if (binary) {
-				const blob = new Blob([binary.data]);
+				const blob = new Blob(
+					[byteArray],
+					{ type: binary.type }
+				);
 
 				const link = document.createElement("a");
 				link.href = URL.createObjectURL(blob);
