@@ -1,0 +1,29 @@
+name: Sync from Railway
+
+on:
+  repository_dispatch: 
+    types: [sync-from-railway]
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Git
+        run: |
+          git config --global user.email "hugparra88@gmail.com"
+          git config --global user.name "hugparra88"
+
+      - name: Pull latest changes from Railway
+        run: |
+          git pull origin main || true
+
+      - name: Push to GitHub
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git add .
+          git commit -m "Auto-sync from Railway" || echo "No changes to commit"
+          git push origin main || echo "Nothing to push"
