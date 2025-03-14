@@ -101,9 +101,6 @@ const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
 
 const insightsStore = useInsightsStore();
-const { state: summaries } = useAsyncState(insightsStore.fetchSummary, [], {
-	immediate: true,
-});
 const isOverviewSubPage = computed(
 	() =>
 		route.name === VIEWS.WORKFLOWS ||
@@ -326,6 +323,7 @@ sourceControlStore.$onAction(({ name, after }) => {
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('workflows.heading'));
 	void usersStore.showPersonalizationSurvey();
+	void insightsStore.summary.execute();
 
 	workflowListEventBus.on('resource-moved', fetchWorkflows);
 	workflowListEventBus.on('workflow-duplicated', fetchWorkflows);
@@ -864,7 +862,7 @@ const createFolderInCurrent = async () => {
 	>
 		<template #header>
 			<ProjectHeader @create-folder="createFolderInCurrent">
-				<InsightsSummary v-if="isOverviewSubPage" :summaries="summaries" />
+				<InsightsSummary v-if="isOverviewSubPage" :summary="insightsStore.summary.state" />
 			</ProjectHeader>
 		</template>
 		<template v-if="showFolders" #add-button>

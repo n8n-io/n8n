@@ -55,9 +55,6 @@ const telemetry = useTelemetry();
 const i18n = useI18n();
 
 const insightsStore = useInsightsStore();
-const { state: summaries } = useAsyncState(insightsStore.fetchSummary, [], {
-	immediate: true,
-});
 const isOverviewSubPage = computed(
 	() =>
 		route.name === VIEWS.WORKFLOWS ||
@@ -233,6 +230,7 @@ watch(
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('credentials.heading'));
+	void insightsStore.summary.execute();
 });
 </script>
 
@@ -252,7 +250,7 @@ onMounted(() => {
 	>
 		<template #header>
 			<ProjectHeader>
-				<InsightsSummary v-if="isOverviewSubPage" :summaries="summaries" />
+				<InsightsSummary v-if="isOverviewSubPage" :summary="insightsStore.summary.state" />
 			</ProjectHeader>
 		</template>
 		<template #default="{ data }">

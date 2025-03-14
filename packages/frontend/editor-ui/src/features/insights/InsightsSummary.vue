@@ -1,21 +1,30 @@
 <script setup lang="ts">
+import { computed, useCssModule } from 'vue';
 import { useI18n } from '@/composables/useI18n';
+import type { InsightsSummary } from '@n8n/api-types';
+import type { InsightsSummaryDisplay } from '@/features/insights/insights.types';
+import { INSIGHTS_UNIT_MAPPING } from '@/features/insights/insights.constants';
 
-type Summary = {
-	id: string;
-	title: string;
-	count: number;
-	sign?: string;
-	deviation: number;
-	evaluation?: 'positive' | 'negative';
-};
 defineProps<{
-	summaries: Summary[];
+	summary: InsightsSummaryDisplay;
 }>();
 
 const i18n = useI18n();
+const $style = useCssModule();
 
-const getSign = (count: number) => (count > 0 ? '+' : undefined);
+const summaryTitles = computed<Record<keyof InsightsSummary, string>>(() => ({
+	total: i18n.baseText('insights.banner.title.total'),
+	failed: i18n.baseText('insights.banner.title.failed'),
+	failureRate: i18n.baseText('insights.banner.title.failureRate'),
+	timeSaved: i18n.baseText('insights.banner.title.timeSaved'),
+	averageRunTime: i18n.baseText('insights.banner.title.averageRunTime'),
+}));
+
+const getSign = (n: number) => (n > 0 ? '+' : undefined);
+const getDeviationStyles = (d: number) => ({
+	[$style.up]: d > 0,
+	[$style.down]: d < 0,
+});
 </script>
 
 <template>
@@ -24,10 +33,10 @@ const getSign = (count: number) => (count > 0 ? '+' : undefined);
 			i18n.baseText('insights.banner.title', { interpolate: { count: 7 } })
 		}}</N8nHeading>
 		<ul>
-			<li v-for="{ id, title, count, sign, deviation, evaluation } in summaries" :key="id">
+			<li v-for="{ id, value, deviation, unit } in summary" :key="id">
 				<p>
-					<strong>{{ title }}</strong>
-					<span v-if="count === 0 && id === 'timeSaved'" :class="$style.empty">
+					<strong>{{ summaryTitles[id] }}</strong>
+					<span v-if="value === 0 && id === 'timeSaved'" :class="$style.empty">
 						<em>--</em>
 						<small>
 							<N8nTooltip placement="bottom">
@@ -46,15 +55,16 @@ const getSign = (count: number) => (count > 0 ? '+' : undefined);
 					</span>
 					<span v-else>
 						<em
-							>{{ count }} <i>{{ sign }}</i></em
+							>{{ value }} <i>{{ unit }}</i></em
 						>
-						<small :class="evaluation === 'positive' ? $style.up : $style.down">
+						<small :class="getDeviationStyles(deviation)">
 							<N8nIcon
-								:class="[$style.icon, evaluation === 'positive' ? $style.up : $style.down]"
-								:icon="evaluation === 'positive' ? 'caret-up' : 'caret-down'"
+								v-if="deviation > 0 || deviation < 0"
+								:class="[$style.icon, getDeviationStyles(deviation)]"
+								:icon="deviation > 0 ? 'caret-up' : 'caret-down'"
 								color="text-light"
 							/>
-							{{ getSign(deviation) }} {{ deviation }}
+							{{ getSign(deviation) }}{{ deviation }}
 						</small>
 					</span>
 				</p>

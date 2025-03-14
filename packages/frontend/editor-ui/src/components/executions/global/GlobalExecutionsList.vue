@@ -57,9 +57,6 @@ const message = useMessage();
 const toast = useToast();
 
 const insightsStore = useInsightsStore();
-const { state: summaries } = useAsyncState(insightsStore.fetchSummary, [], {
-	immediate: true,
-});
 const isOverviewSubPage = computed(
 	() =>
 		route.name === VIEWS.WORKFLOWS ||
@@ -114,6 +111,7 @@ watch(
 
 onMounted(() => {
 	isMounted.value = true;
+	insightsStore.summary.execute();
 });
 
 function handleCheckAllExistingChange() {
@@ -353,7 +351,7 @@ const goToUpgrade = () => {
 <template>
 	<div :class="$style.execListWrapper">
 		<ProjectHeader>
-			<InsightsSummary v-if="isOverviewSubPage" :summaries="summaries" />
+			<InsightsSummary v-if="isOverviewSubPage" :summary="insightsStore.summary.state" />
 		</ProjectHeader>
 		<div :class="$style.execList">
 			<div :class="$style.execListHeader">
