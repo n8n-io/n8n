@@ -149,6 +149,9 @@ export async function getNewEmails(
 					textHtml: await getText(parts, message, 'html'),
 					textPlain: await getText(parts, message, 'plain'),
 					metadata: {} as IDataObject,
+					attributes: {
+						uid: message.attributes.uid,
+					} as IDataObject,
 				},
 			};
 
