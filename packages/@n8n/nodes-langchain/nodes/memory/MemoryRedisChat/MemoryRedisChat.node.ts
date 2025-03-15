@@ -30,7 +30,7 @@ export class MemoryRedisChat implements INodeType {
 		name: 'memoryRedisChat',
 		icon: 'file:redis.svg',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3, 1.4],
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
 		description: 'Stores the chat history in Redis.',
 		defaults: {
 			name: 'Redis Chat Memory',
@@ -133,6 +133,9 @@ export class MemoryRedisChat implements INodeType {
 			database: credentials.database as number,
 		};
 
+		if (credentials.user && nodeVersion >= 1.5) {
+			redisOptions.username = credentials.user as string;
+		}
 		if (credentials.password) {
 			redisOptions.password = credentials.password as string;
 		}
