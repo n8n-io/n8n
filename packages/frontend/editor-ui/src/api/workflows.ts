@@ -137,6 +137,48 @@ export async function renameFolder(
 export async function getProjectFolders(
 	context: IRestApiContext,
 	projectId: string,
+	options?: {
+		skip?: number;
+		take?: number;
+		sortBy?: string;
+	},
+	filter?: {
+		excludeFolderIdAndDescendants?: string;
+		name?: string;
+	},
 ): Promise<FolderListItem[]> {
-	return await makeRestApiRequest(context, 'GET', `/projects/${projectId}/folders`);
+	const res = await getFullApiResponse<FolderListItem[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/folders`,
+		{
+			...(filter ? { filter } : {}),
+			...(options ? options : {}),
+		},
+	);
+	return res.data;
+}
+
+export async function moveFolder(
+	context: IRestApiContext,
+	projectId: string,
+	folderId: string,
+	parentFolderId?: string,
+): Promise<void> {
+	return await makeRestApiRequest(context, 'PATCH', `/projects/${projectId}/folders/${folderId}`, {
+		parentFolderId,
+	});
+}
+
+export async function getFolderContent(
+	context: IRestApiContext,
+	projectId: string,
+	folderId: string,
+): Promise<{ totalSubFolders: number; totalWorkflows: number }> {
+	const res = await getFullApiResponse<{ totalSubFolders: number; totalWorkflows: number }>(
+		context,
+		'GET',
+		`/projects/${projectId}/folders/${folderId}/content`,
+	);
+	return res.data;
 }

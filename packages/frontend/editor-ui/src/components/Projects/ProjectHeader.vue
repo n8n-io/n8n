@@ -56,8 +56,9 @@ const showSettings = computed(
 );
 
 const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
-const isFoldersFeatureEnabled = computed(() => settingsStore.settings.folders.enabled);
-const isProjectPage = computed(() => route.name === VIEWS.PROJECTS_WORKFLOWS);
+const showFolders = computed(() => {
+	return settingsStore.isFoldersFeatureEnabled && route.name !== VIEWS.WORKFLOWS;
+});
 
 const ACTION_TYPES = {
 	WORKFLOW: 'workflow',
@@ -85,7 +86,7 @@ const menu = computed(() => {
 				!getResourcePermissions(homeProject.value?.scopes).credential.create,
 		},
 	];
-	if (isFoldersFeatureEnabled.value && isProjectPage.value) {
+	if (showFolders.value) {
 		items.push({
 			value: ACTION_TYPES.FOLDER,
 			label: i18n.baseText('projects.header.create.folder'),
