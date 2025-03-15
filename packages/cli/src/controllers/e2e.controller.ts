@@ -101,6 +101,7 @@ export class E2EController {
 		[LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY]: false,
 		[LICENSE_FEATURES.ASK_AI]: false,
 		[LICENSE_FEATURES.AI_CREDITS]: false,
+		[LICENSE_FEATURES.FOLDERS]: false,
 	};
 
 	private static readonly numericFeaturesDefaults: Record<NumericLicenseFeature, number> = {

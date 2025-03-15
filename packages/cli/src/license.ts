@@ -300,6 +300,10 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY);
 	}
 
+	isFoldersEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.FOLDERS);
+	}
+
 	getCurrentEntitlements() {
 		return this.manager?.getCurrentEntitlements() ?? [];
 	}
