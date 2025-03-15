@@ -157,6 +157,31 @@
 			<a id='redirectUrl' href='{{redirectUrl}}' style='display: none;'></a>
 		{{/if}}
 	<script>
+		document.addEventListener('DOMContentLoaded', function () {
+			const binary = "{{{responseBinary}}}"
+				?	JSON.parse(decodeURIComponent("{{{responseBinary}}}"))
+				: '';
+
+			const byteArray = binary.data.type === 'Buffer'
+				? new Uint8Array(binary.data.data)
+				: Uint8Array.from(binary.data, c => c.charCodeAt(0));
+
+			if (binary) {
+				const blob = new Blob(
+					[byteArray],
+					{ type: binary.type }
+				);
+
+				const link = document.createElement("a");
+				link.href = URL.createObjectURL(blob);
+				link.download = binary.fileName;
+				document.body.appendChild(link);
+
+				link.click();
+				document.body.removeChild(link);
+			}
+		});
+
 			fetch('', {
 					method: 'POST',
 					body: {}
