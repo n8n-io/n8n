@@ -1043,8 +1043,8 @@ importers:
         specifier: 4.0.3
         version: 4.0.3
       samlify:
-        specifier: 2.8.9
-        version: 2.8.9
+        specifier: 2.9.0
+        version: 2.9.0
       semver:
         specifier: ^7.5.4
         version: 7.6.0
@@ -6529,10 +6529,9 @@ packages:
     peerDependencies:
       typescript: ^5.8.2
 
-  '@xmldom/xmldom@0.8.6':
-    resolution: {integrity: sha512-uRjjusqpoqfmRkTaNuLJ2VohVr67Q5YwDATW3VU7PfzTj6IRaihGrYI7zckGZjxQPBIp63nfvJbM+Yu5ICh0Bg==}
+  '@xmldom/xmldom@0.8.10':
+    resolution: {integrity: sha512-2WALfTl4xo2SkGCYRt6rDTFfk9R1czmBvUQy12gK2KuRKIpWEhcbbzy8EZXtz/jkRqHX8bFEc6FC1HjX4TUWYw==}
     engines: {node: '>=10.0.0'}
-    deprecated: this version has critical issues, please update to the latest version
 
   abab@2.0.6:
     resolution: {integrity: sha512-j2afSsaIENvHZN2B8GOpF566vZ5WVk5opAiMTvWgaQT8DkbOqsTfvNAvHoRGU2zzP8cPoqys+xHTRDWW8L+/BA==}
@@ -12041,8 +12040,8 @@ packages:
   safer-buffer@2.1.2:
     resolution: {integrity: sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg==}
 
-  samlify@2.8.9:
-    resolution: {integrity: sha512-+HHxkBweHwWEEiFWelGhTTX2Zv/7Tjh6xbZPYUURe7JWp1N9cO2jUOiSb13gTzCEXtffye+Ld7M/f2gCU5+B2Q==}
+  samlify@2.9.0:
+    resolution: {integrity: sha512-3aRjBzAOMwgjSzLXZK0Q+D3uX9gL0IopWGwQq98lKqqwbrt4mimDpcch2shZ7GkpUlez5jgKuAAZC7DCW2rPnA==}
 
   sanitize-html@2.12.1:
     resolution: {integrity: sha512-Plh+JAn0UVDpBRP/xEjsk+xDCoOvMBwQUf/K+/cBAVuTbtX8bj2VB7S1sL1dssVpykqp0/KPSesHrqXtokVBpA==}
@@ -13641,9 +13640,12 @@ packages:
     engines: {node: '>=0.8'}
     hasBin: true
 
-  xml-crypto@3.0.1:
-    resolution: {integrity: sha512-7XrwB3ujd95KCO6+u9fidb8ajvRJvIfGNWD0XLJoTWlBKz+tFpUzEYxsN+Il/6/gHtEs1RgRh2RH+TzhcWBZUw==}
-    engines: {node: '>=0.4.0'}
+  xml-crypto@3.2.1:
+    resolution: {integrity: sha512-0GUNbPtQt+PLMsC5HoZRONX+K6NBJEqpXe/lsvrFj0EqfpGPpVfJKGE7a5jCg8s2+Wkrf/2U1G41kIH+zC9eyQ==}
+    engines: {node: '>=4.0.0'}
+
+  xml-escape@1.1.0:
+    resolution: {integrity: sha512-B/T4sDK8Z6aUh/qNr7mjKAwwncIljFuUP+DO/D5hloYFj+90O88z8Wf7oSucZTHxBAsC1/CTP4rtx/x1Uf72Mg==}
 
   xml-name-validator@4.0.0:
     resolution: {integrity: sha512-ICP2e+jsHvAj2E2lIHxa5tjXRlKDJo4IdvPvCXbXQGdzSfmSpNVyIKMvoZHjDY9DP0zV17iI85o90vRFXNccRw==}
@@ -13851,7 +13853,7 @@ snapshots:
 
   '@authenio/xml-encryption@2.0.2':
     dependencies:
-      '@xmldom/xmldom': 0.8.6
+      '@xmldom/xmldom': 0.8.10
       escape-html: 1.0.3
       xpath: 0.0.32
 
@@ -19500,7 +19502,7 @@ snapshots:
     dependencies:
       typescript: 5.8.2
 
-  '@xmldom/xmldom@0.8.6': {}
+  '@xmldom/xmldom@0.8.10': {}
 
   abab@2.0.6: {}
 
@@ -24038,7 +24040,7 @@ snapshots:
 
   mammoth@1.7.2:
     dependencies:
-      '@xmldom/xmldom': 0.8.6
+      '@xmldom/xmldom': 0.8.10
       argparse: 1.0.10
       base64-js: 1.5.1
       bluebird: 3.4.7
@@ -26189,17 +26191,18 @@ snapshots:
 
   safer-buffer@2.1.2: {}
 
-  samlify@2.8.9:
+  samlify@2.9.0:
     dependencies:
       '@authenio/xml-encryption': 2.0.2
-      '@xmldom/xmldom': 0.8.6
+      '@xmldom/xmldom': 0.8.10
       camelcase: 6.3.0
       node-forge: 1.3.1
       node-rsa: 1.1.1
       pako: 1.0.11
       uuid: 8.3.2
       xml: 1.0.1
-      xml-crypto: 3.0.1
+      xml-crypto: 3.2.1
+      xml-escape: 1.1.0
       xpath: 0.0.32
 
   sanitize-html@2.12.1:
@@ -28030,10 +28033,12 @@ snapshots:
 
   xlsx@https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz: {}
 
-  xml-crypto@3.0.1:
+  xml-crypto@3.2.1:
     dependencies:
-      '@xmldom/xmldom': 0.8.6
+      '@xmldom/xmldom': 0.8.10
       xpath: 0.0.32
+
+  xml-escape@1.1.0: {}
 
   xml-name-validator@4.0.0: {}
 
