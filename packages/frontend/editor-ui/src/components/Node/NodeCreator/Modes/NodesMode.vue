@@ -34,6 +34,8 @@ import { useUIStore } from '@/stores/ui.store';
 import { useActions } from '../composables/useActions';
 import { SEND_AND_WAIT_OPERATION, type INodeParameters } from 'n8n-workflow';
 
+import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
+
 export interface Props {
 	rootView: 'trigger' | 'action';
 }
@@ -113,6 +115,52 @@ function onSelected(item: INodeCreateElement) {
 	if (item.type === 'node') {
 		const nodeActions = getFilteredActions(item);
 
+		if (isCommunityPackageName(item.key) && !activeViewStack.value.communityNodeDetails) {
+			const iconUrl = getNodeIconUrl(item.properties, uiStore.appliedTheme);
+			const icon = iconUrl
+				? rootStore.baseUrl + iconUrl
+				: getNodeIcon(item.properties, uiStore.appliedTheme)?.split(':')[1];
+			const nodeIcon = {
+				color: getNodeIconColor(item.properties),
+				icon,
+				iconType: iconUrl ? 'file' : 'icon',
+			};
+			const communityNodeDetails = {
+				title: item.properties.displayName,
+				description: item.properties.description ?? 'Community',
+				nodeIcon,
+				installed: true,
+				verified: true,
+				installs: 1342,
+				publishedBy: 'n8n-contributor',
+			};
+			if (nodeActions.length) {
+				const transformedActions = nodeActions?.map((a) =>
+					transformNodeType(a, item.properties.displayName, 'action'),
+				);
+				pushViewStack({
+					subcategory: item.properties.displayName,
+					title: 'Community node details',
+					rootView: activeViewStack.value.rootView,
+					hasSearch: false,
+					mode: 'actions',
+					items: transformedActions,
+					communityNodeDetails,
+				});
+			} else {
+				pushViewStack({
+					subcategory: item.properties.displayName,
+					title: 'Community node details',
+					rootView: activeViewStack.value.rootView,
+					hasSearch: false,
+					items: [item],
+					mode: 'nodes',
+					communityNodeDetails,
+				});
+			}
+			return;
+		}
+
 		// If there is only one action, use it
 		if (nodeActions.length === 1) {
 			selectNodeType([item.key]);
@@ -147,7 +195,6 @@ function onSelected(item: INodeCreateElement) {
 				icon,
 				iconType: iconUrl ? 'file' : 'icon',
 			},
-
 			rootView: activeViewStack.value.rootView,
 			hasSearch: true,
 			mode: 'actions',
