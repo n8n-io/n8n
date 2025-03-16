@@ -166,7 +166,7 @@ function openContextMenu(event: MouseEvent) {
 	--configurable-node--input-width: 64px;
 	--configurable-node--icon-offset: 30px;
 	--configurable-node--icon-size: 30px;
-	--trigger-node--border-radius: 36px;
+	--trigger-node--border-radius: 20px;
 	--canvas-node--status-icons-offset: var(--spacing-3xs);
 
 	position: relative;
@@ -181,8 +181,7 @@ function openContextMenu(event: MouseEvent) {
 	border-radius: var(--border-radius-large);
 
 	&.trigger {
-		border-radius: var(--trigger-node--border-radius) var(--border-radius-large)
-			var(--border-radius-large) var(--trigger-node--border-radius);
+		border-radius: var(--trigger-node--border-radius);
 	}
 
 	/**
