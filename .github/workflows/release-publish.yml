@@ -160,7 +160,7 @@ jobs:
         continue-on-error: true
         with:
           projects: ${{ secrets.SENTRY_FRONTEND_PROJECT }}
-          version: ${{ needs.publish-to-npm.outputs.release }}
+          version: n8n@${{ needs.publish-to-npm.outputs.release }}
           sourcemaps: packages/frontend/editor-ui/dist
 
       - name: Create a backend release
@@ -168,7 +168,7 @@ jobs:
         continue-on-error: true
         with:
           projects: ${{ secrets.SENTRY_BACKEND_PROJECT }}
-          version: ${{ needs.publish-to-npm.outputs.release }}
+          version: n8n@${{ needs.publish-to-npm.outputs.release }}
           sourcemaps: packages/cli/dist packages/core/dist packages/nodes-base/dist packages/@n8n/n8n-nodes-langchain/dist
 
       - name: Create a task runner release
@@ -176,7 +176,7 @@ jobs:
         continue-on-error: true
         with:
           projects: ${{ secrets.SENTRY_TASK_RUNNER_PROJECT }}
-          version: ${{ needs.publish-to-npm.outputs.release }}
+          version: n8n@${{ needs.publish-to-npm.outputs.release }}
           sourcemaps: packages/core/dist packages/workflow/dist packages/@n8n/task-runner/dist
 
   trigger-release-note:
