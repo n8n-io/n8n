@@ -130,8 +130,8 @@
     "@types/json-schema": "^7.0.15",
     "@types/mime-types": "^2.1.0",
     "@types/pg": "^8.11.6",
-    "@types/temp": "^0.9.1",
     "@types/sanitize-html": "^2.11.0",
+    "@types/temp": "^0.9.1",
     "n8n-core": "workspace:*"
   },
   "dependencies": {
@@ -180,6 +180,7 @@
     "lodash": "catalog:",
     "mammoth": "1.7.2",
     "mime-types": "2.1.35",
+    "mongodb": "6.11.0",
     "n8n-nodes-base": "workspace:*",
     "n8n-workflow": "workspace:*",
     "openai": "4.78.1",

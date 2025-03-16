@@ -101,16 +101,30 @@ const insertFields: INodeProperties[] = [
 		],
 	},
 ];
+
+let mongoClient: MongoClient | null = null;
+
+async function getMongoClient(context: any) {
+	if (!mongoClient) {
+		const credentials = await context.getCredentials('mongoDb');
+		mongoClient = new MongoClient(credentials.connectionString as string, {
+			appName: 'devrel.content.n8n_vector_integ',
+		});
+		await mongoClient.connect();
+	}
+	return mongoClient;
+}
+
+async function mongoClientAndDatabase(context: any) {
+	const client = await getMongoClient(context);
+	const credentials = await context.getCredentials('mongoDb');
+	const db = client.db(credentials.database as string);
+	return { client, db };
+}
+
 async function mongoCollectionSearch(this: ILoadOptionsFunctions) {
-	const credentials = await this.getCredentials('mongoDb');
-
-	const client = new MongoClient(credentials.connectionString as string, {
-		appName: 'devrel.content.n8n_vector_integ',
-	});
-	await client.connect();
-
+	const { db } = await mongoClientAndDatabase(this);
 	try {
-		const db = client.db(credentials.database as string);
 		const collections = await db.listCollections().toArray();
 		const results = collections.map((collection) => ({
 			name: collection.name,
@@ -118,8 +132,8 @@ async function mongoCollectionSearch(this: ILoadOptionsFunctions) {
 		}));
 
 		return { results };
-	} finally {
-		await client.close();
+	} catch (error) {
+		throw new NodeOperationError(this.getNode(), `Error: ${error.message}`);
 	}
 }
 export class VectorStoreMongoDBAtlas extends createVectorStoreNode({
@@ -145,47 +159,56 @@ export class VectorStoreMongoDBAtlas extends createVectorStoreNode({
 	sharedFields,
 	async getVectorStoreClient(context, _filter, embeddings, itemIndex) {
 		try {
-			const collectionName = context.getNodeParameter('mongoCollection', itemIndex, '', {
-				extractValue: true,
-			}) as string;
+			const { db } = await mongoClientAndDatabase(context);
+			try {
+				const collectionName = context.getNodeParameter('mongoCollection', itemIndex, '', {
+					extractValue: true,
+				}) as string;
 
-			const mongoVectorIndexName = context.getNodeParameter('vectorIndexName', itemIndex, '', {
-				extractValue: true,
-			}) as string;
+				const mongoVectorIndexName = context.getNodeParameter('vectorIndexName', itemIndex, '', {
+					extractValue: true,
+				}) as string;
 
-			const embeddingFieldName = context.getNodeParameter('embedding', itemIndex, '', {
-				extractValue: true,
-			}) as string;
+				const embeddingFieldName = context.getNodeParameter('embedding', itemIndex, '', {
+					extractValue: true,
+				}) as string;
 
-			const metadataFieldName = context.getNodeParameter('metadata_field', itemIndex, '', {
-				extractValue: true,
-			}) as string;
+				const metadataFieldName = context.getNodeParameter('metadata_field', itemIndex, '', {
+					extractValue: true,
+				}) as string;
 
-			const credentials = await context.getCredentials('mongoDb');
-			const client = new MongoClient(credentials.connectionString as string, {
-				appName: 'devrel.content.n8n_vector_integ', // Added appName
-			});
-			await client.connect();
-			const collection = client.db(credentials.database as string).collection(collectionName);
+				const collection = db.collection(collectionName);
 
-			// test index exists
-			const indexes = await collection.listSearchIndexes().toArray();
+				// test index exists
+				const indexes = await collection.listSearchIndexes().toArray();
 
-			const indexExists = indexes.some((index) => index.name === mongoVectorIndexName);
+				const indexExists = indexes.some((index) => index.name === mongoVectorIndexName);
 
-			if (!indexExists) {
-				throw new NodeOperationError(context.getNode(), `Index ${mongoVectorIndexName} not found`, {
-					itemIndex,
-					description: 'Please check that the index exists in your collection',
+				if (!indexExists) {
+					throw new NodeOperationError(
+						context.getNode(),
+						`Index ${mongoVectorIndexName} not found`,
+						{
+							itemIndex,
+							description: 'Please check that the index exists in your collection',
+						},
+					);
+				}
+
+				return new MongoDBAtlasVectorSearch(embeddings, {
+					collection,
+					indexName: mongoVectorIndexName, // Default index name
+					textKey: metadataFieldName, // Field containing raw text
+					embeddingKey: embeddingFieldName, // Field containing embeddings
 				});
+			} catch (error) {
+				throw new NodeOperationError(context.getNode(), `Error: ${error.message}`, {
+					itemIndex,
+					description: 'Please check your MongoDB Atlas connection details',
+				});
+			} finally {
+				// Don't close the client here to maintain connection pooling
 			}
-
-			return new MongoDBAtlasVectorSearch(embeddings, {
-				collection,
-				indexName: mongoVectorIndexName, // Default index name
-				textKey: metadataFieldName, // Field containing raw text
-				embeddingKey: embeddingFieldName, // Field containing embeddings
-			});
 		} catch (error) {
 			throw new NodeOperationError(context.getNode(), `Error: ${error.message}`, {
 				itemIndex,
@@ -195,44 +218,43 @@ export class VectorStoreMongoDBAtlas extends createVectorStoreNode({
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		try {
-			const mongoCollectionName = context.getNodeParameter('mongoCollection', itemIndex, '', {
-				extractValue: true,
-			}) as string;
-			const embeddingFieldName = context.getNodeParameter('embedding', itemIndex, '', {
-				extractValue: true,
-			}) as string;
+			const { db } = await mongoClientAndDatabase(context);
+			try {
+				const mongoCollectionName = context.getNodeParameter('mongoCollection', itemIndex, '', {
+					extractValue: true,
+				}) as string;
+				const embeddingFieldName = context.getNodeParameter('embedding', itemIndex, '', {
+					extractValue: true,
+				}) as string;
 
-			const metadataFieldName = context.getNodeParameter('metadata_field', itemIndex, '', {
-				extractValue: true,
-			}) as string;
+				const metadataFieldName = context.getNodeParameter('metadata_field', itemIndex, '', {
+					extractValue: true,
+				}) as string;
 
-			const mongoDBAtlasVectorIndex = context.getNodeParameter('vectorIndexName', itemIndex, '', {
-				extractValue: true,
-			}) as string;
+				const mongoDBAtlasVectorIndex = context.getNodeParameter('vectorIndexName', itemIndex, '', {
+					extractValue: true,
+				}) as string;
 
-			const credentials = await context.getCredentials('mongoDb');
-
-			const client = new MongoClient(credentials.connectionString as string, {
-				appName: 'devrel.content.n8n_vector_integ', // Added appName
-			});
-			await client.connect();
-
-			const db = client.db(credentials.database as string);
-
-			// Check if collection exists
-			const collections = await db.listCollections({ name: mongoCollectionName }).toArray();
-			if (collections.length === 0) {
-				await db.createCollection(mongoCollectionName);
+				// Check if collection exists
+				const collections = await db.listCollections({ name: mongoCollectionName }).toArray();
+				if (collections.length === 0) {
+					await db.createCollection(mongoCollectionName);
+				}
+				const collection = db.collection(mongoCollectionName);
+				await MongoDBAtlasVectorSearch.fromDocuments(documents, embeddings, {
+					collection,
+					indexName: mongoDBAtlasVectorIndex, // Default index name
+					textKey: metadataFieldName, // Field containing raw text
+					embeddingKey: embeddingFieldName, // Field containing embeddings
+				});
+			} catch (error) {
+				throw new NodeOperationError(context.getNode(), `Error: ${error.message}`, {
+					itemIndex,
+					description: 'Please check your MongoDB Atlas connection details',
+				});
+			} finally {
+				// Don't close the client here to maintain connection pooling
 			}
-			const collection = db.collection(mongoCollectionName);
-			await MongoDBAtlasVectorSearch.fromDocuments(documents, embeddings, {
-				collection,
-				indexName: mongoDBAtlasVectorIndex, // Default index name
-				textKey: metadataFieldName, // Field containing raw text
-				embeddingKey: embeddingFieldName, // Field containing embeddings
-			});
-
-			await client.close();
 		} catch (error) {
 			throw new NodeOperationError(context.getNode(), `Error: ${error.message}`, {
 				itemIndex,
