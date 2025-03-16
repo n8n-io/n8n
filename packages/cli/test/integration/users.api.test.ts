@@ -4,6 +4,7 @@ import { v4 as uuid } from 'uuid';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UsersController } from '@/controllers/users.controller';
 import type { User } from '@/databases/entities/user';
+import { FolderRepository } from '@/databases/repositories/folder.repository';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
@@ -12,6 +13,7 @@ import { UserRepository } from '@/databases/repositories/user.repository';
 import { ExecutionService } from '@/executions/execution.service';
 import { CacheService } from '@/services/cache/cache.service';
 import { Telemetry } from '@/telemetry';
+import { createFolder } from '@test-integration/db/folders';
 
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import {
@@ -458,6 +460,13 @@ describe('DELETE /users/:id', () => {
 			getPersonalProject(transferee),
 		]);
 
+		await Promise.all([
+			createFolder(memberPersonalProject, { name: 'folder1' }),
+			createFolder(memberPersonalProject, { name: 'folder2' }),
+			createFolder(transfereePersonalProject, { name: 'folder3' }),
+			createFolder(transfereePersonalProject, { name: 'folder1' }),
+		]);
+
 		const deleteSpy = jest.spyOn(Container.get(CacheService), 'deleteMany');
 
 		//
@@ -485,6 +494,7 @@ describe('DELETE /users/:id', () => {
 		const projectRelationRepository = Container.get(ProjectRelationRepository);
 		const sharedWorkflowRepository = Container.get(SharedWorkflowRepository);
 		const sharedCredentialsRepository = Container.get(SharedCredentialsRepository);
+		const folderRepository = Container.get(FolderRepository);
 
 		await Promise.all([
 			// user, their personal project and their relationship to the team project is gone
@@ -574,6 +584,23 @@ describe('DELETE /users/:id', () => {
 				}),
 			).resolves.not.toBeNull(),
 		]);
+
+		// Assert that the folders have been transferred
+
+		const transfereeFolders = await folderRepository.findBy({
+			homeProject: { id: transfereePersonalProject.id },
+		});
+
+		const deletedUserFolders = await folderRepository.findBy({
+			homeProject: { id: memberPersonalProject.id },
+		});
+
+		expect(transfereeFolders).toHaveLength(4);
+		expect(transfereeFolders.map((folder) => folder.name)).toEqual(
+			expect.arrayContaining(['folder1', 'folder2', 'folder3', 'folder1']),
+		);
+
+		expect(deletedUserFolders).toHaveLength(0);
 	});
 
 	test('should fail to delete self', async () => {

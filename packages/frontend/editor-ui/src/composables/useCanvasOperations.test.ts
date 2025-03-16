@@ -51,6 +51,8 @@ import { useClipboard } from '@/composables/useClipboard';
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtils';
 import { nextTick } from 'vue';
 import { useProjectsStore } from '@/stores/projects.store';
+import type { CanvasLayoutEvent } from './useCanvasLayout';
+import { useTelemetry } from './useTelemetry';
 
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = await importOriginal<{}>();
@@ -79,9 +81,12 @@ vi.mock('@/composables/useClipboard', async () => {
 	return { useClipboard: vi.fn(() => ({ copy: copySpy })) };
 });
 
-vi.mock('@/composables/useTelemetry', () => ({
-	useTelemetry: () => ({ track: vi.fn() }),
-}));
+vi.mock('@/composables/useTelemetry', () => {
+	const track = vi.fn();
+	return {
+		useTelemetry: () => ({ track }),
+	};
+});
 
 describe('useCanvasOperations', () => {
 	const router = useRouter();
@@ -443,6 +448,90 @@ describe('useCanvasOperations', () => {
 
 			expect(startRecordingUndoSpy).not.toHaveBeenCalled();
 			expect(stopRecordingUndoSpy).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('tidyUp', () => {
+		it('records history for multiple node position updates', () => {
+			const historyStore = useHistoryStore();
+			const event: CanvasLayoutEvent = {
+				source: 'canvas-button',
+				target: 'all',
+				result: {
+					nodes: [
+						{ id: 'node1', x: 100, y: 100 },
+						{ id: 'node2', x: 200, y: 200 },
+					],
+					boundingBox: { height: 100, width: 100, x: 0, y: 0 },
+				},
+			};
+			const startRecordingUndoSpy = vi.spyOn(historyStore, 'startRecordingUndo');
+			const stopRecordingUndoSpy = vi.spyOn(historyStore, 'stopRecordingUndo');
+
+			const { tidyUp } = useCanvasOperations({ router });
+			tidyUp(event);
+
+			expect(startRecordingUndoSpy).toHaveBeenCalled();
+			expect(stopRecordingUndoSpy).toHaveBeenCalled();
+		});
+
+		it('updates positions for multiple nodes', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const event: CanvasLayoutEvent = {
+				source: 'canvas-button',
+				target: 'all',
+				result: {
+					nodes: [
+						{ id: 'node1', x: 100, y: 100 },
+						{ id: 'node2', x: 200, y: 200 },
+					],
+					boundingBox: { height: 100, width: 100, x: 0, y: 0 },
+				},
+			};
+			const setNodePositionByIdSpy = vi.spyOn(workflowsStore, 'setNodePositionById');
+			workflowsStore.getNodeById
+				.mockReturnValueOnce(
+					createTestNode({
+						id: event.result.nodes[0].id,
+						position: [event.result.nodes[0].x, event.result.nodes[0].y],
+					}),
+				)
+				.mockReturnValueOnce(
+					createTestNode({
+						id: event.result.nodes[1].id,
+						position: [event.result.nodes[1].x, event.result.nodes[1].y],
+					}),
+				);
+
+			const { tidyUp } = useCanvasOperations({ router });
+			tidyUp(event);
+
+			expect(setNodePositionByIdSpy).toHaveBeenCalledTimes(2);
+			expect(setNodePositionByIdSpy).toHaveBeenCalledWith('node1', [100, 100]);
+			expect(setNodePositionByIdSpy).toHaveBeenCalledWith('node2', [200, 200]);
+		});
+
+		it('should send a "User tidied up workflow" telemetry event', () => {
+			const event: CanvasLayoutEvent = {
+				source: 'canvas-button',
+				target: 'all',
+				result: {
+					nodes: [
+						{ id: 'node1', x: 100, y: 100 },
+						{ id: 'node2', x: 200, y: 200 },
+					],
+					boundingBox: { height: 100, width: 100, x: 0, y: 0 },
+				},
+			};
+
+			const { tidyUp } = useCanvasOperations({ router });
+			tidyUp(event);
+
+			expect(useTelemetry().track).toHaveBeenCalledWith('User tidied up canvas', {
+				nodes_count: 2,
+				source: 'canvas-button',
+				target: 'all',
+			});
 		});
 	});
 

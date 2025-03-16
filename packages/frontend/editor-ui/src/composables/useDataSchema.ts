@@ -245,6 +245,7 @@ export type RenderItem = {
 	id: string;
 	icon: string;
 	collapsable?: boolean;
+	nodeName?: string;
 	nodeType?: INodeUi['type'];
 	preview?: boolean;
 	type: 'item';
@@ -371,6 +372,7 @@ export const useFlattenSchema = () => {
 					icon: getIconBySchemaType(schema.type),
 					id,
 					collapsable: true,
+					nodeName: node.name,
 					nodeType: node.type,
 					type: 'item',
 					preview,
@@ -409,6 +411,7 @@ export const useFlattenSchema = () => {
 					icon: getIconBySchemaType(schema.type),
 					collapsable: false,
 					nodeType: node.type,
+					nodeName: node.name,
 					type: 'item',
 					preview,
 				},

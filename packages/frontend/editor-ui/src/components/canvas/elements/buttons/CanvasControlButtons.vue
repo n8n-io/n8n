@@ -8,9 +8,11 @@ import { useI18n } from '@/composables/useI18n';
 const props = withDefaults(
 	defineProps<{
 		zoom?: number;
+		readOnly?: boolean;
 	}>(),
 	{
 		zoom: 1,
+		readOnly: false,
 	},
 );
 
@@ -92,6 +94,7 @@ function onTidyUp() {
 			/>
 		</KeyboardShortcutTooltip>
 		<KeyboardShortcutTooltip
+			v-if="!readOnly"
 			:label="i18n.baseText('nodeView.tidyUp')"
 			:shortcut="{ shiftKey: true, altKey: true, keys: ['T'] }"
 		>
