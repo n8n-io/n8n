@@ -380,7 +380,7 @@ export class LmChatOpenAi implements INodeType {
 			if (!isPlainObject(extraBody)) {
 				throw new NodeOperationError(this.getNode(), 'The ‘extraBody parameter is invalid.');
 			}
-			Object.assign(modelKwargs, jsonParse(options.extraBody));
+			Object.assign(modelKwargs, extraBody);
 		}
 
 		const model = new ChatOpenAI({
