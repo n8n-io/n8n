@@ -543,6 +543,7 @@ const loadPaginationFromQueryString = async () => {
 								:model-value="filtersModel.search"
 								:class="$style.search"
 								:placeholder="i18n.baseText(`${resourceKey}.search.placeholder` as BaseTextKey)"
+								size="small"
 								clearable
 								data-test-id="resources-list-search"
 								@update:model-value="onSearch"
@@ -552,7 +553,7 @@ const loadPaginationFromQueryString = async () => {
 								</template>
 							</n8n-input>
 							<div :class="$style['sort-and-filter']">
-								<n8n-select v-model="sortBy" data-test-id="resources-list-sort">
+								<n8n-select v-model="sortBy" size="small" data-test-id="resources-list-sort">
 									<n8n-option
 										v-for="sortOption in sortOptions"
 										:key="sortOption"
@@ -712,7 +713,7 @@ const loadPaginationFromQueryString = async () => {
 	justify-self: end;
 
 	input {
-		height: 42px;
+		height: 30px;
 	}
 }
 

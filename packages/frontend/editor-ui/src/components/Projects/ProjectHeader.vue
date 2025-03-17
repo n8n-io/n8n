@@ -189,7 +189,7 @@ const onSelect = (action: string) => {
 }
 
 .actions {
-	padding: var(--spacing-2xs) 0 var(--spacing-l);
+	padding: var(--spacing-2xs) 0 var(--spacing-xs);
 }
 
 @include mixins.breakpoint('xs-only') {

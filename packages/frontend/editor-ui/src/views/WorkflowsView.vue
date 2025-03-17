@@ -1177,7 +1177,7 @@ const onCreateWorkflowClick = () => {
 					}}
 				</template>
 				<N8nButton
-					size="large"
+					size="small"
 					icon="folder-plus"
 					type="tertiary"
 					data-test-id="add-folder-button"
@@ -1418,7 +1418,8 @@ const onCreateWorkflowClick = () => {
 }
 
 .add-folder-button {
-	width: 40px;
+	width: 30px;
+	height: 30px;
 }
 
 .breadcrumbs-container {
