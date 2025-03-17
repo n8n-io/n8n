@@ -1,3 +1,4 @@
+import type { InsightsSummary } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
@@ -45,7 +46,9 @@ const parser = z
 		period: z.enum(['previous', 'current']),
 		// TODO: extract to abstract-entity
 		type: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]),
-		total_value: z.number(),
+
+		// depending on db engine, sum(value) can be a number or a string - because of big numbers
+		total_value: z.union([z.number(), z.string()]),
 	})
 	.array();
 
@@ -192,7 +195,7 @@ export class InsightsService {
 			const { period, type, total_value } = row;
 			if (!data[period]) return;
 
-			data[period].byType[NumberToType[type]] = total_value ?? 0;
+			data[period].byType[NumberToType[type]] = total_value ? Number(total_value) : 0;
 		});
 
 		// Get values with defaults for missing data
@@ -225,7 +228,7 @@ export class InsightsService {
 		const previousTimeSaved = getValueByType('previous', 'time_saved_min');
 
 		// Return the formatted result
-		const result = {
+		const result: InsightsSummary = {
 			averageRunTime: {
 				value: currentAvgRuntime,
 				unit: 'time',
