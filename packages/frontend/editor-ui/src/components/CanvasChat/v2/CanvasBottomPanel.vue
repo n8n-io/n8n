@@ -55,11 +55,18 @@ const { canPopOut, isPoppedOut, pipWindow } = usePiPWindow({
 });
 
 function handleToggleOpen() {
-	workflowsStore.setPanelState(panelState.value === 'closed' ? 'attached' : 'closed');
+	if (panelState.value === 'closed') {
+		telemetry.track('User toggled log view', { new_state: 'attached' });
+		workflowsStore.setPanelState('attached');
+	} else {
+		telemetry.track('User toggled log view', { new_state: 'collapsed' });
+		workflowsStore.setPanelState('closed');
+	}
 }
 
 function handleClickHeader() {
 	if (panelState.value === 'closed') {
+		telemetry.track('User toggled log view', { new_state: 'attached' });
 		workflowsStore.setPanelState('attached');
 	}
 }
