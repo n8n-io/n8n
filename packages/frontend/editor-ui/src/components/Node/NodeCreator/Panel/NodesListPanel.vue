@@ -33,13 +33,17 @@ const activeViewStack = computed(() => useViewStacks().activeViewStack);
 const viewStacks = computed(() => useViewStacks().viewStacks);
 
 const isActionsMode = computed(() => useViewStacks().activeViewStackMode === 'actions');
-const searchPlaceholder = computed(() =>
-	isActionsMode.value
+const searchPlaceholder = computed(() => {
+	let node = activeViewStack.value.title as string;
+	if (activeViewStack.value.communityNodeDetails) {
+		node = activeViewStack.value.communityNodeDetails.title;
+	}
+	return isActionsMode.value
 		? i18n.baseText('nodeCreator.actionsCategory.searchActions', {
-				interpolate: { node: activeViewStack.value.title as string },
+				interpolate: { node },
 			})
-		: i18n.baseText('nodeCreator.searchBar.searchNodes'),
-);
+		: i18n.baseText('nodeCreator.searchBar.searchNodes');
+});
 
 const nodeCreatorView = computed(() => useNodeCreatorStore().selectedView);
 

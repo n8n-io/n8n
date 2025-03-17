@@ -125,14 +125,13 @@ function onSelected(item: INodeCreateElement) {
 				icon,
 				iconType: iconUrl ? 'file' : 'icon',
 			};
+			const npmPackageName = item.key.split('.')[0];
 			const communityNodeDetails = {
 				title: item.properties.displayName,
 				description: item.properties.description ?? 'Community',
 				nodeIcon,
 				installed: true,
-				verified: true,
-				installs: 1342,
-				publishedBy: 'n8n-contributor',
+				npmPackageName,
 			};
 			if (nodeActions.length) {
 				const transformedActions = nodeActions?.map((a) =>

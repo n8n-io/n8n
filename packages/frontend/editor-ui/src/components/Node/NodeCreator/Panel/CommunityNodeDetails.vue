@@ -1,13 +1,65 @@
 <script setup lang="ts">
+import { onMounted, ref } from 'vue';
 import { useViewStacks } from '../composables/useViewStacks';
 
 const { activeViewStack } = useViewStacks();
 
 const { communityNodeDetails } = activeViewStack;
 
-export interface Props {}
+interface DownloadData {
+	downloads: Array<{ downloads: number }>;
+}
 
-withDefaults(defineProps<Props>(), {});
+const publisherName = ref<string | undefined>(undefined);
+const downloads = ref<string | null>(null);
+
+async function installPackage() {
+	console.log('Install package');
+}
+
+const formatNumber = (number: number) => {
+	if (!number) return null;
+	return new Intl.NumberFormat('en-US').format(number);
+};
+
+async function fetchPackageInfo(packageName: string) {
+	const url = `https://registry.npmjs.org/${packageName}`;
+
+	try {
+		const response = await fetch(url);
+
+		if (!response.ok) {
+			console.log('Could not get metadata for package', packageName);
+			return;
+		}
+
+		const data = await response.json();
+		const publisher = data.maintainers?.[0]?.name as string | undefined;
+		publisherName.value = publisher;
+
+		const today = new Date().toISOString().split('T')[0];
+		const downloadsUrl = `https://api.npmjs.org/downloads/range/2022-01-01:${today}/${packageName}`;
+
+		const downloadsResponse = await fetch(downloadsUrl);
+		if (!downloadsResponse.ok) {
+			console.log('Could not get downloads for package', packageName);
+			return;
+		}
+
+		const downloadsData: DownloadData = await downloadsResponse.json();
+		const total = downloadsData.downloads.reduce((sum, day) => sum + day.downloads, 0);
+
+		downloads.value = formatNumber(total);
+	} catch (error) {
+		console.error(error);
+	}
+}
+
+onMounted(async () => {
+	if (communityNodeDetails?.npmPackageName) {
+		await fetchPackageInfo(communityNodeDetails?.npmPackageName);
+	}
+});
 </script>
 
 <template>
@@ -26,28 +78,45 @@ withDefaults(defineProps<Props>(), {});
 				/>
 				<span>{{ communityNodeDetails?.title }}</span>
 			</div>
-			<N8nButton
-				:loading="false"
-				:disabled="false"
-				label="Install Node"
-				size="small"
-				@click="() => console.log('installing node')"
-			/>
+			<div>
+				<div v-if="communityNodeDetails?.installed" :class="$style.installed">
+					<n8n-icon :class="$style.installedIcon" icon="users" />
+					<n8n-text color="text-light" size="small" bold> Installed </n8n-text>
+				</div>
+				<N8nButton
+					v-else
+					:loading="false"
+					:disabled="false"
+					label="Install Node"
+					size="small"
+					@click="installPackage"
+				/>
+			</div>
 		</div>
-		<p :class="$style.description">{{ communityNodeDetails?.description }}</p>
+		<n8n-text :class="$style.description" color="text-base" size="medium">
+			{{ communityNodeDetails?.description }}
+		</n8n-text>
 		<div :class="$style.separator"></div>
 		<div :class="$style.info">
 			<div>
-				<FontAwesomeIcon :class="$style.tooltipIcon" icon="check-circle" />
-				{{ communityNodeDetails?.verified ? 'Verified' : 'Unverified' }}
+				<div v-if="communityNodeDetails?.verified">
+					<FontAwesomeIcon :class="$style.tooltipIcon" icon="check-circle" />
+					<n8n-text color="text-light" size="xsmall" bold> Verified </n8n-text>
+				</div>
+				<div v-else>
+					<FontAwesomeIcon :class="$style.tooltipIconDanger" icon="exclamation-triangle" />
+					<n8n-text color="text-light" size="xsmall" bold> Unverified </n8n-text>
+				</div>
 			</div>
-			<div>
+			<div v-if="downloads">
 				<FontAwesomeIcon :class="$style.tooltipIcon" icon="download" />
-				{{ communityNodeDetails?.installs }} installs
+				<n8n-text color="text-light" size="xsmall" bold> {{ downloads }} Downloads </n8n-text>
 			</div>
-			<div>
-				<FontAwesomeIcon :class="$style.tooltipIcon" icon="user" /> Published by
-				{{ communityNodeDetails?.publishedBy }}
+			<div v-if="publisherName">
+				<FontAwesomeIcon :class="$style.tooltipIcon" icon="user" />
+				<n8n-text color="text-light" size="xsmall" bold>
+					Published by {{ publisherName }}
+				</n8n-text>
 			</div>
 		</div>
 	</div>
@@ -79,32 +148,43 @@ withDefaults(defineProps<Props>(), {});
 
 .description {
 	margin: var(--spacing-m) 0;
-	font-size: var(--font-size-s);
-	line-height: 1rem;
-	color: var(--node-creator-description-colos);
 }
 .separator {
-	height: 1px;
-	background: #e0e0e0;
-	margin: 5px 0;
+	height: var(--border-width-base);
+	background: var(--color-foreground-base);
+	margin-bottom: var(--spacing-m);
 }
 .info {
 	display: flex;
 	align-items: center;
-	font-size: var(--font-size-3xs);
-	color: var(--color-text-light);
 	gap: var(--spacing-s);
-	margin-top: var(--spacing-2xs);
-	margin-bottom: var(--spacing-2xs);
+	margin-bottom: var(--spacing-m);
 }
 .info div {
 	display: flex;
 	align-items: center;
-	gap: 5px;
+	gap: var(--spacing-3xs);
 }
 
 .tooltipIcon {
 	color: var(--color-text-light);
 	font-size: var(--font-size-2xs);
+}
+
+.tooltipIconDanger {
+	color: var(--color-danger);
+	font-size: var(--font-size-2xs);
+}
+
+.installedIcon {
+	margin-right: var(--spacing-3xs);
+	color: var(--color-text-base);
+	font-size: var(--font-size-2xs);
+}
+
+.installed {
+	display: flex;
+	align-items: center;
+	margin-right: var(--spacing-xs);
 }
 </style>

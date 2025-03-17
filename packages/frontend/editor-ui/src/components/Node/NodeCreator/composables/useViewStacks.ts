@@ -74,11 +74,10 @@ interface ViewStack {
 	sections?: string[] | NodeViewItemSection[];
 	communityNodeDetails?: {
 		title: string;
+		npmPackageName?: string;
 		description: string;
 		installed: boolean;
-		verified: boolean;
-		installs: number;
-		publishedBy: string;
+		verified?: boolean;
 		nodeIcon?: {
 			iconType?: string;
 			icon?: Themed<string>;
