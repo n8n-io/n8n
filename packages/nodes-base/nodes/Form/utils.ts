@@ -342,6 +342,10 @@ export async function prepareFormReturnItem(
 			continue;
 		}
 
+		if (field.fieldType === 'hiddenField') {
+			field.fieldLabel = field.fieldName as string;
+		}
+
 		if (field.fieldType === 'number') {
 			value = Number(value);
 		}
