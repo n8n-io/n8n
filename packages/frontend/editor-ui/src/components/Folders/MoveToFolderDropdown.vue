@@ -74,6 +74,7 @@ const onFolderSelected = (folderId: string) => {
 			:remote-method="fetchAvailableFolders"
 			:loading="loading"
 			:placeholder="i18n.baseText('folders.move.modal.select.placeholder')"
+			:no-data-text="i18n.baseText('folders.move.modal.no.data.label')"
 			option-label="name"
 			option-value="id"
 			@update:model-value="onFolderSelected"
