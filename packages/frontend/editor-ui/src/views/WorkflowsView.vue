@@ -180,6 +180,7 @@ const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const isShareable = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
 );
+
 const showFolders = computed(() => {
 	return settingsStore.isFoldersFeatureEnabled && !isOverviewPage.value;
 });
@@ -296,6 +297,14 @@ const emptyListDescription = computed(() => {
 	} else {
 		return i18n.baseText('workflows.empty.description');
 	}
+});
+
+const hasFilters = computed(() => {
+	return !!(
+		filters.value.search ||
+		filters.value.status !== StatusFilter.ALL ||
+		filters.value.tags.length
+	);
 });
 
 /**
@@ -1104,6 +1113,16 @@ const onWorkflowMoved = async (payload: {
 		toast.showError(error, i18n.baseText('folders.move.workflow.error.title'));
 	}
 };
+
+const onCreateWorkflowClick = () => {
+	void router.push({
+		name: VIEWS.NEW_WORKFLOW,
+		query: {
+			projectId: currentProject.value?.id,
+			parentFolderId: route.params.folderId as string,
+		},
+	});
+};
 </script>
 
 <template>
@@ -1308,6 +1327,33 @@ const onWorkflowMoved = async (payload: {
 				</N8nSelect>
 			</div>
 		</template>
+		<template #postamble>
+			<div
+				v-if="workflowsAndFolders.length === 0 && currentFolder && !hasFilters"
+				:class="$style['empty-folder-container']"
+			>
+				<n8n-action-box
+					data-test-id="empty-folder-action-box"
+					:heading="
+						i18n.baseText('folders.empty.actionbox.title', {
+							interpolate: { folderName: currentFolder.name },
+						})
+					"
+					:button-text="i18n.baseText('folders.actions.create.workflow')"
+					button-type="secondary"
+					:button-disabled="readOnlyEnv || !projectPermissions.workflow.create"
+					@click:button="onCreateWorkflowClick"
+				>
+					<template #disabledButtonTooltip>
+						{{
+							readOnlyEnv
+								? i18n.baseText('readOnlyEnv.cantAdd.workflow')
+								: i18n.baseText('generic.missing.permissions')
+						}}
+					</template></n8n-action-box
+				>
+			</div>
+		</template>
 	</ResourcesListLayout>
 </template>
 
@@ -1372,6 +1418,12 @@ const onWorkflowMoved = async (payload: {
 		margin: 0;
 		height: 40px;
 		width: 400px;
+	}
+}
+
+.empty-folder-container {
+	button {
+		margin-top: var(--spacing-2xs);
 	}
 }
 </style>

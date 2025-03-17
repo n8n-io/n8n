@@ -660,7 +660,12 @@ const loadPaginationFromQueryString = async () => {
 					</n8n-datatable>
 				</div>
 
-				<n8n-text v-else color="text-base" size="medium" data-test-id="resources-list-empty">
+				<n8n-text
+					v-else-if="hasAppliedFilters() || filtersModel.search !== ''"
+					color="text-base"
+					size="medium"
+					data-test-id="resources-list-empty"
+				>
 					{{ i18n.baseText(`${resourceKey}.noResults` as BaseTextKey) }}
 				</n8n-text>
 
