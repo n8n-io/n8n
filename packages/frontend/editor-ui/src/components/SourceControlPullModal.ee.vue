@@ -64,6 +64,7 @@ const files = computed<ItemsList>(() =>
 		SOURCE_CONTROL_FILE_TYPE.credential,
 		SOURCE_CONTROL_FILE_TYPE.variables,
 		SOURCE_CONTROL_FILE_TYPE.tags,
+		SOURCE_CONTROL_FILE_TYPE.folders,
 	].reduce<ItemsList>((acc, fileType) => {
 		if (!groupedFilesByType.value[fileType]) {
 			return acc;

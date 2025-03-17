@@ -20,13 +20,16 @@ import { createTeamProject, getPersonalProject } from '../shared/db/projects';
 import { createMember, getGlobalOwner } from '../shared/db/users';
 import { randomCredentialPayload } from '../shared/random';
 import * as testDb from '../shared/test-db';
+import { FolderRepository } from '@/databases/repositories/folder.repository';
 
 describe('SourceControlImportService', () => {
 	let credentialsRepository: CredentialsRepository;
 	let projectRepository: ProjectRepository;
 	let sharedCredentialsRepository: SharedCredentialsRepository;
 	let userRepository: UserRepository;
+	let folderRepository: FolderRepository;
 	let service: SourceControlImportService;
+
 	const cipher = mockInstance(Cipher);
 
 	beforeAll(async () => {
@@ -36,6 +39,7 @@ describe('SourceControlImportService', () => {
 		projectRepository = Container.get(ProjectRepository);
 		sharedCredentialsRepository = Container.get(SharedCredentialsRepository);
 		userRepository = Container.get(UserRepository);
+		folderRepository = Container.get(FolderRepository);
 		service = new SourceControlImportService(
 			mock(),
 			mock(),
@@ -53,6 +57,7 @@ describe('SourceControlImportService', () => {
 			mock(),
 			mock(),
 			mock(),
+			folderRepository,
 			mock<InstanceSettings>({ n8nFolder: '/some-path' }),
 		);
 	});

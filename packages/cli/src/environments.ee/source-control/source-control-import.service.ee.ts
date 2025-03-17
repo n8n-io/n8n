@@ -42,10 +42,10 @@ import {
 } from './constants';
 import { getCredentialExportPath, getWorkflowExportPath } from './source-control-helper.ee';
 import type { ExportableCredential } from './types/exportable-credential';
+import type { ExportableFolder, WorkflowFolderMapping } from './types/exportable-folders';
 import type { ResourceOwner } from './types/resource-owner';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 import { VariablesService } from '../variables/variables.service.ee';
-import { ExportableFolder, WorkflowFolderMapping } from './types/exportable-folders';
 
 @Service()
 export class SourceControlImportService {
@@ -196,7 +196,7 @@ export class SourceControlImportService {
 
 	async getRemoteFoldersAndMappingsFromFile(): Promise<{
 		folders: ExportableFolder[];
-		mappings: WorkflowFolderMapping[];
+		workflowMappings: WorkflowFolderMapping[];
 	}> {
 		const foldersFile = await glob(SOURCE_CONTROL_FOLDERS_EXPORT_FILE, {
 			cwd: this.gitFolder,
@@ -206,18 +206,18 @@ export class SourceControlImportService {
 			this.logger.debug(`Importing folders from file ${foldersFile[0]}`);
 			const mappedFolders = jsonParse<{
 				folders: ExportableFolder[];
-				mappings: WorkflowFolderMapping[];
+				workflowMappings: WorkflowFolderMapping[];
 			}>(await fsReadFile(foldersFile[0], { encoding: 'utf8' }), {
-				fallbackValue: { folders: [], mappings: [] },
+				fallbackValue: { folders: [], workflowMappings: [] },
 			});
 			return mappedFolders;
 		}
-		return { folders: [], mappings: [] };
+		return { folders: [], workflowMappings: [] };
 	}
 
 	async getLocalFoldersAndMappingsFromDb(): Promise<{
 		folders: ExportableFolder[];
-		mappings: WorkflowFolderMapping[];
+		workflowMappings: WorkflowFolderMapping[];
 	}> {
 		const localFolders = await this.folderRepository.find({
 			relations: ['parentFolder', 'homeProject'],
@@ -248,7 +248,7 @@ export class SourceControlImportService {
 				parentFolderId: f.parentFolder?.id ?? null,
 				homeProjectId: f.homeProject.id,
 			})),
-			mappings: localMappings.map((m) => ({
+			workflowMappings: localMappings.map((m) => ({
 				parentFolderId: m.parentFolder?.id ?? '',
 				workflowId: m.id,
 			})),

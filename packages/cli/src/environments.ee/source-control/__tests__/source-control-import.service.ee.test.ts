@@ -168,11 +168,14 @@ describe('SourceControlImportService', () => {
 		it('should parse folders and mappings file correctly', async () => {
 			globMock.mockResolvedValue(['/mock/folders.json']);
 
-			const mockFoldersData: { folders: ExportableFolder[]; mappings: WorkflowFolderMapping[] } = {
+			const mockFoldersData: {
+				folders: ExportableFolder[];
+				workflowMappings: WorkflowFolderMapping[];
+			} = {
 				folders: [
 					{ id: 'folder1', name: 'folder 1', parentFolderId: null, homeProjectId: 'project1' },
 				],
-				mappings: [{ workflowId: 'workflow1', parentFolderId: 'folder1' }],
+				workflowMappings: [{ workflowId: 'workflow1', parentFolderId: 'folder1' }],
 			};
 
 			fsReadFile.mockResolvedValue(JSON.stringify(mockFoldersData));
@@ -180,7 +183,7 @@ describe('SourceControlImportService', () => {
 			const result = await service.getRemoteFoldersAndMappingsFromFile();
 
 			expect(result.folders).toEqual(mockFoldersData.folders);
-			expect(result.mappings).toEqual(mockFoldersData.mappings);
+			expect(result.workflowMappings).toEqual(mockFoldersData.workflowMappings);
 		});
 
 		it('should return empty folders and mappings if no file found', async () => {
@@ -189,7 +192,7 @@ describe('SourceControlImportService', () => {
 			const result = await service.getRemoteFoldersAndMappingsFromFile();
 
 			expect(result.folders).toHaveLength(0);
-			expect(result.mappings).toHaveLength(0);
+			expect(result.workflowMappings).toHaveLength(0);
 		});
 	});
 

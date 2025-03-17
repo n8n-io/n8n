@@ -256,7 +256,7 @@ export class SourceControlExportService {
 							parentFolderId: f.parentFolder?.id ?? null,
 							homeProjectId: f.homeProject.id,
 						})),
-						mappings: mappings.map((m) => ({
+						workflowMappings: mappings.map((m) => ({
 							workflowId: m.id,
 							parentFolderId: m.parentFolder?.id ?? null,
 						})),
