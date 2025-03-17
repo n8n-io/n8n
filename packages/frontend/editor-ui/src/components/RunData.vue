@@ -2325,7 +2325,7 @@ defineExpose({ enterEditMode });
 	color: black;
 	border-radius: var(--border-radius-base);
 	padding: 0 1px;
-	font-weight: normal;
+	font-weight: var(--font-weight-regular);
 	font-style: normal;
 }
 </style>

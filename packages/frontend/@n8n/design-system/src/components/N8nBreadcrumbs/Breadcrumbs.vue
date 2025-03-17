@@ -351,7 +351,7 @@ const handleTooltipClose = () => {
 	.item * {
 		color: var(--color-text-base);
 		font-size: var(--font-size-2xs);
-		font-weight: 600;
+		font-weight: var(--font-weight-bold);
 	}
 
 	.item a:hover * {

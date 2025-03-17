@@ -256,12 +256,12 @@ const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
 <template>
 	<n8n-card :class="$style.cardLink" data-test-id="workflow-card" @click="onClick">
 		<template #header>
-			<n8n-heading tag="h2" bold :class="$style.cardHeading" data-test-id="workflow-card-name">
+			<n8n-text tag="h2" bold :class="$style.cardHeading" data-test-id="workflow-card-name">
 				{{ data.name }}
 				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
 					{{ locale.baseText('workflows.item.readonly') }}
 				</N8nBadge>
-			</n8n-heading>
+			</n8n-text>
 		</template>
 		<div :class="$style.cardDescription">
 			<n8n-text color="text-light" size="small">
