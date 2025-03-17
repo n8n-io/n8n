@@ -55,7 +55,6 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-import { useFoldersStore } from '@/stores/folders.store';
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -79,7 +78,6 @@ const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const npsSurveyStore = useNpsSurveyStore();
-const foldersStore = useFoldersStore();
 const i18n = useI18n();
 
 const router = useRouter();
@@ -204,14 +202,10 @@ const workflowTagIds = computed(() => {
 
 const currentFolder = computed(() => {
 	if (props.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-		console.log('CURRENT FOLDER 1', props.id);
-
 		return undefined;
 	}
 
 	const workflow = workflowsStore.getWorkflowById(props.id);
-	console.log('CURRENT FOLDER 2', workflow);
-
 	if (!workflow) {
 		return undefined;
 	}
