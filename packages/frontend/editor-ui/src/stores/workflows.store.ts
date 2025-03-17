@@ -116,6 +116,8 @@ const createEmptyWorkflow = (): IWorkflowDb => ({
 let cachedWorkflowKey: string | null = '';
 let cachedWorkflow: Workflow | null = null;
 
+type ChatPanelState = 'closed' | 'attached' | 'floating';
+
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const uiStore = useUIStore();
 	const telemetry = useTelemetry();
@@ -145,8 +147,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const isInDebugMode = ref(false);
 	const chatMessages = ref<string[]>([]);
 	const chatPartialExecutionDestinationNode = ref<string | null>(null);
-	const isChatPanelOpen = ref(false);
-	const isLogsPanelOpen = ref(false);
+	const chatPanelState = ref<ChatPanelState>('closed');
 
 	const { executingNode, addExecutingNode, removeExecutingNode, clearNodeExecutionQueue } =
 		useExecutingNode();
@@ -1207,7 +1208,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		// If chat trigger node is removed, close chat
 		if (node.type === CHAT_TRIGGER_NODE_TYPE) {
-			setPanelOpen('chat', false);
+			setPanelState('closed');
 		}
 
 		if (workflow.value.pinData && workflow.value.pinData.hasOwnProperty(node.name)) {
@@ -1669,12 +1670,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	// End Canvas V2 Functions
 	//
 
-	function setPanelOpen(panel: 'chat' | 'logs', isOpen: boolean) {
-		if (panel === 'chat') {
-			isChatPanelOpen.value = isOpen;
-		}
-		// Logs panel open/close is tied to the chat panel open/close
-		isLogsPanelOpen.value = isOpen;
+	function setPanelState(state: ChatPanelState) {
+		chatPanelState.value = state;
 	}
 
 	function markExecutionAsStopped() {
@@ -1736,9 +1733,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getAllLoadedFinishedExecutions,
 		getWorkflowExecution,
 		getPastChatMessages,
-		isChatPanelOpen: computed(() => isChatPanelOpen.value),
-		isLogsPanelOpen: computed(() => isLogsPanelOpen.value),
-		setPanelOpen,
+		chatPanelState: computed(() => chatPanelState.value),
+		setPanelState,
 		outgoingConnectionsByNodeName,
 		incomingConnectionsByNodeName,
 		nodeHasOutputConnection,
