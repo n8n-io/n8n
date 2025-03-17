@@ -110,6 +110,16 @@ declare global {
 			getVariant: (name: string) => string | boolean | undefined;
 			override: (name: string, value: string) => void;
 		};
+		// https://developer.mozilla.org/en-US/docs/Web/API/DocumentPictureInPicture
+		documentPictureInPicture?: {
+			window: Window | null;
+			requestWindow: (options?: {
+				width?: number;
+				height?: number;
+				preferInitialWindowPlacement?: boolean;
+				disallowReturnToOpener?: boolean;
+			}) => Promise<Window>;
+		};
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		Cypress: unknown;
 	}
