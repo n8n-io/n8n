@@ -16,8 +16,8 @@ import type { IRowResponse, IDtableMetadataColumn } from '../Interfaces';
 
 export const properties: INodeProperties[] = [
 	{
-		displayName: 'Additional Options',
-		name: 'additionalOptions',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
@@ -57,7 +57,7 @@ export async function execute(
 	// get parameters
 	const tableName = this.getNodeParameter('tableName', index) as string;
 	const rowId = this.getNodeParameter('rowId', index) as string;
-	const additionalOptions = this.getNodeParameter('additionalOptions', index) as IDataObject;
+	const options = this.getNodeParameter('options', index) as IDataObject;
 
 	// get collaborators
 	const collaborators = await getBaseCollaborators.call(this);
@@ -70,7 +70,7 @@ export async function execute(
 		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/sql/',
 		{
 			sql: `SELECT * FROM \`${tableName}\` WHERE _id = '${rowId}'`,
-			convert_keys: additionalOptions.convert ?? true,
+			convert_keys: options.convert ?? true,
 		},
 	)) as IRowResponse;
 	const metadata = sqlResult.metadata as IDtableMetadataColumn[];
@@ -78,7 +78,7 @@ export async function execute(
 
 	// hide columns like button
 	rows.map((row) => enrichColumns(row, metadata, collaborators));
-	const simple = additionalOptions.simple ?? true;
+	const simple = options.simple ?? true;
 	// remove columns starting with _ if simple;
 	if (simple) {
 		rows.map((row) => simplify_new(row));

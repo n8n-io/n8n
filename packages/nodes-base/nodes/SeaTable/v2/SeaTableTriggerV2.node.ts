@@ -121,8 +121,8 @@ export class SeaTableTriggerV2 implements INodeType {
 						'Select the digital-signature column that should be tracked. Choose from the list, or specify the name using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				},
 				{
-					displayName: 'Additional Options',
-					name: 'additionalOptions',
+					displayName: 'Options',
+					name: 'options',
 					type: 'collection',
 					placeholder: 'Add Option',
 					default: {},
@@ -169,7 +169,7 @@ export class SeaTableTriggerV2 implements INodeType {
 		const assetColumn = (
 			event === 'newAsset' ? this.getNodeParameter('assetColumn') : ''
 		) as string;
-		const additionalOptions = this.getNodeParameter('additionalOptions') as IDataObject;
+		const options = this.getNodeParameter('options') as IDataObject;
 
 		const ctx: ICtx = {};
 
@@ -194,7 +194,7 @@ export class SeaTableTriggerV2 implements INodeType {
 			const endpoint = '/api-gateway/api/v2/dtables/{{dtable_uuid}}/sql';
 			sqlResult = await seaTableApiRequest.call(this, ctx, 'POST', endpoint, {
 				sql: `SELECT _id, _ctime, _mtime, \`${assetColumn}\` FROM ${tableName} WHERE \`${assetColumn}\` IS NOT NULL ORDER BY _mtime DESC LIMIT ${limit}`,
-				convert_keys: additionalOptions.convert ?? true,
+				convert_keys: options.convert ?? true,
 			});
 
 			metadata = sqlResult.metadata as IDtableMetadataColumn[];
@@ -236,7 +236,7 @@ export class SeaTableTriggerV2 implements INodeType {
 					table_name: tableName,
 					view_name: viewName,
 					limit,
-					convert_keys: additionalOptions.convert ?? true,
+					convert_keys: options.convert ?? true,
 				},
 			);
 
@@ -258,7 +258,7 @@ export class SeaTableTriggerV2 implements INodeType {
 			)}" ORDER BY ${filterField} DESC LIMIT ${limit}`;
 			sqlResult = await seaTableApiRequest.call(this, ctx, 'POST', endpoint, {
 				sql: sqlQuery,
-				convert_keys: additionalOptions.convert ?? true,
+				convert_keys: options.convert ?? true,
 			});
 			metadata = sqlResult.metadata as IDtableMetadataColumn[];
 			rows = sqlResult.results;
@@ -273,7 +273,7 @@ export class SeaTableTriggerV2 implements INodeType {
 		const collaborators: ICollaborator[] = collaboratorsResult.user_list || [];
 
 		if (Array.isArray(rows) && rows.length > 0) {
-			const simple = additionalOptions.simple ?? true;
+			const simple = options.simple ?? true;
 			// remove columns starting with _ if simple;
 			if (simple) {
 				rows = rows.map((row) => simplify_new(row));

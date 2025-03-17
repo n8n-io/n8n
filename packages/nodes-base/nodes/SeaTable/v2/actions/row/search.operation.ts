@@ -38,8 +38,8 @@ export const properties: INodeProperties[] = [
 		description: 'What to look for?',
 	},
 	{
-		displayName: 'Additional Options',
-		name: 'additionalOptions',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
@@ -96,7 +96,7 @@ export async function execute(
 	const searchColumn = this.getNodeParameter('searchColumn', index) as string;
 	const searchTerm = this.getNodeParameter('searchTerm', index) as string | number;
 	let searchTermString = String(searchTerm);
-	const additionalOptions = this.getNodeParameter('additionalOptions', index) as IDataObject;
+	const options = this.getNodeParameter('options', index) as IDataObject;
 
 	// get collaborators
 	const collaborators = await getBaseCollaborators.call(this);
@@ -104,12 +104,12 @@ export async function execute(
 	// this is the base query. The WHERE has to be finalized...
 	let sqlQuery = `SELECT * FROM \`${tableName}\` WHERE \`${searchColumn}\``;
 
-	if (additionalOptions.insensitive) {
+	if (options.insensitive) {
 		searchTermString = searchTermString.toLowerCase();
 		sqlQuery = `SELECT * FROM \`${tableName}\` WHERE lower(\`${searchColumn}\`)`;
 	}
 
-	const wildcard = additionalOptions.wildcard ?? true;
+	const wildcard = options.wildcard ?? true;
 
 	if (wildcard) sqlQuery = sqlQuery + ' LIKE "%' + searchTermString + '%"';
 	else if (!wildcard) sqlQuery = sqlQuery + ' = "' + searchTermString + '"';
@@ -121,7 +121,7 @@ export async function execute(
 		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/sql',
 		{
 			sql: sqlQuery,
-			convert_keys: additionalOptions.convert ?? false,
+			convert_keys: options.convert ?? true,
 		},
 	)) as IRowResponse;
 	const metadata = sqlResult.metadata as IDtableMetadataColumn[];
@@ -131,7 +131,7 @@ export async function execute(
 	rows.map((row) => enrichColumns(row, metadata, collaborators));
 
 	// remove columns starting with _;
-	if (additionalOptions.simple) {
+	if (options.simple) {
 		rows.map((row) => simplify_new(row));
 	}
 

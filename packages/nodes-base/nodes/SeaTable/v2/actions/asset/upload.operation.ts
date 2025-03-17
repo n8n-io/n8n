@@ -63,8 +63,8 @@ const properties: INodeProperties[] = [
 		description: 'Name of the binary property which contains the data for the file to be written',
 	},
 	{
-		displayName: 'Additional Options',
-		name: 'additionalOptions',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
@@ -117,7 +117,7 @@ export async function execute(
 	const relativePath =
 		uploadColumnType === 'image' ? uploadLink.img_relative_path : uploadLink.file_relative_path;
 
-	const additionalOptions = this.getNodeParameter('additionalOptions', index) as IDataObject;
+	const options = this.getNodeParameter('options', index) as IDataObject;
 
 	// get server url
 	const credentials: any = await this.getCredentials('seaTableApi');
@@ -138,7 +138,7 @@ export async function execute(
 
 	// if there are already assets attached to the column
 	let existingAssetArray = [];
-	const append = additionalOptions.append ?? true;
+	const append = options.append ?? true;
 	if (append) {
 		const rowToUpdate = await seaTableApiRequest.call(
 			this,
@@ -157,7 +157,7 @@ export async function execute(
 	// Get the binary data and prepare asset for upload
 	const fileBufferData = await this.helpers.getBinaryDataBuffer(index, dataPropertyName);
 	const binaryData = this.helpers.assertBinaryData(index, dataPropertyName);
-	const options = {
+	const requestOptions = {
 		formData: {
 			file: {
 				value: fileBufferData,
@@ -167,7 +167,7 @@ export async function execute(
 				},
 			},
 			parent_dir: uploadLink.parent_path,
-			replace: additionalOptions.replace ? '1' : '0',
+			replace: options.replace ? '1' : '0',
 			relative_path: relativePath,
 		},
 	};
@@ -181,7 +181,7 @@ export async function execute(
 		{},
 		{},
 		'',
-		options,
+		requestOptions,
 	);
 
 	// attach the asset to a column in a base
