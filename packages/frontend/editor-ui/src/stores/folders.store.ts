@@ -124,7 +124,6 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 			rootStore.restApiContext,
 			projectId,
 			{
-				take: !filter?.name ? 5 : undefined,
 				sortBy: 'updatedAt:desc',
 			},
 			{

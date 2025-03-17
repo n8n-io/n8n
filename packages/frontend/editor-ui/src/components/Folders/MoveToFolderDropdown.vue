@@ -3,7 +3,7 @@ import { useI18n } from '@/composables/useI18n';
 import type { FolderListItem } from '@/Interface';
 import { useFoldersStore } from '@/stores/folders.store';
 import { N8nSelect } from '@n8n/design-system';
-import { nextTick, onMounted, ref } from 'vue';
+import { ref } from 'vue';
 
 /**
  * This component is used to select a folder to move a resource (folder or workflow) to.
@@ -62,11 +62,6 @@ const onFolderSelected = (folderId: string) => {
 	}
 	emit('folder:selected', { id: folderId, name: selectedFolder.name });
 };
-
-onMounted(async () => {
-	await nextTick();
-	await fetchAvailableFolders();
-});
 </script>
 
 <template>
