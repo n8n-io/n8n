@@ -10,7 +10,7 @@ import {
 
 import { logWrapper } from '@utils/logWrapper';
 
-import { MemoryVectorStoreManager } from '../shared/MemoryVectorStoreManager';
+import { MemoryVectorStoreManager } from '../shared/memory/MemoryVectorStoreManager';
 
 // This node is deprecated. Use VectorStoreInMemory instead.
 export class VectorStoreInMemoryLoad implements INodeType {

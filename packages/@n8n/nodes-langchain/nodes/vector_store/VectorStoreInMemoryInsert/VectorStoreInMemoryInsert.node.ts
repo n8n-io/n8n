@@ -11,7 +11,7 @@ import {
 
 import type { N8nJsonLoader } from '@utils/N8nJsonLoader';
 
-import { MemoryVectorStoreManager } from '../shared/MemoryVectorStoreManager';
+import { MemoryVectorStoreManager } from '../shared/memory/MemoryVectorStoreManager';
 import { processDocuments } from '../shared/processDocuments';
 
 // This node is deprecated. Use VectorStoreInMemory instead.

@@ -2,7 +2,7 @@ import type { MemoryVectorStore } from 'langchain/vectorstores/memory';
 import type { INodeProperties } from 'n8n-workflow';
 
 import { createVectorStoreNode } from '../shared/createVectorStoreNode';
-import { MemoryVectorStoreManager } from '../shared/MemoryVectorStoreManager';
+import { MemoryVectorStoreManager } from '../shared/memory/MemoryVectorStoreManager';
 
 const insertFields: INodeProperties[] = [
 	{
