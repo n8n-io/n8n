@@ -484,7 +484,7 @@ describe('VirtualSchema.vue', () => {
 			const trackSpy = vi.spyOn(telemetry, 'track');
 			const posthogStore = usePostHog();
 
-			vi.spyOn(posthogStore, 'isFeatureEnabled').mockReturnValue(true);
+			vi.spyOn(posthogStore, 'isVariantEnabled').mockReturnValue(true);
 			const schemaPreviewStore = useSchemaPreviewStore();
 			vi.spyOn(schemaPreviewStore, 'getSchemaPreview').mockResolvedValue(
 				createResultOk({
@@ -562,7 +562,7 @@ describe('VirtualSchema.vue', () => {
 			data: [],
 		});
 		const posthogStore = usePostHog();
-		vi.spyOn(posthogStore, 'isFeatureEnabled').mockReturnValue(true);
+		vi.spyOn(posthogStore, 'isVariantEnabled').mockReturnValue(true);
 		const schemaPreviewStore = useSchemaPreviewStore();
 		vi.spyOn(schemaPreviewStore, 'getSchemaPreview').mockResolvedValue(
 			createResultOk({
