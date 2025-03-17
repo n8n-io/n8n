@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed } from 'vue';
 import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
@@ -7,6 +7,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useRoute } from 'vue-router';
 import type { FolderListItem } from '@/Interface';
+import { useProjectsStore } from '@/stores/projects.store';
 
 const props = defineProps<{
 	modalName: string;
@@ -26,25 +27,16 @@ const i18n = useI18n();
 const route = useRoute();
 
 const foldersStore = useFoldersStore();
+const projectsStore = useProjectsStore();
 
 const loading = ref(false);
 const operation = ref('');
 const deleteConfirmText = ref('');
-const selectedFolderId = ref<string | null>(null);
+const selectedFolder = ref<{ id: string; name: string } | null>(null);
 const projectFolders = ref<FolderListItem[]>([]);
 
 const currentFolder = computed(() => {
 	return projectFolders.value.find((folder) => folder.id === props.activeId);
-});
-
-// Available folders to transfer are all folders except the current folder, it's parent and its children
-const availableFolders = computed(() => {
-	return projectFolders.value.filter(
-		(folder) =>
-			folder.id !== props.activeId &&
-			folder.parentFolder?.id !== props.activeId &&
-			folder.id !== currentFolder.value?.parentFolder?.id,
-	);
 });
 
 const folderToDelete = computed(() => {
@@ -53,7 +45,7 @@ const folderToDelete = computed(() => {
 });
 
 const isPending = computed(() => {
-	return folderToDelete.value ? !folderToDelete.value.name : false;
+	return selectedFolder.value ? !selectedFolder.value.name : false;
 });
 
 const title = computed(() => {
@@ -74,10 +66,33 @@ const enabled = computed(() => {
 	) {
 		return true;
 	}
-	if (operation.value === 'transfer' && selectedFolderId.value) {
+	if (operation.value === 'transfer' && selectedFolder.value) {
 		return true;
 	}
 	return false;
+});
+
+const folderContentWarningMessage = computed(() => {
+	const folderCount = props.data.content.subFolderCount ?? 0;
+	const workflowCount = props.data.content.workflowCount ?? 0;
+
+	let folderText = '';
+	let workflowText = '';
+	if (folderCount > 0) {
+		folderText = i18n.baseText('folder.count', { interpolate: { count: folderCount } });
+	}
+	if (workflowCount > 0) {
+		workflowText = i18n.baseText('workflow.count', { interpolate: { count: workflowCount } });
+	}
+	if (folderCount > 0 && workflowCount > 0) {
+		folderText += ` ${i18n.baseText('folder.and.workflow.separator')} `;
+	}
+	return i18n.baseText('folder.delete.modal.confirmation', {
+		interpolate: {
+			folders: folderText,
+			workflows: workflowText,
+		},
+	});
 });
 
 async function onSubmit() {
@@ -90,16 +105,13 @@ async function onSubmit() {
 		await foldersStore.deleteFolder(
 			route.params.projectId as string,
 			props.activeId,
-			selectedFolderId.value ?? undefined,
+			selectedFolder.value?.id ?? undefined,
 		);
 
 		let message = '';
-		if (selectedFolderId.value) {
-			const selectedFolder = availableFolders.value.find(
-				(folder) => folder.id === selectedFolderId.value,
-			);
+		if (selectedFolder.value) {
 			message = i18n.baseText('folders.transfer.confirm.message', {
-				interpolate: { folderName: selectedFolder?.name ?? '' },
+				interpolate: { folderName: selectedFolder.value.name ?? '' },
 			});
 		}
 		showMessage({
@@ -107,7 +119,11 @@ async function onSubmit() {
 			title: i18n.baseText('folders.delete.success.message'),
 			message,
 		});
-		props.data.workflowListEventBus.emit('folder-deleted', { folderId: props.activeId });
+		props.data.workflowListEventBus.emit('folder-deleted', {
+			folderId: props.activeId,
+			workflowCount: props.data.content.workflowCount,
+			folderCount: props.data.content.subFolderCount,
+		});
 		modalBus.emit('close');
 	} catch (error) {
 		showError(error, i18n.baseText('folders.delete.error.message'));
@@ -116,9 +132,9 @@ async function onSubmit() {
 	}
 }
 
-onMounted(async () => {
-	projectFolders.value = await foldersStore.fetchProjectFolders(route.params.projectId as string);
-});
+const onFolderSelected = (payload: { id: string; name: string }) => {
+	selectedFolder.value = payload;
+};
 </script>
 
 <template>
@@ -139,9 +155,7 @@ onMounted(async () => {
 				</div>
 				<div v-else :class="$style.content">
 					<div>
-						<n8n-text color="text-base">{{
-							i18n.baseText('folder.delete.modal.confirmation')
-						}}</n8n-text>
+						<n8n-text color="text-base">{{ folderContentWarningMessage }}</n8n-text>
 					</div>
 					<el-radio
 						v-model="operation"
@@ -155,24 +169,13 @@ onMounted(async () => {
 						<n8n-text color="text-dark">{{
 							i18n.baseText('folders.transfer.selectFolder')
 						}}</n8n-text>
-						<N8nSelect
-							v-model="selectedFolderId"
-							option-label="name"
-							option-value="id"
-							:placeholder="i18n.baseText('folders.transfer.selectFolder')"
-						>
-							<N8nOption
-								v-for="folder in availableFolders"
-								:key="folder.id"
-								:value="folder.id"
-								:label="folder.name"
-							>
-								<div :class="$style['folder-select-item']">
-									<n8n-icon icon="folder" />
-									<span> {{ folder.name }}</span>
-								</div>
-							</N8nOption>
-						</N8nSelect>
+						<MoveToFolderDropdown
+							v-if="projectsStore.currentProject"
+							:current-folder-id="props.activeId"
+							:current-project-id="projectsStore.currentProject?.id"
+							:parent-folder-id="currentFolder?.parentFolder?.id"
+							@folder:selected="onFolderSelected"
+						/>
 					</div>
 					<el-radio
 						v-model="operation"
