@@ -30,7 +30,6 @@
     "@codemirror/state": "^6.4.1",
     "@codemirror/view": "^6.26.3",
     "@dagrejs/dagre": "^1.1.4",
-    "@fontsource/open-sans": "^4.5.0",
     "@lezer/common": "1.1.0",
     "@n8n/api-types": "workspace:*",
     "@n8n/chat": "workspace:*",
