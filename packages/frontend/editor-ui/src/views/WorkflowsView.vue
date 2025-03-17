@@ -897,10 +897,10 @@ const createFolder = async (parent: { id: string; name: string; type: 'project' 
 				parent.type === 'folder' ? parent.id : undefined,
 			);
 
-			let newFolderURL = `/projects/${route.params.projectId}/folders/${newFolder.id}/workflows`;
-			if (newFolder.parentFolder) {
-				newFolderURL = `/projects/${route.params.projectId}/folders/${newFolder.id}/workflows`;
-			}
+			const newFolderURL = router.resolve({
+				name: VIEWS.PROJECTS_FOLDERS,
+				params: { projectId: route.params.projectId, folderId: newFolder.id },
+			}).href;
 			toast.showToast({
 				title: i18n.baseText('folders.add.success.title'),
 				message: i18n.baseText('folders.add.success.message', {
@@ -1023,7 +1023,10 @@ const moveFolder = async (payload: {
 			payload.newParent.id,
 		);
 		const isCurrentFolder = currentFolderId.value === payload.folder.id;
-		const newFolderURL = `/projects/${route.params.projectId}/folders/${payload.newParent.id}/workflows`;
+		const newFolderURL = router.resolve({
+			name: VIEWS.PROJECTS_FOLDERS,
+			params: { projectId: route.params.projectId, folderId: payload.newParent.id },
+		}).href;
 		if (isCurrentFolder) {
 			// If we just moved the current folder, automatically navigate to the new folder
 			void router.push(newFolderURL);
@@ -1067,7 +1070,10 @@ const onWorkflowMoved = async (payload: {
 }) => {
 	if (!route.params.projectId) return;
 	try {
-		const newFolderURL = `/projects/${route.params.projectId}/folders/${payload.newParent.id}/workflows`;
+		const newFolderURL = router.resolve({
+			name: VIEWS.PROJECTS_FOLDERS,
+			params: { projectId: route.params.projectId, folderId: payload.newParent.id },
+		}).href;
 		const workflowResource = workflowsAndFolders.value.find(
 			(resource): resource is WorkflowListItem => resource.id === payload.workflow.id,
 		);
