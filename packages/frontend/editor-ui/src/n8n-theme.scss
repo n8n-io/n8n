@@ -15,7 +15,7 @@
 }
 .text-light {
 	color: $custom-font-light;
-	font-weight: 400;
+	font-weight: var(--font-weight-regular);
 }
 
 // Dialog
@@ -52,7 +52,7 @@
 			width: 50px;
 			.el-dialog__close {
 				color: var(--color-foreground-xlight);
-				font-weight: 400;
+				font-weight: var(--font-weight-regular);
 			}
 			.el-dialog__close:hover {
 				transform: scale(1.2);
@@ -121,7 +121,7 @@
 	outline: none;
 }
 .el-tabs__item.is-active {
-	font-weight: bold;
+	font-weight: var(--font-weight-bold);
 }
 
 .el-tabs__content {
@@ -186,7 +186,7 @@
 .tags-container {
 	.el-select-tags-wrapper .el-tag {
 		font-size: 12px;
-		font-weight: 400;
+		font-weight: var(--font-weight-regular);
 		display: flex;
 		align-items: center;
 

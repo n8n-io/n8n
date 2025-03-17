@@ -143,7 +143,7 @@ function onGroupSelect(group: string) {
 	cursor: pointer;
 
 	&.suggested {
-		font-weight: 800;
+		font-weight: var(--font-weight-bold);
 	}
 
 	&:hover {
