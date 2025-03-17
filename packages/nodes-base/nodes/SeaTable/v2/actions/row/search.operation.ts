@@ -38,34 +38,44 @@ export const properties: INodeProperties[] = [
 		description: 'What to look for?',
 	},
 	{
-		displayName: 'Case Insensitive Search',
-		name: 'insensitive',
-		type: 'boolean',
-		default: false,
-		description:
-			'Whether the search ignores case sensitivity (true). Otherwise, it distinguishes between uppercase and lowercase characters.',
-	},
-	{
-		displayName: 'Activate Wildcard Search',
-		name: 'wildcard',
-		type: 'boolean',
-		default: false,
-		description:
-			'Whether the search only results perfect matches (true). Otherwise, it finds a row even if the search value is part of a string (false).',
-	},
-	{
-		displayName: 'Simplify',
-		name: 'simple',
-		type: 'boolean',
-		default: true,
-		description: 'Whether to return a simplified version of the response instead of the raw data',
-	},
-	{
-		displayName: 'Return Column Names',
-		name: 'convert',
-		type: 'boolean',
-		default: true,
-		description: 'Whether to return the column keys (false) or the column names (true)',
+		displayName: 'Additional Options',
+		name: 'additionalOptions',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [
+			{
+				displayName: 'Case Insensitive Search',
+				name: 'insensitive',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether the search ignores case sensitivity (true). Otherwise, it distinguishes between uppercase and lowercase characters.',
+			},
+			{
+				displayName: 'Activate Wildcard Search',
+				name: 'wildcard',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether the search only results perfect matches (true). Otherwise, it finds a row even if the search value is part of a string (false).',
+			},
+			{
+				displayName: 'Simplify',
+				name: 'simple',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to return a simplified version of the response instead of the raw data',
+			},
+			{
+				displayName: 'Return Column Names',
+				name: 'convert',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to return the column keys (false) or the column names (true)',
+			},
+		],
 	},
 ];
 
@@ -86,10 +96,7 @@ export async function execute(
 	const searchColumn = this.getNodeParameter('searchColumn', index) as string;
 	const searchTerm = this.getNodeParameter('searchTerm', index) as string | number;
 	let searchTermString = String(searchTerm);
-	const insensitive = this.getNodeParameter('insensitive', index) as boolean;
-	const wildcard = this.getNodeParameter('wildcard', index) as boolean;
-	const simple = this.getNodeParameter('simple', index) as boolean;
-	const convert = this.getNodeParameter('convert', index) as boolean;
+	const additionalOptions = this.getNodeParameter('additionalOptions', index) as IDataObject;
 
 	// get collaborators
 	const collaborators = await getBaseCollaborators.call(this);
@@ -97,10 +104,12 @@ export async function execute(
 	// this is the base query. The WHERE has to be finalized...
 	let sqlQuery = `SELECT * FROM \`${tableName}\` WHERE \`${searchColumn}\``;
 
-	if (insensitive) {
+	if (additionalOptions.insensitive) {
 		searchTermString = searchTermString.toLowerCase();
 		sqlQuery = `SELECT * FROM \`${tableName}\` WHERE lower(\`${searchColumn}\`)`;
 	}
+
+	const wildcard = additionalOptions.wildcard ?? true;
 
 	if (wildcard) sqlQuery = sqlQuery + ' LIKE "%' + searchTermString + '%"';
 	else if (!wildcard) sqlQuery = sqlQuery + ' = "' + searchTermString + '"';
@@ -112,7 +121,7 @@ export async function execute(
 		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/sql',
 		{
 			sql: sqlQuery,
-			convert_keys: convert,
+			convert_keys: additionalOptions.convert ?? false,
 		},
 	)) as IRowResponse;
 	const metadata = sqlResult.metadata as IDtableMetadataColumn[];
@@ -122,7 +131,7 @@ export async function execute(
 	rows.map((row) => enrichColumns(row, metadata, collaborators));
 
 	// remove columns starting with _;
-	if (simple) {
+	if (additionalOptions.simple) {
 		rows.map((row) => simplify_new(row));
 	}
 

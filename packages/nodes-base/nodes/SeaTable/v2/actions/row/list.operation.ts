@@ -30,18 +30,28 @@ export const properties: INodeProperties[] = [
 			'The name of SeaTable view to access, or specify by using an expression. Provide it in the way "col.name:::col.type".',
 	},
 	{
-		displayName: 'Simplify',
-		name: 'simple',
-		type: 'boolean',
-		default: true,
-		description: 'Whether to return a simplified version of the response instead of the raw data',
-	},
-	{
-		displayName: 'Return Column Names',
-		name: 'convert',
-		type: 'boolean',
-		default: true,
-		description: 'Whether to return the column keys (false) or the column names (true)',
+		displayName: 'Additional Options',
+		name: 'additionalOptions',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [
+			{
+				displayName: 'Simplify',
+				name: 'simple',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to return a simplified version of the response instead of the raw data',
+			},
+			{
+				displayName: 'Return Column Names',
+				name: 'convert',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to return the column keys (false) or the column names (true)',
+			},
+		],
 	},
 ];
 
@@ -61,8 +71,7 @@ export async function execute(
 	// get parameters
 	const tableName = this.getNodeParameter('tableName', index) as string;
 	const viewName = this.getNodeParameter('viewName', index) as string;
-	const simple = this.getNodeParameter('simple', index) as boolean;
-	const convert = this.getNodeParameter('convert', index) as boolean;
+	const additionalOptions = this.getNodeParameter('additionalOptions', index) as IDataObject;
 
 	// get collaborators
 	const collaborators = await getBaseCollaborators.call(this);
@@ -85,7 +94,7 @@ export async function execute(
 			table_name: tableName,
 			view_name: viewName,
 			limit: 1000,
-			convert_keys: convert,
+			convert_keys: additionalOptions.convert ?? true,
 		},
 	);
 
@@ -97,6 +106,7 @@ export async function execute(
 	// hide columns like button
 	rows.map((row) => enrichColumns(row, metadata, collaborators));
 
+	const simple = additionalOptions.simple ?? true;
 	// remove columns starting with _ if simple;
 	if (simple) {
 		rows.map((row) => simplify_new(row));
