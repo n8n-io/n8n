@@ -132,72 +132,77 @@ async function copySessionId() {
 
 <template>
 	<div :class="$style.chat" data-test-id="workflow-lm-chat-dialog">
-		<PanelHeader :title="locale.baseText('chat.window.title')" @click="emit('clickHeader')">
+		<PanelHeader
+			v-if="isRedesign"
+			:title="locale.baseText('chat.window.title')"
+			@click="emit('clickHeader')"
+		>
 			<template #actions>
-				<template v-if="isRedesign">
-					<N8nTooltip
-						v-if="clipboard.isSupported.value"
-						:content="locale.baseText('chat.window.session.id.copy')"
-					>
-						<N8nButton
-							data-test-id="chat-session-id"
-							type="secondary"
-							size="mini"
-							@click.stop="clipboard.isSupported.value ? copySessionId() : null"
-							>{{ locale.baseText('chat.window.session.id')
-							}}<N8nIcon icon="copy" size="medium" class="el-icon--right"
-						/></N8nButton>
-					</N8nTooltip>
-					<N8nTooltip :content="locale.baseText('chat.window.session.resetSession')">
-						<N8nIconButton
-							v-if="messages.length > 0"
-							:class="$style.headerButton"
-							data-test-id="refresh-session-button"
-							outline
-							type="secondary"
-							size="small"
-							icon-size="medium"
-							icon="undo"
-							:title="locale.baseText('chat.window.session.reset')"
-							@click.stop="onRefreshSession"
-						/>
-					</N8nTooltip>
-				</template>
-				<template v-else>
-					<span>{{ locale.baseText('chat.window.session.title') }}</span>
-					<N8nTooltip placement="left">
-						<template #content>
-							{{ sessionId }}
-						</template>
-						<span
-							:class="[$style.sessionId, clipboard.isSupported.value ? $style.copyable : '']"
-							data-test-id="chat-session-id"
-							@click="clipboard.isSupported.value ? copySessionId() : null"
-							>{{ sessionId }}</span
-						>
-					</N8nTooltip>
+				<N8nTooltip
+					v-if="clipboard.isSupported.value"
+					:content="locale.baseText('chat.window.session.id.copy')"
+				>
+					<N8nButton
+						data-test-id="chat-session-id"
+						type="secondary"
+						size="mini"
+						@click.stop="clipboard.isSupported.value ? copySessionId() : null"
+						>{{ locale.baseText('chat.window.session.id')
+						}}<N8nIcon icon="copy" size="medium" class="el-icon--right"
+					/></N8nButton>
+				</N8nTooltip>
+				<N8nTooltip :content="locale.baseText('chat.window.session.resetSession')">
 					<N8nIconButton
+						v-if="messages.length > 0"
 						:class="$style.headerButton"
 						data-test-id="refresh-session-button"
 						outline
 						type="secondary"
 						size="small"
+						icon-size="medium"
 						icon="undo"
 						:title="locale.baseText('chat.window.session.reset')"
 						@click.stop="onRefreshSession"
 					/>
-					<N8nIconButton
-						v-if="showCloseButton"
-						:class="$style.headerButton"
-						outline
-						type="secondary"
-						size="mini"
-						icon="times"
-						@click="emit('close')"
-					/>
-				</template>
+				</N8nTooltip>
 			</template>
 		</PanelHeader>
+		<header v-else :class="$style.chatHeader">
+			<span :class="$style.chatTitle">{{ locale.baseText('chat.window.title') }}</span>
+			<div :class="$style.session">
+				<span>{{ locale.baseText('chat.window.session.title') }}</span>
+				<N8nTooltip placement="left">
+					<template #content>
+						{{ sessionId }}
+					</template>
+					<span
+						:class="[$style.sessionId, clipboard.isSupported.value ? $style.copyable : '']"
+						data-test-id="chat-session-id"
+						@click="clipboard.isSupported.value ? copySessionId() : null"
+						>{{ sessionId }}</span
+					>
+				</N8nTooltip>
+				<N8nIconButton
+					:class="$style.headerButton"
+					data-test-id="refresh-session-button"
+					outline
+					type="secondary"
+					size="mini"
+					icon="undo"
+					:title="locale.baseText('chat.window.session.reset')"
+					@click="onRefreshSession"
+				/>
+				<N8nIconButton
+					v-if="showCloseButton"
+					:class="$style.headerButton"
+					outline
+					type="secondary"
+					size="mini"
+					icon="times"
+					@click="emit('close')"
+				/>
+			</div>
+		</header>
 		<main v-if="isOpen" :class="$style.chatBody">
 			<MessagesList
 				:messages="messages"
@@ -293,6 +298,28 @@ async function copySessionId() {
 	overflow: hidden;
 	background-color: var(--color-background-light);
 }
+.chatHeader {
+	font-size: var(--font-size-s);
+	font-weight: 400;
+	line-height: 18px;
+	text-align: left;
+	border-bottom: 1px solid var(--color-foreground-base);
+	padding: var(--chat--spacing);
+	background-color: var(--color-foreground-xlight);
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+.chatTitle {
+	font-weight: 600;
+}
+.session {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-2xs);
+	color: var(--color-text-base);
+	max-width: 70%;
+}
 .sessionId {
 	display: inline-block;
 	white-space: nowrap;
@@ -302,6 +329,10 @@ async function copySessionId() {
 	&.copyable {
 		cursor: pointer;
 	}
+}
+.headerButton {
+	max-height: 1.1rem;
+	border: none;
 }
 .chatBody {
 	display: flex;
