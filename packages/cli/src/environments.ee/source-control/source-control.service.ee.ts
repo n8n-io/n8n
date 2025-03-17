@@ -13,6 +13,7 @@ import type { PushResult } from 'simple-git';
 import type { TagEntity } from '@/databases/entities/tag-entity';
 import type { User } from '@/databases/entities/user';
 import type { Variables } from '@/databases/entities/variables';
+import { FolderRepository } from '@/databases/repositories/folder.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
@@ -25,6 +26,7 @@ import {
 import { SourceControlExportService } from './source-control-export.service.ee';
 import { SourceControlGitService } from './source-control-git.service.ee';
 import {
+	getFoldersPath,
 	getTagsPath,
 	getTrackingInformationFromPostPushResult,
 	getTrackingInformationFromPrePushResult,
@@ -36,6 +38,7 @@ import {
 import { SourceControlImportService } from './source-control-import.service.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
 import type { ExportableCredential } from './types/exportable-credential';
+import type { ExportableFolder } from './types/exportable-folders';
 import type { ImportResult } from './types/import-result';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
@@ -57,6 +60,7 @@ export class SourceControlService {
 		private sourceControlExportService: SourceControlExportService,
 		private sourceControlImportService: SourceControlImportService,
 		private tagRepository: TagRepository,
+		private folderRepository: FolderRepository,
 		private readonly eventService: EventService,
 	) {
 		const { gitFolder, sshFolder, sshKeyName } = sourceControlPreferencesService;
@@ -288,6 +292,10 @@ export class SourceControlService {
 			await this.sourceControlExportService.exportTagsToWorkFolder();
 		}
 
+		if (filesToPush.find((e) => e.type === 'folders')) {
+			await this.sourceControlExportService.exportFoldersToWorkFolder();
+		}
+
 		if (filesToPush.find((e) => e.type === 'variables')) {
 			await this.sourceControlExportService.exportVariablesToWorkFolder();
 		}
@@ -354,6 +362,14 @@ export class SourceControlService {
 		return files.find((e) => e.type === 'variables' && e.status !== 'deleted');
 	}
 
+	private getFoldersToImport(files: SourceControlledFile[]): SourceControlledFile | undefined {
+		return files.find((e) => e.type === 'folders' && e.status !== 'deleted');
+	}
+
+	private getFoldersToDelete(files: SourceControlledFile[]): SourceControlledFile[] {
+		return files.filter((e) => e.type === 'folders' && e.status === 'deleted');
+	}
+
 	private getVariablesToDelete(files: SourceControlledFile[]): SourceControlledFile[] {
 		return files.filter((e) => e.type === 'variables' && e.status === 'deleted');
 	}
@@ -416,6 +432,14 @@ export class SourceControlService {
 		const variablesToBeDeleted = this.getVariablesToDelete(statusResult);
 		await this.sourceControlImportService.deleteVariablesNotInWorkfolder(variablesToBeDeleted);
 
+		const foldersToBeImported = this.getFoldersToImport(statusResult);
+		if (foldersToBeImported) {
+			await this.sourceControlImportService.importFoldersFromWorkFolder(user, foldersToBeImported);
+		}
+
+		const foldersToBeDeleted = this.getFoldersToDelete(statusResult);
+		await this.sourceControlImportService.deleteFoldersNotInWorkfolder(foldersToBeDeleted);
+
 		// #region Tracking Information
 		this.eventService.emit(
 			'source-control-user-finished-pull-ui',
@@ -469,6 +493,14 @@ export class SourceControlService {
 			mappingsMissingInRemote,
 		} = await this.getStatusTagsMappings(options, sourceControlledFiles);
 
+		const {
+			foldersMissingInLocal,
+			foldersMissingInRemote,
+			foldersModifiedInEither,
+			folderMappingMissingInLocal,
+			folderMappingMissingInRemote,
+		} = await this.getStatusFoldersMapping(options, sourceControlledFiles);
+
 		// #region Tracking Information
 		if (options.direction === 'push') {
 			this.eventService.emit(
@@ -501,6 +533,11 @@ export class SourceControlService {
 				tagsModifiedInEither,
 				mappingsMissingInLocal,
 				mappingsMissingInRemote,
+				foldersMissingInLocal,
+				foldersMissingInRemote,
+				foldersModifiedInEither,
+				folderMappingMissingInLocal,
+				folderMappingMissingInRemote,
 				sourceControlledFiles,
 			};
 		} else {
@@ -837,6 +874,108 @@ export class SourceControlService {
 			tagsModifiedInEither,
 			mappingsMissingInLocal,
 			mappingsMissingInRemote,
+		};
+	}
+
+	private async getStatusFoldersMapping(
+		options: SourceControlGetStatus,
+		sourceControlledFiles: SourceControlledFile[],
+	) {
+		const lastUpdatedFolder = await this.folderRepository.find({
+			order: { updatedAt: 'DESC' },
+			take: 1,
+			select: ['updatedAt'],
+		});
+
+		const foldersMappingsRemote =
+			await this.sourceControlImportService.getRemoteFoldersAndMappingsFromFile();
+		const foldersMappingsLocal =
+			await this.sourceControlImportService.getLocalFoldersAndMappingsFromDb();
+
+		const foldersMissingInLocal = foldersMappingsRemote.folders.filter(
+			(remote) => foldersMappingsLocal.folders.findIndex((local) => local.id === remote.id) === -1,
+		);
+
+		const foldersMissingInRemote = foldersMappingsLocal.folders.filter(
+			(local) => foldersMappingsRemote.folders.findIndex((remote) => remote.id === local.id) === -1,
+		);
+
+		const foldersModifiedInEither: ExportableFolder[] = [];
+		foldersMappingsLocal.folders.forEach((local) => {
+			const mismatchingIds = foldersMappingsRemote.folders.find(
+				(remote) =>
+					remote.id === local.id &&
+					(remote.name !== local.name || remote.parentFolderId !== local.parentFolderId),
+			);
+
+			if (!mismatchingIds) {
+				return;
+			}
+			foldersModifiedInEither.push(options.preferLocalVersion ? local : mismatchingIds);
+		});
+
+		const mappingsMissingInLocal = foldersMappingsRemote.mappings.filter(
+			(remote) =>
+				foldersMappingsLocal.mappings.findIndex(
+					(local) =>
+						local.parentFolderId === remote.parentFolderId &&
+						local.workflowId === remote.workflowId,
+				) === -1,
+		);
+
+		const mappingsMissingInRemote = foldersMappingsLocal.mappings.filter(
+			(local) =>
+				foldersMappingsRemote.mappings.findIndex(
+					(remote) =>
+						remote.parentFolderId === local.parentFolderId &&
+						remote.workflowId === remote.workflowId,
+				) === -1,
+		);
+
+		foldersMissingInLocal.forEach((item) => {
+			sourceControlledFiles.push({
+				id: item.id,
+				name: item.name,
+				type: 'folders',
+				status: options.direction === 'push' ? 'deleted' : 'created',
+				location: options.direction === 'push' ? 'local' : 'remote',
+				conflict: false,
+				file: getFoldersPath(this.gitFolder),
+				updatedAt: lastUpdatedFolder[0]?.updatedAt.toISOString(),
+			});
+		});
+		foldersMissingInRemote.forEach((item) => {
+			sourceControlledFiles.push({
+				id: item.id,
+				name: item.name,
+				type: 'folders',
+				status: options.direction === 'push' ? 'created' : 'deleted',
+				location: options.direction === 'push' ? 'local' : 'remote',
+				conflict: options.direction === 'push' ? false : true,
+				file: getFoldersPath(this.gitFolder),
+				updatedAt: lastUpdatedFolder[0]?.updatedAt.toISOString(),
+			});
+		});
+
+		foldersModifiedInEither.forEach((item) => {
+			sourceControlledFiles.push({
+				id: item.id,
+				name: item.name,
+				type: 'folders',
+				status: 'modified',
+				location: options.direction === 'push' ? 'local' : 'remote',
+				conflict: true,
+				file: getFoldersPath(this.gitFolder),
+				updatedAt: lastUpdatedFolder[0]?.updatedAt.toISOString(),
+			});
+		});
+
+		return {
+			foldersMissingInLocal,
+			foldersMissingInRemote,
+			foldersModifiedInEither,
+			folderMappingMissingInLocal: mappingsMissingInLocal,
+			folderMappingMissingInRemote: mappingsMissingInRemote,
 		};
 	}
 
