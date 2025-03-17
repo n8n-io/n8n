@@ -8,6 +8,7 @@ import { nanoid } from 'nanoid';
 import fsp from 'node:fs/promises';
 
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import { FolderRepository } from '@/databases/repositories/folder.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
@@ -20,7 +21,6 @@ import { createTeamProject, getPersonalProject } from '../shared/db/projects';
 import { createMember, getGlobalOwner } from '../shared/db/users';
 import { randomCredentialPayload } from '../shared/random';
 import * as testDb from '../shared/test-db';
-import { FolderRepository } from '@/databases/repositories/folder.repository';
 
 describe('SourceControlImportService', () => {
 	let credentialsRepository: CredentialsRepository;
