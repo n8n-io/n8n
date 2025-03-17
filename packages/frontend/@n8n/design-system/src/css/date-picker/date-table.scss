@@ -68,7 +68,7 @@
 			position: relative;
 			span {
 				color: var(--color-primary);
-				font-weight: bold;
+				font-weight: var(--font-weight-bold);
 			}
 			&.start-date span,
 			&.end-date span {
@@ -145,7 +145,7 @@
 	th {
 		padding: 5px;
 		color: var.$datepicker-header-font-color;
-		font-weight: 400;
+		font-weight: var(--font-weight-regular);
 		border-bottom: solid 1px var(--border-color-light);
 	}
 }
