@@ -33,9 +33,14 @@ function onClearExecutionData() {
 					v-if="isClearExecutionButtonVisible"
 					:content="locale.baseText('logs.overview.header.actions.clearExecution.tooltip')"
 				>
-					<N8nButton size="mini" type="secondary" icon="trash" @click.stop="onClearExecutionData">{{
-						locale.baseText('logs.overview.header.actions.clearExecution')
-					}}</N8nButton>
+					<N8nButton
+						size="mini"
+						type="secondary"
+						icon="trash"
+						icon-size="medium"
+						@click.stop="onClearExecutionData"
+						>{{ locale.baseText('logs.overview.header.actions.clearExecution') }}</N8nButton
+					>
 				</N8nTooltip>
 				<slot name="actions" />
 			</template>

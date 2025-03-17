@@ -145,7 +145,7 @@ async function copySessionId() {
 							size="mini"
 							@click.stop="clipboard.isSupported.value ? copySessionId() : null"
 							>{{ locale.baseText('chat.window.session.id')
-							}}<N8nIcon icon="copy" size="small" class="el-icon--right"
+							}}<N8nIcon icon="copy" size="medium" class="el-icon--right"
 						/></N8nButton>
 					</N8nTooltip>
 					<N8nTooltip :content="locale.baseText('chat.window.session.resetSession')">
@@ -156,6 +156,7 @@ async function copySessionId() {
 							outline
 							type="secondary"
 							size="small"
+							icon-size="medium"
 							icon="undo"
 							:title="locale.baseText('chat.window.session.reset')"
 							@click.stop="onRefreshSession"
@@ -316,6 +317,7 @@ async function copySessionId() {
 	height: 100%;
 	width: 100%;
 	overflow: auto;
+	padding-top: 1.5em;
 
 	&:not(:last-child) {
 		margin-right: 1em;

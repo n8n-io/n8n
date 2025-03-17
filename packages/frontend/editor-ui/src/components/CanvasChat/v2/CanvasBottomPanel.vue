@@ -118,6 +118,7 @@ watch([panelState, height], ([state, h]) => {
 									icon="pop-out"
 									type="secondary"
 									size="small"
+									icon-size="medium"
 									@click="onPopOut"
 								/>
 							</N8nTooltip>
@@ -134,6 +135,7 @@ watch([panelState, height], ([state, h]) => {
 									v-if="panelState !== 'floating'"
 									type="secondary"
 									size="small"
+									icon-size="medium"
 									:icon="panelState === 'attached' ? 'chevron-down' : 'chevron-up'"
 									@click.stop="handleToggleOpen"
 								/>

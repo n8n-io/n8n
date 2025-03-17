@@ -64,9 +64,7 @@ watch(
 .chat-messages-list {
 	margin-top: auto;
 	display: block;
-	padding-inline: var(--chat--messages-list--padding);
-	padding-bottom: var(--chat--messages-list--padding);
-	padding-top: 1.5em;
+	padding: var(--chat--messages-list--padding);
 }
 
 .empty-container {
@@ -90,6 +88,7 @@ watch(
 	justify-content: center;
 	gap: var(--spacing-xs);
 	padding-inline: var(--spacing-m);
+	padding-bottom: 1.5em;
 	overflow: hidden;
 }
 
