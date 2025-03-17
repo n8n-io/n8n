@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { computed, ref, useTemplateRef } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import { N8nIconButton, N8nResizeWrapper, N8nTooltip } from '@n8n/design-system';
 import { useChatState } from '@/components/CanvasChat/composables/useChatState';
 import { useResize } from '@/components/CanvasChat/composables/useResize';
@@ -9,8 +9,8 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/constants';
 import LogsPanel from '@/components/CanvasChat/v2/components/LogsPanel.vue';
 import { useCanvasStore } from '@/stores/canvas.store';
-import { watch } from 'vue';
 import { useI18n } from '@/composables/useI18n';
+import { useStyles } from '@/composables/useStyles';
 
 const workflowsStore = useWorkflowsStore();
 const canvasStore = useCanvasStore();
@@ -35,6 +35,8 @@ const { currentSessionId, messages, sendMessage, refreshSession, displayExecutio
 	ref(false),
 	onWindowResize,
 );
+const appStyles = useStyles();
+const tooltipZIndex = computed(() => appStyles.APP_Z_INDEXES.ASK_ASSISTANT_FLOATING_BUTTON + 100);
 
 const { canPopOut, isPoppedOut, pipWindow } = usePiPWindow({
 	initialHeight: 400,
@@ -112,7 +114,10 @@ watch([panelState, height], ([state, h]) => {
 					</N8nResizeWrapper>
 					<LogsPanel :is-open="panelState !== 'closed'" @click-header="handleClickHeader">
 						<template #actions>
-							<N8nTooltip :content="locales.baseText('runData.panel.actions.popOut')">
+							<N8nTooltip
+								:z-index="tooltipZIndex"
+								:content="locales.baseText('runData.panel.actions.popOut')"
+							>
 								<N8nIconButton
 									v-if="canPopOut && !isPoppedOut"
 									icon="pop-out"
@@ -123,6 +128,7 @@ watch([panelState, height], ([state, h]) => {
 								/>
 							</N8nTooltip>
 							<N8nTooltip
+								:z-index="tooltipZIndex"
 								:content="
 									locales.baseText(
 										panelState === 'attached'
