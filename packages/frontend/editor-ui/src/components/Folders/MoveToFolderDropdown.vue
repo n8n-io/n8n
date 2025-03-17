@@ -79,6 +79,9 @@ const onFolderSelected = (folderId: string) => {
 			option-value="id"
 			@update:model-value="onFolderSelected"
 		>
+			<template #prefix>
+				<N8nIcon icon="search" />
+			</template>
 			<N8nOption
 				v-for="folder in availableFolders"
 				:key="folder.id"
