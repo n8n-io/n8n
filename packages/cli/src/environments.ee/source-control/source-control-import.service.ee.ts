@@ -514,9 +514,9 @@ export class SourceControlImportService {
 			this.logger.debug(`Importing folders from file ${candidate.file}`);
 			mappedFolders = jsonParse<{
 				folders: ExportableFolder[];
-				mappings: WorkflowFolderMapping[];
+				workflowMappings: WorkflowFolderMapping[];
 			}>(await fsReadFile(candidate.file, { encoding: 'utf8' }), {
-				fallbackValue: { folders: [], mappings: [] },
+				fallbackValue: { folders: [], workflowMappings: [] },
 			});
 		} catch (e) {
 			const error = ensureError(e);
@@ -524,7 +524,7 @@ export class SourceControlImportService {
 			return;
 		}
 
-		if (mappedFolders.mappings.length === 0 && mappedFolders.folders.length === 0) {
+		if (mappedFolders.workflowMappings.length === 0 && mappedFolders.folders.length === 0) {
 			return;
 		}
 
@@ -575,7 +575,7 @@ export class SourceControlImportService {
 		);
 
 		await Promise.all(
-			mappedFolders.mappings.map(async (mapping) => {
+			mappedFolders.workflowMappings.map(async (mapping) => {
 				if (!existingWorkflowIds.has(String(mapping.workflowId))) return;
 				await this.workflowRepository.update(
 					{ id: String(mapping.workflowId) },
