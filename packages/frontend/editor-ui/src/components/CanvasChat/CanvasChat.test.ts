@@ -174,7 +174,7 @@ describe('CanvasChat', () => {
 
 			return matchedNode;
 		});
-		workflowsStore.isChatPanelOpen = true;
+		workflowsStore.chatPanelState = 'attached';
 		workflowsStore.isLogsPanelOpen = true;
 		workflowsStore.getWorkflowExecution = mockWorkflowExecution as unknown as IExecutionResponse;
 		workflowsStore.getPastChatMessages = ['Previous message 1', 'Previous message 2'];
@@ -197,7 +197,7 @@ describe('CanvasChat', () => {
 		});
 
 		it('should not render chat when panel is closed', async () => {
-			workflowsStore.isChatPanelOpen = false;
+			workflowsStore.chatPanelState = 'closed';
 			const { queryByTestId } = renderComponent();
 			await waitFor(() => {
 				expect(queryByTestId('canvas-chat')).not.toBeInTheDocument();
@@ -338,16 +338,11 @@ describe('CanvasChat', () => {
 			});
 		});
 
-		it('should refresh session with confirmation when messages exist', async () => {
-			const { getByTestId, getByRole } = renderComponent();
+		it('should refresh session when messages exist', async () => {
+			const { getByTestId } = renderComponent();
 
 			const originalSessionId = getByTestId('chat-session-id').textContent;
 			await userEvent.click(getByTestId('refresh-session-button'));
-
-			const confirmButton = getByRole('dialog').querySelector('button.btn--confirm');
-
-			if (!confirmButton) throw new Error('Confirm button not found');
-			await userEvent.click(confirmButton);
 
 			expect(getByTestId('chat-session-id').textContent).not.toEqual(originalSessionId);
 		});
@@ -392,7 +387,7 @@ describe('CanvasChat', () => {
 				isLoading: computed(() => false),
 			});
 
-			workflowsStore.isChatPanelOpen = true;
+			workflowsStore.chatPanelState = 'attached';
 			workflowsStore.allowFileUploads = true;
 		});
 
@@ -554,7 +549,7 @@ describe('CanvasChat', () => {
 			});
 
 			// Close chat panel
-			workflowsStore.isChatPanelOpen = false;
+			workflowsStore.chatPanelState = 'closed';
 			await waitFor(() => {
 				expect(canvasStore.setPanelHeight).toHaveBeenCalledWith(0);
 			});
@@ -564,14 +559,14 @@ describe('CanvasChat', () => {
 			const { unmount, rerender } = renderComponent();
 
 			// Set initial state
-			workflowsStore.isChatPanelOpen = true;
+			workflowsStore.chatPanelState = 'attached';
 			workflowsStore.isLogsPanelOpen = true;
 
 			// Unmount and remount
 			unmount();
 			await rerender({});
 
-			expect(workflowsStore.isChatPanelOpen).toBe(true);
+			expect(workflowsStore.chatPanelState).toBe('attached');
 			expect(workflowsStore.isLogsPanelOpen).toBe(true);
 		});
 	});
@@ -597,10 +592,10 @@ describe('CanvasChat', () => {
 				getChatMessages: getChatMessagesSpy,
 			});
 
-			workflowsStore.isChatPanelOpen = false;
+			workflowsStore.chatPanelState = 'closed';
 			const { rerender } = renderComponent();
 
-			workflowsStore.isChatPanelOpen = true;
+			workflowsStore.chatPanelState = 'attached';
 			await rerender({});
 
 			expect(getChatMessagesSpy).toHaveBeenCalled();
