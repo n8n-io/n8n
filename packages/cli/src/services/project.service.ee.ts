@@ -319,14 +319,21 @@ export class ProjectService {
 		}
 	}
 
+	private isUserProjectAdmin(project: Project, userId: string) {
+		return project.projectRelations.some(
+			(pr) => pr.userId === userId && pr.role === 'project:admin',
+		);
+	}
+
 	async deleteUserFromProject(projectId: string, userId: string) {
-		const projectExists = await this.projectRepository.existsBy({ id: projectId });
-		if (!projectExists) {
-			throw new ProjectNotFoundError(projectId);
+		const project = await this.getTeamProjectWithRelations(projectId);
+
+		// Prevent project admin from being removed
+		if (this.isUserProjectAdmin(project, userId)) {
+			throw new ForbiddenError('Project admin cannot be removed from the project');
 		}
 
-		// TODO: do we need to prevent project owner from being removed?
-		await this.projectRelationRepository.delete({ projectId, userId });
+		await this.projectRelationRepository.delete({ projectId: project.id, userId });
 	}
 
 	async changeUserRoleInProject(projectId: string, userId: string, role: ProjectRole) {

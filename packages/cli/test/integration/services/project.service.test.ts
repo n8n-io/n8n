@@ -200,4 +200,44 @@ describe('ProjectService', () => {
 			expect(projectFromService).toBeNull();
 		});
 	});
+
+	describe('deleteUserFromProject', () => {
+		it('should not allow project admin to be removed from the project', async () => {
+			const role = 'project:admin';
+
+			const user = await createMember();
+			const project = await projectRepository.save(
+				projectRepository.create({
+					name: 'Team Project',
+					type: 'team',
+				}),
+			);
+			await projectService.addUser(project.id, { userId: user.id, role });
+
+			await expect(projectService.deleteUserFromProject(project.id, user.id)).rejects.toThrowError(
+				/^Project admin cannot be removed from the project$/,
+			);
+		});
+
+		it('should remove user from project if not admin', async () => {
+			const role = 'project:editor';
+
+			const user = await createMember();
+			const project = await projectRepository.save(
+				projectRepository.create({
+					name: 'Team Project',
+					type: 'team',
+				}),
+			);
+			await projectService.addUser(project.id, { userId: user.id, role });
+
+			await projectService.deleteUserFromProject(project.id, user.id);
+
+			const relations = await projectRelationRepository.findOne({
+				where: { userId: user.id, projectId: project.id, role },
+			});
+
+			expect(relations).toBeNull();
+		});
+	});
 });
