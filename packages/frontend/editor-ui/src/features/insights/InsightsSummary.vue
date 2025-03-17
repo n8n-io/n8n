@@ -26,6 +26,9 @@ const summaryTitles = computed<Record<keyof InsightsSummary, string>>(() => ({
 
 const getSign = (n: number) => (n > 0 ? '+' : undefined);
 const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
+	if (value === 0) {
+		return '';
+	}
 	const impact = INSIGHTS_UNIT_IMPACT_MAPPING[id];
 	if (impact === INSIGHT_IMPACT_TYPES.POSITIVE) {
 		return value > 0 ? $style.positive : $style.negative;
