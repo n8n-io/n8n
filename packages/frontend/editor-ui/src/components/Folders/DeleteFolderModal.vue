@@ -8,6 +8,7 @@ import { useFoldersStore } from '@/stores/folders.store';
 import { useRoute } from 'vue-router';
 import type { FolderListItem } from '@/Interface';
 import { useProjectsStore } from '@/stores/projects.store';
+import { ProjectTypes } from '@/types/projects.types';
 
 const props = defineProps<{
 	modalName: string;
@@ -70,6 +71,14 @@ const enabled = computed(() => {
 		return true;
 	}
 	return false;
+});
+
+const currentProjectName = computed(() => {
+	const currentProject = projectsStore.currentProject;
+	if (currentProject?.type === ProjectTypes.Personal) {
+		return i18n.baseText('projects.menu.personal');
+	}
+	return currentProject?.name;
 });
 
 const folderContentWarningMessage = computed(() => {
@@ -142,7 +151,7 @@ const onFolderSelected = (payload: { id: string; name: string }) => {
 		:name="modalName"
 		:title="title"
 		:center="true"
-		width="520"
+		width="600"
 		:event-bus="modalBus"
 		@enter="onSubmit"
 	>
@@ -163,7 +172,14 @@ const onFolderSelected = (payload: { id: string; name: string }) => {
 						label="transfer"
 						@update:model-value="operation = 'transfer'"
 					>
-						<n8n-text color="text-dark">{{ i18n.baseText('folders.transfer.action') }}</n8n-text>
+						<n8n-text v-if="currentProjectName">{{
+							i18n.baseText('folders.transfer.action', {
+								interpolate: { projectName: currentProjectName },
+							})
+						}}</n8n-text>
+						<n8n-text v-else color="text-dark">{{
+							i18n.baseText('folders.transfer.action.noProject')
+						}}</n8n-text>
 					</el-radio>
 					<div v-if="operation === 'transfer'" :class="$style.optionInput">
 						<n8n-text color="text-dark">{{
