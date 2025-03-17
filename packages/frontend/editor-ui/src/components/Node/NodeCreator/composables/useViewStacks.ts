@@ -74,7 +74,7 @@ interface ViewStack {
 	sections?: string[] | NodeViewItemSection[];
 	communityNodeDetails?: {
 		title: string;
-		npmPackageName?: string;
+		packageName: string;
 		description: string;
 		installed: boolean;
 		verified?: boolean;

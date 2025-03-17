@@ -79,6 +79,10 @@ function onSearch(value: string) {
 	}
 }
 
+const openCommunityNodeDocsPage = (link: string) => {
+	window.open(`https://www.npmjs.com/package/${link}`, '_blank');
+};
+
 function onTransitionEnd() {
 	void setActiveItemIndex(getDefaultActiveIndex());
 }
@@ -171,6 +175,17 @@ function onBackButton() {
 						:size="20"
 					/>
 					<p v-if="activeViewStack.title" :class="$style.title" v-text="activeViewStack.title" />
+
+					<n8n-link
+						v-if="activeViewStack.communityNodeDetails"
+						theme="text"
+						@click="openCommunityNodeDocsPage(activeViewStack.communityNodeDetails.packageName)"
+						:class="$style.communityDocLink"
+						:title="'Open community node docs'"
+					>
+						<n8n-text size="small" bold style="margin-right: 5px"> Docs </n8n-text>
+						<font-awesome-icon icon="external-link-alt" />
+					</n8n-link>
 				</div>
 				<p
 					v-if="activeViewStack.subtitle"
@@ -200,6 +215,13 @@ function onBackButton() {
 
 				<!-- Nodes Mode -->
 				<NodesRenderer v-else :root-view="nodeCreatorView" v-bind="$attrs" />
+			</div>
+			<div
+				v-if="
+					activeViewStack.communityNodeDetails && !(isActionsMode && activeViewStack.subcategory)
+				"
+			>
+				Manage | Report issue
 			</div>
 		</aside>
 	</transition>
@@ -327,6 +349,12 @@ function onBackButton() {
 }
 .offsetSubtitle {
 	margin-left: calc(var(--spacing-xl) + var(--spacing-4xs));
+}
+.communityDocLink {
+	display: flex;
+	align-items: center;
+	margin-left: auto;
+	padding-bottom: var(--spacing-5xs);
 }
 </style>
 

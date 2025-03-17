@@ -56,8 +56,8 @@ async function fetchPackageInfo(packageName: string) {
 }
 
 onMounted(async () => {
-	if (communityNodeDetails?.npmPackageName) {
-		await fetchPackageInfo(communityNodeDetails?.npmPackageName);
+	if (communityNodeDetails?.packageName) {
+		await fetchPackageInfo(communityNodeDetails.packageName);
 	}
 });
 </script>
