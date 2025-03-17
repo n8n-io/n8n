@@ -690,14 +690,14 @@ const loadPaginationFromQueryString = async () => {
 	display: grid;
 	grid-auto-flow: column;
 	grid-auto-columns: 1fr max-content max-content max-content;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing-4xs);
 	align-items: center;
 	justify-content: end;
 	width: 100%;
 
 	.sort-and-filter {
 		display: flex;
-		gap: var(--spacing-2xs);
+		gap: var(--spacing-4xs);
 		align-items: center;
 	}
 
