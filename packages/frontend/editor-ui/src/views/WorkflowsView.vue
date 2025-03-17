@@ -846,11 +846,14 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 	if (!clickedFolder) return;
 	switch (payload.action) {
 		case FOLDER_LIST_ITEM_ACTIONS.CREATE:
-			await createFolder({
-				id: clickedFolder.id,
-				name: clickedFolder.name,
-				type: 'folder',
-			});
+			await createFolder(
+				{
+					id: clickedFolder.id,
+					name: clickedFolder.name,
+					type: 'folder',
+				},
+				{ openAfterCreate: true },
+			);
 			break;
 		case FOLDER_LIST_ITEM_ACTIONS.CREATE_WORKFLOW:
 			currentFolderId.value = clickedFolder.id;
@@ -885,7 +888,10 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 
 // Reusable action handlers
 // Both action handlers ultimately call these methods once folder to apply action to is determined
-const createFolder = async (parent: { id: string; name: string; type: 'project' | 'folder' }) => {
+const createFolder = async (
+	parent: { id: string; name: string; type: 'project' | 'folder' },
+	options: { openAfterCreate: boolean } = { openAfterCreate: false },
+) => {
 	const promptResponsePromise = message.prompt(
 		i18n.baseText('folders.add.to.parent.message', { interpolate: { parent: parent.name } }),
 		{
@@ -926,31 +932,39 @@ const createFolder = async (parent: { id: string; name: string; type: 'project' 
 				},
 				type: 'success',
 			});
-			// If we are on an empty list, just add the new folder to the list
-			if (!workflowsAndFolders.value.length) {
-				workflowsAndFolders.value = [
-					{
-						id: newFolder.id,
-						name: newFolder.name,
-						resource: 'folder',
-						createdAt: newFolder.createdAt,
-						updatedAt: newFolder.updatedAt,
-						homeProject: projectsStore.currentProject as ProjectSharingData,
-						sharedWithProjects: [],
-						workflowCount: 0,
-						subFolderCount: 0,
-					},
-				];
-				foldersStore.cacheFolders([
-					{ id: newFolder.id, name: newFolder.name, parentFolder: currentFolder.value?.id },
-				]);
-			} else {
-				// Else fetch again with same filters & pagination applied
-				await fetchWorkflows();
-			}
 			telemetry.track('User created folder', {
 				folder_id: newFolder.id,
 			});
+			if (options.openAfterCreate) {
+				// Navigate to parent folder id option specified by the caller
+				await router.push({
+					name: VIEWS.PROJECTS_FOLDERS,
+					params: { projectId: route.params.projectId, folderId: parent.id },
+				});
+			} else {
+				// If we are on an empty list, just add the new folder to the list
+				if (!workflowsAndFolders.value.length) {
+					workflowsAndFolders.value = [
+						{
+							id: newFolder.id,
+							name: newFolder.name,
+							resource: 'folder',
+							createdAt: newFolder.createdAt,
+							updatedAt: newFolder.updatedAt,
+							homeProject: projectsStore.currentProject as ProjectSharingData,
+							sharedWithProjects: [],
+							workflowCount: 0,
+							subFolderCount: 0,
+						},
+					];
+					foldersStore.cacheFolders([
+						{ id: newFolder.id, name: newFolder.name, parentFolder: currentFolder.value?.id },
+					]);
+				} else {
+					// Else fetch again with same filters & pagination applied
+					await fetchWorkflows();
+				}
+			}
 		} catch (error) {
 			toast.showError(error, i18n.baseText('folders.create.error.title'));
 		}
@@ -1339,7 +1353,7 @@ const onCreateWorkflowClick = () => {
 							interpolate: { folderName: currentFolder.name },
 						})
 					"
-					:button-text="i18n.baseText('folders.actions.create.workflow')"
+					:button-text="i18n.baseText('generic.create.workflow')"
 					button-type="secondary"
 					:button-disabled="readOnlyEnv || !projectPermissions.workflow.create"
 					@click:button="onCreateWorkflowClick"
