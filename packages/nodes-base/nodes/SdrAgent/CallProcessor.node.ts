@@ -133,6 +133,7 @@ async function processCalls(contacts: any[], sdrAgent: any) {
 
 			const dynamicVariableObj = createDynamicObject(contact?.custom_fields);
 			dynamicVariableObj['leadName'] = contact.name.split(' ')[0];
+			dynamicVariableObj['recipientName'] = contact.name.split(' ')[0];
 			dynamicVariableObj['productName'] = contact.product_of_interest;
 			dynamicVariableObj['currentTime'] = adjustTimeByOffset(new Date(), sdrAgent.offset);
 			dynamicVariableObj['companyName'] = contact.company_name;
