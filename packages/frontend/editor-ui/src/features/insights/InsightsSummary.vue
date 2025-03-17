@@ -3,6 +3,10 @@ import { computed, useCssModule } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import type { InsightsSummary } from '@n8n/api-types';
 import type { InsightsSummaryDisplay } from '@/features/insights/insights.types';
+import {
+	INSIGHT_IMPACT_TYPES,
+	INSIGHTS_UNIT_IMPACT_MAPPING,
+} from '@/features/insights/insights.constants';
 
 defineProps<{
 	summary: InsightsSummaryDisplay;
@@ -21,10 +25,16 @@ const summaryTitles = computed<Record<keyof InsightsSummary, string>>(() => ({
 }));
 
 const getSign = (n: number) => (n > 0 ? '+' : undefined);
-const getDeviationStyles = (d: number) => ({
-	[$style.up]: d > 0,
-	[$style.down]: d < 0,
-});
+const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
+	const impact = INSIGHTS_UNIT_IMPACT_MAPPING[id];
+	if (impact === INSIGHT_IMPACT_TYPES.POSITIVE) {
+		return value > 0 ? $style.positive : $style.negative;
+	}
+	if (impact === INSIGHT_IMPACT_TYPES.NEGATIVE) {
+		return value < 0 ? $style.positive : $style.negative;
+	}
+	return '';
+};
 </script>
 
 <template>
@@ -58,10 +68,10 @@ const getDeviationStyles = (d: number) => ({
 						<em
 							>{{ value }} <i>{{ unit }}</i></em
 						>
-						<small :class="getDeviationStyles(deviation)">
+						<small :class="getImpactStyle(id, deviation)">
 							<N8nIcon
 								v-if="deviation > 0 || deviation < 0"
-								:class="[$style.icon, getDeviationStyles(deviation)]"
+								:class="[$style.icon, getImpactStyle(id, deviation)]"
 								:icon="deviation > 0 ? 'caret-up' : 'caret-down'"
 								color="text-light"
 							/>
@@ -164,11 +174,11 @@ const getDeviationStyles = (d: number) => ({
 	}
 }
 
-.up {
+.positive {
 	color: var(--color-success);
 }
 
-.down {
+.negative {
 	color: var(--color-danger);
 }
 
