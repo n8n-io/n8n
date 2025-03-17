@@ -22,6 +22,7 @@ import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { N8nText } from '@n8n/design-system';
 import {
 	createResultError,
+	IWorkflowDataProxyAdditionalKeys,
 	NodeConnectionType,
 	type IConnectedNode,
 	type IDataObject,
@@ -142,12 +143,18 @@ const isVariablesEnabled = computed(
 );
 
 const contextSchema = computed(() => {
-	const variables = environmentsStore.variablesAsObject;
+	const $vars = environmentsStore.variablesAsObject;
+	const $execution = {
+		...resolveParameter<IWorkflowDataProxyAdditionalKeys['$execution']>('={{$execution}}'),
+		resumeUrl: i18n.baseText('dataMapping.schemaView.execution.resumeUrl'),
+	};
+
+	delete $execution.resumeFormUrl;
 	const schemaSource: Record<string, unknown> = {
 		$now: resolveParameter('={{$now.toISO()}}'),
 		$today: resolveParameter('={{$today.toISO()}}'),
-		$vars: variables,
-		$execution: resolveParameter('={{$execution}}'),
+		$vars,
+		$execution,
 		$workflow: resolveParameter('={{$workflow}}'),
 	};
 
@@ -311,15 +318,15 @@ watch(
 	},
 );
 
-// Context items should be collapsed by default
+// Variables & context items should be collapsed by default
 watch(
 	contextItems,
 	(currentContextItems) => {
-		for (const item of currentContextItems) {
-			if (item.type === 'item' && item.depth === 1) {
+		currentContextItems
+			.filter((item) => item.type === 'header')
+			.forEach((item) => {
 				closedNodes.value.add(item.id);
-			}
-		}
+			});
 	},
 	{ once: true, immediate: true },
 );

@@ -143,8 +143,6 @@ describe('VirtualSchema.vue', () => {
 		template: '<div v-bind="$attrs"><slot></slot></div>',
 	};
 
-	const VARIABLES_AND_CONTEXT_PILL_COUNT = 5;
-
 	beforeEach(async () => {
 		cleanup();
 		vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue(123);
@@ -261,7 +259,7 @@ describe('VirtualSchema.vue', () => {
 
 		await waitFor(() => {
 			const items = getAllByTestId('run-data-schema-item');
-			expect(items).toHaveLength(6 + VARIABLES_AND_CONTEXT_PILL_COUNT);
+			expect(items).toHaveLength(6);
 		});
 
 		expect(container).toMatchSnapshot();
@@ -408,11 +406,7 @@ describe('VirtualSchema.vue', () => {
 			},
 		});
 
-		await waitFor(() =>
-			expect(getAllByTestId('run-data-schema-item').length).toBe(
-				2 + VARIABLES_AND_CONTEXT_PILL_COUNT,
-			),
-		);
+		await waitFor(() => expect(getAllByTestId('run-data-schema-item').length).toBe(2));
 	});
 
 	it('should show connections', async () => {
@@ -444,9 +438,7 @@ describe('VirtualSchema.vue', () => {
 		const { getAllByTestId } = renderComponent();
 
 		await waitFor(() => {
-			expect(getAllByTestId('run-data-schema-item')).toHaveLength(
-				6 + VARIABLES_AND_CONTEXT_PILL_COUNT,
-			);
+			expect(getAllByTestId('run-data-schema-item')).toHaveLength(6);
 		});
 		const items = getAllByTestId('run-data-schema-item');
 
@@ -484,18 +476,14 @@ describe('VirtualSchema.vue', () => {
 		await waitFor(async () => {
 			const headers = getAllByTestId('run-data-schema-header');
 			expect(headers.length).toBe(3);
-			expect(getAllByTestId('run-data-schema-item').length).toBe(
-				2 + VARIABLES_AND_CONTEXT_PILL_COUNT,
-			);
+			expect(getAllByTestId('run-data-schema-item').length).toBe(2);
 
-			// Collapse all nodes
-			await Promise.all(headers.map(async ($header) => await userEvent.click($header)));
+			// Collapse all nodes (Variables & context is collapsed by default)
+			await Promise.all(headers.slice(0, -1).map(async (header) => await userEvent.click(header)));
 
 			expect(queryAllByTestId('run-data-schema-item').length).toBe(0);
 			await rerender({ search: 'John' });
-			expect(getAllByTestId('run-data-schema-item').length).toBe(
-				2 + VARIABLES_AND_CONTEXT_PILL_COUNT,
-			);
+			expect(getAllByTestId('run-data-schema-item').length).toBe(8);
 		});
 	});
 
@@ -544,23 +532,34 @@ describe('VirtualSchema.vue', () => {
 			data: [],
 		});
 
-		const { getAllByTestId } = renderComponent({
+		const { getAllByTestId, container } = renderComponent({
 			props: {
 				nodes: [{ name: mockNode1.name, indicies: [], depth: 1 }],
 			},
 		});
+
+		let headers: HTMLElement[] = [];
+
 		await waitFor(() => {
-			const headers = getAllByTestId('run-data-schema-header');
+			headers = getAllByTestId('run-data-schema-header');
 			expect(headers).toHaveLength(2);
 			expect(headers[1]).toHaveTextContent('Variables and context');
+		});
+
+		await userEvent.click(headers[1]);
+
+		await waitFor(() => {
 			const items = getAllByTestId('run-data-schema-item');
 
 			expect(items).toHaveLength(6);
-			expect(items[1]).toHaveTextContent('$now');
-			expect(items[2]).toHaveTextContent('$today');
-			expect(items[3]).toHaveTextContent('$vars');
-			expect(items[4]).toHaveTextContent('$execution');
+			expect(items[0]).toHaveTextContent('$now');
+			expect(items[1]).toHaveTextContent('$today');
+			expect(items[2]).toHaveTextContent('$vars');
+			expect(items[3]).toHaveTextContent('$execution');
+			expect(items[4]).toHaveTextContent('resumeUrl');
 			expect(items[5]).toHaveTextContent('$workflow');
 		});
+
+		expect(container).toMatchSnapshot();
 	});
 });
