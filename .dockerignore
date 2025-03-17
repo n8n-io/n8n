@@ -17,3 +17,8 @@ docker/compose
 docker/**/Dockerfile
 .vscode
 cypress
+node_modules
+.git
+.github
+docs
+*.md
