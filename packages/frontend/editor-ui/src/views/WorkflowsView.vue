@@ -16,6 +16,7 @@ import {
 	VIEWS,
 	DEFAULT_WORKFLOW_PAGE_SIZE,
 	MODAL_CONFIRM,
+	VALID_FOLDER_NAME_REGEX,
 } from '@/constants';
 import type {
 	IUser,
@@ -174,13 +175,14 @@ const mainBreadcrumbsActions = computed(() =>
 );
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
-const foldersEnabled = computed(() => settingsStore.settings.folders.enabled);
 const isOverviewPage = computed(() => route.name === VIEWS.WORKFLOWS);
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const isShareable = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
 );
-const showFolders = computed(() => foldersEnabled.value && !isOverviewPage.value);
+const showFolders = computed(() => {
+	return settingsStore.isFoldersFeatureEnabled && !isOverviewPage.value;
+});
 
 const currentFolder = computed(() => {
 	return currentFolderId.value ? foldersStore.breadcrumbsCache[currentFolderId.value] : null;
@@ -320,7 +322,11 @@ sourceControlStore.$onAction(({ name, after }) => {
 	after(async () => await initialize());
 });
 
-const onFolderDeleted = async (payload: { folderId: string }) => {
+const onFolderDeleted = async (payload: {
+	folderId: string;
+	workflowCount: number;
+	folderCount: number;
+}) => {
 	const folderInfo = foldersStore.getCachedFolder(payload.folderId);
 	foldersStore.deleteFoldersFromCache([payload.folderId, folderInfo?.parentFolder ?? '']);
 	// If the deleted folder is the current folder, navigate to the parent folder
@@ -333,6 +339,11 @@ const onFolderDeleted = async (payload: { folderId: string }) => {
 	} else {
 		await fetchWorkflows();
 	}
+	telemetry.track('User deleted folder', {
+		folder_id: payload.folderId,
+		deleted_sub_folders: payload.folderCount,
+		deleted_sub_workflows: payload.workflowCount,
+	});
 };
 
 /**
@@ -346,12 +357,16 @@ onMounted(async () => {
 	workflowListEventBus.on('resource-moved', fetchWorkflows);
 	workflowListEventBus.on('workflow-duplicated', fetchWorkflows);
 	workflowListEventBus.on('folder-deleted', onFolderDeleted);
+	workflowListEventBus.on('folder-moved', moveFolder);
+	workflowListEventBus.on('workflow-moved', onWorkflowMoved);
 });
 
 onBeforeUnmount(() => {
 	workflowListEventBus.off('resource-moved', fetchWorkflows);
 	workflowListEventBus.off('workflow-duplicated', fetchWorkflows);
 	workflowListEventBus.off('folder-deleted', onFolderDeleted);
+	workflowListEventBus.off('folder-moved', moveFolder);
+	workflowListEventBus.off('workflow-moved', onWorkflowMoved);
 });
 
 /**
@@ -669,25 +684,20 @@ const getFolderListItem = (folderId: string): FolderListItem | undefined => {
 			resource.resource === 'folder' && resource.id === folderId,
 	);
 };
-// TODO: This will only count the workflows and folders in the current page
-// Check if we need to add counts to /tree endpoint or not show them in modal
-const getCurrentFolderWorkflowCount = () => {
-	const workflows = workflowsAndFolders.value.filter(
-		(resource): resource is WorkflowListItem => resource.resource === 'workflow',
-	);
-	return workflows.length;
-};
 
-const getCurrentFolderSubFolderCount = () => {
-	const folders = workflowsAndFolders.value.filter(
-		(resource): resource is FolderListItem => resource.resource === 'folder',
-	);
-	return folders.length;
-};
-
-const getFolderContent = (folderId: string) => {
+const getFolderContent = async (folderId: string) => {
 	const folderListItem = getFolderListItem(folderId);
-	if (!folderListItem) {
+	if (folderListItem) {
+		return {
+			workflowCount: folderListItem.workflowCount,
+			subFolderCount: folderListItem.subFolderCount,
+		};
+	}
+	try {
+		// Fetch the folder content from API
+		const content = await foldersStore.fetchFolderContent(currentProject.value?.id ?? '', folderId);
+		return { workflowCount: content.totalWorkflows, subFolderCount: content.totalSubFolders };
+	} catch (error) {
 		toast.showMessage({
 			title: i18n.baseText('folders.delete.error.message'),
 			message: i18n.baseText('folders.not.found.message'),
@@ -695,10 +705,6 @@ const getFolderContent = (folderId: string) => {
 		});
 		return { workflowCount: 0, subFolderCount: 0 };
 	}
-	return {
-		workflowCount: folderListItem.workflowCount,
-		subFolderCount: folderListItem.subFolderCount,
-	};
 };
 
 // Breadcrumbs methods
@@ -770,7 +776,7 @@ const onBreadcrumbItemClick = (item: PathItem) => {
 				loading.value = false;
 			})
 			.catch((error) => {
-				toast.showError(error, 'Error navigating to folder');
+				toast.showError(error, i18n.baseText('folders.open.error.title'));
 			});
 	}
 };
@@ -796,13 +802,28 @@ const onBreadCrumbsAction = async (action: string) => {
 			break;
 		case FOLDER_LIST_ITEM_ACTIONS.DELETE:
 			if (!route.params.folderId) return;
-			const subFolderCount = getCurrentFolderSubFolderCount();
-			const workflowCount = getCurrentFolderWorkflowCount();
-			await deleteFolder(route.params.folderId as string, workflowCount, subFolderCount);
+			const content = await getFolderContent(route.params.folderId as string);
+			await deleteFolder(
+				route.params.folderId as string,
+				content.workflowCount,
+				content.subFolderCount,
+			);
 			break;
 		case FOLDER_LIST_ITEM_ACTIONS.RENAME:
 			if (!route.params.folderId) return;
 			await renameFolder(route.params.folderId as string);
+			break;
+		case FOLDER_LIST_ITEM_ACTIONS.MOVE:
+			if (!currentFolder.value) return;
+			uiStore.openMoveToFolderModal(
+				'folder',
+				{
+					id: currentFolder.value?.id,
+					name: currentFolder.value?.name,
+					parentFolderId: currentFolder.value?.parentFolder,
+				},
+				workflowListEventBus,
+			);
 			break;
 		default:
 			break;
@@ -830,12 +851,23 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 			});
 			break;
 		case FOLDER_LIST_ITEM_ACTIONS.DELETE: {
-			const content = getFolderContent(clickedFolder.id);
+			const content = await getFolderContent(clickedFolder.id);
 			await deleteFolder(clickedFolder.id, content.workflowCount, content.subFolderCount);
 			break;
 		}
 		case FOLDER_LIST_ITEM_ACTIONS.RENAME:
 			await renameFolder(clickedFolder.id);
+			break;
+		case FOLDER_LIST_ITEM_ACTIONS.MOVE:
+			uiStore.openMoveToFolderModal(
+				'folder',
+				{
+					id: clickedFolder.id,
+					name: clickedFolder.name,
+					parentFolderId: clickedFolder.parentFolder,
+				},
+				workflowListEventBus,
+			);
 			break;
 		default:
 			break;
@@ -845,18 +877,13 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 // Reusable action handlers
 // Both action handlers ultimately call these methods once folder to apply action to is determined
 const createFolder = async (parent: { id: string; name: string; type: 'project' | 'folder' }) => {
-	// Rules for folder name:
-	// - Invalid characters: \/:*?"<>|
-	// - Invalid name: empty or only dots
-	const validFolderNameRegex = /^(?!\.+$)(?!\s+$)[^\\/:*?"<>|]{1,100}$/;
-
 	const promptResponsePromise = message.prompt(
 		i18n.baseText('folders.add.to.parent.message', { interpolate: { parent: parent.name } }),
 		{
 			confirmButtonText: i18n.baseText('generic.create'),
 			cancelButtonText: i18n.baseText('generic.cancel'),
 			inputErrorMessage: i18n.baseText('folders.invalidName.message'),
-			inputPattern: validFolderNameRegex,
+			inputPattern: VALID_FOLDER_NAME_REGEX,
 			customClass: 'add-folder-modal',
 		},
 	);
@@ -870,10 +897,10 @@ const createFolder = async (parent: { id: string; name: string; type: 'project' 
 				parent.type === 'folder' ? parent.id : undefined,
 			);
 
-			let newFolderURL = `/projects/${route.params.projectId}/folders/${newFolder.id}/workflows`;
-			if (newFolder.parentFolder) {
-				newFolderURL = `/projects/${route.params.projectId}/folders/${newFolder.id}/workflows`;
-			}
+			const newFolderURL = router.resolve({
+				name: VIEWS.PROJECTS_FOLDERS,
+				params: { projectId: route.params.projectId, folderId: newFolder.id },
+			}).href;
 			toast.showToast({
 				title: i18n.baseText('folders.add.success.title'),
 				message: i18n.baseText('folders.add.success.message', {
@@ -912,8 +939,11 @@ const createFolder = async (parent: { id: string; name: string; type: 'project' 
 				// Else fetch again with same filters & pagination applied
 				await fetchWorkflows();
 			}
+			telemetry.track('User created folder', {
+				folder_id: newFolder.id,
+			});
 		} catch (error) {
-			toast.showError(error, 'Error creating folder');
+			toast.showError(error, i18n.baseText('folders.create.error.title'));
 		}
 	}
 };
@@ -928,7 +958,7 @@ const renameFolder = async (folderId: string) => {
 			cancelButtonText: i18n.baseText('generic.cancel'),
 			inputErrorMessage: i18n.baseText('folders.invalidName.message'),
 			inputValue: folder.name,
-			inputPattern: /^[a-zA-Z0-9-_ ]{1,100}$/,
+			inputPattern: VALID_FOLDER_NAME_REGEX,
 			customClass: 'rename-folder-modal',
 		},
 	);
@@ -945,6 +975,9 @@ const renameFolder = async (folderId: string) => {
 				type: 'success',
 			});
 			await fetchWorkflows();
+			telemetry.track('User renamed folder', {
+				folder_id: folderId,
+			});
 		} catch (error) {
 			toast.showError(error, i18n.baseText('folders.rename.error.title'));
 		}
@@ -974,7 +1007,101 @@ const deleteFolder = async (folderId: string, workflowCount: number, subFolderCo
 			title: i18n.baseText('folders.delete.success.message'),
 			type: 'success',
 		});
-		await onFolderDeleted({ folderId });
+		await onFolderDeleted({ folderId, workflowCount, folderCount: subFolderCount });
+	}
+};
+
+const moveFolder = async (payload: {
+	folder: { id: string; name: string };
+	newParent: { id: string; name: string };
+}) => {
+	if (!route.params.projectId) return;
+	try {
+		await foldersStore.moveFolder(
+			route.params.projectId as string,
+			payload.folder.id,
+			payload.newParent.id,
+		);
+		const isCurrentFolder = currentFolderId.value === payload.folder.id;
+		const newFolderURL = router.resolve({
+			name: VIEWS.PROJECTS_FOLDERS,
+			params: { projectId: route.params.projectId, folderId: payload.newParent.id },
+		}).href;
+		if (isCurrentFolder) {
+			// If we just moved the current folder, automatically navigate to the new folder
+			void router.push(newFolderURL);
+		} else {
+			// Else show success message and update the list
+			toast.showToast({
+				title: i18n.baseText('folders.move.success.title'),
+				message: i18n.baseText('folders.move.success.message', {
+					interpolate: { folderName: payload.folder.name, newFolderName: payload.newParent.name },
+				}),
+				onClick: (event: MouseEvent | undefined) => {
+					if (event?.target instanceof HTMLAnchorElement) {
+						event.preventDefault();
+						void router.push(newFolderURL);
+					}
+				},
+				type: 'success',
+			});
+			await fetchWorkflows();
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('folders.move.error.title'));
+	}
+};
+
+const moveWorkflowToFolder = async (payload: {
+	id: string;
+	name: string;
+	parentFolderId?: string;
+}) => {
+	uiStore.openMoveToFolderModal(
+		'workflow',
+		{ id: payload.id, name: payload.name, parentFolderId: payload.parentFolderId },
+		workflowListEventBus,
+	);
+};
+
+const onWorkflowMoved = async (payload: {
+	workflow: { id: string; name: string; oldParentId: string };
+	newParent: { id: string; name: string };
+}) => {
+	if (!route.params.projectId) return;
+	try {
+		const newFolderURL = router.resolve({
+			name: VIEWS.PROJECTS_FOLDERS,
+			params: { projectId: route.params.projectId, folderId: payload.newParent.id },
+		}).href;
+		const workflowResource = workflowsAndFolders.value.find(
+			(resource): resource is WorkflowListItem => resource.id === payload.workflow.id,
+		);
+		await workflowsStore.updateWorkflow(payload.workflow.id, {
+			parentFolderId: payload.newParent.id,
+			versionId: workflowResource?.versionId,
+		});
+		await fetchWorkflows();
+		toast.showToast({
+			title: i18n.baseText('folders.move.workflow.success.title'),
+			message: i18n.baseText('folders.move.workflow.success.message', {
+				interpolate: { workflowName: payload.workflow.name, newFolderName: payload.newParent.name },
+			}),
+			onClick: (event: MouseEvent | undefined) => {
+				if (event?.target instanceof HTMLAnchorElement) {
+					event.preventDefault();
+					void router.push(newFolderURL);
+				}
+			},
+			type: 'success',
+		});
+		telemetry.track('User moved content', {
+			workflow_id: payload.workflow.id,
+			source_folder_id: payload.workflow.oldParentId,
+			destination_folder_id: payload.newParent.id,
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('folders.move.workflow.error.title'));
 	}
 };
 </script>
@@ -1094,6 +1221,7 @@ const deleteFolder = async (folderId: string, workflowCount: number, subFolderCo
 				@workflow:moved="fetchWorkflows"
 				@workflow:duplicated="fetchWorkflows"
 				@workflow:active-toggle="onWorkflowActiveToggle"
+				@action:move-to-folder="moveWorkflowToFolder"
 			/>
 		</template>
 		<template #empty>

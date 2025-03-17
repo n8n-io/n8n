@@ -541,7 +541,7 @@ const loadPaginationFromQueryString = async () => {
 							<n8n-input
 								ref="search"
 								:model-value="filtersModel.search"
-								:class="[$style['search'], 'mr-2xs']"
+								:class="$style.search"
 								:placeholder="i18n.baseText(`${resourceKey}.search.placeholder` as BaseTextKey)"
 								clearable
 								data-test-id="resources-list-search"
