@@ -130,7 +130,7 @@ const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) =
 };
 
 const isSchemaPreviewEnabled = computed(() =>
-	posthogStore.isFeatureEnabled(SCHEMA_PREVIEW_EXPERIMENT),
+	posthogStore.isVariantEnabled(SCHEMA_PREVIEW_EXPERIMENT.name, SCHEMA_PREVIEW_EXPERIMENT.variant),
 );
 
 const nodeSchema = asyncComputed(async () => {

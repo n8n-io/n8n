@@ -182,7 +182,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					// and halt the execution
 					if (!chatHasInputData && !chatHasPinData) {
 						workflowsStore.chatPartialExecutionDestinationNode = options.destinationNode;
-						workflowsStore.setPanelOpen('chat', true);
+						workflowsStore.setPanelState('attached');
 						return;
 					}
 				}
