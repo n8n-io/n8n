@@ -610,8 +610,6 @@ describe('getInsightsSummary', () => {
 	let insightsByPeriodRepository: InsightsByPeriodRepository;
 	let insightsMetadataRepository: InsightsMetadataRepository;
 	beforeAll(async () => {
-		await testDb.init();
-
 		insightsService = Container.get(InsightsService);
 		insightsRawRepository = Container.get(InsightsRawRepository);
 		insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
@@ -630,11 +628,7 @@ describe('getInsightsSummary', () => {
 		metadata = await createMetadata(workflow);
 	});
 
-	afterAll(async () => {
-		await testDb.terminate();
-	});
-
-	test('simple test', async () => {
+	test('compacted data are summarized correctly', async () => {
 		// ARRANGE
 		// last 7 days
 		await createCompactedInsightsEvent(workflow, {
