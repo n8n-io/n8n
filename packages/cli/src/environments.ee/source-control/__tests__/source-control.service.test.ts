@@ -182,7 +182,7 @@ describe('SourceControlService', () => {
 			folderRepository.find.mockResolvedValue([folder]);
 			sourceControlImportService.getRemoteFoldersAndMappingsFromFile.mockResolvedValue({
 				folders: [],
-				mappings: [],
+				workflowMappings: [],
 			});
 			sourceControlImportService.getLocalFoldersAndMappingsFromDb.mockResolvedValue({
 				folders: [
@@ -193,7 +193,7 @@ describe('SourceControlService', () => {
 						homeProjectId: folder.homeProject.id,
 					},
 				],
-				mappings: [],
+				workflowMappings: [],
 			});
 
 			// ACT
