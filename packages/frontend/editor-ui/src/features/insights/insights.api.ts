@@ -17,18 +17,18 @@ export const fetchInsightsSummary = async (context: IRestApiContext): Promise<In
 				unit: 'count',
 			},
 			failureRate: {
-				value: 1.9,
-				deviation: -5,
+				value: 0.019,
+				deviation: -0.008,
 				unit: 'ratio',
 			},
 			timeSaved: {
 				value: 54 * 60 * 60,
-				deviation: -5,
+				deviation: -5 * 60 * 60,
 				unit: 'time',
 			},
 			averageRunTime: {
-				value: 2.5,
-				deviation: -5,
+				value: 2500,
+				deviation: -500,
 				unit: 'time',
 			},
 		}));

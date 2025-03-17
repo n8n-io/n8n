@@ -56,7 +56,7 @@ const getDeviationStyles = (d: number) => ({
 					</span>
 					<span v-else>
 						<em
-							>{{ value }} <i>{{ unit }}</i></em
+							>{{ unit === '%' ? value * 100 : value }} <i>{{ unit }}</i></em
 						>
 						<small :class="getDeviationStyles(deviation)">
 							<N8nIcon
@@ -65,7 +65,7 @@ const getDeviationStyles = (d: number) => ({
 								:icon="deviation > 0 ? 'caret-up' : 'caret-down'"
 								color="text-light"
 							/>
-							{{ getSign(deviation) }}{{ deviation }}
+							{{ getSign(deviation) }}{{ unit === '%' ? deviation * 100 : deviation }}
 						</small>
 					</span>
 				</p>
