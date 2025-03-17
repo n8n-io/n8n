@@ -96,6 +96,15 @@ export class InsightsService {
 				event.value = value;
 				await trx.insert(InsightsRaw, event);
 			}
+
+			// time saved event
+			if (status === 'success' && ctx.workflowData.settings?.timeSavedPerExecution) {
+				const event = new InsightsRaw();
+				event.metaId = metadata.metaId;
+				event.type = 'time_saved_min';
+				event.value = ctx.workflowData.settings.timeSavedPerExecution;
+				await trx.insert(InsightsRaw, event);
+			}
 		});
 	}
 }

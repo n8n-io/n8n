@@ -49,11 +49,14 @@ describe('workflowExecuteAfterHandler', () => {
 		await truncateAll();
 
 		project = await createTeamProject();
-		workflow = await createWorkflow({}, project);
-	});
-
-	afterAll(async () => {
-		await testDb.terminate();
+		workflow = await createWorkflow(
+			{
+				settings: {
+					timeSavedPerExecution: 3,
+				},
+			},
+			project,
+		);
 	});
 
 	test.each<{ status: ExecutionStatus; type: TypeUnits }>([
@@ -90,7 +93,7 @@ describe('workflowExecuteAfterHandler', () => {
 		});
 
 		const allInsights = await insightsRawRepository.find();
-		expect(allInsights).toHaveLength(2);
+		expect(allInsights).toHaveLength(status === 'success' ? 3 : 2);
 		expect(allInsights).toContainEqual(
 			expect.objectContaining({ metaId: metadata.metaId, type, value: 1 }),
 		);
@@ -101,6 +104,15 @@ describe('workflowExecuteAfterHandler', () => {
 				value: stoppedAt.diff(startedAt).toMillis(),
 			}),
 		);
+		if (status === 'success') {
+			expect(allInsights).toContainEqual(
+				expect.objectContaining({
+					metaId: metadata.metaId,
+					type: 'time_saved_min',
+					value: 3,
+				}),
+			);
+		}
 	});
 
 	test.each<{ status: ExecutionStatus }>([
@@ -194,7 +206,7 @@ describe('workflowExecuteAfterHandler', () => {
 		});
 
 		const allInsights = await insightsRawRepository.find();
-		expect(allInsights).toHaveLength(2);
+		expect(allInsights).toHaveLength(3);
 		expect(allInsights).toContainEqual(
 			expect.objectContaining({ metaId: metadata.metaId, type: 'success', value: 1 }),
 		);
@@ -203,6 +215,13 @@ describe('workflowExecuteAfterHandler', () => {
 				metaId: metadata.metaId,
 				type: 'runtime_ms',
 				value: stoppedAt.diff(startedAt).toMillis(),
+			}),
+		);
+		expect(allInsights).toContainEqual(
+			expect.objectContaining({
+				metaId: metadata.metaId,
+				type: 'time_saved_min',
+				value: 3,
 			}),
 		);
 	});
