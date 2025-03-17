@@ -3,6 +3,7 @@ import { MongoClient } from 'mongodb';
 import { type ILoadOptionsFunctions, NodeOperationError, type INodeProperties } from 'n8n-workflow';
 
 import { metadataFilterField } from '@utils/sharedFields';
+
 import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
 
 const mongoCollectionRLC: INodeProperties = {
@@ -108,7 +109,7 @@ async function getMongoClient(context: any) {
 	if (!mongoClient) {
 		const credentials = await context.getCredentials('mongoDb');
 		mongoClient = new MongoClient(credentials.connectionString as string, {
-			appName: 'devrel.content.n8n_vector_integ',
+			appName: 'devrel.integration.n8n_vector_integ',
 		});
 		await mongoClient.connect();
 	}
