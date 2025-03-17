@@ -2,7 +2,7 @@ import type { MemoryVectorStore } from 'langchain/vectorstores/memory';
 import type { INodeProperties } from 'n8n-workflow';
 
 import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
-import { MemoryVectorStoreManager } from '../shared/memory/MemoryVectorStoreManager';
+import { MemoryVectorStoreManager } from '../shared/MemoryManager/MemoryVectorStoreManager';
 
 const insertFields: INodeProperties[] = [
 	{
@@ -48,7 +48,7 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 	async getVectorStoreClient(context, _filter, embeddings, itemIndex) {
 		const workflowId = context.getWorkflow().id;
 		const memoryKey = context.getNodeParameter('memoryKey', itemIndex) as string;
-		const vectorStoreSingleton = MemoryVectorStoreManager.getInstance(embeddings);
+		const vectorStoreSingleton = MemoryVectorStoreManager.getInstance(embeddings, context.logger);
 
 		return await vectorStoreSingleton.getVectorStore(`${workflowId}__${memoryKey}`);
 	},
@@ -56,7 +56,7 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 		const memoryKey = context.getNodeParameter('memoryKey', itemIndex) as string;
 		const clearStore = context.getNodeParameter('clearStore', itemIndex) as boolean;
 		const workflowId = context.getWorkflow().id;
-		const vectorStoreInstance = MemoryVectorStoreManager.getInstance(embeddings);
+		const vectorStoreInstance = MemoryVectorStoreManager.getInstance(embeddings, context.logger);
 
 		await vectorStoreInstance.addDocuments(`${workflowId}__${memoryKey}`, documents, clearStore);
 	},

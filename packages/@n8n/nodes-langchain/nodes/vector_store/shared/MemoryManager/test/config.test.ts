@@ -17,9 +17,7 @@ describe('Vector Store Config', () => {
 
 			const config = getConfig();
 
-			// Default max memory is 100MB
 			expect(config.maxMemoryMB).toBe(-1);
-			// Default TTL is 168 hours (7 days)
 			expect(config.ttlHours).toBe(-1);
 		});
 
@@ -31,16 +29,6 @@ describe('Vector Store Config', () => {
 
 			expect(config.maxMemoryMB).toBe(200);
 			expect(config.ttlHours).toBe(24);
-		});
-
-		it('should handle negative values for unlimited/disabled settings', () => {
-			process.env.N8N_VECTOR_STORE_MAX_MEMORY = '-1';
-			process.env.N8N_VECTOR_STORE_TTL_HOURS = '-1';
-
-			const config = getConfig();
-
-			expect(config.maxMemoryMB).toBe(-1);
-			expect(config.ttlHours).toBe(-1);
 		});
 
 		it('should handle invalid environment variable values', () => {

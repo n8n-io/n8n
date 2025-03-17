@@ -3,6 +3,7 @@ import { Document } from '@langchain/core/documents';
 import type { OpenAIEmbeddings } from '@langchain/openai';
 import { mock } from 'jest-mock-extended';
 import type { MemoryVectorStore } from 'langchain/vectorstores/memory';
+import type { Logger } from 'n8n-workflow';
 
 import * as configModule from '../config';
 import { MemoryVectorStoreManager } from '../MemoryVectorStoreManager';
@@ -26,15 +27,13 @@ jest.mock('langchain/vectorstores/memory', () => {
 });
 
 describe('MemoryVectorStoreManager', () => {
+	let logger: Logger;
 	// Reset the singleton instance before each test
 	beforeEach(() => {
 		jest.clearAllMocks();
-		jest.spyOn(global.console, 'log').mockImplementation();
-		jest.spyOn(global.console, 'debug').mockImplementation();
-		// Reset the static instance to ensure tests don't interfere with each other
+		logger = mock<Logger>();
 		MemoryVectorStoreManager['instance'] = null;
 
-		// Mock setInterval and clearInterval
 		jest.useFakeTimers();
 
 		// Mock the config
@@ -52,15 +51,15 @@ describe('MemoryVectorStoreManager', () => {
 	it('should create an instance of MemoryVectorStoreManager', () => {
 		const embeddings = mock<OpenAIEmbeddings>();
 
-		const instance = MemoryVectorStoreManager.getInstance(embeddings);
+		const instance = MemoryVectorStoreManager.getInstance(embeddings, logger);
 		expect(instance).toBeInstanceOf(MemoryVectorStoreManager);
 	});
 
 	it('should return existing instance', () => {
 		const embeddings = mock<OpenAIEmbeddings>();
 
-		const instance1 = MemoryVectorStoreManager.getInstance(embeddings);
-		const instance2 = MemoryVectorStoreManager.getInstance(embeddings);
+		const instance1 = MemoryVectorStoreManager.getInstance(embeddings, logger);
+		const instance2 = MemoryVectorStoreManager.getInstance(embeddings, logger);
 		expect(instance1).toBe(instance2);
 	});
 
@@ -68,8 +67,8 @@ describe('MemoryVectorStoreManager', () => {
 		const embeddings1 = mock<OpenAIEmbeddings>();
 		const embeddings2 = mock<OpenAIEmbeddings>();
 
-		const instance = MemoryVectorStoreManager.getInstance(embeddings1);
-		MemoryVectorStoreManager.getInstance(embeddings2);
+		const instance = MemoryVectorStoreManager.getInstance(embeddings1, logger);
+		MemoryVectorStoreManager.getInstance(embeddings2, logger);
 
 		expect(instance['embeddings']).toBe(embeddings2);
 	});
@@ -78,10 +77,10 @@ describe('MemoryVectorStoreManager', () => {
 		const embeddings1 = mock<OpenAIEmbeddings>();
 		const embeddings2 = mock<OpenAIEmbeddings>();
 
-		const instance1 = MemoryVectorStoreManager.getInstance(embeddings1);
+		const instance1 = MemoryVectorStoreManager.getInstance(embeddings1, logger);
 		await instance1.getVectorStore('test');
 
-		const instance2 = MemoryVectorStoreManager.getInstance(embeddings2);
+		const instance2 = MemoryVectorStoreManager.getInstance(embeddings2, logger);
 		const vectorStoreInstance2 = await instance2.getVectorStore('test');
 
 		expect(vectorStoreInstance2.embeddings).toBe(embeddings2);
@@ -91,7 +90,7 @@ describe('MemoryVectorStoreManager', () => {
 		jest.spyOn(global, 'setInterval');
 		const embeddings = mock<OpenAIEmbeddings>();
 
-		MemoryVectorStoreManager.getInstance(embeddings);
+		MemoryVectorStoreManager.getInstance(embeddings, logger);
 
 		expect(setInterval).toHaveBeenCalled();
 	});
@@ -105,16 +104,15 @@ describe('MemoryVectorStoreManager', () => {
 		jest.spyOn(global, 'setInterval');
 		const embeddings = mock<OpenAIEmbeddings>();
 
-		MemoryVectorStoreManager.getInstance(embeddings);
+		MemoryVectorStoreManager.getInstance(embeddings, logger);
 
 		expect(setInterval).not.toHaveBeenCalled();
 	});
 
 	it('should track memory usage when adding documents', async () => {
 		const embeddings = mock<OpenAIEmbeddings>();
-		const instance = MemoryVectorStoreManager.getInstance(embeddings);
+		const instance = MemoryVectorStoreManager.getInstance(embeddings, logger);
 
-		// Spy on the memory calculator
 		const calculatorSpy = jest
 			.spyOn(instance['memoryCalculator'], 'estimateBatchSize')
 			.mockReturnValue(1024 * 1024); // Mock 1MB size
@@ -129,7 +127,7 @@ describe('MemoryVectorStoreManager', () => {
 
 	it('should clear store metadata when clearing store', async () => {
 		const embeddings = mock<OpenAIEmbeddings>();
-		const instance = MemoryVectorStoreManager.getInstance(embeddings);
+		const instance = MemoryVectorStoreManager.getInstance(embeddings, logger);
 
 		// Directly set memory usage to 0 to start with a clean state
 		instance['memoryUsageBytes'] = 0;
@@ -158,7 +156,7 @@ describe('MemoryVectorStoreManager', () => {
 
 	it('should request cleanup when adding documents that would exceed memory limit', async () => {
 		const embeddings = mock<OpenAIEmbeddings>();
-		const instance = MemoryVectorStoreManager.getInstance(embeddings);
+		const instance = MemoryVectorStoreManager.getInstance(embeddings, logger);
 
 		// Spy on the cleanup service
 		const cleanupSpy = jest.spyOn(instance['cleanupService'], 'cleanupOldestStores');
@@ -174,7 +172,7 @@ describe('MemoryVectorStoreManager', () => {
 
 	it('should recalculate memory usage periodically', async () => {
 		const embeddings = mock<OpenAIEmbeddings>();
-		const instance = MemoryVectorStoreManager.getInstance(embeddings);
+		const instance = MemoryVectorStoreManager.getInstance(embeddings, logger);
 
 		// Mock methods and spies
 		const recalcSpy = jest.spyOn(instance, 'recalculateMemoryUsage');
@@ -200,7 +198,7 @@ describe('MemoryVectorStoreManager', () => {
 
 	it('should provide accurate stats about vector stores', async () => {
 		const embeddings = mock<OpenAIEmbeddings>();
-		const instance = MemoryVectorStoreManager.getInstance(embeddings);
+		const instance = MemoryVectorStoreManager.getInstance(embeddings, logger);
 
 		// Create mock vector stores
 		const mockVectorStore1 = mock<MemoryVectorStore>();

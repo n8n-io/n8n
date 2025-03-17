@@ -31,7 +31,7 @@ export class MemoryCalculator implements IMemoryCalculator {
 				totalContentSize += doc.pageContent.length * CHAR_SIZE_BYTES;
 			}
 
-			// Metadata size estimation - more accurate than just counting keys
+			// Metadata size estimation
 			if (doc.metadata) {
 				// For simple objects, estimate based on key count
 				const metadataKeys = Object.keys(doc.metadata).length;
@@ -39,11 +39,6 @@ export class MemoryCalculator implements IMemoryCalculator {
 					// For each key, estimate the key name plus a typical value
 					// plus some overhead for object structure
 					totalMetadataSize += metadataKeys * AVG_METADATA_SIZE_BYTES;
-
-					// Add additional overhead for deeply nested objects
-					if (JSON.stringify(doc.metadata).length > 100) {
-						totalMetadataSize += 500; // Extra overhead for complex metadata
-					}
 				}
 			}
 		}
@@ -52,8 +47,7 @@ export class MemoryCalculator implements IMemoryCalculator {
 		// Each embedding is a fixed-size array of floating point numbers
 		const embeddingSize = documents.length * EMBEDDING_SIZE_BYTES;
 
-		// Object overhead (this was likely underestimated before)
-		// Each vector is stored with additional JS object structure
+		// Object overhead, each vector is stored with additional JS object structure
 		const overhead = documents.length * VECTOR_OVERHEAD_BYTES;
 
 		// Calculate total batch size with a safety factor to avoid underestimation

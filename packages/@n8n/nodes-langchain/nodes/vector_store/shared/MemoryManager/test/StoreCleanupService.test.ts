@@ -251,7 +251,6 @@ describe('StoreCleanupService', () => {
 				onCleanupMock,
 			);
 
-			// This should not throw
 			service.cleanupOldestStores(5 * 1024 * 1024);
 			service.cleanupInactiveStores();
 
@@ -273,7 +272,7 @@ describe('StoreCleanupService', () => {
 			addTestStore('oldest', 4 * 1024 * 1024, 5, 1);
 
 			// Trigger a cleanup that will remove only the oldest store
-			service.cleanupOldestStores(4 * 1024 * 1024);
+			service.cleanupOldestStores(4 * 1024 * 1024); // 4MB
 
 			// Verify removal
 			expect(vectorStores.has('oldest')).toBe(false);

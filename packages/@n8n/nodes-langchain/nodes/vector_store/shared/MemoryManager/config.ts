@@ -1,6 +1,6 @@
 import type { MemoryVectorStoreConfig } from './types';
 
-// Default settings
+// Defaults
 const DEFAULT_MAX_MEMORY_MB = -1;
 const DEFAULT_INACTIVE_TTL_HOURS = -1;
 
@@ -36,7 +36,7 @@ export function getConfig(): MemoryVectorStoreConfig {
  * Convert memory size from MB to bytes
  */
 export function mbToBytes(mb: number): number {
-	// -1 is a special value that means "unlimited"
+	// -1 - "unlimited"
 	if (mb <= 0) return -1;
 	return mb * 1024 * 1024;
 }
@@ -45,7 +45,7 @@ export function mbToBytes(mb: number): number {
  * Convert TTL from hours to milliseconds
  */
 export function hoursToMs(hours: number): number {
-	// -1 is a special value that means "disabled"
+	// -1 - "disabled"
 	if (hours <= 0) return -1;
 	return hours * 60 * 60 * 1000;
 }

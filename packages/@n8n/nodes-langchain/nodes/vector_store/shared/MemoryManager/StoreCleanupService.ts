@@ -106,7 +106,7 @@ export class StoreCleanupService implements IStoreCleanupService {
 
 		// Reuse cached ordering if available and not stale
 		if (this.oldestStoreKeys.length === 0 || now - this.lastSortTime > this.CACHE_TTL_MS) {
-			// Efficiently collect and sort store keys by age
+			// Collect and sort store keys by age
 			const stores: Array<[string, number]> = [];
 
 			for (const [key, metadata] of this.storeMetadata.entries()) {

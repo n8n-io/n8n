@@ -81,7 +81,7 @@ describe('MemoryCalculator', () => {
 							with: {
 								many: {
 									levels: [1, 2, 3, 4, 5],
-									andArrays: ['a', 'b', 'c', 'd', 'e'],
+									andArray: ['a', 'b', 'c', 'd', 'e'],
 								},
 							},
 						},
@@ -182,7 +182,6 @@ describe('MemoryCalculator', () => {
 				},
 			];
 
-			// This should not throw
 			const size = calculator.calculateVectorStoreSize(vectorStore);
 
 			// Size should still be positive (at least the embedding size)
@@ -196,7 +195,6 @@ describe('MemoryCalculator', () => {
 			const undefinedVectorStore = mock<MemoryVectorStore>();
 			undefinedVectorStore.memoryVectors = [];
 
-			// These should not throw
 			expect(calculator.calculateVectorStoreSize(nullVectorStore)).toBe(0);
 			expect(calculator.calculateVectorStoreSize(undefinedVectorStore)).toBe(0);
 		});
