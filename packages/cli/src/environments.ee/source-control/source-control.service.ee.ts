@@ -914,18 +914,18 @@ export class SourceControlService {
 			foldersModifiedInEither.push(options.preferLocalVersion ? local : mismatchingIds);
 		});
 
-		const mappingsMissingInLocal = foldersMappingsRemote.mappings.filter(
+		const mappingsMissingInLocal = foldersMappingsRemote.workflowMappings.filter(
 			(remote) =>
-				foldersMappingsLocal.mappings.findIndex(
+				foldersMappingsLocal.workflowMappings.findIndex(
 					(local) =>
 						local.parentFolderId === remote.parentFolderId &&
 						local.workflowId === remote.workflowId,
 				) === -1,
 		);
 
-		const mappingsMissingInRemote = foldersMappingsLocal.mappings.filter(
+		const mappingsMissingInRemote = foldersMappingsLocal.workflowMappings.filter(
 			(local) =>
-				foldersMappingsRemote.mappings.findIndex(
+				foldersMappingsRemote.workflowMappings.findIndex(
 					(remote) =>
 						remote.parentFolderId === local.parentFolderId &&
 						remote.workflowId === remote.workflowId,
