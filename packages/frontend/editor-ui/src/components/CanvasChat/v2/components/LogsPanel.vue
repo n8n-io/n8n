@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import PanelHeader from '@/components/CanvasChat/components/PanelHeader.vue';
+import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionButtonVisible';
 import { useI18n } from '@/composables/useI18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -11,6 +12,7 @@ const emit = defineEmits<{ clickHeader: [] }>();
 const locale = useI18n();
 const workflowsStore = useWorkflowsStore();
 const nodeHelpers = useNodeHelpers();
+const isClearExecutionButtonVisible = useClearExecutionButtonVisible();
 
 defineSlots<{ actions: {} }>();
 
@@ -27,11 +29,11 @@ function onClearExecutionData() {
 			@click="emit('clickHeader')"
 		>
 			<template #actions>
-				<N8nTooltip>
-					<template #content>{{
-						locale.baseText('logs.overview.header.actions.clearExecution.tooltip')
-					}}</template>
-					<N8nButton type="secondary" icon="trash" @click.stop="onClearExecutionData">{{
+				<N8nTooltip
+					v-if="isClearExecutionButtonVisible"
+					:content="locale.baseText('logs.overview.header.actions.clearExecution.tooltip')"
+				>
+					<N8nButton size="mini" type="secondary" icon="trash" @click.stop="onClearExecutionData">{{
 						locale.baseText('logs.overview.header.actions.clearExecution')
 					}}</N8nButton>
 				</N8nTooltip>
@@ -39,7 +41,7 @@ function onClearExecutionData() {
 			</template>
 		</PanelHeader>
 		<div v-if="isOpen" :class="[$style.content, $style.empty]">
-			<N8nText tag="p" size="large" color="text-base" :class="$style.emptyText">
+			<N8nText tag="p" size="medium" color="text-base" :class="$style.emptyText">
 				{{ locale.baseText('logs.overview.body.empty.message') }}
 			</N8nText>
 		</div>

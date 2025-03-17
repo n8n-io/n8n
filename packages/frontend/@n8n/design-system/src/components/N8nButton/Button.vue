@@ -34,7 +34,9 @@ const ariaBusy = computed(() => (props.loading ? 'true' : undefined));
 const ariaDisabled = computed(() => (props.disabled ? 'true' : undefined));
 const isDisabled = computed(() => props.disabled || props.loading);
 
-const iconSize = computed(() => (props.size === 'mini' ? 'xsmall' : props.size));
+const iconSize = computed(() =>
+	props.size === 'mini' ? 'small' : props.size === 'small' ? 'medium' : props.size,
+);
 
 const classes = computed(() => {
 	return (
@@ -151,7 +153,7 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 .mini {
 	--button-padding-vertical: var(--spacing-4xs);
 	--button-padding-horizontal: var(--spacing-2xs);
-	--button-font-size: var(--font-size-2xs);
+	--button-font-size: var(--font-size-3xs);
 
 	&.square {
 		height: 22px;

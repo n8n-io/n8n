@@ -17,15 +17,17 @@ const emit = defineEmits<{ click: [] }>();
 
 <style lang="scss" module>
 .container {
-	font-size: var(--font-size-s);
+	font-size: var(--font-size-2xs);
 	font-weight: 400;
 	line-height: 18px;
 	text-align: left;
-	padding: var(--spacing-xs);
+	padding-inline: var(--spacing-s);
+	padding-block: var(--spacing-2xs);
 	background-color: var(--color-foreground-xlight);
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+	line-height: var(--font-line-height-compact);
 
 	&:last-child {
 		/** Panel collapsed */
@@ -47,13 +49,13 @@ const emit = defineEmits<{ click: [] }>();
 .actions {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-3xs);
 	color: var(--color-text-base);
 	max-width: 70%;
+	/* Let button heights not affect the header height */
+	margin-block: calc(-1 * var(--spacing-s));
 }
 
 .actions button {
-	max-height: 1.1rem;
 	border: none;
 }
 </style>

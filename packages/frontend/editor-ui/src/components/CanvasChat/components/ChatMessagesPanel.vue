@@ -11,7 +11,7 @@ import { computed, ref } from 'vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useToast } from '@/composables/useToast';
 import PanelHeader from '@/components/CanvasChat/components/PanelHeader.vue';
-import { N8nButton } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 
 interface Props {
 	pastChatMessages: string[];
@@ -19,14 +19,12 @@ interface Props {
 	sessionId: string;
 	showCloseButton?: boolean;
 	isOpen?: boolean;
-	simplifySessionId?: boolean;
-	showEmptyMessage?: boolean;
+	isRedesign?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
 	isOpen: true,
-	simplifySessionId: false,
-	showEmptyMessage: false,
+	isRedesign: false,
 });
 
 const emit = defineEmits<{
@@ -136,23 +134,37 @@ async function copySessionId() {
 	<div :class="$style.chat" data-test-id="workflow-lm-chat-dialog">
 		<PanelHeader :title="locale.baseText('chat.window.title')" @click="emit('clickHeader')">
 			<template #actions>
-				<template v-if="simplifySessionId">
-					<n8n-tooltip v-if="clipboard.isSupported.value" placement="left">
-						<template #content>
-							{{ sessionId }}
-						</template>
+				<template v-if="isRedesign">
+					<N8nTooltip
+						v-if="clipboard.isSupported.value"
+						:content="locale.baseText('chat.window.session.id.copy')"
+					>
 						<N8nButton
 							data-test-id="chat-session-id"
 							type="secondary"
-							icon="copy"
+							size="mini"
 							@click.stop="clipboard.isSupported.value ? copySessionId() : null"
-							>{{ locale.baseText('chat.window.session.id') }}</N8nButton
-						>
-					</n8n-tooltip>
+							>{{ locale.baseText('chat.window.session.id')
+							}}<N8nIcon icon="copy" size="small" class="el-icon--right"
+						/></N8nButton>
+					</N8nTooltip>
+					<N8nTooltip :content="locale.baseText('chat.window.session.resetSession')">
+						<N8nIconButton
+							v-if="messages.length > 0"
+							:class="$style.headerButton"
+							data-test-id="refresh-session-button"
+							outline
+							type="secondary"
+							size="small"
+							icon="undo"
+							:title="locale.baseText('chat.window.session.reset')"
+							@click.stop="onRefreshSession"
+						/>
+					</N8nTooltip>
 				</template>
 				<template v-else>
 					<span>{{ locale.baseText('chat.window.session.title') }}</span>
-					<n8n-tooltip placement="left">
+					<N8nTooltip placement="left">
 						<template #content>
 							{{ sessionId }}
 						</template>
@@ -162,27 +174,27 @@ async function copySessionId() {
 							@click="clipboard.isSupported.value ? copySessionId() : null"
 							>{{ sessionId }}</span
 						>
-					</n8n-tooltip>
+					</N8nTooltip>
+					<N8nIconButton
+						:class="$style.headerButton"
+						data-test-id="refresh-session-button"
+						outline
+						type="secondary"
+						size="small"
+						icon="undo"
+						:title="locale.baseText('chat.window.session.reset')"
+						@click.stop="onRefreshSession"
+					/>
+					<N8nIconButton
+						v-if="showCloseButton"
+						:class="$style.headerButton"
+						outline
+						type="secondary"
+						size="mini"
+						icon="times"
+						@click="emit('close')"
+					/>
 				</template>
-				<n8n-icon-button
-					:class="$style.headerButton"
-					data-test-id="refresh-session-button"
-					outline
-					type="secondary"
-					size="small"
-					icon="undo"
-					:title="locale.baseText('chat.window.session.reset')"
-					@click.stop="onRefreshSession"
-				/>
-				<n8n-icon-button
-					v-if="showCloseButton"
-					:class="$style.headerButton"
-					outline
-					type="secondary"
-					size="mini"
-					icon="times"
-					@click="emit('close')"
-				/>
 			</template>
 		</PanelHeader>
 		<main v-if="isOpen" :class="$style.chatBody">
@@ -190,7 +202,7 @@ async function copySessionId() {
 				:messages="messages"
 				:class="$style.messages"
 				:empty-text="
-					showEmptyMessage ? locale.baseText('chat.window.chat.emptyChatMessage.v2') : undefined
+					isRedesign ? locale.baseText('chat.window.chat.emptyChatMessage.v2') : undefined
 				"
 			>
 				<template #beforeMessage="{ message }">
@@ -304,7 +316,6 @@ async function copySessionId() {
 	height: 100%;
 	width: 100%;
 	overflow: auto;
-	padding-top: 1.5em;
 
 	&:not(:last-child) {
 		margin-right: 1em;

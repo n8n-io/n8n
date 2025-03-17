@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { computed, ref, useTemplateRef } from 'vue';
-import { N8nIconButton, N8nResizeWrapper } from '@n8n/design-system';
+import { N8nIconButton, N8nResizeWrapper, N8nTooltip } from '@n8n/design-system';
 import { useChatState } from '@/components/CanvasChat/composables/useChatState';
 import { useResize } from '@/components/CanvasChat/composables/useResize';
 import { usePiPWindow } from '@/components/CanvasChat/composables/usePiPWindow';
@@ -10,6 +10,7 @@ import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/constan
 import LogsPanel from '@/components/CanvasChat/v2/components/LogsPanel.vue';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { watch } from 'vue';
+import { useI18n } from '@/composables/useI18n';
 
 const workflowsStore = useWorkflowsStore();
 const canvasStore = useCanvasStore();
@@ -23,6 +24,7 @@ const hasChat = computed(() =>
 		[CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE].includes(node.type),
 	),
 );
+const locales = useI18n();
 
 const telemetry = useTelemetry();
 
@@ -67,7 +69,7 @@ function onPopOut() {
 
 watch([panelState, height], ([state, h]) => {
 	canvasStore.setPanelHeight(
-		state === 'floating' ? 0 : state === 'attached' ? h : 42 /* collapsed panel height */,
+		state === 'floating' ? 0 : state === 'attached' ? h : 32 /* collapsed panel height */,
 	);
 });
 </script>
@@ -100,8 +102,7 @@ watch([panelState, height], ([state, h]) => {
 							:session-id="currentSessionId"
 							:past-chat-messages="previousChatMessages"
 							:show-close-button="false"
-							:simplify-session-id="true"
-							:show-empty-message="true"
+							:is-redesign="true"
 							@close="handleToggleOpen"
 							@refresh-session="refreshSession"
 							@display-execution="displayExecution"
@@ -111,19 +112,33 @@ watch([panelState, height], ([state, h]) => {
 					</N8nResizeWrapper>
 					<LogsPanel :is-open="panelState !== 'closed'" @click-header="handleClickHeader">
 						<template #actions>
-							<N8nIconButton
-								v-if="canPopOut && !isPoppedOut"
-								icon="pop-out"
-								type="secondary"
-								size="medium"
-								@click="onPopOut" />
-							<N8nIconButton
-								v-if="panelState !== 'floating'"
-								type="secondary"
-								size="small"
-								:icon="panelState === 'attached' ? 'chevron-down' : 'chevron-up'"
-								@click.stop="handleToggleOpen"
-						/></template>
+							<N8nTooltip :content="locales.baseText('runData.panel.actions.popOut')">
+								<N8nIconButton
+									v-if="canPopOut && !isPoppedOut"
+									icon="pop-out"
+									type="secondary"
+									size="small"
+									@click="onPopOut"
+								/>
+							</N8nTooltip>
+							<N8nTooltip
+								:content="
+									locales.baseText(
+										panelState === 'attached'
+											? 'runData.panel.actions.collapse'
+											: 'runData.panel.actions.open',
+									)
+								"
+							>
+								<N8nIconButton
+									v-if="panelState !== 'floating'"
+									type="secondary"
+									size="small"
+									:icon="panelState === 'attached' ? 'chevron-down' : 'chevron-up'"
+									@click.stop="handleToggleOpen"
+								/>
+							</N8nTooltip>
+						</template>
 					</LogsPanel>
 				</div>
 			</N8nResizeWrapper>
@@ -141,6 +156,8 @@ watch([panelState, height], ([state, h]) => {
 
 .pipContent {
 	height: 100%;
+	position: relative;
+	overflow: hidden;
 }
 
 .resizeWrapper {

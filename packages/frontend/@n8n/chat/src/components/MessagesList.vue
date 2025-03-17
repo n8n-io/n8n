@@ -30,11 +30,16 @@ watch(
 );
 </script>
 <template>
-	<div v-if="emptyText && initialMessages.length === 0 && messages.length === 0" class="empty">
-		<N8nIcon icon="comment" size="large" class="emptyIcon" />
-		<N8nText tag="p" size="large" color="text-base">
-			{{ emptyText }}
-		</N8nText>
+	<div
+		v-if="emptyText && initialMessages.length === 0 && messages.length === 0"
+		class="empty-container"
+	>
+		<div class="empty">
+			<N8nIcon icon="comment" size="large" class="emptyIcon" />
+			<N8nText tag="p" size="medium" color="text-base">
+				{{ emptyText }}
+			</N8nText>
+		</div>
 	</div>
 
 	<div v-else class="chat-messages-list">
@@ -59,11 +64,24 @@ watch(
 .chat-messages-list {
 	margin-top: auto;
 	display: block;
-	padding: var(--chat--messages-list--padding);
+	padding-inline: var(--chat--messages-list--padding);
+	padding-bottom: var(--chat--messages-list--padding);
+	padding-top: 1.5em;
+}
+
+.empty-container {
+	container-type: size;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+
+	p {
+		max-width: 16em;
+		margin: 0;
+	}
 }
 
 .empty {
-	max-width: 16em;
 	text-align: center;
 	color: var(--color-text-base);
 	display: flex;
@@ -72,9 +90,22 @@ watch(
 	justify-content: center;
 	gap: var(--spacing-xs);
 	padding-inline: var(--spacing-m);
+	overflow: hidden;
 }
 
 .emptyIcon {
-	zoom: 3;
+	zoom: 2.5;
+	color: var(--color-button-secondary-border);
+}
+
+@container (height < 150px) {
+	.empty {
+		flex-direction: row;
+		text-align: left;
+	}
+
+	.emptyIcon {
+		zoom: 1.5;
+	}
 }
 </style>
