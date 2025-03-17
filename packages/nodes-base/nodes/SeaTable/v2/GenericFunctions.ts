@@ -7,6 +7,7 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -91,8 +92,8 @@ export async function seaTableApiRequest(
 			? `${ctx?.credentials?.token}`
 			: `${ctx?.base?.access_token}`;
 
-	let options: IHttpRequestOptions = {
-		url: url || `${resolveBaseUri(ctx)}${endpointCtxExpr(ctx, endpoint)}`,
+	let options: IRequestOptions = {
+		uri: url || `${resolveBaseUri(ctx)}${endpointCtxExpr(ctx, endpoint)}`,
 		headers: {
 			Authorization: `Token ${token}`,
 		},
@@ -125,7 +126,7 @@ export async function seaTableApiRequest(
 	}
 
 	try {
-		return await this.helpers.httpRequestWithAuthentication.call(this, 'seaTableApi', options);
+		return await this.helpers.requestWithAuthentication.call(this, 'seaTableApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
