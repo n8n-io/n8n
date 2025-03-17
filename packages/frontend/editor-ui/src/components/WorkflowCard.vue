@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { FolderPathItem, IUser } from '@/Interface';
 import {
 	DUPLICATE_MODAL_KEY,
 	MODAL_CONFIRM,
@@ -26,7 +25,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { ResourceType } from '@/utils/projects.utils';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { WorkflowResource } from './layouts/ResourcesListLayout.vue';
-import { type ProjectIcon as CardProjectIcon, ProjectTypes } from '@/types/projects.types';
+import type { IUser } from 'n8n-workflow';
 
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -39,10 +38,6 @@ const WORKFLOW_LIST_ITEM_ACTIONS = {
 const props = withDefaults(
 	defineProps<{
 		data: WorkflowResource;
-		breadcrumbs: {
-			visibleItems: FolderPathItem[];
-			hiddenItems: FolderPathItem[];
-		};
 		readOnly?: boolean;
 		workflowListEventBus?: EventBus;
 	}>(),
@@ -64,7 +59,6 @@ const message = useMessage();
 const locale = useI18n();
 const router = useRouter();
 const telemetry = useTelemetry();
-const i18n = useI18n();
 
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
@@ -96,7 +90,7 @@ const actions = computed(() => {
 
 	if (workflowPermissions.value.move && projectsStore.isTeamProjectFeatureEnabled) {
 		items.push({
-			label: locale.baseText('workflows.item.move'),
+			label: locale.baseText('workflows.item.changeOwner'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.MOVE,
 		});
 	}
@@ -117,23 +111,6 @@ const formattedCreatedAtDate = computed(() => {
 		props.data.createdAt,
 		`d mmmm${String(props.data.createdAt).startsWith(currentYear) ? '' : ', yyyy'}`,
 	);
-});
-
-const projectIcon = computed<CardProjectIcon>(() => {
-	const defaultIcon: CardProjectIcon = { type: 'icon', value: 'layer-group' };
-	if (props.data.homeProject?.type === ProjectTypes.Personal) {
-		return { type: 'icon', value: 'user' };
-	} else if (props.data.homeProject?.type === ProjectTypes.Team) {
-		return props.data.homeProject.icon ?? defaultIcon;
-	}
-	return defaultIcon;
-});
-
-const projectName = computed(() => {
-	if (props.data.homeProject?.type === ProjectTypes.Personal) {
-		return i18n.baseText('projects.menu.personal');
-	}
-	return props.data.homeProject?.name;
 });
 
 async function onClick(event?: KeyboardEvent | PointerEvent) {
@@ -291,35 +268,12 @@ const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
 				<ProjectCardBadge
-					v-if="!data.parentFolder"
 					:class="$style.cardBadge"
 					:resource="data"
 					:resource-type="ResourceType.Workflow"
 					:resource-type-label="resourceTypeLabel"
 					:personal-project="projectsStore.personalProject"
 				/>
-				<div v-else :class="$style.breadcrumbs">
-					<n8n-breadcrumbs
-						:items="breadcrumbs.visibleItems"
-						:hidden-items="breadcrumbs.hiddenItems"
-						:path-truncated="breadcrumbs.visibleItems[0]?.parentFolder"
-						:show-border="true"
-						:highlight-last-item="false"
-						theme="small"
-						data-test-id="folder-card-breadcrumbs"
-					>
-						<template v-if="data.homeProject" #prepend>
-							<div :class="$style['home-project']">
-								<n8n-link :to="`/projects/${data.homeProject.id}`">
-									<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" />
-									<n8n-text size="small" :compact="true" :bold="true" color="text-base">{{
-										projectName
-									}}</n8n-text>
-								</n8n-link>
-							</div>
-						</template>
-					</n8n-breadcrumbs>
-				</div>
 				<WorkflowActivator
 					class="mr-s"
 					:workflow-active="data.active"
@@ -383,7 +337,7 @@ const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-3xs);
-	color: var(--color-text-dark);
+	color: var(--color-text-base);
 }
 
 @include mixins.breakpoint('sm-and-down') {

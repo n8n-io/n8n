@@ -37,6 +37,7 @@ import {
 	PROMPT_MFA_CODE_MODAL_KEY,
 	COMMUNITY_PLUS_ENROLLMENT_MODAL,
 	API_KEY_CREATE_OR_EDIT_MODAL_KEY,
+	DELETE_FOLDER_MODAL_KEY,
 } from '@/constants';
 import type {
 	INodeUi,
@@ -66,6 +67,7 @@ import {
 import { computed, ref } from 'vue';
 import type { Connection } from '@vue-flow/core';
 import { useLocalStorage } from '@vueuse/core';
+import type { EventBus } from '@n8n/utils/event-bus';
 
 let savedTheme: ThemeOption = 'system';
 
@@ -156,6 +158,16 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			activeId: null,
 			showAuthSelector: false,
 		} as ModalState,
+		[DELETE_FOLDER_MODAL_KEY]: {
+			open: false,
+			activeId: null,
+			data: {
+				content: {
+					workflowCount: 0,
+					subFolderCount: 0,
+				},
+			},
+		},
 	});
 
 	const modalStack = ref<string[]>([]);
@@ -477,6 +489,15 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		openModal(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY);
 	};
 
+	const openDeleteFolderModal = (
+		id: string,
+		workflowListEventBus: EventBus,
+		content: { workflowCount: number; subFolderCount: number },
+	) => {
+		setActiveId(DELETE_FOLDER_MODAL_KEY, id);
+		openModalWithData({ name: DELETE_FOLDER_MODAL_KEY, data: { workflowListEventBus, content } });
+	};
+
 	const addActiveAction = (action: string) => {
 		if (!activeActions.value.includes(action)) {
 			activeActions.value.push(action);
@@ -648,6 +669,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		deleteNotificationsForView,
 		resetLastInteractedWith,
 		setProcessingExecutionResults,
+		openDeleteFolderModal,
 	};
 });
 

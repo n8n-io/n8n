@@ -1,13 +1,36 @@
 import { Service } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
-import { CredentialAccessError, NodeOperationError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
+import type { Project } from '@/databases/entities/project';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 
+class InvalidCredentialError extends UserError {
+	override description = 'Please recreate the credential.';
+
+	constructor(readonly node: INode) {
+		super(`Node "${node.name}" uses invalid credential`);
+	}
+}
+
+class InaccessibleCredentialError extends UserError {
+	override description =
+		this.project.type === 'personal'
+			? 'Please recreate the credential or ask its owner to share it with you.'
+			: `Please make sure that the credential is shared with the project "${this.project.name}"`;
+
+	constructor(
+		readonly node: INode,
+		private readonly project: Project,
+	) {
+		super(`Node "${node.name}" does not have access to the credential`);
+	}
+}
+
 @Service()
-export class PermissionChecker {
+export class CredentialsPermissionChecker {
 	constructor(
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly ownershipService: OwnershipService,
@@ -42,7 +65,7 @@ export class PermissionChecker {
 		for (const credentialsId of workflowCredIds) {
 			if (!accessible.includes(credentialsId)) {
 				const nodeToFlag = credIdsToNodes[credentialsId][0];
-				throw new CredentialAccessError(nodeToFlag, credentialsId, workflowId);
+				throw new InaccessibleCredentialError(nodeToFlag, homeProject);
 			}
 		}
 	}
@@ -52,12 +75,7 @@ export class PermissionChecker {
 			if (node.disabled || !node.credentials) return map;
 
 			Object.values(node.credentials).forEach((cred) => {
-				if (!cred.id) {
-					throw new NodeOperationError(node, 'Node uses invalid credential', {
-						description: 'Please recreate the credential.',
-						level: 'warning',
-					});
-				}
+				if (!cred.id) throw new InvalidCredentialError(node);
 
 				map[cred.id] = map[cred.id] ? [...map[cred.id], node] : [node];
 			});
