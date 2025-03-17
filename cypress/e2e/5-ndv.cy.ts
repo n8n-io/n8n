@@ -911,7 +911,7 @@ describe('NDV', () => {
 		ndv.getters.outputPanel().find('[data-test-id=ndv-search]').click().type('foo');
 		ndv.getters
 			.outputPanel()
-			.contains('To search field contents rather than just names, use Table or JSON view')
+			.contains('To search field values, switch to table or JSON view.')
 			.should('exist');
 	});
 

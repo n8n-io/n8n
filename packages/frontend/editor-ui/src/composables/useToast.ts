@@ -77,7 +77,7 @@ export function useToast() {
 	function showToast(config: {
 		title: string;
 		message: NotificationOptions['message'];
-		onClick?: () => void;
+		onClick?: (event?: MouseEvent) => void;
 		onClose?: () => void;
 		duration?: number;
 		customClass?: string;
