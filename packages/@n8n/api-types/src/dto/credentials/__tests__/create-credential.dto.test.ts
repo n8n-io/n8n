@@ -121,7 +121,7 @@ describe('CreateCredentialDto', () => {
 				name: 'type too long',
 				request: {
 					name: 'My API Credentials',
-					type: 'a'.repeat(33),
+					type: 'a'.repeat(65),
 					data: {},
 				},
 				expectedErrorPath: ['type'],
