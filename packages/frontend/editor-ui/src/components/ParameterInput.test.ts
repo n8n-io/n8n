@@ -143,6 +143,52 @@ describe('ParameterInput.vue', () => {
 		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'append' })]);
 	});
 
+	test('should render an options parameter even if it has invalid fields (like displayName)', async () => {
+		// Test case based on the Schedule node
+		// type=options parameters shouldn't have a displayName field, but some do
+		const { container, baseElement, emitted } = renderComponent(ParameterInput, {
+			pinia: createTestingPinia(),
+			props: {
+				path: 'operation',
+				parameter: {
+					displayName: 'Trigger at Hour',
+					name: 'triggerAtHour',
+					type: 'options',
+					default: 0,
+					options: [
+						{
+							name: 'Midnight',
+							displayName: 'Midnight',
+							value: 0,
+						},
+						{
+							name: '1am',
+							displayName: '1am',
+							value: 1,
+						},
+					],
+					description: 'The hour of the day to trigger',
+				},
+				modelValue: 0,
+			},
+		});
+		const select = container.querySelector('input') as HTMLInputElement;
+		const selectTrigger = container.querySelector('.select-trigger') as HTMLElement;
+
+		await waitFor(() => expect(select).toHaveValue('Midnight'));
+
+		await userEvent.click(selectTrigger);
+
+		const options = baseElement.querySelectorAll('.list-option');
+		expect(options.length).toEqual(2);
+		expect(options[0].querySelector('.option-headline')).toHaveTextContent('Midnight');
+		expect(options[1].querySelector('.option-headline')).toHaveTextContent('1am');
+
+		await userEvent.click(options[1]);
+
+		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 1 })]);
+	});
+
 	test('should render a string parameter', async () => {
 		const { container, emitted } = renderComponent(ParameterInput, {
 			pinia: createTestingPinia(),

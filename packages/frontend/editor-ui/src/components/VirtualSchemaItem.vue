@@ -13,6 +13,7 @@ type Props = {
 	id: string;
 	icon: string;
 	collapsable?: boolean;
+	nodeName?: string;
 	nodeType?: string;
 	highlight?: boolean;
 	draggable?: boolean;
@@ -24,6 +25,7 @@ type Props = {
 };
 
 const props = defineProps<Props>();
+
 const emit = defineEmits<{
 	click: [];
 }>();
@@ -45,6 +47,7 @@ const emit = defineEmits<{
 			:data-value="expression"
 			:data-node-type="nodeType"
 			:data-target="!locked && 'mappable'"
+			:data-node-name="nodeName"
 			class="pill"
 			:class="{
 				'pill--highlight': highlight,

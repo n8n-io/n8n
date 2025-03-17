@@ -246,6 +246,7 @@ export type RenderItem = {
 	expression?: string;
 	value?: string;
 	collapsable?: boolean;
+	nodeName?: string;
 	nodeType?: INodeUi['type'];
 	preview?: boolean;
 	locked?: boolean;
@@ -342,6 +343,7 @@ export const useFlattenSchema = () => {
 	const flattenSchema = ({
 		schema,
 		nodeType,
+		nodeName,
 		expressionPrefix = '',
 		depth = 0,
 		prefix = '',
@@ -351,6 +353,7 @@ export const useFlattenSchema = () => {
 		schema: Schema;
 		expressionPrefix?: string;
 		nodeType?: string;
+		nodeName?: string;
 		depth?: number;
 		prefix?: string;
 		level?: number;
@@ -379,6 +382,7 @@ export const useFlattenSchema = () => {
 					id,
 					collapsable: true,
 					nodeType,
+					nodeName,
 					type: 'item',
 					preview,
 				});
@@ -396,6 +400,7 @@ export const useFlattenSchema = () => {
 							schema: item,
 							expressionPrefix,
 							nodeType,
+							nodeName,
 							depth,
 							prefix: itemPrefix,
 							level: level + 1,
@@ -417,6 +422,7 @@ export const useFlattenSchema = () => {
 					icon: getIconBySchemaType(schema.type),
 					collapsable: false,
 					nodeType,
+					nodeName,
 					type: 'item',
 					preview,
 				},
@@ -460,6 +466,7 @@ export const useFlattenSchema = () => {
 					schema: item.schema,
 					depth: item.depth,
 					nodeType: item.node.type,
+					nodeName: item.node.name,
 					preview: item.preview,
 					expressionPrefix: getNodeParentExpression({
 						nodeName: item.node.name,
