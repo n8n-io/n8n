@@ -235,9 +235,9 @@ describe('SourceControlImportService', () => {
 			expect(result.folders[0]).toHaveProperty('name');
 			expect(result.folders[0]).toHaveProperty('parentFolderId');
 			expect(result.folders[0]).toHaveProperty('homeProjectId');
-			expect(result.mappings).toHaveLength(1);
-			expect(result.mappings[0]).toHaveProperty('parentFolderId');
-			expect(result.mappings[0]).toHaveProperty('workflowId');
+			expect(result.workflowMappings).toHaveLength(1);
+			expect(result.workflowMappings[0]).toHaveProperty('parentFolderId');
+			expect(result.workflowMappings[0]).toHaveProperty('workflowId');
 		});
 	});
 
