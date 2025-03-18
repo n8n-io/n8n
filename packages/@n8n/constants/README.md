@@ -1,6 +1,6 @@
-# @n8n/utils
+# @n8n/constants
 
-A collection of utility functions that provide common functionality for both Front-End and Back-End packages.
+A centralized collection of constant values and configuration settings that serve as the single source of truth for both Front-End and Back-End packages.
 
 ## Table of Contents
 
@@ -10,11 +10,11 @@ A collection of utility functions that provide common functionality for both Fro
 
 ## Features
 
-- **Reusable Logic**: Build complex, stateful functionality using modular composable functions that you can easily reuse.
-- **Consistent Patterns**: Enjoy a unified approach across n8n packages, making integration and maintenance a breeze.
-- **Type-Safe & Reliable**: Benefit from TypeScript support, which improves the developer experience and code robustness.
-- **Universal Functionality**: Designed to work seamlessly on both the front-end and back-end.
-- **Easily Testable**: A modular design that simplifies testing, maintenance, and rapid development.
+- **Centralized Values**: Maintain all constant values and configuration settings in one place for consistency across the application.
+- **Unified Configurations**: Simplify the management of environment-specific settings by offering a single, cohesive configuration module.
+- **Consistent Behavior**: Ensure predictable application behavior by standardizing key values and settings.
+- **Type-Safe & Reliable**: Benefit from TypeScript support, providing robust type-checking and reducing potential runtime errors.
+- **Streamlined Maintenance**: Easily update and maintain configuration values, making cross-package updates straightforward and error-free.
 
 ## Contributing
 

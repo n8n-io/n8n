@@ -1,6 +1,6 @@
-# @n8n/composables
+# @n8n/stores
 
-A collection of Vue composables that provide common functionality across n8n's Front-End packages.
+A collection of common Pinia stores designed to provide centralized, reusable state management for n8n's Front-End packages.
 
 ## Table of Contents
 
@@ -10,10 +10,11 @@ A collection of Vue composables that provide common functionality across n8n's F
 
 ## Features
 
-- **Reusable Logic**: Encapsulate complex stateful logic into composable functions.
-- **Consistency**: Ensure consistent patterns and practices across our Vue components.
-- **Extensible**: Easily add new composables as our project grows.
-- **Optimized**: Fully compatible with the Composition API.
+- **Centralized State Management**: Access pre-configured Pinia stores to handle shared state across your application efficiently.
+- **Consistent Patterns**: Adopt a standardized approach to state management, ensuring uniformity across all front-end projects.
+- **Modular Design**: Easily integrate, extend, and customize stores to suit your application’s unique requirements.
+- **Type-Safe & Robust**: Leverage TypeScript for enhanced developer experience and improved code reliability.
+- **Seamless Integration**: Built to work effortlessly with Vue.js and other modern front-end frameworks.
 
 ## Contributing
 
