@@ -21,11 +21,11 @@ jobs:
       release: ${{ steps.set-release.outputs.release }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4.1.1
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4.2.0
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
         with:
           node-version: 20.x
 
@@ -43,7 +43,7 @@ jobs:
         run: pnpm build
 
       - name: Cache build artifacts
-        uses: actions/cache/save@v4.2.0
+        uses: actions/cache/save@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
           path: ./packages/**/dist
           key: ${{ github.sha }}-release:build
@@ -78,31 +78,31 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4.1.1
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           fetch-depth: 0
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3.3.0
+        uses: docker/setup-qemu-action@53851d14592bedcffcf25ea515637cff71ef929a # v3.3.0
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3.8.0
+        uses: docker/setup-buildx-action@6524bf65af31da8d45b59e8c27de4bd072b392f5 # v3.8.0
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3.3.0
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Login to DockerHub
-        uses: docker/login-action@v3.3.0
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build
-        uses: docker/build-push-action@v6.11.0
+        uses: docker/build-push-action@b32b51a8eda65d6793cd0494a773d4f6bcef32dc # v6.11.0
         env:
           DOCKER_BUILD_SUMMARY: false
         with:
@@ -129,7 +129,7 @@ jobs:
 
     steps:
       - name: Create a Release on GitHub
-        uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@440c8c1cb0ed28b9f43e4d1d670870f059653174 # v1
         with:
           commit: ${{github.event.pull_request.base.ref}}
           tag: 'n8n@${{ needs.publish-to-npm.outputs.release }}'
@@ -148,15 +148,15 @@ jobs:
       SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
 
     steps:
-      - uses: actions/checkout@v4.1.1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       - name: Restore cached build artifacts
-        uses: actions/cache/restore@v4.2.0
+        uses: actions/cache/restore@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
           path: ./packages/**/dist
           key: ${{ github.sha }}-release:build
 
       - name: Create a frontend release
-        uses: getsentry/action-release@v1.7.0
+        uses: getsentry/action-release@e769183448303de84c5a06aaaddf9da7be26d6c7 # v1.7.0
         continue-on-error: true
         with:
           projects: ${{ secrets.SENTRY_FRONTEND_PROJECT }}
@@ -164,7 +164,7 @@ jobs:
           sourcemaps: packages/frontend/editor-ui/dist
 
       - name: Create a backend release
-        uses: getsentry/action-release@v1.7.0
+        uses: getsentry/action-release@e769183448303de84c5a06aaaddf9da7be26d6c7 # v1.7.0
         continue-on-error: true
         with:
           projects: ${{ secrets.SENTRY_BACKEND_PROJECT }}
@@ -172,7 +172,7 @@ jobs:
           sourcemaps: packages/cli/dist packages/core/dist packages/nodes-base/dist packages/@n8n/n8n-nodes-langchain/dist
 
       - name: Create a task runner release
-        uses: getsentry/action-release@v1.7.0
+        uses: getsentry/action-release@e769183448303de84c5a06aaaddf9da7be26d6c7 # v1.7.0
         continue-on-error: true
         with:
           projects: ${{ secrets.SENTRY_TASK_RUNNER_PROJECT }}
@@ -194,8 +194,8 @@ jobs:
   #   if: ${{ github.event.pull_request.merged == true && !contains(github.event.pull_request.labels.*.name, 'release:patch') }}
   #   runs-on: ubuntu-latest
   #   steps:
-  #     - uses: actions/checkout@v4.1.1
-  #       with:
+  #     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+  # v4.1.1
   #         fetch-depth: 0
   #     - run: |
   #         git checkout --track origin/master

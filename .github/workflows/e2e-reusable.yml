@@ -71,7 +71,7 @@ jobs:
       image: cypress/${{ inputs.run-env }}
       options: --user 1001
     steps:
-      - uses: actions/checkout@v4.1.1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           ref: ${{ inputs.branch }}
 
@@ -81,13 +81,13 @@ jobs:
           git fetch origin pull/${{ inputs.pr_number }}/head
           git checkout FETCH_HEAD
 
-      - uses: pnpm/action-setup@v4.0.0
+      - uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Cypress build
-        uses: cypress-io/github-action@v6.6.1
+        uses: cypress-io/github-action@1b70233146622b69e789ccdd4f9452adc638d25a # v6.6.1
         with:
           # Disable running of tests within install job
           runTests: false
@@ -99,7 +99,7 @@ jobs:
         run: pnpm cypress:install
 
       - name: Cache build artifacts
-        uses: actions/cache/save@v4.2.0
+        uses: actions/cache/save@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
           path: |
             /github/home/.cache
@@ -120,7 +120,7 @@ jobs:
         # running the same tests multiple times
         containers: ${{ fromJSON( inputs.spec == 'e2e/*' && inputs.containers || '[1]' ) }}
     steps:
-      - uses: actions/checkout@v4.1.1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           ref: ${{ inputs.branch }}
 
@@ -130,10 +130,10 @@ jobs:
           git fetch origin pull/${{ inputs.pr_number }}/head
           git checkout FETCH_HEAD
 
-      - uses: pnpm/action-setup@v4.0.0
+      - uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
 
       - name: Restore cached pnpm modules
-        uses: actions/cache/restore@v4.2.0
+        uses: actions/cache/restore@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
           path: |
             /github/home/.cache
@@ -145,7 +145,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Cypress run
-        uses: cypress-io/github-action@v6.6.1
+        uses: cypress-io/github-action@1b70233146622b69e789ccdd4f9452adc638d25a # v6.6.1
         with:
           working-directory: cypress
           install: false
