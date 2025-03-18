@@ -1,0 +1,111 @@
+{
+    "type": "object",
+    "properties": {
+        "@odata.etag": {
+            "type": "string"
+        },
+        "planId": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "orderHint": {
+            "type": "string"
+        },
+        "assigneePriority": {
+            "type": "string"
+        },
+        "percentComplete": {
+            "type": "integer"
+        },
+        "createdDateTime": {
+            "type": "string"
+        },
+        "hasDescription": {
+            "type": "boolean"
+        },
+        "previewType": {
+            "type": "string"
+        },
+        "referenceCount": {
+            "type": "integer"
+        },
+        "checklistItemCount": {
+            "type": "integer"
+        },
+        "activeChecklistItemCount": {
+            "type": "integer"
+        },
+        "priority": {
+            "type": "integer"
+        },
+        "id": {
+            "type": "string"
+        },
+        "createdBy": {
+            "type": "object",
+            "properties": {
+                "application": {
+                    "type": "object",
+                    "properties": {
+                        "displayName": {
+                            "type": "null"
+                        },
+                        "id": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "displayName",
+                        "id"
+                    ]
+                },
+                "user": {
+                    "type": "object",
+                    "properties": {
+                        "displayName": {
+                            "type": "null"
+                        },
+                        "id": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "displayName",
+                        "id"
+                    ]
+                }
+            },
+            "required": [
+                "user"
+            ]
+        }
+    },
+    "required": [
+        "@odata.etag",
+        "planId",
+        "bucketId",
+        "title",
+        "orderHint",
+        "assigneePriority",
+        "percentComplete",
+        "startDateTime",
+        "createdDateTime",
+        "dueDateTime",
+        "hasDescription",
+        "previewType",
+        "completedDateTime",
+        "referenceCount",
+        "checklistItemCount",
+        "activeChecklistItemCount",
+        "conversationThreadId",
+        "priority",
+        "id",
+        "completedBy",
+        "createdBy",
+        "appliedCategories",
+        "assignments"
+    ],
+    "version": 1
+}

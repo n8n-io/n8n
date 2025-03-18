@@ -1,0 +1,155 @@
+{
+    "type": "object",
+    "properties": {
+        "contactId": {
+            "type": "string"
+        },
+        "href": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "note": {
+            "type": "null"
+        },
+        "origin": {
+            "type": "string"
+        },
+        "dayOfCycle": {
+            "type": "null"
+        },
+        "changedOn": {
+            "type": "string"
+        },
+        "timeZone": {
+            "type": "string"
+        },
+        "ipAddress": {
+            "type": "string"
+        },
+        "activities": {
+            "type": "string"
+        },
+        "campaign": {
+            "type": "object",
+            "properties": {
+                "campaignId": {
+                    "type": "string"
+                },
+                "href": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "campaignId",
+                "href",
+                "name"
+            ]
+        },
+        "createdOn": {
+            "type": "string"
+        },
+        "geolocation": {
+            "type": "object",
+            "properties": {
+                "continentCode": {
+                    "type": "string"
+                },
+                "countryCode": {
+                    "type": "string"
+                },
+                "dmaCode": {
+                    "type": "null"
+                }
+            },
+            "required": [
+                "latitude",
+                "longitude",
+                "continentCode",
+                "countryCode",
+                "region",
+                "postalCode",
+                "dmaCode",
+                "city"
+            ]
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "tagId": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "href": {
+                        "type": "string"
+                    },
+                    "color": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "tagId",
+                    "name",
+                    "href",
+                    "color"
+                ]
+            }
+        },
+        "customFieldValues": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "customFieldId": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "values": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "fieldType": {
+                        "type": "string"
+                    },
+                    "valueType": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "customFieldId",
+                    "name",
+                    "value",
+                    "values",
+                    "type",
+                    "fieldType",
+                    "valueType"
+                ]
+            }
+        }
+    },
+    "required": [
+        "contactId"
+    ],
+    "version": 1
+}

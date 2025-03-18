@@ -16,10 +16,7 @@
                         "countryCode": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "countryCode"
-                    ]
+                    }
                 }
             },
             "required": [
@@ -35,10 +32,7 @@
                         "countryCode": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "countryCode"
-                    ]
+                    }
                 }
             },
             "required": [
@@ -49,21 +43,6 @@
             "type": "object",
             "properties": {
                 "timestamp": {
-                    "type": "string"
-                },
-                "statusCode": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "statusDetailed": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "remark": {
                     "type": "string"
                 },
                 "location": {
@@ -84,6 +63,21 @@
                     "required": [
                         "address"
                     ]
+                },
+                "statusCode": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "remark": {
+                    "type": "string"
+                },
+                "statusDetailed": {
+                    "type": "string"
                 }
             },
             "required": [
@@ -92,9 +86,6 @@
                 "status",
                 "description"
             ]
-        },
-        "serviceUrl": {
-            "type": "string"
         },
         "returnFlag": {
             "type": "boolean"
@@ -139,9 +130,7 @@
             },
             "required": [
                 "product",
-                "proofOfDeliverySignedAvailable",
-                "totalNumberOfPieces",
-                "weight"
+                "proofOfDeliverySignedAvailable"
             ]
         },
         "events": {
@@ -150,21 +139,6 @@
                 "type": "object",
                 "properties": {
                     "timestamp": {
-                        "type": "string"
-                    },
-                    "statusCode": {
-                        "type": "string"
-                    },
-                    "status": {
-                        "type": "string"
-                    },
-                    "statusDetailed": {
-                        "type": "string"
-                    },
-                    "description": {
-                        "type": "string"
-                    },
-                    "remark": {
                         "type": "string"
                     },
                     "location": {
@@ -185,6 +159,21 @@
                         "required": [
                             "address"
                         ]
+                    },
+                    "statusCode": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "statusDetailed": {
+                        "type": "string"
+                    },
+                    "remark": {
+                        "type": "string"
                     }
                 },
                 "required": [
@@ -194,6 +183,9 @@
                     "description"
                 ]
             }
+        },
+        "serviceUrl": {
+            "type": "string"
         }
     },
     "required": [
@@ -202,7 +194,7 @@
         "origin",
         "destination",
         "status",
-        "details",
-        "events"
-    ]
+        "details"
+    ],
+    "version": 1
 }

@@ -107,26 +107,8 @@
         "flagged": {
             "type": "boolean"
         },
-        "average_cadence": {
-            "type": "number"
-        },
-        "max_watts": {
-            "type": "integer"
-        },
-        "weighted_average_watts": {
-            "type": "integer"
-        },
-        "device_watts": {
-            "type": "boolean"
-        },
         "has_heartrate": {
             "type": "boolean"
-        },
-        "average_heartrate": {
-            "type": "number"
-        },
-        "max_heartrate": {
-            "type": "integer"
         },
         "heartrate_opt_out": {
             "type": "boolean"
@@ -149,56 +131,9 @@
         "has_kudoed": {
             "type": "boolean"
         },
-        "suffer_score": {
-            "type": "integer"
-        },
-        "average_temp": {
+        "max_heartrate": {
             "type": "integer"
         }
     },
-    "required": [
-        "resource_state",
-        "athlete",
-        "name",
-        "distance",
-        "moving_time",
-        "elapsed_time",
-        "total_elevation_gain",
-        "type",
-        "sport_type",
-        "id",
-        "start_date",
-        "start_date_local",
-        "timezone",
-        "utc_offset",
-        "location_city",
-        "location_state",
-        "location_country",
-        "achievement_count",
-        "kudos_count",
-        "comment_count",
-        "athlete_count",
-        "photo_count",
-        "map",
-        "trainer",
-        "commute",
-        "manual",
-        "private",
-        "visibility",
-        "flagged",
-        "gear_id",
-        "start_latlng",
-        "end_latlng",
-        "average_speed",
-        "max_speed",
-        "has_heartrate",
-        "heartrate_opt_out",
-        "display_hide_heartrate_option",
-        "upload_id",
-        "external_id",
-        "from_accepted_tag",
-        "pr_count",
-        "total_photo_count",
-        "has_kudoed"
-    ]
+    "version": 1
 }

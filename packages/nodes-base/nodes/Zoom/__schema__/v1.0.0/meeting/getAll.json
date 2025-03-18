@@ -30,6 +30,9 @@
         },
         "join_url": {
             "type": "string"
+        },
+        "supportGoLive": {
+            "type": "boolean"
         }
     },
     "required": [
@@ -42,5 +45,6 @@
         "timezone",
         "created_at",
         "join_url"
-    ]
+    ],
+    "version": 1
 }
