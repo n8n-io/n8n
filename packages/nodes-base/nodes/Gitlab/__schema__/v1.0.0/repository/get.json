@@ -31,9 +31,6 @@
         "web_url": {
             "type": "string"
         },
-        "readme_url": {
-            "type": "string"
-        },
         "forks_count": {
             "type": "integer"
         },
@@ -111,9 +108,6 @@
                 "self"
             ]
         },
-        "packages_enabled": {
-            "type": "boolean"
-        },
         "empty_repo": {
             "type": "boolean"
         },
@@ -122,41 +116,6 @@
         },
         "visibility": {
             "type": "string"
-        },
-        "resolve_outdated_diff_discussions": {
-            "type": "boolean"
-        },
-        "container_expiration_policy": {
-            "type": "object",
-            "properties": {
-                "cadence": {
-                    "type": "string"
-                },
-                "enabled": {
-                    "type": "boolean"
-                },
-                "older_than": {
-                    "type": "string"
-                },
-                "name_regex": {
-                    "type": "string"
-                },
-                "name_regex_keep": {
-                    "type": "null"
-                },
-                "next_run_at": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "cadence",
-                "enabled",
-                "keep_n",
-                "older_than",
-                "name_regex",
-                "name_regex_keep",
-                "next_run_at"
-            ]
         },
         "repository_object_format": {
             "type": "string"
@@ -269,9 +228,6 @@
         "ci_delete_pipelines_in_seconds": {
             "type": "null"
         },
-        "ci_forward_deployment_enabled": {
-            "type": "boolean"
-        },
         "ci_forward_deployment_rollback_allowed": {
             "type": "boolean"
         },
@@ -365,9 +321,6 @@
         "only_allow_merge_if_all_discussions_are_resolved": {
             "type": "boolean"
         },
-        "remove_source_branch_after_merge": {
-            "type": "boolean"
-        },
         "printing_merge_request_link_enabled": {
             "type": "boolean"
         },
@@ -389,6 +342,21 @@
         "autoclose_referenced_issues": {
             "type": "boolean"
         },
+        "max_artifacts_size": {
+            "type": "null"
+        },
+        "approvals_before_merge": {
+            "type": "integer"
+        },
+        "mirror": {
+            "type": "boolean"
+        },
+        "marked_for_deletion_at": {
+            "type": "null"
+        },
+        "marked_for_deletion_on": {
+            "type": "null"
+        },
         "requirements_enabled": {
             "type": "boolean"
         },
@@ -397,14 +365,46 @@
         },
         "security_and_compliance_enabled": {
             "type": "boolean"
+        },
+        "ci_restrict_pipeline_cancellation_role": {
+            "type": "string"
+        },
+        "merge_pipelines_enabled": {
+            "type": "boolean"
+        },
+        "merge_trains_enabled": {
+            "type": "boolean"
+        },
+        "merge_trains_skip_train_allowed": {
+            "type": "boolean"
+        },
+        "allow_pipeline_trigger_approve_deployment": {
+            "type": "boolean"
+        },
+        "permissions": {
+            "type": "object",
+            "properties": {
+                "group_access": {
+                    "type": "object",
+                    "properties": {
+                        "access_level": {
+                            "type": "integer"
+                        },
+                        "notification_level": {
+                            "type": "integer"
+                        }
+                    },
+                    "required": [
+                        "access_level",
+                        "notification_level"
+                    ]
+                }
+            },
+            "required": [
+                "project_access",
+                "group_access"
+            ]
         }
     },
-    "required": [
-        "id",
-        "description",
-        "created_at",
-        "web_url",
-        "_links",
-        "updated_at"
-    ]
+    "version": 1
 }

@@ -69,6 +69,12 @@
         "billing_frequency_cycles": {
             "type": "null"
         },
+        "73794f1db542a544402ab6cd42aaf337d2d8e51b": {
+            "type": "null"
+        },
+        "1e901332a0666ef17792122457262233cfdb3d15": {
+            "type": "null"
+        },
         "prices": {
             "type": "array",
             "items": {
@@ -177,5 +183,6 @@
         "billing_frequency",
         "prices",
         "product_variations"
-    ]
+    ],
+    "version": 1
 }

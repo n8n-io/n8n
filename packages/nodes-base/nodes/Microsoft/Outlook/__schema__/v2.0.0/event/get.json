@@ -13,13 +13,7 @@
         "subject": {
             "type": "string"
         },
-        "bodyPreview": {
-            "type": "string"
-        },
-        "webLink": {
-            "type": "string"
-        },
-        "start": {
+        "end": {
             "type": "object",
             "properties": {
                 "dateTime": {
@@ -34,7 +28,19 @@
                 "timeZone"
             ]
         },
-        "end": {
+        "calendar@odata.associationLink": {
+            "type": "string"
+        },
+        "calendar@odata.navigationLink": {
+            "type": "string"
+        },
+        "bodyPreview": {
+            "type": "string"
+        },
+        "webLink": {
+            "type": "string"
+        },
+        "start": {
             "type": "object",
             "properties": {
                 "dateTime": {
@@ -117,15 +123,10 @@
             "required": [
                 "emailAddress"
             ]
-        },
-        "calendar@odata.associationLink": {
-            "type": "string"
-        },
-        "calendar@odata.navigationLink": {
-            "type": "string"
         }
     },
     "required": [
         "@odata.context"
-    ]
+    ],
+    "version": 1
 }

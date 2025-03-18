@@ -4,9 +4,6 @@
         "id": {
             "type": "integer"
         },
-        "company_id": {
-            "type": "integer"
-        },
         "owner_id": {
             "type": "object",
             "properties": {
@@ -173,9 +170,7 @@
         },
         "edit_name": {
             "type": "boolean"
-        },
-        "category_id": {
-            "type": "null"
         }
-    }
+    },
+    "version": 1
 }
