@@ -28,11 +28,13 @@ export async function supabaseApiRequest(
 		serviceRole: string;
 	}>('supabaseApi');
 
-	const schema = this.getNodeParameter('schema', 0, 'public') as string;
-	if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) {
-		headers['Content-Profile'] = schema;
-	} else if (['GET', 'HEAD'].includes(method)) {
-		headers['Accept-Profile'] = schema;
+	if (this.getNodeParameter('useCustomSchema', false)) {
+		const schema = this.getNodeParameter('schema', 'public');
+		if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) {
+			headers['Content-Profile'] = schema;
+		} else if (['GET', 'HEAD'].includes(method)) {
+			headers['Accept-Profile'] = schema;
+		}
 	}
 
 	const options: IRequestOptions = {
