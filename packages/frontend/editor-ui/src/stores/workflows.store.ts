@@ -277,8 +277,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const getPastChatMessages = computed(() => Array.from(new Set(chatMessages.value)));
 
-	const connectionsByDestinationNode = computed(
-		() => cachedWorkflow?.connectionsByDestinationNode ?? {},
+	const connectionsByDestinationNode = computed(() =>
+		Workflow.getConnectionsByDestination(allConnections.value),
 	);
 
 	function getWorkflowResultDataByNodeName(nodeName: string): ITaskData[] | null {

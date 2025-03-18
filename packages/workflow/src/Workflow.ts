@@ -116,7 +116,9 @@ export class Workflow {
 		}
 
 		this.connectionsBySourceNode = this.getConnectionsBySourceNode(parameters.connections);
-		this.connectionsByDestinationNode = this.getConnectionsByDestination();
+		this.connectionsByDestinationNode = Workflow.getConnectionsByDestination(
+			parameters.connections,
+		);
 
 		this.active = parameters.active || false;
 
@@ -156,11 +158,12 @@ export class Workflow {
 	}
 
 	/**
+	 * @deprecated Create an instance and access `connectionsByDestinationNode` property instead.
+	 *
 	 * The default connections are by source node.
 	 * This function rewrites them by destination nodes to easily find parent nodes.
 	 */
-	getConnectionsByDestination(): IConnections {
-		const connections = this.connectionsBySourceNode;
+	static getConnectionsByDestination(connections: IConnections): IConnections {
 		const returnConnection: IConnections = {};
 
 		let connectionInfo;
@@ -484,7 +487,9 @@ export class Workflow {
 		}
 
 		// Use the updated connections to create updated connections by destination nodes
-		this.connectionsByDestinationNode = this.getConnectionsByDestination();
+		this.connectionsByDestinationNode = Workflow.getConnectionsByDestination(
+			this.connectionsBySourceNode,
+		);
 	}
 
 	/**
