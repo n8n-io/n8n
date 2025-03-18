@@ -154,6 +154,11 @@ export class ImportCredentialsCommand extends BaseCommand {
 				continue;
 			}
 
+			// check if credential is already owned by the provided userId
+			if (userId && user?.id === userId) {
+				continue;
+			}
+
 			if (ownerProject.id !== projectId) {
 				const currentOwner =
 					ownerProject.type === 'personal'
