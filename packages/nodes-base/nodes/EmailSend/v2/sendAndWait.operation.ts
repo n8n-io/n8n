@@ -35,7 +35,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 	let htmlBody: string;
 
-	if (config.appendAttribution) {
+	if (config.appendAttribution !== false) {
 		const instanceId = this.getInstanceId();
 		htmlBody = createEmailBodyWithN8nAttribution(config.message, buttons.join('\n'), instanceId);
 	} else {

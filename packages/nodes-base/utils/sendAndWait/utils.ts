@@ -59,6 +59,15 @@ const limitWaitTimeOption: INodeProperties = {
 	],
 };
 
+const appendAttributionOption: INodeProperties = {
+	displayName: 'Append n8n Attribution',
+	name: 'appendAttribution',
+	type: 'boolean',
+	default: true,
+	description:
+		'Whether to include the phrase "This message was sent automatically with n8n" to the end of the message',
+};
+
 // Operation Properties ----------------------------------------------------------
 export function getSendAndWaitProperties(
 	targetProperties: INodeProperties[],
@@ -234,17 +243,7 @@ export function getSendAndWaitProperties(
 			type: 'collection',
 			placeholder: 'Add option',
 			default: {},
-			options: [
-				limitWaitTimeOption,
-				{
-					displayName: 'Append n8n Attribution',
-					name: 'appendAttribution',
-					type: 'boolean',
-					default: true,
-					description:
-						'Whether to include the phrase "This message was sent automatically with n8n" to the end of the message',
-				},
-			],
+			options: [limitWaitTimeOption, appendAttributionOption],
 			displayOptions: {
 				show: {
 					responseType: ['approval'],
@@ -285,14 +284,7 @@ export function getSendAndWaitProperties(
 					default: 'Submit',
 				},
 				limitWaitTimeOption,
-				{
-					displayName: 'Append n8n Attribution',
-					name: 'appendAttribution',
-					type: 'boolean',
-					default: true,
-					description:
-						'Whether to include the phrase "This message was sent automatically with n8n" to the end of the message',
-				},
+				appendAttributionOption,
 			],
 			displayOptions: {
 				show: {
@@ -476,18 +468,14 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 		buttonDisapprovalStyle?: string;
 	};
 
-	const appendAttribution = context.getNodeParameter(
-		'options.appendAttribution',
-		0,
-		true,
-	) as boolean;
+	const options = context.getNodeParameter('options', 0, {});
 
 	const config: SendAndWaitConfig = {
 		title: subject,
 		message,
 		url: `${resumeUrl}/${nodeId}`,
 		options: [],
-		appendAttribution,
+		appendAttribution: options?.appendAttribution as boolean,
 	};
 
 	const responseType = context.getNodeParameter('responseType', 0, 'approval') as string;
@@ -553,7 +541,7 @@ export function createEmail(context: IExecuteFunctions) {
 		buttons.push(createButton(config.url, option.label, option.value, option.style));
 	}
 	let emailBody: string;
-	if (config.appendAttribution) {
+	if (config.appendAttribution !== false) {
 		const instanceId = context.getInstanceId();
 		emailBody = createEmailBodyWithN8nAttribution(config.message, buttons.join('\n'), instanceId);
 	} else {
