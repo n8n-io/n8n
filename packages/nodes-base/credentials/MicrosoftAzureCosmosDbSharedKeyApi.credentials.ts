@@ -1,6 +1,7 @@
 import { createHmac } from 'crypto';
 import type {
 	ICredentialDataDecryptedObject,
+	ICredentialTestRequest,
 	ICredentialType,
 	IHttpRequestOptions,
 	INodeProperties,
@@ -102,4 +103,14 @@ export class MicrosoftAzureCosmosDbSharedKeyApi implements ICredentialType {
 
 		return requestOptions;
 	}
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{ $credentials.baseUrl }}',
+			url: '/colls',
+			headers: {
+				[HeaderConstants.X_MS_MAX_ITEM_COUNT]: '1',
+			},
+		},
+	};
 }
