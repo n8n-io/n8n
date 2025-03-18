@@ -19,5 +19,9 @@
         "Id": {
             "type": "string"
         }
-    }
+    },
+    "required": [
+        "attributes"
+    ],
+    "version": 1
 }

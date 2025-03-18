@@ -19,7 +19,8 @@
             },
             "required": [
                 "role",
-                "content"
+                "content",
+                "refusal"
             ]
         },
         "logprobs": {
@@ -28,5 +29,6 @@
         "finish_reason": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

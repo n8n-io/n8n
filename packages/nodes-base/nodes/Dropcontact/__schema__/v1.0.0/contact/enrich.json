@@ -16,24 +16,6 @@
         "linkedin": {
             "type": "string"
         },
-        "email": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "email": {
-                        "type": "string"
-                    },
-                    "qualification": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "email",
-                    "qualification"
-                ]
-            }
-        },
         "company": {
             "type": "string"
         },
@@ -51,6 +33,37 @@
         },
         "nb_employees": {
             "type": "string"
+        },
+        "siren": {
+            "type": "string"
+        },
+        "naf5_code": {
+            "type": "string"
+        },
+        "naf5_des": {
+            "type": "string"
+        },
+        "vat": {
+            "type": "string"
+        },
+        "email": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string"
+                    },
+                    "qualification": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "email",
+                    "qualification"
+                ]
+            }
         }
-    }
+    },
+    "version": 1
 }

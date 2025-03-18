@@ -31,6 +31,17 @@
                 "CreateTime": {
                     "type": "string"
                 },
+                "LastModifiedByRef": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "value"
+                    ]
+                },
                 "LastUpdatedTime": {
                     "type": "string"
                 }
@@ -136,6 +147,21 @@
                                     "name"
                                 ]
                             },
+                            "ItemAccountRef": {
+                                "type": "object",
+                                "properties": {
+                                    "value": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "value",
+                                    "name"
+                                ]
+                            },
                             "TaxCodeRef": {
                                 "type": "object",
                                 "properties": {
@@ -174,6 +200,37 @@
                 "name"
             ]
         },
+        "ShipFromAddr": {
+            "type": "object",
+            "properties": {
+                "Id": {
+                    "type": "string"
+                },
+                "Line1": {
+                    "type": "string"
+                },
+                "Line2": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Id",
+                "Line1",
+                "Line2"
+            ]
+        },
+        "DueDate": {
+            "type": "string"
+        },
+        "ApplyTaxAfterDiscount": {
+            "type": "boolean"
+        },
+        "PrintStatus": {
+            "type": "string"
+        },
+        "EmailStatus": {
+            "type": "string"
+        },
         "BillAddr": {
             "type": "object",
             "properties": {
@@ -191,23 +248,18 @@
                 },
                 "PostalCode": {
                     "type": "string"
+                },
+                "Lat": {
+                    "type": "string"
+                },
+                "Long": {
+                    "type": "string"
                 }
             },
             "required": [
                 "Id"
             ]
-        },
-        "DueDate": {
-            "type": "string"
-        },
-        "ApplyTaxAfterDiscount": {
-            "type": "boolean"
-        },
-        "PrintStatus": {
-            "type": "string"
-        },
-        "EmailStatus": {
-            "type": "string"
         }
-    }
+    },
+    "version": 1
 }

@@ -16,9 +16,6 @@
                 "accountId": {
                     "type": "string"
                 },
-                "emailAddress": {
-                    "type": "string"
-                },
                 "avatarUrls": {
                     "type": "object",
                     "properties": {
@@ -52,6 +49,9 @@
                     "type": "string"
                 },
                 "accountType": {
+                    "type": "string"
+                },
+                "emailAddress": {
                     "type": "string"
                 }
             },
@@ -92,6 +92,26 @@
                                         },
                                         "text": {
                                             "type": "string"
+                                        },
+                                        "attrs": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string"
+                                                },
+                                                "text": {
+                                                    "type": "string"
+                                                },
+                                                "accessLevel": {
+                                                    "type": "string"
+                                                },
+                                                "localId": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "id"
+                                            ]
                                         }
                                     },
                                     "required": [
@@ -101,8 +121,7 @@
                             }
                         },
                         "required": [
-                            "type",
-                            "content"
+                            "type"
                         ]
                     }
                 }
@@ -120,9 +139,6 @@
                     "type": "string"
                 },
                 "accountId": {
-                    "type": "string"
-                },
-                "emailAddress": {
                     "type": "string"
                 },
                 "avatarUrls": {
@@ -159,6 +175,9 @@
                 },
                 "accountType": {
                     "type": "string"
+                },
+                "emailAddress": {
+                    "type": "string"
                 }
             },
             "required": [
@@ -190,5 +209,6 @@
         "created",
         "updated",
         "jsdPublic"
-    ]
+    ],
+    "version": 1
 }

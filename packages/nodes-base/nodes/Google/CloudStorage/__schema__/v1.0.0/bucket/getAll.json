@@ -1,111 +1,115 @@
 {
-	"type": "object",
-	"properties": {
-		"kind": {
-			"type": "string"
-		},
-		"selfLink": {
-			"type": "string"
-		},
-		"id": {
-			"type": "string"
-		},
-		"name": {
-			"type": "string"
-		},
-		"projectNumber": {
-			"type": "string"
-		},
-		"metageneration": {
-			"type": "string"
-		},
-		"location": {
-			"type": "string"
-		},
-		"storageClass": {
-			"type": "string"
-		},
-		"etag": {
-			"type": "string"
-		},
-		"timeCreated": {
-			"type": "string"
-		},
-		"updated": {
-			"type": "string"
-		},
-		"softDeletePolicy": {
-			"type": "object",
-			"properties": {
-				"retentionDurationSeconds": {
-					"type": "string"
-				},
-				"effectiveTime": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"retentionDurationSeconds"
-			]
-		},
-		"iamConfiguration": {
-			"type": "object",
-			"properties": {
-				"bucketPolicyOnly": {
-					"type": "object",
-					"properties": {
-						"enabled": {
-							"type": "boolean"
-						},
-						"lockedTime": {
-							"type": "string"
-						}
-					},
-					"required": [
-						"enabled"
-					]
-				},
-				"uniformBucketLevelAccess": {
-					"type": "object",
-					"properties": {
-						"enabled": {
-							"type": "boolean"
-						},
-						"lockedTime": {
-							"type": "string"
-						}
-					},
-					"required": [
-						"enabled"
-					]
-				},
-				"publicAccessPrevention": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"bucketPolicyOnly",
-				"uniformBucketLevelAccess",
-				"publicAccessPrevention"
-			]
-		},
-		"locationType": {
-			"type": "string"
-		}
-	},
-	"required": [
-		"kind",
-		"selfLink",
-		"id",
-		"name",
-		"projectNumber",
-		"metageneration",
-		"location",
-		"storageClass",
-		"etag",
-		"timeCreated",
-		"updated",
-		"softDeletePolicy",
-		"locationType"
-	]
+    "type": "object",
+    "properties": {
+        "kind": {
+            "type": "string"
+        },
+        "selfLink": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "projectNumber": {
+            "type": "string"
+        },
+        "generation": {
+            "type": "string"
+        },
+        "metageneration": {
+            "type": "string"
+        },
+        "location": {
+            "type": "string"
+        },
+        "storageClass": {
+            "type": "string"
+        },
+        "etag": {
+            "type": "string"
+        },
+        "timeCreated": {
+            "type": "string"
+        },
+        "updated": {
+            "type": "string"
+        },
+        "softDeletePolicy": {
+            "type": "object",
+            "properties": {
+                "retentionDurationSeconds": {
+                    "type": "string"
+                },
+                "effectiveTime": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "retentionDurationSeconds"
+            ]
+        },
+        "iamConfiguration": {
+            "type": "object",
+            "properties": {
+                "bucketPolicyOnly": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "lockedTime": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "enabled"
+                    ]
+                },
+                "uniformBucketLevelAccess": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "lockedTime": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "enabled"
+                    ]
+                },
+                "publicAccessPrevention": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "bucketPolicyOnly",
+                "uniformBucketLevelAccess",
+                "publicAccessPrevention"
+            ]
+        },
+        "locationType": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "kind",
+        "selfLink",
+        "id",
+        "name",
+        "projectNumber",
+        "metageneration",
+        "location",
+        "storageClass",
+        "etag",
+        "timeCreated",
+        "updated",
+        "softDeletePolicy",
+        "locationType"
+    ],
+    "version": 1
 }

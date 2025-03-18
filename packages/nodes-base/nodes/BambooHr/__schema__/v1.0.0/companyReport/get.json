@@ -47,9 +47,5 @@
             }
         }
     },
-    "required": [
-        "title",
-        "fields",
-        "employees"
-    ]
+    "version": 1
 }

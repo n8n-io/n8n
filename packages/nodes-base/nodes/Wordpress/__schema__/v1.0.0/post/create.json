@@ -103,9 +103,6 @@
                 "protected"
             ]
         },
-        "author": {
-            "type": "integer"
-        },
         "featured_media": {
             "type": "integer"
         },
@@ -445,12 +442,9 @@
                 "replies",
                 "version-history",
                 "wp:attachment",
-                "wp:term",
-                "wp:action-assign-categories",
-                "wp:action-create-tags",
-                "wp:action-assign-tags",
                 "curies"
             ]
         }
-    }
+    },
+    "version": 1
 }
