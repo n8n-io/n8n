@@ -50,6 +50,25 @@ export class DirectedGraph {
 		return new Map(this.nodes.entries());
 	}
 
+	/**
+	 * Returns a set of nodes whose names match the provided array of names.
+	 *
+	 * Only nodes that exist in the graph will be included in the result.
+	 */
+	getNodesByNames(names: string[]) {
+		const nodes: Set<INode> = new Set();
+
+		for (const name of names) {
+			const node = this.nodes.get(name);
+
+			if (node) {
+				nodes.add(node);
+			}
+		}
+
+		return nodes;
+	}
+
 	getConnections(filter: { to?: INode } = {}) {
 		const filteredCopy: GraphConnection[] = [];
 
