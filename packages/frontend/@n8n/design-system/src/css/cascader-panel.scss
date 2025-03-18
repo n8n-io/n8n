@@ -77,7 +77,7 @@
 	&.is-selectable.in-checked-path,
 	&.is-active {
 		color: var.$cascader-menu-selected-font-color;
-		font-weight: bold;
+		font-weight: var(--font-weight-bold);
 	}
 
 	&:not(.is-disabled) {

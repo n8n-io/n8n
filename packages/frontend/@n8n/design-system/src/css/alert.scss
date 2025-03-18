@@ -116,7 +116,7 @@
 		font-size: var.$alert-title-font-size;
 		line-height: 18px;
 		@include mixins.when(bold) {
-			font-weight: bold;
+			font-weight: var(--font-weight-bold);
 		}
 	}
 

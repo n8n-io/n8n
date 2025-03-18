@@ -22,7 +22,7 @@
 
 .time-select-item.selected:not(.disabled) {
 	color: var(--color-primary);
-	font-weight: bold;
+	font-weight: var(--font-weight-bold);
 }
 
 .time-select-item.disabled {
@@ -32,6 +32,6 @@
 
 .time-select-item:hover {
 	background-color: var.$background-color-base;
-	font-weight: bold;
+	font-weight: var(--font-weight-bold);
 	cursor: pointer;
 }
