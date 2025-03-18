@@ -36,7 +36,7 @@ const telemetry = useTelemetry();
 const i18n = useI18n();
 
 const { userActivated } = useUsersStore();
-const { popViewStack, updateCurrentViewStack } = useViewStacks();
+const { popViewStack, updateCurrentViewStack, activeViewStack } = useViewStacks();
 const { registerKeyHook } = useKeyboardNavigation();
 const {
 	setAddedNodeActionParameters,
@@ -298,7 +298,7 @@ onMounted(() => {
 				</CategorizedItemsRenderer>
 			</template>
 		</OrderSwitcher>
-		<div v-if="containsAPIAction" :class="$style.apiHint">
+		<div v-if="containsAPIAction && !activeViewStack.communityNodeDetails" :class="$style.apiHint">
 			<span
 				v-n8n-html="
 					i18n.baseText('nodeCreator.actionsList.apiCall', {
@@ -308,6 +308,10 @@ onMounted(() => {
 				@click.prevent="addHttpNode"
 			/>
 		</div>
+		<CommunityNodeFooter
+			v-if="activeViewStack.communityNodeDetails"
+			:package-name="activeViewStack?.communityNodeDetails?.packageName as string"
+		/>
 	</div>
 </template>
 

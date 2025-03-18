@@ -47,6 +47,13 @@ const searchPlaceholder = computed(() => {
 
 const nodeCreatorView = computed(() => useNodeCreatorStore().selectedView);
 
+const isCommunityNodeWithoutActions = computed(() => {
+	return (
+		activeViewStack.value.communityNodeDetails &&
+		!(isActionsMode.value && activeViewStack.value.subcategory)
+	);
+});
+
 function getDefaultActiveIndex(search: string = ''): number {
 	if (activeViewStack.value.mode === 'actions') {
 		// For actions, set the active focus to the first action, not category
@@ -216,13 +223,10 @@ function onBackButton() {
 				<!-- Nodes Mode -->
 				<NodesRenderer v-else :root-view="nodeCreatorView" v-bind="$attrs" />
 			</div>
-			<div
-				v-if="
-					activeViewStack.communityNodeDetails && !(isActionsMode && activeViewStack.subcategory)
-				"
-			>
-				Manage | Report issue
-			</div>
+			<CommunityNodeFooter
+				v-if="isCommunityNodeWithoutActions"
+				:package-name="activeViewStack?.communityNodeDetails?.packageName as string"
+			/>
 		</aside>
 	</transition>
 </template>

@@ -157,8 +157,9 @@ onMounted(async () => {
 .info {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-s);
+	justify-content: space-between;
 	margin-bottom: var(--spacing-m);
+	flex-wrap: wrap;
 }
 .info div {
 	display: flex;
