@@ -1620,7 +1620,9 @@ watch(
 	() => route.name,
 	async (newRouteName, oldRouteName) => {
 		// it's navigating from and existing workflow to a new workflow
-		const force = newRouteName === VIEWS.NEW_WORKFLOW && oldRouteName === VIEWS.WORKFLOW;
+		const force =
+			(newRouteName === VIEWS.NEW_WORKFLOW && oldRouteName === VIEWS.WORKFLOW) ||
+			(newRouteName === VIEWS.WORKFLOW && oldRouteName === VIEWS.NEW_WORKFLOW);
 		await initializeRoute(force);
 	},
 );
