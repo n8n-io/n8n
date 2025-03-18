@@ -180,7 +180,8 @@
                         "verified",
                         "reason",
                         "signature",
-                        "payload"
+                        "payload",
+                        "verified_at"
                     ]
                 }
             },
@@ -197,5 +198,6 @@
                 "verification"
             ]
         }
-    }
+    },
+    "version": 1
 }

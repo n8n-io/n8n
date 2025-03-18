@@ -1,6 +1,5 @@
 import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
-import { UserError } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
@@ -83,10 +82,6 @@ export class Webhook extends BaseCommand {
 	}
 
 	async run() {
-		if (this.globalConfig.multiMainSetup.enabled) {
-			throw new UserError('Webhook process cannot be started when multi-main setup is enabled.');
-		}
-
 		const { ScalingService } = await import('@/scaling/scaling.service');
 		await Container.get(ScalingService).setupQueue();
 		await this.server.start();

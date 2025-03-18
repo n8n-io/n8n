@@ -126,5 +126,6 @@
         "archived",
         "override_statuses",
         "permission_level"
-    ]
+    ],
+    "version": 1
 }

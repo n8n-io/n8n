@@ -164,7 +164,7 @@
                                     "type": "string"
                                 },
                                 "orderindex": {
-                                    "type": "integer"
+                                    "type": "null"
                                 },
                                 "assignee": {
                                     "type": "null"
@@ -242,6 +242,9 @@
                     },
                     "tag_bg": {
                         "type": "string"
+                    },
+                    "creator": {
+                        "type": "integer"
                     }
                 },
                 "required": [
@@ -269,6 +272,9 @@
                     "type_config": {
                         "type": "object",
                         "properties": {
+                            "sorting": {
+                                "type": "string"
+                            },
                             "options": {
                                 "type": "array",
                                 "items": {
@@ -307,6 +313,44 @@
                     "date_created",
                     "hide_from_guests",
                     "required"
+                ]
+            }
+        },
+        "dependencies": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "task_id": {
+                        "type": "string"
+                    },
+                    "depends_on": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "integer"
+                    },
+                    "date_created": {
+                        "type": "string"
+                    },
+                    "userid": {
+                        "type": "string"
+                    },
+                    "workspace_id": {
+                        "type": "string"
+                    },
+                    "chain_id": {
+                        "type": "null"
+                    }
+                },
+                "required": [
+                    "task_id",
+                    "depends_on",
+                    "type",
+                    "date_created",
+                    "userid",
+                    "workspace_id",
+                    "chain_id"
                 ]
             }
         },
@@ -513,5 +557,6 @@
         "project",
         "folder",
         "space"
-    ]
+    ],
+    "version": 1
 }

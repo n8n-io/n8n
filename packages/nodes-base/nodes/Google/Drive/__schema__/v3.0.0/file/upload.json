@@ -168,10 +168,16 @@
                 "canDelete": {
                     "type": "boolean"
                 },
+                "canDisableInheritedPermissions": {
+                    "type": "boolean"
+                },
                 "canDownload": {
                     "type": "boolean"
                 },
                 "canEdit": {
+                    "type": "boolean"
+                },
+                "canEnableInheritedPermissions": {
                     "type": "boolean"
                 },
                 "canListChildren": {
@@ -240,8 +246,10 @@
                 "canComment",
                 "canCopy",
                 "canDelete",
+                "canDisableInheritedPermissions",
                 "canDownload",
                 "canEdit",
+                "canEnableInheritedPermissions",
                 "canListChildren",
                 "canModifyContent",
                 "canModifyContentRestriction",
@@ -359,6 +367,10 @@
                 "securityUpdateEligible",
                 "securityUpdateEnabled"
             ]
+        },
+        "inheritedPermissionsDisabled": {
+            "type": "boolean"
         }
-    }
+    },
+    "version": 1
 }

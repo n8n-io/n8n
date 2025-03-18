@@ -1,0 +1,290 @@
+{
+    "type": "object",
+    "properties": {
+        "createdAt": {
+            "type": "string"
+        },
+        "updatedAt": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "active": {
+            "type": "boolean"
+        },
+        "nodes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "operation": {
+                                "type": "string"
+                            },
+                            "path": {
+                                "type": "string"
+                            },
+                            "authentication": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "position": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "webhookId": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "parameters",
+                    "type",
+                    "typeVersion",
+                    "position",
+                    "id",
+                    "name"
+                ]
+            }
+        },
+        "settings": {
+            "type": "object",
+            "properties": {
+                "executionOrder": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "executionOrder"
+            ]
+        },
+        "meta": {
+            "type": "object",
+            "properties": {
+                "templateCredsSetupCompleted": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "templateCredsSetupCompleted"
+            ]
+        },
+        "versionId": {
+            "type": "string"
+        },
+        "triggerCount": {
+            "type": "integer"
+        },
+        "shared": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "createdAt": {
+                        "type": "string"
+                    },
+                    "updatedAt": {
+                        "type": "string"
+                    },
+                    "role": {
+                        "type": "string"
+                    },
+                    "workflowId": {
+                        "type": "string"
+                    },
+                    "projectId": {
+                        "type": "string"
+                    },
+                    "project": {
+                        "type": "object",
+                        "properties": {
+                            "createdAt": {
+                                "type": "string"
+                            },
+                            "updatedAt": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            },
+                            "projectRelations": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "createdAt": {
+                                            "type": "string"
+                                        },
+                                        "updatedAt": {
+                                            "type": "string"
+                                        },
+                                        "role": {
+                                            "type": "string"
+                                        },
+                                        "userId": {
+                                            "type": "string"
+                                        },
+                                        "projectId": {
+                                            "type": "string"
+                                        },
+                                        "user": {
+                                            "type": "object",
+                                            "properties": {
+                                                "createdAt": {
+                                                    "type": "string"
+                                                },
+                                                "updatedAt": {
+                                                    "type": "string"
+                                                },
+                                                "id": {
+                                                    "type": "string"
+                                                },
+                                                "email": {
+                                                    "type": "string"
+                                                },
+                                                "firstName": {
+                                                    "type": "string"
+                                                },
+                                                "lastName": {
+                                                    "type": "string"
+                                                },
+                                                "settings": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "userActivated": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "firstSuccessfulWorkflowId": {
+                                                            "type": "string"
+                                                        },
+                                                        "userActivatedAt": {
+                                                            "type": "integer"
+                                                        },
+                                                        "npsSurvey": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "lastShownAt": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "waitingForResponse": {
+                                                                    "type": "boolean"
+                                                                },
+                                                                "ignoredCount": {
+                                                                    "type": "integer"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "lastShownAt"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "userActivated"
+                                                    ]
+                                                },
+                                                "role": {
+                                                    "type": "string"
+                                                },
+                                                "disabled": {
+                                                    "type": "boolean"
+                                                },
+                                                "mfaEnabled": {
+                                                    "type": "boolean"
+                                                },
+                                                "isPending": {
+                                                    "type": "boolean"
+                                                },
+                                                "isOwner": {
+                                                    "type": "boolean"
+                                                }
+                                            },
+                                            "required": [
+                                                "createdAt",
+                                                "updatedAt",
+                                                "id",
+                                                "email",
+                                                "firstName",
+                                                "lastName",
+                                                "personalizationAnswers",
+                                                "settings",
+                                                "role",
+                                                "disabled",
+                                                "mfaEnabled",
+                                                "isPending",
+                                                "isOwner"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "createdAt",
+                                        "updatedAt",
+                                        "role",
+                                        "userId",
+                                        "projectId",
+                                        "user"
+                                    ]
+                                }
+                            }
+                        },
+                        "required": [
+                            "createdAt",
+                            "updatedAt",
+                            "id",
+                            "name",
+                            "type",
+                            "projectRelations"
+                        ]
+                    }
+                },
+                "required": [
+                    "createdAt",
+                    "updatedAt",
+                    "role",
+                    "workflowId",
+                    "projectId",
+                    "project"
+                ]
+            }
+        }
+    },
+    "required": [
+        "createdAt",
+        "updatedAt",
+        "id",
+        "name",
+        "active",
+        "nodes",
+        "connections",
+        "settings",
+        "staticData",
+        "meta",
+        "pinData",
+        "versionId",
+        "triggerCount",
+        "shared"
+    ],
+    "version": 1
+}

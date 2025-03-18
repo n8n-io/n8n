@@ -113,6 +113,7 @@ import { createCanvasConnectionHandleString } from '@/utils/canvasUtils';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
+import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionButtonVisible';
 
 defineOptions({
 	name: 'NodeView',
@@ -1122,16 +1123,8 @@ const isStopExecutionButtonVisible = computed(
 const isStopWaitingForWebhookButtonVisible = computed(
 	() => isWorkflowRunning.value && isExecutionWaitingForWebhook.value,
 );
-const isClearExecutionButtonVisible = computed(
-	() =>
-		!isReadOnlyRoute.value &&
-		!isReadOnlyEnvironment.value &&
-		!isWorkflowRunning.value &&
-		!allTriggerNodesDisabled.value &&
-		workflowExecutionData.value,
-);
 
-const workflowExecutionData = computed(() => workflowsStore.workflowExecutionData);
+const isClearExecutionButtonVisible = useClearExecutionButtonVisible();
 
 async function onRunWorkflowToNode(id: string) {
 	const node = workflowsStore.getNodeById(id);
@@ -1806,7 +1799,7 @@ onBeforeUnmount(() => {
 				@click="onStopWaitingForWebhook"
 			/>
 			<CanvasClearExecutionDataButton
-				v-if="isClearExecutionButtonVisible"
+				v-if="isClearExecutionButtonVisible && !settingsStore.isNewLogsEnabled"
 				@click="onClearExecutionData"
 			/>
 		</div>

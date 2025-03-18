@@ -19,7 +19,6 @@
             },
             "required": [
                 "name",
-                "displayName",
                 "type"
             ]
         },
@@ -49,9 +48,6 @@
                 "type": {
                     "type": "string"
                 },
-                "displayName": {
-                    "type": "string"
-                },
                 "spaceThreadingState": {
                     "type": "string"
                 },
@@ -59,9 +55,6 @@
                     "type": "string"
                 },
                 "spaceHistoryState": {
-                    "type": "string"
-                },
-                "createTime": {
                     "type": "string"
                 },
                 "lastActiveTime": {
@@ -83,12 +76,7 @@
                 }
             },
             "required": [
-                "name",
-                "type",
-                "spaceThreadingState",
-                "spaceType",
-                "spaceHistoryState",
-                "spaceUri"
+                "name"
             ]
         },
         "argumentText": {
@@ -98,11 +86,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "name",
-        "sender",
-        "createTime",
-        "thread",
-        "space"
-    ]
+    "version": 1
 }

@@ -7,6 +7,9 @@
         "InvoiceID": {
             "type": "string"
         },
+        "InvoiceNumber": {
+            "type": "string"
+        },
         "Reference": {
             "type": "string"
         },
@@ -56,9 +59,6 @@
                             },
                             "PostalCode": {
                                 "type": "string"
-                            },
-                            "Country": {
-                                "type": "string"
                             }
                         },
                         "required": [
@@ -72,15 +72,6 @@
                         "type": "object",
                         "properties": {
                             "PhoneType": {
-                                "type": "string"
-                            },
-                            "PhoneNumber": {
-                                "type": "string"
-                            },
-                            "PhoneAreaCode": {
-                                "type": "string"
-                            },
-                            "PhoneCountryCode": {
                                 "type": "string"
                             }
                         },
@@ -125,11 +116,34 @@
                 "IsCustomer": {
                     "type": "boolean"
                 },
+                "ContactPersons": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "FirstName": {
+                                "type": "string"
+                            },
+                            "LastName": {
+                                "type": "string"
+                            },
+                            "EmailAddress": {
+                                "type": "string"
+                            },
+                            "IncludeInEmails": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "FirstName",
+                            "LastName",
+                            "EmailAddress",
+                            "IncludeInEmails"
+                        ]
+                    }
+                },
                 "HasValidationErrors": {
                     "type": "boolean"
-                },
-                "BankAccountDetails": {
-                    "type": "string"
                 }
             },
             "required": [
@@ -154,6 +168,9 @@
         "Date": {
             "type": "string"
         },
+        "BrandingThemeID": {
+            "type": "string"
+        },
         "Status": {
             "type": "string"
         },
@@ -165,6 +182,9 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "ItemCode": {
+                        "type": "string"
+                    },
                     "Description": {
                         "type": "string"
                     },
@@ -173,6 +193,24 @@
                     },
                     "AccountCode": {
                         "type": "string"
+                    },
+                    "Item": {
+                        "type": "object",
+                        "properties": {
+                            "ItemID": {
+                                "type": "string"
+                            },
+                            "Name": {
+                                "type": "string"
+                            },
+                            "Code": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "ItemID",
+                            "Code"
+                        ]
                     },
                     "LineItemID": {
                         "type": "string"
@@ -192,18 +230,6 @@
             "type": "string"
         },
         "CurrencyCode": {
-            "type": "string"
-        },
-        "InvoiceNumber": {
-            "type": "string"
-        },
-        "BrandingThemeID": {
-            "type": "string"
-        },
-        "DueDateString": {
-            "type": "string"
-        },
-        "DueDate": {
             "type": "string"
         }
     },
@@ -231,5 +257,6 @@
         "Total",
         "UpdatedDateUTC",
         "CurrencyCode"
-    ]
+    ],
+    "version": 1
 }

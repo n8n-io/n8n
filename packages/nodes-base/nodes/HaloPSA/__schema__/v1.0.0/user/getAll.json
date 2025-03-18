@@ -24,7 +24,7 @@
         "id",
         "name",
         "site_id",
-        "surname",
         "inactive"
-    ]
+    ],
+    "version": 1
 }
