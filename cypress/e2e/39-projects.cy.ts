@@ -27,23 +27,6 @@ const ndv = new NDV();
 const mainSidebar = new MainSidebar();
 
 describe('Projects', { disableAutoLogin: true }, () => {
-	before(() => {
-		cy.resetDatabase();
-		cy.enableFeature('sharing');
-		cy.enableFeature('advancedPermissions');
-		cy.enableFeature('projectRole:admin');
-		cy.enableFeature('projectRole:editor');
-		cy.changeQuota('maxTeamProjects', -1);
-	});
-
-	it('should not show project add button and projects to a member if not invited to any project', () => {
-		cy.signinAsMember(1);
-		cy.visit(workflowsPage.url);
-
-		cy.getByTestId('add-project-menu-item').should('not.exist');
-		projects.getMenuItems().should('not.exist');
-	});
-
 	describe('when starting from scratch', () => {
 		beforeEach(() => {
 			cy.resetDatabase();
@@ -52,6 +35,14 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			cy.enableFeature('projectRole:admin');
 			cy.enableFeature('projectRole:editor');
 			cy.changeQuota('maxTeamProjects', -1);
+		});
+
+		it('should not show project add button and projects to a member if not invited to any project', () => {
+			cy.signinAsMember(1);
+			cy.visit(workflowsPage.url);
+
+			cy.getByTestId('add-project-menu-item').should('not.exist');
+			projects.getMenuItems().should('not.exist');
 		});
 
 		it('should filter credentials by project ID when creating new workflow or hard reloading an opened workflow', () => {
@@ -220,235 +211,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.should('contain.text', 'Notion account personal project');
 		});
 
-		it('should move resources between projects', () => {
-			cy.intercept('GET', /\/rest\/(workflows|credentials).*/).as('getResources');
-
-			cy.signinAsOwner();
-			cy.visit(workflowsPage.url);
-
-			cy.log('Create a workflow and a credential in the Home project');
-			workflowsPage.getters.workflowCards().should('not.have.length');
-			workflowsPage.getters.newWorkflowButtonCard().click();
-			projects.createWorkflow('Test_workflow_1.json', 'Workflow in Home project');
-			clearNotifications();
-
-			projects.getHomeButton().click();
-			projects.getProjectTabCredentials().should('be.visible').click();
-			credentialsPage.getters.emptyListCreateCredentialButton().click();
-			projects.createCredential('Credential in Home project');
-			clearNotifications();
-
-			cy.log('Create a project and add a credential and a workflow to it');
-			projects.createProject('Project 1');
-			clearNotifications();
-
-			projects.getProjectTabCredentials().click();
-			credentialsPage.getters.emptyListCreateCredentialButton().click();
-			projects.createCredential('Credential in Project 1');
-			clearNotifications();
-
-			projects.getProjectTabWorkflows().click();
-			workflowsPage.getters.newWorkflowButtonCard().click();
-			projects.createWorkflow('Test_workflow_1.json', 'Workflow in Project 1');
-			clearNotifications();
-
-			cy.log('Create another project and add a credential and a workflow to it');
-			projects.createProject('Project 2');
-			clearNotifications();
-
-			projects.getProjectTabCredentials().click();
-			credentialsPage.getters.emptyListCreateCredentialButton().click();
-			projects.createCredential('Credential in Project 2');
-			clearNotifications();
-
-			projects.getProjectTabWorkflows().click();
-			workflowsPage.getters.newWorkflowButtonCard().click();
-			projects.createWorkflow('Test_workflow_1.json', 'Workflow in Project 2');
-			clearNotifications();
-
-			cy.log('Move the workflow Personal from Home to Project 1');
-			projects.getHomeButton().click();
-			workflowsPage.getters.workflowCards().should('have.length', 3);
-			workflowsPage.getters.workflowCards().filter(':contains("Personal")').should('exist');
-			workflowsPage.getters.workflowCardActions('Workflow in Home project').click();
-			workflowsPage.getters.workflowMoveButton().click();
-
-			projects
-				.getResourceMoveModal()
-				.should('be.visible')
-				.contains('button', 'Move workflow')
-				.should('be.disabled');
-			projects.getProjectMoveSelect().click();
-			getVisibleSelect().find('li').should('have.length', 5);
-			getVisibleSelect().find('li').filter(':contains("Project 1")').click();
-			projects.getResourceMoveModal().contains('button', 'Move workflow').click();
-			clearNotifications();
-			cy.wait('@getResources');
-
-			workflowsPage.getters.workflowCards().should('have.length', 3);
-			workflowsPage.getters.workflowCards().filter(':contains("Personal")').should('not.exist');
-
-			cy.log('Move the workflow from Project 1 to Project 2');
-			projects.getMenuItems().first().click();
-			workflowsPage.getters.workflowCards().should('have.length', 2);
-			workflowsPage.getters.workflowCardActions('Workflow in Home project').click();
-			workflowsPage.getters.workflowMoveButton().click();
-
-			projects
-				.getResourceMoveModal()
-				.should('be.visible')
-				.contains('button', 'Move workflow')
-				.should('be.disabled');
-			projects.getProjectMoveSelect().click();
-			getVisibleSelect().find('li').should('have.length', 5);
-			getVisibleSelect().find('li').filter(':contains("Project 2")').click();
-			projects.getResourceMoveModal().contains('button', 'Move workflow').click();
-			clearNotifications();
-
-			cy.log('Move the workflow from Project 2 to a member user');
-			projects.getMenuItems().last().click();
-			workflowsPage.getters.workflowCards().should('have.length', 2);
-			workflowsPage.getters.workflowCardActions('Workflow in Home project').click();
-			workflowsPage.getters.workflowMoveButton().click();
-
-			projects
-				.getResourceMoveModal()
-				.should('be.visible')
-				.contains('button', 'Move workflow')
-				.should('be.disabled');
-			projects.getProjectMoveSelect().click();
-			getVisibleSelect().find('li').should('have.length', 5);
-			getVisibleSelect().find('li').filter(`:contains("${INSTANCE_MEMBERS[0].email}")`).click();
-
-			projects.getResourceMoveModal().contains('button', 'Move workflow').click();
-			clearNotifications();
-			cy.wait('@getResources');
-
-			workflowsPage.getters.workflowCards().should('have.length', 1);
-
-			cy.log('Move the workflow from member user back to Home');
-			projects.getHomeButton().click();
-			workflowsPage.getters.workflowCards().should('have.length', 3);
-			workflowsPage.getters
-				.workflowCards()
-				.filter(':has(.n8n-badge:contains("Project"))')
-				.should('have.length', 2);
-			workflowsPage.getters.workflowCardActions('Workflow in Home project').click();
-			workflowsPage.getters.workflowMoveButton().click();
-
-			projects
-				.getResourceMoveModal()
-				.should('be.visible')
-				.contains('button', 'Move workflow')
-				.should('be.disabled');
-			projects.getProjectMoveSelect().click();
-			getVisibleSelect().find('li').should('have.length', 5);
-			getVisibleSelect().find('li').filter(`:contains("${INSTANCE_OWNER.email}")`).click();
-
-			projects.getResourceMoveModal().contains('button', 'Move workflow').click();
-			clearNotifications();
-			cy.wait('@getResources');
-
-			workflowsPage.getters.workflowCards().should('have.length', 3);
-			workflowsPage.getters
-				.workflowCards()
-				.filter(':contains("Personal")')
-				.should('have.length', 1);
-
-			cy.log('Move the credential from Project 1 to Project 2');
-			projects.getMenuItems().first().click();
-			projects.getProjectTabCredentials().click();
-			credentialsPage.getters.credentialCards().should('have.length', 1);
-			credentialsPage.getters.credentialCardActions('Credential in Project 1').click();
-			credentialsPage.getters.credentialMoveButton().click();
-
-			projects
-				.getResourceMoveModal()
-				.should('be.visible')
-				.contains('button', 'Move credential')
-				.should('be.disabled');
-			projects.getProjectMoveSelect().click();
-			getVisibleSelect().find('li').should('have.length', 5);
-			getVisibleSelect().find('li').filter(':contains("Project 2")').click();
-			projects.getResourceMoveModal().contains('button', 'Move credential').click();
-			clearNotifications();
-			cy.wait('@getResources');
-
-			credentialsPage.getters.credentialCards().should('not.have.length');
-
-			cy.log('Move the credential from Project 2 to admin user');
-			projects.getMenuItems().last().click();
-			projects.getProjectTabCredentials().click();
-			credentialsPage.getters.credentialCards().should('have.length', 2);
-
-			credentialsPage.getters.credentialCardActions('Credential in Project 1').click();
-			credentialsPage.getters.credentialMoveButton().click();
-
-			projects
-				.getResourceMoveModal()
-				.should('be.visible')
-				.contains('button', 'Move credential')
-				.should('be.disabled');
-			projects.getProjectMoveSelect().click();
-			getVisibleSelect().find('li').should('have.length', 5);
-			getVisibleSelect().find('li').filter(`:contains("${INSTANCE_ADMIN.email}")`).click();
-			projects.getResourceMoveModal().contains('button', 'Move credential').click();
-			clearNotifications();
-			cy.wait('@getResources');
-
-			credentialsPage.getters.credentialCards().should('have.length', 1);
-
-			cy.log('Move the credential from admin user back to instance owner');
-			projects.getHomeButton().click();
-			projects.getProjectTabCredentials().click();
-			credentialsPage.getters.credentialCards().should('have.length', 3);
-
-			credentialsPage.getters.credentialCardActions('Credential in Project 1').click();
-			credentialsPage.getters.credentialMoveButton().click();
-
-			projects
-				.getResourceMoveModal()
-				.should('be.visible')
-				.contains('button', 'Move credential')
-				.should('be.disabled');
-			projects.getProjectMoveSelect().click();
-			getVisibleSelect().find('li').should('have.length', 5);
-			getVisibleSelect().find('li').filter(`:contains("${INSTANCE_OWNER.email}")`).click();
-
-			projects.getResourceMoveModal().contains('button', 'Move credential').click();
-			clearNotifications();
-			cy.wait('@getResources');
-
-			credentialsPage.getters.credentialCards().should('have.length', 3);
-			credentialsPage.getters
-				.credentialCards()
-				.filter(':contains("Personal")')
-				.should('have.length', 2);
-
-			cy.log('Move the credential from admin user back to its original project (Project 1)');
-			credentialsPage.getters.credentialCardActions('Credential in Project 1').click();
-			credentialsPage.getters.credentialMoveButton().click();
-
-			projects
-				.getResourceMoveModal()
-				.should('be.visible')
-				.contains('button', 'Move credential')
-				.should('be.disabled');
-			projects.getProjectMoveSelect().click();
-			getVisibleSelect().find('li').should('have.length', 5);
-			getVisibleSelect().find('li').filter(':contains("Project 1")').click();
-			projects.getResourceMoveModal().contains('button', 'Move credential').click();
-			clearNotifications();
-
-			projects.getMenuItems().first().click();
-			projects.getProjectTabCredentials().click();
-			credentialsPage.getters
-				.credentialCards()
-				.filter(':contains("Credential in Project 1")')
-				.should('have.length', 1);
-		});
-
-		it('should allow to change inaccessible credential when the workflow was moved to a team project', () => {
+		it('should allow changing an inaccessible credential when the workflow was moved to a team project', () => {
 			cy.intercept('GET', /\/rest\/(workflows|credentials).*/).as('getResources');
 
 			cy.signinAsOwner();
@@ -578,24 +341,272 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			projects.getProjectTabCredentials().click();
 			credentialsPage.getters.credentialCards().should('have.length', 1);
 		});
+
+		it('should set and update project icon', () => {
+			const DEFAULT_ICON = 'fa-layer-group';
+			const NEW_PROJECT_NAME = 'Test Project';
+
+			cy.signinAsAdmin();
+			cy.visit(workflowsPage.url);
+			projects.createProject(NEW_PROJECT_NAME);
+			// New project should have default icon
+			projects.getIconPickerButton().find('svg').should('have.class', DEFAULT_ICON);
+			// Choose another icon
+			projects.getIconPickerButton().click();
+			projects.getIconPickerTab('Emojis').click();
+			projects.getIconPickerEmojis().first().click();
+			// Project should be updated with new icon
+			successToast().contains('Project icon updated successfully');
+			projects.getIconPickerButton().should('contain', '😀');
+			projects.getMenuItems().contains(NEW_PROJECT_NAME).should('contain', '😀');
+		});
 	});
 
-	it('should set and update project icon', () => {
-		const DEFAULT_ICON = 'fa-layer-group';
-		const NEW_PROJECT_NAME = 'Test Project';
+	describe('when moving resources between projects', () => {
+		before(() => {
+			cy.resetDatabase();
+			cy.enableFeature('sharing');
+			cy.enableFeature('advancedPermissions');
+			cy.enableFeature('projectRole:admin');
+			cy.enableFeature('projectRole:editor');
+			cy.changeQuota('maxTeamProjects', -1);
+		});
 
-		cy.signinAsAdmin();
-		cy.visit(workflowsPage.url);
-		projects.createProject(NEW_PROJECT_NAME);
-		// New project should have default icon
-		projects.getIconPickerButton().find('svg').should('have.class', DEFAULT_ICON);
-		// Choose another icon
-		projects.getIconPickerButton().click();
-		projects.getIconPickerTab('Emojis').click();
-		projects.getIconPickerEmojis().first().click();
-		// Project should be updated with new icon
-		successToast().contains('Project icon updated successfully');
-		projects.getIconPickerButton().should('contain', '😀');
-		projects.getMenuItems().contains(NEW_PROJECT_NAME).should('contain', '😀');
+		it('should create a workflow and a credential in the Home project', () => {
+			cy.intercept('GET', /\/rest\/(workflows|credentials).*/).as('getResources');
+			cy.signinAsOwner();
+			cy.visit(workflowsPage.url);
+
+			cy.log('Create a workflow and a credential in the Home project');
+			workflowsPage.getters.workflowCards().should('not.have.length');
+			workflowsPage.getters.newWorkflowButtonCard().click();
+			projects.createWorkflow('Test_workflow_1.json', 'Workflow in Home project');
+			clearNotifications();
+
+			projects.getHomeButton().click();
+			projects.getProjectTabCredentials().should('be.visible').click();
+			credentialsPage.getters.emptyListCreateCredentialButton().click();
+			projects.createCredential('Credential in Home project');
+			clearNotifications();
+
+			cy.log('Create a project and add a credential and a workflow to it');
+			projects.createProject('Project 1');
+			clearNotifications();
+
+			projects.getProjectTabCredentials().click();
+			credentialsPage.getters.emptyListCreateCredentialButton().click();
+			projects.createCredential('Credential in Project 1');
+			clearNotifications();
+
+			projects.getProjectTabWorkflows().click();
+			workflowsPage.getters.newWorkflowButtonCard().click();
+			projects.createWorkflow('Test_workflow_1.json', 'Workflow in Project 1');
+			clearNotifications();
+
+			cy.log('Create another project and add a credential and a workflow to it');
+			projects.createProject('Project 2');
+			clearNotifications();
+
+			projects.getProjectTabCredentials().click();
+			credentialsPage.getters.emptyListCreateCredentialButton().click();
+			projects.createCredential('Credential in Project 2');
+			clearNotifications();
+
+			projects.getProjectTabWorkflows().click();
+			workflowsPage.getters.newWorkflowButtonCard().click();
+			projects.createWorkflow('Test_workflow_1.json', 'Workflow in Project 2');
+			clearNotifications();
+		});
+
+		it('should move the workflow to expected projects', () => {
+			cy.intercept('GET', /\/rest\/(workflows|credentials).*/).as('getResources');
+			cy.signinAsOwner();
+			cy.visit(workflowsPage.url);
+
+			projects.getHomeButton().click();
+			workflowsPage.getters.workflowCards().should('have.length', 3);
+			workflowsPage.getters.workflowCards().filter(':contains("Personal")').should('exist');
+			workflowsPage.getters.workflowCardActions('Workflow in Home project').click();
+			workflowsPage.getters.workflowMoveButton().click();
+
+			projects
+				.getResourceMoveModal()
+				.should('be.visible')
+				.contains('button', 'Move workflow')
+				.should('be.disabled');
+			projects.getProjectMoveSelect().click();
+			getVisibleSelect().find('li').should('have.length', 5);
+			getVisibleSelect().find('li').filter(':contains("Project 1")').click();
+			projects.getResourceMoveModal().contains('button', 'Move workflow').click();
+			clearNotifications();
+			cy.wait('@getResources');
+
+			workflowsPage.getters.workflowCards().should('have.length', 3);
+			workflowsPage.getters.workflowCards().filter(':contains("Personal")').should('not.exist');
+
+			cy.log('Move the workflow from Project 1 to Project 2');
+			projects.getMenuItems().first().click();
+			workflowsPage.getters.workflowCards().should('have.length', 2);
+			workflowsPage.getters.workflowCardActions('Workflow in Home project').click();
+			workflowsPage.getters.workflowMoveButton().click();
+
+			projects
+				.getResourceMoveModal()
+				.should('be.visible')
+				.contains('button', 'Move workflow')
+				.should('be.disabled');
+			projects.getProjectMoveSelect().click();
+			getVisibleSelect().find('li').should('have.length', 5);
+			getVisibleSelect().find('li').filter(':contains("Project 2")').click();
+			projects.getResourceMoveModal().contains('button', 'Move workflow').click();
+			clearNotifications();
+
+			cy.log('Move the workflow from Project 2 to a member user');
+			projects.getMenuItems().last().click();
+			workflowsPage.getters.workflowCards().should('have.length', 2);
+			workflowsPage.getters.workflowCardActions('Workflow in Home project').click();
+			workflowsPage.getters.workflowMoveButton().click();
+
+			projects
+				.getResourceMoveModal()
+				.should('be.visible')
+				.contains('button', 'Move workflow')
+				.should('be.disabled');
+			projects.getProjectMoveSelect().click();
+			getVisibleSelect().find('li').should('have.length', 5);
+			getVisibleSelect().find('li').filter(`:contains("${INSTANCE_MEMBERS[0].email}")`).click();
+
+			projects.getResourceMoveModal().contains('button', 'Move workflow').click();
+			clearNotifications();
+			cy.wait('@getResources');
+
+			workflowsPage.getters.workflowCards().should('have.length', 1);
+
+			cy.log('Move the workflow from member user back to Home');
+			projects.getHomeButton().click();
+			workflowsPage.getters.workflowCards().should('have.length', 3);
+			workflowsPage.getters
+				.workflowCards()
+				.filter(':has(.n8n-badge:contains("Project"))')
+				.should('have.length', 2);
+			workflowsPage.getters.workflowCardActions('Workflow in Home project').click();
+			workflowsPage.getters.workflowMoveButton().click();
+
+			projects
+				.getResourceMoveModal()
+				.should('be.visible')
+				.contains('button', 'Move workflow')
+				.should('be.disabled');
+			projects.getProjectMoveSelect().click();
+			getVisibleSelect().find('li').should('have.length', 5);
+			getVisibleSelect().find('li').filter(`:contains("${INSTANCE_OWNER.email}")`).click();
+
+			projects.getResourceMoveModal().contains('button', 'Move workflow').click();
+			clearNotifications();
+			cy.wait('@getResources');
+
+			workflowsPage.getters.workflowCards().should('have.length', 3);
+			workflowsPage.getters
+				.workflowCards()
+				.filter(':contains("Personal")')
+				.should('have.length', 1);
+		});
+
+		it('should move the credential to expected projects', () => {
+			cy.intercept('GET', /\/rest\/(workflows|credentials).*/).as('getResources');
+			cy.signinAsOwner();
+			cy.visit(workflowsPage.url);
+
+			projects.getMenuItems().first().click();
+			projects.getProjectTabCredentials().click();
+			credentialsPage.getters.credentialCards().should('have.length', 1);
+			credentialsPage.getters.credentialCardActions('Credential in Project 1').click();
+			credentialsPage.getters.credentialMoveButton().click();
+
+			projects
+				.getResourceMoveModal()
+				.should('be.visible')
+				.contains('button', 'Move credential')
+				.should('be.disabled');
+			projects.getProjectMoveSelect().click();
+			getVisibleSelect().find('li').should('have.length', 5);
+			getVisibleSelect().find('li').filter(':contains("Project 2")').click();
+			projects.getResourceMoveModal().contains('button', 'Move credential').click();
+			clearNotifications();
+			cy.wait('@getResources');
+
+			credentialsPage.getters.credentialCards().should('not.have.length');
+
+			cy.log('Move the credential from Project 2 to admin user');
+			projects.getMenuItems().last().click();
+			projects.getProjectTabCredentials().click();
+			credentialsPage.getters.credentialCards().should('have.length', 2);
+
+			credentialsPage.getters.credentialCardActions('Credential in Project 1').click();
+			credentialsPage.getters.credentialMoveButton().click();
+
+			projects
+				.getResourceMoveModal()
+				.should('be.visible')
+				.contains('button', 'Move credential')
+				.should('be.disabled');
+			projects.getProjectMoveSelect().click();
+			getVisibleSelect().find('li').should('have.length', 5);
+			getVisibleSelect().find('li').filter(`:contains("${INSTANCE_ADMIN.email}")`).click();
+			projects.getResourceMoveModal().contains('button', 'Move credential').click();
+			clearNotifications();
+			cy.wait('@getResources');
+
+			credentialsPage.getters.credentialCards().should('have.length', 1);
+
+			cy.log('Move the credential from admin user back to instance owner');
+			projects.getHomeButton().click();
+			projects.getProjectTabCredentials().click();
+			credentialsPage.getters.credentialCards().should('have.length', 3);
+
+			credentialsPage.getters.credentialCardActions('Credential in Project 1').click();
+			credentialsPage.getters.credentialMoveButton().click();
+
+			projects
+				.getResourceMoveModal()
+				.should('be.visible')
+				.contains('button', 'Move credential')
+				.should('be.disabled');
+			projects.getProjectMoveSelect().click();
+			getVisibleSelect().find('li').should('have.length', 5);
+			getVisibleSelect().find('li').filter(`:contains("${INSTANCE_OWNER.email}")`).click();
+
+			projects.getResourceMoveModal().contains('button', 'Move credential').click();
+			clearNotifications();
+			cy.wait('@getResources');
+
+			credentialsPage.getters.credentialCards().should('have.length', 3);
+			credentialsPage.getters
+				.credentialCards()
+				.filter(':contains("Personal")')
+				.should('have.length', 2);
+
+			cy.log('Move the credential from admin user back to its original project (Project 1)');
+			credentialsPage.getters.credentialCardActions('Credential in Project 1').click();
+			credentialsPage.getters.credentialMoveButton().click();
+
+			projects
+				.getResourceMoveModal()
+				.should('be.visible')
+				.contains('button', 'Move credential')
+				.should('be.disabled');
+			projects.getProjectMoveSelect().click();
+			getVisibleSelect().find('li').should('have.length', 5);
+			getVisibleSelect().find('li').filter(':contains("Project 1")').click();
+			projects.getResourceMoveModal().contains('button', 'Move credential').click();
+			clearNotifications();
+
+			projects.getMenuItems().first().click();
+			projects.getProjectTabCredentials().click();
+			credentialsPage.getters
+				.credentialCards()
+				.filter(':contains("Credential in Project 1")')
+				.should('have.length', 1);
+		});
 	});
 });
