@@ -211,7 +211,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.should('contain.text', 'Notion account personal project');
 		});
 
-		it('should allow to change inaccessible credential when the workflow was moved to a team project', () => {
+		it('should allow changing an inaccessible credential when the workflow was moved to a team project', () => {
 			cy.intercept('GET', /\/rest\/(workflows|credentials).*/).as('getResources');
 
 			cy.signinAsOwner();
