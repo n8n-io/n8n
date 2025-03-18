@@ -418,7 +418,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			clearNotifications();
 		});
 
-		it('step 2: move the workflow around', () => {
+		it('should move the workflow to expected projects', () => {
 			cy.intercept('GET', /\/rest\/(workflows|credentials).*/).as('getResources');
 			cy.signinAsOwner();
 			cy.visit(workflowsPage.url);
