@@ -84,7 +84,7 @@ const i18n = useI18n();
 	font-size: 24px;
 	line-height: 24px;
 	color: $updates-panel-text-color;
-	font-weight: 400;
+	font-weight: var(--font-weight-regular);
 }
 
 .description {
@@ -96,7 +96,7 @@ const i18n = useI18n();
 		font-size: 16px;
 		line-height: 22px;
 		color: $updates-panel-description-text-color;
-		font-weight: 400;
+		font-weight: var(--font-weight-regular);
 		margin: 0 0 16px 0;
 	}
 

@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "1.83.0",
+  "version": "1.84.0",
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -158,7 +158,7 @@
     "raw-body": "2.5.1",
     "reflect-metadata": "catalog:",
     "replacestream": "4.0.3",
-    "samlify": "2.8.9",
+    "samlify": "2.9.0",
     "semver": "7.5.4",
     "shelljs": "0.8.5",
     "simple-git": "3.17.0",

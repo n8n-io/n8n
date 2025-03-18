@@ -12,7 +12,7 @@ import { tags } from '@lezer/highlight';
 
 const BASE_STYLING = {
 	fontSize: '0.8em',
-	fontFamily: "Menlo, Consolas, 'DejaVu Sans Mono', monospace !important",
+	fontFamily: 'var(--font-family-monospace)',
 	maxHeight: '400px',
 	tooltip: {
 		maxWidth: '250px',
