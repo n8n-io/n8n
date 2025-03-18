@@ -23,8 +23,6 @@ const timestampSyntax = {
 
 export const jsonColumnType = dbType === 'sqlite' ? 'simple-json' : 'json';
 export const datetimeColumnType = dbType === 'postgresdb' ? 'timestamptz' : 'datetime';
-export const datetimeColumnDefault =
-	dbType === 'sqlite' ? () => 'unixepoch()' : () => 'CURRENT_TIMESTAMP';
 
 const tsColumnOptions: ColumnOptions = {
 	precision: 3,
