@@ -512,7 +512,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.should('have.length', 1);
 		});
 
-		it('step 3: move the credential around', () => {
+		it('should move the credential to expected projects', () => {
 			cy.intercept('GET', /\/rest\/(workflows|credentials).*/).as('getResources');
 			cy.signinAsOwner();
 			cy.visit(workflowsPage.url);
