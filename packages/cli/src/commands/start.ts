@@ -240,8 +240,13 @@ export class Start extends BaseCommand {
 			await taskRunnerModule.start();
 		}
 
-		if (this.globalConfig.insights.enabled) {
-			await import('@/insights/insights.module');
+		// Load configured and enabled modules
+		for (const moduleName of Object.keys(this.modulesConfig)) {
+			const moduleConfig = this.modulesConfig[moduleName as keyof typeof this.modulesConfig];
+
+			if (moduleConfig.enabled) {
+				await import(`../${moduleName}/${moduleName}.module`);
+			}
 		}
 	}
 

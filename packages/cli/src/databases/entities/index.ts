@@ -12,9 +12,6 @@ import { ExecutionEntity } from './execution-entity';
 import { ExecutionMetadata } from './execution-metadata';
 import { Folder } from './folder';
 import { FolderTagMapping } from './folder-tag-mapping';
-import { InsightsByPeriod } from './insights-by-period';
-import { InsightsMetadata } from './insights-metadata';
-import { InsightsRaw } from './insights-raw';
 import { InstalledNodes } from './installed-nodes';
 import { InstalledPackages } from './installed-packages';
 import { InvalidAuthToken } from './invalid-auth-token';
@@ -36,6 +33,9 @@ import { WorkflowEntity } from './workflow-entity';
 import { WorkflowHistory } from './workflow-history';
 import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
+import { InsightsByPeriod } from '../../insights/entities/insights-by-period';
+import { InsightsMetadata } from '../../insights/entities/insights-metadata';
+import { InsightsRaw } from '../../insights/entities/insights-raw';
 
 export const entities = {
 	AnnotationTagEntity,

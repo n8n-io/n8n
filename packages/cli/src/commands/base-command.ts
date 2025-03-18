@@ -31,6 +31,7 @@ import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { initExpressionEvaluator } from '@/expression-evaluator';
 import { ExternalHooks } from '@/external-hooks';
 import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
+import { InsightsConfig } from '@/insights/insights.config';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
@@ -56,6 +57,10 @@ export abstract class BaseCommand extends Command {
 	protected license: License;
 
 	protected readonly globalConfig = Container.get(GlobalConfig);
+
+	protected readonly modulesConfig = {
+		insights: Container.get(InsightsConfig),
+	};
 
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.

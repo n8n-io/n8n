@@ -4,7 +4,7 @@ import { DateTime } from 'luxon';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 import type { ExecutionStatus, IRun, WorkflowExecuteMode } from 'n8n-workflow';
 
-import type { TypeUnits } from '@/databases/entities/insights-shared';
+import type { TypeUnits } from '@/insights/entities/insights-shared';
 import type { Project } from '@/databases/entities/project';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { InsightsMetadataRepository } from '@/databases/repositories/insights-metadata.repository';
