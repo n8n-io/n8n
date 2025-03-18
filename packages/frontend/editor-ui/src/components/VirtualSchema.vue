@@ -23,7 +23,6 @@ import { N8nText } from '@n8n/design-system';
 import {
 	createResultError,
 	NodeConnectionType,
-	type IWorkflowDataProxyAdditionalKeys,
 	type IConnectedNode,
 	type IDataObject,
 } from 'n8n-workflow';
@@ -35,8 +34,11 @@ import {
 } from 'vue-virtual-scroller';
 import MappingPill from './MappingPill.vue';
 
-import { resolveParameter } from '@/composables/useWorkflowHelpers';
-import { EnterpriseEditionFeature, SCHEMA_PREVIEW_EXPERIMENT } from '@/constants';
+import {
+	EnterpriseEditionFeature,
+	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+	SCHEMA_PREVIEW_EXPERIMENT,
+} from '@/constants';
 import useEnvironmentsStore from '@/stores/environments.ee.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
@@ -44,6 +46,8 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { isEmpty } from '@/utils/typesUtils';
 import { asyncComputed } from '@vueuse/core';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
+import { pick } from 'lodash-es';
+import { DateTime } from 'luxon';
 
 type Props = {
 	nodes?: IConnectedNode[];
@@ -145,18 +149,17 @@ const isVariablesEnabled = computed(
 
 const contextSchema = computed(() => {
 	const $vars = environmentsStore.variablesAsObject;
-	const $execution = {
-		...resolveParameter<IWorkflowDataProxyAdditionalKeys['$execution']>('={{$execution}}'),
-		resumeUrl: i18n.baseText('dataMapping.schemaView.execution.resumeUrl'),
-	};
 
-	delete $execution.resumeFormUrl;
 	const schemaSource: Record<string, unknown> = {
-		$now: resolveParameter('={{$now.toISO()}}'),
-		$today: resolveParameter('={{$today.toISO()}}'),
+		$now: DateTime.now().toISO(),
+		$today: DateTime.now().set({ hour: 0, minute: 0, second: 0, millisecond: 0 }).toISO(),
 		$vars,
-		$execution,
-		$workflow: resolveParameter('={{$workflow}}'),
+		$execution: {
+			id: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+			mode: 'test',
+			resumeUrl: i18n.baseText('dataMapping.schemaView.execution.resumeUrl'),
+		},
+		$workflow: pick(workflowsStore.workflow, ['id', 'name', 'active']),
 	};
 
 	return getSchema(schemaSource);

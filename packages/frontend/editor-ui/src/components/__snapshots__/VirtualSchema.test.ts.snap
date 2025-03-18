@@ -2303,7 +2303,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               fixedwidth="false"
               flash="false"
               flip="false"
-              icon="hashtag"
+              icon="font"
               inverse="false"
               listitem="false"
               pulse="false"
@@ -2336,7 +2336,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             
             <span>
               <!--v-if-->
-              123
+              2025-01-01T01:00:00.000+01:00
             </span>
             
           </span>
@@ -2380,7 +2380,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               fixedwidth="false"
               flash="false"
               flip="false"
-              icon="hashtag"
+              icon="font"
               inverse="false"
               listitem="false"
               pulse="false"
@@ -2413,7 +2413,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             
             <span>
               <!--v-if-->
-              123
+              2025-01-01T00:00:00.000+01:00
             </span>
             
           </span>
@@ -2639,6 +2639,160 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
           <div
             class="pill"
             data-depth="1"
+            data-name="id"
+            data-nest-level="2"
+            data-path=".$execution.id"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $execution.id }}"
+          >
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="type-icon"
+              data-v-0f5e7239=""
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="font"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              size="sm"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                id
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            
+            <span>
+              <!--v-if-->
+              [filled at execution time]
+            </span>
+            
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="mode"
+            data-nest-level="2"
+            data-path=".$execution.mode"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $execution.mode }}"
+          >
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="type-icon"
+              data-v-0f5e7239=""
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="font"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              size="sm"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                mode
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            
+            <span>
+              <!--v-if-->
+              test
+            </span>
+            
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
             data-name="resumeUrl"
             data-nest-level="2"
             data-path=".$execution.resumeUrl"
@@ -2711,7 +2865,33 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             class="toggle-container"
             data-v-0f5e7239=""
           >
-            <!--v-if-->
+            <div
+              class="toggle"
+              data-v-0f5e7239=""
+            >
+              <font-awesome-icon-stub
+                beat="false"
+                beatfade="false"
+                border="false"
+                bounce="false"
+                class="collapse-icon"
+                data-v-0f5e7239=""
+                fade="false"
+                fixedwidth="false"
+                flash="false"
+                flip="false"
+                icon="angle-down"
+                inverse="false"
+                listitem="false"
+                pulse="false"
+                shake="false"
+                spin="false"
+                spinpulse="false"
+                spinreverse="false"
+                swapopacity="false"
+                symbol="false"
+              />
+            </div>
           </div>
           <div
             class="pill"
@@ -2735,7 +2915,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
               fixedwidth="false"
               flash="false"
               flip="false"
-              icon="hashtag"
+              icon="cube"
               inverse="false"
               listitem="false"
               pulse="false"
@@ -2765,10 +2945,236 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             data-test-id="run-data-schema-item-value"
             data-v-0f5e7239=""
           >
+            <span />
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="id"
+            data-nest-level="2"
+            data-path=".$workflow.id"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $workflow.id }}"
+          >
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="type-icon"
+              data-v-0f5e7239=""
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="font"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              size="sm"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                id
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
             
             <span>
               <!--v-if-->
               123
+            </span>
+            
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="name"
+            data-nest-level="2"
+            data-path=".$workflow.name"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $workflow.name }}"
+          >
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="type-icon"
+              data-v-0f5e7239=""
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="font"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              size="sm"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                name
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            
+            <span>
+              <!--v-if-->
+              Test Workflow
+            </span>
+            
+          </span>
+        </div>
+        
+        
+        
+        
+        <div
+          class="schema-item draggable"
+          data-test-id="run-data-schema-item"
+          data-v-0f5e7239=""
+          data-v-d00cba9a=""
+          type="item"
+        >
+          <div
+            class="toggle-container"
+            data-v-0f5e7239=""
+          >
+            <!--v-if-->
+          </div>
+          <div
+            class="pill"
+            data-depth="1"
+            data-name="active"
+            data-nest-level="2"
+            data-path=".$workflow.active"
+            data-target="mappable"
+            data-test-id="run-data-schema-node-name"
+            data-v-0f5e7239=""
+            data-value="{{ $workflow.active }}"
+          >
+            <font-awesome-icon-stub
+              beat="false"
+              beatfade="false"
+              border="false"
+              bounce="false"
+              class="type-icon"
+              data-v-0f5e7239=""
+              fade="false"
+              fixedwidth="false"
+              flash="false"
+              flip="false"
+              icon="check-square"
+              inverse="false"
+              listitem="false"
+              pulse="false"
+              shake="false"
+              size="sm"
+              spin="false"
+              spinpulse="false"
+              spinreverse="false"
+              swapopacity="false"
+              symbol="false"
+            />
+            <span
+              class="content title"
+              data-v-0f5e7239=""
+            >
+              
+              <span>
+                <!--v-if-->
+                active
+              </span>
+              
+            </span>
+          </div>
+          <!--v-if-->
+          <span
+            class="content text"
+            data-test-id="run-data-schema-item-value"
+            data-v-0f5e7239=""
+          >
+            
+            <span>
+              <!--v-if-->
+              true
             </span>
             
           </span>
