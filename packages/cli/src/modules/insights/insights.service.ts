@@ -38,20 +38,14 @@ const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
 
 @Service()
 export class InsightsService {
-	private readonly rawToHourBatchSize = 500;
-
-	private readonly hourToDayBatchSize = 500;
-
-	// TODO: make this configurable and default to 1 hour
-	private readonly compactInsightsInterval = 1000 * 60;
-
 	constructor(
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
 		private readonly insightsRawRepository: InsightsRawRepository,
 	) {
 		// TODO: check if there is a better way to schedule this
-		setInterval(async () => await this.compactInsights(), this.compactInsightsInterval);
+		const intervalMilliseconds = config.insights.compactionIntervalMinutes * 60 * 1000;
+		setInterval(async () => await this.compactInsights(), intervalMilliseconds);
 	}
 
 	async workflowExecuteAfterHandler(ctx: ExecutionLifecycleHooks, fullRunData: IRun) {
@@ -126,13 +120,19 @@ export class InsightsService {
 	}
 
 	async compactInsights() {
-		let numberOfCompactedData: number;
+		let numberOfCompactedRawData: number;
 
+		// Compact raw data to hourly aggregates
 		do {
-			numberOfCompactedData = await this.compactRawToHour();
-		} while (numberOfCompactedData > 0);
+			numberOfCompactedRawData = await this.compactRawToHour();
+		} while (numberOfCompactedRawData > 0);
 
-		// TODO: compact hour to day as well
+		let numberOfCompactedHourData: number;
+
+		// Compact hourly data to daily aggregates
+		do {
+			numberOfCompactedHourData = await this.compactHourToDay();
+		} while (numberOfCompactedHourData > 0);
 	}
 
 	private escapeField(fieldName: string) {
@@ -147,7 +147,7 @@ export class InsightsService {
 			.select(['id', 'metaId', 'type', 'value'].map((fieldName) => this.escapeField(fieldName)))
 			.addSelect('timestamp', 'periodStart')
 			.orderBy('timestamp', 'ASC')
-			.limit(this.rawToHourBatchSize);
+			.limit(config.insights.compactionBatchSize as number);
 
 		return await this.compactSourceDataIntoInsightPeriod({
 			sourceBatchQuery: batchQuery.getSql(),
@@ -167,15 +167,27 @@ export class InsightsService {
 				),
 			)
 			.where(`${this.escapeField('periodUnit')} = 0`)
+			.andWhere(`${this.escapeField('periodStart')} < ${this.getPeriodFilterExpr('day')}`)
 			.orderBy(this.escapeField('periodStart'), 'ASC')
-			.limit(this.hourToDayBatchSize);
-
-		// TODO : add a date filter to compact only the data that is older than a certain date
+			.limit(config.insights.compactionBatchSize as number);
 
 		return await this.compactSourceDataIntoInsightPeriod({
 			sourceBatchQuery: batchQuery.getSql(),
 			periodUnit: 'day',
 		});
+	}
+
+	private getPeriodFilterExpr(periodUnit: PeriodUnits) {
+		const daysAgo = periodUnit === 'day' ? 90 : 180;
+		// Database-specific period start expression to filter out data to compact by days matching the periodUnit
+		let periodStartExpr = `strftime('%s', date('now', '-${daysAgo} days'))`;
+		if (dbType === 'postgresdb') {
+			periodStartExpr = `CURRENT_DATE - INTERVAL '${daysAgo} day'`;
+		} else if (dbType === 'mysqldb' || dbType === 'mariadb') {
+			periodStartExpr = `DATE_SUB(CURRENT_DATE, INTERVAL ${daysAgo} DAY)`;
+		}
+
+		return periodStartExpr;
 	}
 
 	private getPeriodStartExpr(periodUnit: PeriodUnits) {

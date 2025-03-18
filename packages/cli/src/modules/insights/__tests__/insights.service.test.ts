@@ -309,7 +309,7 @@ describe('workflowExecuteAfterHandler', () => {
 
 			const batchSize = 100;
 
-			let timestamp = DateTime.utc(2000, 1, 1, 0, 0);
+			let timestamp = DateTime.utc().startOf('hour');
 			for (let i = 0; i < batchSize; i++) {
 				await createRawInsightsEvent(workflow, { type: 'success', value: 1, timestamp });
 				// create 60 events per hour
@@ -341,7 +341,7 @@ describe('workflowExecuteAfterHandler', () => {
 
 			const batchSize = 100;
 
-			let timestamp = DateTime.utc(2000, 1, 1, 0, 0);
+			let timestamp = DateTime.utc().startOf('hour');
 			for (let i = 0; i < batchSize / 4; i++) {
 				await createRawInsightsEvent(workflow1, { type: 'success', value: 1, timestamp });
 				timestamp = timestamp.plus({ minute: 1 });
@@ -441,7 +441,7 @@ describe('workflowExecuteAfterHandler', () => {
 
 			const batchSize = 100;
 
-			let timestamp = DateTime.utc(2000, 1, 1, 0, 0);
+			let timestamp = DateTime.utc().startOf('hour');
 
 			// Create an existing compacted event for the first hour
 			await createCompactedInsightsEvent(workflow, {
@@ -485,7 +485,7 @@ describe('workflowExecuteAfterHandler', () => {
 
 			const batchSize = 600;
 
-			let timestamp = DateTime.utc(2000, 1, 1, 0, 0);
+			let timestamp = DateTime.utc().startOf('hour');
 			const events = Array<{ type: 'success'; value: number; timestamp: DateTime }>();
 			for (let i = 0; i < batchSize; i++) {
 				events.push({ type: 'success', value: 1, timestamp });
