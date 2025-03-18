@@ -2,14 +2,14 @@ import { Container } from '@n8n/di';
 import type { DateTime } from 'luxon';
 
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { InsightsByPeriod } from '@/modules/insights/entities/insights-by-period';
-import { InsightsMetadata } from '@/modules/insights/entities/insights-metadata';
-import { InsightsRaw } from '@/modules/insights/entities/insights-raw';
-import { InsightsByPeriodRepository } from '@/modules/insights/repositories/insights-by-period.repository';
-import { InsightsMetadataRepository } from '@/modules/insights/repositories/insights-metadata.repository';
-import { InsightsRawRepository } from '@/modules/insights/repositories/insights-raw.repository';
+import { getWorkflowSharing } from '@test-integration/db/workflows';
 
-import { getWorkflowSharing } from './workflows';
+import { InsightsByPeriod } from '../entities/insights-by-period';
+import { InsightsMetadata } from '../entities/insights-metadata';
+import { InsightsRaw } from '../entities/insights-raw';
+import { InsightsByPeriodRepository } from '../repositories/insights-by-period.repository';
+import { InsightsMetadataRepository } from '../repositories/insights-metadata.repository';
+import { InsightsRawRepository } from '../repositories/insights-raw.repository';
 
 export async function createMetadata(workflow: WorkflowEntity) {
 	const insightsMetadataRepository = Container.get(InsightsMetadataRepository);

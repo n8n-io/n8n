@@ -1,12 +1,12 @@
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 
-import { InsightsRawRepository } from '@/modules/insights/repositories/insights-raw.repository';
-import { createMetadata, createRawInsightsEvent } from '@test-integration/db/insights';
 import { createTeamProject } from '@test-integration/db/projects';
 import { createWorkflow } from '@test-integration/db/workflows';
 
 import * as testDb from '../../../../../test/integration/shared/test-db';
+import { createMetadata, createRawInsightsEvent } from '../../db/insights';
+import { InsightsRawRepository } from '../../repositories/insights-raw.repository';
 import { InsightsRaw } from '../insights-raw';
 import type { TypeUnits } from '../insights-shared';
 
