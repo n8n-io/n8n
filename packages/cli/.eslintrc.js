@@ -49,7 +49,7 @@ module.exports = {
 		{
 			files: [
 				'./src/databases/**/*.ts',
-				'./src/insights/**/*.ts',
+				'./src/modules/**/*.ts',
 				'./test/**/*.ts',
 				'./src/**/__tests__/**/*.ts',
 			],

@@ -8,7 +8,7 @@ import { isValidTypeNumber, NumberToType, TypeToNumber } from './insights-shared
 import {
 	datetimeColumnDefault,
 	datetimeColumnType,
-} from '../../databases/entities/abstract-entity';
+} from '../../../databases/entities/abstract-entity';
 
 export const { type: dbType } = Container.get(GlobalConfig).database;
 

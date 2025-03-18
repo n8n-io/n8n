@@ -3,10 +3,10 @@ import type { ExecutionLifecycleHooks } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import type { ExecutionStatus, IRun, WorkflowExecuteMode } from 'n8n-workflow';
 
-import { InsightsMetadata } from '@/insights/entities/insights-metadata';
-import { InsightsRaw } from '@/insights/entities/insights-raw';
 import { SharedWorkflow } from '@/databases/entities/shared-workflow';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { InsightsMetadata } from '@/modules/insights/entities/insights-metadata';
+import { InsightsRaw } from '@/modules/insights/entities/insights-raw';
 
 const shouldSkipStatus: Record<ExecutionStatus, boolean> = {
 	success: false,
