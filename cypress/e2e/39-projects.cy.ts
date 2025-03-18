@@ -1,3 +1,4 @@
+import { createResource } from '../composables/create';
 import { setCredentialValues } from '../composables/modals/credential-modal';
 import { clickCreateNewCredential, selectResourceLocatorItem } from '../composables/ndv';
 import * as projects from '../composables/projects';
@@ -19,7 +20,6 @@ import {
 } from '../pages';
 import { clearNotifications, successToast } from '../pages/notifications';
 import { getVisibleSelect } from '../utils';
-import { createResource } from '../composables/create';
 
 const workflowsPage = new WorkflowsPage();
 const workflowPage = new WorkflowPage();
