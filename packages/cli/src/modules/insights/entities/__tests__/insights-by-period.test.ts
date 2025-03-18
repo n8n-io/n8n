@@ -2,7 +2,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 
-import { InsightsRawRepository } from '@/databases/repositories/insights-raw.repository';
+import { InsightsRawRepository } from '@/modules/insights/repositories/insights-raw.repository';
 import { sql } from '@/utils/sql';
 import { createMetadata, createRawInsightsEvent } from '@test-integration/db/insights';
 import { createTeamProject } from '@test-integration/db/projects';
@@ -21,7 +21,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['InsightsRaw']);
+	await insightsRawRepository.delete({});
 });
 
 afterAll(async () => {

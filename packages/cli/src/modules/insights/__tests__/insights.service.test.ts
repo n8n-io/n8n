@@ -6,15 +6,29 @@ import type { ExecutionStatus, IRun, WorkflowExecuteMode } from 'n8n-workflow';
 
 import type { Project } from '@/databases/entities/project';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { InsightsMetadataRepository } from '@/databases/repositories/insights-metadata.repository';
-import { InsightsRawRepository } from '@/databases/repositories/insights-raw.repository';
 import type { IWorkflowDb } from '@/interfaces';
 import type { TypeUnits } from '@/modules/insights/entities/insights-shared';
+import { InsightsMetadataRepository } from '@/modules/insights/repositories/insights-metadata.repository';
+import { InsightsRawRepository } from '@/modules/insights/repositories/insights-raw.repository';
 import { createTeamProject } from '@test-integration/db/projects';
 import { createWorkflow } from '@test-integration/db/workflows';
 
 import * as testDb from '../../../../test/integration/shared/test-db';
 import { InsightsService } from '../insights.service';
+import { InsightsByPeriodRepository } from '../repositories/insights-by-period.repository';
+
+async function truncateAll() {
+	const insightsRawRepository = Container.get(InsightsRawRepository);
+	const insightsMetadataRepository = Container.get(InsightsMetadataRepository);
+	const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+	for (const repo of [
+		insightsRawRepository,
+		insightsMetadataRepository,
+		insightsByPeriodRepository,
+	]) {
+		await repo.delete({});
+	}
+}
 
 describe('workflowExecuteAfterHandler', () => {
 	let insightsService: InsightsService;
@@ -32,7 +46,7 @@ describe('workflowExecuteAfterHandler', () => {
 	let workflow: IWorkflowDb & WorkflowEntity;
 
 	beforeEach(async () => {
-		await testDb.truncate(['InsightsRaw', 'InsightsMetadata', 'InsightsByPeriod']);
+		await truncateAll();
 
 		project = await createTeamProject();
 		workflow = await createWorkflow({}, project);

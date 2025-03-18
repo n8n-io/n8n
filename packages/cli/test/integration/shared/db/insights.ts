@@ -2,12 +2,12 @@ import { Container } from '@n8n/di';
 import type { DateTime } from 'luxon';
 
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { InsightsByPeriodRepository } from '@/databases/repositories/insights-by-period.repository';
-import { InsightsMetadataRepository } from '@/databases/repositories/insights-metadata.repository';
-import { InsightsRawRepository } from '@/databases/repositories/insights-raw.repository';
 import { InsightsByPeriod } from '@/modules/insights/entities/insights-by-period';
 import { InsightsMetadata } from '@/modules/insights/entities/insights-metadata';
 import { InsightsRaw } from '@/modules/insights/entities/insights-raw';
+import { InsightsByPeriodRepository } from '@/modules/insights/repositories/insights-by-period.repository';
+import { InsightsMetadataRepository } from '@/modules/insights/repositories/insights-metadata.repository';
+import { InsightsRawRepository } from '@/modules/insights/repositories/insights-raw.repository';
 
 import { getWorkflowSharing } from './workflows';
 
