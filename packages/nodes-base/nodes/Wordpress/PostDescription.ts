@@ -135,6 +135,20 @@ export const postFields: INodeProperties[] = [
 				description: 'A named status for the post',
 			},
 			{
+				displayName: 'Excerpt',
+				name: 'excerpt',
+				type: 'string',
+				default: '',
+				description: 'The excerpt for the post',
+			},
+			{
+				displayName: 'Featured Media ID',
+				name: 'featuredMediaId',
+				type: 'number',
+				default: '',
+				description: 'The ID of the featured media for the post',
+			},
+			{
 				displayName: 'Comment Status',
 				name: 'commentStatus',
 				type: 'options',
@@ -412,6 +426,20 @@ export const postFields: INodeProperties[] = [
 				],
 				default: 'draft',
 				description: 'A named status for the post',
+			},
+			{
+				displayName: 'Excerpt',
+				name: 'excerpt',
+				type: 'string',
+				default: '',
+				description: 'The excerpt for the post',
+			},
+			{
+				displayName: 'Featured Media ID',
+				name: 'featuredMediaId',
+				type: 'number',
+				default: '',
+				description: 'The ID of the featured media for the post',
 			},
 			{
 				displayName: 'Comment Status',

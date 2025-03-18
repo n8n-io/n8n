@@ -162,6 +162,12 @@ export class Wordpress implements INodeType {
 						if (additionalFields.status) {
 							body.status = additionalFields.status as string;
 						}
+						if (additionalFields.excerpt) {
+							body.excerpt = additionalFields.excerpt as string;
+						}
+						if (additionalFields.featuredMediaId) {
+							body.featured_media = additionalFields.featuredMediaId as number;
+						}
 						if (additionalFields.commentStatus) {
 							body.comment_status = additionalFields.commentStatus as string;
 						}
@@ -213,6 +219,12 @@ export class Wordpress implements INodeType {
 						}
 						if (updateFields.status) {
 							body.status = updateFields.status as string;
+						}
+						if (updateFields.excerpt) {
+							body.excerpt = updateFields.excerpt as string;
+						}
+						if (updateFields.featuredMediaId) {
+							body.featured_media = updateFields.featuredMediaId as number;
 						}
 						if (updateFields.commentStatus) {
 							body.comment_status = updateFields.commentStatus as string;
