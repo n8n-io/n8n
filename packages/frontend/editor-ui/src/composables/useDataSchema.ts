@@ -233,6 +233,7 @@ export type SchemaNode = {
 	itemsCount: number;
 	schema: Schema;
 	preview: boolean;
+	hasBinary: boolean;
 };
 
 export type RenderItem = {
@@ -286,10 +287,12 @@ const icons = {
 
 const getIconBySchemaType = (type: Schema['type']): string => icons[type];
 
-const emptyItem = (): RenderItem => ({
+const emptyItem = (
+	message = useI18n().baseText('dataMapping.schemaView.emptyData'),
+): RenderItem => ({
 	id: `empty-${window.crypto.randomUUID()}`,
 	icon: '',
-	value: useI18n().baseText('dataMapping.schemaView.emptyData'),
+	value: message,
 	type: 'item',
 });
 
@@ -446,7 +449,12 @@ export const useFlattenSchema = () => {
 			}
 
 			if (isDataEmpty(item.schema)) {
-				acc.push(emptyItem());
+				const message = useI18n().baseText(
+					item.hasBinary
+						? 'dataMapping.schemaView.emptyDataWithBinary'
+						: 'dataMapping.schemaView.emptyData',
+				);
+				acc.push(emptyItem(message));
 				return acc;
 			}
 
