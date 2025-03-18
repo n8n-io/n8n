@@ -362,7 +362,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 		});
 	});
 
-	describe.only('should move resources between projects', () => {
+	describe('should move resources between projects', () => {
 		before(() => {
 			cy.resetDatabase();
 			cy.enableFeature('sharing');
