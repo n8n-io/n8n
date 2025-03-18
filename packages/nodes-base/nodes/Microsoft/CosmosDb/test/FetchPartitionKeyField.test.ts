@@ -1,6 +1,6 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
-import { fetchPartitionKeyField } from '../generalFunctions/dataFetching';
+import { fetchPartitionKeyField } from '../methods/listSearch';
 
 describe('GenericFunctions - fetchPartitionKeyField', () => {
 	const mockMicrosoftCosmosDbRequest = jest.fn();

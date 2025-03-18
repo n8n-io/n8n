@@ -1,6 +1,6 @@
 import type { IExecuteSingleFunctions, IHttpRequestOptions } from 'n8n-workflow';
 
-import { validateContainerFields } from '../generalFunctions/dataHandling';
+import { validateContainerFields } from '../helpers/dataHandling';
 
 describe('validateContainerFields', () => {
 	const mockContext = {

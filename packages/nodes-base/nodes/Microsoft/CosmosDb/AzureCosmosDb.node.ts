@@ -1,24 +1,23 @@
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
-import { containerFields, containerOperations } from './descriptions/ContainerDescription';
-import { itemFields, itemOperations } from './descriptions/ItemDescription';
-import { searchContainers, searchItems } from './generalFunctions/dataFetching';
+import { container, item } from './descriptions';
+import { listSearch } from './methods';
 
 export class AzureCosmosDb implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Azure Cosmos Db',
+		displayName: 'Azure Cosmos DB',
 		name: 'azureCosmosDb',
 		icon: {
-			light: 'file:AzureCosmosDB.svg',
-			dark: 'file:AzureCosmosDB.svg',
+			light: 'file:azureCosmosDb.svg',
+			dark: 'file:azureCosmosDb.svg',
 		},
 		group: ['transform'],
 		version: 1,
-		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+		subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
 		description: 'Interact with Azure Cosmos DB API',
 		defaults: {
-			name: 'Azure Cosmos Db',
+			name: 'Azure Cosmos DB',
 		},
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
@@ -29,11 +28,8 @@ export class AzureCosmosDb implements INodeType {
 			},
 		],
 		requestDefaults: {
-			baseURL: '={{$credentials.baseUrl}}',
-			headers: {
-				Accept: 'application/json',
-				'Content-Type': 'application/json',
-			},
+			baseURL: '={{ $credentials.baseUrl }}',
+			json: true,
 			ignoreHttpStatusErrors: true,
 		},
 		properties: [
@@ -54,17 +50,13 @@ export class AzureCosmosDb implements INodeType {
 				],
 				default: 'container',
 			},
-			...itemOperations,
-			...itemFields,
-			...containerOperations,
-			...containerFields,
+
+			...container.description,
+			...item.description,
 		],
 	};
 
 	methods = {
-		listSearch: {
-			searchContainers,
-			searchItems,
-		},
+		listSearch,
 	};
 }

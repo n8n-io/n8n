@@ -1,13 +1,17 @@
-import {
-	ApplicationError,
-	type ICredentialDataDecryptedObject,
-	type ICredentialType,
-	type IHttpRequestOptions,
-	type INodeProperties,
+import { createHmac } from 'crypto';
+import type {
+	ICredentialDataDecryptedObject,
+	ICredentialType,
+	IHttpRequestOptions,
+	INodeProperties,
 } from 'n8n-workflow';
+import { OperationalError } from 'n8n-workflow';
 
-import { getAuthorizationTokenUsingMasterKey } from '../nodes/Microsoft/AzureCosmosDB/generalFunctions/authorization';
-import type { IHttpRequestOptionsExtended } from '../nodes/Microsoft/AzureCosmosDB/generalFunctions/helpers';
+import {
+	CURRENT_VERSION,
+	HeaderConstants,
+	RESOURCE_TYPES,
+} from '../nodes/Microsoft/CosmosDb/helpers/constants';
 
 export class MicrosoftAzureCosmosDbSharedKeyApi implements ICredentialType {
 	name = 'microsoftAzureCosmosDbSharedKeyApi';
@@ -20,33 +24,35 @@ export class MicrosoftAzureCosmosDbSharedKeyApi implements ICredentialType {
 		{
 			displayName: 'Account',
 			name: 'account',
-			description: 'Account name',
-			type: 'string',
 			default: '',
+			description: 'Account name',
+			required: true,
+			type: 'string',
 		},
 		{
 			displayName: 'Key',
 			name: 'key',
+			default: '',
 			description: 'Account key',
+			required: true,
 			type: 'string',
 			typeOptions: {
 				password: true,
 			},
-			default: '',
 		},
 		{
 			displayName: 'Database',
 			name: 'database',
-			description: 'Database name',
-			type: 'string',
 			default: '',
+			description: 'Database name',
 			required: true,
+			type: 'string',
 		},
 		{
 			displayName: 'Base URL',
 			name: 'baseUrl',
-			type: 'hidden',
 			default: '=https://{{ $self["account"] }}.documents.azure.com/dbs/{{ $self["database"] }}',
+			type: 'hidden',
 		},
 	];
 
@@ -54,77 +60,60 @@ export class MicrosoftAzureCosmosDbSharedKeyApi implements ICredentialType {
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
-		Object.keys(requestOptions.qs ?? {}).forEach(
-			(key) => requestOptions.qs?.[key] === undefined && delete requestOptions.qs?.[key],
-		);
+		// if (requestOptions.qs) {
+		// 	for (const [key, value] of Object.entries(requestOptions.qs)) {
+		// 		if (value === undefined) {
+		// 			delete requestOptions.qs[key];
+		// 		}
+		// 	}
+		// }
+		// if (requestOptions.headers) {
+		// 	for (const [key, value] of Object.entries(requestOptions.headers)) {
+		// 		if (value === undefined) {
+		// 			delete requestOptions.headers[key];
+		// 		}
+		// 	}
+		// }
+
+		const date = new Date().toUTCString();
 
 		requestOptions.headers ??= {};
-
-		const date = new Date().toUTCString().toLowerCase();
 		requestOptions.headers = {
 			...requestOptions.headers,
 			'x-ms-date': date,
-			'x-ms-version': '2018-12-31',
+			'x-ms-version': CURRENT_VERSION,
 			'Cache-Control': 'no-cache',
 		};
 
-		if (credentials.sessionToken) {
-			requestOptions.headers['x-ms-session-token'] = credentials.sessionToken;
-		}
-		const request = requestOptions as IHttpRequestOptionsExtended;
+		const url = new URL(requestOptions.baseURL + requestOptions.url);
+		const pathSegments = url.pathname.split('/').filter(Boolean);
 
-		let url;
-		//Custom node usage
-		if (request.url) {
-			url = new URL(request.baseURL + request.url);
-		}
-		//Http Request nodes usage
-		else if (request.uri) {
-			url = new URL(request.uri);
-		}
-
-		const pathSegments = url?.pathname.split('/').filter(Boolean);
-		if (!pathSegments) {
-			throw new ApplicationError('Invalid URL structure.');
-		}
-
-		const resourceTypes = ['docs', 'colls', 'dbs'] as const;
-		type ResourceType = (typeof resourceTypes)[number];
-
-		let resourceType: ResourceType | '' = '';
-		let resourceId = '';
-
-		const foundResource = resourceTypes
-			.map((type) => ({ type, index: pathSegments.lastIndexOf(type) }))
+		const foundResource = RESOURCE_TYPES.map((type) => ({
+			type,
+			index: pathSegments.lastIndexOf(type),
+		}))
 			.filter(({ index }) => index !== -1)
-			.sort((a, b) => b.index - a.index)[0];
+			.sort((a, b) => b.index - a.index)
+			.shift();
 
-		if (foundResource) {
-			const { type, index } = foundResource;
-			resourceType = type;
-			resourceId =
-				pathSegments[index + 1] !== undefined
-					? pathSegments.slice(0, index).join('/') + `/${type}/${pathSegments[index + 1]}`
-					: pathSegments.slice(0, index).join('/');
-		} else {
-			throw new ApplicationError('Unable to determine resourceType and resourceId from the URL.');
+		if (!foundResource) {
+			throw new OperationalError('Unable to determine the resource type from the URL');
 		}
 
-		if (requestOptions.method) {
-			let authToken = '';
+		const { type, index } = foundResource;
+		const resourceId =
+			pathSegments[index + 1] !== undefined
+				? `${pathSegments.slice(0, index).join('/')}/${type}/${pathSegments[index + 1]}`
+				: pathSegments.slice(0, index).join('/');
 
-			if (credentials.key) {
-				authToken = getAuthorizationTokenUsingMasterKey(
-					requestOptions.method,
-					resourceType,
-					resourceId,
-					credentials.key as string,
-				);
-			}
+		const key = Buffer.from(credentials.key as string, 'base64');
+		const payload = `${(requestOptions.method ?? 'GET').toLowerCase()}\n${type.toLowerCase()}\n${resourceId}\n${date.toLowerCase()}\n\n`;
+		const hmacSha256 = createHmac('sha256', key);
+		const signature = hmacSha256.update(payload, 'utf8').digest('base64');
 
-			requestOptions.headers.AUTHORIZATION = encodeURIComponent(authToken);
-			await new Promise((resolve) => setTimeout(resolve, 500));
-		}
+		requestOptions.headers[HeaderConstants.AUTHORIZATION] = encodeURIComponent(
+			`type=master&ver=1.0&sig=${signature}`,
+		);
 
 		return requestOptions;
 	}
