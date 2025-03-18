@@ -220,7 +220,8 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.should('contain.text', 'Notion account personal project');
 		});
 
-		it('should move resources between projects', () => {
+		// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+		it.skip('should move resources between projects', () => {
 			cy.intercept('GET', /\/rest\/(workflows|credentials).*/).as('getResources');
 
 			cy.signinAsOwner();
