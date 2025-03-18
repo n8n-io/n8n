@@ -26,7 +26,6 @@ export function useMetricsChart() {
 					data: runs,
 					parsing: {
 						xAxisKey: 'id',
-						// yAxisKey: `metrics.${metric}`,
 						yAxisKey: `metrics.${metric}`,
 					},
 					borderColor: colors.primary,
