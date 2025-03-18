@@ -2,7 +2,7 @@ export const universalAddButton = () => cy.getByTestId('universal-add');
 
 export const createResource = (
 	resourceType: 'project' | 'workflow' | 'credential',
-	where: string,
+	projectName: string,
 ) => {
 	universalAddButton().click();
 	cy.getByTestId('navigation-submenu')
@@ -12,7 +12,7 @@ export const createResource = (
 
 	if (resourceType !== 'project') {
 		cy.getByTestId('navigation-submenu-item')
-			.contains(new RegExp(where))
+			.contains(new RegExp(projectName))
 			.should('be.visible')
 			.click();
 	}
