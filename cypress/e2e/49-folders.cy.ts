@@ -5,6 +5,9 @@ import {
 	createFolderFromProjectHeader,
 	createFolderInsideFolder,
 	createNewProject,
+	createWorkflowFromEmptyState,
+	createWorkflowFromListDropdown,
+	createWorkflowFromProjectHeader,
 	deleteAndTransferFolderContentsFromCardDropdown,
 	deleteAndTransferFolderContentsFromListDropdown,
 	deleteEmptyFolderFromCardDropdown,
@@ -27,8 +30,12 @@ import {
 	getProjectEmptyState,
 	getProjectMenuItem,
 	getVisibleListBreadcrumbs,
+	getWorkflowCard,
 	getWorkflowCards,
 	goToPersonalProject,
+	moveFolderFromFolderCardActions,
+	moveFolderFromListActions,
+	moveWorkflowToFolder,
 	renameFolderFromCardActions,
 	renameFolderFromListActions,
 } from '../composables/folders';
@@ -193,8 +200,7 @@ describe('Folders', () => {
 			getFolderCard('My Folder').click();
 			getFolderEmptyState().should('exist');
 			// Create a new workflow from the empty state
-			getFolderEmptyState().find('button').contains('Create Workflow').click();
-			cy.getByTestId('workflow-save-button').click();
+			createWorkflowFromEmptyState('My Workflow');
 			// Toast should inform that the workflow was created in the folder
 			successToast().should('contain.text', 'Workflow successfully created in folder "My Folder"');
 			// Go back to the folder
@@ -210,6 +216,29 @@ describe('Folders', () => {
 			getFolderEmptyState().should('not.exist');
 			// But there should be a message saying that no results were found
 			cy.getByTestId('resources-list-empty').should('exist');
+		});
+	});
+
+	describe('Create workflows inside folders', () => {
+		it('should create workflows in folders in all supported ways', () => {
+			goToPersonalProject();
+			createFolderFromProjectHeader('Workflows go here');
+			// 1. From empty state
+			getFolderCard('Workflows go here').should('exist').click();
+			createWorkflowFromEmptyState('Created from empty state');
+			goToPersonalProject();
+			getFolderCard('Workflows go here').click();
+			getWorkflowCard('Created from empty state').should('exist');
+			// 2. From the project header
+			createWorkflowFromProjectHeader('Workflows go here', 'Created from project header');
+			goToPersonalProject();
+			getFolderCard('Workflows go here').click();
+			getWorkflowCard('Created from project header').should('exist');
+			// 3. From list breadcrumbs
+			createWorkflowFromListDropdown('Created from list breadcrumbs');
+			goToPersonalProject();
+			getFolderCard('Workflows go here').click();
+			getWorkflowCard('Created from list breadcrumbs').should('exist');
 		});
 	});
 
@@ -288,6 +317,107 @@ describe('Folders', () => {
 			getFolderCard('Destination').click();
 			// Should show the contents of the moved folder
 			getFolderCard('Child 1').should('exist');
+		});
+	});
+
+	describe('Move folders and workflows', () => {
+		it('should move empty folder to another folder - from folder card action', () => {
+			goToPersonalProject();
+			createFolderFromProjectHeader('Move me - I am empty');
+			createFolderFromProjectHeader('Destination 3');
+			moveFolderFromFolderCardActions('Move me - I am empty', 'Destination 3');
+			getFolderCard('Destination 3').click();
+			getFolderCard('Move me - I am empty').should('exist');
+			getFolderCard('Move me - I am empty').click();
+			getFolderEmptyState().should('exist');
+			successToast().should('contain.text', 'Move me - I am empty has been moved to Destination 3');
+		});
+
+		it('should move folder with contents to another folder - from folder card action', () => {
+			goToPersonalProject();
+			createFolderFromProjectHeader('Move me - I have family');
+			createFolderFromProjectHeader('Destination 4');
+			// Create a workflow and a folder inside the folder
+			createFolderInsideFolder('Child 1', 'Move me - I have family');
+			createWorkflowFromProjectHeader('Move me - I have family');
+			goToPersonalProject();
+			// Move the folder
+			moveFolderFromFolderCardActions('Move me - I have family', 'Destination 4');
+			successToast().should(
+				'contain.text',
+				'Move me - I have family has been moved to Destination 4',
+			);
+			// Go to destination folder and check if contents are there
+			getFolderCard('Destination 4').click();
+			// Moved folder should be there
+			getFolderCard('Move me - I have family').should('exist').click();
+			// Both the workflow and the folder should be there
+			getFolderCards().should('have.length', 1);
+			getWorkflowCards().should('have.length', 1);
+		});
+
+		it('should move empty folder to another folder - from list breadcrumbs', () => {
+			goToPersonalProject();
+			createFolderFromProjectHeader('Move me too - I am empty');
+			createFolderFromProjectHeader('Destination 5');
+			moveFolderFromListActions('Move me too - I am empty', 'Destination 5');
+			// Since we moved the current folder, we should be in the destination folder
+			getCurrentBreadcrumb().should('contain.text', 'Destination 5');
+		});
+
+		it('should move folder with contents to another folder - from list dropdown', () => {
+			goToPersonalProject();
+			createFolderFromProjectHeader('Move me - I have family 2');
+			createFolderFromProjectHeader('Destination 6');
+			// Create a workflow and a folder inside the folder
+			createFolderInsideFolder('Child 1', 'Move me - I have family 2');
+			createWorkflowFromProjectHeader('Move me - I have family 2');
+			// Navigate back to folder
+			goToPersonalProject();
+			getFolderCard('Move me - I have family 2').should('exist');
+			// Move the folder
+			moveFolderFromListActions('Move me - I have family 2', 'Destination 6');
+			// Since we moved the current folder, we should be in the destination folder
+			getCurrentBreadcrumb().should('contain.text', 'Destination 6');
+			// Moved folder should be there
+			getFolderCard('Move me - I have family 2').should('exist').click();
+			// After navigating to the moved folder, both the workflow and the folder should be there
+			getFolderCards().should('have.length', 1);
+			getWorkflowCards().should('have.length', 1);
+		});
+
+		it('should move workflow from project root to folder', () => {
+			goToPersonalProject();
+			createWorkflowFromProjectHeader(undefined, 'Move me');
+			goToPersonalProject();
+			createFolderFromProjectHeader('Workflow destination');
+			moveWorkflowToFolder('Move me', 'Workflow destination');
+			successToast().should('contain.text', 'Move me has been moved to Workflow destination');
+			// Navigate to the destination folder
+			getFolderCard('Workflow destination').click();
+			// Moved workflow should be there
+			getWorkflowCards().should('have.length', 1);
+			getWorkflowCard('Move me').should('exist');
+		});
+
+		it('should move workflow to another folder', () => {
+			goToPersonalProject();
+			createFolderFromProjectHeader('Moving workflow from here');
+			createFolderFromProjectHeader('Moving workflow to here');
+			getFolderCard('Moving workflow from here').click();
+			createWorkflowFromProjectHeader(undefined, 'Move me');
+			goToPersonalProject();
+			getFolderCard('Moving workflow from here').click();
+			getWorkflowCard('Move me').should('exist');
+			moveWorkflowToFolder('Move me', 'Moving workflow to here');
+			// Now folder should be empty
+			getFolderEmptyState().should('exist');
+			// Navigate to the destination folder
+			getHomeProjectBreadcrumb().click();
+			getFolderCard('Moving workflow to here').click();
+			// Moved workflow should be there
+			getWorkflowCards().should('have.length', 1);
+			getWorkflowCard('Move me').should('exist');
 		});
 	});
 });

@@ -34,6 +34,19 @@ export function getWorkflowCard(name: string) {
 		.closest('[data-test-id="resources-list-item-workflow"]');
 }
 
+export function getWorkflowCardActions(name: string) {
+	return getWorkflowCard(name).find('[data-test-id="workflow-card-actions"]');
+}
+
+export function getWorkflowCardActionItem(workflowName: string, actionName: string) {
+	return getWorkflowCardActions(workflowName)
+		.find('span[aria-controls]')
+		.invoke('attr', 'aria-controls')
+		.then((popperId) => {
+			return cy.get(`#${popperId}`).find(`[data-test-id="action-${actionName}"]`);
+		});
+}
+
 export function getAddFolderButton() {
 	return cy.getByTestId('add-folder-button');
 }
@@ -121,6 +134,10 @@ export function getFolderDeleteModal() {
 	return cy.getByTestId('deleteFolder-modal');
 }
 
+export function getMoveFolderModal() {
+	return cy.getByTestId('moveFolder-modal');
+}
+
 export function getDeleteRadioButton() {
 	return cy.getByTestId('delete-content-radio');
 }
@@ -151,6 +168,31 @@ export function getProjectMenuItem(name: string) {
 	}
 	return cy.getByTestId('project-menu-item').contains(name);
 }
+
+export function getMoveToFolderDropdown() {
+	return cy.getByTestId('move-to-folder-dropdown');
+}
+
+export function getMoveToFolderOption(name: string) {
+	return cy.getByTestId('move-to-folder-option').contains(name);
+}
+
+export function getMoveToFolderInput() {
+	return getMoveToFolderDropdown().find('input');
+}
+
+export function getEmptyFolderDropdownMessage(text: string) {
+	return cy.get('.el-select-dropdown__empty').contains(text);
+}
+
+export function getMoveFolderConfirmButton() {
+	return cy.getByTestId('confirm-move-folder-button');
+}
+
+export function getMoveWorkflowModal() {
+	return cy.getByTestId('moveFolder-modal');
+}
+
 /**
  * Actions
  */
@@ -166,6 +208,45 @@ export function createFolderInsideFolder(childName: string, parentName: string) 
 export function createFolderFromListHeaderButton(folderName: string) {
 	getAddFolderButton().click();
 	createNewFolder(folderName);
+}
+
+export function createWorkflowFromEmptyState(workflowName?: string) {
+	getFolderEmptyState().find('button').contains('Create Workflow').click();
+	if (workflowName) {
+		cy.getByTestId('workflow-name-input').type(`{selectAll}{backspace}${workflowName}`, {
+			delay: 50,
+		});
+	}
+	cy.getByTestId('workflow-save-button').click();
+	successToast().should('exist');
+}
+
+export function createWorkflowFromProjectHeader(folderName?: string, workflowName?: string) {
+	cy.getByTestId('add-resource-workflow').click();
+	if (workflowName) {
+		cy.getByTestId('workflow-name-input').type(`{selectAll}{backspace}${workflowName}`, {
+			delay: 50,
+		});
+	}
+	cy.getByTestId('workflow-save-button').click();
+	if (folderName) {
+		successToast().should(
+			'contain.text',
+			`Workflow successfully created in folder "${folderName}"`,
+		);
+	}
+}
+
+export function createWorkflowFromListDropdown(workflowName?: string) {
+	getListActionsToggle().click();
+	getListActionItem('create_workflow').click();
+	if (workflowName) {
+		cy.getByTestId('workflow-name-input').type(`{selectAll}{backspace}${workflowName}`, {
+			delay: 50,
+		});
+	}
+	cy.getByTestId('workflow-save-button').click();
+	successToast().should('exist');
 }
 
 export function createFolderFromProjectHeader(folderName: string) {
@@ -259,6 +340,29 @@ export function createNewProject(projectName: string, options: { openAfterCreate
 		getProjectMenuItem(projectName).click();
 	}
 }
+
+export function moveFolderFromFolderCardActions(folderName: string, destinationName: string) {
+	getFolderCardActionToggle(folderName).click();
+	getFolderCardActionItem(folderName, 'move').click();
+	moveFolder(folderName, destinationName);
+}
+
+export function moveFolderFromListActions(folderName: string, destinationName: string) {
+	getFolderCard(folderName).click();
+	getListActionsToggle().click();
+	getListActionItem('move').click();
+	moveFolder(folderName, destinationName);
+}
+
+export function moveWorkflowToFolder(workflowName: string, folderName: string) {
+	getWorkflowCardActions(workflowName).click();
+	getWorkflowCardActionItem(workflowName, 'moveToFolder').click();
+	getMoveFolderModal().should('be.visible');
+	getMoveToFolderDropdown().click();
+	getMoveToFolderInput().type(folderName, { delay: 50 });
+	getMoveToFolderOption(folderName).should('be.visible').click();
+	getMoveFolderConfirmButton().should('be.enabled').click();
+}
 /**
  * Utils
  */
@@ -308,10 +412,28 @@ function deleteFolderAndMoveContents(folderName: string, destinationName: string
 	getFolderDeleteModal().should('be.visible');
 	getFolderDeleteModal().find('h1').first().contains(`Delete "${folderName}"`);
 	getTransferContentRadioButton().should('be.visible').click();
-	cy.getByTestId('move-to-folder-dropdown').click();
-	cy.getByTestId('move-to-folder-dropdown').find('input').type(destinationName);
-	cy.getByTestId('move-to-folder-option').contains(destinationName).click();
+	getMoveToFolderDropdown().click();
+	getMoveToFolderInput().type(destinationName);
+	getMoveToFolderOption(destinationName).click();
 	getDeleteFolderModalConfirmButton().should('be.enabled').click();
 	cy.wait('@deleteFolder');
 	successToast().should('contain.text', `Data transferred to "${destinationName}"`);
+}
+
+function moveFolder(folderName: string, destinationName: string) {
+	cy.intercept('PATCH', '/rest/projects/**').as('moveFolder');
+	getMoveFolderModal().should('be.visible');
+	getMoveFolderModal().find('h1').first().contains(`Move "${folderName}" to another folder`);
+	getMoveToFolderDropdown().click();
+	// Try to find current folder in the dropdown
+	getMoveToFolderInput().type(folderName, { delay: 50 });
+	// Should not be available
+	getEmptyFolderDropdownMessage('No folders found').should('exist');
+	// Select destination folder
+	getMoveToFolderInput().type(`{selectall}{backspace}${destinationName}`, {
+		delay: 50,
+	});
+	getMoveToFolderOption(destinationName).should('be.visible').click();
+	getMoveFolderConfirmButton().should('be.enabled').click();
+	cy.wait('@moveFolder');
 }
