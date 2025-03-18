@@ -372,7 +372,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			cy.changeQuota('maxTeamProjects', -1);
 		});
 
-		it('step 1: create a workflow and a credential in the Home project', () => {
+		it('should create a workflow and a credential in the Home project', () => {
 			cy.intercept('GET', /\/rest\/(workflows|credentials).*/).as('getResources');
 			cy.signinAsOwner();
 			cy.visit(workflowsPage.url);
