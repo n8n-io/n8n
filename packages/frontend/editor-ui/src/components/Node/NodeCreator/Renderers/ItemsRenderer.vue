@@ -11,6 +11,9 @@ import ViewItem from '../ItemTypes/ViewItem.vue';
 import LinkItem from '../ItemTypes/LinkItem.vue';
 import CategorizedItemsRenderer from './CategorizedItemsRenderer.vue';
 
+import { useViewStacks } from '../composables/useViewStacks';
+import { useUsersStore } from '@/stores/users.store';
+
 export interface Props {
 	elements?: INodeCreateElement[];
 	activeIndex?: number;
@@ -33,8 +36,19 @@ const emit = defineEmits<{
 
 const renderedItems = ref<INodeCreateElement[]>([]);
 const renderAnimationRequest = ref<number>(0);
+const { activeViewStack } = useViewStacks();
 
 const activeItemId = computed(() => useKeyboardNavigation()?.activeItemId);
+
+const isPreview = computed(() => {
+	return (
+		activeViewStack.mode === 'nodes' &&
+		activeViewStack.communityNodeDetails &&
+		!activeViewStack.communityNodeDetails.installed
+	);
+});
+
+const isOwner = computed(() => useUsersStore().isInstanceOwner);
 
 // Lazy render large items lists to prevent the browser from freezing
 // when loading many items.
@@ -159,8 +173,15 @@ watch(
 					<LabelItem v-if="item.type === 'label'" :item="item" />
 					<SubcategoryItem v-if="item.type === 'subcategory'" :item="item.properties" />
 
+					<div v-if="isPreview && isOwner" :class="$style.installHint">
+						<n8n-icon color="text-light" icon="info-circle" size="large" />
+						<n8n-text color="text-base" size="medium">
+							Install this node to start using it
+						</n8n-text>
+					</div>
+
 					<NodeItem
-						v-if="item.type === 'node'"
+						v-if="item.type === 'node' && !isPreview"
 						:node-type="item.properties"
 						:active="true"
 						:subcategory="item.subcategory"
@@ -281,5 +302,15 @@ watch(
 			content: none;
 		}
 	}
+}
+
+.installHint {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-s);
+	margin: var(--spacing-xs);
+	padding: var(--spacing-xs);
+	border: var(--border-width-base) solid var(--color-foreground-base);
+	border-radius: 0.25em;
 }
 </style>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useViewStacks } from '../composables/useViewStacks';
+import { useUsersStore } from '@/stores/users.store';
 
 const { activeViewStack } = useViewStacks();
 
@@ -12,6 +13,14 @@ interface DownloadData {
 
 const publisherName = ref<string | undefined>(undefined);
 const downloads = ref<string | null>(null);
+
+const isOwner = computed(() => useUsersStore().isInstanceOwner);
+
+const ownersEmail = computed(() =>
+	useUsersStore()
+		.allUsers.filter((user) => user.role?.includes('owner'))
+		.map((user) => user.email),
+);
 
 async function installPackage() {
 	console.log('Install package');
@@ -84,7 +93,7 @@ onMounted(async () => {
 					<n8n-text color="text-light" size="small" bold> Installed </n8n-text>
 				</div>
 				<N8nButton
-					v-else
+					v-else-if="isOwner"
 					:loading="false"
 					:disabled="false"
 					label="Install Node"
@@ -118,6 +127,17 @@ onMounted(async () => {
 					Published by {{ publisherName }}
 				</n8n-text>
 			</div>
+		</div>
+		<div v-if="!isOwner && !communityNodeDetails?.installed" :class="$style.contactOwnerHint">
+			<n8n-icon color="text-light" icon="info-circle" size="large" />
+			<n8n-text color="text-base" size="medium">
+				<div style="padding-bottom: 8px">
+					Please contact an administrator to install this community node:
+				</div>
+				<n8n-text bold v-if="ownersEmail.length">
+					{{ ownersEmail.join(', ') }}
+				</n8n-text>
+			</n8n-text>
 		</div>
 	</div>
 </template>
@@ -187,5 +207,14 @@ onMounted(async () => {
 	display: flex;
 	align-items: center;
 	margin-right: var(--spacing-xs);
+}
+
+.contactOwnerHint {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-s);
+	padding: var(--spacing-xs);
+	border: var(--border-width-base) solid var(--color-foreground-base);
+	border-radius: 0.25em;
 }
 </style>
