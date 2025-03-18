@@ -416,7 +416,6 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowsPage.getters.newWorkflowButtonCard().click();
 			projects.createWorkflow('Test_workflow_1.json', 'Workflow in Project 2');
 			clearNotifications();
-
 		});
 
 		it('step 2: move the workflow around', () => {
