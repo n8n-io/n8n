@@ -245,7 +245,7 @@ export class Start extends BaseCommand {
 			const moduleConfig = this.modulesConfig[moduleName as keyof typeof this.modulesConfig];
 
 			if (moduleConfig.enabled) {
-				await import(`../${moduleName}/${moduleName}.module`);
+				await import(`../modules/${moduleName}/${moduleName}.module`);
 			}
 		}
 	}
