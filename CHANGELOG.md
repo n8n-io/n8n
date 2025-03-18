@@ -1,3 +1,14 @@
+## [1.84.1](https://github.com/n8n-io/n8n/compare/n8n@1.84.0...n8n@1.84.1) (2025-03-18)
+
+
+### Bug Fixes
+
+* **core:** Allow running webhook servers in multi-main mode ([#13989](https://github.com/n8n-io/n8n/issues/13989)) ([be96882](https://github.com/n8n-io/n8n/commit/be96882b44c8a6a7fcb79899242092fa8b52d12e))
+* **core:** Don't fail partial execution when an unrelated node is dirty ([#13925](https://github.com/n8n-io/n8n/issues/13925)) ([19386d9](https://github.com/n8n-io/n8n/commit/19386d9bbbdd7c056b23473dfe9e4fd721a79800))
+* **core:** Ensure frontend sentry releases also follow semver ([#14019](https://github.com/n8n-io/n8n/issues/14019)) ([214d3ce](https://github.com/n8n-io/n8n/commit/214d3ce236f1fb87abda379ccb94730d4d94031b))
+
+
+
 # [1.84.0](https://github.com/n8n-io/n8n/compare/n8n@1.83.0...n8n@1.84.0) (2025-03-17)
 
 
