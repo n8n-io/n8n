@@ -7,6 +7,33 @@
         "badges": {
             "type": "object",
             "properties": {
+                "attachments": {
+                    "type": "integer"
+                },
+                "fogbugz": {
+                    "type": "string"
+                },
+                "checkItems": {
+                    "type": "integer"
+                },
+                "checkItemsChecked": {
+                    "type": "integer"
+                },
+                "checkItemsEarliestDue": {
+                    "type": "null"
+                },
+                "comments": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "boolean"
+                },
+                "dueComplete": {
+                    "type": "boolean"
+                },
+                "lastUpdatedByAi": {
+                    "type": "boolean"
+                },
                 "attachmentsByType": {
                     "type": "object",
                     "properties": {
@@ -30,6 +57,9 @@
                         "trello"
                     ]
                 },
+                "externalSource": {
+                    "type": "null"
+                },
                 "location": {
                     "type": "boolean"
                 },
@@ -41,39 +71,9 @@
                 },
                 "subscribed": {
                     "type": "boolean"
-                },
-                "attachments": {
-                    "type": "integer"
-                },
-                "fogbugz": {
-                    "type": "string"
-                },
-                "checkItems": {
-                    "type": "integer"
-                },
-                "checkItemsChecked": {
-                    "type": "integer"
-                },
-                "comments": {
-                    "type": "integer"
-                },
-                "description": {
-                    "type": "boolean"
-                },
-                "dueComplete": {
-                    "type": "boolean"
-                },
-                "lastUpdatedByAi": {
-                    "type": "boolean"
                 }
             },
             "required": [
-                "attachmentsByType",
-                "externalSource",
-                "location",
-                "votes",
-                "viewingMemberVoted",
-                "subscribed",
                 "attachments",
                 "fogbugz",
                 "checkItems",
@@ -84,7 +84,13 @@
                 "due",
                 "dueComplete",
                 "lastUpdatedByAi",
-                "start"
+                "start",
+                "attachmentsByType",
+                "externalSource",
+                "location",
+                "votes",
+                "viewingMemberVoted",
+                "subscribed"
             ]
         },
         "checkItemStates": {
@@ -161,9 +167,6 @@
                     "nodeId": {
                         "type": "string"
                     },
-                    "color": {
-                        "type": "string"
-                    },
                     "uses": {
                         "type": "integer"
                     }
@@ -191,6 +194,9 @@
         "name": {
             "type": "string"
         },
+        "nodeId": {
+            "type": "string"
+        },
         "pinned": {
             "type": "boolean"
         },
@@ -209,9 +215,6 @@
         "cover": {
             "type": "object",
             "properties": {
-                "color": {
-                    "type": "null"
-                },
                 "idUploadedBackground": {
                     "type": "null"
                 },
@@ -220,9 +223,6 @@
                 },
                 "brightness": {
                     "type": "string"
-                },
-                "idPlugin": {
-                    "type": "null"
                 }
             },
             "required": [
@@ -236,9 +236,16 @@
         },
         "isTemplate": {
             "type": "boolean"
+        },
+        "cardRole": {
+            "type": "null"
+        },
+        "mirrorSourceId": {
+            "type": "null"
         }
     },
     "required": [
         "id"
-    ]
+    ],
+    "version": 1
 }

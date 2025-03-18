@@ -45,7 +45,8 @@
                 },
                 "required": [
                     "emoji_name",
-                    "display_url"
+                    "display_url",
+                    "unicode"
                 ]
             }
         },
@@ -55,8 +56,20 @@
         "avatar_hash": {
             "type": "string"
         },
+        "image_original": {
+            "type": "string"
+        },
+        "is_custom_image": {
+            "type": "boolean"
+        },
         "email": {
             "type": "string"
+        },
+        "huddle_state": {
+            "type": "string"
+        },
+        "huddle_state_expiration_ts": {
+            "type": "integer"
         },
         "first_name": {
             "type": "string"
@@ -82,23 +95,11 @@
         "image_512": {
             "type": "string"
         },
-        "status_text_canonical": {
-            "type": "string"
-        },
-        "image_original": {
-            "type": "string"
-        },
-        "is_custom_image": {
-            "type": "boolean"
-        },
         "image_1024": {
             "type": "string"
         },
-        "huddle_state": {
+        "status_text_canonical": {
             "type": "string"
-        },
-        "huddle_state_expiration_ts": {
-            "type": "integer"
         }
     },
     "required": [
@@ -115,6 +116,8 @@
         "status_emoji_display_info",
         "status_expiration",
         "avatar_hash",
+        "first_name",
+        "last_name",
         "image_24",
         "image_32",
         "image_48",
@@ -122,5 +125,6 @@
         "image_192",
         "image_512",
         "status_text_canonical"
-    ]
+    ],
+    "version": 1
 }

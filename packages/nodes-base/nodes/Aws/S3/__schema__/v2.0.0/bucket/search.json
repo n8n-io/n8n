@@ -10,6 +10,12 @@
         "ETag": {
             "type": "string"
         },
+        "ChecksumAlgorithm": {
+            "type": "string"
+        },
+        "ChecksumType": {
+            "type": "string"
+        },
         "Size": {
             "type": "string"
         },
@@ -17,11 +23,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "Key",
-        "LastModified",
-        "ETag",
-        "Size",
-        "StorageClass"
-    ]
+    "version": 1
 }

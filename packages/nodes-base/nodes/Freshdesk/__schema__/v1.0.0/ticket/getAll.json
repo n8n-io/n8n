@@ -7,6 +7,12 @@
                 "type": "string"
             }
         },
+        "fwd_emails": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
         "reply_cc_emails": {
             "type": "array",
             "items": {
@@ -43,12 +49,6 @@
         "id": {
             "type": "integer"
         },
-        "due_by": {
-            "type": "string"
-        },
-        "fr_due_by": {
-            "type": "string"
-        },
         "is_escalated": {
             "type": "boolean"
         },
@@ -58,14 +58,17 @@
         "updated_at": {
             "type": "string"
         },
-        "associated_tickets_count": {
-            "type": "null"
-        },
         "tags": {
             "type": "array",
             "items": {
                 "type": "string"
             }
+        },
+        "nr_due_by": {
+            "type": "null"
+        },
+        "nr_escalated": {
+            "type": "boolean"
         }
     },
     "required": [
@@ -98,5 +101,6 @@
         "updated_at",
         "associated_tickets_count",
         "tags"
-    ]
+    ],
+    "version": 1
 }

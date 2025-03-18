@@ -13,27 +13,6 @@
         "end": {
             "type": "string"
         },
-        "today": {
-            "type": "string"
-        },
-        "username": {
-            "type": "string"
-        },
-        "deviceid": {
-            "type": "string"
-        },
-        "personal_QR_code": {
-            "type": "string"
-        },
-        "infra_categ": {
-            "type": "string"
-        },
-        "location": {
-            "type": "string"
-        },
-        "gps_note": {
-            "type": "string"
-        },
         "__version__": {
             "type": "string"
         },
@@ -120,14 +99,28 @@
                 "label": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "timestamp",
-                "uid",
-                "by_whom",
-                "color",
-                "label"
-            ]
+            }
+        },
+        "today": {
+            "type": "string"
+        },
+        "username": {
+            "type": "string"
+        },
+        "deviceid": {
+            "type": "string"
+        },
+        "personal_QR_code": {
+            "type": "string"
+        },
+        "infra_categ": {
+            "type": "string"
+        },
+        "location": {
+            "type": "string"
+        },
+        "gps_note": {
+            "type": "string"
         },
         "infra_subtype": {
             "type": "string"
@@ -145,18 +138,6 @@
             "type": "string"
         },
         "Validation_comments": {
-            "type": "string"
-        },
-        "meta/deprecatedID": {
-            "type": "string"
-        },
-        "_version_": {
-            "type": "string"
-        },
-        "_version__001": {
-            "type": "string"
-        },
-        "_version__002": {
             "type": "string"
         }
     },
@@ -177,5 +158,6 @@
         "_notes",
         "_validation_status",
         "_submitted_by"
-    ]
+    ],
+    "version": 1
 }

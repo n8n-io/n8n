@@ -17,11 +17,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "id",
-        "name",
-        "type",
-        "path",
-        "mode"
-    ]
+    "version": 1
 }

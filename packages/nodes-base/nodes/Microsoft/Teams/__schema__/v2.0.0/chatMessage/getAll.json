@@ -42,32 +42,6 @@
             "properties": {
                 "device": {
                     "type": "null"
-                },
-                "user": {
-                    "type": "object",
-                    "properties": {
-                        "@odata.type": {
-                            "type": "string"
-                        },
-                        "id": {
-                            "type": "string"
-                        },
-                        "displayName": {
-                            "type": "string"
-                        },
-                        "userIdentityType": {
-                            "type": "string"
-                        },
-                        "tenantId": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "@odata.type",
-                        "id",
-                        "displayName",
-                        "userIdentityType"
-                    ]
                 }
             },
             "required": [
@@ -104,6 +78,9 @@
                     },
                     "thumbnailUrl": {
                         "type": "null"
+                    },
+                    "teamsAppId": {
+                        "type": "null"
                     }
                 },
                 "required": [
@@ -137,9 +114,6 @@
                             "device": {
                                 "type": "null"
                             },
-                            "conversation": {
-                                "type": "null"
-                            },
                             "tag": {
                                 "type": "null"
                             },
@@ -166,8 +140,7 @@
                                     "@odata.type",
                                     "id",
                                     "displayName",
-                                    "userIdentityType",
-                                    "tenantId"
+                                    "userIdentityType"
                                 ]
                             }
                         },
@@ -227,6 +200,9 @@
                                     },
                                     "userIdentityType": {
                                         "type": "string"
+                                    },
+                                    "tenantId": {
+                                        "type": "string"
                                     }
                                 },
                                 "required": [
@@ -254,28 +230,5 @@
             }
         }
     },
-    "required": [
-        "id",
-        "replyToId",
-        "etag",
-        "messageType",
-        "createdDateTime",
-        "lastModifiedDateTime",
-        "lastEditedDateTime",
-        "deletedDateTime",
-        "subject",
-        "summary",
-        "chatId",
-        "importance",
-        "locale",
-        "webUrl",
-        "channelIdentity",
-        "policyViolation",
-        "eventDetail",
-        "from",
-        "body",
-        "attachments",
-        "mentions",
-        "reactions"
-    ]
+    "version": 1
 }

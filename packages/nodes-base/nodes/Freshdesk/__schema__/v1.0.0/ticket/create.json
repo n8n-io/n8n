@@ -54,8 +54,11 @@
         "updated_at": {
             "type": "string"
         },
-        "form_id": {
-            "type": "integer"
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
         },
         "nr_due_by": {
             "type": "null"
@@ -95,5 +98,6 @@
         "updated_at",
         "tags",
         "attachments"
-    ]
+    ],
+    "version": 1
 }

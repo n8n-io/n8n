@@ -22,12 +22,6 @@
                         "type": "string"
                     }
                 },
-                "user_id": {
-                    "type": "string"
-                },
-                "friendly_name": {
-                    "type": "string"
-                },
                 "latitude": {
                     "type": "number"
                 },
@@ -38,6 +32,15 @@
                     "type": "integer"
                 },
                 "source": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                },
+                "friendly_name": {
+                    "type": "string"
+                },
+                "entity_picture": {
                     "type": "string"
                 }
             },
@@ -82,5 +85,6 @@
         "last_reported",
         "last_updated",
         "context"
-    ]
+    ],
+    "version": 1
 }

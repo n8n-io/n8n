@@ -104,26 +104,9 @@
                     "required": [
                         "id",
                         "name",
-                        "email",
-                        "phone",
                         "tags",
                         "followers"
                     ]
-                },
-                "customFields": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "id": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "id",
-                            "fieldValue"
-                        ]
-                    }
                 },
                 "indexVersion": {
                     "type": "integer"
@@ -152,5 +135,6 @@
         "traceId": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
