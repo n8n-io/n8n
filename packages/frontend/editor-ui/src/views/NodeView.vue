@@ -272,7 +272,7 @@ const keyBindingsEnabled = computed(() => {
 	return !ndvStore.activeNode && uiStore.activeModals.length === 0;
 });
 
-const isChatOpen = computed(() => workflowsStore.isChatPanelOpen);
+const isChatOpen = computed(() => workflowsStore.chatPanelState !== 'closed');
 
 /**
  * Initialization

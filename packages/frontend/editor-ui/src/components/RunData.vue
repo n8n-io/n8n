@@ -574,7 +574,10 @@ const isSchemaPreviewEnabled = computed(
 		!(nodeType.value?.codex?.categories ?? []).some(
 			(category) => category === CORE_NODES_CATEGORY,
 		) &&
-		posthogStore.isFeatureEnabled(SCHEMA_PREVIEW_EXPERIMENT),
+		posthogStore.isVariantEnabled(
+			SCHEMA_PREVIEW_EXPERIMENT.name,
+			SCHEMA_PREVIEW_EXPERIMENT.variant,
+		),
 );
 
 const hasPreviewSchema = asyncComputed(async () => {
@@ -2322,7 +2325,7 @@ defineExpose({ enterEditMode });
 	color: black;
 	border-radius: var(--border-radius-base);
 	padding: 0 1px;
-	font-weight: normal;
+	font-weight: var(--font-weight-regular);
 	font-style: normal;
 }
 </style>

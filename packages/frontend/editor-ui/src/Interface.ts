@@ -110,6 +110,16 @@ declare global {
 			getVariant: (name: string) => string | boolean | undefined;
 			override: (name: string, value: string) => void;
 		};
+		// https://developer.mozilla.org/en-US/docs/Web/API/DocumentPictureInPicture
+		documentPictureInPicture?: {
+			window: Window | null;
+			requestWindow: (options?: {
+				width?: number;
+				height?: number;
+				preferInitialWindowPlacement?: boolean;
+				disallowReturnToOpener?: boolean;
+			}) => Promise<Window>;
+		};
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		Cypress: unknown;
 	}
@@ -240,11 +250,11 @@ export interface IWorkflowDataUpdate {
 	pinData?: IPinData;
 	versionId?: string;
 	meta?: WorkflowMetadata;
+	parentFolderId?: string;
 }
 
 export interface IWorkflowDataCreate extends IWorkflowDataUpdate {
 	projectId?: string;
-	parentFolderId?: string;
 }
 
 /**
@@ -326,7 +336,7 @@ export type BaseResource = {
 
 export type WorkflowListItem = Omit<
 	IWorkflowDb,
-	'nodes' | 'connections' | 'settings' | 'pinData' | 'versionId' | 'usedCredentials' | 'meta'
+	'nodes' | 'connections' | 'settings' | 'pinData' | 'usedCredentials' | 'meta'
 > & {
 	resource: 'workflow';
 	parentFolder?: { id: string; name: string };

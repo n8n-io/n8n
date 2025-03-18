@@ -2923,28 +2923,28 @@ describe('useCanvasOperations', () => {
 	});
 
 	describe('toggleChatOpen', () => {
-		it('should invoke workflowsStore#setPanelOpen with 2nd argument `true` if the chat panel is closed', async () => {
+		it('should invoke workflowsStore#setPanelState with 1st argument "docked" if the chat panel is closed', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const { toggleChatOpen } = useCanvasOperations({ router });
 
 			workflowsStore.getCurrentWorkflow.mockReturnValue(createTestWorkflowObject());
-			workflowsStore.isChatPanelOpen = false;
+			workflowsStore.chatPanelState = 'closed';
 
 			await toggleChatOpen('main');
 
-			expect(workflowsStore.setPanelOpen).toHaveBeenCalledWith('chat', true);
+			expect(workflowsStore.setPanelState).toHaveBeenCalledWith('attached');
 		});
 
-		it('should invoke workflowsStore#setPanelOpen with 2nd argument `false` if the chat panel is open', async () => {
+		it('should invoke workflowsStore#setPanelState with 1st argument "collapsed" if the chat panel is open', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const { toggleChatOpen } = useCanvasOperations({ router });
 
 			workflowsStore.getCurrentWorkflow.mockReturnValue(createTestWorkflowObject());
-			workflowsStore.isChatPanelOpen = true;
+			workflowsStore.chatPanelState = 'attached';
 
 			await toggleChatOpen('main');
 
-			expect(workflowsStore.setPanelOpen).toHaveBeenCalledWith('chat', false);
+			expect(workflowsStore.setPanelState).toHaveBeenCalledWith('closed');
 		});
 	});
 
