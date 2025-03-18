@@ -11,7 +11,7 @@ import { computed, ref } from 'vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useToast } from '@/composables/useToast';
 import PanelHeader from '@/components/CanvasChat/components/PanelHeader.vue';
-import { N8nButton, N8nIcon, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 
 interface Props {
 	pastChatMessages: string[];
@@ -40,6 +40,18 @@ const locale = useI18n();
 const toast = useToast();
 
 const previousMessageIndex = ref(0);
+
+const sessionIdText = computed(() =>
+	locale.baseText('chat.window.session.id', {
+		interpolate: { id: `${props.sessionId.slice(0, 5)}...` },
+	}),
+);
+
+const copySessionIdText = computed(() =>
+	locale.baseText('chat.window.session.id.copy', {
+		interpolate: { id: props.sessionId },
+	}),
+);
 
 const inputPlaceholder = computed(() => {
 	if (props.messages.length > 0) {
@@ -138,18 +150,14 @@ async function copySessionId() {
 			@click="emit('clickHeader')"
 		>
 			<template #actions>
-				<N8nTooltip
-					v-if="clipboard.isSupported.value"
-					:content="locale.baseText('chat.window.session.id.copy')"
-				>
+				<N8nTooltip v-if="clipboard.isSupported.value" :content="copySessionIdText">
 					<N8nButton
 						data-test-id="chat-session-id"
 						type="secondary"
 						size="mini"
-						@click.stop="clipboard.isSupported.value ? copySessionId() : null"
-						>{{ locale.baseText('chat.window.session.id')
-						}}<N8nIcon icon="copy" size="medium" class="el-icon--right"
-					/></N8nButton>
+						@click.stop="copySessionId"
+						>{{ sessionIdText }}</N8nButton
+					>
 				</N8nTooltip>
 				<N8nTooltip :content="locale.baseText('chat.window.session.resetSession')">
 					<N8nIconButton

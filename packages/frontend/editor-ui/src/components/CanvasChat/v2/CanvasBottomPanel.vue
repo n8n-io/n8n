@@ -150,6 +150,7 @@ watch([panelState, height], ([state, h]) => {
 									size="small"
 									icon-size="medium"
 									:icon="panelState === 'attached' ? 'chevron-down' : 'chevron-up'"
+									style="color: var(--color-text-base)"
 									@click.stop="handleToggleOpen"
 								/>
 							</N8nTooltip>

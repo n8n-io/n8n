@@ -151,7 +151,7 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 .mini {
 	--button-padding-vertical: var(--spacing-4xs);
 	--button-padding-horizontal: var(--spacing-2xs);
-	--button-font-size: var(--font-size-3xs);
+	--button-font-size: var(--font-size-2xs);
 
 	&.square {
 		height: 22px;

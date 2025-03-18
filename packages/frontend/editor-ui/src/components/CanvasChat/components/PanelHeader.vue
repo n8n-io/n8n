@@ -57,5 +57,6 @@ const emit = defineEmits<{ click: [] }>();
 
 .actions button {
 	border: none;
+	color: var(--color-text-light);
 }
 </style>
