@@ -114,6 +114,13 @@ const confirm = async () => {
 							{{ i18n.baseText('communityPlusModal.features.third.description') }}
 						</N8nText>
 					</li>
+					<li>
+						<i> 📁</i>
+						<N8nText>
+							<strong>{{ i18n.baseText('communityPlusModal.features.fourth.title') }}</strong>
+							{{ i18n.baseText('communityPlusModal.features.fourth.description') }}
+						</N8nText>
+					</li>
 				</ul>
 				<N8nFormInput
 					id="email"
