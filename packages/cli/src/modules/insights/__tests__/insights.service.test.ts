@@ -4,16 +4,16 @@ import { DateTime } from 'luxon';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 import type { ExecutionStatus, IRun, WorkflowExecuteMode } from 'n8n-workflow';
 
-import type { TypeUnits } from '@/insights/entities/insights-shared';
 import type { Project } from '@/databases/entities/project';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { InsightsMetadataRepository } from '@/databases/repositories/insights-metadata.repository';
 import { InsightsRawRepository } from '@/databases/repositories/insights-raw.repository';
 import type { IWorkflowDb } from '@/interfaces';
+import type { TypeUnits } from '@/modules/insights/entities/insights-shared';
 import { createTeamProject } from '@test-integration/db/projects';
 import { createWorkflow } from '@test-integration/db/workflows';
 
-import * as testDb from '../../../test/integration/shared/test-db';
+import * as testDb from '../../../../test/integration/shared/test-db';
 import { InsightsService } from '../insights.service';
 
 describe('workflowExecuteAfterHandler', () => {

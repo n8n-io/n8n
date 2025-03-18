@@ -8,7 +8,7 @@ import { createMetadata, createRawInsightsEvent } from '@test-integration/db/ins
 import { createTeamProject } from '@test-integration/db/projects';
 import { createWorkflow } from '@test-integration/db/workflows';
 
-import * as testDb from '../../../../test/integration/shared/test-db';
+import * as testDb from '../../../../../test/integration/shared/test-db';
 import { InsightsRaw } from '../insights-raw';
 import type { TypeUnits } from '../insights-shared';
 
