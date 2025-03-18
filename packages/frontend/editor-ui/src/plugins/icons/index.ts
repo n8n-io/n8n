@@ -172,7 +172,20 @@ import {
 	faMinusCircle,
 	faAdjust,
 } from '@fortawesome/free-solid-svg-icons';
-import { faVariable, faXmark, faVault, faRefresh, faTriangle } from './custom';
+import {
+	faVariable,
+	faXmark,
+	faVault,
+	faRefresh,
+	faTriangle,
+	statusCompleted,
+	statusWaiting,
+	statusError,
+	statusCanceled,
+	statusNew,
+	statusUnknown,
+	faPopOut,
+} from './custom';
 import { faStickyNote } from '@fortawesome/free-regular-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
@@ -357,6 +370,15 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faRefresh);
 		addIcon(faMinusCircle);
 		addIcon(faAdjust);
+		// statuses
+		addIcon(statusCompleted);
+		addIcon(statusWaiting);
+		addIcon(statusError);
+		addIcon(statusCanceled);
+		addIcon(statusNew);
+		addIcon(statusUnknown);
+
+		addIcon(faPopOut);
 
 		app.component('FontAwesomeIcon', FontAwesomeIcon);
 	},

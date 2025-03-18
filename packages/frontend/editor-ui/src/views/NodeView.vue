@@ -112,6 +112,7 @@ import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWo
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtils';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
+import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
 
 defineOptions({
 	name: 'NodeView',
@@ -175,6 +176,7 @@ const { runWorkflow, runEntireWorkflow, stopCurrentExecution, stopWaitingForWebh
 const {
 	updateNodePosition,
 	updateNodesPosition,
+	tidyUp,
 	revertUpdateNodePosition,
 	renameNode,
 	revertRenameNode,
@@ -270,7 +272,7 @@ const keyBindingsEnabled = computed(() => {
 	return !ndvStore.activeNode && uiStore.activeModals.length === 0;
 });
 
-const isChatOpen = computed(() => workflowsStore.isChatPanelOpen);
+const isChatOpen = computed(() => workflowsStore.chatPanelState !== 'closed');
 
 /**
  * Initialization
@@ -579,6 +581,10 @@ const allTriggerNodesDisabled = computed(() => {
 	const disabledTriggerNodes = triggerNodes.value.filter((node) => node.disabled);
 	return disabledTriggerNodes.length === triggerNodes.value.length;
 });
+
+function onTidyUp(event: CanvasLayoutEvent) {
+	tidyUp(event);
+}
 
 function onUpdateNodesPosition(events: CanvasNodeMoveEvent[]) {
 	updateNodesPosition(events, { trackHistory: true });
@@ -1769,6 +1775,7 @@ onBeforeUnmount(() => {
 		@create:workflow="onCreateWorkflow"
 		@viewport-change="onViewportChange"
 		@drag-and-drop="onDragAndDrop"
+		@tidy-up="onTidyUp"
 	>
 		<Suspense>
 			<LazySetupWorkflowCredentialsButton :class="$style.setupCredentialsButtonWrapper" />

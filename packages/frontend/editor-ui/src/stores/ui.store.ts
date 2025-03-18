@@ -37,6 +37,8 @@ import {
 	PROMPT_MFA_CODE_MODAL_KEY,
 	COMMUNITY_PLUS_ENROLLMENT_MODAL,
 	API_KEY_CREATE_OR_EDIT_MODAL_KEY,
+	DELETE_FOLDER_MODAL_KEY,
+	MOVE_FOLDER_MODAL_KEY,
 } from '@/constants';
 import type {
 	INodeUi,
@@ -66,6 +68,7 @@ import {
 import { computed, ref } from 'vue';
 import type { Connection } from '@vue-flow/core';
 import { useLocalStorage } from '@vueuse/core';
+import type { EventBus } from '@n8n/utils/event-bus';
 
 let savedTheme: ThemeOption = 'system';
 
@@ -156,6 +159,24 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			activeId: null,
 			showAuthSelector: false,
 		} as ModalState,
+		[DELETE_FOLDER_MODAL_KEY]: {
+			open: false,
+			activeId: null,
+			data: {
+				workflowListEventBus: undefined,
+				content: {
+					workflowCount: 0,
+					subFolderCount: 0,
+				},
+			},
+		},
+		[MOVE_FOLDER_MODAL_KEY]: {
+			open: false,
+			activeId: null,
+			data: {
+				workflowListEventBus: undefined,
+			},
+		},
 	});
 
 	const modalStack = ref<string[]>([]);
@@ -184,7 +205,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const pendingNotificationsForViews = ref<{ [key in VIEWS]?: NotificationOptions[] }>({});
 	const processingExecutionResults = ref<boolean>(false);
 
-	const appGridWidth = ref<number>(0);
+	const appGridDimensions = ref<{ width: number; height: number }>({ width: 0, height: 0 });
 
 	// Last interacted with - Canvas v2 specific
 	const lastInteractedWithNodeConnection = ref<Connection | undefined>();
@@ -477,6 +498,26 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		openModal(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY);
 	};
 
+	const openDeleteFolderModal = (
+		id: string,
+		workflowListEventBus: EventBus,
+		content: { workflowCount: number; subFolderCount: number },
+	) => {
+		setActiveId(DELETE_FOLDER_MODAL_KEY, id);
+		openModalWithData({ name: DELETE_FOLDER_MODAL_KEY, data: { workflowListEventBus, content } });
+	};
+
+	const openMoveToFolderModal = (
+		resourceType: 'folder' | 'workflow',
+		resource: { id: string; name: string; parentFolderId?: string },
+		workflowListEventBus: EventBus,
+	) => {
+		openModalWithData({
+			name: MOVE_FOLDER_MODAL_KEY,
+			data: { resourceType, resource, workflowListEventBus },
+		});
+	};
+
 	const addActiveAction = (action: string) => {
 		if (!activeActions.value.includes(action)) {
 			activeActions.value.push(action);
@@ -576,7 +617,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	};
 
 	return {
-		appGridWidth,
+		appGridDimensions,
 		appliedTheme,
 		contextBasedTranslationKeys,
 		getLastSelectedNode,
@@ -648,6 +689,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		deleteNotificationsForView,
 		resetLastInteractedWith,
 		setProcessingExecutionResults,
+		openDeleteFolderModal,
+		openMoveToFolderModal,
 	};
 });
 

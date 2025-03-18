@@ -424,9 +424,9 @@ async function onAskAssistantClick() {
 			</div>
 			<div
 				v-if="(error.description || error.context?.descriptionKey) && !isSubNodeError"
+				v-n8n-html="getErrorDescription()"
 				data-test-id="node-error-description"
 				class="node-error-view__header-description"
-				v-n8n-html="getErrorDescription()"
 			></div>
 
 			<div v-if="isSubNodeError">
@@ -654,7 +654,6 @@ async function onAskAssistantClick() {
 <style lang="scss">
 .node-error-view {
 	&__header {
-		max-width: 960px;
 		margin: 0 auto var(--spacing-s) auto;
 		padding-bottom: var(--spacing-3xs);
 		background-color: var(--color-background-xlight);
@@ -666,7 +665,7 @@ async function onAskAssistantClick() {
 		padding: var(--spacing-2xs) var(--spacing-s);
 		border-bottom: 1px solid var(--color-danger-tint-1);
 		font-size: var(--font-size-3xs);
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight-medium);
 		background-color: var(--color-danger-tint-2);
 		border-radius: var(--border-radius-large) var(--border-radius-large) 0 0;
 		color: var(--color-danger);
@@ -679,7 +678,7 @@ async function onAskAssistantClick() {
 		gap: var(--spacing-xs);
 		padding: var(--spacing-xs) var(--spacing-s) var(--spacing-3xs) var(--spacing-s);
 		color: var(--color-danger);
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight-medium);
 		font-size: var(--font-size-s);
 	}
 
@@ -755,7 +754,6 @@ async function onAskAssistantClick() {
 	}
 
 	&__info {
-		max-width: 960px;
 		margin: 0 auto;
 		border: 1px solid var(--color-foreground-base);
 		border-radius: var(--border-radius-large);

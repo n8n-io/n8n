@@ -12,7 +12,13 @@ import type { IExecutionResponse, INodeUi, IWorkflowDb, IWorkflowSettings } from
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
-import type { IPinData, ExecutionSummary, IConnection, INodeExecutionData } from 'n8n-workflow';
+import type {
+	IPinData,
+	ExecutionSummary,
+	IConnection,
+	INodeExecutionData,
+	INode,
+} from 'n8n-workflow';
 import { stringSizeInBytes } from '@/utils/typesUtils';
 import { dataPinningEventBus } from '@/event-bus';
 import { useUIStore } from '@/stores/ui.store';
@@ -678,6 +684,34 @@ describe('useWorkflowsStore', () => {
 
 			expect(workflowsStore.workflow.nodes[0].position).toStrictEqual([0, 0]);
 			expect(workflowsStore.nodeMetadata[nodeName].parametersLastUpdatedAt).toBe(undefined);
+		});
+	});
+
+	describe('setNodes()', () => {
+		it('should transform credential-only nodes', () => {
+			const setNodeId = '1';
+			const credentialOnlyNodeId = '2';
+			workflowsStore.setNodes([
+				mock<INode>({
+					id: setNodeId,
+					name: 'Edit Fields',
+					type: 'n8n-nodes-base.set',
+				}),
+				mock<INode>({
+					id: credentialOnlyNodeId,
+					name: 'AlienVault Request',
+					type: 'n8n-nodes-base.httpRequest',
+					extendsCredential: 'alienVaultApi',
+				}),
+			]);
+
+			expect(workflowsStore.workflow.nodes[0].id).toEqual(setNodeId);
+			expect(workflowsStore.workflow.nodes[1].id).toEqual(credentialOnlyNodeId);
+			expect(workflowsStore.workflow.nodes[1].type).toEqual('n8n-creds-base.alienVaultApi');
+			expect(workflowsStore.nodeMetadata).toEqual({
+				'AlienVault Request': { pristine: true },
+				'Edit Fields': { pristine: true },
+			});
 		});
 	});
 

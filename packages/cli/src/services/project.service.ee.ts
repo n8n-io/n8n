@@ -61,6 +61,12 @@ export class ProjectService {
 		);
 	}
 
+	private get folderService() {
+		return import('@/services/folder.service').then(({ FolderService }) =>
+			Container.get(FolderService),
+		);
+	}
+
 	async deleteProject(
 		user: User,
 		projectId: string,
@@ -134,16 +140,22 @@ export class ProjectService {
 			}
 		}
 
-		// 3. delete shared credentials into this project
+		// 3. Move folders over to the target project, before deleting the project else cascading will delete workflows
+		if (targetProject) {
+			const folderService = await this.folderService;
+			await folderService.transferAllFoldersToProject(project.id, targetProject.id);
+		}
+
+		// 4. delete shared credentials into this project
 		// Cascading deletes take care of this.
 
-		// 4. delete shared workflows into this project
+		// 5. delete shared workflows into this project
 		// Cascading deletes take care of this.
 
-		// 5. delete project
+		// 6. delete project
 		await this.projectRepository.remove(project);
 
-		// 6. delete project relations
+		// 7. delete project relations
 		// Cascading deletes take care of this.
 	}
 

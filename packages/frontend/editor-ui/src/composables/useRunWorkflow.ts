@@ -102,7 +102,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	}): Promise<IExecutionPushResponse | undefined> {
 		const workflow = workflowHelpers.getCurrentWorkflow();
 
-		if (uiStore.isActionActive['workflowRunning']) {
+		if (uiStore.isActionActive.workflowRunning) {
 			return;
 		}
 
@@ -182,7 +182,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					// and halt the execution
 					if (!chatHasInputData && !chatHasPinData) {
 						workflowsStore.chatPartialExecutionDestinationNode = options.destinationNode;
-						workflowsStore.setPanelOpen('chat', true);
+						workflowsStore.setPanelState('attached');
 						return;
 					}
 				}

@@ -74,7 +74,7 @@ export abstract class BaseCommand extends Command {
 			serverType: this.instanceSettings.instanceType,
 			dsn: backendDsn,
 			environment,
-			release: N8N_VERSION,
+			release: `n8n@${N8N_VERSION}`,
 			serverName: deploymentName,
 			releaseDate: N8N_RELEASE_DATE,
 		});
@@ -240,6 +240,7 @@ export abstract class BaseCommand extends Command {
 	}
 
 	async finally(error: Error | undefined) {
+		if (error?.message) this.logger.error(error.message);
 		if (inTest || this.id === 'start') return;
 		if (Db.connectionState.connected) {
 			await sleep(100); // give any in-flight query some time to finish
