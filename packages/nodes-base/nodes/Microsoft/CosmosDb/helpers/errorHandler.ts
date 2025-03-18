@@ -9,6 +9,7 @@ import { jsonParse, NodeApiError } from 'n8n-workflow';
 import type { IErrorResponse } from './interfaces';
 
 const errorMap: Record<string, string> = {
+	// Duplicate container
 	'Resource with specified id, name, or unique index already exists.': '',
 };
 

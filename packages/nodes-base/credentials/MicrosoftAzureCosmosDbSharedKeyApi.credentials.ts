@@ -60,21 +60,6 @@ export class MicrosoftAzureCosmosDbSharedKeyApi implements ICredentialType {
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
-		// if (requestOptions.qs) {
-		// 	for (const [key, value] of Object.entries(requestOptions.qs)) {
-		// 		if (value === undefined) {
-		// 			delete requestOptions.qs[key];
-		// 		}
-		// 	}
-		// }
-		// if (requestOptions.headers) {
-		// 	for (const [key, value] of Object.entries(requestOptions.headers)) {
-		// 		if (value === undefined) {
-		// 			delete requestOptions.headers[key];
-		// 		}
-		// 	}
-		// }
-
 		const date = new Date().toUTCString();
 
 		requestOptions.headers ??= {};
