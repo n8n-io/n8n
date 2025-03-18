@@ -87,6 +87,7 @@ const onFolderSelected = (folderId: string) => {
 				:key="folder.id"
 				:value="folder.id"
 				:label="folder.name"
+				data-test-id="move-to-folder-option"
 			>
 				<div :class="$style['folder-select-item']">
 					<n8n-icon :class="$style['folder-icon']" icon="folder" />

@@ -4,6 +4,9 @@ import {
 	createFolderFromListHeaderButton,
 	createFolderFromProjectHeader,
 	createFolderInsideFolder,
+	createNewProject,
+	deleteAndTransferFolderContentsFromCardDropdown,
+	deleteAndTransferFolderContentsFromListDropdown,
 	deleteEmptyFolderFromCardDropdown,
 	deleteEmptyFolderFromListDropdown,
 	deleteFolderWithContentsFromCardDropdown,
@@ -14,13 +17,17 @@ import {
 	getFolderCardActionItem,
 	getFolderCardActionToggle,
 	getFolderCards,
+	getFolderEmptyState,
 	getHomeProjectBreadcrumb,
 	getListBreadcrumbs,
 	getMainBreadcrumbsEllipsis,
 	getMainBreadcrumbsEllipsisMenuItems,
 	getOverviewMenuItem,
 	getPersonalProjectMenuItem,
+	getProjectEmptyState,
+	getProjectMenuItem,
 	getVisibleListBreadcrumbs,
+	getWorkflowCards,
 	goToPersonalProject,
 	renameFolderFromCardActions,
 	renameFolderFromListActions,
@@ -44,6 +51,7 @@ describe('Folders', () => {
 
 	describe('Create and navigate folders', () => {
 		it('should create folder from the project header', () => {
+			getPersonalProjectMenuItem().click();
 			createFolderFromProjectHeader('My Folder');
 			getFolderCards().should('have.length.greaterThan', 0);
 			// Clicking on the success toast should navigate to the folder
@@ -78,9 +86,9 @@ describe('Folders', () => {
 			getFolderCard('Created from card dropdown').should('exist');
 			createFolderFromCardActions('Created from card dropdown', 'Child Folder');
 			successToast().should('exist');
-			// Open parent folder to see the new child folder
-			getFolderCard('Created from card dropdown').click();
+			// Should be automatically navigated to the new folder
 			getFolderCard('Child Folder').should('exist');
+			getCurrentBreadcrumb().should('contain.text', 'Created from card dropdown');
 		});
 
 		it('should navigate folders using breadcrumbs and dropdown menu', () => {
@@ -88,7 +96,7 @@ describe('Folders', () => {
 			createFolderFromProjectHeader('Navigate Test');
 			// Open folder using menu item
 			getFolderCardActionToggle('Navigate Test').click();
-			getFolderCardActionItem('open').click();
+			getFolderCardActionItem('Navigate Test', 'open').click();
 			getCurrentBreadcrumb().should('contain.text', 'Navigate Test');
 			// Create new child folder and navigate to it
 			createFolderFromListHeaderButton('Child Folder');
@@ -171,6 +179,40 @@ describe('Folders', () => {
 		});
 	});
 
+	describe('Empty State', () => {
+		it('should show project empty state when no folders exist', () => {
+			createNewProject('Test empty project', { openAfterCreate: true });
+			getProjectEmptyState().should('exist');
+		});
+
+		it('should toggle folder empty state correctly', () => {
+			createNewProject('Test empty folder', { openAfterCreate: true });
+			createFolderFromProjectHeader('My Folder');
+			getProjectEmptyState().should('not.exist');
+			getFolderCard('My Folder').should('exist');
+			getFolderCard('My Folder').click();
+			getFolderEmptyState().should('exist');
+			// Create a new workflow from the empty state
+			getFolderEmptyState().find('button').contains('Create Workflow').click();
+			cy.getByTestId('workflow-save-button').click();
+			// Toast should inform that the workflow was created in the folder
+			successToast().should('contain.text', 'Workflow successfully created in folder "My Folder"');
+			// Go back to the folder
+			getProjectMenuItem('Test empty folder').click();
+			getFolderCard('My Folder').should('exist');
+			getFolderCard('My Folder').click();
+			// Should not show empty state anymore
+			getFolderEmptyState().should('not.exist');
+			getWorkflowCards().should('have.length.greaterThan', 0);
+			// Also when filtering and there are no results, empty state CTA should not show
+			cy.getByTestId('resources-list-search').type('non-existing', { delay: 20 });
+			getWorkflowCards().should('not.exist');
+			getFolderEmptyState().should('not.exist');
+			// But there should be a message saying that no results were found
+			cy.getByTestId('resources-list-empty').should('exist');
+		});
+	});
+
 	describe('Rename and delete folders', () => {
 		it('should rename folder from main dropdown', () => {
 			goToPersonalProject();
@@ -224,6 +266,28 @@ describe('Folders', () => {
 			deleteFolderWithContentsFromCardDropdown('I also have family');
 		});
 
-		// TODO: Once we have backend endpoint that lists project folders, test transfer when deleting
+		it('should transfer contents when deleting non-empty folder - from card dropdown', () => {
+			goToPersonalProject();
+			createFolderFromProjectHeader('Move my contents');
+			createFolderFromProjectHeader('Destination');
+			createFolderInsideFolder('Child 1', 'Move my contents');
+			getHomeProjectBreadcrumb().click();
+			getFolderCard('Move my contents').should('exist');
+			deleteAndTransferFolderContentsFromCardDropdown('Move my contents', 'Destination');
+			getFolderCard('Destination').click();
+			// Should show the contents of the moved folder
+			getFolderCard('Child 1').should('exist');
+		});
+
+		it('should transfer contents when deleting non-empty folder - from list breadcrumbs', () => {
+			goToPersonalProject();
+			createFolderFromProjectHeader('Move me too');
+			createFolderFromProjectHeader('Destination 2');
+			createFolderInsideFolder('Child 1', 'Move me too');
+			deleteAndTransferFolderContentsFromListDropdown('Destination 2');
+			getFolderCard('Destination').click();
+			// Should show the contents of the moved folder
+			getFolderCard('Child 1').should('exist');
+		});
 	});
 });

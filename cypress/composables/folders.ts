@@ -22,6 +22,18 @@ export function getFolderCards() {
 export function getFolderCard(name: string) {
 	return cy.getByTestId('folder-card-name').contains(name).closest('[data-test-id="folder-card"]');
 }
+
+export function getWorkflowCards() {
+	return cy.getByTestId('resources-list-item-workflow');
+}
+
+export function getWorkflowCard(name: string) {
+	return cy
+		.getByTestId('workflow-card-name')
+		.contains(name)
+		.closest('[data-test-id="resources-list-item-workflow"]');
+}
+
 export function getAddFolderButton() {
 	return cy.getByTestId('add-folder-button');
 }
@@ -94,13 +106,14 @@ export function getFolderCardActionToggle(folderName: string) {
 	return getFolderCard(folderName).find('[data-test-id="folder-card-actions"]');
 }
 
-export function getFolderCardActionItem(name: string) {
-	return cy
-		.getByTestId('folder-card-actions')
+export function getFolderCardActionItem(folderName: string, actionName: string) {
+	return getFolderCard(folderName)
+		.findChildByTestId('folder-card-actions')
+		.filter(':visible')
 		.find('span[aria-controls]')
 		.invoke('attr', 'aria-controls')
 		.then((popperId) => {
-			return cy.get(`#${popperId}`).find(`[data-test-id="action-${name}"]`);
+			return cy.get(`#${popperId}`).find(`[data-test-id="action-${actionName}"]`);
 		});
 }
 
@@ -112,12 +125,31 @@ export function getDeleteRadioButton() {
 	return cy.getByTestId('delete-content-radio');
 }
 
+export function getTransferContentRadioButton() {
+	return cy.getByTestId('transfer-content-radio');
+}
+
 export function getConfirmDeleteInput() {
 	return getFolderDeleteModal().findChildByTestId('delete-data-input').find('input');
 }
 
 export function getDeleteFolderModalConfirmButton() {
 	return getFolderDeleteModal().findChildByTestId('confirm-delete-folder-button');
+}
+
+export function getProjectEmptyState() {
+	return cy.getByTestId('list-empty-state');
+}
+
+export function getFolderEmptyState() {
+	return cy.getByTestId('empty-folder-container');
+}
+
+export function getProjectMenuItem(name: string) {
+	if (name.toLowerCase() === 'personal') {
+		return getPersonalProjectMenuItem();
+	}
+	return cy.getByTestId('project-menu-item').contains(name);
 }
 /**
  * Actions
@@ -137,7 +169,6 @@ export function createFolderFromListHeaderButton(folderName: string) {
 }
 
 export function createFolderFromProjectHeader(folderName: string) {
-	getPersonalProjectMenuItem().click();
 	getAddResourceDropdown().click();
 	cy.getByTestId('action-folder').click();
 	createNewFolder(folderName);
@@ -151,7 +182,7 @@ export function createFolderFromListDropdown(folderName: string) {
 
 export function createFolderFromCardActions(parentName: string, folderName: string) {
 	getFolderCardActionToggle(parentName).click();
-	getFolderCardActionItem('create').click();
+	getFolderCardActionItem(parentName, 'create').click();
 	createNewFolder(folderName);
 }
 
@@ -164,7 +195,7 @@ export function renameFolderFromListActions(folderName: string, newName: string)
 
 export function renameFolderFromCardActions(folderName: string, newName: string) {
 	getFolderCardActionToggle(folderName).click();
-	getFolderCardActionItem('rename').click();
+	getFolderCardActionItem(folderName, 'rename').click();
 	renameFolder(newName);
 }
 
@@ -194,8 +225,39 @@ export function deleteFolderWithContentsFromListDropdown(folderName: string) {
 
 export function deleteFolderWithContentsFromCardDropdown(folderName: string) {
 	getFolderCardActionToggle(folderName).click();
-	getFolderCardActionItem('delete').click();
+	getFolderCardActionItem(folderName, 'delete').click();
 	confirmFolderDelete(folderName);
+}
+
+export function deleteAndTransferFolderContentsFromCardDropdown(
+	folderName: string,
+	destinationName: string,
+) {
+	getFolderCardActionToggle(folderName).click();
+	getFolderCardActionItem(folderName, 'delete').click();
+	deleteFolderAndMoveContents(folderName, destinationName);
+}
+
+export function deleteAndTransferFolderContentsFromListDropdown(destinationName: string) {
+	getListActionsToggle().click();
+	getListActionItem('delete').click();
+	getCurrentBreadcrumb()
+		.find('span')
+		.invoke('text')
+		.then((currentFolderName) => {
+			deleteFolderAndMoveContents(currentFolderName, destinationName);
+		});
+}
+
+export function createNewProject(projectName: string, options: { openAfterCreate?: boolean } = {}) {
+	cy.getByTestId('universal-add').should('exist').click();
+	cy.getByTestId('navigation-menu-item').contains('Project').click();
+	cy.getByTestId('project-settings-name-input').type(projectName, { delay: 50 });
+	cy.getByTestId('project-settings-save-button').click();
+	successToast().should('exist');
+	if (options.openAfterCreate) {
+		getProjectMenuItem(projectName).click();
+	}
 }
 /**
  * Utils
@@ -239,4 +301,17 @@ function confirmFolderDelete(folderName: string) {
 	getDeleteFolderModalConfirmButton().should('be.enabled').click();
 	cy.wait('@deleteFolder');
 	successToast().contains('Folder deleted').should('exist');
+}
+
+function deleteFolderAndMoveContents(folderName: string, destinationName: string) {
+	cy.intercept('DELETE', '/rest/projects/**').as('deleteFolder');
+	getFolderDeleteModal().should('be.visible');
+	getFolderDeleteModal().find('h1').first().contains(`Delete "${folderName}"`);
+	getTransferContentRadioButton().should('be.visible').click();
+	cy.getByTestId('move-to-folder-dropdown').click();
+	cy.getByTestId('move-to-folder-dropdown').find('input').type(destinationName);
+	cy.getByTestId('move-to-folder-option').contains(destinationName).click();
+	getDeleteFolderModalConfirmButton().should('be.enabled').click();
+	cy.wait('@deleteFolder');
+	successToast().should('contain.text', `Data transferred to "${destinationName}"`);
 }

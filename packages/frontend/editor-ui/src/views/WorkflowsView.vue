@@ -1243,7 +1243,7 @@ const onCreateWorkflowClick = () => {
 			/>
 			<WorkflowCard
 				v-else
-				data-test-id="resources-list-item"
+				data-test-id="resources-list-item-workflow"
 				class="mb-2xs"
 				:data="data as WorkflowResource"
 				:workflow-list-event-bus="workflowListEventBus"
@@ -1257,7 +1257,7 @@ const onCreateWorkflowClick = () => {
 			/>
 		</template>
 		<template #empty>
-			<div class="text-center mt-s">
+			<div class="text-center mt-s" data-test-id="list-empty-state">
 				<N8nHeading tag="h2" size="xlarge" class="mb-2xs">
 					{{
 						currentUser.firstName
@@ -1344,6 +1344,7 @@ const onCreateWorkflowClick = () => {
 			<div
 				v-if="workflowsAndFolders.length === 0 && currentFolder && !hasFilters"
 				:class="$style['empty-folder-container']"
+				data-test-id="empty-folder-container"
 			>
 				<n8n-action-box
 					data-test-id="empty-folder-action-box"
