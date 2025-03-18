@@ -10,7 +10,7 @@ const emit = defineEmits<{
 
 const props = defineProps<{
 	selectedMetric: string;
-	runs: TestRunRecord[];
+	runs: Array<TestRunRecord & { index: number }>;
 }>();
 
 const metricsChart = useMetricsChart();
@@ -22,11 +22,18 @@ const availableMetrics = computed(() => {
 	}, [] as string[]);
 });
 
-const chartData = computed(() => metricsChart.generateChartData(props.runs, props.selectedMetric));
+const filteredRuns = computed(() =>
+	props.runs.filter((run) => run.metrics?.[props.selectedMetric] !== undefined),
+);
+
+const chartData = computed(() =>
+	metricsChart.generateChartData(filteredRuns.value, props.selectedMetric),
+);
 
 const chartOptions = computed(() =>
 	metricsChart.generateChartOptions({
 		metric: props.selectedMetric,
+		data: filteredRuns.value,
 	}),
 );
 

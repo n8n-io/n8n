@@ -13,20 +13,20 @@ export function useMetricsChart() {
 		foregroundDark: useCssVar('--color-foreground-dark', document.body).value,
 	};
 
-	function generateChartData(runs: TestRunRecord[], metric: string): ChartData<'line'> {
-		const sortedRuns = [...runs]
-			.sort((a, b) => new Date(a.runAt).getTime() - new Date(b.runAt).getTime())
-			.filter((run) => run.metrics?.[metric] !== undefined);
-
+	function generateChartData(
+		runs: Array<TestRunRecord & { index: number }>,
+		metric: string,
+	): ChartData<'line'> {
 		/**
 		 * @see https://www.chartjs.org/docs/latest/general/data-structures.html#object-using-custom-properties
 		 */
 		const data: ChartData<'line', TestRunRecord[]> = {
 			datasets: [
 				{
-					data: sortedRuns,
+					data: runs,
 					parsing: {
 						xAxisKey: 'id',
+						// yAxisKey: `metrics.${metric}`,
 						yAxisKey: `metrics.${metric}`,
 					},
 					borderColor: colors.primary,
@@ -44,7 +44,10 @@ export function useMetricsChart() {
 		return data as unknown as ChartData<'line'>;
 	}
 
-	function generateChartOptions({ metric }: { metric: string }): ChartOptions<'line'> {
+	function generateChartOptions({
+		metric,
+		data,
+	}: { metric: string; data: Array<TestRunRecord & { index: number }> }): ChartOptions<'line'> {
 		return {
 			responsive: true,
 			maintainAspectRatio: false,
@@ -75,8 +78,11 @@ export function useMetricsChart() {
 						display: false,
 					},
 					ticks: {
-						maxTicksLimit: 5,
 						color: colors.textBase,
+						// eslint-disable-next-line id-denylist
+						callback(_tickValue, index) {
+							return `#${data[index].index}`;
+						},
 					},
 				},
 			},
