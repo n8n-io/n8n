@@ -7,10 +7,11 @@ import { useResize } from '@/components/CanvasChat/composables/useResize';
 import { usePiPWindow } from '@/components/CanvasChat/composables/usePiPWindow';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/constants';
-import LogsPanel from '@/components/CanvasChat/v2/components/LogsPanel.vue';
+import LogsOverviewPanel from '@/components/CanvasChat/future/components/LogsOverviewPanel.vue';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useI18n } from '@/composables/useI18n';
 import { useStyles } from '@/composables/useStyles';
+import ChatMessagesPanel from '@/components/CanvasChat/components/ChatMessagesPanel.vue';
 
 const workflowsStore = useWorkflowsStore();
 const canvasStore = useCanvasStore();
@@ -111,7 +112,7 @@ watch([panelState, height], ([state, h]) => {
 							:session-id="currentSessionId"
 							:past-chat-messages="previousChatMessages"
 							:show-close-button="false"
-							:is-redesign="true"
+							:is-new-logs-enabled="true"
 							@close="handleToggleOpen"
 							@refresh-session="refreshSession"
 							@display-execution="displayExecution"
@@ -119,7 +120,7 @@ watch([panelState, height], ([state, h]) => {
 							@click-header="handleClickHeader"
 						/>
 					</N8nResizeWrapper>
-					<LogsPanel :is-open="panelState !== 'closed'" @click-header="handleClickHeader">
+					<LogsOverviewPanel :is-open="panelState !== 'closed'" @click-header="handleClickHeader">
 						<template #actions>
 							<N8nTooltip
 								:z-index="tooltipZIndex"
@@ -155,7 +156,7 @@ watch([panelState, height], ([state, h]) => {
 								/>
 							</N8nTooltip>
 						</template>
-					</LogsPanel>
+					</LogsOverviewPanel>
 				</div>
 			</N8nResizeWrapper>
 		</div>

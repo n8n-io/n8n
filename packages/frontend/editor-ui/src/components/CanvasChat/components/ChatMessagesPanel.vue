@@ -19,12 +19,12 @@ interface Props {
 	sessionId: string;
 	showCloseButton?: boolean;
 	isOpen?: boolean;
-	isRedesign?: boolean;
+	isNewLogsEnabled?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
 	isOpen: true,
-	isRedesign: false,
+	isNewLogsEnabled: false,
 });
 
 const emit = defineEmits<{
@@ -139,7 +139,7 @@ async function copySessionId() {
 <template>
 	<div :class="$style.chat" data-test-id="workflow-lm-chat-dialog">
 		<PanelHeader
-			v-if="isRedesign"
+			v-if="isNewLogsEnabled"
 			:title="locale.baseText('chat.window.title')"
 			@click="emit('clickHeader')"
 		>
@@ -215,7 +215,7 @@ async function copySessionId() {
 				:messages="messages"
 				:class="$style.messages"
 				:empty-text="
-					isRedesign ? locale.baseText('chat.window.chat.emptyChatMessage.v2') : undefined
+					isNewLogsEnabled ? locale.baseText('chat.window.chat.emptyChatMessage.v2') : undefined
 				"
 			>
 				<template #beforeMessage="{ message }">

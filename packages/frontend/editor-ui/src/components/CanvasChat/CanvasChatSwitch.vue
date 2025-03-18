@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import CanvasBottomPanel from '@/components/CanvasChat/v2/CanvasBottomPanel.vue';
+import LogsPanel from '@/components/CanvasChat/future/LogsPanel.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 
 const { isNewLogsEnabled } = useSettingsStore();
 </script>
 
 <template>
-	<CanvasBottomPanel v-if="isNewLogsEnabled" />
+	<LogsPanel v-if="isNewLogsEnabled" />
 	<CanvasChat v-else />
 </template>
