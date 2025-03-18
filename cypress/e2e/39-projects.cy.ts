@@ -19,7 +19,7 @@ import {
 } from '../pages';
 import { clearNotifications, successToast } from '../pages/notifications';
 import { getVisibleSelect } from '../utils';
-import { createResource } from "../composables/create";
+import { createResource } from '../composables/create';
 
 const workflowsPage = new WorkflowsPage();
 const workflowPage = new WorkflowPage();
@@ -609,15 +609,15 @@ describe('Projects', { disableAutoLogin: true }, () => {
 		workflowPage.actions.saveWorkflowOnButtonClick();
 
 		cy.url().then((url) => {
-			createResource('workflow','Personal');
-			cy.get('body').click()
+			createResource('workflow', 'Personal');
+			cy.get('body').click();
 			workflowPage.getters.canvasNodes().should('not.have.length');
 			cy.go('back');
 
 			cy.url().should('eq', url);
 			workflowPage.getters.canvasNodes().should('have.length', 2);
 
-			createResource('workflow','Personal');
+			createResource('workflow', 'Personal');
 			cy.url().then((url) => {
 				const urlObj = new URL(url);
 				expect(urlObj.pathname).to.include('/workflow/new');
