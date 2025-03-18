@@ -17,6 +17,7 @@ import {
 	isFormConnected,
 	sanitizeHtml,
 	validateResponseModeConfiguration,
+	prepareFormFields,
 } from '../utils';
 
 describe('FormTrigger, parseFormDescription', () => {
@@ -993,5 +994,41 @@ describe('validateResponseModeConfiguration', () => {
 		webhookFunctions.getNodeParameter.mockReturnValue('onReceived');
 
 		expect(() => validateResponseModeConfiguration(webhookFunctions)).not.toThrow();
+	});
+
+	describe('prepareFormFields', () => {
+		it('should resolve expressions in html fields', async () => {
+			webhookFunctions.evaluateExpression.mockImplementation((expression) => {
+				if (expression === '{{ $json.formMode }}') {
+					return 'Title';
+				}
+			});
+
+			const result = prepareFormFields(webhookFunctions, [
+				{
+					fieldLabel: 'Custom HTML',
+					fieldType: 'html',
+					elementName: 'test',
+					html: '<h1>{{ $json.formMode }}</h1>',
+				},
+			]);
+
+			expect(result[0].html).toBe('<h1>Title</h1>');
+		});
+		it('should prepare hiddenField', async () => {
+			const result = prepareFormFields(webhookFunctions, [
+				{
+					fieldLabel: '',
+					fieldName: 'test',
+					fieldType: 'hiddenField',
+				},
+			]);
+
+			expect(result[0]).toEqual({
+				fieldLabel: 'test',
+				fieldName: 'test',
+				fieldType: 'hiddenField',
+			});
+		});
 	});
 });

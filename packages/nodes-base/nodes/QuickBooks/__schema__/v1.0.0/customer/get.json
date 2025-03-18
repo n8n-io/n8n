@@ -4,29 +4,6 @@
         "Taxable": {
             "type": "boolean"
         },
-        "BillAddr": {
-            "type": "object",
-            "properties": {
-                "Id": {
-                    "type": "string"
-                },
-                "Line1": {
-                    "type": "string"
-                },
-                "City": {
-                    "type": "string"
-                },
-                "PostalCode": {
-                    "type": "string"
-                },
-                "CountrySubDivisionCode": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "Id"
-            ]
-        },
         "Job": {
             "type": "boolean"
         },
@@ -50,6 +27,9 @@
         },
         "PreferredDeliveryMethod": {
             "type": "string"
+        },
+        "IsProject": {
+            "type": "boolean"
         },
         "domain": {
             "type": "string"
@@ -81,9 +61,6 @@
         "FullyQualifiedName": {
             "type": "string"
         },
-        "CompanyName": {
-            "type": "string"
-        },
         "DisplayName": {
             "type": "string"
         },
@@ -92,17 +69,6 @@
         },
         "Active": {
             "type": "boolean"
-        },
-        "PrimaryEmailAddr": {
-            "type": "object",
-            "properties": {
-                "Address": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "Address"
-            ]
         },
         "DefaultTaxCodeRef": {
             "type": "object",
@@ -114,12 +80,6 @@
             "required": [
                 "value"
             ]
-        },
-        "GivenName": {
-            "type": "string"
-        },
-        "FamilyName": {
-            "type": "string"
         }
     },
     "required": [
@@ -139,5 +99,6 @@
         "DisplayName",
         "PrintOnCheckName",
         "Active"
-    ]
+    ],
+    "version": 1
 }

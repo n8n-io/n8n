@@ -75,5 +75,6 @@
     "required": [
         "roles",
         "user"
-    ]
+    ],
+    "version": 1
 }

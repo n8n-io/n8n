@@ -58,3 +58,4 @@ export { default as N8nResizeObserver } from './ResizeObserver';
 export { N8nKeyboardShortcut } from './N8nKeyboardShortcut';
 export { default as N8nIconPicker } from './N8nIconPicker';
 export { default as N8nBreadcrumbs } from './N8nBreadcrumbs';
+export { default as N8nTableBase } from './TableBase';

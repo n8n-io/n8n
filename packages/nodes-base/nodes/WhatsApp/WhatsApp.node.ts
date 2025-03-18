@@ -83,11 +83,12 @@ export class WhatsApp implements INodeType {
 					);
 
 					const config = getSendAndWaitConfig(this);
+					const instanceId = this.getInstanceId();
 
 					await this.helpers.httpRequestWithAuthentication.call(
 						this,
 						WHATSAPP_CREDENTIALS_TYPE,
-						createMessage(config, phoneNumberId, recipientPhoneNumber),
+						createMessage(config, phoneNumberId, recipientPhoneNumber, instanceId),
 					);
 
 					const waitTill = configureWaitTillDate(this);

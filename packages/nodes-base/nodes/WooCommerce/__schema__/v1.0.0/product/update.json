@@ -128,9 +128,6 @@
         "backordered": {
             "type": "boolean"
         },
-        "low_stock_amount": {
-            "type": "null"
-        },
         "sold_individually": {
             "type": "boolean"
         },
@@ -178,6 +175,12 @@
             "type": "integer"
         },
         "upsell_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "cross_sell_ids": {
             "type": "array",
             "items": {
                 "type": "integer"
@@ -286,9 +289,6 @@
                     "name": {
                         "type": "string"
                     },
-                    "slug": {
-                        "type": "string"
-                    },
                     "position": {
                         "type": "integer"
                     },
@@ -303,12 +303,14 @@
                         "items": {
                             "type": "string"
                         }
+                    },
+                    "slug": {
+                        "type": "string"
                     }
                 },
                 "required": [
                     "id",
                     "name",
-                    "slug",
                     "position",
                     "visible",
                     "variation",
@@ -380,18 +382,6 @@
         "has_options": {
             "type": "boolean"
         },
-        "post_password": {
-            "type": "string"
-        },
-        "global_unique_id": {
-            "type": "string"
-        },
-        "permalink_template": {
-            "type": "string"
-        },
-        "generated_slug": {
-            "type": "string"
-        },
         "_links": {
             "type": "object",
             "properties": {
@@ -442,6 +432,18 @@
                 "self",
                 "collection"
             ]
+        },
+        "post_password": {
+            "type": "string"
+        },
+        "global_unique_id": {
+            "type": "string"
+        },
+        "permalink_template": {
+            "type": "string"
+        },
+        "generated_slug": {
+            "type": "string"
         }
     },
     "required": [
@@ -512,9 +514,7 @@
         "meta_data",
         "stock_status",
         "has_options",
-        "post_password",
-        "permalink_template",
-        "generated_slug",
         "_links"
-    ]
+    ],
+    "version": 1
 }

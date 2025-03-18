@@ -19,25 +19,6 @@
         "PaymentType": {
             "type": "string"
         },
-        "EntityRef": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "value",
-                "name",
-                "type"
-            ]
-        },
         "Credit": {
             "type": "boolean"
         },
@@ -152,9 +133,6 @@
                     "Id": {
                         "type": "string"
                     },
-                    "Description": {
-                        "type": "string"
-                    },
                     "DetailType": {
                         "type": "string"
                     },
@@ -196,6 +174,9 @@
                             "BillableStatus",
                             "TaxCodeRef"
                         ]
+                    },
+                    "Description": {
+                        "type": "string"
                     }
                 },
                 "required": [
@@ -204,6 +185,25 @@
                     "DetailType"
                 ]
             }
+        },
+        "EntityRef": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "value",
+                "name",
+                "type"
+            ]
         }
     },
     "required": [
@@ -219,5 +219,6 @@
         "TxnDate",
         "CurrencyRef",
         "Line"
-    ]
+    ],
+    "version": 1
 }

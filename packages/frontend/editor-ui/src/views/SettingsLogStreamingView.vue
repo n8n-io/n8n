@@ -174,7 +174,7 @@ async function onEdit(destinationId?: string) {
 					{{ i18n.baseText(`settings.log-streaming.heading`) }}
 				</n8n-heading>
 				<template v-if="environment !== 'production'">
-					<strong class="ml-m">Disable License ({{ environment }})&nbsp;</strong>
+					<span class="ml-m">Disable License ({{ environment }})&nbsp;</span>
 					<el-switch v-model="disableLicense" size="large" data-test-id="disable-license-toggle" />
 				</template>
 			</div>

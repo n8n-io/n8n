@@ -153,38 +153,35 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "notes": {
+                    "_id": {
                         "type": "string"
                     },
                     "product_key": {
                         "type": "string"
                     },
-                    "tax_rate1": {
-                        "type": "integer"
-                    },
-                    "tax_rate2": {
-                        "type": "integer"
-                    },
-                    "tax_name1": {
-                        "type": "string"
-                    },
-                    "tax_name2": {
-                        "type": "string"
-                    },
-                    "type_id": {
-                        "type": "string"
-                    },
-                    "tax_id": {
-                        "type": "string"
-                    },
                     "product_cost": {
                         "type": "integer"
+                    },
+                    "notes": {
+                        "type": "string"
                     },
                     "discount": {
                         "type": "integer"
                     },
                     "is_amount_discount": {
                         "type": "boolean"
+                    },
+                    "tax_name1": {
+                        "type": "string"
+                    },
+                    "tax_rate1": {
+                        "type": "integer"
+                    },
+                    "tax_name2": {
+                        "type": "string"
+                    },
+                    "tax_rate2": {
+                        "type": "integer"
                     },
                     "tax_name3": {
                         "type": "string"
@@ -213,6 +210,12 @@
                     "custom_value4": {
                         "type": "string"
                     },
+                    "type_id": {
+                        "type": "string"
+                    },
+                    "tax_id": {
+                        "type": "string"
+                    },
                     "task_id": {
                         "type": "string"
                     },
@@ -221,36 +224,33 @@
                     },
                     "unit_code": {
                         "type": "string"
-                    },
-                    "_id": {
-                        "type": "string"
                     }
                 },
                 "required": [
-                    "cost",
-                    "notes",
-                    "product_key",
-                    "tax_rate1",
-                    "tax_rate2",
-                    "tax_name1",
-                    "tax_name2",
                     "quantity",
-                    "type_id",
-                    "tax_id",
+                    "cost",
+                    "product_key",
                     "product_cost",
+                    "notes",
                     "discount",
                     "is_amount_discount",
+                    "tax_name1",
+                    "tax_rate1",
+                    "tax_name2",
+                    "tax_rate2",
                     "tax_name3",
                     "tax_rate3",
                     "sort_id",
                     "line_total",
-                    "gross_line_total",
                     "tax_amount",
+                    "gross_line_total",
                     "date",
                     "custom_value1",
                     "custom_value2",
                     "custom_value3",
                     "custom_value4",
+                    "type_id",
+                    "tax_id",
                     "task_id",
                     "expense_id"
                 ]
@@ -406,5 +406,6 @@
         "e_invoice",
         "invitations",
         "documents"
-    ]
+    ],
+    "version": 1
 }

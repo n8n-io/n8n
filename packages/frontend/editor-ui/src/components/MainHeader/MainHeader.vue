@@ -290,7 +290,7 @@ function hideGithubButton() {
 	display: flex;
 	align-items: center;
 	font-size: 0.9em;
-	font-weight: 400;
+	font-weight: var(--font-weight-regular);
 	overflow: auto;
 }
 

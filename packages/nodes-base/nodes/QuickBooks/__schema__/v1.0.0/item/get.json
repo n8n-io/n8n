@@ -1,0 +1,90 @@
+{
+    "type": "object",
+    "properties": {
+        "Name": {
+            "type": "string"
+        },
+        "Description": {
+            "type": "string"
+        },
+        "Active": {
+            "type": "boolean"
+        },
+        "FullyQualifiedName": {
+            "type": "string"
+        },
+        "Taxable": {
+            "type": "boolean"
+        },
+        "UnitPrice": {
+            "type": "integer"
+        },
+        "Type": {
+            "type": "string"
+        },
+        "IncomeAccountRef": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "value",
+                "name"
+            ]
+        },
+        "TrackQtyOnHand": {
+            "type": "boolean"
+        },
+        "DeferredRevenue": {
+            "type": "boolean"
+        },
+        "domain": {
+            "type": "string"
+        },
+        "sparse": {
+            "type": "boolean"
+        },
+        "Id": {
+            "type": "string"
+        },
+        "SyncToken": {
+            "type": "string"
+        },
+        "MetaData": {
+            "type": "object",
+            "properties": {
+                "CreateTime": {
+                    "type": "string"
+                },
+                "LastUpdatedTime": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "CreateTime",
+                "LastUpdatedTime"
+            ]
+        }
+    },
+    "required": [
+        "Name",
+        "Active",
+        "FullyQualifiedName",
+        "Taxable",
+        "UnitPrice",
+        "Type",
+        "PurchaseCost",
+        "TrackQtyOnHand",
+        "domain",
+        "sparse",
+        "Id",
+        "SyncToken",
+        "MetaData"
+    ],
+    "version": 1
+}

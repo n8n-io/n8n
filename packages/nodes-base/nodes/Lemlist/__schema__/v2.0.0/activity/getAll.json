@@ -7,14 +7,14 @@
         "type": {
             "type": "string"
         },
-        "createdAt": {
-            "type": "string"
-        },
         "isFirst": {
             "type": "boolean"
         },
         "stopped": {
             "type": "boolean"
+        },
+        "createdAt": {
+            "type": "string"
         },
         "bot": {
             "type": "boolean"
@@ -34,9 +34,6 @@
         "sequenceStep": {
             "type": "integer"
         },
-        "emailTemplateId": {
-            "type": "string"
-        },
         "createdBy": {
             "type": "string"
         },
@@ -53,9 +50,6 @@
             "type": "string"
         },
         "leadLastName": {
-            "type": "string"
-        },
-        "leadEmail": {
             "type": "string"
         },
         "leadCompanyName": {
@@ -106,16 +100,31 @@
         "companyName": {
             "type": "string"
         },
-        "email": {
-            "type": "string"
-        },
         "campaignName": {
             "type": "string"
         },
         "sequenceTested": {
             "type": "string"
         },
+        "emailTemplateId": {
+            "type": "string"
+        },
+        "leadEmail": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
         "emailTemplateName": {
+            "type": "string"
+        },
+        "relatedSentAt": {
+            "type": "string"
+        },
+        "leadPhone": {
+            "type": "string"
+        },
+        "phone": {
             "type": "string"
         }
     },
@@ -133,5 +142,6 @@
         "contactId",
         "metaData",
         "campaignName"
-    ]
+    ],
+    "version": 1
 }

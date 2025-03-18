@@ -492,4 +492,35 @@ describe('DirectedGraph', () => {
 			expect(graph.hasNode(node.name + 'foo')).toBe(false);
 		});
 	});
+
+	describe('getNodesByNames', () => {
+		test('returns empty Set when no names are provided', () => {
+			// ARRANGE
+			const node1 = createNodeData({ name: 'Node1' });
+			const node2 = createNodeData({ name: 'Node2' });
+			const graph = new DirectedGraph().addNodes(node1, node2);
+
+			// ACT
+			const result = graph.getNodesByNames([]);
+
+			// ASSERT
+			expect(result.size).toBe(0);
+			expect(result).toEqual(new Set());
+		});
+
+		test('returns Set with only nodes that exist in the graph', () => {
+			// ARRANGE
+			const node1 = createNodeData({ name: 'Node1' });
+			const node2 = createNodeData({ name: 'Node2' });
+			const node3 = createNodeData({ name: 'Node3' });
+			const graph = new DirectedGraph().addNodes(node1, node2, node3);
+
+			// ACT
+			const result = graph.getNodesByNames(['Node1', 'Node3', 'Node4']);
+
+			// ASSERT
+			expect(result.size).toBe(2);
+			expect(result).toEqual(new Set([node1, node3]));
+		});
+	});
 });

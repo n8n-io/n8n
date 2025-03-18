@@ -112,6 +112,8 @@ import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWo
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtils';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
+import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
+import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionButtonVisible';
 
 defineOptions({
 	name: 'NodeView',
@@ -175,6 +177,7 @@ const { runWorkflow, runEntireWorkflow, stopCurrentExecution, stopWaitingForWebh
 const {
 	updateNodePosition,
 	updateNodesPosition,
+	tidyUp,
 	revertUpdateNodePosition,
 	renameNode,
 	revertRenameNode,
@@ -270,7 +273,7 @@ const keyBindingsEnabled = computed(() => {
 	return !ndvStore.activeNode && uiStore.activeModals.length === 0;
 });
 
-const isChatOpen = computed(() => workflowsStore.isChatPanelOpen);
+const isChatOpen = computed(() => workflowsStore.chatPanelState !== 'closed');
 
 /**
  * Initialization
@@ -579,6 +582,10 @@ const allTriggerNodesDisabled = computed(() => {
 	const disabledTriggerNodes = triggerNodes.value.filter((node) => node.disabled);
 	return disabledTriggerNodes.length === triggerNodes.value.length;
 });
+
+function onTidyUp(event: CanvasLayoutEvent) {
+	tidyUp(event);
+}
 
 function onUpdateNodesPosition(events: CanvasNodeMoveEvent[]) {
 	updateNodesPosition(events, { trackHistory: true });
@@ -1116,16 +1123,8 @@ const isStopExecutionButtonVisible = computed(
 const isStopWaitingForWebhookButtonVisible = computed(
 	() => isWorkflowRunning.value && isExecutionWaitingForWebhook.value,
 );
-const isClearExecutionButtonVisible = computed(
-	() =>
-		!isReadOnlyRoute.value &&
-		!isReadOnlyEnvironment.value &&
-		!isWorkflowRunning.value &&
-		!allTriggerNodesDisabled.value &&
-		workflowExecutionData.value,
-);
 
-const workflowExecutionData = computed(() => workflowsStore.workflowExecutionData);
+const isClearExecutionButtonVisible = useClearExecutionButtonVisible();
 
 async function onRunWorkflowToNode(id: string) {
 	const node = workflowsStore.getNodeById(id);
@@ -1769,6 +1768,7 @@ onBeforeUnmount(() => {
 		@create:workflow="onCreateWorkflow"
 		@viewport-change="onViewportChange"
 		@drag-and-drop="onDragAndDrop"
+		@tidy-up="onTidyUp"
 	>
 		<Suspense>
 			<LazySetupWorkflowCredentialsButton :class="$style.setupCredentialsButtonWrapper" />
@@ -1799,7 +1799,7 @@ onBeforeUnmount(() => {
 				@click="onStopWaitingForWebhook"
 			/>
 			<CanvasClearExecutionDataButton
-				v-if="isClearExecutionButtonVisible"
+				v-if="isClearExecutionButtonVisible && !settingsStore.isNewLogsEnabled"
 				@click="onClearExecutionData"
 			/>
 		</div>

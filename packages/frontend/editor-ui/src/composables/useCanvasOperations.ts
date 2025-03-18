@@ -99,6 +99,7 @@ import { useClipboard } from '@/composables/useClipboard';
 import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { isPresent } from '../utils/typesUtils';
 import { useProjectsStore } from '@/stores/projects.store';
+import type { CanvasLayoutEvent } from './useCanvasLayout';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -163,6 +164,22 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	/**
 	 * Node operations
 	 */
+
+	function tidyUp({ result, source, target }: CanvasLayoutEvent) {
+		updateNodesPosition(
+			result.nodes.map(({ id, x, y }) => ({ id, position: { x, y } })),
+			{ trackBulk: true, trackHistory: true },
+		);
+		trackTidyUp({ result, source, target });
+	}
+
+	function trackTidyUp({ result, source, target }: CanvasLayoutEvent) {
+		telemetry.track('User tidied up canvas', {
+			source,
+			target,
+			nodes_count: result.nodes.length,
+		});
+	}
 
 	function updateNodesPosition(
 		events: CanvasNodeMoveEvent[],
@@ -1953,7 +1970,9 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	async function toggleChatOpen(source: 'node' | 'main') {
 		const workflow = workflowsStore.getCurrentWorkflow();
 
-		workflowsStore.setPanelOpen('chat', !workflowsStore.isChatPanelOpen);
+		workflowsStore.setPanelState(
+			workflowsStore.chatPanelState === 'closed' ? 'attached' : 'closed',
+		);
 
 		const payload = {
 			workflow_id: workflow.id,
@@ -1995,6 +2014,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		revertAddNode,
 		updateNodesPosition,
 		updateNodePosition,
+		tidyUp,
 		revertUpdateNodePosition,
 		setNodeActive,
 		setNodeActiveByName,

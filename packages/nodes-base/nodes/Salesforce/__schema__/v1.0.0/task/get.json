@@ -61,9 +61,6 @@
         "CallObject": {
             "type": "null"
         },
-        "ReminderDateTime": {
-            "type": "null"
-        },
         "IsReminderSet": {
             "type": "boolean"
         },
@@ -84,56 +81,7 @@
         },
         "TaskSubtype": {
             "type": "string"
-        },
-        "WhoCount": {
-            "type": "integer"
-        },
-        "WhatCount": {
-            "type": "integer"
-        },
-        "ActionCadenceStepTrackerId": {
-            "type": "null"
         }
     },
-    "required": [
-        "attributes",
-        "Id",
-        "WhoId",
-        "WhatId",
-        "Subject",
-        "ActivityDate",
-        "Status",
-        "Priority",
-        "IsHighPriority",
-        "OwnerId",
-        "Description",
-        "IsDeleted",
-        "AccountId",
-        "IsClosed",
-        "CreatedDate",
-        "CreatedById",
-        "LastModifiedDate",
-        "LastModifiedById",
-        "SystemModstamp",
-        "IsArchived",
-        "CallDurationInSeconds",
-        "CallType",
-        "CallDisposition",
-        "CallObject",
-        "ReminderDateTime",
-        "IsReminderSet",
-        "RecurrenceActivityId",
-        "IsRecurrence",
-        "RecurrenceStartDateOnly",
-        "RecurrenceEndDateOnly",
-        "RecurrenceTimeZoneSidKey",
-        "RecurrenceType",
-        "RecurrenceInterval",
-        "RecurrenceDayOfWeekMask",
-        "RecurrenceDayOfMonth",
-        "RecurrenceInstance",
-        "RecurrenceMonthOfYear",
-        "RecurrenceRegeneratedType",
-        "TaskSubtype"
-    ]
+    "version": 1
 }
