@@ -22,9 +22,9 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request_review' || startsWith(github.event.pull_request.base.ref, 'release/')
     steps:
-      - uses: actions/checkout@v4.1.1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
-      - uses: actions/setup-node@v4.2.0
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
         with:
           node-version: 20.x
 
@@ -36,13 +36,13 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Setup build cache
-        uses: rharkor/caching-for-turbo@v1.5
+        uses: rharkor/caching-for-turbo@439abec0d28d21b192fa8817b744ffdf1ee5ac0d # v1.5
 
       - name: Build Backend
         run: pnpm build:backend
 
       - name: Cache build artifacts
-        uses: actions/cache/save@v4.2.0
+        uses: actions/cache/save@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
           path: ./packages/**/dist
           key: ${{ github.sha }}:db-tests
@@ -56,9 +56,9 @@ jobs:
       DB_TYPE: sqlite
       DB_SQLITE_POOL_SIZE: 4
     steps:
-      - uses: actions/checkout@v4.1.1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
-      - uses: actions/setup-node@v4.2.0
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
         with:
           node-version: 20.x
 
@@ -70,10 +70,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Setup build cache
-        uses: rharkor/caching-for-turbo@v1.5
+        uses: rharkor/caching-for-turbo@439abec0d28d21b192fa8817b744ffdf1ee5ac0d # v1.5
 
       - name: Restore cached build artifacts
-        uses: actions/cache/restore@v4.2.0
+        uses: actions/cache/restore@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
           path: ./packages/**/dist
           key: ${{ github.sha }}:db-tests
@@ -90,9 +90,9 @@ jobs:
     env:
       DB_MYSQLDB_PASSWORD: password
     steps:
-      - uses: actions/checkout@v4.1.1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
-      - uses: actions/setup-node@v4.2.0
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
         with:
           node-version: 20.x
 
@@ -104,16 +104,16 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Setup build cache
-        uses: rharkor/caching-for-turbo@v1.5
+        uses: rharkor/caching-for-turbo@439abec0d28d21b192fa8817b744ffdf1ee5ac0d # v1.5
 
       - name: Restore cached build artifacts
-        uses: actions/cache/restore@v4.2.0
+        uses: actions/cache/restore@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
           path: ./packages/**/dist
           key: ${{ github.sha }}:db-tests
 
       - name: Start MariaDB
-        uses: isbang/compose-action@v2.0.0
+        uses: isbang/compose-action@802a148945af6399a338c7906c267331b39a71af # v2.0.0
         with:
           compose-file: ./.github/docker-compose.yml
           services: |
@@ -134,9 +134,9 @@ jobs:
     env:
       DB_MYSQLDB_PASSWORD: password
     steps:
-      - uses: actions/checkout@v4.1.1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
-      - uses: actions/setup-node@v4.2.0
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
         with:
           node-version: 20.x
 
@@ -148,16 +148,16 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Setup build cache
-        uses: rharkor/caching-for-turbo@v1.5
+        uses: rharkor/caching-for-turbo@439abec0d28d21b192fa8817b744ffdf1ee5ac0d # v1.5
 
       - name: Restore cached build artifacts
-        uses: actions/cache/restore@v4.2.0
+        uses: actions/cache/restore@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
           path: ./packages/**/dist
           key: ${{ github.sha }}:db-tests
 
       - name: Start MySQL
-        uses: isbang/compose-action@v2.0.0
+        uses: isbang/compose-action@802a148945af6399a338c7906c267331b39a71af # v2.0.0
         with:
           compose-file: ./.github/docker-compose.yml
           services: |
@@ -176,9 +176,9 @@ jobs:
       DB_POSTGRESDB_PASSWORD: password
       DB_POSTGRESDB_POOL_SIZE: 1 # Detect connection pooling deadlocks
     steps:
-      - uses: actions/checkout@v4.1.1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
-      - uses: actions/setup-node@v4.2.0
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
         with:
           node-version: 20.x
 
@@ -190,16 +190,16 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Setup build cache
-        uses: rharkor/caching-for-turbo@v1.5
+        uses: rharkor/caching-for-turbo@439abec0d28d21b192fa8817b744ffdf1ee5ac0d # v1.5
 
       - name: Restore cached build artifacts
-        uses: actions/cache/restore@v4.2.0
+        uses: actions/cache/restore@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
           path: ./packages/**/dist
           key: ${{ github.sha }}:db-tests
 
       - name: Start Postgres
-        uses: isbang/compose-action@v2.0.0
+        uses: isbang/compose-action@802a148945af6399a338c7906c267331b39a71af # v2.0.0
         with:
           compose-file: ./.github/docker-compose.yml
           services: |
@@ -215,7 +215,7 @@ jobs:
     needs: [mariadb, postgres, mysql]
     steps:
       - name: Notify Slack on failure
-        uses: act10ns/slack@v2.0.0
+        uses: act10ns/slack@ed1309ab9862e57e9e583e51c7889486b9a00b0f # v2.0.0
         if: failure() && github.ref == 'refs/heads/master'
         with:
           status: ${{ job.status }}
