@@ -158,9 +158,11 @@ async function copySessionId() {
 						>{{ sessionIdText }}</N8nButton
 					>
 				</N8nTooltip>
-				<N8nTooltip :content="locale.baseText('chat.window.session.resetSession')">
+				<N8nTooltip
+					v-if="messages.length > 0"
+					:content="locale.baseText('chat.window.session.resetSession')"
+				>
 					<N8nIconButton
-						v-if="messages.length > 0"
 						:class="$style.headerButton"
 						data-test-id="refresh-session-button"
 						outline

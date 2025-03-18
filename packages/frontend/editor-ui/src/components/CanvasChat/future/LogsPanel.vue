@@ -123,11 +123,11 @@ watch([panelState, height], ([state, h]) => {
 					<LogsOverviewPanel :is-open="panelState !== 'closed'" @click-header="handleClickHeader">
 						<template #actions>
 							<N8nTooltip
+								v-if="canPopOut && !isPoppedOut"
 								:z-index="tooltipZIndex"
 								:content="locales.baseText('runData.panel.actions.popOut')"
 							>
 								<N8nIconButton
-									v-if="canPopOut && !isPoppedOut"
 									icon="pop-out"
 									type="secondary"
 									size="small"
@@ -136,6 +136,7 @@ watch([panelState, height], ([state, h]) => {
 								/>
 							</N8nTooltip>
 							<N8nTooltip
+								v-if="panelState !== 'floating'"
 								:z-index="tooltipZIndex"
 								:content="
 									locales.baseText(
@@ -146,7 +147,6 @@ watch([panelState, height], ([state, h]) => {
 								"
 							>
 								<N8nIconButton
-									v-if="panelState !== 'floating'"
 									type="secondary"
 									size="small"
 									icon-size="medium"
