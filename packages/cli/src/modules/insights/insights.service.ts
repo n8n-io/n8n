@@ -133,7 +133,7 @@ export class InsightsService {
 
 	// TODO: add return type once rebased on master and InsightsSummary is
 	// available
-	async getInsightsSummary(): Promise<any> {
+	async getInsightsSummary(): Promise<InsightsSummary> {
 		const dbType = this.globalConfig.database.type;
 		const cte =
 			dbType === 'sqlite'
