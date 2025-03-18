@@ -16,7 +16,7 @@ export async function azureCosmosDbApiRequest(
 	qs?: IDataObject,
 	headers?: IDataObject,
 	returnFullResponse: boolean = false,
-): Promise<IDataObject> {
+): Promise<any> {
 	const credentialsType = 'microsoftAzureCosmosDbSharedKeyApi';
 	const credentials = await this.getCredentials<ICosmosDbCredentials>(credentialsType);
 

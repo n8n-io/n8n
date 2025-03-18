@@ -4,10 +4,13 @@ import type {
 	IHttpRequestOptions,
 	IN8nHttpFullResponse,
 	INodeExecutionData,
+	NodeApiError,
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError, OperationalError } from 'n8n-workflow';
 
 import { HeaderConstants } from './constants';
+import { ErrorMap } from './errorHandler';
+import type { IContainer } from './interfaces';
 import { azureCosmosDbApiRequest } from '../transport';
 
 export async function getPartitionKey(this: IExecuteSingleFunctions): Promise<string> {
@@ -15,16 +18,25 @@ export async function getPartitionKey(this: IExecuteSingleFunctions): Promise<st
 		extractValue: true,
 	}) as string;
 
-	const responseData = (await azureCosmosDbApiRequest.call(this, 'GET', `/colls/${container}`)) as {
-		partitionKey: {
-			paths: string[];
-		};
-	};
-	const partitionKeyField = responseData.partitionKey?.paths[0]?.replace('/', '');
+	let partitionKeyField: string | undefined = undefined;
+	try {
+		const responseData = (await azureCosmosDbApiRequest.call(
+			this,
+			'GET',
+			`/colls/${container}`,
+		)) as IContainer;
+		partitionKeyField = responseData.partitionKey?.paths[0]?.replace('/', '');
+	} catch (error) {
+		if ((error as NodeApiError).httpCode === '404') {
+			(error as NodeApiError).message = ErrorMap.Container.NotFound.message;
+			(error as NodeApiError).description = ErrorMap.Container.NotFound.description;
+		}
+		throw error;
+	}
 
 	if (!partitionKeyField) {
 		throw new NodeOperationError(this.getNode(), 'Partition key not found', {
-			description: 'Failed to determine the partition key for this collection.',
+			description: 'Failed to determine the partition key for this collection',
 		});
 	}
 
@@ -104,7 +116,7 @@ export async function validatePartitionKey(
 			customProperties = jsonParse(customProperties);
 		} catch (error) {
 			throw new NodeOperationError(this.getNode(), 'Invalid JSON format in "Item Contents"', {
-				description: 'Ensure the "Item Contents" field contains a valid JSON object.',
+				description: 'Ensure the "Item Contents" field contains a valid JSON object',
 			});
 		}
 	}
@@ -148,7 +160,7 @@ export async function validatePartitionKey(
 
 	if (!partitionKeyValue) {
 		throw new NodeOperationError(this.getNode(), 'Partition key value is missing or empty', {
-			description: `Provide a value for partition key "${partitionKey}" in "Partition Key" field.`,
+			description: `Provide a value for partition key "${partitionKey}" in "Partition Key" field`,
 		});
 	}
 

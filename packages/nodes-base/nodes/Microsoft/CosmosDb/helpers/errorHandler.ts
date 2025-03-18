@@ -8,9 +8,23 @@ import { jsonParse, NodeApiError } from 'n8n-workflow';
 
 import type { IErrorResponse } from './interfaces';
 
-const errorMap: Record<string, string> = {
-	// Duplicate container
-	'Resource with specified id, name, or unique index already exists.': '',
+export const ErrorMap = {
+	Container: {
+		Conflict: {
+			message: 'The specified container already exists',
+			description: "Use a unique value for 'ID' and try again",
+		},
+		NotFound: {
+			message: "The required container doesn't match any existing one",
+			description: "Double-check the value in the parameter 'Container' and try again",
+		},
+	},
+	Item: {
+		NotFound: {
+			message: "The required item doesn't match any existing one",
+			description: "Double-check the value in the parameter 'Item' and try again",
+		},
+	},
 };
 
 export async function handleError(
@@ -19,9 +33,36 @@ export async function handleError(
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
 	if (String(response.statusCode).startsWith('4') || String(response.statusCode).startsWith('5')) {
+		const resource = this.getNodeParameter('resource') as string;
+		const operation = this.getNodeParameter('operation') as string;
 		const error = response.body as IErrorResponse;
 		let errorMessage = error.message;
 		let errorDetails: string[] | undefined = undefined;
+
+		if (resource === 'container') {
+			if (error.code === 'Conflict') {
+				throw new NodeApiError(
+					this.getNode(),
+					error as unknown as JsonObject,
+					ErrorMap.Container.Conflict,
+				);
+			}
+			if (error.code === 'NotFound') {
+				throw new NodeApiError(
+					this.getNode(),
+					error as unknown as JsonObject,
+					ErrorMap.Container.NotFound,
+				);
+			}
+		} else if (resource === 'item') {
+			if (error.code === 'NotFound') {
+				throw new NodeApiError(
+					this.getNode(),
+					error as unknown as JsonObject,
+					ErrorMap.Item.NotFound,
+				);
+			}
+		}
 
 		try {
 			// Certain error responses have nested Message
