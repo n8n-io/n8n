@@ -148,7 +148,7 @@ export class Workflow {
 				for (const inputConnections of Object.values(returnConnection[sourceNode])) {
 					inputConnections.forEach((innerConnections, index) => {
 						if (innerConnections?.length) {
-							inputConnections[index] = innerConnections?.filter(({ node }) => node in this.nodes);
+							inputConnections[index] = innerConnections.filter(({ node }) => node in this.nodes);
 						}
 					});
 				}
