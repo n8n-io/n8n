@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "code": {
+            "type": "integer"
+        },
         "signal": {
             "type": "null"
         },
@@ -16,5 +19,6 @@
         "signal",
         "stdout",
         "stderr"
-    ]
+    ],
+    "version": 1
 }

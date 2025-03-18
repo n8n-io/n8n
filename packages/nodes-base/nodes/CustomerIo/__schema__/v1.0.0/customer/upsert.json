@@ -4,5 +4,6 @@
         "email": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

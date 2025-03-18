@@ -158,7 +158,7 @@
         "created_at",
         "updated_at",
         "subject",
-        "recipient",
-        "brand_id"
-    ]
+        "recipient"
+    ],
+    "version": 1
 }

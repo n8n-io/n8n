@@ -61,9 +61,7 @@
         }
     },
     "required": [
-        "id",
-        "status",
-        "settings",
-        "tracking"
-    ]
+        "settings"
+    ],
+    "version": 1
 }

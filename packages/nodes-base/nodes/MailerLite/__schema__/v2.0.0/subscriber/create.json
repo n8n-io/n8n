@@ -1,0 +1,152 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "source": {
+            "type": "string"
+        },
+        "sent": {
+            "type": "integer"
+        },
+        "opens_count": {
+            "type": "integer"
+        },
+        "clicks_count": {
+            "type": "integer"
+        },
+        "subscribed_at": {
+            "type": "string"
+        },
+        "unsubscribed_at": {
+            "type": "null"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "fields": {
+            "type": "object",
+            "properties": {
+                "country": {
+                    "type": "null"
+                },
+                "city": {
+                    "type": "null"
+                },
+                "state": {
+                    "type": "null"
+                },
+                "z_i_p": {
+                    "type": "null"
+                }
+            },
+            "required": [
+                "name",
+                "last_name",
+                "company",
+                "country",
+                "city",
+                "phone",
+                "state",
+                "z_i_p"
+            ]
+        },
+        "groups": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "active_count": {
+                        "type": "integer"
+                    },
+                    "sent_count": {
+                        "type": "integer"
+                    },
+                    "opens_count": {
+                        "type": "integer"
+                    },
+                    "open_rate": {
+                        "type": "object",
+                        "properties": {
+                            "string": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "float",
+                            "string"
+                        ]
+                    },
+                    "clicks_count": {
+                        "type": "integer"
+                    },
+                    "click_rate": {
+                        "type": "object",
+                        "properties": {
+                            "string": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "float",
+                            "string"
+                        ]
+                    },
+                    "unsubscribed_count": {
+                        "type": "integer"
+                    },
+                    "unconfirmed_count": {
+                        "type": "integer"
+                    },
+                    "bounced_count": {
+                        "type": "integer"
+                    },
+                    "junk_count": {
+                        "type": "integer"
+                    },
+                    "created_at": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "active_count",
+                    "sent_count",
+                    "opens_count",
+                    "open_rate",
+                    "clicks_count",
+                    "click_rate",
+                    "unsubscribed_count",
+                    "unconfirmed_count",
+                    "bounced_count",
+                    "junk_count",
+                    "created_at"
+                ]
+            }
+        },
+        "opted_in_at": {
+            "type": "null"
+        },
+        "optin_ip": {
+            "type": "null"
+        }
+    },
+    "version": 1
+}

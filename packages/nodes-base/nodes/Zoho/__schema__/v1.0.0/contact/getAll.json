@@ -35,9 +35,6 @@
         "$process_flow": {
             "type": "boolean"
         },
-        "Assistant": {
-            "type": "null"
-        },
         "$locked_for_me": {
             "type": "boolean"
         },
@@ -46,9 +43,6 @@
         },
         "$approved": {
             "type": "boolean"
-        },
-        "Reporting_To": {
-            "type": "null"
         },
         "$approval": {
             "type": "object",
@@ -81,9 +75,6 @@
         },
         "$editable": {
             "type": "boolean"
-        },
-        "Home_Phone": {
-            "type": "null"
         },
         "Created_By": {
             "type": "object",
@@ -126,9 +117,6 @@
                 "resubmit"
             ]
         },
-        "Other_Zip": {
-            "type": "null"
-        },
         "$layout_id": {
             "type": "object",
             "properties": {
@@ -146,9 +134,6 @@
         },
         "Full_Name": {
             "type": "string"
-        },
-        "Asst_Phone": {
-            "type": "null"
         },
         "Modified_By": {
             "type": "object",
@@ -172,16 +157,10 @@
         "$review": {
             "type": "null"
         },
-        "Email_Opt_Out": {
-            "type": "boolean"
-        },
         "Modified_Time": {
             "type": "string"
         },
         "Unsubscribed_Time": {
-            "type": "null"
-        },
-        "Other_Street": {
             "type": "null"
         },
         "Last_Name": {
@@ -213,9 +192,25 @@
         },
         "$approval_state": {
             "type": "string"
+        },
+        "Other_Zip": {
+            "type": "null"
+        },
+        "Email_Opt_Out": {
+            "type": "boolean"
+        },
+        "Other_Street": {
+            "type": "null"
+        },
+        "Assistant": {
+            "type": "null"
+        },
+        "Asst_Phone": {
+            "type": "null"
         }
     },
     "required": [
         "id"
-    ]
+    ],
+    "version": 1
 }

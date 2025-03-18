@@ -301,10 +301,19 @@
         "category": {
             "type": "string"
         },
-        "promoted_by": {
+        "skills": {
             "type": "string"
         },
-        "skills": {
+        "needs_attention": {
+            "type": "string"
+        },
+        "action_status": {
+            "type": "string"
+        },
+        "actions_taken": {
+            "type": "string"
+        },
+        "promoted_by": {
             "type": "string"
         },
         "proposed_by": {
@@ -328,13 +337,7 @@
         "proposed_on": {
             "type": "string"
         },
-        "actions_taken": {
-            "type": "string"
-        },
         "overview": {
-            "type": "string"
-        },
-        "needs_attention": {
             "type": "string"
         },
         "task_for": {
@@ -352,103 +355,15 @@
                 "value"
             ]
         },
-        "action_status": {
-            "type": "string"
-        },
         "x_caci_sg_meraki_device_alert": {
             "type": "string"
         }
     },
     "required": [
-        "parent",
-        "made_sla",
-        "caused_by",
-        "watch_list",
-        "upon_reject",
-        "sys_updated_on",
-        "child_incidents",
-        "hold_reason",
-        "origin_table",
-        "task_effective_number",
-        "approval_history",
-        "number",
-        "resolved_by",
-        "sys_updated_by",
-        "opened_by",
-        "user_input",
-        "sys_created_on",
         "sys_domain",
-        "state",
-        "route_reason",
-        "sys_created_by",
-        "knowledge",
-        "order",
-        "calendar_stc",
-        "closed_at",
-        "cmdb_ci",
-        "contract",
-        "impact",
-        "active",
-        "work_notes_list",
-        "business_service",
-        "business_impact",
-        "priority",
         "sys_domain_path",
-        "rfc",
-        "time_worked",
-        "expected_start",
-        "opened_at",
-        "business_duration",
-        "group_list",
-        "work_end",
-        "caller_id",
-        "reopened_time",
-        "resolved_at",
-        "approval_set",
-        "subcategory",
-        "work_notes",
-        "universal_request",
-        "short_description",
-        "close_code",
-        "correlation_display",
-        "work_start",
-        "assignment_group",
-        "additional_assignee_list",
-        "business_stc",
-        "cause",
-        "description",
-        "origin_id",
-        "calendar_duration",
-        "close_notes",
-        "notify",
-        "service_offering",
         "sys_class_name",
-        "closed_by",
-        "follow_up",
-        "parent_incident",
-        "sys_id",
-        "contact_type",
-        "reopened_by",
-        "incident_state",
-        "urgency",
-        "problem_id",
-        "company",
-        "reassignment_count",
-        "activity_due",
-        "assigned_to",
-        "severity",
-        "comments",
-        "approval",
-        "sla_due",
-        "comments_and_work_notes",
-        "due_date",
-        "sys_mod_count",
-        "reopen_count",
-        "sys_tags",
-        "escalation",
-        "upon_approval",
-        "correlation_id",
-        "location",
-        "category"
-    ]
+        "sys_id"
+    ],
+    "version": 1
 }

@@ -1,6 +1,159 @@
 {
     "type": "object",
     "properties": {
+        "type": {
+            "type": "integer"
+        },
+        "content": {
+            "type": "string"
+        },
+        "mentions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "username": {
+                        "type": "string"
+                    },
+                    "discriminator": {
+                        "type": "string"
+                    },
+                    "public_flags": {
+                        "type": "integer"
+                    },
+                    "flags": {
+                        "type": "integer"
+                    },
+                    "banner": {
+                        "type": "null"
+                    },
+                    "accent_color": {
+                        "type": "null"
+                    },
+                    "avatar_decoration_data": {
+                        "type": "null"
+                    },
+                    "banner_color": {
+                        "type": "null"
+                    },
+                    "clan": {
+                        "type": "null"
+                    },
+                    "primary_guild": {
+                        "type": "null"
+                    }
+                },
+                "required": [
+                    "id",
+                    "username",
+                    "avatar",
+                    "discriminator",
+                    "public_flags",
+                    "flags",
+                    "banner",
+                    "accent_color",
+                    "global_name",
+                    "avatar_decoration_data",
+                    "banner_color",
+                    "clan",
+                    "primary_guild"
+                ]
+            }
+        },
+        "mention_roles": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "attachments": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "filename": {
+                        "type": "string"
+                    },
+                    "size": {
+                        "type": "integer"
+                    },
+                    "url": {
+                        "type": "string"
+                    },
+                    "proxy_url": {
+                        "type": "string"
+                    },
+                    "width": {
+                        "type": "integer"
+                    },
+                    "height": {
+                        "type": "integer"
+                    },
+                    "content_type": {
+                        "type": "string"
+                    },
+                    "placeholder": {
+                        "type": "string"
+                    },
+                    "placeholder_version": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "id",
+                    "filename",
+                    "size",
+                    "url",
+                    "proxy_url",
+                    "width",
+                    "height",
+                    "content_type",
+                    "placeholder",
+                    "placeholder_version"
+                ]
+            }
+        },
+        "embeds": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "color": {
+                        "type": "integer"
+                    },
+                    "content_scan_version": {
+                        "type": "integer"
+                    },
+                    "description": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "type"
+                ]
+            }
+        },
+        "timestamp": {
+            "type": "string"
+        },
+        "flags": {
+            "type": "integer"
+        },
         "id": {
             "type": "string"
         },
@@ -33,12 +186,6 @@
                 },
                 "banner_color": {
                     "type": "null"
-                },
-                "clan": {
-                    "type": "null"
-                },
-                "primary_guild": {
-                    "type": "null"
                 }
             },
             "required": [
@@ -49,155 +196,9 @@
                 "public_flags",
                 "flags",
                 "global_name",
-                "clan"
+                "clan",
+                "primary_guild"
             ]
-        },
-        "content": {
-            "type": "string"
-        },
-        "timestamp": {
-            "type": "string"
-        },
-        "type": {
-            "type": "integer"
-        },
-        "mentions": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "username": {
-                        "type": "string"
-                    },
-                    "discriminator": {
-                        "type": "string"
-                    },
-                    "public_flags": {
-                        "type": "integer"
-                    },
-                    "flags": {
-                        "type": "integer"
-                    },
-                    "bot": {
-                        "type": "boolean"
-                    },
-                    "banner": {
-                        "type": "null"
-                    },
-                    "accent_color": {
-                        "type": "null"
-                    },
-                    "banner_color": {
-                        "type": "null"
-                    },
-                    "clan": {
-                        "type": "null"
-                    },
-                    "primary_guild": {
-                        "type": "null"
-                    }
-                },
-                "required": [
-                    "id",
-                    "username",
-                    "avatar",
-                    "discriminator",
-                    "public_flags",
-                    "flags",
-                    "banner",
-                    "accent_color",
-                    "global_name",
-                    "avatar_decoration_data",
-                    "banner_color",
-                    "clan"
-                ]
-            }
-        },
-        "mention_roles": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "attachments": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "filename": {
-                        "type": "string"
-                    },
-                    "size": {
-                        "type": "integer"
-                    },
-                    "url": {
-                        "type": "string"
-                    },
-                    "proxy_url": {
-                        "type": "string"
-                    },
-                    "content_type": {
-                        "type": "string"
-                    },
-                    "width": {
-                        "type": "integer"
-                    },
-                    "height": {
-                        "type": "integer"
-                    },
-                    "placeholder": {
-                        "type": "string"
-                    },
-                    "placeholder_version": {
-                        "type": "integer"
-                    }
-                },
-                "required": [
-                    "id",
-                    "filename",
-                    "size",
-                    "url",
-                    "proxy_url"
-                ]
-            }
-        },
-        "embeds": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "type": {
-                        "type": "string"
-                    },
-                    "description": {
-                        "type": "string"
-                    },
-                    "color": {
-                        "type": "integer"
-                    },
-                    "timestamp": {
-                        "type": "string"
-                    },
-                    "content_scan_version": {
-                        "type": "integer"
-                    },
-                    "title": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "type"
-                ]
-            }
-        },
-        "flags": {
-            "type": "integer"
         },
         "pinned": {
             "type": "boolean"
@@ -208,5 +209,6 @@
         "tts": {
             "type": "boolean"
         }
-    }
+    },
+    "version": 1
 }

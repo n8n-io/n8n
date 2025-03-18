@@ -1,67 +1,80 @@
 {
-	"type": "object",
-	"properties": {
-		"id": {
-			"type": "string"
-		},
-		"identifier": {
-			"type": "string"
-		},
-		"title": {
-			"type": "string"
-		},
-		"priority": {
-			"type": "integer"
-		},
-		"archivedAt": {
-			"type": "null"
-		},
-		"state": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "string"
-				},
-				"name": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"id",
-				"name"
-			]
-		},
-		"createdAt": {
-			"type": "string"
-		},
-		"creator": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "string"
-				},
-				"displayName": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"id",
-				"displayName"
-			]
-		}
-	},
-	"required": [
-		"id",
-		"identifier",
-		"title",
-		"priority",
-		"archivedAt",
-		"assignee",
-		"state",
-		"createdAt",
-		"creator",
-		"description",
-		"dueDate",
-		"cycle"
-	]
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "identifier": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "priority": {
+            "type": "integer"
+        },
+        "assignee": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "displayName": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "displayName"
+            ]
+        },
+        "state": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "name"
+            ]
+        },
+        "createdAt": {
+            "type": "string"
+        },
+        "creator": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "displayName": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "displayName"
+            ]
+        }
+    },
+    "required": [
+        "id",
+        "identifier",
+        "title",
+        "priority",
+        "archivedAt",
+        "assignee",
+        "state",
+        "createdAt",
+        "creator",
+        "description",
+        "dueDate",
+        "cycle"
+    ],
+    "version": 1
 }

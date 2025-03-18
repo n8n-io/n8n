@@ -67,26 +67,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "account_sid",
-        "api_version",
-        "body",
-        "date_created",
-        "date_sent",
-        "date_updated",
-        "direction",
-        "error_code",
-        "error_message",
-        "from",
-        "messaging_service_sid",
-        "num_media",
-        "num_segments",
-        "price",
-        "price_unit",
-        "sid",
-        "status",
-        "subresource_uris",
-        "to",
-        "uri"
-    ]
+    "version": 1
 }

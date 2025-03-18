@@ -59,13 +59,13 @@
                             ]
                         }
                     },
+                    "From": {
+                        "type": "string"
+                    },
                     "To": {
                         "type": "string"
                     },
                     "Subject": {
-                        "type": "string"
-                    },
-                    "From": {
                         "type": "string"
                     }
                 },
@@ -77,10 +77,11 @@
                     "sizeEstimate",
                     "historyId",
                     "internalDate",
-                    "To",
+                    "labels",
                     "From"
                 ]
             }
         }
-    }
+    },
+    "version": 1
 }

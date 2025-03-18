@@ -106,5 +106,6 @@
         "default_group_id",
         "report_csv",
         "user_fields"
-    ]
+    ],
+    "version": 1
 }

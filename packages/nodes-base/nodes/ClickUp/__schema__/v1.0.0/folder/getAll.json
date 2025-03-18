@@ -7,12 +7,6 @@
         "name": {
             "type": "string"
         },
-        "orderindex": {
-            "type": "integer"
-        },
-        "override_statuses": {
-            "type": "boolean"
-        },
         "hidden": {
             "type": "boolean"
         },
@@ -81,12 +75,6 @@
                     "orderindex": {
                         "type": "integer"
                     },
-                    "content": {
-                        "type": "string"
-                    },
-                    "priority": {
-                        "type": "null"
-                    },
                     "task_count": {
                         "type": "integer"
                     },
@@ -148,6 +136,9 @@
                     },
                     "permission_level": {
                         "type": "string"
+                    },
+                    "content": {
+                        "type": "string"
                     }
                 },
                 "required": [
@@ -184,5 +175,6 @@
         "statuses",
         "lists",
         "permission_level"
-    ]
+    ],
+    "version": 1
 }

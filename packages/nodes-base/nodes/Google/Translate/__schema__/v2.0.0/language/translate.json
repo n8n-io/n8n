@@ -11,5 +11,6 @@
     "required": [
         "translatedText",
         "detectedSourceLanguage"
-    ]
+    ],
+    "version": 1
 }
