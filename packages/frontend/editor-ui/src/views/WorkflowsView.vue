@@ -16,7 +16,6 @@ import {
 	VIEWS,
 	DEFAULT_WORKFLOW_PAGE_SIZE,
 	MODAL_CONFIRM,
-	VALID_FOLDER_NAME_REGEX,
 } from '@/constants';
 import type {
 	IUser,
@@ -59,6 +58,7 @@ import { debounce } from 'lodash-es';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useFoldersStore } from '@/stores/folders.store';
+import { useFolders } from '@/composables/useFolders';
 
 interface Filters extends BaseFilters {
 	status: string | boolean;
@@ -84,6 +84,7 @@ const route = useRoute();
 const router = useRouter();
 const message = useMessage();
 const toast = useToast();
+const folderHelpers = useFolders();
 
 const sourceControlStore = useSourceControlStore();
 const usersStore = useUsersStore();
@@ -897,8 +898,7 @@ const createFolder = async (
 		{
 			confirmButtonText: i18n.baseText('generic.create'),
 			cancelButtonText: i18n.baseText('generic.cancel'),
-			inputErrorMessage: i18n.baseText('folders.invalidName.message'),
-			inputPattern: VALID_FOLDER_NAME_REGEX,
+			inputValidator: folderHelpers.validateFolderName,
 			customClass: 'add-folder-modal',
 		},
 	);
@@ -979,10 +979,9 @@ const renameFolder = async (folderId: string) => {
 		{
 			confirmButtonText: i18n.baseText('generic.rename'),
 			cancelButtonText: i18n.baseText('generic.cancel'),
-			inputErrorMessage: i18n.baseText('folders.invalidName.message'),
 			inputValue: folder.name,
-			inputPattern: VALID_FOLDER_NAME_REGEX,
 			customClass: 'rename-folder-modal',
+			inputValidator: folderHelpers.validateFolderName,
 		},
 	);
 	const promptResponse = await promptResponsePromise;
