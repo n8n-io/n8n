@@ -362,6 +362,31 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			projects.getIconPickerButton().should('contain', '😀');
 			projects.getMenuItems().contains(NEW_PROJECT_NAME).should('contain', '😀');
 		});
+
+		it('should be able to create a workflow when in the workflow editor', () => {
+			cy.signinAsOwner();
+			workflowPage.actions.visit();
+			workflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+			workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
+			workflowPage.actions.saveWorkflowOnButtonClick();
+
+			cy.url().then((url) => {
+				createResource('workflow', 'Personal');
+				cy.get('body').click();
+				workflowPage.getters.canvasNodes().should('not.have.length');
+				cy.go('back');
+
+				cy.url().should('eq', url);
+				workflowPage.getters.canvasNodes().should('have.length', 2);
+
+				createResource('workflow', 'Personal');
+				cy.url().then((url) => {
+					const urlObj = new URL(url);
+					expect(urlObj.pathname).to.include('/workflow/new');
+					workflowPage.getters.canvasNodes().should('not.have.length');
+				});
+			});
+		});
 	});
 
 	describe('when moving resources between projects', () => {
@@ -609,31 +634,6 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.credentialCards()
 				.filter(':contains("Credential in Project 1")')
 				.should('have.length', 1);
-		});
-	});
-
-	it('should be able to create a workflow when in the workflow editor', () => {
-		cy.signinAsOwner();
-		workflowPage.actions.visit();
-		workflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
-		workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
-		workflowPage.actions.saveWorkflowOnButtonClick();
-
-		cy.url().then((url) => {
-			createResource('workflow', 'Personal');
-			cy.get('body').click();
-			workflowPage.getters.canvasNodes().should('not.have.length');
-			cy.go('back');
-
-			cy.url().should('eq', url);
-			workflowPage.getters.canvasNodes().should('have.length', 2);
-
-			createResource('workflow', 'Personal');
-			cy.url().then((url) => {
-				const urlObj = new URL(url);
-				expect(urlObj.pathname).to.include('/workflow/new');
-				workflowPage.getters.canvasNodes().should('not.have.length');
-			});
 		});
 	});
 });
