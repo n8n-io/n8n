@@ -16,6 +16,7 @@ import {
 	VIEWS,
 	DEFAULT_WORKFLOW_PAGE_SIZE,
 	MODAL_CONFIRM,
+	COMMUNITY_PLUS_ENROLLMENT_MODAL,
 } from '@/constants';
 import type {
 	IUser,
@@ -59,6 +60,7 @@ import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useFolders } from '@/composables/useFolders';
+import { useUsageStore } from '@/stores/usage.store';
 
 interface Filters extends BaseFilters {
 	status: string | boolean;
@@ -96,6 +98,7 @@ const telemetry = useTelemetry();
 const uiStore = useUIStore();
 const tagsStore = useTagsStore();
 const foldersStore = useFoldersStore();
+const usageStore = useUsageStore();
 
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
@@ -308,6 +311,11 @@ const hasFilters = computed(() => {
 	);
 });
 
+const isCommunity = computed(() => usageStore.planName.toLowerCase() === 'community');
+const canUserRegisterCommunityPlus = computed(
+	() => getResourcePermissions(usersStore.currentUser?.globalScopes).community.register,
+);
+
 /**
  * WATCHERS, STORE SUBSCRIPTIONS AND EVENT BUS HANDLERS
  */
@@ -393,6 +401,7 @@ const initialize = async () => {
 		usersStore.fetchUsers(),
 		fetchWorkflows(),
 		workflowsStore.fetchActiveWorkflows(),
+		usageStore.getLicenseInfo(),
 	]);
 	breadcrumbsLoading.value = false;
 	workflowsAndFolders.value = resourcesPage;
@@ -1007,6 +1016,14 @@ const renameFolder = async (folderId: string) => {
 };
 
 const createFolderInCurrent = async () => {
+	// Show the community plus enrollment modal if the user is in a community plan
+	if (isCommunity.value && canUserRegisterCommunityPlus.value) {
+		uiStore.openModalWithData({
+			name: COMMUNITY_PLUS_ENROLLMENT_MODAL,
+			data: { customHeading: i18n.baseText('folders.registeredCommunity.cta.heading') },
+		});
+		return;
+	}
 	if (!route.params.projectId) return;
 	const currentParent = currentFolder.value?.name || projectName.value;
 	if (!currentParent) return;
