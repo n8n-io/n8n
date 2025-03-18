@@ -89,6 +89,7 @@
     "@azure/keyvault-secrets": "^4.8.0",
     "@google-cloud/secret-manager": "^5.6.0",
     "@n8n/api-types": "workspace:*",
+    "@n8n/backend-core": "workspace:*",
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/di": "workspace:*",
