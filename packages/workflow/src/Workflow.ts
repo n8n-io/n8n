@@ -117,7 +117,7 @@ export class Workflow {
 
 		this.connectionsBySourceNode = this.getConnectionsBySourceNode(parameters.connections);
 		this.connectionsByDestinationNode = Workflow.getConnectionsByDestination(
-			parameters.connections,
+			this.connectionsBySourceNode,
 		);
 
 		this.active = parameters.active || false;
