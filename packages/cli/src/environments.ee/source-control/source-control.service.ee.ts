@@ -259,13 +259,20 @@ export class SourceControlService {
 
 		const filesToBePushed = new Set<string>();
 		const filesToBeDeleted = new Set<string>();
-		filesToPush.forEach((e) => {
-			if (e.status !== 'deleted') {
-				filesToBePushed.add(e.file);
-			} else {
-				filesToBeDeleted.add(e.file);
-			}
-		});
+
+		/*
+			Exclude tags, variables and folders JSON file from being deleted as
+			we keep track of them in a single file unlike workflows and credentials
+		*/
+		filesToPush
+			.filter((f) => ['workflow', 'credential'].includes(f.type))
+			.forEach((e) => {
+				if (e.status !== 'deleted') {
+					filesToBePushed.add(e.file);
+				} else {
+					filesToBeDeleted.add(e.file);
+				}
+			});
 
 		this.sourceControlExportService.rmFilesFromExportFolder(filesToBeDeleted);
 
@@ -288,15 +295,21 @@ export class SourceControlService {
 			});
 		}
 
-		if (filesToPush.find((e) => e.type === 'tags')) {
+		const tagChanges = filesToPush.find((e) => e.type === 'tags');
+		if (tagChanges) {
+			filesToBePushed.add(tagChanges.file);
 			await this.sourceControlExportService.exportTagsToWorkFolder();
 		}
 
-		if (filesToPush.find((e) => e.type === 'folders')) {
+		const folderChanges = filesToPush.find((e) => e.type === 'folders');
+		if (folderChanges) {
+			filesToBePushed.add(folderChanges.file);
 			await this.sourceControlExportService.exportFoldersToWorkFolder();
 		}
 
-		if (filesToPush.find((e) => e.type === 'variables')) {
+		const variablesChanges = filesToPush.find((e) => e.type === 'variables');
+		if (variablesChanges) {
+			filesToBePushed.add(variablesChanges.file);
 			await this.sourceControlExportService.exportVariablesToWorkFolder();
 		}
 
@@ -928,7 +941,7 @@ export class SourceControlService {
 				foldersMappingsRemote.workflowMappings.findIndex(
 					(remote) =>
 						remote.parentFolderId === local.parentFolderId &&
-						remote.workflowId === remote.workflowId,
+						remote.workflowId === local.workflowId,
 				) === -1,
 		);
 
@@ -952,6 +965,32 @@ export class SourceControlService {
 				status: options.direction === 'push' ? 'created' : 'deleted',
 				location: options.direction === 'push' ? 'local' : 'remote',
 				conflict: options.direction === 'push' ? false : true,
+				file: getFoldersPath(this.gitFolder),
+				updatedAt: lastUpdatedFolder[0]?.updatedAt.toISOString(),
+			});
+		});
+
+		mappingsMissingInLocal.forEach((item) => {
+			sourceControlledFiles.push({
+				id: item.parentFolderId,
+				name: foldersMappingsLocal.folders.find((e) => e.id === item.parentFolderId)?.name ?? '',
+				type: 'folders',
+				status: 'modified',
+				location: options.direction === 'push' ? 'local' : 'remote',
+				conflict: true,
+				file: getFoldersPath(this.gitFolder),
+				updatedAt: lastUpdatedFolder[0]?.updatedAt.toISOString(),
+			});
+		});
+
+		mappingsMissingInRemote.forEach((item) => {
+			sourceControlledFiles.push({
+				id: item.parentFolderId,
+				name: foldersMappingsLocal.folders.find((e) => e.id === item.parentFolderId)?.name ?? '',
+				type: 'folders',
+				status: 'modified',
+				location: options.direction === 'push' ? 'local' : 'remote',
+				conflict: true,
 				file: getFoldersPath(this.gitFolder),
 				updatedAt: lastUpdatedFolder[0]?.updatedAt.toISOString(),
 			});
