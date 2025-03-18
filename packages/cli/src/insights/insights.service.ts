@@ -3,8 +3,8 @@ import type { ExecutionLifecycleHooks } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import type { ExecutionStatus, IRun, WorkflowExecuteMode } from 'n8n-workflow';
 
-import { InsightsMetadata } from '@/databases/entities/insights-metadata';
-import { InsightsRaw } from '@/databases/entities/insights-raw';
+import { InsightsMetadata } from '@/insights/entities/insights-metadata';
+import { InsightsRaw } from '@/insights/entities/insights-raw';
 import { SharedWorkflow } from '@/databases/entities/shared-workflow';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 

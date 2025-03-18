@@ -10,7 +10,6 @@ import { ExternalHooksConfig } from './configs/external-hooks.config';
 import { ExternalSecretsConfig } from './configs/external-secrets.config';
 import { ExternalStorageConfig } from './configs/external-storage.config';
 import { GenericConfig } from './configs/generic.config';
-import { InsightsConfig } from './configs/insights.config';
 import { LicenseConfig } from './configs/license.config';
 import { LoggingConfig } from './configs/logging.config';
 import { MultiMainSetupConfig } from './configs/multi-main-setup.config';
@@ -36,7 +35,6 @@ export { S3Config } from './configs/external-storage.config';
 export { LOG_SCOPES } from './configs/logging.config';
 export type { LogScope } from './configs/logging.config';
 export { WorkflowsConfig } from './configs/workflows.config';
-export { InsightsConfig } from './configs/insights.config';
 
 @Config
 export class GlobalConfig {
@@ -140,7 +138,4 @@ export class GlobalConfig {
 
 	@Nested
 	partialExecutions: PartialExecutionsConfig;
-
-	@Nested
-	insights: InsightsConfig;
 }
