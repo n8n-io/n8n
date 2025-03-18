@@ -47,12 +47,6 @@ const sessionIdText = computed(() =>
 	}),
 );
 
-const copySessionIdText = computed(() =>
-	locale.baseText('chat.window.session.id.copy', {
-		interpolate: { id: props.sessionId },
-	}),
-);
-
 const inputPlaceholder = computed(() => {
 	if (props.messages.length > 0) {
 		return locale.baseText('chat.window.chat.placeholder');
@@ -150,7 +144,12 @@ async function copySessionId() {
 			@click="emit('clickHeader')"
 		>
 			<template #actions>
-				<N8nTooltip v-if="clipboard.isSupported.value" :content="copySessionIdText">
+				<N8nTooltip v-if="clipboard.isSupported.value">
+					<template #content>
+						{{ sessionId }}
+						<br />
+						{{ locale.baseText('chat.window.session.id.copy') }}
+					</template>
 					<N8nButton
 						data-test-id="chat-session-id"
 						type="secondary"

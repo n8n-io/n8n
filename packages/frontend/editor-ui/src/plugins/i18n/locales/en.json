@@ -211,7 +211,7 @@
 	"chat.window.chat.response.empty": "[No response. Make sure the last executed node outputs the content to display here]",
 	"chat.window.session.title": "Session",
 	"chat.window.session.id": "Session: {id}",
-	"chat.window.session.id.copy": "{id} (click to copy)",
+	"chat.window.session.id.copy": "(click to copy)",
 	"chat.window.session.reset": "Reset",
 	"chat.window.session.resetSession": "Reset chat session",
 	"chatEmbed.infoTip.description": "Add chat to external applications using the n8n chat package.",
