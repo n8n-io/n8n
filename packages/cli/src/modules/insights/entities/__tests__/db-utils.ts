@@ -5,14 +5,12 @@ import type { IWorkflowBase } from 'n8n-workflow';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 
-import { InsightsByPeriod } from '../entities/insights-by-period';
-import { InsightsMetadata } from '../entities/insights-metadata';
-import { InsightsRaw } from '../entities/insights-raw';
-import { InsightsByPeriodRepository } from '../repositories/insights-by-period.repository';
-import { InsightsMetadataRepository } from '../repositories/insights-metadata.repository';
-import { InsightsRawRepository } from '../repositories/insights-raw.repository';
+import { InsightsMetadata } from '../../entities/insights-metadata';
+import { InsightsRaw } from '../../entities/insights-raw';
+import { InsightsMetadataRepository } from '../../repositories/insights-metadata.repository';
+import { InsightsRawRepository } from '../../repositories/insights-raw.repository';
 
-export async function getWorkflowSharing(workflow: IWorkflowBase) {
+async function getWorkflowSharing(workflow: IWorkflowBase) {
 	return await Container.get(SharedWorkflowRepository).find({
 		where: { workflowId: workflow.id },
 		relations: { project: true },
@@ -63,26 +61,4 @@ export async function createRawInsightsEvent(
 		event.timestamp = parameters.timestamp.toUTC().toJSDate();
 	}
 	return await insightsRawRepository.save(event);
-}
-
-export async function createCompactedInsightsEvent(
-	workflow: WorkflowEntity,
-	parameters: {
-		type: InsightsByPeriod['type'];
-		value: number;
-		periodUnit: InsightsByPeriod['periodUnit'];
-		periodStart: DateTime;
-	},
-) {
-	const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
-	const metadata = await createMetadata(workflow);
-
-	const event = new InsightsByPeriod();
-	event.metaId = metadata.metaId;
-	event.type = parameters.type;
-	event.value = parameters.value;
-	event.periodUnit = parameters.periodUnit;
-	event.periodStart = parameters.periodStart.toUTC().startOf(parameters.periodUnit).toJSDate();
-
-	return await insightsByPeriodRepository.save(event);
 }

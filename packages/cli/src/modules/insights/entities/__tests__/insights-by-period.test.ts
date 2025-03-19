@@ -1,8 +1,8 @@
 import { Container } from '@n8n/di';
 
-import { InsightsRawRepository } from '@/modules/insights/repositories/insights-raw.repository';
+import * as testDb from '@test-integration/test-db';
 
-import * as testDb from '../../../../../test/integration/shared/test-db';
+import { InsightsRawRepository } from '../../repositories/insights-raw.repository';
 import { InsightsByPeriod } from '../insights-by-period';
 import type { PeriodUnits, TypeUnits } from '../insights-shared';
 

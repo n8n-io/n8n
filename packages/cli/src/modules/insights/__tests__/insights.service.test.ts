@@ -12,8 +12,8 @@ import { InsightsMetadataRepository } from '@/modules/insights/repositories/insi
 import { InsightsRawRepository } from '@/modules/insights/repositories/insights-raw.repository';
 import { createTeamProject } from '@test-integration/db/projects';
 import { createWorkflow } from '@test-integration/db/workflows';
+import * as testDb from '@test-integration/test-db';
 
-import * as testDb from '../../../../test/integration/shared/test-db';
 import { InsightsService } from '../insights.service';
 import { InsightsByPeriodRepository } from '../repositories/insights-by-period.repository';
 
