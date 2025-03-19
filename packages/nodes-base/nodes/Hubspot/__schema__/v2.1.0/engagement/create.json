@@ -25,11 +25,11 @@
                 "timestamp": {
                     "type": "integer"
                 },
-                "bodyPreview": {
-                    "type": "string"
-                },
                 "bodyPreviewIsTruncated": {
                     "type": "boolean"
+                },
+                "bodyPreview": {
+                    "type": "string"
                 },
                 "bodyPreviewHtml": {
                     "type": "string"
@@ -99,9 +99,6 @@
         "metadata": {
             "type": "object",
             "properties": {
-                "subject": {
-                    "type": "string"
-                },
                 "status": {
                     "type": "string"
                 }
