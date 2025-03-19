@@ -70,21 +70,7 @@
                 "executionOrder": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "executionOrder"
-            ]
-        },
-        "meta": {
-            "type": "object",
-            "properties": {
-                "templateCredsSetupCompleted": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "templateCredsSetupCompleted"
-            ]
+            }
         },
         "versionId": {
             "type": "string"
@@ -174,14 +160,17 @@
                                                 "settings": {
                                                     "type": "object",
                                                     "properties": {
-                                                        "userActivated": {
-                                                            "type": "boolean"
-                                                        },
                                                         "firstSuccessfulWorkflowId": {
                                                             "type": "string"
                                                         },
+                                                        "userActivated": {
+                                                            "type": "boolean"
+                                                        },
                                                         "userActivatedAt": {
                                                             "type": "integer"
+                                                        },
+                                                        "easyAIWorkflowOnboarded": {
+                                                            "type": "boolean"
                                                         },
                                                         "npsSurvey": {
                                                             "type": "object",
