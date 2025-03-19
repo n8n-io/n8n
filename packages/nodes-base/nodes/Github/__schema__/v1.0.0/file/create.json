@@ -199,5 +199,9 @@
             ]
         }
     },
+    "required": [
+        "content",
+        "commit"
+    ],
     "version": 1
 }
