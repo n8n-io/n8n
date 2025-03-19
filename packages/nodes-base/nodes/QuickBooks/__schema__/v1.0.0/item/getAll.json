@@ -4,9 +4,6 @@
         "Name": {
             "type": "string"
         },
-        "Description": {
-            "type": "string"
-        },
         "Active": {
             "type": "boolean"
         },
@@ -63,6 +60,9 @@
                 "CreateTime",
                 "LastUpdatedTime"
             ]
+        },
+        "Description": {
+            "type": "string"
         }
     },
     "version": 1
