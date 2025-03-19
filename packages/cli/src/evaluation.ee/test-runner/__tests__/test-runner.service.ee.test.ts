@@ -131,9 +131,22 @@ function mockEvaluationExecutionData(metrics: Record<string, GenericValue>) {
 	return mock<IRun>({
 		data: {
 			resultData: {
-				lastNodeExecuted: 'lastNode',
+				lastNodeExecuted: 'Success',
 				runData: {
-					lastNode: [
+					Success: [
+						{
+							data: {
+								main: [
+									[
+										{
+											json: metrics,
+										},
+									],
+								],
+							},
+						},
+					],
+					Fail: [
 						{
 							data: {
 								main: [

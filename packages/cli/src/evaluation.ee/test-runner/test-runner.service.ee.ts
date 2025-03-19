@@ -530,7 +530,7 @@ export class TestRunnerService {
 					this.logger.debug('Evaluation execution finished', { pastExecutionId });
 
 					// Extract the output of the last node executed in the evaluation workflow
-					const { addedMetrics, unknownMetrics } = metrics.addResults(
+					const { addedMetrics } = metrics.addResults(
 						this.extractEvaluationResult(evalExecution, evaluationWorkflow),
 					);
 
