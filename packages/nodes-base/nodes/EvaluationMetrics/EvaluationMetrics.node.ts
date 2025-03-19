@@ -88,7 +88,7 @@ export class EvaluationMetrics implements INodeType {
 				i,
 				newItem,
 				newData,
-				{ dotNotation: false, include: 'all' },
+				{ dotNotation: false, include: 'none' },
 				1,
 			);
 			metrics.push(returnItem);
