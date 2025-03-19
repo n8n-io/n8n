@@ -16,6 +16,9 @@
                 "accountId": {
                     "type": "string"
                 },
+                "emailAddress": {
+                    "type": "string"
+                },
                 "avatarUrls": {
                     "type": "object",
                     "properties": {
@@ -50,19 +53,14 @@
                 },
                 "accountType": {
                     "type": "string"
-                },
-                "emailAddress": {
-                    "type": "string"
                 }
             },
             "required": [
                 "self",
-                "accountId",
                 "avatarUrls",
                 "displayName",
                 "active",
-                "timeZone",
-                "accountType"
+                "timeZone"
             ]
         },
         "body": {
@@ -141,6 +139,9 @@
                 "accountId": {
                     "type": "string"
                 },
+                "emailAddress": {
+                    "type": "string"
+                },
                 "avatarUrls": {
                     "type": "object",
                     "properties": {
@@ -175,19 +176,14 @@
                 },
                 "accountType": {
                     "type": "string"
-                },
-                "emailAddress": {
-                    "type": "string"
                 }
             },
             "required": [
                 "self",
-                "accountId",
                 "avatarUrls",
                 "displayName",
                 "active",
-                "timeZone",
-                "accountType"
+                "timeZone"
             ]
         },
         "created": {
@@ -207,8 +203,7 @@
         "body",
         "updateAuthor",
         "created",
-        "updated",
-        "jsdPublic"
+        "updated"
     ],
     "version": 1
 }
