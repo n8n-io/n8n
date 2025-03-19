@@ -1,10 +1,10 @@
 {
     "type": "object",
     "properties": {
-        "timestamp": {
+        "profileUrl": {
             "type": "string"
         },
-        "profileUrl": {
+        "timestamp": {
             "type": "string"
         }
     },
