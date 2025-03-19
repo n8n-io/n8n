@@ -78,6 +78,12 @@
                     "id": {
                         "type": "integer"
                     },
+                    "username": {
+                        "type": "string"
+                    },
+                    "color": {
+                        "type": "string"
+                    },
                     "initials": {
                         "type": "string"
                     },
@@ -102,6 +108,9 @@
                 "properties": {
                     "id": {
                         "type": "integer"
+                    },
+                    "username": {
+                        "type": "string"
                     },
                     "initials": {
                         "type": "string"
