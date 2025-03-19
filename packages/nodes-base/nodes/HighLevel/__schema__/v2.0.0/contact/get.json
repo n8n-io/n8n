@@ -13,19 +13,7 @@
         "locationId": {
             "type": "string"
         },
-        "firstName": {
-            "type": "string"
-        },
-        "firstNameLowerCase": {
-            "type": "string"
-        },
-        "fullNameLowerCase": {
-            "type": "string"
-        },
-        "lastName": {
-            "type": "string"
-        },
-        "lastNameLowerCase": {
+        "phone": {
             "type": "string"
         },
         "country": {
@@ -69,15 +57,6 @@
                 "timestamp"
             ]
         },
-        "emailLowerCase": {
-            "type": "string"
-        },
-        "email": {
-            "type": "string"
-        },
-        "phone": {
-            "type": "string"
-        },
         "additionalPhones": {
             "type": "array",
             "items": {
@@ -95,6 +74,15 @@
                     "phoneLabel"
                 ]
             }
+        },
+        "fullNameLowerCase": {
+            "type": "string"
+        },
+        "firstName": {
+            "type": "string"
+        },
+        "firstNameLowerCase": {
+            "type": "string"
         },
         "tags": {
             "type": "array",
@@ -119,6 +107,18 @@
                     "value"
                 ]
             }
+        },
+        "lastName": {
+            "type": "string"
+        },
+        "lastNameLowerCase": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "emailLowerCase": {
+            "type": "string"
         }
     },
     "version": 1
