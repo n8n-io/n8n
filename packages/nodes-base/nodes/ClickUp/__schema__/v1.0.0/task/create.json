@@ -4,9 +4,6 @@
         "id": {
             "type": "string"
         },
-        "custom_id": {
-            "type": "null"
-        },
         "custom_item_id": {
             "type": "integer"
         },
@@ -54,9 +51,6 @@
         },
         "date_updated": {
             "type": "string"
-        },
-        "date_closed": {
-            "type": "null"
         },
         "archived": {
             "type": "boolean"
@@ -210,9 +204,6 @@
                                         "color"
                                     ]
                                 }
-                            },
-                            "new_drop_down": {
-                                "type": "boolean"
                             }
                         }
                     },
