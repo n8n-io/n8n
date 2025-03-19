@@ -163,12 +163,19 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 	 * @param folderId folder to get the breadcrumbs for
 	 * @returns
 	 */
-	async function getHiddenBreadcrumbsItems(projectId: string, folderId: string) {
-		const path = await getFolderPath(projectId, folderId);
-		const filteredPath = path.filter((folder) => folder.id !== folderId);
+	async function getHiddenBreadcrumbsItems(
+		project: { id: string; name: string },
+		folderId: string,
+	) {
+		const path = await getFolderPath(project.id, folderId);
 
-		if (filteredPath.length === 0) {
+		if (path.length === 0) {
+			// Even when path is empty, include the project item
 			return [
+				{
+					id: project.id,
+					label: project.name,
+				},
 				{
 					id: '-1',
 					label: i18n.baseText('folders.breadcrumbs.noTruncated.message'),
@@ -180,8 +187,6 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		const processFolderWithChildren = (
 			folder: FolderTreeResponseItem,
 		): Array<{ id: string; label: string }> => {
-			if (folder.id === folderId) return [];
-
 			const result = [
 				{
 					id: folder.id,
@@ -191,24 +196,22 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 
 			// Process all children and their descendants
 			if (folder.children?.length) {
-				const childItems = folder.children
-					.filter((child) => child.id !== folderId)
-					.flatMap((child) => {
-						// Add this child
-						const childResult = [
-							{
-								id: child.id,
-								label: child.name,
-							},
-						];
+				const childItems = folder.children.flatMap((child) => {
+					// Add this child
+					const childResult = [
+						{
+							id: child.id,
+							label: child.name,
+						},
+					];
 
-						// Add all descendants of this child
-						if (child.children?.length) {
-							childResult.push(...processFolderWithChildren(child).slice(1));
-						}
+					// Add all descendants of this child
+					if (child.children?.length) {
+						childResult.push(...processFolderWithChildren(child).slice(1));
+					}
 
-						return childResult;
-					});
+					return childResult;
+				});
 
 				result.push(...childItems);
 			}
@@ -216,8 +219,14 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 			return result;
 		};
 
-		// Process all folders in the path
-		return filteredPath.flatMap(processFolderWithChildren);
+		// Start with the project item, then add all processed folders
+		return [
+			{
+				id: project.id,
+				label: project.name,
+			},
+			...path.flatMap(processFolderWithChildren),
+		];
 	}
 
 	return {

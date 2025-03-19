@@ -274,11 +274,11 @@ async function deleteWorkflow() {
 }
 
 const fetchHiddenBreadCrumbsItems = async () => {
-	if (!props.data.homeProject?.id || !props.data.parentFolder) {
+	if (!props.data.homeProject?.id || !projectName.value || !props.data.parentFolder) {
 		hiddenBreadcrumbsItemsAsync.value = Promise.resolve([]);
 	} else {
 		hiddenBreadcrumbsItemsAsync.value = foldersStore.getHiddenBreadcrumbsItems(
-			props.data.homeProject.id,
+			{ id: props.data.homeProject.id, name: projectName.value },
 			props.data.parentFolder.id,
 		);
 	}
@@ -344,6 +344,7 @@ const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
 						:path-truncated="true"
 						:show-border="true"
 						:highlight-last-item="false"
+						hidden-items-trigger="hover"
 						theme="small"
 						data-test-id="workflow-card-breadcrumbs"
 						@tooltip-opened="fetchHiddenBreadCrumbsItems"

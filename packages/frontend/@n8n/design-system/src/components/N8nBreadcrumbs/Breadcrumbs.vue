@@ -19,6 +19,7 @@ type Props = {
 	loadingSkeletonRows?: number;
 	separator?: string;
 	highlightLastItem?: boolean;
+	hiddenItemsTrigger?: 'hover' | 'click';
 	// Setting this to true will show the ellipsis even if there are no hidden items
 	pathTruncated?: boolean;
 };
@@ -40,6 +41,7 @@ const props = withDefaults(defineProps<Props>(), {
 	separator: '/',
 	highlightLastItem: true,
 	isPathTruncated: false,
+	hiddenItemsTrigger: 'click',
 });
 
 const loadedHiddenItems = ref<PathItem[]>([]);
@@ -170,7 +172,7 @@ const handleTooltipClose = () => {
 					v-else
 					:popper-class="$style.tooltip"
 					:disabled="dropdownDisabled"
-					trigger="click"
+					:trigger="hiddenItemsTrigger"
 					@before-show="handleTooltipShow"
 					@hide="handleTooltipClose"
 				>
