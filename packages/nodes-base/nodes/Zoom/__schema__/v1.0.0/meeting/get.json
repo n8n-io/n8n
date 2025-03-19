@@ -129,6 +129,9 @@
                             "country_name": {
                                 "type": "string"
                             },
+                            "city": {
+                                "type": "string"
+                            },
                             "number": {
                                 "type": "string"
                             },
@@ -136,9 +139,6 @@
                                 "type": "string"
                             },
                             "country": {
-                                "type": "string"
-                            },
-                            "city": {
                                 "type": "string"
                             }
                         },
