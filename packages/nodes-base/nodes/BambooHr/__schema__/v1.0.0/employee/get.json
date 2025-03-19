@@ -3,6 +3,15 @@
     "properties": {
         "id": {
             "type": "string"
+        },
+        "displayName": {
+            "type": "string"
+        },
+        "firstName": {
+            "type": "string"
+        },
+        "lastName": {
+            "type": "string"
         }
     },
     "required": [
