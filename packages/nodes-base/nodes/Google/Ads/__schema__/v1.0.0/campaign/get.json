@@ -22,20 +22,8 @@
         "costMicros": {
             "type": "string"
         },
-        "ctr": {
-            "type": "number"
-        },
-        "averageCost": {
-            "type": "number"
-        },
-        "averageCpm": {
-            "type": "number"
-        },
         "impressions": {
             "type": "string"
-        },
-        "interactionRate": {
-            "type": "number"
         },
         "interactions": {
             "type": "string"
@@ -45,6 +33,18 @@
         },
         "amountMicros": {
             "type": "string"
+        },
+        "ctr": {
+            "type": "number"
+        },
+        "averageCost": {
+            "type": "number"
+        },
+        "averageCpm": {
+            "type": "number"
+        },
+        "interactionRate": {
+            "type": "number"
         }
     },
     "required": [
