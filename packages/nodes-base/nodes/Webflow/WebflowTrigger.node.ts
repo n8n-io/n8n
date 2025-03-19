@@ -1,8 +1,8 @@
 import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 import { VersionedNodeType } from 'n8n-workflow';
 
-import { WebflowTriggerV1 } from './V1/WebflowTriggerV1.node';
-import { WebflowTriggerV2 } from './V2/WebflowTriggerV2.node';
+import { WebflowTriggerV1 } from './V1/WebflowTriggerV1.node.ts';
+import { WebflowTriggerV2 } from './V2/WebflowTriggerV2.node.ts';
 
 export class WebflowTrigger extends VersionedNodeType {
 	constructor() {

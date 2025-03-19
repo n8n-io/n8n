@@ -1,8 +1,8 @@
 import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 import { VersionedNodeType } from 'n8n-workflow';
 
-import { MailerLiteTriggerV1 } from './v1/MailerLiteTriggerV1.node';
-import { MailerLiteTriggerV2 } from './v2/MailerLiteTriggerV2.node';
+import { MailerLiteTriggerV1 } from './v1/MailerLiteTriggerV1.node.ts';
+import { MailerLiteTriggerV2 } from './v2/MailerLiteTriggerV2.node.ts';
 
 export class MailerLiteTrigger extends VersionedNodeType {
 	constructor() {

@@ -1,8 +1,8 @@
 import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 import { VersionedNodeType } from 'n8n-workflow';
 
-import { PostgresV1 } from './v1/PostgresV1.node';
-import { PostgresV2 } from './v2/PostgresV2.node';
+import { PostgresV1 } from './v1/PostgresV1.node.ts';
+import { PostgresV2 } from './v2/PostgresV2.node.ts';
 
 export class Postgres extends VersionedNodeType {
 	constructor() {

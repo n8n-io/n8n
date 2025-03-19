@@ -2,7 +2,7 @@ import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import type { IHttpRequestMethods, ILoadOptionsFunctions } from 'n8n-workflow';
 
-import { Jira } from '../Jira.node';
+import { Jira } from '../Jira.node.ts';
 
 const ISSUE_KEY = 'KEY-1';
 

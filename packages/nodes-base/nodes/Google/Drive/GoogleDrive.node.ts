@@ -1,8 +1,8 @@
 import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 import { VersionedNodeType } from 'n8n-workflow';
 
-import { GoogleDriveV1 } from './v1/GoogleDriveV1.node';
-import { GoogleDriveV2 } from './v2/GoogleDriveV2.node';
+import { GoogleDriveV1 } from './v1/GoogleDriveV1.node.ts';
+import { GoogleDriveV2 } from './v2/GoogleDriveV2.node.ts';
 
 export class GoogleDrive extends VersionedNodeType {
 	constructor() {

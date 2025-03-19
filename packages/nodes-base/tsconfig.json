@@ -4,13 +4,13 @@
 		"@n8n/typescript-config/tsconfig.backend.json"
 	],
 	"compilerOptions": {
+		"baseUrl": ".",
 		"paths": {
 			"@test/*": ["./test/*"],
-			"@utils/*": ["./utils/*"],
-			"@n8n/constants*": ["../@n8n/constants/src*"],
-			"@n8n/utils*": ["../@n8n/utils/src*"]
+			"@utils/*": ["./utils/*"]
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
+		"allowImportingTsExtensions": true,
 		// TODO: remove all options below this line
 		"noImplicitReturns": false,
 		"useUnknownInCatchVariables": false

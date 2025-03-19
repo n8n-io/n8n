@@ -2,7 +2,7 @@ import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import { SEND_AND_WAIT_OPERATION, type IExecuteFunctions } from 'n8n-workflow';
 
-import { EmailSendV2, versionDescription } from '../../v2/EmailSendV2.node';
+import { EmailSendV2, versionDescription } from '../../v2/EmailSendV2.node.ts';
 import * as utils from '../../v2/utils';
 
 const transporter = { sendMail: jest.fn() };

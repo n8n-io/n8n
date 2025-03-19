@@ -1,8 +1,8 @@
 import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 import { VersionedNodeType } from 'n8n-workflow';
 
-import { LemlistV1 } from './v1/LemlistV1.node';
-import { LemlistV2 } from './v2/LemlistV2.node';
+import { LemlistV1 } from './v1/LemlistV1.node.ts';
+import { LemlistV2 } from './v2/LemlistV2.node.ts';
 
 export class Lemlist extends VersionedNodeType {
 	constructor() {

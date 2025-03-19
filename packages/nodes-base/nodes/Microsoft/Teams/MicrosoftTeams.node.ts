@@ -1,8 +1,8 @@
 import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 import { VersionedNodeType } from 'n8n-workflow';
 
-import { MicrosoftTeamsV1 } from './v1/MicrosoftTeamsV1.node';
-import { MicrosoftTeamsV2 } from './v2/MicrosoftTeamsV2.node';
+import { MicrosoftTeamsV1 } from './v1/MicrosoftTeamsV1.node.ts';
+import { MicrosoftTeamsV2 } from './v2/MicrosoftTeamsV2.node.ts';
 
 export class MicrosoftTeams extends VersionedNodeType {
 	constructor() {

@@ -4,7 +4,7 @@ import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import * as Helpers from '@test/nodes/Helpers';
 import type { WorkflowTestData } from '@test/nodes/types';
 
-import { apiUrl } from '../Peekalink.node';
+import { apiUrl } from '../Peekalink.node.ts';
 
 describe('Peekalink Node', () => {
 	const exampleComPreview = {

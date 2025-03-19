@@ -1,8 +1,8 @@
 import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 import { VersionedNodeType } from 'n8n-workflow';
 
-import { MicrosoftExcelV1 } from './v1/MicrosoftExcelV1.node';
-import { MicrosoftExcelV2 } from './v2/MicrosoftExcelV2.node';
+import { MicrosoftExcelV1 } from './v1/MicrosoftExcelV1.node.ts';
+import { MicrosoftExcelV2 } from './v2/MicrosoftExcelV2.node.ts';
 
 export class MicrosoftExcel extends VersionedNodeType {
 	constructor() {
