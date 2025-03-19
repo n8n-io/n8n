@@ -19,9 +19,6 @@
                 "checkItemsChecked": {
                     "type": "integer"
                 },
-                "checkItemsEarliestDue": {
-                    "type": "null"
-                },
                 "comments": {
                     "type": "integer"
                 },
@@ -33,6 +30,9 @@
                 },
                 "lastUpdatedByAi": {
                     "type": "boolean"
+                },
+                "externalSource": {
+                    "type": "null"
                 },
                 "attachmentsByType": {
                     "type": "object",
@@ -56,9 +56,6 @@
                     "required": [
                         "trello"
                     ]
-                },
-                "externalSource": {
-                    "type": "null"
                 },
                 "location": {
                     "type": "boolean"
@@ -85,8 +82,8 @@
                 "dueComplete",
                 "lastUpdatedByAi",
                 "start",
-                "attachmentsByType",
                 "externalSource",
+                "attachmentsByType",
                 "location",
                 "votes",
                 "viewingMemberVoted",
@@ -223,6 +220,9 @@
                 },
                 "brightness": {
                     "type": "string"
+                },
+                "idPlugin": {
+                    "type": "null"
                 }
             },
             "required": [
@@ -244,8 +244,5 @@
             "type": "null"
         }
     },
-    "required": [
-        "id"
-    ],
     "version": 1
 }
