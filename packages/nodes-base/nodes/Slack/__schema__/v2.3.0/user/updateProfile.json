@@ -255,9 +255,6 @@
         "avatar_hash": {
             "type": "string"
         },
-        "start_date": {
-            "type": "string"
-        },
         "image_original": {
             "type": "string"
         },
@@ -269,9 +266,6 @@
         },
         "huddle_state": {
             "type": "string"
-        },
-        "huddle_state_expiration_ts": {
-            "type": "integer"
         },
         "first_name": {
             "type": "string"
@@ -302,6 +296,12 @@
         },
         "status_text_canonical": {
             "type": "string"
+        },
+        "start_date": {
+            "type": "string"
+        },
+        "huddle_state_expiration_ts": {
+            "type": "integer"
         }
     },
     "version": 1
