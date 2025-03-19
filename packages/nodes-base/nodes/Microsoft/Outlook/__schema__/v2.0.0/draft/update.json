@@ -79,52 +79,6 @@
                 "content"
             ]
         },
-        "sender": {
-            "type": "object",
-            "properties": {
-                "emailAddress": {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string"
-                        },
-                        "address": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "name",
-                        "address"
-                    ]
-                }
-            },
-            "required": [
-                "emailAddress"
-            ]
-        },
-        "from": {
-            "type": "object",
-            "properties": {
-                "emailAddress": {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string"
-                        },
-                        "address": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "name",
-                        "address"
-                    ]
-                }
-            },
-            "required": [
-                "emailAddress"
-            ]
-        },
         "toRecipients": {
             "type": "array",
             "items": {
@@ -212,6 +166,52 @@
             },
             "required": [
                 "flagStatus"
+            ]
+        },
+        "sender": {
+            "type": "object",
+            "properties": {
+                "emailAddress": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "address": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "address"
+                    ]
+                }
+            },
+            "required": [
+                "emailAddress"
+            ]
+        },
+        "from": {
+            "type": "object",
+            "properties": {
+                "emailAddress": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "address": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "address"
+                    ]
+                }
+            },
+            "required": [
+                "emailAddress"
             ]
         }
     },
