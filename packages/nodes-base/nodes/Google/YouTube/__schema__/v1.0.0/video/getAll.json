@@ -18,8 +18,7 @@
                 }
             },
             "required": [
-                "kind",
-                "videoId"
+                "kind"
             ]
         },
         "snippet": {
@@ -54,9 +53,7 @@
                                 }
                             },
                             "required": [
-                                "url",
-                                "width",
-                                "height"
+                                "url"
                             ]
                         },
                         "medium": {
@@ -73,9 +70,7 @@
                                 }
                             },
                             "required": [
-                                "url",
-                                "width",
-                                "height"
+                                "url"
                             ]
                         },
                         "high": {
@@ -92,9 +87,7 @@
                                 }
                             },
                             "required": [
-                                "url",
-                                "width",
-                                "height"
+                                "url"
                             ]
                         }
                     },
@@ -126,5 +119,11 @@
             ]
         }
     },
+    "required": [
+        "kind",
+        "etag",
+        "id",
+        "snippet"
+    ],
     "version": 1
 }
