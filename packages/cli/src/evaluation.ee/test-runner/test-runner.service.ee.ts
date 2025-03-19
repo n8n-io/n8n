@@ -37,6 +37,7 @@ import {
 	formatTestCaseExecutionInputData,
 	getPastExecutionTriggerNode,
 } from './utils.ee';
+import { EVALUATION_METRICS_NODE } from '@/constants';
 
 export interface TestRunMetadata {
 	testRunId: string;
@@ -307,6 +308,13 @@ export class TestRunnerService {
 	}
 
 	/**
+	 * Get the evaluation metrics nodes from a workflow.
+	 */
+	static getEvaluationMetricsNodes(workflow: IWorkflowBase) {
+		return workflow.nodes.filter((node) => node.type === EVALUATION_METRICS_NODE);
+	}
+
+	/**
 	 * Evaluation result is the first item in the output of the last node
 	 * executed in the evaluation workflow. Defaults to an empty object
 	 * in case the node doesn't produce any output items.
@@ -314,9 +322,7 @@ export class TestRunnerService {
 	private extractEvaluationResult(execution: IRun, evaluationWorkflow: IWorkflowBase): IDataObject {
 		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted;
 		assert(lastNodeExecuted, 'Could not find the last node executed in evaluation workflow');
-		const metricsNodes = evaluationWorkflow.nodes.filter(
-			(node) => node.type === 'n8n-nodes-base.evaluationMetrics',
-		);
+		const metricsNodes = TestRunnerService.getEvaluationMetricsNodes(evaluationWorkflow);
 		const metricsRunData = metricsNodes.flatMap(
 			(node) => execution.data.resultData.runData[node.name],
 		);
@@ -345,9 +351,7 @@ export class TestRunnerService {
 	 * Get the metrics to collect from the evaluation workflow execution results.
 	 */
 	private async getUsedTestMetricNames(evaluationWorkflow: IWorkflowBase) {
-		const metricsNodes = evaluationWorkflow.nodes.filter(
-			(node) => node.type === 'n8n-nodes-base.evaluationMetrics',
-		);
+		const metricsNodes = TestRunnerService.getEvaluationMetricsNodes(evaluationWorkflow);
 		const metrics = metricsNodes.map((node) => {
 			const metricsParameter = node.parameters?.metrics as AssignmentCollectionValue;
 			assert(metricsParameter, 'Metrics parameter not found');
