@@ -15,7 +15,6 @@ import type { User } from '@/databases/entities/user';
 import type { Variables } from '@/databases/entities/variables';
 import { FolderRepository } from '@/databases/repositories/folder.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 
@@ -62,7 +61,6 @@ export class SourceControlService {
 		private sourceControlImportService: SourceControlImportService,
 		private tagRepository: TagRepository,
 		private folderRepository: FolderRepository,
-		private workflowRepository: WorkflowRepository,
 		private readonly eventService: EventService,
 	) {
 		const { gitFolder, sshFolder, sshKeyName } = sourceControlPreferencesService;
@@ -412,6 +410,12 @@ export class SourceControlService {
 			}
 		}
 
+		// Make sure the folders get processed first as the workflows depend on them
+		const foldersToBeImported = this.getFoldersToImport(statusResult);
+		if (foldersToBeImported) {
+			await this.sourceControlImportService.importFoldersFromWorkFolder(user, foldersToBeImported);
+		}
+
 		const workflowsToBeImported = this.getWorkflowsToImport(statusResult);
 		await this.sourceControlImportService.importWorkflowFromWorkFolder(
 			workflowsToBeImported,
@@ -446,11 +450,6 @@ export class SourceControlService {
 		}
 		const variablesToBeDeleted = this.getVariablesToDelete(statusResult);
 		await this.sourceControlImportService.deleteVariablesNotInWorkfolder(variablesToBeDeleted);
-
-		const foldersToBeImported = this.getFoldersToImport(statusResult);
-		if (foldersToBeImported ?? workflowsToBeImported) {
-			await this.sourceControlImportService.importFoldersFromWorkFolder(user);
-		}
 
 		const foldersToBeDeleted = this.getFoldersToDelete(statusResult);
 		await this.sourceControlImportService.deleteFoldersNotInWorkfolder(foldersToBeDeleted);
@@ -508,13 +507,8 @@ export class SourceControlService {
 			mappingsMissingInRemote,
 		} = await this.getStatusTagsMappings(options, sourceControlledFiles);
 
-		const {
-			foldersMissingInLocal,
-			foldersMissingInRemote,
-			foldersModifiedInEither,
-			folderMappingMissingInLocal,
-			folderMappingMissingInRemote,
-		} = await this.getStatusFoldersMapping(options, sourceControlledFiles);
+		const { foldersMissingInLocal, foldersMissingInRemote, foldersModifiedInEither } =
+			await this.getStatusFoldersMapping(options, sourceControlledFiles);
 
 		// #region Tracking Information
 		if (options.direction === 'push') {
@@ -551,8 +545,6 @@ export class SourceControlService {
 				foldersMissingInLocal,
 				foldersMissingInRemote,
 				foldersModifiedInEither,
-				folderMappingMissingInLocal,
-				folderMappingMissingInRemote,
 				sourceControlledFiles,
 			};
 		} else {
@@ -578,7 +570,9 @@ export class SourceControlService {
 		const wfModifiedInEither: SourceControlWorkflowVersionId[] = [];
 		wfLocalVersionIds.forEach((local) => {
 			const mismatchingIds = wfRemoteVersionIds.find(
-				(remote) => remote.id === local.id && remote.versionId !== local.versionId,
+				(remote) =>
+					remote.id === local.id &&
+					(remote.versionId !== local.versionId || remote.parentFolderId !== local.parentFolderId),
 			);
 			let name = (options?.preferLocalVersion ? local?.name : mismatchingIds?.name) ?? 'Workflow';
 			if (local.name && mismatchingIds?.name && local.name !== mismatchingIds.name) {
@@ -902,9 +896,6 @@ export class SourceControlService {
 			select: ['updatedAt'],
 		});
 
-		const remoteWorkflows = await this.sourceControlImportService.getRemoteVersionIdsFromFiles();
-		const workflowIds = remoteWorkflows.map((e) => e.id);
-
 		const foldersMappingsRemote =
 			await this.sourceControlImportService.getRemoteFoldersAndMappingsFromFile();
 		const foldersMappingsLocal =
@@ -932,24 +923,6 @@ export class SourceControlService {
 			foldersModifiedInEither.push(options.preferLocalVersion ? local : mismatchingIds);
 		});
 
-		const mappingsMissingInLocal = foldersMappingsRemote.workflowMappings.filter(
-			(remote) =>
-				foldersMappingsLocal.workflowMappings.findIndex(
-					(local) =>
-						local.parentFolderId === remote.parentFolderId &&
-						local.workflowId === remote.workflowId,
-				) === -1,
-		);
-
-		const mappingsMissingInRemote = foldersMappingsLocal.workflowMappings.filter(
-			(local) =>
-				foldersMappingsRemote.workflowMappings.findIndex(
-					(remote) =>
-						remote.parentFolderId === local.parentFolderId &&
-						remote.workflowId === local.workflowId,
-				) === -1,
-		);
-
 		foldersMissingInLocal.forEach((item) => {
 			sourceControlledFiles.push({
 				id: item.id,
@@ -975,40 +948,6 @@ export class SourceControlService {
 			});
 		});
 
-		console.log('missing in local mapping', mappingsMissingInLocal);
-		console.log('missing in remote mapping', mappingsMissingInRemote);
-
-		mappingsMissingInLocal.forEach((item) => {
-			sourceControlledFiles.push({
-				id: item.parentFolderId,
-				name:
-					foldersMappingsLocal.folders.find(
-						(e) => e.id === item.parentFolderId && workflowIds.includes(e.id),
-					)?.name ?? '',
-				type: 'folders',
-				status: 'modified',
-				location: options.direction === 'push' ? 'local' : 'remote',
-				conflict: true,
-				file: getFoldersPath(this.gitFolder),
-				updatedAt: lastUpdatedFolder[0]?.updatedAt.toISOString(),
-			});
-		});
-
-		mappingsMissingInRemote
-			.filter((item) => workflowIds.includes(item.workflowId))
-			.forEach((item) => {
-				sourceControlledFiles.push({
-					id: item.parentFolderId,
-					name: foldersMappingsLocal.folders.find((e) => e.id === item.parentFolderId)?.name ?? '',
-					type: 'folders',
-					status: 'modified',
-					location: options.direction === 'push' ? 'local' : 'remote',
-					conflict: true,
-					file: getFoldersPath(this.gitFolder),
-					updatedAt: lastUpdatedFolder[0]?.updatedAt.toISOString(),
-				});
-			});
-
 		foldersModifiedInEither.forEach((item) => {
 			sourceControlledFiles.push({
 				id: item.id,
@@ -1026,8 +965,6 @@ export class SourceControlService {
 			foldersMissingInLocal,
 			foldersMissingInRemote,
 			foldersModifiedInEither,
-			folderMappingMissingInLocal: mappingsMissingInLocal,
-			folderMappingMissingInRemote: mappingsMissingInRemote,
 		};
 	}
 

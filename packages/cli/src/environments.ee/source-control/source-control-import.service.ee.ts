@@ -1,7 +1,7 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In, IsNull, Not } from '@n8n/typeorm';
+import { In } from '@n8n/typeorm';
 import glob from 'fast-glob';
 import { Credentials, ErrorReporter, InstanceSettings, Logger } from 'n8n-core';
 import { jsonParse, ensureError, UserError, UnexpectedError } from 'n8n-workflow';
@@ -40,13 +40,9 @@ import {
 	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
-import {
-	getCredentialExportPath,
-	getFoldersPath,
-	getWorkflowExportPath,
-} from './source-control-helper.ee';
+import { getCredentialExportPath, getWorkflowExportPath } from './source-control-helper.ee';
 import type { ExportableCredential } from './types/exportable-credential';
-import type { ExportableFolder, WorkflowFolderMapping } from './types/exportable-folders';
+import type { ExportableFolder } from './types/exportable-folders';
 import type { ResourceOwner } from './types/resource-owner';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 import { VariablesService } from '../variables/variables.service.ee';
@@ -96,6 +92,8 @@ export class SourceControlImportService {
 			remoteWorkflowFiles.map(async (file) => {
 				this.logger.debug(`Parsing workflow file ${file}`);
 				const remote = jsonParse<IWorkflowToImport>(await fsReadFile(file, { encoding: 'utf8' }));
+				console.log('this is the remote', remote);
+
 				if (!remote?.id) {
 					return undefined;
 				}
@@ -103,6 +101,9 @@ export class SourceControlImportService {
 					id: remote.id,
 					versionId: remote.versionId,
 					name: remote.name,
+					//@ts-ignore asasas
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					parentFolderId: remote?.parentFolderId ?? null,
 					remoteId: remote.id,
 					filename: getWorkflowExportPath(remote.id, this.workflowExportFolder),
 				} as SourceControlWorkflowVersionId;
@@ -115,7 +116,16 @@ export class SourceControlImportService {
 
 	async getLocalVersionIdsFromDb(): Promise<SourceControlWorkflowVersionId[]> {
 		const localWorkflows = await this.workflowRepository.find({
-			select: ['id', 'name', 'versionId', 'updatedAt'],
+			relations: ['parentFolder'],
+			select: {
+				id: true,
+				versionId: true,
+				name: true,
+				updatedAt: true,
+				parentFolder: {
+					id: true,
+				},
+			},
 		});
 		return localWorkflows.map((local) => {
 			let updatedAt: Date;
@@ -135,6 +145,7 @@ export class SourceControlImportService {
 				versionId: local.versionId,
 				name: local.name,
 				localId: local.id,
+				parentFolderId: local.parentFolder?.id ?? null,
 				filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
 				updatedAt: updatedAt.toISOString(),
 			};
@@ -200,7 +211,6 @@ export class SourceControlImportService {
 
 	async getRemoteFoldersAndMappingsFromFile(): Promise<{
 		folders: ExportableFolder[];
-		workflowMappings: WorkflowFolderMapping[];
 	}> {
 		const foldersFile = await glob(SOURCE_CONTROL_FOLDERS_EXPORT_FILE, {
 			cwd: this.gitFolder,
@@ -210,18 +220,16 @@ export class SourceControlImportService {
 			this.logger.debug(`Importing folders from file ${foldersFile[0]}`);
 			const mappedFolders = jsonParse<{
 				folders: ExportableFolder[];
-				workflowMappings: WorkflowFolderMapping[];
 			}>(await fsReadFile(foldersFile[0], { encoding: 'utf8' }), {
-				fallbackValue: { folders: [], workflowMappings: [] },
+				fallbackValue: { folders: [] },
 			});
 			return mappedFolders;
 		}
-		return { folders: [], workflowMappings: [] };
+		return { folders: [] };
 	}
 
 	async getLocalFoldersAndMappingsFromDb(): Promise<{
 		folders: ExportableFolder[];
-		workflowMappings: WorkflowFolderMapping[];
 	}> {
 		const localFolders = await this.folderRepository.find({
 			relations: ['parentFolder', 'homeProject'],
@@ -232,18 +240,6 @@ export class SourceControlImportService {
 				homeProject: { id: true },
 			},
 		});
-		const localMappings = await this.workflowRepository.find({
-			relations: ['parentFolder'],
-			select: {
-				id: true,
-				parentFolder: { id: true },
-			},
-			where: {
-				parentFolder: {
-					id: Not(IsNull()),
-				},
-			},
-		});
 
 		return {
 			folders: localFolders.map((f) => ({
@@ -251,10 +247,6 @@ export class SourceControlImportService {
 				name: f.name,
 				parentFolderId: f.parentFolder?.id ?? null,
 				homeProjectId: f.homeProject.id,
-			})),
-			workflowMappings: localMappings.map((m) => ({
-				parentFolderId: m.parentFolder?.id ?? '',
-				workflowId: m.id,
 			})),
 		};
 	}
@@ -298,6 +290,10 @@ export class SourceControlImportService {
 		const existingWorkflows = await this.workflowRepository.findByIds(candidateIds, {
 			fields: ['id', 'name', 'versionId', 'active'],
 		});
+
+		const folders = await this.folderRepository.find({ select: ['id'] });
+		const existingFolderIds = folders.map((f) => f.id);
+
 		const allSharedWorkflows = await this.sharedWorkflowRepository.findWithFields(candidateIds, {
 			select: ['workflowId', 'role', 'projectId'],
 		});
@@ -316,8 +312,20 @@ export class SourceControlImportService {
 			}
 			const existingWorkflow = existingWorkflows.find((e) => e.id === importedWorkflow.id);
 			importedWorkflow.active = existingWorkflow?.active ?? false;
+			//@ts-ignore
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument
+			importedWorkflow.parentFolderId = existingFolderIds.includes(importedWorkflow.parentFolderId)
+				? //@ts-ignore
+					importedWorkflow.parentFolderId
+				: null;
+			console.log('this is the imported workflow', importedWorkflow);
 			this.logger.debug(`Updating workflow id ${importedWorkflow.id ?? 'new'}`);
-			const upsertResult = await this.workflowRepository.upsert({ ...importedWorkflow }, ['id']);
+			const upsertResult = await this.workflowRepository.upsert(
+				//@ts-ignore
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				{ ...importedWorkflow, parentFolder: { id: importedWorkflow.parentFolderId } },
+				['id'],
+			);
 			if (upsertResult?.identifiers?.length !== 1) {
 				throw new UnexpectedError('Failed to upsert workflow', {
 					extra: { workflowId: importedWorkflow.id ?? 'new' },
@@ -509,38 +517,27 @@ export class SourceControlImportService {
 		return mappedTags;
 	}
 
-	async importFoldersFromWorkFolder(user: User) {
-		const foldersFile = getFoldersPath(this.gitFolder);
-
+	async importFoldersFromWorkFolder(user: User, candidate: SourceControlledFile) {
 		let mappedFolders;
 		const projects = await this.projectRepository.find();
 		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
 
 		try {
-			this.logger.debug(`Importing folders from file ${foldersFile}`);
+			this.logger.debug(`Importing folders from file ${candidate.file}`);
 			mappedFolders = jsonParse<{
 				folders: ExportableFolder[];
-				workflowMappings: WorkflowFolderMapping[];
-			}>(await fsReadFile(foldersFile, { encoding: 'utf8' }), {
-				fallbackValue: { folders: [], workflowMappings: [] },
+			}>(await fsReadFile(candidate.file, { encoding: 'utf8' }), {
+				fallbackValue: { folders: [] },
 			});
 		} catch (e) {
 			const error = ensureError(e);
-			this.logger.error(`Failed to import folders from file ${foldersFile}`, { error });
+			this.logger.error(`Failed to import folders from file ${candidate.file}`, { error });
 			return;
 		}
 
-		if (mappedFolders.workflowMappings.length === 0 && mappedFolders.folders.length === 0) {
+		if (mappedFolders.folders.length === 0) {
 			return;
 		}
-
-		const existingWorkflowIds = new Set(
-			(
-				await this.workflowRepository.find({
-					select: ['id'],
-				})
-			).map((e) => e.id),
-		);
 
 		await Promise.all(
 			mappedFolders.folders.map(async (folder) => {
@@ -576,16 +573,6 @@ export class SourceControlImportService {
 					{
 						parentFolder: folder.parentFolderId ? { id: folder.parentFolderId } : null,
 					},
-				);
-			}),
-		);
-
-		await Promise.all(
-			mappedFolders.workflowMappings.map(async (mapping) => {
-				if (!existingWorkflowIds.has(String(mapping.workflowId))) return;
-				await this.workflowRepository.update(
-					{ id: String(mapping.workflowId) },
-					{ parentFolder: { id: mapping.parentFolderId } },
 				);
 			}),
 		);

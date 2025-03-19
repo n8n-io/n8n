@@ -1,7 +1,7 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { IsNull, Not } from '@n8n/typeorm';
+import { In, IsNull, Not } from '@n8n/typeorm';
 import { rmSync } from 'fs';
 import { Credentials, InstanceSettings, Logger } from 'n8n-core';
 import { UnexpectedError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
@@ -105,6 +105,7 @@ export class SourceControlExportService {
 					triggerCount: e.triggerCount,
 					versionId: e.versionId,
 					owner: owners[e.id],
+					parentFolderId: e.parentFolder?.id ?? null,
 				};
 				this.logger.debug(`Writing workflow ${e.id} to ${fileName}`);
 				return await fsWriteFile(fileName, JSON.stringify(sanitizedWorkflow, null, 2));
@@ -117,7 +118,10 @@ export class SourceControlExportService {
 			sourceControlFoldersExistCheck([this.workflowExportFolder]);
 			const workflowIds = candidates.map((e) => e.id);
 			const sharedWorkflows = await this.sharedWorkflowRepository.findByWorkflowIds(workflowIds);
-			const workflows = await this.workflowRepository.findByIds(workflowIds);
+			const workflows = await this.workflowRepository.find({
+				where: { id: In(workflowIds) },
+				relations: ['parentFolder'],
+			});
 
 			// determine owner of each workflow to be exported
 			const owners: Record<string, ResourceOwner> = {};

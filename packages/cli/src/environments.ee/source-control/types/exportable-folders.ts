@@ -4,8 +4,3 @@ export type ExportableFolder = {
 	parentFolderId: string | null;
 	homeProjectId: string;
 };
-
-export type WorkflowFolderMapping = {
-	parentFolderId: string;
-	workflowId: string;
-};
