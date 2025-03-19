@@ -77,6 +77,9 @@
         "dataset_query": {
             "type": "object",
             "properties": {
+                "database": {
+                    "type": "integer"
+                },
                 "type": {
                     "type": "string"
                 },
@@ -88,17 +91,14 @@
                         }
                     },
                     "required": [
-                        "query",
-                        "template-tags"
+                        "template-tags",
+                        "query"
                     ]
-                },
-                "database": {
-                    "type": "integer"
                 }
             },
             "required": [
-                "type",
-                "database"
+                "database",
+                "type"
             ]
         },
         "id": {
@@ -148,14 +148,23 @@
         "collection": {
             "type": "object",
             "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "is_personal": {
+                    "type": "boolean"
+                },
                 "archived": {
                     "type": "boolean"
                 },
                 "slug": {
                     "type": "string"
                 },
-                "name": {
-                    "type": "string"
+                "type": {
+                    "type": "null"
+                },
+                "is_sample": {
+                    "type": "boolean"
                 },
                 "location": {
                     "type": "string"
@@ -165,15 +174,6 @@
                 },
                 "created_at": {
                     "type": "string"
-                },
-                "type": {
-                    "type": "null"
-                },
-                "is_sample": {
-                    "type": "boolean"
-                },
-                "is_personal": {
-                    "type": "boolean"
                 }
             },
             "required": [
