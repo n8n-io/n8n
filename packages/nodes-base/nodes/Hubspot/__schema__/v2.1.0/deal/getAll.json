@@ -45,11 +45,14 @@
                                     "source": {
                                         "type": "string"
                                     },
-                                    "updatedByUserId": {
-                                        "type": "integer"
+                                    "requestId": {
+                                        "type": "string"
                                     },
                                     "useTimestampAsPersistenceTimestamp": {
                                         "type": "boolean"
+                                    },
+                                    "updatedByUserId": {
+                                        "type": "integer"
                                     }
                                 },
                                 "required": [
