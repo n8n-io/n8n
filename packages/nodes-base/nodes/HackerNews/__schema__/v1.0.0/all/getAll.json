@@ -23,6 +23,9 @@
                 "title": {
                     "type": "object",
                     "properties": {
+                        "fullyHighlighted": {
+                            "type": "boolean"
+                        },
                         "matchLevel": {
                             "type": "string"
                         },
@@ -56,6 +59,9 @@
                         },
                         "value": {
                             "type": "string"
+                        },
+                        "fullyHighlighted": {
+                            "type": "boolean"
                         }
                     },
                     "required": [
