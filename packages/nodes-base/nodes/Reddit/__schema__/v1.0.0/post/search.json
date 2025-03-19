@@ -110,7 +110,13 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "a": {
+                        "type": "string"
+                    },
                     "e": {
+                        "type": "string"
+                    },
+                    "u": {
                         "type": "string"
                     },
                     "t": {
@@ -121,6 +127,9 @@
                     "e"
                 ]
             }
+        },
+        "content_categories": {
+            "type": "null"
         },
         "is_self": {
             "type": "boolean"
@@ -252,15 +261,5 @@
             "type": "boolean"
         }
     },
-    "required": [
-        "title",
-        "name",
-        "quarantine",
-        "subreddit_type",
-        "created",
-        "wls",
-        "id",
-        "url",
-        "created_utc"
-    ]
+    "version": 1
 }

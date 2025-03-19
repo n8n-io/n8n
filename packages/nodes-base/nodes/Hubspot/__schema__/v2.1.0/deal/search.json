@@ -10,10 +10,16 @@
                 "createdate": {
                     "type": "string"
                 },
+                "dealname": {
+                    "type": "string"
+                },
                 "hs_lastmodifieddate": {
                     "type": "string"
                 },
                 "hs_object_id": {
+                    "type": "string"
+                },
+                "hubspot_owner_id": {
                     "type": "string"
                 }
             },
@@ -33,11 +39,5 @@
             "type": "boolean"
         }
     },
-    "required": [
-        "id",
-        "properties",
-        "createdAt",
-        "updatedAt",
-        "archived"
-    ]
+    "version": 1
 }

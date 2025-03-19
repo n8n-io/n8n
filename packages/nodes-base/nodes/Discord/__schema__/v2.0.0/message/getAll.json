@@ -27,9 +27,6 @@
                     "flags": {
                         "type": "integer"
                     },
-                    "bot": {
-                        "type": "boolean"
-                    },
                     "banner": {
                         "type": "null"
                     },
@@ -37,6 +34,9 @@
                         "type": "null"
                     },
                     "avatar_decoration_data": {
+                        "type": "null"
+                    },
+                    "collectibles": {
                         "type": "null"
                     },
                     "banner_color": {
@@ -95,11 +95,17 @@
                     "content_type": {
                         "type": "string"
                     },
-                    "content_scan_version": {
+                    "width": {
                         "type": "integer"
                     },
-                    "title": {
+                    "height": {
+                        "type": "integer"
+                    },
+                    "placeholder": {
                         "type": "string"
+                    },
+                    "placeholder_version": {
+                        "type": "integer"
                     }
                 },
                 "required": [
@@ -108,8 +114,7 @@
                     "size",
                     "url",
                     "proxy_url",
-                    "content_type",
-                    "content_scan_version"
+                    "content_type"
                 ]
             }
         },
@@ -121,24 +126,49 @@
                     "type": {
                         "type": "string"
                     },
+                    "url": {
+                        "type": "string"
+                    },
                     "title": {
                         "type": "string"
                     },
                     "description": {
                         "type": "string"
                     },
+                    "color": {
+                        "type": "integer"
+                    },
                     "author": {
                         "type": "object",
                         "properties": {
                             "name": {
                                 "type": "string"
+                            },
+                            "url": {
+                                "type": "string"
                             }
                         },
                         "required": [
-                            "name"
+                            "name",
+                            "url"
                         ]
                     },
-                    "image": {
+                    "provider": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "url": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "url"
+                        ]
+                    },
+                    "thumbnail": {
                         "type": "object",
                         "properties": {
                             "url": {
@@ -153,6 +183,12 @@
                             "height": {
                                 "type": "integer"
                             },
+                            "placeholder": {
+                                "type": "string"
+                            },
+                            "placeholder_version": {
+                                "type": "integer"
+                            },
                             "flags": {
                                 "type": "integer"
                             }
@@ -162,11 +198,41 @@
                             "proxy_url",
                             "width",
                             "height",
+                            "placeholder",
+                            "placeholder_version",
                             "flags"
                         ]
                     },
-                    "timestamp": {
-                        "type": "string"
+                    "video": {
+                        "type": "object",
+                        "properties": {
+                            "url": {
+                                "type": "string"
+                            },
+                            "width": {
+                                "type": "integer"
+                            },
+                            "height": {
+                                "type": "integer"
+                            },
+                            "placeholder": {
+                                "type": "string"
+                            },
+                            "placeholder_version": {
+                                "type": "integer"
+                            },
+                            "flags": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "url",
+                            "width",
+                            "height",
+                            "placeholder",
+                            "placeholder_version",
+                            "flags"
+                        ]
                     }
                 },
                 "required": [
@@ -177,11 +243,55 @@
         "timestamp": {
             "type": "string"
         },
-        "edited_timestamp": {
-            "type": "null"
-        },
         "flags": {
             "type": "integer"
+        },
+        "components": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "integer"
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "components": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "type": {
+                                    "type": "integer"
+                                },
+                                "id": {
+                                    "type": "integer"
+                                },
+                                "style": {
+                                    "type": "integer"
+                                },
+                                "label": {
+                                    "type": "string"
+                                },
+                                "url": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "type",
+                                "id",
+                                "style"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "type",
+                    "id",
+                    "components"
+                ]
+            }
         },
         "id": {
             "type": "string"
@@ -213,7 +323,16 @@
                 "accent_color": {
                     "type": "null"
                 },
+                "collectibles": {
+                    "type": "null"
+                },
                 "banner_color": {
+                    "type": "null"
+                },
+                "clan": {
+                    "type": "null"
+                },
+                "primary_guild": {
                     "type": "null"
                 }
             },
@@ -238,5 +357,6 @@
         "tts": {
             "type": "boolean"
         }
-    }
+    },
+    "version": 1
 }

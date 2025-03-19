@@ -7,64 +7,6 @@
         "etag": {
             "type": "string"
         },
-        "contactId": {
-            "type": "string"
-        },
-        "phoneNumbers": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "metadata": {
-                        "type": "object",
-                        "properties": {
-                            "primary": {
-                                "type": "boolean"
-                            },
-                            "source": {
-                                "type": "object",
-                                "properties": {
-                                    "type": {
-                                        "type": "string"
-                                    },
-                                    "id": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "type",
-                                    "id"
-                                ]
-                            },
-                            "sourcePrimary": {
-                                "type": "boolean"
-                            }
-                        },
-                        "required": [
-                            "source"
-                        ]
-                    },
-                    "value": {
-                        "type": "string"
-                    },
-                    "canonicalForm": {
-                        "type": "string"
-                    },
-                    "type": {
-                        "type": "string"
-                    },
-                    "formattedType": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "metadata",
-                    "value",
-                    "type",
-                    "formattedType"
-                ]
-            }
-        },
         "metadata": {
             "type": "object",
             "properties": {
@@ -84,24 +26,6 @@
                             },
                             "updateTime": {
                                 "type": "string"
-                            },
-                            "profileMetadata": {
-                                "type": "object",
-                                "properties": {
-                                    "objectType": {
-                                        "type": "string"
-                                    },
-                                    "userTypes": {
-                                        "type": "array",
-                                        "items": {
-                                            "type": "string"
-                                        }
-                                    }
-                                },
-                                "required": [
-                                    "objectType",
-                                    "userTypes"
-                                ]
                             }
                         },
                         "required": [
@@ -119,60 +43,6 @@
                 "sources",
                 "objectType"
             ]
-        },
-        "names": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "metadata": {
-                        "type": "object",
-                        "properties": {
-                            "primary": {
-                                "type": "boolean"
-                            },
-                            "source": {
-                                "type": "object",
-                                "properties": {
-                                    "type": {
-                                        "type": "string"
-                                    },
-                                    "id": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "type",
-                                    "id"
-                                ]
-                            },
-                            "sourcePrimary": {
-                                "type": "boolean"
-                            }
-                        },
-                        "required": [
-                            "primary",
-                            "source",
-                            "sourcePrimary"
-                        ]
-                    },
-                    "displayName": {
-                        "type": "string"
-                    },
-                    "givenName": {
-                        "type": "string"
-                    },
-                    "displayNameLastFirst": {
-                        "type": "string"
-                    },
-                    "unstructuredName": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "metadata"
-                ]
-            }
         },
         "photos": {
             "type": "array",
@@ -214,8 +84,7 @@
                 },
                 "required": [
                     "metadata",
-                    "url",
-                    "default"
+                    "url"
                 ]
             }
         },
@@ -244,23 +113,27 @@
                                     "type",
                                     "id"
                                 ]
-                            },
-                            "sourcePrimary": {
-                                "type": "boolean"
                             }
                         },
                         "required": [
-                            "primary",
                             "source"
                         ]
                     },
+                    "current": {
+                        "type": "boolean"
+                    },
                     "name": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "domain": {
                         "type": "string"
                     }
                 },
                 "required": [
-                    "metadata",
-                    "name"
+                    "metadata"
                 ]
             }
         },
@@ -313,11 +186,10 @@
                     "contactGroupMembership"
                 ]
             }
+        },
+        "contactId": {
+            "type": "string"
         }
     },
-    "required": [
-        "resourceName",
-        "etag",
-        "contactId"
-    ]
+    "version": 1
 }

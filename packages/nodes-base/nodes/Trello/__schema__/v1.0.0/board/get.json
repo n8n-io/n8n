@@ -52,6 +52,9 @@
                 "cardCovers": {
                     "type": "boolean"
                 },
+                "showCompleteStatus": {
+                    "type": "boolean"
+                },
                 "cardCounts": {
                     "type": "boolean"
                 },
@@ -278,7 +281,7 @@
         }
     },
     "required": [
-        "id",
-        "labelNames"
-    ]
+        "id"
+    ],
+    "version": 1
 }

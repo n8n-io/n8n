@@ -36,6 +36,49 @@
                 "value"
             ]
         },
+        "org_id": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "people_count": {
+                    "type": "integer"
+                },
+                "owner_id": {
+                    "type": "integer"
+                },
+                "label_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "active_flag": {
+                    "type": "boolean"
+                },
+                "cc_email": {
+                    "type": "string"
+                },
+                "owner_name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "name",
+                "people_count",
+                "owner_id",
+                "address",
+                "label_ids",
+                "active_flag",
+                "cc_email",
+                "owner_name",
+                "value"
+            ]
+        },
         "name": {
             "type": "string"
         },
@@ -101,14 +144,14 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "label": {
-                        "type": "string"
-                    },
                     "value": {
                         "type": "string"
                     },
                     "primary": {
                         "type": "boolean"
+                    },
+                    "label": {
+                        "type": "string"
                     }
                 },
                 "required": [
@@ -177,29 +220,24 @@
                 ]
             }
         },
-        "postal_address_lat": {
-            "type": "null"
-        },
-        "postal_address_long": {
-            "type": "null"
-        },
         "postal_address_subpremise": {
             "type": "null"
         },
         "owner_name": {
             "type": "string"
         },
-        "company_id": {
-            "type": "integer"
-        },
         "cc_email": {
             "type": "string"
         },
-        "marketing_status": {
-            "type": "string"
-        },
-        "doi_status": {
+        "company_id": {
             "type": "integer"
+        },
+        "postal_address_lat": {
+            "type": "null"
+        },
+        "postal_address_long": {
+            "type": "null"
         }
-    }
+    },
+    "version": 1
 }

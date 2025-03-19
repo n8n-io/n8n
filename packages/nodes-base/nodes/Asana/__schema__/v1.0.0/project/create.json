@@ -13,111 +13,6 @@
         "modified_at": {
             "type": "string"
         },
-        "start_on": {
-            "type": "null"
-        },
-        "minimum_access_level_for_sharing": {
-            "type": "string"
-        },
-        "minimum_access_level_for_customization": {
-            "type": "string"
-        },
-        "default_access_level": {
-            "type": "string"
-        },
-        "default_view": {
-            "type": "string"
-        },
-        "permalink_url": {
-            "type": "string"
-        },
-        "team": {
-            "type": "object",
-            "properties": {
-                "gid": {
-                    "type": "string"
-                },
-                "resource_type": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "gid",
-                "resource_type",
-                "name"
-            ]
-        },
-        "workspace": {
-            "type": "object",
-            "properties": {
-                "gid": {
-                    "type": "string"
-                },
-                "resource_type": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "gid",
-                "resource_type",
-                "name"
-            ]
-        },
-        "archived": {
-            "type": "boolean"
-        },
-        "notes": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "privacy_setting": {
-            "type": "string"
-        },
-        "public": {
-            "type": "boolean"
-        },
-        "current_status": {
-            "type": "null"
-        },
-        "current_status_update": {
-            "type": "null"
-        },
-        "owner": {
-            "type": "object",
-            "properties": {
-                "gid": {
-                    "type": "string"
-                },
-                "resource_type": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "gid",
-                "resource_type",
-                "name"
-            ]
-        },
-        "completed": {
-            "type": "boolean"
-        },
-        "completed_at": {
-            "type": "null"
-        },
-        "completed_by": {
-            "type": "null"
-        },
         "members": {
             "type": "array",
             "items": {
@@ -140,6 +35,114 @@
                 ]
             }
         },
+        "owner": {
+            "type": "object",
+            "properties": {
+                "gid": {
+                    "type": "string"
+                },
+                "resource_type": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "gid",
+                "resource_type",
+                "name"
+            ]
+        },
+        "completed_by": {
+            "type": "null"
+        },
+        "current_status": {
+            "type": "null"
+        },
+        "public": {
+            "type": "boolean"
+        },
+        "privacy_setting": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "notes": {
+            "type": "string"
+        },
+        "archived": {
+            "type": "boolean"
+        },
+        "workspace": {
+            "type": "object",
+            "properties": {
+                "gid": {
+                    "type": "string"
+                },
+                "resource_type": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "gid",
+                "resource_type",
+                "name"
+            ]
+        },
+        "team": {
+            "type": "object",
+            "properties": {
+                "gid": {
+                    "type": "string"
+                },
+                "resource_type": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "gid",
+                "resource_type",
+                "name"
+            ]
+        },
+        "default_view": {
+            "type": "string"
+        },
+        "default_access_level": {
+            "type": "string"
+        },
+        "minimum_access_level_for_customization": {
+            "type": "string"
+        },
+        "minimum_access_level_for_sharing": {
+            "type": "string"
+        },
+        "start_on": {
+            "type": "null"
+        },
+        "current_status_update": {
+            "type": "null"
+        },
+        "completed": {
+            "type": "boolean"
+        },
+        "completed_at": {
+            "type": "null"
+        },
+        "icon": {
+            "type": "string"
+        },
+        "permalink_url": {
+            "type": "string"
+        },
         "followers": {
             "type": "array",
             "items": {
@@ -161,9 +164,6 @@
                     "name"
                 ]
             }
-        },
-        "icon": {
-            "type": "string"
         }
     },
     "required": [
@@ -171,30 +171,31 @@
         "resource_type",
         "created_at",
         "modified_at",
-        "start_on",
-        "minimum_access_level_for_sharing",
-        "minimum_access_level_for_customization",
-        "default_access_level",
-        "default_view",
-        "permalink_url",
-        "team",
-        "workspace",
-        "archived",
-        "notes",
-        "name",
-        "privacy_setting",
-        "public",
+        "members",
+        "owner",
+        "completed_by",
         "current_status",
+        "public",
+        "privacy_setting",
+        "name",
+        "notes",
+        "archived",
+        "workspace",
+        "team",
+        "default_view",
+        "default_access_level",
+        "minimum_access_level_for_customization",
+        "minimum_access_level_for_sharing",
+        "start_on",
         "current_status_update",
         "due_on",
         "due_date",
-        "owner",
         "completed",
         "completed_at",
-        "completed_by",
-        "members",
-        "followers",
+        "color",
         "icon",
-        "color"
-    ]
+        "permalink_url",
+        "followers"
+    ],
+    "version": 1
 }

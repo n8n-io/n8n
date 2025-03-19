@@ -23,5 +23,6 @@
         "color",
         "position",
         "archived"
-    ]
+    ],
+    "version": 1
 }

@@ -23,5 +23,6 @@
         "type",
         "settings_str",
         "archived"
-    ]
+    ],
+    "version": 1
 }

@@ -94,6 +94,9 @@
                         ]
                     }
                 },
+                "is_playable": {
+                    "type": "boolean"
+                },
                 "name": {
                     "type": "string"
                 },
@@ -120,6 +123,7 @@
                 "href",
                 "id",
                 "images",
+                "is_playable",
                 "name",
                 "release_date",
                 "release_date_precision",
@@ -216,6 +220,9 @@
         "is_local": {
             "type": "boolean"
         },
+        "is_playable": {
+            "type": "boolean"
+        },
         "name": {
             "type": "string"
         },
@@ -231,5 +238,6 @@
         "uri": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
