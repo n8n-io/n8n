@@ -97,6 +97,9 @@
         "body": {
             "type": "string"
         },
+        "top_awarded_type": {
+            "type": "null"
+        },
         "author_flair_css_class": {
             "type": "null"
         },
@@ -168,9 +171,6 @@
         },
         "controversiality": {
             "type": "integer"
-        },
-        "top_awarded_type": {
-            "type": "null"
         },
         "author_flair_background_color": {
             "type": "null"
