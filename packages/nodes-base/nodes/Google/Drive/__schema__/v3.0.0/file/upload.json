@@ -293,10 +293,10 @@
                     "type": {
                         "type": "string"
                     },
-                    "role": {
+                    "emailAddress": {
                         "type": "string"
                     },
-                    "emailAddress": {
+                    "role": {
                         "type": "string"
                     },
                     "displayName": {
