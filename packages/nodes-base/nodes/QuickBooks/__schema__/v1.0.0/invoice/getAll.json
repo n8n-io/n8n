@@ -232,17 +232,6 @@
                 "name"
             ]
         },
-        "CustomerMemo": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "value"
-            ]
-        },
         "BillAddr": {
             "type": "object",
             "properties": {
@@ -256,6 +245,29 @@
                     "type": "string"
                 },
                 "Line3": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Id"
+            ]
+        },
+        "ShipAddr": {
+            "type": "object",
+            "properties": {
+                "Id": {
+                    "type": "string"
+                },
+                "Line1": {
+                    "type": "string"
+                },
+                "City": {
+                    "type": "string"
+                },
+                "CountrySubDivisionCode": {
+                    "type": "string"
+                },
+                "PostalCode": {
                     "type": "string"
                 }
             },
@@ -300,27 +312,15 @@
                 "Address"
             ]
         },
-        "ShipAddr": {
+        "CustomerMemo": {
             "type": "object",
             "properties": {
-                "Id": {
-                    "type": "string"
-                },
-                "Line1": {
-                    "type": "string"
-                },
-                "City": {
-                    "type": "string"
-                },
-                "CountrySubDivisionCode": {
-                    "type": "string"
-                },
-                "PostalCode": {
+                "value": {
                     "type": "string"
                 }
             },
             "required": [
-                "Id"
+                "value"
             ]
         }
     },
