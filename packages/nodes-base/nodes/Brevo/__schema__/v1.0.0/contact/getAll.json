@@ -33,9 +33,6 @@
             "properties": {
                 "SMS": {
                     "type": "string"
-                },
-                "FIRSTNAME": {
-                    "type": "string"
                 }
             }
         }
