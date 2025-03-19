@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue';
 import { VIEWS } from '@/constants';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from '@/composables/useI18n';
 import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
 import { useToast } from '@/composables/useToast';
@@ -12,6 +12,7 @@ import { getResourcePermissions } from '@/permissions';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import type { Scope } from '@n8n/permissions';
 import type { RouteLocationRaw } from 'vue-router';
+import { useFoldersStore } from '@/stores/folders.store';
 
 type BaseItem = {
 	id: string;
@@ -29,12 +30,16 @@ export const useGlobalEntityCreation = () => {
 	const CREATE_PROJECT_ID = 'create-project';
 	const WORKFLOWS_MENU_ID = 'workflow';
 	const CREDENTIALS_MENU_ID = 'credential';
+	const CREATE_FOLDER_MENU_ID = 'create-folder';
 
 	const settingsStore = useSettingsStore();
 	const cloudPlanStore = useCloudPlanStore();
 	const projectsStore = useProjectsStore();
 	const sourceControlStore = useSourceControlStore();
+	const foldersStore = useFoldersStore();
+
 	const router = useRouter();
+	const route = useRoute();
 	const i18n = useI18n();
 	const toast = useToast();
 
@@ -47,6 +52,12 @@ export const useGlobalEntityCreation = () => {
 		),
 	);
 
+	const showFolders = computed(() => {
+		return settingsStore.isFoldersFeatureEnabled && route.name !== VIEWS.WORKFLOWS;
+	});
+
+	const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
+
 	const disabledWorkflow = (scopes: Scope[] = []): boolean =>
 		sourceControlStore.preferences.branchReadOnly ||
 		!getResourcePermissions(scopes).workflow.create;
@@ -58,7 +69,7 @@ export const useGlobalEntityCreation = () => {
 	const menu = computed<Item[]>(() => {
 		// Community
 		if (!projectsStore.isTeamProjectFeatureEnabled) {
-			return [
+			const menuItems = [
 				{
 					id: 'workflow',
 					title: 'Workflow',
@@ -86,10 +97,18 @@ export const useGlobalEntityCreation = () => {
 					disabled: true,
 				},
 			];
+			if (showFolders.value) {
+				menuItems.push({
+					id: CREATE_FOLDER_MENU_ID,
+					title: i18n.baseText('folders.create.here'),
+					disabled: false,
+				});
+			}
+			return menuItems;
 		}
 
 		// global
-		return [
+		const menuItems = [
 			{
 				id: WORKFLOWS_MENU_ID,
 				title: 'Workflow',
@@ -165,6 +184,16 @@ export const useGlobalEntityCreation = () => {
 				disabled: !projectsStore.canCreateProjects || !projectsStore.hasPermissionToCreateProjects,
 			},
 		];
+		if (showFolders.value) {
+			menuItems.push({
+				id: CREATE_FOLDER_MENU_ID,
+				title: i18n.baseText('folders.create.here'),
+				disabled:
+					sourceControlStore.preferences.branchReadOnly ||
+					!getResourcePermissions(homeProject.value?.scopes).folder.create,
+			});
+		}
+		return menuItems;
 	});
 
 	const createProject = async () => {
@@ -190,6 +219,11 @@ export const useGlobalEntityCreation = () => {
 	};
 
 	const handleSelect = (id: string) => {
+		if (id === CREATE_FOLDER_MENU_ID) {
+			foldersStore.emitCreateFolderEvent();
+			return;
+		}
+
 		if (id !== CREATE_PROJECT_ID) return;
 
 		if (projectsStore.canCreateProjects && projectsStore.hasPermissionToCreateProjects) {

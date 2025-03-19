@@ -9,11 +9,14 @@ import type {
 import * as workflowsApi from '@/api/workflows';
 import { useRootStore } from './root.store';
 import { ref } from 'vue';
+import { EventBus } from '@n8n/utils/event-bus';
 
 export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 	const rootStore = useRootStore();
 
 	const totalWorkflowCount = ref<number>(0);
+
+	const workflowsListEventBus = ref<EventBus | null>(null);
 
 	/**
 	 * Cache visited folders so we can build breadcrumbs paths without fetching them from the server
@@ -155,6 +158,13 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		return await workflowsApi.getFolderContent(rootStore.restApiContext, projectId, folderId);
 	}
 
+	function emitCreateFolderEvent() {
+		if (!workflowsListEventBus.value) {
+			return;
+		}
+		workflowsListEventBus.value.emit('create-folder');
+	}
+
 	return {
 		fetchTotalWorkflowsAndFoldersCount,
 		breadcrumbsCache,
@@ -170,5 +180,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		fetchFoldersAvailableForMove,
 		moveFolder,
 		fetchFolderContent,
+		workflowsListEventBus,
+		emitCreateFolderEvent,
 	};
 });
