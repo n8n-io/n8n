@@ -13,10 +13,10 @@
                 "name": {
                     "type": "string"
                 },
-                "type": {
+                "displayName": {
                     "type": "string"
                 },
-                "displayName": {
+                "type": {
                     "type": "string"
                 },
                 "domainId": {
