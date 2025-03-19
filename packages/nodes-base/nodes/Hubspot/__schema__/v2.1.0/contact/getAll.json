@@ -88,6 +88,12 @@
                     },
                     "form-type": {
                         "type": "string"
+                    },
+                    "contact-associated-by": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
                     }
                 },
                 "required": [
@@ -224,6 +230,9 @@
                             "source-type": {
                                 "type": "string"
                             },
+                            "source-id": {
+                                "type": "string"
+                            },
                             "source-label": {
                                 "type": "null"
                             },
@@ -269,6 +278,7 @@
                     "timestamp",
                     "entity-id",
                     "num-properties-moved",
+                    "merged_to_email",
                     "is-reverted"
                 ]
             }
