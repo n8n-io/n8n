@@ -339,6 +339,12 @@
         "temp_clone_token": {
             "type": "string"
         },
+        "network_count": {
+            "type": "integer"
+        },
+        "subscribers_count": {
+            "type": "integer"
+        },
         "allow_squash_merge": {
             "type": "boolean"
         },
@@ -371,12 +377,6 @@
         },
         "merge_commit_title": {
             "type": "string"
-        },
-        "network_count": {
-            "type": "integer"
-        },
-        "subscribers_count": {
-            "type": "integer"
         }
     },
     "version": 1
