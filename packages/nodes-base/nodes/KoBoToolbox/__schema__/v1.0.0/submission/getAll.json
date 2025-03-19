@@ -136,9 +136,6 @@
         },
         "pic2": {
             "type": "string"
-        },
-        "Validation_comments": {
-            "type": "string"
         }
     },
     "required": [
