@@ -81,9 +81,6 @@
         "outcome": {
             "type": "object",
             "properties": {
-                "advice_code": {
-                    "type": "null"
-                },
                 "network_status": {
                     "type": "string"
                 },
@@ -145,6 +142,9 @@
                             "required": [
                                 "status"
                             ]
+                        },
+                        "fingerprint": {
+                            "type": "string"
                         },
                         "funding": {
                             "type": "string"
@@ -220,9 +220,6 @@
                         },
                         "capture_before": {
                             "type": "integer"
-                        },
-                        "fingerprint": {
-                            "type": "string"
                         }
                     },
                     "required": [
@@ -406,54 +403,5 @@
             ]
         }
     },
-    "required": [
-        "id",
-        "object",
-        "amount",
-        "amount_captured",
-        "amount_refunded",
-        "application",
-        "application_fee",
-        "application_fee_amount",
-        "balance_transaction",
-        "billing_details",
-        "calculated_statement_descriptor",
-        "captured",
-        "created",
-        "currency",
-        "customer",
-        "description",
-        "destination",
-        "dispute",
-        "disputed",
-        "failure_balance_transaction",
-        "failure_code",
-        "failure_message",
-        "fraud_details",
-        "invoice",
-        "livemode",
-        "metadata",
-        "on_behalf_of",
-        "order",
-        "outcome",
-        "paid",
-        "payment_intent",
-        "payment_method",
-        "payment_method_details",
-        "radar_options",
-        "receipt_email",
-        "receipt_number",
-        "receipt_url",
-        "refunded",
-        "review",
-        "shipping",
-        "source",
-        "source_transfer",
-        "statement_descriptor",
-        "statement_descriptor_suffix",
-        "status",
-        "transfer_data",
-        "transfer_group"
-    ],
     "version": 1
 }
