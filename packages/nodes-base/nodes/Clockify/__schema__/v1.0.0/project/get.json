@@ -7,6 +7,21 @@
         "name": {
             "type": "string"
         },
+        "hourlyRate": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "integer"
+                },
+                "currency": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "amount",
+                "currency"
+            ]
+        },
         "clientId": {
             "type": "string"
         },
