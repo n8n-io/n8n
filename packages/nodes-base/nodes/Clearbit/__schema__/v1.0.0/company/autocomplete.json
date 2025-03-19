@@ -1,0 +1,20 @@
+{
+    "type": "object",
+    "properties": {
+        "name": {
+            "type": "string"
+        },
+        "domain": {
+            "type": "string"
+        },
+        "logo": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "name",
+        "domain",
+        "logo"
+    ],
+    "version": 1
+}
