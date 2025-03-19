@@ -1,0 +1,16 @@
+{
+    "type": "object",
+    "properties": {
+        "ok": {
+            "type": "boolean"
+        },
+        "result": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "ok",
+        "result"
+    ],
+    "version": 1
+}
