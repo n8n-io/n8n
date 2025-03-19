@@ -98,14 +98,14 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "label": {
-                        "type": "string"
-                    },
                     "value": {
                         "type": "string"
                     },
                     "primary": {
                         "type": "boolean"
+                    },
+                    "label": {
+                        "type": "string"
                     }
                 },
                 "required": [
