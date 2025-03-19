@@ -219,12 +219,6 @@
                 },
                 "email_in_attendee_report": {
                     "type": "boolean"
-                },
-                "auto_start_meeting_summary": {
-                    "type": "boolean"
-                },
-                "auto_start_ai_companion_questions": {
-                    "type": "boolean"
                 }
             },
             "required": [
@@ -233,17 +227,12 @@
                 "cn_meeting",
                 "in_meeting",
                 "join_before_host",
-                "jbh_time",
                 "mute_upon_entry",
                 "watermark",
                 "use_pmi",
                 "approval_type",
                 "audio",
-                "auto_recording",
                 "enforce_login",
-                "enforce_login_domains",
-                "alternative_hosts",
-                "alternative_host_update_polls",
                 "close_registration",
                 "show_share_button",
                 "allow_multiple_devices",
@@ -253,22 +242,15 @@
                 "registrants_email_notification",
                 "meeting_authentication",
                 "encryption_type",
-                "approved_or_denied_countries_or_regions",
-                "breakout_room",
-                "internal_meeting",
-                "continuous_meeting_chat",
                 "participant_focused_meeting",
                 "push_change_to_calendar",
-                "resources",
                 "alternative_hosts_email_notification",
                 "show_join_info",
                 "device_testing",
                 "focus_mode",
-                "meeting_invitees",
                 "private_meeting",
                 "email_notification",
                 "host_save_video_order",
-                "sign_language_interpretation",
                 "email_in_attendee_report"
             ]
         },
@@ -286,12 +268,9 @@
         "uuid",
         "id",
         "host_id",
-        "host_email",
         "topic",
         "type",
         "status",
-        "start_time",
-        "duration",
         "timezone",
         "created_at",
         "start_url",
