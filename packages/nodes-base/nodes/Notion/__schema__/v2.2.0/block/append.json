@@ -175,5 +175,12 @@
             "type": "string"
         }
     },
+    "required": [
+        "object",
+        "results",
+        "next_cursor",
+        "has_more",
+        "request_id"
+    ],
     "version": 1
 }
