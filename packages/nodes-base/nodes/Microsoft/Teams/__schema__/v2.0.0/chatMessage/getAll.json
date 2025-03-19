@@ -37,19 +37,6 @@
         "policyViolation": {
             "type": "null"
         },
-        "from": {
-            "type": "object",
-            "properties": {
-                "device": {
-                    "type": "null"
-                }
-            },
-            "required": [
-                "application",
-                "device",
-                "user"
-            ]
-        },
         "body": {
             "type": "object",
             "properties": {
@@ -108,9 +95,6 @@
                     "mentioned": {
                         "type": "object",
                         "properties": {
-                            "application": {
-                                "type": "null"
-                            },
                             "device": {
                                 "type": "null"
                             },
