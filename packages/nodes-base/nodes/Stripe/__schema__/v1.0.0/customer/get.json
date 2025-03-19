@@ -7,22 +7,6 @@
         "object": {
             "type": "string"
         },
-        "address": {
-            "type": "object",
-            "properties": {
-                "country": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "city",
-                "country",
-                "line1",
-                "line2",
-                "postal_code",
-                "state"
-            ]
-        },
         "balance": {
             "type": "integer"
         },
@@ -38,9 +22,6 @@
         "invoice_settings": {
             "type": "object",
             "properties": {
-                "custom_fields": {
-                    "type": "null"
-                },
                 "footer": {
                     "type": "null"
                 }
