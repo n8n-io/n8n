@@ -10,12 +10,9 @@
         "createdBy": {
             "type": "object",
             "properties": {
-                "user": {
+                "application": {
                     "type": "object",
                     "properties": {
-                        "email": {
-                            "type": "string"
-                        },
                         "id": {
                             "type": "string"
                         },
@@ -28,9 +25,12 @@
                         "displayName"
                     ]
                 },
-                "application": {
+                "user": {
                     "type": "object",
                     "properties": {
+                        "email": {
+                            "type": "string"
+                        },
                         "id": {
                             "type": "string"
                         },
@@ -113,7 +113,9 @@
             },
             "required": [
                 "driveType",
-                "driveId"
+                "driveId",
+                "id",
+                "path"
             ]
         },
         "webUrl": {
@@ -129,12 +131,6 @@
                     "type": "object",
                     "properties": {
                         "quickXorHash": {
-                            "type": "string"
-                        },
-                        "sha1Hash": {
-                            "type": "string"
-                        },
-                        "sha256Hash": {
                             "type": "string"
                         }
                     },
@@ -171,13 +167,16 @@
         }
     },
     "required": [
-        "@odata.context",
+        "createdBy",
         "createdDateTime",
+        "eTag",
         "id",
+        "lastModifiedBy",
         "lastModifiedDateTime",
         "name",
         "parentReference",
         "webUrl",
+        "cTag",
         "fileSystemInfo",
         "size"
     ],
