@@ -13,48 +13,7 @@
         "modified_at": {
             "type": "string"
         },
-        "members": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "gid": {
-                        "type": "string"
-                    },
-                    "resource_type": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "gid",
-                    "resource_type",
-                    "name"
-                ]
-            }
-        },
-        "owner": {
-            "type": "object",
-            "properties": {
-                "gid": {
-                    "type": "string"
-                },
-                "resource_type": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "gid",
-                "resource_type",
-                "name"
-            ]
-        },
-        "completed_by": {
+        "current_status_update": {
             "type": "null"
         },
         "current_status": {
@@ -128,8 +87,24 @@
         "start_on": {
             "type": "null"
         },
-        "current_status_update": {
-            "type": "null"
+        "owner": {
+            "type": "object",
+            "properties": {
+                "gid": {
+                    "type": "string"
+                },
+                "resource_type": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "gid",
+                "resource_type",
+                "name"
+            ]
         },
         "completed": {
             "type": "boolean"
@@ -137,8 +112,30 @@
         "completed_at": {
             "type": "null"
         },
-        "icon": {
-            "type": "string"
+        "completed_by": {
+            "type": "null"
+        },
+        "members": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "gid": {
+                        "type": "string"
+                    },
+                    "resource_type": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "gid",
+                    "resource_type",
+                    "name"
+                ]
+            }
         },
         "permalink_url": {
             "type": "string"
@@ -164,6 +161,9 @@
                     "name"
                 ]
             }
+        },
+        "icon": {
+            "type": "string"
         }
     },
     "required": [
@@ -171,9 +171,9 @@
         "resource_type",
         "created_at",
         "modified_at",
-        "members",
-        "owner",
-        "completed_by",
+        "due_date",
+        "due_on",
+        "current_status_update",
         "current_status",
         "public",
         "privacy_setting",
@@ -187,15 +187,15 @@
         "minimum_access_level_for_customization",
         "minimum_access_level_for_sharing",
         "start_on",
-        "current_status_update",
-        "due_on",
-        "due_date",
+        "owner",
         "completed",
         "completed_at",
-        "color",
-        "icon",
+        "completed_by",
+        "members",
         "permalink_url",
-        "followers"
+        "followers",
+        "color",
+        "icon"
     ],
     "version": 1
 }
