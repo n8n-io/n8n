@@ -1,32 +1,42 @@
 {
     "type": "object",
     "properties": {
-        "tag_ids": {
+        "addresses": {
             "type": "array",
             "items": {
-                "type": "integer"
+                "type": "object",
+                "properties": {
+                    "field": {
+                        "type": "string"
+                    },
+                    "line1": {
+                        "type": "string"
+                    },
+                    "locality": {
+                        "type": "string"
+                    },
+                    "postal_code": {
+                        "type": "string"
+                    }
+                }
             }
         },
-        "id": {
-            "type": "integer"
-        },
-        "email_opted_in": {
-            "type": "boolean"
-        },
-        "email_status": {
+        "contact_type": {
             "type": "string"
+        },
+        "custom_fields": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    }
+                }
+            }
         },
         "date_created": {
             "type": "string"
-        },
-        "last_updated": {
-            "type": "string"
-        },
-        "ScoreValue": {
-            "type": "string"
-        },
-        "last_updated_utc_millis": {
-            "type": "integer"
         },
         "email_addresses": {
             "type": "array",
@@ -39,106 +49,53 @@
                     "field": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "email",
-                    "field"
-                ]
+                }
             }
         },
-        "addresses": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "line1": {
-                        "type": "string"
-                    },
-                    "locality": {
-                        "type": "string"
-                    },
-                    "field": {
-                        "type": "string"
-                    },
-                    "postal_code": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "line1",
-                    "line2",
-                    "locality",
-                    "region",
-                    "field",
-                    "postal_code",
-                    "zip_code",
-                    "zip_four",
-                    "country_code"
-                ]
-            }
+        "email_opted_in": {
+            "type": "boolean"
+        },
+        "email_status": {
+            "type": "string"
+        },
+        "family_name": {
+            "type": "string"
+        },
+        "given_name": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "last_updated": {
+            "type": "string"
+        },
+        "last_updated_utc_millis": {
+            "type": "integer"
         },
         "phone_numbers": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "number": {
-                        "type": "string"
-                    },
                     "field": {
                         "type": "string"
+                    },
+                    "number": {
+                        "type": "string"
                     }
-                },
-                "required": [
-                    "number",
-                    "extension",
-                    "field",
-                    "type"
-                ]
+                }
             }
         },
-        "given_name": {
+        "ScoreValue": {
             "type": "string"
         },
-        "family_name": {
-            "type": "string"
-        },
-        "custom_fields": {
+        "tag_ids": {
             "type": "array",
             "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "integer"
-                    }
-                },
-                "required": [
-                    "id",
-                    "content"
-                ]
+                "type": "integer"
             }
-        },
-        "contact_type": {
-            "type": "string"
         }
     },
-    "required": [
-        "tag_ids",
-        "id",
-        "company",
-        "email_opted_in",
-        "email_status",
-        "date_created",
-        "last_updated",
-        "ScoreValue",
-        "last_updated_utc_millis",
-        "email_addresses",
-        "addresses",
-        "phone_numbers",
-        "given_name",
-        "family_name",
-        "middle_name",
-        "owner_id"
-    ],
     "version": 1
 }
