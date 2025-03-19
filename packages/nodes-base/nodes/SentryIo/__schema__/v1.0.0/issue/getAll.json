@@ -69,15 +69,6 @@
                 "type": {
                     "type": "string"
                 },
-                "filename": {
-                    "type": "string"
-                },
-                "function": {
-                    "type": "string"
-                },
-                "in_app_frame_mix": {
-                    "type": "string"
-                },
                 "sdk": {
                     "type": "object",
                     "properties": {
@@ -95,6 +86,15 @@
                 },
                 "initial_priority": {
                     "type": "integer"
+                },
+                "filename": {
+                    "type": "string"
+                },
+                "function": {
+                    "type": "string"
+                },
+                "in_app_frame_mix": {
+                    "type": "string"
                 },
                 "severity_reason": {
                     "type": "string"
