@@ -60,10 +60,49 @@
                     "LineNum": {
                         "type": "integer"
                     },
-                    "Description": {
+                    "DetailType": {
                         "type": "string"
                     },
-                    "DetailType": {
+                    "AccountBasedExpenseLineDetail": {
+                        "type": "object",
+                        "properties": {
+                            "AccountRef": {
+                                "type": "object",
+                                "properties": {
+                                    "value": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "value",
+                                    "name"
+                                ]
+                            },
+                            "BillableStatus": {
+                                "type": "string"
+                            },
+                            "TaxCodeRef": {
+                                "type": "object",
+                                "properties": {
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "value"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "AccountRef",
+                            "BillableStatus",
+                            "TaxCodeRef"
+                        ]
+                    },
+                    "Description": {
                         "type": "string"
                     },
                     "ItemBasedExpenseLineDetail": {
@@ -109,45 +148,6 @@
                             "Qty",
                             "TaxCodeRef"
                         ]
-                    },
-                    "AccountBasedExpenseLineDetail": {
-                        "type": "object",
-                        "properties": {
-                            "AccountRef": {
-                                "type": "object",
-                                "properties": {
-                                    "value": {
-                                        "type": "string"
-                                    },
-                                    "name": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "value",
-                                    "name"
-                                ]
-                            },
-                            "BillableStatus": {
-                                "type": "string"
-                            },
-                            "TaxCodeRef": {
-                                "type": "object",
-                                "properties": {
-                                    "value": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "value"
-                                ]
-                            }
-                        },
-                        "required": [
-                            "AccountRef",
-                            "BillableStatus",
-                            "TaxCodeRef"
-                        ]
                     }
                 },
                 "required": [
@@ -188,17 +188,6 @@
                 "name"
             ]
         },
-        "SalesTermRef": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "value"
-            ]
-        },
         "LinkedTxn": {
             "type": "array",
             "items": {
@@ -216,6 +205,17 @@
                     "TxnType"
                 ]
             }
+        },
+        "SalesTermRef": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "value"
+            ]
         },
         "DocNumber": {
             "type": "string"
