@@ -10,12 +10,6 @@
         "Name": {
             "type": "string"
         },
-        "EmailAddress": {
-            "type": "string"
-        },
-        "BankAccountDetails": {
-            "type": "string"
-        },
         "Addresses": {
             "type": "array",
             "items": {
@@ -79,6 +73,12 @@
         },
         "HasValidationErrors": {
             "type": "boolean"
+        },
+        "EmailAddress": {
+            "type": "string"
+        },
+        "BankAccountDetails": {
+            "type": "string"
         },
         "DefaultCurrency": {
             "type": "string"
