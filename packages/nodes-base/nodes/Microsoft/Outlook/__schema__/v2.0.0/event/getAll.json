@@ -7,13 +7,7 @@
         "id": {
             "type": "string"
         },
-        "subject": {
-            "type": "string"
-        },
         "bodyPreview": {
-            "type": "string"
-        },
-        "webLink": {
             "type": "string"
         },
         "start": {
@@ -30,6 +24,9 @@
                 "dateTime",
                 "timeZone"
             ]
+        },
+        "webLink": {
+            "type": "string"
         },
         "end": {
             "type": "object",
@@ -116,9 +113,5 @@
             ]
         }
     },
-    "required": [
-        "@odata.etag",
-        "id"
-    ],
     "version": 1
 }
