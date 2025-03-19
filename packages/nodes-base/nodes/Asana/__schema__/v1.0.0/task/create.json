@@ -26,9 +26,6 @@
                 ]
             }
         },
-        "num_likes": {
-            "type": "integer"
-        },
         "num_hearts": {
             "type": "integer"
         },
@@ -87,6 +84,9 @@
         "resource_type": {
             "type": "string"
         },
+        "num_likes": {
+            "type": "integer"
+        },
         "memberships": {
             "type": "array",
             "items": {
@@ -140,11 +140,90 @@
         "parent": {
             "type": "null"
         },
+        "likes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "gid": {
+                        "type": "string"
+                    },
+                    "resource_type": {
+                        "type": "string"
+                    },
+                    "user": {
+                        "type": "object",
+                        "properties": {
+                            "gid": {
+                                "type": "string"
+                            },
+                            "resource_type": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "gid",
+                            "resource_type",
+                            "name"
+                        ]
+                    }
+                },
+                "required": [
+                    "gid",
+                    "resource_type",
+                    "user"
+                ]
+            }
+        },
+        "hearts": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "gid": {
+                        "type": "string"
+                    },
+                    "resource_type": {
+                        "type": "string"
+                    },
+                    "user": {
+                        "type": "object",
+                        "properties": {
+                            "gid": {
+                                "type": "string"
+                            },
+                            "resource_type": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "gid",
+                            "resource_type",
+                            "name"
+                        ]
+                    }
+                },
+                "required": [
+                    "gid",
+                    "resource_type",
+                    "user"
+                ]
+            }
+        },
         "liked": {
             "type": "boolean"
         },
         "hearted": {
             "type": "boolean"
+        },
+        "permalink_url": {
+            "type": "string"
         },
         "followers": {
             "type": "array",
@@ -167,9 +246,6 @@
                     "name"
                 ]
             }
-        },
-        "permalink_url": {
-            "type": "string"
         },
         "custom_fields": {
             "type": "array",
@@ -248,12 +324,6 @@
                                 "color"
                             ]
                         }
-                    },
-                    "precision": {
-                        "type": "integer"
-                    },
-                    "number_value": {
-                        "type": "null"
                     }
                 },
                 "required": [
@@ -273,7 +343,6 @@
     "required": [
         "gid",
         "projects",
-        "num_likes",
         "num_hearts",
         "workspace",
         "tags",
@@ -292,14 +361,15 @@
         "modified_at",
         "created_at",
         "resource_type",
+        "num_likes",
         "memberships",
         "parent",
         "likes",
         "hearts",
         "liked",
         "hearted",
-        "followers",
-        "permalink_url"
+        "permalink_url",
+        "followers"
     ],
     "version": 1
 }
