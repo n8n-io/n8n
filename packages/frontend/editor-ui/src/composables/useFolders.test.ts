@@ -105,10 +105,12 @@ describe('useFolders', () => {
 		});
 
 		describe('Combined invalid cases', () => {
-			it('should prioritize dot error when name has both issues', () => {
+			it('should prioritize illegal characters when name has both issues', () => {
 				const result = validateFolderName('.folder*with/illegal:chars');
-				// Expect to get the dot error first since that's the order of checks
-				expect(result).toBe('Folder name cannot start with a dot');
+				// Expect to get the illegal characters first since that's the order of checks
+				expect(result).toBe(
+					'Folder name cannot contain the following characters: [ ] ^ \\ / : * ? " < > |',
+				);
 			});
 
 			it('should check for dots-only before starting dots', () => {
