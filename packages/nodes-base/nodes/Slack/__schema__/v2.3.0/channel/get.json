@@ -137,20 +137,20 @@
                     "items": {
                         "type": "object",
                         "properties": {
-                            "type": {
+                            "id": {
                                 "type": "string"
                             },
                             "label": {
                                 "type": "string"
                             },
-                            "id": {
+                            "type": {
                                 "type": "string"
                             }
                         },
                         "required": [
-                            "type",
+                            "id",
                             "label",
-                            "id"
+                            "type"
                         ]
                     }
                 },
