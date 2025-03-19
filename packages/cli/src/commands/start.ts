@@ -240,14 +240,7 @@ export class Start extends BaseCommand {
 			await taskRunnerModule.start();
 		}
 
-		// Load configured and enabled modules
-		for (const moduleName of Object.keys(this.modulesConfig)) {
-			const moduleConfig = this.modulesConfig[moduleName as keyof typeof this.modulesConfig];
-
-			if (moduleConfig.enabled) {
-				await import(`../modules/${moduleName}/${moduleName}.module`);
-			}
-		}
+		await this.loadModules();
 	}
 
 	async initOrchestration() {
