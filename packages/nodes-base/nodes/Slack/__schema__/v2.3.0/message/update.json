@@ -108,6 +108,24 @@
                             "block_id": {
                                 "type": "string"
                             },
+                            "text": {
+                                "type": "object",
+                                "properties": {
+                                    "type": {
+                                        "type": "string"
+                                    },
+                                    "text": {
+                                        "type": "string"
+                                    },
+                                    "verbatim": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "required": [
+                                    "type",
+                                    "text"
+                                ]
+                            },
                             "elements": {
                                 "type": "array",
                                 "items": {
