@@ -9,8 +9,7 @@
         }
     },
     "required": [
-        "id",
-        "name"
+        "id"
     ],
     "version": 1
 }
