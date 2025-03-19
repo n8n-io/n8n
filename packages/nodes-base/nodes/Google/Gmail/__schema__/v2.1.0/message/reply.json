@@ -14,5 +14,10 @@
             }
         }
     },
+    "required": [
+        "id",
+        "threadId",
+        "labelIds"
+    ],
     "version": 1
 }
