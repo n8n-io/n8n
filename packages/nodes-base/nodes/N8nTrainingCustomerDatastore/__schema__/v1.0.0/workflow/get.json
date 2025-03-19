@@ -29,23 +29,23 @@
                             }
                         }
                     },
+                    "name": {
+                        "type": "string"
+                    },
                     "type": {
                         "type": "string"
                     },
                     "id": {
                         "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
                     }
                 },
                 "required": [
                     "parameters",
+                    "name",
                     "type",
-                    "typeVersion",
                     "position",
-                    "id",
-                    "name"
+                    "typeVersion",
+                    "id"
                 ]
             }
         },
@@ -153,11 +153,11 @@
                                                 "settings": {
                                                     "type": "object",
                                                     "properties": {
-                                                        "userActivated": {
-                                                            "type": "boolean"
-                                                        },
                                                         "firstSuccessfulWorkflowId": {
                                                             "type": "string"
+                                                        },
+                                                        "userActivated": {
+                                                            "type": "boolean"
                                                         },
                                                         "userActivatedAt": {
                                                             "type": "integer"
@@ -165,21 +165,18 @@
                                                         "npsSurvey": {
                                                             "type": "object",
                                                             "properties": {
-                                                                "responded": {
-                                                                    "type": "boolean"
-                                                                },
                                                                 "lastShownAt": {
                                                                     "type": "integer"
+                                                                },
+                                                                "responded": {
+                                                                    "type": "boolean"
                                                                 }
                                                             },
                                                             "required": [
                                                                 "lastShownAt"
                                                             ]
                                                         }
-                                                    },
-                                                    "required": [
-                                                        "userActivated"
-                                                    ]
+                                                    }
                                                 },
                                                 "role": {
                                                     "type": "string"
