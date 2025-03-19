@@ -1,0 +1,62 @@
+{
+    "type": "object",
+    "properties": {
+        "reviewId": {
+            "type": "string"
+        },
+        "reviewer": {
+            "type": "object",
+            "properties": {
+                "profilePhotoUrl": {
+                    "type": "string"
+                },
+                "displayName": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "profilePhotoUrl",
+                "displayName"
+            ]
+        },
+        "starRating": {
+            "type": "string"
+        },
+        "comment": {
+            "type": "string"
+        },
+        "createTime": {
+            "type": "string"
+        },
+        "updateTime": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "reviewReply": {
+            "type": "object",
+            "properties": {
+                "comment": {
+                    "type": "string"
+                },
+                "updateTime": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "comment",
+                "updateTime"
+            ]
+        }
+    },
+    "required": [
+        "reviewId",
+        "reviewer",
+        "starRating",
+        "createTime",
+        "updateTime",
+        "name"
+    ],
+    "version": 1
+}
