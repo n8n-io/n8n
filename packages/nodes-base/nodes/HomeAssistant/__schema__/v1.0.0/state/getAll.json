@@ -28,20 +28,44 @@
                 "longitude": {
                     "type": "number"
                 },
-                "gps_accuracy": {
-                    "type": "integer"
-                },
                 "source": {
                     "type": "string"
                 },
                 "user_id": {
                     "type": "string"
                 },
+                "entity_picture": {
+                    "type": "string"
+                },
                 "friendly_name": {
                     "type": "string"
                 },
-                "entity_picture": {
+                "auto_update": {
+                    "type": "boolean"
+                },
+                "installed_version": {
                     "type": "string"
+                },
+                "in_progress": {
+                    "type": "boolean"
+                },
+                "latest_version": {
+                    "type": "string"
+                },
+                "release_summary": {
+                    "type": "null"
+                },
+                "release_url": {
+                    "type": "string"
+                },
+                "skipped_version": {
+                    "type": "null"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "supported_features": {
+                    "type": "integer"
                 }
             },
             "required": [
