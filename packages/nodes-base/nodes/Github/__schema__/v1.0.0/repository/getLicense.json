@@ -1,0 +1,82 @@
+{
+    "type": "object",
+    "properties": {
+        "name": {
+            "type": "string"
+        },
+        "path": {
+            "type": "string"
+        },
+        "sha": {
+            "type": "string"
+        },
+        "size": {
+            "type": "integer"
+        },
+        "url": {
+            "type": "string"
+        },
+        "html_url": {
+            "type": "string"
+        },
+        "git_url": {
+            "type": "string"
+        },
+        "download_url": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "content": {
+            "type": "string"
+        },
+        "encoding": {
+            "type": "string"
+        },
+        "_links": {
+            "type": "object",
+            "properties": {
+                "self": {
+                    "type": "string"
+                },
+                "git": {
+                    "type": "string"
+                },
+                "html": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "self",
+                "git",
+                "html"
+            ]
+        },
+        "license": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "spdx_id": {
+                    "type": "string"
+                },
+                "node_id": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "key",
+                "name",
+                "spdx_id",
+                "url",
+                "node_id"
+            ]
+        }
+    },
+    "version": 1
+}
