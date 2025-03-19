@@ -173,6 +173,7 @@ const handleTooltipClose = () => {
 					:popper-class="$style.tooltip"
 					:disabled="dropdownDisabled"
 					:trigger="hiddenItemsTrigger"
+					placement="bottom"
 					@before-show="handleTooltipShow"
 					@hide="handleTooltipClose"
 				>
@@ -315,7 +316,6 @@ const handleTooltipClose = () => {
 
 .tooltip {
 	padding: var(--spacing-xs) var(--spacing-2xs);
-	min-width: 100px;
 	text-align: center;
 	& > div {
 		color: var(--color-text-lighter);

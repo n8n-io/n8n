@@ -64,6 +64,7 @@ describe('useFolders', () => {
 				{ name: 'folder<angle', char: '<' },
 				{ name: 'folder>angle', char: '>' },
 				{ name: 'folder|pipe', char: '|' },
+				{ name: '???', char: '?' },
 			];
 
 			illegalCharacterCases.forEach(({ name, char }) => {

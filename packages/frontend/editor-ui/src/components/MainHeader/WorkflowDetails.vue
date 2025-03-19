@@ -55,6 +55,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { ProjectTypes } from '@/types/projects.types';
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -211,6 +212,13 @@ const currentFolder = computed(() => {
 	}
 
 	return workflow.parentFolder;
+});
+
+const currentProjectName = computed(() => {
+	if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
+		return locale.baseText('projects.menu.personal');
+	}
+	return projectsStore.currentProject?.name;
 });
 
 watch(
@@ -549,16 +557,19 @@ function showCreateWorkflowSuccessToast(id?: string) {
 		if (projectsStore.currentProject) {
 			if (currentFolder.value) {
 				toastTitle = locale.baseText('workflows.create.folder.toast.title', {
-					interpolate: { projectName: currentFolder.value.name ?? '' },
+					interpolate: {
+						projectName: currentProjectName.value ?? '',
+						folderName: currentFolder.value.name ?? '',
+					},
 				});
 			} else if (projectsStore.currentProject.id !== projectsStore.personalProject?.id) {
 				toastTitle = locale.baseText('workflows.create.project.toast.title', {
-					interpolate: { projectName: projectsStore.currentProject.name ?? '' },
+					interpolate: { projectName: currentProjectName.value ?? '' },
 				});
 			}
 
 			toastText = locale.baseText('workflows.create.project.toast.text', {
-				interpolate: { projectName: projectsStore.currentProject.name ?? '' },
+				interpolate: { projectName: currentProjectName.value ?? '' },
 			});
 		}
 
