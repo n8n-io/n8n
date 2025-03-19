@@ -21,6 +21,14 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "resource": {
+                                "type": "string"
+                            }
+                        }
+                    },
                     "type": {
                         "type": "string"
                     },
@@ -35,15 +43,11 @@
                     },
                     "name": {
                         "type": "string"
-                    },
-                    "webhookId": {
-                        "type": "string"
                     }
                 },
                 "required": [
                     "parameters",
-                    "id",
-                    "name"
+                    "id"
                 ]
             }
         },
@@ -79,5 +83,6 @@
         "pinData",
         "versionId",
         "triggerCount"
-    ]
+    ],
+    "version": 1
 }

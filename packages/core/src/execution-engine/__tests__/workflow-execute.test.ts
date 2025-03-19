@@ -540,6 +540,55 @@ describe('WorkflowExecute', () => {
 			);
 		});
 
+		//  DR          ►►              DR
+		// ┌───────┐   ┌───────────┐   ┌─────────┐
+		// │trigger├───►destination├───►dirtyNode│
+		// └───────┘   └───────────┘   └─────────┘
+		test('passes pruned dirty nodes to `cleanRunData`', async () => {
+			// ARRANGE
+			const waitPromise = createDeferredPromise<IRun>();
+			const nodeExecutionOrder: string[] = [];
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const destination = createNodeData({ name: 'destination' });
+			const dirtyNode = createNodeData({ name: 'dirtyNode' });
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, destination, dirtyNode)
+				.addConnections({ from: trigger, to: destination }, { from: destination, to: dirtyNode })
+				.toWorkflow({ name: '', active: false, nodeTypes });
+
+			const pinData: IPinData = {};
+			const runData: IRunData = {};
+			const dirtyNodeNames: string[] = [trigger.name, dirtyNode.name];
+
+			jest.spyOn(workflowExecute, 'processRunExecutionData').mockImplementationOnce(jest.fn());
+			const cleanRunDataSpy = jest.spyOn(partialExecutionUtils, 'cleanRunData');
+
+			// ACT
+			await workflowExecute.runPartialWorkflow2(
+				workflow,
+				runData,
+				pinData,
+				dirtyNodeNames,
+				destination.name,
+			);
+
+			// ASSERT
+			const subgraph = new DirectedGraph()
+				.addNodes(trigger, destination)
+				.addConnections({ from: trigger, to: destination });
+			expect(cleanRunDataSpy).toHaveBeenCalledTimes(2);
+			expect(cleanRunDataSpy).toHaveBeenNthCalledWith(
+				1,
+				runData,
+				subgraph,
+				// first call with the dirty nodes, which are an empty set in this case
+				new Set([trigger]),
+			);
+		});
+
 		//                 ►►
 		//                ┌──────┐
 		//                │orphan│

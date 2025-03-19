@@ -404,7 +404,7 @@ export class WorkflowExecute {
 		const filteredNodes = graph.getNodes();
 
 		// 3. Find the Start Nodes
-		const dirtyNodes = new Set(workflow.getNodes(dirtyNodeNames));
+		const dirtyNodes = graph.getNodesByNames(dirtyNodeNames);
 		runData = cleanRunData(runData, graph, dirtyNodes);
 		let startNodes = findStartNodes({ graph, trigger, destination, runData, pinData });
 
@@ -1017,10 +1017,6 @@ export class WorkflowExecute {
 
 	private getCustomOperation(node: INode, type: INodeType) {
 		if (!type.customOperations) return undefined;
-
-		if (type.execute) {
-			throw new UnexpectedError('Node type cannot have both customOperations and execute defined');
-		}
 
 		if (!node.parameters) return undefined;
 

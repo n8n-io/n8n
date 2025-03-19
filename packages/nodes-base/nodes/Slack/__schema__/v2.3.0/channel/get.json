@@ -111,11 +111,71 @@
                 "last_set"
             ]
         },
+        "properties": {
+            "type": "object",
+            "properties": {
+                "canvas": {
+                    "type": "object",
+                    "properties": {
+                        "file_id": {
+                            "type": "string"
+                        },
+                        "is_empty": {
+                            "type": "boolean"
+                        },
+                        "quip_thread_id": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "file_id",
+                        "quip_thread_id"
+                    ]
+                },
+                "tabs": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "type": {
+                                "type": "string"
+                            },
+                            "label": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "type",
+                            "label",
+                            "id"
+                        ]
+                    }
+                },
+                "tabz": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "type": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "type"
+                        ]
+                    }
+                }
+            }
+        },
         "previous_names": {
             "type": "array",
             "items": {
                 "type": "string"
             }
         }
-    }
+    },
+    "version": 1
 }

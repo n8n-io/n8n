@@ -10,12 +10,6 @@
         "name": {
             "type": "string"
         },
-        "text_content": {
-            "type": "string"
-        },
-        "description": {
-            "type": "string"
-        },
         "status": {
             "type": "object",
             "properties": {
@@ -107,6 +101,36 @@
                 ]
             }
         },
+        "group_assignees": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "color": {
+                        "type": "null"
+                    },
+                    "initials": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "color",
+                    "initials",
+                    "email"
+                ]
+            }
+        },
         "watchers": {
             "type": "array",
             "items": {
@@ -175,6 +199,9 @@
                                 "name": {
                                     "type": "string"
                                 },
+                                "assignee": {
+                                    "type": "null"
+                                },
                                 "group_assignee": {
                                     "type": "null"
                                 },
@@ -190,7 +217,13 @@
                                 "start_date": {
                                     "type": "null"
                                 },
+                                "start_date_time": {
+                                    "type": "null"
+                                },
                                 "due_date": {
+                                    "type": "null"
+                                },
+                                "due_date_time": {
                                     "type": "null"
                                 },
                                 "sent_due_date_notif": {
@@ -368,9 +401,6 @@
                     },
                     "tag_bg": {
                         "type": "string"
-                    },
-                    "creator": {
-                        "type": "integer"
                     }
                 },
                 "required": [
@@ -401,8 +431,8 @@
                     "type_config": {
                         "type": "object",
                         "properties": {
-                            "sorting": {
-                                "type": "string"
+                            "new_drop_down": {
+                                "type": "boolean"
                             },
                             "options": {
                                 "type": "array",
@@ -424,6 +454,9 @@
                                         "color"
                                     ]
                                 }
+                            },
+                            "sorting": {
+                                "type": "string"
                             }
                         }
                     },
@@ -625,20 +658,11 @@
                     "extension": {
                         "type": "string"
                     },
-                    "is_folder": {
-                        "type": "null"
-                    },
-                    "mimetype": {
-                        "type": "string"
-                    },
                     "hidden": {
                         "type": "boolean"
                     },
                     "parent_id": {
                         "type": "string"
-                    },
-                    "size": {
-                        "type": "integer"
                     },
                     "total_comments": {
                         "type": "integer"
@@ -660,6 +684,9 @@
                             },
                             "initials": {
                                 "type": "string"
+                            },
+                            "color": {
+                                "type": "string"
                             }
                         },
                         "required": [
@@ -676,6 +703,9 @@
                     },
                     "url": {
                         "type": "string"
+                    },
+                    "email_data": {
+                        "type": "null"
                     },
                     "workspace_id": {
                         "type": "null"
@@ -696,7 +726,6 @@
                     "version",
                     "extension",
                     "thumbnail_small",
-                    "thumbnail_medium",
                     "thumbnail_large",
                     "is_folder",
                     "mimetype",
@@ -710,9 +739,7 @@
                     "orientation",
                     "url",
                     "email_data",
-                    "workspace_id",
-                    "url_w_query",
-                    "url_w_host"
+                    "workspace_id"
                 ]
             }
         }
@@ -744,7 +771,6 @@
         "start_date",
         "points",
         "time_estimate",
-        "time_spent",
         "custom_fields",
         "dependencies",
         "linked_tasks",
@@ -756,7 +782,7 @@
         "list",
         "project",
         "folder",
-        "space",
-        "attachments"
-    ]
+        "space"
+    ],
+    "version": 1
 }

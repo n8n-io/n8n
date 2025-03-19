@@ -104,6 +104,41 @@
         "type": {
             "type": "string"
         },
+        "assignee": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                },
+                "locked": {
+                    "type": "boolean"
+                },
+                "avatar_url": {
+                    "type": "string"
+                },
+                "web_url": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "username",
+                "name",
+                "state",
+                "locked",
+                "avatar_url",
+                "web_url"
+            ]
+        },
         "user_notes_count": {
             "type": "integer"
         },
@@ -163,9 +198,6 @@
         "has_tasks": {
             "type": "boolean"
         },
-        "task_status": {
-            "type": "string"
-        },
         "_links": {
             "type": "object",
             "properties": {
@@ -215,6 +247,9 @@
         "severity": {
             "type": "string"
         },
+        "subscribed": {
+            "type": "boolean"
+        },
         "moved_to_id": {
             "type": "null"
         },
@@ -227,8 +262,90 @@
         "service_desk_reply_to": {
             "type": "null"
         },
-        "subscribed": {
-            "type": "boolean"
+        "epic": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "iid": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                },
+                "group_id": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "id",
+                "iid",
+                "title",
+                "url",
+                "group_id"
+            ]
+        },
+        "iteration": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "iid": {
+                    "type": "integer"
+                },
+                "sequence": {
+                    "type": "integer"
+                },
+                "group_id": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "start_date": {
+                    "type": "string"
+                },
+                "due_date": {
+                    "type": "string"
+                },
+                "web_url": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "iid",
+                "sequence",
+                "group_id",
+                "title",
+                "description",
+                "state",
+                "created_at",
+                "updated_at",
+                "start_date",
+                "due_date",
+                "web_url"
+            ]
+        },
+        "task_status": {
+            "type": "string"
         }
     },
     "required": [
@@ -266,5 +383,6 @@
         "severity",
         "moved_to_id",
         "service_desk_reply_to"
-    ]
+    ],
+    "version": 1
 }

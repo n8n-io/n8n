@@ -107,10 +107,7 @@
                 "footnotes": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "footnotes"
-            ]
+            }
         },
         "categories": {
             "type": "array",
@@ -255,24 +252,6 @@
                         ]
                     }
                 },
-                "wp:featuredmedia": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "embeddable": {
-                                "type": "boolean"
-                            },
-                            "href": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "embeddable",
-                            "href"
-                        ]
-                    }
-                },
                 "wp:attachment": {
                     "type": "array",
                     "items": {
@@ -330,6 +309,24 @@
                             "templated"
                         ]
                     }
+                },
+                "wp:featuredmedia": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "embeddable": {
+                                "type": "boolean"
+                            },
+                            "href": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "embeddable",
+                            "href"
+                        ]
+                    }
                 }
             },
             "required": [
@@ -344,5 +341,6 @@
                 "curies"
             ]
         }
-    }
+    },
+    "version": 1
 }

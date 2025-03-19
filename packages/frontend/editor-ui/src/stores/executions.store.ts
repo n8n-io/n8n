@@ -319,5 +319,6 @@ export const useExecutionsStore = defineStore('executions', () => {
 		addExecution,
 		resetData,
 		reset,
+		itemsPerPage,
 	};
 });

@@ -7,5 +7,6 @@
         "isNew": {
             "type": "boolean"
         }
-    }
+    },
+    "version": 1
 }

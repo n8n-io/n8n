@@ -55,6 +55,7 @@ describe('Utils: Expressions', () => {
 			['=expression', 'expression'],
 			['notAnExpression', 'notAnExpression'],
 			[undefined, ''],
+			[4, 4],
 		])('turns "%s" into "%s"', (input, output) => {
 			expect(removeExpressionPrefix(input)).toBe(output);
 		});
