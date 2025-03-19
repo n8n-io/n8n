@@ -28,12 +28,6 @@
         "generated_timestamp": {
             "type": "integer"
         },
-        "subject": {
-            "type": "string"
-        },
-        "raw_subject": {
-            "type": "string"
-        },
         "description": {
             "type": "string"
         },
@@ -158,7 +152,8 @@
         "created_at",
         "updated_at",
         "subject",
-        "recipient"
+        "recipient",
+        "brand_id"
     ],
     "version": 1
 }
