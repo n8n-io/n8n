@@ -107,6 +107,9 @@
                 "resubmit"
             ]
         },
+        "Modified_Time": {
+            "type": "string"
+        },
         "Created_Time": {
             "type": "string"
         },
