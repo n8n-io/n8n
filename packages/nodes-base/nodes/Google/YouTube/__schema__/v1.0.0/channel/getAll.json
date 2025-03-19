@@ -10,6 +10,29 @@
         "id": {
             "type": "string"
         },
+        "contentDetails": {
+            "type": "object",
+            "properties": {
+                "relatedPlaylists": {
+                    "type": "object",
+                    "properties": {
+                        "likes": {
+                            "type": "string"
+                        },
+                        "uploads": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "likes",
+                        "uploads"
+                    ]
+                }
+            },
+            "required": [
+                "relatedPlaylists"
+            ]
+        },
         "snippet": {
             "type": "object",
             "properties": {
@@ -120,29 +143,6 @@
                 "localized"
             ]
         },
-        "contentDetails": {
-            "type": "object",
-            "properties": {
-                "relatedPlaylists": {
-                    "type": "object",
-                    "properties": {
-                        "likes": {
-                            "type": "string"
-                        },
-                        "uploads": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "likes",
-                        "uploads"
-                    ]
-                }
-            },
-            "required": [
-                "relatedPlaylists"
-            ]
-        },
         "statistics": {
             "type": "object",
             "properties": {
@@ -180,6 +180,9 @@
                 },
                 "isChannelMonetizationEnabled": {
                     "type": "boolean"
+                },
+                "madeForKids": {
+                    "type": "boolean"
                 }
             },
             "required": [
@@ -200,20 +203,52 @@
                         "description": {
                             "type": "string"
                         },
-                        "country": {
+                        "keywords": {
                             "type": "string"
                         },
-                        "keywords": {
+                        "country": {
                             "type": "string"
                         }
                     },
                     "required": [
                         "title"
                     ]
+                },
+                "image": {
+                    "type": "object",
+                    "properties": {
+                        "bannerExternalUrl": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "bannerExternalUrl"
+                    ]
                 }
             },
             "required": [
                 "channel"
+            ]
+        },
+        "topicDetails": {
+            "type": "object",
+            "properties": {
+                "topicIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "topicCategories": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+            "required": [
+                "topicIds",
+                "topicCategories"
             ]
         }
     },
