@@ -34,9 +34,6 @@
         "PreferredDeliveryMethod": {
             "type": "string"
         },
-        "IsProject": {
-            "type": "boolean"
-        },
         "domain": {
             "type": "string"
         },
@@ -74,6 +71,9 @@
             "type": "string"
         },
         "Active": {
+            "type": "boolean"
+        },
+        "IsProject": {
             "type": "boolean"
         },
         "DefaultTaxCodeRef": {
