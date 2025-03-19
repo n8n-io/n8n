@@ -1722,7 +1722,7 @@ export interface INodeTypeBaseDescription {
 
 	/**
 	 * Whether the node will be wrapped for tool-use by AI Agents,
-	 * optionally with merged or replaced parts of the description
+	 * optionally replacing provided parts of the description
 	 */
 	usableAsTool?: true | UsableAsToolDescription;
 }
