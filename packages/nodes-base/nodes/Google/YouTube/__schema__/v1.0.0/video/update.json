@@ -139,9 +139,6 @@
                 "liveBroadcastContent": {
                     "type": "string"
                 },
-                "defaultLanguage": {
-                    "type": "string"
-                },
                 "localized": {
                     "type": "object",
                     "properties": {
