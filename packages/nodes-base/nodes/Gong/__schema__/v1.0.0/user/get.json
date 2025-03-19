@@ -1,0 +1,107 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "emailAddress": {
+            "type": "string"
+        },
+        "created": {
+            "type": "string"
+        },
+        "active": {
+            "type": "boolean"
+        },
+        "emailAliases": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "trustedEmailAddress": {
+            "type": "null"
+        },
+        "firstName": {
+            "type": "string"
+        },
+        "lastName": {
+            "type": "string"
+        },
+        "extension": {
+            "type": "null"
+        },
+        "settings": {
+            "type": "object",
+            "properties": {
+                "webConferencesRecorded": {
+                    "type": "boolean"
+                },
+                "preventWebConferenceRecording": {
+                    "type": "boolean"
+                },
+                "telephonyCallsImported": {
+                    "type": "boolean"
+                },
+                "emailsImported": {
+                    "type": "boolean"
+                },
+                "preventEmailImport": {
+                    "type": "boolean"
+                },
+                "nonRecordedMeetingsImported": {
+                    "type": "boolean"
+                },
+                "gongConnectEnabled": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "webConferencesRecorded",
+                "preventWebConferenceRecording",
+                "telephonyCallsImported",
+                "emailsImported",
+                "preventEmailImport",
+                "nonRecordedMeetingsImported",
+                "gongConnectEnabled"
+            ]
+        },
+        "spokenLanguages": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "language": {
+                        "type": "string"
+                    },
+                    "primary": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "language",
+                    "primary"
+                ]
+            }
+        }
+    },
+    "required": [
+        "id",
+        "emailAddress",
+        "created",
+        "active",
+        "emailAliases",
+        "trustedEmailAddress",
+        "firstName",
+        "lastName",
+        "title",
+        "phoneNumber",
+        "extension",
+        "personalMeetingUrls",
+        "settings",
+        "managerId",
+        "meetingConsentPageUrl",
+        "spokenLanguages"
+    ],
+    "version": 1
+}
