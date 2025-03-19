@@ -1,6 +1,37 @@
 {
     "type": "object",
     "properties": {
+        "list_id": {
+            "type": "string"
+        },
+        "_links": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "rel": {
+                        "type": "string"
+                    },
+                    "href": {
+                        "type": "string"
+                    },
+                    "method": {
+                        "type": "string"
+                    },
+                    "targetSchema": {
+                        "type": "string"
+                    },
+                    "schema": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "rel",
+                    "href",
+                    "method"
+                ]
+            }
+        },
         "id": {
             "type": "string"
         },
@@ -128,37 +159,6 @@
                 "required": [
                     "id",
                     "name"
-                ]
-            }
-        },
-        "list_id": {
-            "type": "string"
-        },
-        "_links": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "rel": {
-                        "type": "string"
-                    },
-                    "href": {
-                        "type": "string"
-                    },
-                    "method": {
-                        "type": "string"
-                    },
-                    "targetSchema": {
-                        "type": "string"
-                    },
-                    "schema": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "rel",
-                    "href",
-                    "method"
                 ]
             }
         }
