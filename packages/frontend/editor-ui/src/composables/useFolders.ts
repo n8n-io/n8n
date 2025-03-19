@@ -9,8 +9,15 @@ export function useFolders() {
 	const i18n = useI18n();
 
 	function validateFolderName(folderName: string): true | string {
+		console.log('validateFolderName', folderName);
+		FOLDER_NAME_ILLEGAL_CHARACTERS_REGEX.lastIndex = 0;
+
 		if (FOLDER_NAME_ILLEGAL_CHARACTERS_REGEX.test(folderName)) {
-			return i18n.baseText('folders.invalidName.invalidCharacters.message');
+			return i18n.baseText('folders.invalidName.invalidCharacters.message', {
+				interpolate: {
+					illegalChars: '[ ] ^ \\ / : * ? " < > |',
+				},
+			});
 		}
 
 		if (FOLDER_NAME_ONLY_DOTS_REGEX.test(folderName)) {

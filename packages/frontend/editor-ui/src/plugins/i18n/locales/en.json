@@ -910,7 +910,7 @@
 	"folders.add.success.message": "Created new folder \"{folderName}\"<br><a href=\"{link}\">Open folder</a>",
 	"folders.invalidName.empty.message": "Folder name cannot be empty",
 	"folders.invalidName.tooLong.message": "Folder name cannot be longer than {maxLength} characters",
-	"folders.invalidName.invalidCharacters.message": "Folder name cannot contain the following characters: [ ] ^ \\ / : * ? \" < > |",
+	"folders.invalidName.invalidCharacters.message": "Folder name cannot contain the following characters: {illegalChars}",
 	"folders.invalidName.starts.with.dot..message": "Folder name cannot start with a dot",
 	"folders.invalidName.only.dots.message": "Folder name cannot contain only dots",
 	"folders.delete.confirm.title": "Delete \"{folderName}\"",
