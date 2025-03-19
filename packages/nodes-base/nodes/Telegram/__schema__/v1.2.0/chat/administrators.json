@@ -13,13 +13,13 @@
                 "first_name": {
                     "type": "string"
                 },
-                "last_name": {
-                    "type": "string"
-                },
                 "username": {
                     "type": "string"
                 },
                 "language_code": {
+                    "type": "string"
+                },
+                "last_name": {
                     "type": "string"
                 }
             },
@@ -31,9 +31,6 @@
         },
         "status": {
             "type": "string"
-        },
-        "is_anonymous": {
-            "type": "boolean"
         },
         "can_be_edited": {
             "type": "boolean"
@@ -56,9 +53,6 @@
         "can_pin_messages": {
             "type": "boolean"
         },
-        "can_manage_topics": {
-            "type": "boolean"
-        },
         "can_promote_members": {
             "type": "boolean"
         },
@@ -74,7 +68,13 @@
         "can_delete_stories": {
             "type": "boolean"
         },
+        "is_anonymous": {
+            "type": "boolean"
+        },
         "can_manage_voice_chats": {
+            "type": "boolean"
+        },
+        "can_manage_topics": {
             "type": "boolean"
         }
     },
