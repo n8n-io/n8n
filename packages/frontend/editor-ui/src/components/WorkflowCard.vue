@@ -27,9 +27,8 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import type { WorkflowResource } from './layouts/ResourcesListLayout.vue';
 import type { IUser } from 'n8n-workflow';
 import { type ProjectIcon as CardProjectIcon, ProjectTypes } from '@/types/projects.types';
-import { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useFoldersStore } from '@/stores/folders.store';
-import { FolderPathItem, FolderTreeResponseItem } from '@/Interface';
 
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
