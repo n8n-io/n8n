@@ -58,6 +58,28 @@
                 "resubmit"
             ]
         },
+        "Created_Time": {
+            "type": "string"
+        },
+        "Created_By": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "id",
+                "email"
+            ]
+        },
         "$review_process": {
             "type": "object",
             "properties": {
@@ -131,18 +153,6 @@
         "$editable": {
             "type": "boolean"
         },
-        "$review": {
-            "type": "null"
-        },
-        "$in_merge": {
-            "type": "boolean"
-        },
-        "$approval_state": {
-            "type": "string"
-        },
-        "Campaign_Source": {
-            "type": "null"
-        },
         "Modified_By": {
             "type": "object",
             "properties": {
@@ -162,6 +172,18 @@
                 "email"
             ]
         },
+        "$review": {
+            "type": "null"
+        },
+        "Modified_Time": {
+            "type": "string"
+        },
+        "$in_merge": {
+            "type": "boolean"
+        },
+        "$approval_state": {
+            "type": "string"
+        },
         "Account_Name": {
             "type": "object",
             "properties": {
@@ -175,31 +197,6 @@
             "required": [
                 "name",
                 "id"
-            ]
-        },
-        "Modified_Time": {
-            "type": "string"
-        },
-        "Created_Time": {
-            "type": "string"
-        },
-        "Created_By": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "name",
-                "id",
-                "email"
             ]
         },
         "$canvas_id": {
