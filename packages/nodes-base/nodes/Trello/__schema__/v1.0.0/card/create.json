@@ -291,6 +291,7 @@
                     "date",
                     "edgeColor",
                     "idMember",
+                    "isMalicious",
                     "isUpload",
                     "mimeType",
                     "name",
