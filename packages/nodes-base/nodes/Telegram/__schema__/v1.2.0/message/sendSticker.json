@@ -42,13 +42,13 @@
                         "first_name": {
                             "type": "string"
                         },
-                        "last_name": {
-                            "type": "string"
-                        },
                         "username": {
                             "type": "string"
                         },
                         "type": {
+                            "type": "string"
+                        },
+                        "last_name": {
                             "type": "string"
                         }
                     },
