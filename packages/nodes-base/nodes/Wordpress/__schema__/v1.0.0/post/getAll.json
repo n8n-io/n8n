@@ -234,20 +234,20 @@
                         ]
                     }
                 },
-                "predecessor-version": {
+                "wp:featuredmedia": {
                     "type": "array",
                     "items": {
                         "type": "object",
                         "properties": {
-                            "id": {
-                                "type": "integer"
+                            "embeddable": {
+                                "type": "boolean"
                             },
                             "href": {
                                 "type": "string"
                             }
                         },
                         "required": [
-                            "id",
+                            "embeddable",
                             "href"
                         ]
                     }
@@ -310,20 +310,20 @@
                         ]
                     }
                 },
-                "wp:featuredmedia": {
+                "predecessor-version": {
                     "type": "array",
                     "items": {
                         "type": "object",
                         "properties": {
-                            "embeddable": {
-                                "type": "boolean"
+                            "id": {
+                                "type": "integer"
                             },
                             "href": {
                                 "type": "string"
                             }
                         },
                         "required": [
-                            "embeddable",
+                            "id",
                             "href"
                         ]
                     }
