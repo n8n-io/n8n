@@ -49,6 +49,9 @@
                         "id": {
                             "type": "string"
                         },
+                        "displayName": {
+                            "type": "string"
+                        },
                         "userIdentityType": {
                             "type": "string"
                         },
@@ -111,6 +114,9 @@
                     },
                     "thumbnailUrl": {
                         "type": "null"
+                    },
+                    "teamsAppId": {
+                        "type": "null"
                     }
                 },
                 "required": [
@@ -144,6 +150,9 @@
                             "device": {
                                 "type": "null"
                             },
+                            "conversation": {
+                                "type": "null"
+                            },
                             "tag": {
                                 "type": "null"
                             },
@@ -170,7 +179,8 @@
                                     "@odata.type",
                                     "id",
                                     "displayName",
-                                    "userIdentityType"
+                                    "userIdentityType",
+                                    "tenantId"
                                 ]
                             }
                         },
@@ -239,7 +249,8 @@
                                     "@odata.type",
                                     "id",
                                     "displayName",
-                                    "userIdentityType"
+                                    "userIdentityType",
+                                    "tenantId"
                                 ]
                             }
                         },
@@ -260,5 +271,30 @@
             }
         }
     },
+    "required": [
+        "id",
+        "replyToId",
+        "etag",
+        "messageType",
+        "createdDateTime",
+        "lastModifiedDateTime",
+        "lastEditedDateTime",
+        "deletedDateTime",
+        "subject",
+        "summary",
+        "chatId",
+        "importance",
+        "locale",
+        "webUrl",
+        "onBehalfOf",
+        "policyViolation",
+        "eventDetail",
+        "from",
+        "body",
+        "channelIdentity",
+        "attachments",
+        "mentions",
+        "reactions"
+    ],
     "version": 1
 }
