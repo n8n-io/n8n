@@ -59,6 +59,8 @@ describe('permissions', () => {
 			'workflow:share',
 			'workflow:update',
 			'folder:create',
+			'insights:list',
+			'insights:read',
 		];
 
 		const permissionRecord: PermissionsRecord = {
@@ -119,6 +121,10 @@ describe('permissions', () => {
 			},
 			folder: {
 				create: true,
+			},
+			insights: {
+				list: true,
+				read: true,
 			},
 		};
 
