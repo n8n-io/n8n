@@ -21,14 +21,14 @@
                     "Date": {
                         "type": "string"
                     },
+                    "Reference": {
+                        "type": "string"
+                    },
                     "HasAccount": {
                         "type": "boolean"
                     },
                     "HasValidationErrors": {
                         "type": "boolean"
-                    },
-                    "Reference": {
-                        "type": "string"
                     }
                 },
                 "required": [
@@ -149,9 +149,6 @@
         "DueDate": {
             "type": "string"
         },
-        "BrandingThemeID": {
-            "type": "string"
-        },
         "Status": {
             "type": "string"
         },
@@ -217,9 +214,6 @@
                             ]
                         }
                     },
-                    "Quantity": {
-                        "type": "integer"
-                    },
                     "LineItemID": {
                         "type": "string"
                     },
@@ -237,6 +231,9 @@
             "type": "string"
         },
         "CurrencyCode": {
+            "type": "string"
+        },
+        "BrandingThemeID": {
             "type": "string"
         },
         "SentToContact": {
