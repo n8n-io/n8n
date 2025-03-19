@@ -105,15 +105,15 @@
                 "EmailAddress": {
                     "type": "string"
                 },
-                "BankAccountDetails": {
-                    "type": "string"
-                },
                 "Addresses": {
                     "type": "array",
                     "items": {
                         "type": "object",
                         "properties": {
                             "AddressType": {
+                                "type": "string"
+                            },
+                            "AddressLine1": {
                                 "type": "string"
                             },
                             "City": {
@@ -126,9 +126,6 @@
                                 "type": "string"
                             },
                             "Country": {
-                                "type": "string"
-                            },
-                            "AddressLine1": {
                                 "type": "string"
                             }
                         },
@@ -195,9 +192,6 @@
                 },
                 "IsCustomer": {
                     "type": "boolean"
-                },
-                "DefaultCurrency": {
-                    "type": "string"
                 },
                 "SalesTrackingCategories": {
                     "type": "array",
@@ -267,10 +261,16 @@
                 "FirstName": {
                     "type": "string"
                 },
-                "LastName": {
+                "BankAccountDetails": {
                     "type": "string"
                 },
                 "AccountsReceivableTaxType": {
+                    "type": "string"
+                },
+                "DefaultCurrency": {
+                    "type": "string"
+                },
+                "LastName": {
                     "type": "string"
                 }
             },
@@ -302,6 +302,9 @@
         "DueDate": {
             "type": "string"
         },
+        "BrandingThemeID": {
+            "type": "string"
+        },
         "Status": {
             "type": "string"
         },
@@ -313,6 +316,9 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "Description": {
+                        "type": "string"
+                    },
                     "TaxType": {
                         "type": "string"
                     },
@@ -350,30 +356,6 @@
                     },
                     "AccountID": {
                         "type": "string"
-                    },
-                    "Description": {
-                        "type": "string"
-                    },
-                    "ItemCode": {
-                        "type": "string"
-                    },
-                    "Item": {
-                        "type": "object",
-                        "properties": {
-                            "ItemID": {
-                                "type": "string"
-                            },
-                            "Code": {
-                                "type": "string"
-                            },
-                            "Name": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "ItemID",
-                            "Code"
-                        ]
                     }
                 },
                 "required": [
@@ -387,9 +369,6 @@
             "type": "string"
         },
         "CurrencyCode": {
-            "type": "string"
-        },
-        "BrandingThemeID": {
             "type": "string"
         },
         "Url": {
