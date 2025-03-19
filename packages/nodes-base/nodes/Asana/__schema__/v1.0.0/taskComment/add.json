@@ -43,25 +43,6 @@
         "is_editable": {
             "type": "boolean"
         },
-        "created_by": {
-            "type": "object",
-            "properties": {
-                "gid": {
-                    "type": "string"
-                },
-                "resource_type": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "gid",
-                "resource_type",
-                "name"
-            ]
-        },
         "target": {
             "type": "object",
             "properties": {
@@ -84,6 +65,25 @@
                 "name",
                 "resource_subtype"
             ]
+        },
+        "created_by": {
+            "type": "object",
+            "properties": {
+                "gid": {
+                    "type": "string"
+                },
+                "resource_type": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "gid",
+                "resource_type",
+                "name"
+            ]
         }
     },
     "required": [
@@ -104,8 +104,8 @@
         "liked",
         "previews",
         "is_editable",
-        "created_by",
-        "target"
+        "target",
+        "created_by"
     ],
     "version": 1
 }
