@@ -606,14 +606,8 @@ describe('compaction', () => {
 
 describe('getInsightsSummary', () => {
 	let insightsService: InsightsService;
-	let insightsRawRepository: InsightsRawRepository;
-	let insightsByPeriodRepository: InsightsByPeriodRepository;
-	let insightsMetadataRepository: InsightsMetadataRepository;
 	beforeAll(async () => {
 		insightsService = Container.get(InsightsService);
-		insightsRawRepository = Container.get(InsightsRawRepository);
-		insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
-		insightsMetadataRepository = Container.get(InsightsMetadataRepository);
 	});
 
 	let project: Project;
@@ -621,7 +615,7 @@ describe('getInsightsSummary', () => {
 	let metadata: InsightsMetadata;
 
 	beforeEach(async () => {
-		await testDb.truncate(['InsightsRaw', 'InsightsMetadata', 'InsightsByPeriod']);
+		await truncateAll();
 
 		project = await createTeamProject();
 		workflow = await createWorkflow({}, project);
