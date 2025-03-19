@@ -29,7 +29,10 @@ export async function supabaseApiRequest(
 	}>('supabaseApi');
 
 	if (this.getNodeParameter('useCustomSchema', false)) {
-		const schema = this.getNodeParameter('schema', 'public');
+		let schema = this.getNodeParameter('schema', 'public');
+		if (schema === '') {
+			schema = 'public';
+		}
 		if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) {
 			headers['Content-Profile'] = schema;
 		} else if (['GET', 'HEAD'].includes(method)) {
