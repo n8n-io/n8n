@@ -10,12 +10,6 @@
         "displayName": {
             "type": "string"
         },
-        "businessPhones": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
         "emailAddresses": {
             "type": "array",
             "items": {
@@ -31,6 +25,12 @@
                 "required": [
                     "address"
                 ]
+            }
+        },
+        "businessPhones": {
+            "type": "array",
+            "items": {
+                "type": "string"
             }
         }
     },
