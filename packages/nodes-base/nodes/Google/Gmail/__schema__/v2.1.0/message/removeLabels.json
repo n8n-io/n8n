@@ -14,5 +14,9 @@
             }
         }
     },
+    "required": [
+        "id",
+        "threadId"
+    ],
     "version": 1
 }
