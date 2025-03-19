@@ -58,31 +58,11 @@
         "username": {
             "type": "string"
         },
-        "transcription": {
-            "type": "object",
-            "properties": {
-                "status": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "status"
-            ]
-        },
         "url_private": {
             "type": "string"
         },
         "url_private_download": {
             "type": "string"
-        },
-        "duration_ms": {
-            "type": "integer"
-        },
-        "audio_wave_samples": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
         },
         "media_display_type": {
             "type": "string"
@@ -125,6 +105,32 @@
         },
         "comments_count": {
             "type": "integer"
+        },
+        "transcription": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "status"
+            ]
+        },
+        "duration_ms": {
+            "type": "integer"
+        },
+        "audio_wave_samples": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "subtype": {
+            "type": "string"
+        },
+        "aac": {
+            "type": "string"
         }
     },
     "version": 1
