@@ -665,6 +665,8 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 				:path="getPath(parameter.name)"
 				:node="node"
 				:is-read-only="isReadOnly"
+				:default-type="parameter.typeOptions?.assignment?.defaultType"
+				:disable-type="parameter.typeOptions?.assignment?.disableType"
 				@value-changed="valueChanged"
 			/>
 			<div v-else-if="credentialsParameterIndex !== index" class="parameter-item">
