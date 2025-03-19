@@ -1,9 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "content": {
-            "type": "string"
-        },
         "metadata": {
             "type": "object",
             "properties": {
@@ -39,13 +36,7 @@
                 "blobType": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "source"
-            ]
-        },
-        "embedding": {
-            "type": "string"
+            }
         }
     },
     "version": 1
