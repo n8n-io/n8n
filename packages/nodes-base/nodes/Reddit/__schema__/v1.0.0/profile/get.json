@@ -19,13 +19,35 @@
         "mod_awards": {
             "type": "boolean"
         },
-        "chat_subreddit": {
+        "expensive_coins_package": {
             "type": "boolean"
+        },
+        "mweb_xpromo_revamp_v2": {
+            "type": "object",
+            "properties": {
+                "owner": {
+                    "type": "string"
+                },
+                "variant": {
+                    "type": "string"
+                },
+                "experiment_id": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "owner",
+                "variant",
+                "experiment_id"
+            ]
         },
         "awards_on_streams": {
             "type": "boolean"
         },
         "mweb_xpromo_modal_listing_click_daily_dismissible_ios": {
+            "type": "boolean"
+        },
+        "chat_subreddit": {
             "type": "boolean"
         },
         "cookie_consent_banner": {
@@ -52,9 +74,6 @@
         "mweb_xpromo_interstitial_comments_ios": {
             "type": "boolean"
         },
-        "mweb_xpromo_modal_listing_click_daily_dismissible_android": {
-            "type": "boolean"
-        },
         "premium_subscriptions_table": {
             "type": "boolean"
         },
@@ -62,6 +81,9 @@
             "type": "boolean"
         },
         "crowd_control_for_post": {
+            "type": "boolean"
+        },
+        "mweb_xpromo_modal_listing_click_daily_dismissible_android": {
             "type": "boolean"
         },
         "chat_group_rollout": {
@@ -72,28 +94,6 @@
         },
         "noreferrer_to_noopener": {
             "type": "boolean"
-        },
-        "expensive_coins_package": {
-            "type": "boolean"
-        },
-        "mweb_xpromo_revamp_v2": {
-            "type": "object",
-            "properties": {
-                "owner": {
-                    "type": "string"
-                },
-                "variant": {
-                    "type": "string"
-                },
-                "experiment_id": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "owner",
-                "variant",
-                "experiment_id"
-            ]
         }
     },
     "version": 1
