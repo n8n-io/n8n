@@ -373,6 +373,9 @@
                 "currency": {
                     "type": "string"
                 },
+                "description": {
+                    "type": "string"
+                },
                 "contact": {
                     "type": "string"
                 },
@@ -380,9 +383,6 @@
                     "type": "string"
                 },
                 "mdate": {
-                    "type": "string"
-                },
-                "description": {
                     "type": "string"
                 },
                 "organization": {
@@ -486,13 +486,13 @@
                 "title",
                 "value",
                 "currency",
+                "description",
                 "contact",
                 "group",
                 "owner",
                 "stage",
                 "cdate",
                 "mdate",
-                "description",
                 "organization",
                 "status",
                 "nextdate",
