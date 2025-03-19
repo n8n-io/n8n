@@ -7,6 +7,7 @@ import {
 	type IRun,
 	type WorkflowExecuteMode,
 } from 'n8n-workflow';
+import { z } from 'zod';
 
 import { SharedWorkflow } from '@/databases/entities/shared-workflow';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
@@ -47,6 +48,21 @@ const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
 	manual: true,
 };
 
+const byWorkflowParser = z
+	.object({
+		workflowId: z.string(),
+		workflowName: z.string().optional(),
+		projectId: z.string().optional(),
+		projectName: z.string().optional(),
+		total: z.union([z.number(), z.string()]),
+		succeeded: z.union([z.number(), z.string()]),
+		failed: z.union([z.number(), z.string()]),
+		failureRate: z.union([z.number(), z.string()]),
+		runTime: z.union([z.number(), z.string()]),
+		averageRunTime: z.union([z.number(), z.string()]),
+		timeSaved: z.union([z.number(), z.string()]),
+	})
+	.array();
 @Service()
 export class InsightsService {
 	private readonly maxAgeInDaysForHourlyData = 90;
@@ -299,5 +315,47 @@ export class InsightsService {
 		};
 
 		return result;
+	}
+
+	// TODO: add return type once rebased on master and InsightsByWorkflow is
+	// available
+	async getInsightsByWorkflow({
+		nbDays,
+		skip = 0,
+		take = 10,
+		sortBy = 'total:desc',
+	}: {
+		nbDays: number;
+		skip?: number;
+		take?: number;
+		sortBy?: string;
+	}): Promise<{ count: number; data: any[] }> {
+		const { count, rows } = await this.insightsByPeriodRepository.getInsightsByWorkflow({
+			nbDays,
+			skip,
+			take,
+			sortBy,
+		});
+
+		const data = byWorkflowParser.parse(rows).map((r) => {
+			return {
+				workflowId: r.workflowId,
+				workflowName: r.workflowName,
+				projectId: r.projectId,
+				projectName: r.projectName,
+				total: Number(r.total),
+				failed: Number(r.failed),
+				succeeded: Number(r.succeeded),
+				failureRate: Number(r.failureRate),
+				runTime: Number(r.runTime),
+				averageRunTime: Number(r.averageRunTime),
+				timeSaved: Number(r.timeSaved),
+			};
+		});
+
+		return {
+			count,
+			data,
+		};
 	}
 }

@@ -8,7 +8,7 @@ import { sql } from '@/utils/sql';
 
 import { InsightsByPeriod } from '../entities/insights-by-period';
 import type { PeriodUnit } from '../entities/insights-shared';
-import { PeriodUnitToNumber } from '../entities/insights-shared';
+import { PeriodUnitToNumber, TypeToNumber } from '../entities/insights-shared';
 
 const dbType = Container.get(GlobalConfig).database.type;
 
@@ -261,5 +261,66 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			.getRawMany();
 
 		return summaryParser.parse(rawRows);
+	}
+
+	private parseSortingParams(sortBy: string): [string, 'ASC' | 'DESC'] {
+		const [column, order] = sortBy.split(':');
+		return [column, order.toUpperCase() as 'ASC' | 'DESC'];
+	}
+
+	async getInsightsByWorkflow({
+		nbDays,
+		skip = 0,
+		take = 20,
+		sortBy = 'total:desc',
+	}: {
+		nbDays: number;
+		skip?: number;
+		take?: number;
+		sortBy?: string;
+	}) {
+		const dateSubQuery =
+			dbType === 'sqlite'
+				? `datetime('now', '-${nbDays} days')`
+				: dbType === 'postgresdb'
+					? `CURRENT_DATE - INTERVAL '${nbDays} days'`
+					: `DATE_SUB(CURDATE(), INTERVAL ${nbDays} DAY)`;
+
+		const [sortField, sortOrder] = this.parseSortingParams(sortBy);
+		const sumOfExecutions = sql`CAST(SUM(CASE WHEN insights.type IN (${TypeToNumber.success.toString()}, ${TypeToNumber.failure.toString()}) THEN value ELSE 0 END) as FLOAT)`;
+
+		const rawRowsQuery = this.createQueryBuilder('insights')
+			.select([
+				'metadata.workflowId AS "workflowId"',
+				'metadata.workflowName AS "workflowName"',
+				'metadata.projectId AS "projectId"',
+				'metadata.projectName AS "projectName"',
+				`SUM(CASE WHEN insights.type = ${TypeToNumber.success} THEN value ELSE 0 END) AS "succeeded"`,
+				`SUM(CASE WHEN insights.type = ${TypeToNumber.failure} THEN value ELSE 0 END) AS "failed"`,
+				`SUM(CASE WHEN insights.type IN (${TypeToNumber.success}, ${TypeToNumber.failure}) THEN value ELSE 0 END) AS "total"`,
+				sql`CASE
+								WHEN ${sumOfExecutions} = 0 THEN 0
+								ELSE SUM(CASE WHEN insights.type = ${TypeToNumber.failure.toString()} THEN value ELSE 0 END) / ${sumOfExecutions}
+							END AS "failureRate"`,
+				`SUM(CASE WHEN insights.type IN (${TypeToNumber.success}, ${TypeToNumber.failure}) THEN value ELSE 0 END) AS "total"`,
+				`SUM(CASE WHEN insights.type = ${TypeToNumber.runtime_ms} THEN value ELSE 0 END) AS "runTime"`,
+				`SUM(CASE WHEN insights.type = ${TypeToNumber.time_saved_min} THEN value ELSE 0 END) AS "timeSaved"`,
+				sql`CASE
+								WHEN ${sumOfExecutions} = 0	THEN 0
+								ELSE SUM(CASE WHEN insights.type = ${TypeToNumber.runtime_ms.toString()} THEN value ELSE 0 END) / ${sumOfExecutions}
+							END AS "averageRunTime"`,
+			])
+			.innerJoin('insights.metadata', 'metadata')
+			.where(`insights.periodStart >= ${dateSubQuery}`)
+			.groupBy('metadata.workflowId')
+			.addGroupBy('metadata.workflowName')
+			.addGroupBy('metadata.projectId')
+			.addGroupBy('metadata.projectName')
+			.orderBy(`"${sortField}"`, sortOrder);
+
+		const count = (await rawRowsQuery.getRawMany()).length;
+		const rawRows = await rawRowsQuery.skip(skip).take(take).getRawMany();
+
+		return { count, rows: rawRows };
 	}
 }
