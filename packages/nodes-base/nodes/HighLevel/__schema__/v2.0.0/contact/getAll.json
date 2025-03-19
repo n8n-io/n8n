@@ -19,17 +19,11 @@
         "dateUpdated": {
             "type": "string"
         },
-        "dateOfBirth": {
-            "type": "null"
-        },
         "tags": {
             "type": "array",
             "items": {
                 "type": "string"
             }
-        },
-        "website": {
-            "type": "null"
         },
         "attributions": {
             "type": "array",
