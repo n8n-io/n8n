@@ -176,68 +176,6 @@ describe('useTestDefinitionForm', () => {
 		expect(updateSpy).toBeCalled();
 	});
 
-	it('should delete a metric', async () => {
-		const { state, deleteMetric } = useTestDefinitionForm();
-		const evaluationsStore = mockedStore(useTestDefinitionStore);
-		const deleteMetricSpy = vi.spyOn(evaluationsStore, 'deleteMetric');
-
-		state.value.metrics = [
-			{
-				id: 'metric1',
-				name: 'Metric 1',
-				testDefinitionId: '1',
-			},
-			{
-				id: 'metric2',
-				name: 'Metric 2',
-				testDefinitionId: '1',
-			},
-		];
-
-		await deleteMetric('metric1', TEST_DEF_A.id);
-		expect(deleteMetricSpy).toBeCalledWith({ id: 'metric1', testDefinitionId: TEST_DEF_A.id });
-		expect(state.value.metrics).toEqual([
-			{ id: 'metric2', name: 'Metric 2', testDefinitionId: '1' },
-		]);
-	});
-
-	it('should update metrics', async () => {
-		const { state, updateMetrics } = useTestDefinitionForm();
-		const evaluationsStore = mockedStore(useTestDefinitionStore);
-		const updateMetricSpy = vi.spyOn(evaluationsStore, 'updateMetric');
-		const createMetricSpy = vi
-			.spyOn(evaluationsStore, 'createMetric')
-			.mockResolvedValue({ id: 'metric_new', name: 'Metric 2', testDefinitionId: TEST_DEF_A.id });
-
-		state.value.metrics = [
-			{
-				id: 'metric1',
-				name: 'Metric 1',
-				testDefinitionId: TEST_DEF_A.id,
-			},
-			{
-				id: '',
-				name: 'Metric 2',
-				testDefinitionId: TEST_DEF_A.id,
-			}, // New metric that needs creation
-		];
-
-		await updateMetrics(TEST_DEF_A.id);
-		expect(createMetricSpy).toHaveBeenCalledWith({
-			name: 'Metric 2',
-			testDefinitionId: TEST_DEF_A.id,
-		});
-		expect(updateMetricSpy).toHaveBeenCalledWith({
-			name: 'Metric 1',
-			id: 'metric1',
-			testDefinitionId: TEST_DEF_A.id,
-		});
-		expect(state.value.metrics).toEqual([
-			{ id: 'metric1', name: 'Metric 1', testDefinitionId: TEST_DEF_A.id },
-			{ id: 'metric_new', name: 'Metric 2', testDefinitionId: TEST_DEF_A.id },
-		]);
-	});
-
 	it('should start editing a field', () => {
 		const { state, startEditing } = useTestDefinitionForm();
 
