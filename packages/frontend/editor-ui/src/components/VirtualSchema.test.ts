@@ -20,11 +20,14 @@ import {
 	type INodeExecutionData,
 } from 'n8n-workflow';
 import * as nodeHelpers from '@/composables/useNodeHelpers';
+import * as workflowHelpers from '@/composables/useWorkflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
 import { fireEvent } from '@testing-library/dom';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useSchemaPreviewStore } from '../stores/schemaPreview.store';
 import { usePostHog } from '../stores/posthog.store';
+import { useSettingsStore } from '../stores/settings.store';
+import { defaultSettings } from '../__tests__/defaults';
 
 const mockNode1 = createTestNode({
 	name: 'Manual Trigger',
@@ -86,6 +89,8 @@ async function setupStore() {
 
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
+	const settingsStore = useSettingsStore();
+	settingsStore.setSettings(defaultSettings);
 
 	nodeTypesStore.setNodeTypes([
 		...defaultNodeDescriptions,
@@ -141,6 +146,8 @@ describe('VirtualSchema.vue', () => {
 
 	beforeEach(async () => {
 		cleanup();
+		vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue(123);
+		vi.setSystemTime('2025-01-01');
 		renderComponent = createComponentRenderer(VirtualSchema, {
 			global: {
 				stubs: {
@@ -195,7 +202,7 @@ describe('VirtualSchema.vue', () => {
 		const { getAllByTestId } = renderComponent();
 		await waitFor(() => {
 			const headers = getAllByTestId('run-data-schema-header');
-			expect(headers.length).toBe(2);
+			expect(headers.length).toBe(3);
 			expect(headers[0]).toHaveTextContent('Manual Trigger');
 			expect(headers[0]).toHaveTextContent('2 items');
 			expect(headers[1]).toHaveTextContent('Set2');
@@ -286,16 +293,15 @@ describe('VirtualSchema.vue', () => {
 	});
 
 	it('renders disabled nodes correctly', async () => {
-		const { getByTestId } = renderComponent({
+		const { getAllByTestId } = renderComponent({
 			props: {
 				nodes: [{ name: disabledNode.name, indicies: [], depth: 1 }],
 			},
 		});
-		await waitFor(() =>
-			expect(getByTestId('run-data-schema-header')).toHaveTextContent(
-				`${disabledNode.name} (Deactivated)`,
-			),
-		);
+		await waitFor(() => {
+			const headers = getAllByTestId('run-data-schema-header');
+			expect(headers[0]).toHaveTextContent(`${disabledNode.name} (Deactivated)`);
+		});
 	});
 
 	it('renders schema for correct output branch', async () => {
@@ -307,16 +313,17 @@ describe('VirtualSchema.vue', () => {
 			],
 			1,
 		);
-		const { getByTestId } = renderComponent({
+		const { getAllByTestId } = renderComponent({
 			props: {
 				nodes: [{ name: 'If', indicies: [1], depth: 2 }],
 			},
 		});
 
 		await waitFor(() => {
-			expect(getByTestId('run-data-schema-header')).toHaveTextContent('If');
-			expect(getByTestId('run-data-schema-header')).toHaveTextContent('2 items');
-			expect(getByTestId('run-data-schema-header')).toMatchSnapshot();
+			const headers = getAllByTestId('run-data-schema-header');
+			expect(headers[0]).toHaveTextContent('If');
+			expect(headers[0]).toHaveTextContent('2 items');
+			expect(headers[0]).toMatchSnapshot();
 		});
 	});
 
@@ -329,7 +336,7 @@ describe('VirtualSchema.vue', () => {
 			],
 			0,
 		);
-		const { getByTestId } = renderComponent({
+		const { getAllByTestId } = renderComponent({
 			props: {
 				nodes: [
 					{
@@ -343,9 +350,10 @@ describe('VirtualSchema.vue', () => {
 		});
 
 		await waitFor(() => {
-			expect(getByTestId('run-data-schema-header')).toHaveTextContent('If');
-			expect(getByTestId('run-data-schema-header')).toHaveTextContent('2 items');
-			expect(getByTestId('run-data-schema-header')).toMatchSnapshot();
+			const headers = getAllByTestId('run-data-schema-header');
+			expect(headers[0]).toHaveTextContent('If');
+			expect(headers[0]).toHaveTextContent('2 items');
+			expect(headers[0]).toMatchSnapshot();
 		});
 	});
 
@@ -414,7 +422,7 @@ describe('VirtualSchema.vue', () => {
 
 		await waitFor(() => {
 			const headers = getAllByTestId('run-data-schema-header');
-			expect(headers.length).toBe(2);
+			expect(headers.length).toBe(3);
 			expect(headers[0]).toHaveTextContent('Input 0');
 			expect(headers[1]).toHaveTextContent('Inputs 0, 1, 2');
 		});
@@ -428,6 +436,7 @@ describe('VirtualSchema.vue', () => {
 			fireEvent(window, new MouseEvent('mousemove', { bubbles: true }));
 			expect(reset).toHaveBeenCalled();
 
+			vi.useRealTimers();
 			vi.useFakeTimers({ toFake: ['setTimeout'] });
 			fireEvent(window, new MouseEvent('mouseup', { bubbles: true }));
 			vi.advanceTimersByTime(250);
@@ -538,18 +547,22 @@ describe('VirtualSchema.vue', () => {
 		});
 
 		const { getAllByTestId, queryAllByTestId, rerender } = renderComponent();
+
+		let headers: HTMLElement[] = [];
 		await waitFor(async () => {
-			const headers = getAllByTestId('run-data-schema-header');
-			expect(headers.length).toBe(2);
-			expect(getAllByTestId('run-data-schema-item').length).toBe(2);
-
-			// Collapse all nodes
-			await Promise.all(headers.map(async ($header) => await userEvent.click($header)));
-
-			expect(queryAllByTestId('run-data-schema-item').length).toBe(0);
-			await rerender({ search: 'John' });
+			headers = getAllByTestId('run-data-schema-header');
+			expect(headers.length).toBe(3);
 			expect(getAllByTestId('run-data-schema-item').length).toBe(2);
 		});
+
+		// Collapse all nodes (Variables & context is collapsed by default)
+		await Promise.all(headers.slice(0, -1).map(async (header) => await userEvent.click(header)));
+
+		expect(queryAllByTestId('run-data-schema-item').length).toBe(0);
+
+		await rerender({ search: 'John' });
+
+		expect(getAllByTestId('run-data-schema-item').length).toBe(13);
 	});
 
 	it('renders preview schema when enabled and available', async () => {
@@ -583,11 +596,47 @@ describe('VirtualSchema.vue', () => {
 		const { getAllByTestId, queryAllByText, container } = renderComponent({});
 
 		await waitFor(() => {
-			expect(getAllByTestId('run-data-schema-header')).toHaveLength(2);
+			expect(getAllByTestId('run-data-schema-header')).toHaveLength(3);
 		});
 
 		expect(queryAllByText("No fields - item(s) exist, but they're empty")).toHaveLength(0);
 		expect(getAllByTestId('schema-preview-warning')).toHaveLength(2);
+		expect(container).toMatchSnapshot();
+	});
+
+	it('renders variables and context section', async () => {
+		useWorkflowsStore().pinData({
+			node: mockNode1,
+			data: [],
+		});
+
+		const { getAllByTestId, container } = renderComponent({
+			props: {
+				nodes: [{ name: mockNode1.name, indicies: [], depth: 1 }],
+			},
+		});
+
+		let headers: HTMLElement[] = [];
+
+		await waitFor(() => {
+			headers = getAllByTestId('run-data-schema-header');
+			expect(headers).toHaveLength(2);
+			expect(headers[1]).toHaveTextContent('Variables and context');
+		});
+
+		await userEvent.click(headers[1]);
+
+		await waitFor(() => {
+			const items = getAllByTestId('run-data-schema-item');
+
+			expect(items).toHaveLength(11);
+			expect(items[0]).toHaveTextContent('$now');
+			expect(items[1]).toHaveTextContent('$today');
+			expect(items[2]).toHaveTextContent('$vars');
+			expect(items[3]).toHaveTextContent('$execution');
+			expect(items[7]).toHaveTextContent('$workflow');
+		});
+
 		expect(container).toMatchSnapshot();
 	});
 });
