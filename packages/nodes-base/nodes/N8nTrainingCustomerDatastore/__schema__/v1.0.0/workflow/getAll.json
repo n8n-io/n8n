@@ -24,7 +24,10 @@
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "url": {
+                            "path": {
+                                "type": "string"
+                            },
+                            "jsCode": {
                                 "type": "string"
                             },
                             "assignments": {
@@ -58,13 +61,10 @@
                                     "assignments"
                                 ]
                             },
-                            "path": {
+                            "url": {
                                 "type": "string"
                             },
                             "operation": {
-                                "type": "string"
-                            },
-                            "jsCode": {
                                 "type": "string"
                             },
                             "authentication": {
@@ -102,6 +102,17 @@
             },
             "required": [
                 "executionOrder"
+            ]
+        },
+        "meta": {
+            "type": "object",
+            "properties": {
+                "templateCredsSetupCompleted": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "templateCredsSetupCompleted"
             ]
         },
         "triggerCount": {
