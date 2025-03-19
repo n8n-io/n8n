@@ -56,17 +56,6 @@
                 "name"
             ]
         },
-        "deal": {
-            "type": "object",
-            "properties": {
-                "title": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "title"
-            ]
-        },
         "user": {
             "type": "object",
             "properties": {
