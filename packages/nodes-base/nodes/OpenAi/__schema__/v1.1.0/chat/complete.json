@@ -15,6 +15,44 @@
                 },
                 "refusal": {
                     "type": "null"
+                },
+                "annotations": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "type": {
+                                "type": "string"
+                            },
+                            "url_citation": {
+                                "type": "object",
+                                "properties": {
+                                    "end_index": {
+                                        "type": "integer"
+                                    },
+                                    "start_index": {
+                                        "type": "integer"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "url": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "end_index",
+                                    "start_index",
+                                    "title",
+                                    "url"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "type",
+                            "url_citation"
+                        ]
+                    }
                 }
             },
             "required": [
