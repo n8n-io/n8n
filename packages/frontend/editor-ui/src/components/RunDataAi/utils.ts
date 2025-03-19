@@ -13,6 +13,7 @@ export interface AIResult {
 }
 
 export interface TreeNode {
+	parent?: TreeNode;
 	node: string;
 	id: string;
 	children: TreeNode[];
@@ -22,12 +23,14 @@ export interface TreeNode {
 }
 
 function createNode(
+	parent: TreeNode | undefined,
 	nodeName: string,
 	currentDepth: number,
 	r?: AIResult,
 	children: TreeNode[] = [],
 ): TreeNode {
 	return {
+		parent,
 		node: nodeName,
 		id: nodeName,
 		depth: currentDepth,
@@ -42,10 +45,11 @@ export function getTreeNodeData(
 	workflow: Workflow,
 	aiData: AIResult[] | undefined,
 ): TreeNode[] {
-	return getTreeNodeDataRec(nodeName, 0, workflow, aiData, undefined);
+	return getTreeNodeDataRec(undefined, nodeName, 0, workflow, aiData, undefined);
 }
 
 function getTreeNodeDataRec(
+	parent: TreeNode | undefined,
 	nodeName: string,
 	currentDepth: number,
 	workflow: Workflow,
@@ -59,12 +63,13 @@ function getTreeNodeDataRec(
 		) ?? [];
 
 	if (!connections) {
-		return resultData.map((d) => createNode(nodeName, currentDepth, d));
+		return resultData.map((d) => createNode(parent, nodeName, currentDepth, d));
 	}
 
 	// Get the first level of children
 	const connectedSubNodes = workflow.getParentNodes(nodeName, 'ALL_NON_MAIN', 1);
 
+	const treeNode = createNode(parent, nodeName, currentDepth);
 	const children = connectedSubNodes.flatMap((name) => {
 		// Only include sub-nodes which have data
 		return (
@@ -73,18 +78,20 @@ function getTreeNodeDataRec(
 					(data) => data.node === name && (runIndex === undefined || data.runIndex === runIndex),
 				)
 				.flatMap((data) =>
-					getTreeNodeDataRec(name, currentDepth + 1, workflow, aiData, data.runIndex),
+					getTreeNodeDataRec(treeNode, name, currentDepth + 1, workflow, aiData, data.runIndex),
 				) ?? []
 		);
 	});
 
 	children.sort((a, b) => a.startTime - b.startTime);
 
+	treeNode.children = children;
+
 	if (resultData.length) {
-		return resultData.map((r) => createNode(nodeName, currentDepth, r, children));
+		return resultData.map((r) => createNode(treeNode, nodeName, currentDepth, r, children));
 	}
 
-	return [createNode(nodeName, currentDepth, undefined, children)];
+	return [treeNode];
 }
 
 export function createAiData(
