@@ -194,6 +194,30 @@ describe('LoadNodesAndCredentials', () => {
 			});
 		});
 
+		it('should handle nodes with existing codex with tool subcategory overwrite', () => {
+			fullNodeWrapper.description.codex = {
+				categories: ['AI'],
+				subcategories: {
+					AI: ['Tools'],
+					Tools: ['Recommended'],
+				},
+				resources: {
+					primaryDocumentation: [{ url: 'https://example.com' }],
+				},
+			};
+			const result = instance.convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.codex).toEqual({
+				categories: ['AI'],
+				subcategories: {
+					AI: ['Tools'],
+					Tools: ['Recommended'],
+				},
+				resources: {
+					primaryDocumentation: [{ url: 'https://example.com' }],
+				},
+			});
+		});
+
 		it('should handle nodes with very long names', () => {
 			fullNodeWrapper.description.name = 'veryLongNodeNameThatExceedsNormalLimits'.repeat(10);
 			fullNodeWrapper.description.displayName =
