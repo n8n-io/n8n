@@ -7,6 +7,9 @@
         "etag": {
             "type": "string"
         },
+        "id": {
+            "type": "string"
+        },
         "snippet": {
             "type": "object",
             "properties": {
@@ -168,7 +171,9 @@
                 "description",
                 "thumbnails",
                 "channelTitle",
-                "liveBroadcastContent"
+                "categoryId",
+                "liveBroadcastContent",
+                "localized"
             ]
         },
         "contentDetails": {
