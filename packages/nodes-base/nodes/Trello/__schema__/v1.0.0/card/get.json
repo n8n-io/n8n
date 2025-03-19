@@ -34,6 +34,9 @@
                 "lastUpdatedByAi": {
                     "type": "boolean"
                 },
+                "externalSource": {
+                    "type": "null"
+                },
                 "attachmentsByType": {
                     "type": "object",
                     "properties": {
@@ -56,9 +59,6 @@
                     "required": [
                         "trello"
                     ]
-                },
-                "externalSource": {
-                    "type": "null"
                 },
                 "location": {
                     "type": "boolean"
@@ -85,8 +85,8 @@
                 "dueComplete",
                 "lastUpdatedByAi",
                 "start",
-                "attachmentsByType",
                 "externalSource",
+                "attachmentsByType",
                 "location",
                 "votes",
                 "viewingMemberVoted",
@@ -130,12 +130,6 @@
             "type": "string"
         },
         "idChecklists": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "idLabels": {
             "type": "array",
             "items": {
                 "type": "string"
@@ -186,6 +180,12 @@
                     "color",
                     "uses"
                 ]
+            }
+        },
+        "idLabels": {
+            "type": "array",
+            "items": {
+                "type": "string"
             }
         },
         "manualCoverAttachment": {
