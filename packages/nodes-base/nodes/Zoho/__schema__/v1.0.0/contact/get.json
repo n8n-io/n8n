@@ -26,6 +26,12 @@
         "$field_states": {
             "type": "null"
         },
+        "Other_State": {
+            "type": "null"
+        },
+        "Other_Country": {
+            "type": "null"
+        },
         "$state": {
             "type": "string"
         },
@@ -43,6 +49,9 @@
         },
         "$approved": {
             "type": "boolean"
+        },
+        "Reporting_To": {
+            "type": "null"
         },
         "$approval": {
             "type": "object",
@@ -70,11 +79,17 @@
                 "resubmit"
             ]
         },
+        "Other_City": {
+            "type": "null"
+        },
         "Created_Time": {
             "type": "string"
         },
         "$editable": {
             "type": "boolean"
+        },
+        "Home_Phone": {
+            "type": "null"
         },
         "Created_By": {
             "type": "object",
@@ -98,6 +113,9 @@
         "$is_duplicate": {
             "type": "boolean"
         },
+        "Vendor_Name": {
+            "type": "null"
+        },
         "$review_process": {
             "type": "object",
             "properties": {
@@ -115,6 +133,24 @@
                 "approve",
                 "reject",
                 "resubmit"
+            ]
+        },
+        "Other_Zip": {
+            "type": "null"
+        },
+        "$layout_id": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "id"
             ]
         },
         "Full_Name": {
@@ -151,6 +187,9 @@
         "Unsubscribed_Time": {
             "type": "null"
         },
+        "Other_Street": {
+            "type": "null"
+        },
         "Last_Name": {
             "type": "string"
         },
@@ -178,47 +217,11 @@
                 ]
             }
         },
-        "$approval_state": {
-            "type": "string"
-        },
-        "Other_State": {
-            "type": "null"
-        },
-        "Other_City": {
-            "type": "null"
-        },
-        "Other_Country": {
-            "type": "null"
-        },
-        "Assistant": {
-            "type": "null"
-        },
-        "Reporting_To": {
-            "type": "null"
-        },
-        "Home_Phone": {
-            "type": "null"
-        },
-        "Vendor_Name": {
-            "type": "null"
-        },
-        "Other_Zip": {
-            "type": "null"
-        },
-        "Asst_Phone": {
-            "type": "null"
-        },
-        "Date_of_Birth": {
-            "type": "null"
-        },
-        "Other_Street": {
-            "type": "null"
-        },
         "Fax": {
             "type": "null"
         },
-        "$canvas_id": {
-            "type": "null"
+        "$approval_state": {
+            "type": "string"
         }
     },
     "required": [
