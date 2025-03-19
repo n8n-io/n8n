@@ -21,6 +21,9 @@
                     "AddressType": {
                         "type": "string"
                     },
+                    "AddressLine1": {
+                        "type": "string"
+                    },
                     "City": {
                         "type": "string"
                     },
@@ -31,9 +34,6 @@
                         "type": "string"
                     },
                     "Country": {
-                        "type": "string"
-                    },
-                    "AddressLine1": {
                         "type": "string"
                     }
                 },
@@ -100,30 +100,6 @@
         },
         "IsCustomer": {
             "type": "boolean"
-        },
-        "Balances": {
-            "type": "object",
-            "properties": {
-                "AccountsReceivable": {
-                    "type": "object",
-                    "properties": {
-                        "Outstanding": {
-                            "type": "integer"
-                        },
-                        "Overdue": {
-                            "type": "integer"
-                        }
-                    },
-                    "required": [
-                        "Outstanding",
-                        "Overdue"
-                    ]
-                }
-            },
-            "required": [
-                "AccountsReceivable",
-                "AccountsPayable"
-            ]
         },
         "ContactPersons": {
             "type": "array",
