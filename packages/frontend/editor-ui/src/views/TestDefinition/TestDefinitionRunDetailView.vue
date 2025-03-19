@@ -20,7 +20,6 @@ const TEST_CASE_EXECUTION_ERROR_CODE = {
 	EVALUATION_WORKFLOW_DOES_NOT_EXIST: 'EVALUATION_WORKFLOW_DOES_NOT_EXIST',
 	FAILED_TO_EXECUTE_EVALUATION_WORKFLOW: 'FAILED_TO_EXECUTE_EVALUATION_WORKFLOW',
 	METRICS_MISSING: 'METRICS_MISSING',
-	UNKNOWN_METRICS: 'UNKNOWN_METRICS',
 	INVALID_METRICS: 'INVALID_METRICS',
 	PAYLOAD_LIMIT_EXCEEDED: 'PAYLOAD_LIMIT_EXCEEDED',
 	UNKNOWN_ERROR: 'UNKNOWN_ERROR',
@@ -98,7 +97,6 @@ const testCaseErrorDictionary: Partial<Record<TestCaseExecutionErrorCodes, BaseT
 	FAILED_TO_EXECUTE_WORKFLOW: 'testDefinition.runDetail.error.executionFailed',
 	TRIGGER_NO_LONGER_EXISTS: 'testDefinition.runDetail.error.triggerNoLongerExists',
 	METRICS_MISSING: 'testDefinition.runDetail.error.metricsMissing',
-	UNKNOWN_METRICS: 'testDefinition.runDetail.error.unknownMetrics',
 	INVALID_METRICS: 'testDefinition.runDetail.error.invalidMetrics',
 } as const;
 
@@ -144,13 +142,6 @@ const getErrorTooltipLinkRoute = (row: TestCaseExecutionRecord) => {
 			},
 		};
 	} else if (row.errorCode === TEST_CASE_EXECUTION_ERROR_CODE.METRICS_MISSING) {
-		return {
-			name: VIEWS.TEST_DEFINITION_EDIT,
-			params: {
-				testId: testId.value,
-			},
-		};
-	} else if (row.errorCode === TEST_CASE_EXECUTION_ERROR_CODE.UNKNOWN_METRICS) {
 		return {
 			name: VIEWS.TEST_DEFINITION_EDIT,
 			params: {
