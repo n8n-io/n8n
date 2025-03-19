@@ -59,6 +59,7 @@
     "core-js": "^3.40.0",
     "curlconverter": "^4.12.0",
     "dateformat": "^3.0.3",
+    "element-plus": "2.4.3",
     "email-providers": "^2.0.1",
     "esprima-next": "5.8.4",
     "fast-json-stable-stringify": "^2.1.0",

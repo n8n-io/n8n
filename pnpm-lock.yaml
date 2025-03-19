@@ -1679,6 +1679,9 @@ importers:
       dateformat:
         specifier: ^3.0.3
         version: 3.0.3
+      element-plus:
+        specifier: 2.4.3
+        version: 2.4.3(vue@3.5.13(typescript@5.8.2))
       email-providers:
         specifier: ^2.0.1
         version: 2.0.1
@@ -8901,6 +8904,7 @@ packages:
   gm@1.25.0:
     resolution: {integrity: sha512-4kKdWXTtgQ4biIo7hZA396HT062nDVVHPjQcurNZ3o/voYN+o5FUC5kOwuORbpExp3XbTJ3SU7iRipiIhQtovw==}
     engines: {node: '>=14'}
+    deprecated: The gm module has been sunset. Please migrate to an alternative. https://github.com/aheckmann/gm?tab=readme-ov-file#2025-02-24-this-project-is-not-maintained
 
   google-auth-library@8.9.0:
     resolution: {integrity: sha512-f7aQCJODJFmYWN6PeNKzgvy9LI2tYmXnzpNDHEjG5sDNPgGb2FXQyTBnXeSH+PAtpKESFD+LmHw3Ox3mN7e1Fg==}
@@ -13368,9 +13372,6 @@ packages:
 
   vue-component-type-helpers@2.2.8:
     resolution: {integrity: sha512-4bjIsC284coDO9om4HPA62M7wfsTvcmZyzdfR0aUlFXqq4tXxM1APyXpNVxPC8QazKw9OhmZNHBVDA6ODaZsrA==}
-
-  vue-component-type-helpers@3.0.0-alpha.2:
-    resolution: {integrity: sha512-dv9YzsuJFLnpRNxKU0exwIlCIA/v+rXrgCsEtaENsFJLPFMw1Sr4IRctilwfjnjCzoJGgGACHRZfxo6ZwlH2fQ==}
 
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
@@ -18423,7 +18424,7 @@ snapshots:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.5.13(typescript@5.8.2)
-      vue-component-type-helpers: 3.0.0-alpha.2
+      vue-component-type-helpers: 2.2.8
 
   '@supabase/auth-js@2.65.0':
     dependencies:
@@ -27735,8 +27736,6 @@ snapshots:
   vue-component-type-helpers@2.1.10: {}
 
   vue-component-type-helpers@2.2.8: {}
-
-  vue-component-type-helpers@3.0.0-alpha.2: {}
 
   vue-demi@0.14.10(vue@3.5.13(typescript@5.8.2)):
     dependencies:
