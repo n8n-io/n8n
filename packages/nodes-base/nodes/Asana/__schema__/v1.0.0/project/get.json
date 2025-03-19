@@ -27,41 +27,14 @@
                     "enabled": {
                         "type": "boolean"
                     },
-                    "enum_options": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "gid": {
-                                    "type": "string"
-                                },
-                                "color": {
-                                    "type": "string"
-                                },
-                                "enabled": {
-                                    "type": "boolean"
-                                },
-                                "name": {
-                                    "type": "string"
-                                },
-                                "resource_type": {
-                                    "type": "string"
-                                }
-                            },
-                            "required": [
-                                "gid",
-                                "color",
-                                "enabled",
-                                "name",
-                                "resource_type"
-                            ]
-                        }
-                    },
                     "name": {
                         "type": "string"
                     },
                     "description": {
                         "type": "string"
+                    },
+                    "precision": {
+                        "type": "integer"
                     },
                     "created_by": {
                         "type": "object",
@@ -96,6 +69,36 @@
                     },
                     "type": {
                         "type": "string"
+                    },
+                    "enum_options": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "gid": {
+                                    "type": "string"
+                                },
+                                "color": {
+                                    "type": "string"
+                                },
+                                "enabled": {
+                                    "type": "boolean"
+                                },
+                                "name": {
+                                    "type": "string"
+                                },
+                                "resource_type": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "gid",
+                                "color",
+                                "enabled",
+                                "name",
+                                "resource_type"
+                            ]
+                        }
                     }
                 },
                 "required": [
@@ -110,139 +113,6 @@
                     "is_formula_field",
                     "is_value_read_only",
                     "type"
-                ]
-            }
-        },
-        "custom_field_settings": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "gid": {
-                        "type": "string"
-                    },
-                    "custom_field": {
-                        "type": "object",
-                        "properties": {
-                            "gid": {
-                                "type": "string"
-                            },
-                            "enum_options": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "gid": {
-                                            "type": "string"
-                                        },
-                                        "color": {
-                                            "type": "string"
-                                        },
-                                        "enabled": {
-                                            "type": "boolean"
-                                        },
-                                        "name": {
-                                            "type": "string"
-                                        },
-                                        "resource_type": {
-                                            "type": "string"
-                                        }
-                                    },
-                                    "required": [
-                                        "gid",
-                                        "color",
-                                        "enabled",
-                                        "name",
-                                        "resource_type"
-                                    ]
-                                }
-                            },
-                            "name": {
-                                "type": "string"
-                            },
-                            "resource_subtype": {
-                                "type": "string"
-                            },
-                            "resource_type": {
-                                "type": "string"
-                            },
-                            "type": {
-                                "type": "string"
-                            },
-                            "privacy_setting": {
-                                "type": "string"
-                            },
-                            "default_access_level": {
-                                "type": "string"
-                            },
-                            "is_formula_field": {
-                                "type": "boolean"
-                            },
-                            "precision": {
-                                "type": "integer"
-                            }
-                        },
-                        "required": [
-                            "gid",
-                            "name",
-                            "resource_subtype",
-                            "resource_type",
-                            "type",
-                            "is_formula_field"
-                        ]
-                    },
-                    "is_important": {
-                        "type": "boolean"
-                    },
-                    "parent": {
-                        "type": "object",
-                        "properties": {
-                            "gid": {
-                                "type": "string"
-                            },
-                            "name": {
-                                "type": "string"
-                            },
-                            "resource_type": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "gid",
-                            "name",
-                            "resource_type"
-                        ]
-                    },
-                    "project": {
-                        "type": "object",
-                        "properties": {
-                            "gid": {
-                                "type": "string"
-                            },
-                            "name": {
-                                "type": "string"
-                            },
-                            "resource_type": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "gid",
-                            "name",
-                            "resource_type"
-                        ]
-                    },
-                    "resource_type": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "gid",
-                    "custom_field",
-                    "is_important",
-                    "parent",
-                    "project",
-                    "resource_type"
                 ]
             }
         },
@@ -379,6 +249,139 @@
                 "name",
                 "resource_type"
             ]
+        },
+        "custom_field_settings": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "gid": {
+                        "type": "string"
+                    },
+                    "custom_field": {
+                        "type": "object",
+                        "properties": {
+                            "gid": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "precision": {
+                                "type": "integer"
+                            },
+                            "resource_subtype": {
+                                "type": "string"
+                            },
+                            "resource_type": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            },
+                            "privacy_setting": {
+                                "type": "string"
+                            },
+                            "default_access_level": {
+                                "type": "string"
+                            },
+                            "is_formula_field": {
+                                "type": "boolean"
+                            },
+                            "enum_options": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "gid": {
+                                            "type": "string"
+                                        },
+                                        "color": {
+                                            "type": "string"
+                                        },
+                                        "enabled": {
+                                            "type": "boolean"
+                                        },
+                                        "name": {
+                                            "type": "string"
+                                        },
+                                        "resource_type": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "gid",
+                                        "color",
+                                        "enabled",
+                                        "name",
+                                        "resource_type"
+                                    ]
+                                }
+                            }
+                        },
+                        "required": [
+                            "gid",
+                            "name",
+                            "resource_subtype",
+                            "resource_type",
+                            "type",
+                            "is_formula_field"
+                        ]
+                    },
+                    "is_important": {
+                        "type": "boolean"
+                    },
+                    "parent": {
+                        "type": "object",
+                        "properties": {
+                            "gid": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "resource_type": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "gid",
+                            "name",
+                            "resource_type"
+                        ]
+                    },
+                    "project": {
+                        "type": "object",
+                        "properties": {
+                            "gid": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "resource_type": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "gid",
+                            "name",
+                            "resource_type"
+                        ]
+                    },
+                    "resource_type": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "gid",
+                    "custom_field",
+                    "is_important",
+                    "parent",
+                    "project",
+                    "resource_type"
+                ]
+            }
         }
     },
     "required": [
