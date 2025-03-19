@@ -1,0 +1,72 @@
+{
+    "type": "object",
+    "properties": {
+        "created_at": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "self": {
+            "type": "string"
+        },
+        "uid": {
+            "type": "string"
+        },
+        "preview_url": {
+            "type": "string"
+        },
+        "width": {
+            "type": "integer"
+        },
+        "height": {
+            "type": "integer"
+        },
+        "available_modifications": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "color": {
+                        "type": "null"
+                    },
+                    "image_url": {
+                        "type": "null"
+                    },
+                    "text": {
+                        "type": "null"
+                    },
+                    "background": {
+                        "type": "null"
+                    }
+                },
+                "required": [
+                    "name"
+                ]
+            }
+        },
+        "metadata": {
+            "type": "null"
+        }
+    },
+    "required": [
+        "created_at",
+        "updated_at",
+        "name",
+        "self",
+        "uid",
+        "preview_url",
+        "width",
+        "height",
+        "available_modifications",
+        "metadata",
+        "tags"
+    ],
+    "version": 1
+}
