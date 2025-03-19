@@ -13,8 +13,7 @@
     },
     "required": [
         "gid",
-        "name",
-        "resource_type"
+        "name"
     ],
     "version": 1
 }
