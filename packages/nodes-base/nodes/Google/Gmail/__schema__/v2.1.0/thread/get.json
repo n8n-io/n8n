@@ -59,13 +59,13 @@
                             ]
                         }
                     },
+                    "Subject": {
+                        "type": "string"
+                    },
                     "From": {
                         "type": "string"
                     },
                     "To": {
-                        "type": "string"
-                    },
-                    "Subject": {
                         "type": "string"
                     }
                 },
@@ -77,7 +77,6 @@
                     "sizeEstimate",
                     "historyId",
                     "internalDate",
-                    "labels",
                     "From"
                 ]
             }
