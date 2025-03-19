@@ -179,7 +179,7 @@ export class Column {
 
 		if (isGenerated2) {
 			options.isGenerated = true;
-			options.generationStrategy = type === 'uuid' ? 'uuid' : 'identity';
+			options.generationStrategy = type === 'uuid' ? 'uuid' : isMysql ? 'increment' : 'identity';
 		}
 
 		if (isPrimary || isGenerated || isGenerated2) {

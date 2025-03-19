@@ -16,9 +16,6 @@
         "email": {
             "type": "string"
         },
-        "image_source": {
-            "type": "null"
-        },
         "web": {
             "type": "string"
         },
@@ -43,23 +40,11 @@
         "active": {
             "type": "boolean"
         },
-        "note": {
-            "type": "string"
-        },
         "login_failed": {
             "type": "integer"
         },
         "out_of_office": {
             "type": "boolean"
-        },
-        "out_of_office_start_at": {
-            "type": "null"
-        },
-        "out_of_office_end_at": {
-            "type": "null"
-        },
-        "out_of_office_replacement_id": {
-            "type": "null"
         },
         "preferences": {
             "type": "object",
@@ -277,10 +262,10 @@
                 "intro": {
                     "type": "boolean"
                 },
-                "theme": {
+                "secondaryAction": {
                     "type": "string"
                 },
-                "secondaryAction": {
+                "theme": {
                     "type": "string"
                 },
                 "tickets_closed": {
@@ -304,10 +289,7 @@
                         "enabled"
                     ]
                 }
-            },
-            "required": [
-                "locale"
-            ]
+            }
         },
         "updated_by_id": {
             "type": "integer"
@@ -328,6 +310,12 @@
             }
         },
         "two_factor_preference_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "authorization_ids": {
             "type": "array",
             "items": {
                 "type": "integer"
@@ -386,5 +374,6 @@
         "authorization_ids",
         "overview_sorting_ids",
         "group_ids"
-    ]
+    ],
+    "version": 1
 }

@@ -28,16 +28,10 @@
         "LastName": {
             "type": "string"
         },
-        "MiddleName": {
-            "type": "null"
-        },
         "Suffix": {
             "type": "null"
         },
         "Name": {
-            "type": "string"
-        },
-        "Company": {
             "type": "string"
         },
         "Latitude": {
@@ -73,23 +67,11 @@
                 "street"
             ]
         },
-        "Fax": {
-            "type": "null"
-        },
-        "PhotoUrl": {
-            "type": "string"
-        },
         "Status": {
             "type": "string"
         },
-        "AnnualRevenue": {
-            "type": "null"
-        },
         "OwnerId": {
             "type": "string"
-        },
-        "HasOptedOutOfEmail": {
-            "type": "boolean"
         },
         "IsConverted": {
             "type": "boolean"
@@ -112,15 +94,6 @@
         "SystemModstamp": {
             "type": "string"
         },
-        "DoNotCall": {
-            "type": "boolean"
-        },
-        "HasOptedOutOfFax": {
-            "type": "boolean"
-        },
-        "LastTransferDate": {
-            "type": "string"
-        },
         "Jigsaw": {
             "type": "null"
         },
@@ -133,17 +106,18 @@
         "EmailBouncedDate": {
             "type": "null"
         },
+        "IsPriorityRecord": {
+            "type": "boolean"
+        },
+        "AnnualRevenue": {
+            "type": "null"
+        },
         "IndividualId": {
             "type": "null"
         },
-        "Pronouns": {
-            "type": "null"
-        },
-        "GenderIdentity": {
-            "type": "null"
-        },
-        "IsPriorityRecord": {
+        "HasOptedOutOfEmail": {
             "type": "boolean"
         }
-    }
+    },
+    "version": 1
 }

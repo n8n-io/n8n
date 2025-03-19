@@ -1,44 +1,25 @@
 <script setup lang="ts">
-import type { Ref } from 'vue';
-import { provide, watch, computed, ref, watchEffect, useTemplateRef } from 'vue';
-import { ChatOptionsSymbol, ChatSymbol } from '@n8n/chat/constants';
-import type { Router } from 'vue-router';
-import { useRouter } from 'vue-router';
-import { chatEventBus } from '@n8n/chat/event-buses';
-import { VIEWS } from '@/constants';
-import { v4 as uuid } from 'uuid';
+import { computed, ref, watchEffect, useTemplateRef } from 'vue';
 
 // Components
 import ChatMessagesPanel from './components/ChatMessagesPanel.vue';
 import ChatLogsPanel from './components/ChatLogsPanel.vue';
 
 // Composables
-import { useChatTrigger } from './composables/useChatTrigger';
-import { useChatMessaging } from './composables/useChatMessaging';
 import { useResize } from './composables/useResize';
-import { useI18n } from '@/composables/useI18n';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useRunWorkflow } from '@/composables/useRunWorkflow';
 
 // Types
-import type { Chat, ChatMessage, ChatOptions } from '@n8n/chat/types';
-import type { RunWorkflowChatPayload } from './composables/useChatMessaging';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { usePiPWindow } from '@/components/CanvasChat/composables/usePiPWindow';
 import { N8nResizeWrapper } from '@n8n/design-system';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useChatState } from '@/components/CanvasChat/composables/useChatState';
 
 const workflowsStore = useWorkflowsStore();
 const canvasStore = useCanvasStore();
-const nodeTypesStore = useNodeTypesStore();
-const nodeHelpers = useNodeHelpers();
-const router = useRouter();
 
 // Component state
-const messages = ref<ChatMessage[]>([]);
-const currentSessionId = ref<string>(uuid().replace(/-/g, ''));
 const isDisabled = ref(false);
 const container = ref<HTMLElement>();
 const pipContainer = useTemplateRef('pipContainer');
@@ -47,48 +28,11 @@ const pipContent = useTemplateRef('pipContent');
 // Computed properties
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 
-const allConnections = computed(() => workflowsStore.allConnections);
 const chatPanelState = computed(() => workflowsStore.chatPanelState);
-const canvasNodes = computed(() => workflowsStore.allNodes);
 const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
 const resultData = computed(() => workflowsStore.getWorkflowRunData);
-// Expose internal state for testing
-defineExpose({
-	messages,
-	currentSessionId,
-	isDisabled,
-	workflow,
-});
 
 const telemetry = useTelemetry();
-
-const { runWorkflow } = useRunWorkflow({ router });
-
-// Initialize features with injected dependencies
-const {
-	chatTriggerNode,
-	connectedNode,
-	allowFileUploads,
-	allowedFilesMimeTypes,
-	setChatTriggerNode,
-	setConnectedNode,
-} = useChatTrigger({
-	workflow,
-	canvasNodes,
-	getNodeByName: workflowsStore.getNodeByName,
-	getNodeType: nodeTypesStore.getNodeType,
-});
-
-const { sendMessage, getChatMessages, isLoading } = useChatMessaging({
-	chatTrigger: chatTriggerNode,
-	connectedNode,
-	messages,
-	sessionId: currentSessionId,
-	workflow,
-	executionResultData: computed(() => workflowsStore.getWorkflowExecution?.data?.resultData),
-	getWorkflowResultDataByNodeName: workflowsStore.getWorkflowResultDataByNodeName,
-	onRunChatWorkflow,
-});
 
 const {
 	height,
@@ -116,175 +60,34 @@ const { canPopOut, isPoppedOut, pipWindow } = usePiPWindow({
 	},
 });
 
-// Extracted pure functions for better testability
-function createChatConfig(params: {
-	messages: Chat['messages'];
-	sendMessage: Chat['sendMessage'];
-	currentSessionId: Chat['currentSessionId'];
-	isLoading: Ref<boolean>;
-	isDisabled: Ref<boolean>;
-	allowFileUploads: Ref<boolean>;
-	locale: ReturnType<typeof useI18n>;
-}): { chatConfig: Chat; chatOptions: ChatOptions } {
-	const chatConfig: Chat = {
-		messages: params.messages,
-		sendMessage: params.sendMessage,
-		initialMessages: ref([]),
-		currentSessionId: params.currentSessionId,
-		waitingForResponse: params.isLoading,
-	};
+const {
+	currentSessionId,
+	messages,
+	chatTriggerNode,
+	connectedNode,
+	sendMessage,
+	refreshSession,
+	displayExecution,
+} = useChatState(isDisabled, onWindowResize);
 
-	const chatOptions: ChatOptions = {
-		i18n: {
-			en: {
-				title: '',
-				footer: '',
-				subtitle: '',
-				inputPlaceholder: params.locale.baseText('chat.window.chat.placeholder'),
-				getStarted: '',
-				closeButtonTooltip: '',
-			},
-		},
-		webhookUrl: '',
-		mode: 'window',
-		showWindowCloseButton: true,
-		disabled: params.isDisabled,
-		allowFileUploads: params.allowFileUploads,
-		allowedFilesMimeTypes,
-	};
-
-	return { chatConfig, chatOptions };
-}
-
-function displayExecution(params: { router: Router; workflowId: string; executionId: string }) {
-	const route = params.router.resolve({
-		name: VIEWS.EXECUTION_PREVIEW,
-		params: { name: params.workflowId, executionId: params.executionId },
-	});
-	window.open(route.href, '_blank');
-}
-
-function refreshSession(params: { messages: Ref<ChatMessage[]>; currentSessionId: Ref<string> }) {
-	workflowsStore.setWorkflowExecutionData(null);
-	nodeHelpers.updateNodesExecutionIssues();
-	params.messages.value = [];
-	params.currentSessionId.value = uuid().replace(/-/g, '');
-}
-
-// Event handlers
-const handleDisplayExecution = (executionId: string) => {
-	displayExecution({
-		router,
-		workflowId: workflow.value.id,
-		executionId,
-	});
-};
-
-const handleRefreshSession = () => {
-	refreshSession({
-		messages,
-		currentSessionId,
-	});
-};
+// Expose internal state for testing
+defineExpose({
+	messages,
+	currentSessionId,
+	isDisabled,
+	workflow,
+});
 
 const closePanel = () => {
 	workflowsStore.setPanelState('closed');
 };
-
-// This function creates a promise that resolves when the workflow execution completes
-// It's used to handle the loading state while waiting for the workflow to finish
-async function createExecutionPromise() {
-	return await new Promise<void>((resolve) => {
-		const resolveIfFinished = (isRunning: boolean) => {
-			if (!isRunning) {
-				unwatch();
-				resolve();
-			}
-		};
-
-		// Watch for changes in the workflow execution status
-		const unwatch = watch(() => workflowsStore.isWorkflowRunning, resolveIfFinished);
-		resolveIfFinished(workflowsStore.isWorkflowRunning);
-	});
-}
-
-async function onRunChatWorkflow(payload: RunWorkflowChatPayload) {
-	const runWorkflowOptions: Parameters<typeof runWorkflow>[0] = {
-		triggerNode: payload.triggerNode,
-		nodeData: payload.nodeData,
-		source: payload.source,
-	};
-
-	if (workflowsStore.chatPartialExecutionDestinationNode) {
-		runWorkflowOptions.destinationNode = workflowsStore.chatPartialExecutionDestinationNode;
-		workflowsStore.chatPartialExecutionDestinationNode = null;
-	}
-
-	const response = await runWorkflow(runWorkflowOptions);
-
-	if (response) {
-		await createExecutionPromise();
-		workflowsStore.appendChatMessage(payload.message);
-		return response;
-	}
-	return;
-}
 
 function onPopOut() {
 	telemetry.track('User toggled log view', { new_state: 'floating' });
 	workflowsStore.setPanelState('floating');
 }
 
-// Initialize chat config
-const { chatConfig, chatOptions } = createChatConfig({
-	messages,
-	sendMessage,
-	currentSessionId,
-	isLoading,
-	isDisabled,
-	allowFileUploads,
-	locale: useI18n(),
-});
-
-// Provide chat context
-provide(ChatSymbol, chatConfig);
-provide(ChatOptionsSymbol, chatOptions);
-
 // Watchers
-watch(
-	chatPanelState,
-	(state) => {
-		if (state !== 'closed') {
-			setChatTriggerNode();
-			setConnectedNode();
-
-			if (messages.value.length === 0) {
-				messages.value = getChatMessages();
-			}
-
-			setTimeout(() => {
-				onWindowResize();
-				chatEventBus.emit('focusInput');
-			}, 0);
-		}
-	},
-	{ immediate: true },
-);
-
-watch(
-	() => allConnections.value,
-	() => {
-		if (canvasStore.isLoading) return;
-		setTimeout(() => {
-			if (!chatTriggerNode.value) {
-				setChatTriggerNode();
-			}
-			setConnectedNode();
-		}, 0);
-	},
-	{ deep: true },
-);
-
 watchEffect(() => {
 	canvasStore.setPanelHeight(chatPanelState.value === 'attached' ? height.value : 0);
 });
@@ -319,8 +122,8 @@ watchEffect(() => {
 									:past-chat-messages="previousChatMessages"
 									:show-close-button="!isPoppedOut && !connectedNode"
 									@close="closePanel"
-									@refresh-session="handleRefreshSession"
-									@display-execution="handleDisplayExecution"
+									@refresh-session="refreshSession"
+									@display-execution="displayExecution"
 									@send-message="sendMessage"
 								/>
 							</div>

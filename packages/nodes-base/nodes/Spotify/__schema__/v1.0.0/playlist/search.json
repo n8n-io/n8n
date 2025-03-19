@@ -107,7 +107,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "primary_color"
-    ]
+    "version": 1
 }

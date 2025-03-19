@@ -31,11 +31,31 @@
         "due": {
             "type": "string"
         },
+        "links": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "link": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "type",
+                    "description",
+                    "link"
+                ]
+            }
+        },
         "webViewLink": {
             "type": "string"
-        },
-        "completed": {
-            "type": "string"
         }
-    }
+    },
+    "version": 1
 }

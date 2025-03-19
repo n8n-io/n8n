@@ -139,7 +139,7 @@ const scrollRight = () => scroll(50);
 
 .tabs {
 	color: var(--color-text-base);
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight-medium);
 	display: flex;
 	align-items: center;
 	width: 100%;

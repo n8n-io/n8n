@@ -134,5 +134,6 @@
         "totalComment",
         "totalAlerts",
         "comments"
-    ]
+    ],
+    "version": 1
 }

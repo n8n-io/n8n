@@ -33,15 +33,20 @@
                 "source": {
                     "type": "string"
                 },
+                "file_id": {
+                    "type": "string"
+                },
                 "blobType": {
                     "type": "string"
                 }
             },
             "required": [
-                "loc",
-                "source",
-                "blobType"
+                "source"
             ]
+        },
+        "embedding": {
+            "type": "string"
         }
-    }
+    },
+    "version": 1
 }
