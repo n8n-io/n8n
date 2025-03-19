@@ -9,6 +9,9 @@
         },
         "url": {
             "type": "string"
+        },
+        "property_name": {
+            "type": "string"
         }
     },
     "version": 1
