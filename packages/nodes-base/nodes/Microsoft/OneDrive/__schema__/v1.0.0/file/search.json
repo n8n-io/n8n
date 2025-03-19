@@ -13,11 +13,11 @@
         "name": {
             "type": "string"
         },
-        "webUrl": {
-            "type": "string"
-        },
         "size": {
             "type": "integer"
+        },
+        "webUrl": {
+            "type": "string"
         },
         "createdBy": {
             "type": "object",
@@ -25,10 +25,10 @@
                 "user": {
                     "type": "object",
                     "properties": {
-                        "email": {
+                        "displayName": {
                             "type": "string"
                         },
-                        "displayName": {
+                        "email": {
                             "type": "string"
                         }
                     },
@@ -47,10 +47,10 @@
                 "user": {
                     "type": "object",
                     "properties": {
-                        "email": {
+                        "displayName": {
                             "type": "string"
                         },
-                        "displayName": {
+                        "email": {
                             "type": "string"
                         }
                     },
@@ -66,10 +66,10 @@
         "parentReference": {
             "type": "object",
             "properties": {
-                "driveType": {
+                "driveId": {
                     "type": "string"
                 },
-                "driveId": {
+                "driveType": {
                     "type": "string"
                 },
                 "id": {
@@ -80,8 +80,8 @@
                 }
             },
             "required": [
-                "driveType",
                 "driveId",
+                "driveType",
                 "id"
             ]
         },
@@ -112,5 +112,14 @@
             ]
         }
     },
+    "required": [
+        "createdDateTime",
+        "id",
+        "lastModifiedDateTime",
+        "name",
+        "webUrl",
+        "parentReference",
+        "file"
+    ],
     "version": 1
 }
