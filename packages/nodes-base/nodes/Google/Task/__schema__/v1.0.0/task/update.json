@@ -28,9 +28,6 @@
         "status": {
             "type": "string"
         },
-        "due": {
-            "type": "string"
-        },
         "links": {
             "type": "array",
             "items": {
@@ -54,6 +51,9 @@
             }
         },
         "webViewLink": {
+            "type": "string"
+        },
+        "due": {
             "type": "string"
         }
     },
