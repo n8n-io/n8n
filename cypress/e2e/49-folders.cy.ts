@@ -70,12 +70,12 @@ describe('Folders', () => {
 			getCurrentBreadcrumb().should('contain.text', 'My Folder');
 		});
 
-		it('should not allow illegal characters in folder name', () => {
-			// This is thoroughly tested in unit tests
+		it('should not allow illegal folder names', () => {
+			// Validation logic is thoroughly tested in unit tests
 			// Here we just make sure everything is working in the full UI
 			const ILLEGAL_CHARACTERS_NAME = 'hello[';
 			const ONLY_DOTS_NAME = '...';
-			const REGURAL_NAME = 'My Folder';
+			const REGULAR_NAME = 'My Folder';
 
 			getPersonalProjectMenuItem().click();
 			getAddResourceDropdown().click();
@@ -93,7 +93,7 @@ describe('Folders', () => {
 			);
 			getNewFolderNameInput().clear();
 			getNewFolderModalErrorMessage().should('contain.text', 'Folder name cannot be empty');
-			getNewFolderNameInput().type(REGURAL_NAME, { delay: 50 });
+			getNewFolderNameInput().type(REGULAR_NAME, { delay: 50 });
 			getNewFolderModalErrorMessage().should('not.exist');
 		});
 

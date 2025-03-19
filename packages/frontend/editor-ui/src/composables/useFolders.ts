@@ -2,6 +2,7 @@ import {
 	FOLDER_NAME_ILLEGAL_CHARACTERS_REGEX,
 	FOLDER_NAME_MAX_LENGTH,
 	FOLDER_NAME_ONLY_DOTS_REGEX,
+	ILLEGAL_FOLDER_CHARACTERS,
 } from '@/constants';
 import { useI18n } from './useI18n';
 
@@ -12,7 +13,7 @@ export function useFolders() {
 		if (FOLDER_NAME_ILLEGAL_CHARACTERS_REGEX.test(folderName)) {
 			return i18n.baseText('folders.invalidName.invalidCharacters.message', {
 				interpolate: {
-					illegalChars: '[ ] ^ \\ / : * ? " < > |',
+					illegalChars: ILLEGAL_FOLDER_CHARACTERS.join(' '),
 				},
 			});
 		}
