@@ -117,6 +117,21 @@
                 "type": "integer"
             }
         },
+        "website": {
+            "type": "null"
+        },
+        "linkedin": {
+            "type": "null"
+        },
+        "industry": {
+            "type": "null"
+        },
+        "annual_revenue": {
+            "type": "null"
+        },
+        "employee_count": {
+            "type": "null"
+        },
         "cc_email": {
             "type": "string"
         },
