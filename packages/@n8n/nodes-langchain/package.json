@@ -81,6 +81,7 @@
       "dist/nodes/memory/MemoryBufferWindow/MemoryBufferWindow.node.js",
       "dist/nodes/memory/MemoryMotorhead/MemoryMotorhead.node.js",
       "dist/nodes/memory/MemoryPostgresChat/MemoryPostgresChat.node.js",
+      "dist/nodes/memory/MemoryMongoDBChat/MemoryMongoDBChat.node.js",
       "dist/nodes/memory/MemoryRedisChat/MemoryRedisChat.node.js",
       "dist/nodes/memory/MemoryManager/MemoryManager.node.js",
       "dist/nodes/memory/MemoryChatRetriever/MemoryChatRetriever.node.js",
