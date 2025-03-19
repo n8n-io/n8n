@@ -107,20 +107,29 @@ onMounted(async () => {
 		</n8n-text>
 		<div :class="$style.separator"></div>
 		<div :class="$style.info">
-			<div>
-				<div v-if="communityNodeDetails?.verified">
+			<n8n-tooltip placement="top" v-if="communityNodeDetails?.verified">
+				<template #content>This community node has been reviewed and approved by n8n</template>
+				<div>
 					<FontAwesomeIcon :class="$style.tooltipIcon" icon="check-circle" />
 					<n8n-text color="text-light" size="xsmall" bold> Verified </n8n-text>
 				</div>
-				<div v-else>
-					<FontAwesomeIcon :class="$style.tooltipIconDanger" icon="exclamation-triangle" />
-					<n8n-text color="text-light" size="xsmall" bold> Unverified </n8n-text>
+			</n8n-tooltip>
+
+			<n8n-tooltip placement="top" v-else>
+				<template #content
+					>This community node was added via npm and has not been verified by n8n</template
+				>
+				<div>
+					<FontAwesomeIcon :class="$style.tooltipIcon" icon="cube" />
+					<n8n-text color="text-light" size="xsmall" bold> Via npm </n8n-text>
 				</div>
-			</div>
+			</n8n-tooltip>
+
 			<div v-if="downloads">
 				<FontAwesomeIcon :class="$style.tooltipIcon" icon="download" />
 				<n8n-text color="text-light" size="xsmall" bold> {{ downloads }} Downloads </n8n-text>
 			</div>
+
 			<div v-if="publisherName">
 				<FontAwesomeIcon :class="$style.tooltipIcon" icon="user" />
 				<n8n-text color="text-light" size="xsmall" bold>
@@ -189,11 +198,6 @@ onMounted(async () => {
 
 .tooltipIcon {
 	color: var(--color-text-light);
-	font-size: var(--font-size-2xs);
-}
-
-.tooltipIconDanger {
-	color: var(--color-danger);
 	font-size: var(--font-size-2xs);
 }
 

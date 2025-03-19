@@ -181,7 +181,10 @@ watch(
 						</n8n-text>
 					</div>
 
-					<div v-else-if="communityNodeDetailsNoActions" :class="$style.addToWorkflow">
+					<div
+						v-else-if="communityNodeDetailsNoActions && !isPreview"
+						:class="$style.addToWorkflow"
+					>
 						<n8n-button
 							size="medium"
 							type="secondary"
