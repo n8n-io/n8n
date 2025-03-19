@@ -16,9 +16,6 @@
         "is_billed": {
             "type": "boolean"
         },
-        "ended_time": {
-            "type": "null"
-        },
         "is_running": {
             "type": "boolean"
         },
