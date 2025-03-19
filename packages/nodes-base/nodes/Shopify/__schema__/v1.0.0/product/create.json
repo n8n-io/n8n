@@ -22,9 +22,6 @@
         "updated_at": {
             "type": "string"
         },
-        "template_suffix": {
-            "type": "null"
-        },
         "published_scope": {
             "type": "string"
         },
