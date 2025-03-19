@@ -28,8 +28,20 @@
         "LastName": {
             "type": "string"
         },
+        "MiddleName": {
+            "type": "null"
+        },
+        "Suffix": {
+            "type": "null"
+        },
         "Name": {
             "type": "string"
+        },
+        "HomePhone": {
+            "type": "null"
+        },
+        "OtherPhone": {
+            "type": "null"
         },
         "OwnerId": {
             "type": "string"
@@ -66,21 +78,6 @@
         },
         "IsPriorityRecord": {
             "type": "boolean"
-        },
-        "MiddleName": {
-            "type": "null"
-        },
-        "Suffix": {
-            "type": "null"
-        },
-        "LID__LinkedIn_Company_Id__c": {
-            "type": "null"
-        },
-        "LID__LinkedIn_Member_Token__c": {
-            "type": "null"
-        },
-        "LID__No_longer_at_Company__c": {
-            "type": "null"
         }
     },
     "version": 1
