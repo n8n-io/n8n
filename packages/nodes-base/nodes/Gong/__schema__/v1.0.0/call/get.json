@@ -79,44 +79,6 @@
                 "calendarEventId"
             ]
         },
-        "transcript": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "speakerId": {
-                        "type": "string"
-                    },
-                    "sentences": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "start": {
-                                    "type": "integer"
-                                },
-                                "end": {
-                                    "type": "integer"
-                                },
-                                "text": {
-                                    "type": "string"
-                                }
-                            },
-                            "required": [
-                                "start",
-                                "end",
-                                "text"
-                            ]
-                        }
-                    }
-                },
-                "required": [
-                    "speakerId",
-                    "topic",
-                    "sentences"
-                ]
-            }
-        },
         "parties": {
             "type": "array",
             "items": {
@@ -155,6 +117,44 @@
                     "speakerId",
                     "affiliation",
                     "methods"
+                ]
+            }
+        },
+        "transcript": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "speakerId": {
+                        "type": "string"
+                    },
+                    "sentences": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "start": {
+                                    "type": "integer"
+                                },
+                                "end": {
+                                    "type": "integer"
+                                },
+                                "text": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "start",
+                                "end",
+                                "text"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "speakerId",
+                    "topic",
+                    "sentences"
                 ]
             }
         }
