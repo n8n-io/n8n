@@ -179,10 +179,58 @@
                     }
                 },
                 "required": [
-                    "Amount",
                     "DetailType"
                 ]
             }
+        },
+        "TxnTaxDetail": {
+            "type": "object",
+            "properties": {
+                "TaxLine": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "DetailType": {
+                                "type": "string"
+                            },
+                            "TaxLineDetail": {
+                                "type": "object",
+                                "properties": {
+                                    "TaxRateRef": {
+                                        "type": "object",
+                                        "properties": {
+                                            "value": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "value"
+                                        ]
+                                    },
+                                    "PercentBased": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "required": [
+                                    "TaxRateRef",
+                                    "PercentBased",
+                                    "TaxPercent",
+                                    "NetAmountTaxable"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "Amount",
+                            "DetailType",
+                            "TaxLineDetail"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "TotalTax"
+            ]
         },
         "CustomerRef": {
             "type": "object",
