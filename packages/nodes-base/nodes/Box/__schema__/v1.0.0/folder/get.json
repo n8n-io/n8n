@@ -194,6 +194,28 @@
                             },
                             "name": {
                                 "type": "string"
+                            },
+                            "file_version": {
+                                "type": "object",
+                                "properties": {
+                                    "type": {
+                                        "type": "string"
+                                    },
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "sha1": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "type",
+                                    "id",
+                                    "sha1"
+                                ]
+                            },
+                            "sha1": {
+                                "type": "string"
                             }
                         },
                         "required": [
