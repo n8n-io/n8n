@@ -70,6 +70,9 @@
                 "lastActionDate": {
                     "type": "string"
                 },
+                "indexVersion": {
+                    "type": "integer"
+                },
                 "followers": {
                     "type": "array",
                     "items": {
@@ -88,9 +91,6 @@
                         "email": {
                             "type": "string"
                         },
-                        "phone": {
-                            "type": "string"
-                        },
                         "tags": {
                             "type": "array",
                             "items": {
@@ -102,6 +102,9 @@
                             "items": {
                                 "type": "string"
                             }
+                        },
+                        "phone": {
+                            "type": "string"
                         }
                     },
                     "required": [
@@ -110,9 +113,6 @@
                         "tags",
                         "followers"
                     ]
-                },
-                "indexVersion": {
-                    "type": "integer"
                 }
             },
             "required": [
