@@ -93,10 +93,10 @@
                                             "type": {
                                                 "type": "string"
                                             },
-                                            "text": {
+                                            "user_id": {
                                                 "type": "string"
                                             },
-                                            "user_id": {
+                                            "text": {
                                                 "type": "string"
                                             }
                                         },
