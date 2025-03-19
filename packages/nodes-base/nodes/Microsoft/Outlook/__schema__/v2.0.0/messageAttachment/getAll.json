@@ -16,6 +16,9 @@
         "name": {
             "type": "string"
         },
+        "contentType": {
+            "type": "string"
+        },
         "size": {
             "type": "integer"
         },
