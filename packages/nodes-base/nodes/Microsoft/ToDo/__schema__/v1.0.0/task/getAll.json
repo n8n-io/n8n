@@ -48,21 +48,6 @@
                 "content",
                 "contentType"
             ]
-        },
-        "completedDateTime": {
-            "type": "object",
-            "properties": {
-                "dateTime": {
-                    "type": "string"
-                },
-                "timeZone": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "dateTime",
-                "timeZone"
-            ]
         }
     },
     "required": [
