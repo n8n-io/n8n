@@ -7,23 +7,661 @@
         "attributes": {
             "type": "object",
             "properties": {
-                "scene_id": {
-                    "type": "integer"
-                },
                 "createdAt": {
                     "type": "string"
                 },
                 "updatedAt": {
                     "type": "string"
                 },
+                "scene_id": {
+                    "type": "integer"
+                },
                 "title": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "sort": {
+                    "type": "integer"
+                },
+                "release_date": {
+                    "type": "string"
+                },
+                "can_be_auto_session": {
+                    "type": "boolean"
+                },
+                "deleted_at": {
+                    "type": "null"
+                },
+                "publishedAt": {
                     "type": "string"
                 },
                 "locale": {
                     "type": "string"
+                },
+                "extra": {
+                    "type": "null"
+                },
+                "apk_package_name": {
+                    "type": "null"
+                },
+                "safety_modal": {
+                    "type": "boolean"
+                },
+                "medical_regulated": {
+                    "type": "boolean"
+                },
+                "ai_skybox": {
+                    "type": "null"
+                },
+                "ai_avatars": {
+                    "type": "null"
+                },
+                "manual": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "integer"
+                        },
+                        "title": {
+                            "type": "string"
+                        },
+                        "content": {
+                            "type": "string"
+                        },
+                        "vimeo_video_url": {
+                            "type": "null"
+                        }
+                    },
+                    "required": [
+                        "id",
+                        "title",
+                        "content",
+                        "vimeo_video_url",
+                        "youtube_video_url"
+                    ]
+                },
+                "thumbnail": {
+                    "type": "object",
+                    "properties": {
+                        "data": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "integer"
+                                },
+                                "attributes": {
+                                    "type": "object",
+                                    "properties": {
+                                        "name": {
+                                            "type": "string"
+                                        },
+                                        "width": {
+                                            "type": "integer"
+                                        },
+                                        "height": {
+                                            "type": "integer"
+                                        },
+                                        "formats": {
+                                            "type": "object",
+                                            "properties": {
+                                                "thumbnail": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "name": {
+                                                            "type": "string"
+                                                        },
+                                                        "hash": {
+                                                            "type": "string"
+                                                        },
+                                                        "ext": {
+                                                            "type": "string"
+                                                        },
+                                                        "mime": {
+                                                            "type": "string"
+                                                        },
+                                                        "path": {
+                                                            "type": "null"
+                                                        },
+                                                        "width": {
+                                                            "type": "integer"
+                                                        },
+                                                        "height": {
+                                                            "type": "integer"
+                                                        },
+                                                        "size": {
+                                                            "type": "number"
+                                                        },
+                                                        "url": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "name",
+                                                        "hash",
+                                                        "ext",
+                                                        "mime",
+                                                        "path",
+                                                        "width",
+                                                        "height",
+                                                        "size",
+                                                        "url"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "thumbnail"
+                                            ]
+                                        },
+                                        "hash": {
+                                            "type": "string"
+                                        },
+                                        "ext": {
+                                            "type": "string"
+                                        },
+                                        "mime": {
+                                            "type": "string"
+                                        },
+                                        "size": {
+                                            "type": "number"
+                                        },
+                                        "url": {
+                                            "type": "string"
+                                        },
+                                        "previewUrl": {
+                                            "type": "null"
+                                        },
+                                        "provider": {
+                                            "type": "string"
+                                        },
+                                        "provider_metadata": {
+                                            "type": "null"
+                                        },
+                                        "createdAt": {
+                                            "type": "string"
+                                        },
+                                        "updatedAt": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "name",
+                                        "alternativeText",
+                                        "caption",
+                                        "width",
+                                        "height",
+                                        "formats",
+                                        "hash",
+                                        "ext",
+                                        "mime",
+                                        "size",
+                                        "url",
+                                        "previewUrl",
+                                        "provider",
+                                        "provider_metadata",
+                                        "createdAt",
+                                        "updatedAt"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "attributes"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "data"
+                    ]
+                },
+                "scene_tags": {
+                    "type": "object",
+                    "properties": {
+                        "data": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "integer"
+                                    },
+                                    "attributes": {
+                                        "type": "object",
+                                        "properties": {
+                                            "name": {
+                                                "type": "string"
+                                            },
+                                            "is_topic": {
+                                                "type": "boolean"
+                                            },
+                                            "createdAt": {
+                                                "type": "string"
+                                            },
+                                            "updatedAt": {
+                                                "type": "string"
+                                            },
+                                            "publishedAt": {
+                                                "type": "string"
+                                            },
+                                            "locale": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "name",
+                                            "is_topic",
+                                            "createdAt",
+                                            "updatedAt",
+                                            "publishedAt",
+                                            "locale"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "id",
+                                    "attributes"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "data"
+                    ]
+                },
+                "presets": {
+                    "type": "object",
+                    "properties": {
+                        "data": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "integer"
+                                    },
+                                    "attributes": {
+                                        "type": "object",
+                                        "properties": {
+                                            "preset_id": {
+                                                "type": "integer"
+                                            },
+                                            "title": {
+                                                "type": "string"
+                                            },
+                                            "createdAt": {
+                                                "type": "string"
+                                            },
+                                            "updatedAt": {
+                                                "type": "string"
+                                            },
+                                            "locale": {
+                                                "type": "string"
+                                            },
+                                            "sort": {
+                                                "type": "integer"
+                                            },
+                                            "description": {
+                                                "type": "null"
+                                            }
+                                        },
+                                        "required": [
+                                            "preset_id",
+                                            "title",
+                                            "deleted_at",
+                                            "createdAt",
+                                            "updatedAt",
+                                            "locale",
+                                            "sort",
+                                            "description"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "id",
+                                    "attributes"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "data"
+                    ]
+                },
+                "scene_groups": {
+                    "type": "object",
+                    "properties": {
+                        "data": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "integer"
+                                    },
+                                    "attributes": {
+                                        "type": "object",
+                                        "properties": {
+                                            "name": {
+                                                "type": "string"
+                                            },
+                                            "ignore": {
+                                                "type": "boolean"
+                                            },
+                                            "scene_group_id": {
+                                                "type": "integer"
+                                            },
+                                            "createdAt": {
+                                                "type": "string"
+                                            },
+                                            "updatedAt": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "name",
+                                            "ignore",
+                                            "scene_group_id",
+                                            "createdAt",
+                                            "updatedAt"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "id",
+                                    "attributes"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "data"
+                    ]
+                },
+                "clinical_categories": {
+                    "type": "object",
+                    "properties": {
+                        "data": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "integer"
+                                    },
+                                    "attributes": {
+                                        "type": "object",
+                                        "properties": {
+                                            "title": {
+                                                "type": "string"
+                                            },
+                                            "createdAt": {
+                                                "type": "string"
+                                            },
+                                            "updatedAt": {
+                                                "type": "string"
+                                            },
+                                            "publishedAt": {
+                                                "type": "string"
+                                            },
+                                            "locale": {
+                                                "type": "string"
+                                            },
+                                            "clinical_category_id": {
+                                                "type": "integer"
+                                            }
+                                        },
+                                        "required": [
+                                            "title",
+                                            "createdAt",
+                                            "updatedAt",
+                                            "publishedAt",
+                                            "locale",
+                                            "clinical_category_id"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "id",
+                                    "attributes"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "data"
+                    ]
+                },
+                "standalone_scenes": {
+                    "type": "object",
+                    "properties": {
+                        "data": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "integer"
+                                    },
+                                    "attributes": {
+                                        "type": "object",
+                                        "properties": {
+                                            "title": {
+                                                "type": "string"
+                                            },
+                                            "description": {
+                                                "type": "string"
+                                            },
+                                            "duration": {
+                                                "type": "string"
+                                            },
+                                            "createdAt": {
+                                                "type": "string"
+                                            },
+                                            "updatedAt": {
+                                                "type": "string"
+                                            },
+                                            "publishedAt": {
+                                                "type": "string"
+                                            },
+                                            "locale": {
+                                                "type": "string"
+                                            },
+                                            "key": {
+                                                "type": "string"
+                                            },
+                                            "apk_configuration": {
+                                                "type": "null"
+                                            }
+                                        },
+                                        "required": [
+                                            "title",
+                                            "description",
+                                            "duration",
+                                            "options",
+                                            "createdAt",
+                                            "updatedAt",
+                                            "publishedAt",
+                                            "locale",
+                                            "key",
+                                            "apk_configuration"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "id",
+                                    "attributes"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "data"
+                    ]
+                },
+                "languages": {
+                    "type": "object",
+                    "properties": {
+                        "data": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "integer"
+                                    },
+                                    "attributes": {
+                                        "type": "object",
+                                        "properties": {
+                                            "lang_id": {
+                                                "type": "integer"
+                                            },
+                                            "code": {
+                                                "type": "string"
+                                            },
+                                            "locale": {
+                                                "type": "string"
+                                            },
+                                            "name": {
+                                                "type": "string"
+                                            },
+                                            "webplatform": {
+                                                "type": "boolean"
+                                            },
+                                            "createdAt": {
+                                                "type": "string"
+                                            },
+                                            "updatedAt": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "lang_id",
+                                            "code",
+                                            "locale",
+                                            "name",
+                                            "webplatform",
+                                            "createdAt",
+                                            "updatedAt"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "id",
+                                    "attributes"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "data"
+                    ]
+                },
+                "localizations": {
+                    "type": "object",
+                    "properties": {
+                        "data": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "integer"
+                                    },
+                                    "attributes": {
+                                        "type": "object",
+                                        "properties": {
+                                            "scene_id": {
+                                                "type": "integer"
+                                            },
+                                            "title": {
+                                                "type": "string"
+                                            },
+                                            "description": {
+                                                "type": "string"
+                                            },
+                                            "sort": {
+                                                "type": "integer"
+                                            },
+                                            "release_date": {
+                                                "type": "string"
+                                            },
+                                            "can_be_auto_session": {
+                                                "type": "boolean"
+                                            },
+                                            "deleted_at": {
+                                                "type": "null"
+                                            },
+                                            "createdAt": {
+                                                "type": "string"
+                                            },
+                                            "updatedAt": {
+                                                "type": "string"
+                                            },
+                                            "publishedAt": {
+                                                "type": "string"
+                                            },
+                                            "locale": {
+                                                "type": "string"
+                                            },
+                                            "extra": {
+                                                "type": "null"
+                                            },
+                                            "apk_package_name": {
+                                                "type": "null"
+                                            },
+                                            "safety_modal": {
+                                                "type": "boolean"
+                                            },
+                                            "medical_regulated": {
+                                                "type": "boolean"
+                                            },
+                                            "ai_skybox": {
+                                                "type": "null"
+                                            },
+                                            "ai_avatars": {
+                                                "type": "null"
+                                            }
+                                        },
+                                        "required": [
+                                            "scene_id",
+                                            "title",
+                                            "description",
+                                            "sort",
+                                            "release_date",
+                                            "can_be_auto_session",
+                                            "deleted_at",
+                                            "createdAt",
+                                            "updatedAt",
+                                            "publishedAt",
+                                            "locale",
+                                            "extra",
+                                            "video_duration",
+                                            "apk_package_name",
+                                            "safety_modal",
+                                            "medical_regulated",
+                                            "ai_skybox",
+                                            "ai_avatars"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "id",
+                                    "attributes"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "data"
+                    ]
                 }
             }
         }
     },
+    "required": [
+        "id",
+        "attributes"
+    ],
     "version": 1
 }
