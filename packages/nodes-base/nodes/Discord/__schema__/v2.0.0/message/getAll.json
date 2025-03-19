@@ -33,9 +33,6 @@
                     "accent_color": {
                         "type": "null"
                     },
-                    "avatar_decoration_data": {
-                        "type": "null"
-                    },
                     "collectibles": {
                         "type": "null"
                     },
@@ -60,6 +57,7 @@
                     "accent_color",
                     "global_name",
                     "avatar_decoration_data",
+                    "collectibles",
                     "banner_color",
                     "clan",
                     "primary_guild"
@@ -92,14 +90,14 @@
                     "proxy_url": {
                         "type": "string"
                     },
-                    "content_type": {
-                        "type": "string"
-                    },
                     "width": {
                         "type": "integer"
                     },
                     "height": {
                         "type": "integer"
+                    },
+                    "content_type": {
+                        "type": "string"
                     },
                     "placeholder": {
                         "type": "string"
@@ -126,12 +124,6 @@
                     "type": {
                         "type": "string"
                     },
-                    "url": {
-                        "type": "string"
-                    },
-                    "title": {
-                        "type": "string"
-                    },
                     "description": {
                         "type": "string"
                     },
@@ -149,9 +141,14 @@
                             }
                         },
                         "required": [
-                            "name",
-                            "url"
+                            "name"
                         ]
+                    },
+                    "url": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
                     },
                     "provider": {
                         "type": "object",
@@ -164,8 +161,7 @@
                             }
                         },
                         "required": [
-                            "name",
-                            "url"
+                            "name"
                         ]
                     },
                     "thumbnail": {
@@ -281,7 +277,9 @@
                             "required": [
                                 "type",
                                 "id",
-                                "style"
+                                "style",
+                                "label",
+                                "url"
                             ]
                         }
                     }
@@ -358,5 +356,13 @@
             "type": "boolean"
         }
     },
+    "required": [
+        "type",
+        "content",
+        "timestamp",
+        "id",
+        "channel_id",
+        "author"
+    ],
     "version": 1
 }
