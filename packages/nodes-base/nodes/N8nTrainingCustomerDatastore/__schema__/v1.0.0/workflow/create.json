@@ -9,27 +9,13 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "operation": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "name": {
-                        "type": "string"
-                    },
                     "type": {
                         "type": "string"
                     },
-                    "position": {
-                        "type": "array",
-                        "items": {
-                            "type": "integer"
-                        }
-                    },
                     "id": {
+                        "type": "string"
+                    },
+                    "name": {
                         "type": "string"
                     }
                 },
