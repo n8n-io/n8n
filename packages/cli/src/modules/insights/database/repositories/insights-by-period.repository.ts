@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { sql } from '@/utils/sql';
 
 import { InsightsByPeriod } from '../entities/insights-by-period';
-import type { PeriodUnit } from '../entities/insights-shared';
+import type { PeriodUnit, TypeUnit } from '../entities/insights-shared';
 import { PeriodUnitToNumber, TypeToNumber } from '../entities/insights-shared';
 
 const dbType = Container.get(GlobalConfig).database.type;
@@ -19,6 +19,32 @@ const summaryParser = z
 
 		// depending on db engine, sum(value) can be a number or a string - because of big numbers
 		total_value: z.union([z.number(), z.string()]),
+	})
+	.array();
+
+const aggregatedInsightsByWorkflowParser = z
+	.object({
+		workflowId: z.string(),
+		workflowName: z.string().optional(),
+		projectId: z.string().optional(),
+		projectName: z.string().optional(),
+		total: z.union([z.number(), z.string()]),
+		succeeded: z.union([z.number(), z.string()]),
+		failed: z.union([z.number(), z.string()]),
+		failureRate: z.union([z.number(), z.string()]),
+		runTime: z.union([z.number(), z.string()]),
+		averageRunTime: z.union([z.number(), z.string()]),
+		timeSaved: z.union([z.number(), z.string()]),
+	})
+	.array();
+
+const aggregatedInsightsByTimeParser = z
+	.object({
+		periodStart: z.string(),
+		runTime: z.union([z.number(), z.string()]),
+		succeeded: z.union([z.number(), z.string()]),
+		failed: z.union([z.number(), z.string()]),
+		timeSaved: z.union([z.number(), z.string()]),
 	})
 	.array();
 
@@ -321,6 +347,34 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		const count = (await rawRowsQuery.getRawMany()).length;
 		const rawRows = await rawRowsQuery.skip(skip).take(take).getRawMany();
 
-		return { count, rows: rawRows };
+		return { count, rows: aggregatedInsightsByWorkflowParser.parse(rawRows) };
+	}
+
+	// TODO: add return type once rebased on master and InsightsByTimeAndType is
+	// available
+	// TODO: add tests
+	async getInsightsByTime(nbDays: number, types: TypeUnit[]) {
+		const dateSubQuery =
+			dbType === 'sqlite'
+				? `datetime('now', '-${nbDays} days')`
+				: dbType === 'postgresdb'
+					? `CURRENT_DATE - INTERVAL '${nbDays} days'`
+					: `DATE_SUB(CURDATE(), INTERVAL ${nbDays} DAY)`;
+
+		const rawRows = await this.createQueryBuilder('insights')
+			.select([
+				'insights.periodStart AS "periodStart"',
+				`SUM(CASE WHEN insights.type = ${TypeToNumber.runtime_ms} THEN value ELSE 0 END) AS "runTime"`,
+				`SUM(CASE WHEN insights.type = ${TypeToNumber.success} THEN value ELSE 0 END) AS "succeeded"`,
+				`SUM(CASE WHEN insights.type = ${TypeToNumber.failure} THEN value ELSE 0 END) AS "failed"`,
+				`SUM(CASE WHEN insights.type = ${TypeToNumber.time_saved_min} THEN value ELSE 0 END) AS "timeSaved"`,
+			])
+			.where(`insights.periodStart >= ${dateSubQuery}`)
+			.andWhere('insights.type IN (:...types)', { types: types.map((t) => TypeToNumber[t]) })
+			.addGroupBy('insights.periodStart') // TODO: group by specific time scale (start with day)
+			.orderBy('insights.periodStart', 'ASC')
+			.getRawMany();
+
+		return aggregatedInsightsByTimeParser.parse(rawRows);
 	}
 }

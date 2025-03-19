@@ -7,7 +7,6 @@ import {
 	type IRun,
 	type WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { z } from 'zod';
 
 import { SharedWorkflow } from '@/databases/entities/shared-workflow';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
@@ -48,21 +47,6 @@ const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
 	manual: true,
 };
 
-const byWorkflowParser = z
-	.object({
-		workflowId: z.string(),
-		workflowName: z.string().optional(),
-		projectId: z.string().optional(),
-		projectName: z.string().optional(),
-		total: z.union([z.number(), z.string()]),
-		succeeded: z.union([z.number(), z.string()]),
-		failed: z.union([z.number(), z.string()]),
-		failureRate: z.union([z.number(), z.string()]),
-		runTime: z.union([z.number(), z.string()]),
-		averageRunTime: z.union([z.number(), z.string()]),
-		timeSaved: z.union([z.number(), z.string()]),
-	})
-	.array();
 @Service()
 export class InsightsService {
 	private readonly maxAgeInDaysForHourlyData = 90;
@@ -337,7 +321,7 @@ export class InsightsService {
 			sortBy,
 		});
 
-		const data = byWorkflowParser.parse(rows).map((r) => {
+		const data = rows.map((r) => {
 			return {
 				workflowId: r.workflowId,
 				workflowName: r.workflowName,
@@ -357,5 +341,26 @@ export class InsightsService {
 			count,
 			data,
 		};
+	}
+
+	// TODO: add return type once rebased on master and InsightsByTimeAndType is
+	// available
+	// TODO: add tests
+	async getInsightsByTime(nbDays: number, types: TypeUnit[]) {
+		const rows = await this.insightsByPeriodRepository.getInsightsByTime(nbDays, types);
+
+		return rows.map((r) => {
+			return {
+				date: r.periodStart,
+				values: {
+					total: Number(r.succeeded) + Number(r.failed),
+					succeeded: Number(r.succeeded),
+					failed: Number(r.failed),
+					failureRate: Number(r.failed) / (Number(r.succeeded) + Number(r.failed)),
+					averageRunTime: Number(r.runTime) / (Number(r.succeeded) + Number(r.failed)),
+					timeSaved: Number(r.timeSaved),
+				},
+			};
+		});
 	}
 }
