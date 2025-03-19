@@ -27,6 +27,17 @@
                 "value"
             ]
         },
+        "PaymentMethodRef": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "value"
+            ]
+        },
         "ProcessPayment": {
             "type": "boolean"
         },
@@ -74,6 +85,24 @@
                 "value",
                 "name"
             ]
+        },
+        "LinkedTxn": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "TxnId": {
+                        "type": "string"
+                    },
+                    "TxnType": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "TxnId",
+                    "TxnType"
+                ]
+            }
         },
         "Line": {
             "type": "array",
@@ -162,38 +191,6 @@
                     "LineEx"
                 ]
             }
-        },
-        "LinkedTxn": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "TxnId": {
-                        "type": "string"
-                    },
-                    "TxnType": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "TxnId",
-                    "TxnType"
-                ]
-            }
-        },
-        "PaymentMethodRef": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "value"
-            ]
-        },
-        "PaymentRefNum": {
-            "type": "string"
         }
     },
     "required": [
