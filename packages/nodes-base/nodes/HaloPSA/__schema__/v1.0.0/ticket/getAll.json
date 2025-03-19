@@ -85,6 +85,12 @@
         "onhold": {
             "type": "boolean"
         },
+        "respondbydate": {
+            "type": "string"
+        },
+        "fixbydate": {
+            "type": "string"
+        },
         "excludefromsla": {
             "type": "boolean"
         },
@@ -102,6 +108,18 @@
         },
         "department_id": {
             "type": "integer"
+        },
+        "reportedby": {
+            "type": "string"
+        },
+        "user_email": {
+            "type": "string"
+        },
+        "emailtolist": {
+            "type": "string"
+        },
+        "emailcclist": {
+            "type": "string"
         },
         "matched_kb_id": {
             "type": "integer"
@@ -259,28 +277,10 @@
         "purchaseordernumber": {
             "type": "string"
         },
-        "respondbydate": {
-            "type": "string"
-        },
-        "fixbydate": {
-            "type": "string"
-        },
         "responsedate": {
             "type": "string"
         },
         "slaresponsestate": {
-            "type": "string"
-        },
-        "reportedby": {
-            "type": "string"
-        },
-        "emailtolist": {
-            "type": "string"
-        },
-        "emailcclist": {
-            "type": "string"
-        },
-        "user_email": {
             "type": "string"
         }
     },
