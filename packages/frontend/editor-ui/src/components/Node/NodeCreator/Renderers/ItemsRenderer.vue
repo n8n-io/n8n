@@ -40,12 +40,12 @@ const { activeViewStack } = useViewStacks();
 
 const activeItemId = computed(() => useKeyboardNavigation()?.activeItemId);
 
+const communityNodeDetailsNoActions = computed(() => {
+	return activeViewStack.mode === 'nodes' && activeViewStack.communityNodeDetails;
+});
+
 const isPreview = computed(() => {
-	return (
-		activeViewStack.mode === 'nodes' &&
-		activeViewStack.communityNodeDetails &&
-		!activeViewStack.communityNodeDetails.installed
-	);
+	return communityNodeDetailsNoActions.value && !activeViewStack.communityNodeDetails?.installed;
 });
 
 const isOwner = computed(() => useUsersStore().isInstanceOwner);
@@ -160,8 +160,9 @@ watch(
 					:class="{
 						clickable: !disabled,
 						[$style.active]: activeItemId === item.uuid,
-						[$style.iteratorItem]: true,
+						[$style.iteratorItem]: !communityNodeDetailsNoActions,
 						[$style[item.type]]: true,
+						[$style.preview]: isPreview,
 						// Borderless is only applied to views
 						[$style.borderless]: item.type === 'view' && item.properties.borderless === true,
 					}"
@@ -180,8 +181,18 @@ watch(
 						</n8n-text>
 					</div>
 
+					<div v-else-if="communityNodeDetailsNoActions" :class="$style.addToWorkflow">
+						<n8n-button
+							size="medium"
+							type="secondary"
+							icon="plus"
+							label="Add to workwlow"
+							outline
+						/>
+					</div>
+
 					<NodeItem
-						v-if="item.type === 'node' && !isPreview"
+						v-if="item.type === 'node' && !communityNodeDetailsNoActions"
 						:node-type="item.properties"
 						:active="true"
 						:subcategory="item.subcategory"
@@ -312,5 +323,14 @@ watch(
 	padding: var(--spacing-xs);
 	border: var(--border-width-base) solid var(--color-foreground-base);
 	border-radius: 0.25em;
+}
+
+.addToWorkflow {
+	margin-left: var(--spacing-xs);
+}
+
+.preview {
+	pointer-events: none;
+	cursor: default;
 }
 </style>
