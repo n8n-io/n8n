@@ -14,5 +14,11 @@
             "type": "string"
         }
     },
+    "required": [
+        "download_url",
+        "template_id",
+        "transaction_ref",
+        "status"
+    ],
     "version": 1
 }
