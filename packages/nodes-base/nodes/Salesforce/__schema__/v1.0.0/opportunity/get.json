@@ -82,9 +82,6 @@
         "Fiscal": {
             "type": "string"
         },
-        "SyncedQuoteId": {
-            "type": "null"
-        },
         "HasOpenActivity": {
             "type": "boolean"
         },
