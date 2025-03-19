@@ -1,7 +1,7 @@
 // These were obtained via console.log right before the sublimeSearch call in `editor-ui`
 // Which is triggered by typing in the search bar without selecting a category first
 
-export const items = [
+export const topLevel = [
 	{
 		uuid: '363bb484-a9a9-4946-91bd-ca0c76baceaf',
 		key: 'n8n-nodes-base.actionNetwork',
