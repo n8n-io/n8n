@@ -1,21 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "sys_mod_count": {
-            "type": "string"
-        },
-        "sys_updated_on": {
-            "type": "string"
-        },
-        "sys_tags": {
-            "type": "string"
-        },
-        "sys_class_name": {
-            "type": "string"
-        },
-        "number": {
-            "type": "string"
-        },
         "sys_id": {
             "type": "string"
         },
@@ -23,6 +8,15 @@
             "type": "string"
         },
         "sys_created_on": {
+            "type": "string"
+        },
+        "sys_mod_count": {
+            "type": "string"
+        },
+        "sys_updated_on": {
+            "type": "string"
+        },
+        "sys_tags": {
             "type": "string"
         },
         "sys_created_by": {
@@ -44,6 +38,9 @@
             "type": "string"
         },
         "approval_history": {
+            "type": "string"
+        },
+        "number": {
             "type": "string"
         },
         "opened_by": {
@@ -151,9 +148,6 @@
         "work_start": {
             "type": "string"
         },
-        "assignment_group": {
-            "type": "string"
-        },
         "additional_assignee_list": {
             "type": "string"
         },
@@ -167,6 +161,9 @@
             "type": "string"
         },
         "service_offering": {
+            "type": "string"
+        },
+        "sys_class_name": {
             "type": "string"
         },
         "closed_by": {
@@ -219,12 +216,12 @@
         }
     },
     "required": [
-        "sys_mod_count",
-        "sys_updated_on",
-        "sys_tags",
         "sys_id",
         "sys_updated_by",
         "sys_created_on",
+        "sys_mod_count",
+        "sys_updated_on",
+        "sys_tags",
         "sys_created_by"
     ],
     "version": 1
