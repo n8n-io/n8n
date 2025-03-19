@@ -22,7 +22,7 @@ import {
 	updateAble,
 } from './GenericFunctions';
 import type { ICtx, IRow, IRowObject } from './Interfaces';
-import { versionDescription } from './SeaTable.node';
+import { versionDescription } from './SeaTable.node.ts';
 import type { TColumnsUiValues, TColumnValue } from './types';
 
 export class SeaTableV1 implements INodeType {

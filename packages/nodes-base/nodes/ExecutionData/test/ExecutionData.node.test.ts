@@ -2,7 +2,7 @@ import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import { testWorkflows, getWorkflowFilenames } from '../../../test/nodes/Helpers';
-import { ExecutionData } from '../ExecutionData.node';
+import { ExecutionData } from '../ExecutionData.node.ts';
 
 describe('ExecutionData Node', () => {
 	it('should return its input data', async () => {

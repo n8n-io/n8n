@@ -3,7 +3,7 @@ import nock from 'nock';
 
 import { testPollingTriggerNode } from '@test/nodes/TriggerHelpers';
 
-import { GmailTrigger } from '../GmailTrigger.node';
+import { GmailTrigger } from '../GmailTrigger.node.ts';
 import type { Message, ListMessage, MessageListResponse } from '../types';
 
 jest.mock('mailparser');

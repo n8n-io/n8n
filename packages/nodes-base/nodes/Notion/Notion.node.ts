@@ -1,8 +1,8 @@
 import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 import { VersionedNodeType } from 'n8n-workflow';
 
-import { NotionV1 } from './v1/NotionV1.node';
-import { NotionV2 } from './v2/NotionV2.node';
+import { NotionV1 } from './v1/NotionV1.node.ts';
+import { NotionV2 } from './v2/NotionV2.node.ts';
 
 export class Notion extends VersionedNodeType {
 	constructor() {

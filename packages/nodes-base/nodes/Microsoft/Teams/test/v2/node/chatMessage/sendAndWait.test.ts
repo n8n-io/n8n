@@ -3,7 +3,7 @@ import { mock } from 'jest-mock-extended';
 import { SEND_AND_WAIT_OPERATION, type IExecuteFunctions, type INode } from 'n8n-workflow';
 
 import { versionDescription } from '../../../../v2/actions/versionDescription';
-import { MicrosoftTeamsV2 } from '../../../../v2/MicrosoftTeamsV2.node';
+import { MicrosoftTeamsV2 } from '../../../../v2/MicrosoftTeamsV2.node.ts';
 import * as transport from '../../../../v2/transport';
 
 jest.mock('../../../../v2/transport', () => {

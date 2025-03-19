@@ -1,9 +1,9 @@
 import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 import { VersionedNodeType } from 'n8n-workflow';
 
-import { SplitInBatchesV1 } from './v1/SplitInBatchesV1.node';
-import { SplitInBatchesV2 } from './v2/SplitInBatchesV2.node';
-import { SplitInBatchesV3 } from './v3/SplitInBatchesV3.node';
+import { SplitInBatchesV1 } from './v1/SplitInBatchesV1.node.ts';
+import { SplitInBatchesV2 } from './v2/SplitInBatchesV2.node.ts';
+import { SplitInBatchesV3 } from './v3/SplitInBatchesV3.node.ts';
 
 export class SplitInBatches extends VersionedNodeType {
 	constructor() {

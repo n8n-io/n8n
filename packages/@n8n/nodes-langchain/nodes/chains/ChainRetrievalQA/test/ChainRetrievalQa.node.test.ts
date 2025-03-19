@@ -6,7 +6,7 @@ import get from 'lodash/get';
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, UnexpectedError } from 'n8n-workflow';
 
-import { ChainRetrievalQa } from '../ChainRetrievalQa.node';
+import { ChainRetrievalQa } from '../ChainRetrievalQa.node.ts';
 
 const createExecuteFunctionsMock = (
 	parameters: IDataObject,

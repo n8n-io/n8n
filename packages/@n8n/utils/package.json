@@ -30,7 +30,7 @@
     "@n8n/vitest-config": "workspace:*",
     "@testing-library/jest-dom": "catalog:frontend",
     "@testing-library/user-event": "catalog:frontend",
-    "tsup": "catalog:frontend",
+    "tsup": "catalog:",
     "typescript": "catalog:frontend",
     "vite": "catalog:frontend",
     "vitest": "catalog:frontend"

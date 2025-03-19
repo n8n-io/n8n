@@ -35,7 +35,7 @@ import {
 	responseDataProperty,
 	responseModeProperty,
 } from '../Webhook/description';
-import { Webhook } from '../Webhook/Webhook.node';
+import { Webhook } from '../Webhook/Webhook.node.ts';
 
 const toWaitAmount: INodeProperties = {
 	displayName: 'Wait Amount',

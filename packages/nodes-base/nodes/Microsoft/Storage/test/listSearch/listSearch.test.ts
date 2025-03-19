@@ -2,7 +2,7 @@ import type { ILoadOptionsFunctions, INodeParameterResourceLocator } from 'n8n-w
 import nock from 'nock';
 
 import { FAKE_CREDENTIALS_DATA } from '../../../../../test/nodes/FakeCredentialsMap';
-import { AzureStorage } from '../../AzureStorage.node';
+import { AzureStorage } from '../../AzureStorage.node.ts';
 import { XMsVersion } from '../../GenericFunctions';
 
 describe('Azure Storage Node', () => {

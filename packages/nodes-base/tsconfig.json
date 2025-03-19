@@ -8,7 +8,10 @@
 			"@test/*": ["./test/*"],
 			"@utils/*": ["./utils/*"]
 		},
+		"module": "esnext",
+		"moduleResolution": "bundler",
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
+		"allowImportingTsExtensions": true,
 		// TODO: remove all options below this line
 		"noImplicitReturns": false,
 		"useUnknownInCatchVariables": false
@@ -18,7 +21,8 @@
 		"nodes/**/*.ts",
 		"test/**/*.ts",
 		"utils/**/*.ts",
-		"types/**/*.ts"
+		"types/**/*.ts",
+		"tsup.config.ts"
 	],
 	"references": [
 		{ "path": "../@n8n/imap/tsconfig.build.json" },

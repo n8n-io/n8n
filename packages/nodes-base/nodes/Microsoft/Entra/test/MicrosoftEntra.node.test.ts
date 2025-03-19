@@ -13,7 +13,7 @@ import type { WorkflowTestData } from '@test/nodes/types';
 
 import { microsoftEntraApiResponse, microsoftEntraNodeResponse } from './mocks';
 import { FAKE_CREDENTIALS_DATA } from '../../../../test/nodes/FakeCredentialsMap';
-import { MicrosoftEntra } from '../MicrosoftEntra.node';
+import { MicrosoftEntra } from '../MicrosoftEntra.node.ts';
 
 describe('Microsoft Entra Node', () => {
 	const baseUrl = 'https://graph.microsoft.com/v1.0';

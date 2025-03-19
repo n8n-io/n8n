@@ -8,7 +8,7 @@ import {
 
 import { N8nItemListOutputParser } from '@utils/output_parsers/N8nItemListOutputParser';
 
-import { OutputParserItemList } from '../OutputParserItemList.node';
+import { OutputParserItemList } from '../OutputParserItemList.node.ts';
 
 describe('OutputParserItemList', () => {
 	let outputParser: OutputParserItemList;

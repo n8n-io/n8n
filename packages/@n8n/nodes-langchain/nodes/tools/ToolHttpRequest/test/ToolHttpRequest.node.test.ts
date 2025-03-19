@@ -4,7 +4,7 @@ import { jsonParse } from 'n8n-workflow';
 
 import type { N8nTool } from '@utils/N8nTool';
 
-import { ToolHttpRequest } from '../ToolHttpRequest.node';
+import { ToolHttpRequest } from '../ToolHttpRequest.node.ts';
 
 describe('ToolHttpRequest', () => {
 	const httpTool = new ToolHttpRequest();

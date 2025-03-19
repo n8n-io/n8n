@@ -3,7 +3,7 @@ import { mock } from 'jest-mock-extended';
 import type { INode, IExecuteFunctions, IDataObject } from 'n8n-workflow';
 
 import * as genericFunctions from '../../GenericFunctions';
-import { GoogleCalendar } from '../../GoogleCalendar.node';
+import { GoogleCalendar } from '../../GoogleCalendar.node.ts';
 
 let response: IDataObject[] | undefined = [];
 let responseWithRetries: IDataObject | undefined = {};

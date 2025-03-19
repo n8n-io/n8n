@@ -1,8 +1,8 @@
 import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 import { VersionedNodeType } from 'n8n-workflow';
 
-import { EmailSendV1 } from './v1/EmailSendV1.node';
-import { EmailSendV2 } from './v2/EmailSendV2.node';
+import { EmailSendV1 } from './v1/EmailSendV1.node.ts';
+import { EmailSendV2 } from './v2/EmailSendV2.node.ts';
 
 export class EmailSend extends VersionedNodeType {
 	constructor() {

@@ -5,7 +5,7 @@ import {
 	type IGetNodeParameterOptions,
 } from 'n8n-workflow';
 
-import { Cron } from '../Cron.node';
+import { Cron } from '../Cron.node.ts';
 
 describe('Cron Node', () => {
 	const node = new Cron();

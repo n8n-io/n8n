@@ -4,16 +4,29 @@
 		"@n8n/typescript-config/tsconfig.backend.json"
 	],
 	"compilerOptions": {
+		"baseUrl": ".",
 		"paths": {
-			"@utils/*": ["./utils/*"]
+			"@utils/*": ["./utils/*"],
+			"n8n-nodes-base*": ["n8n-nodes-base/dist*"]
 		},
+		"module": "esnext",
+		"moduleResolution": "bundler",
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
+		"allowImportingTsExtensions": true,
 		// TODO: remove all options below this line
 		"useUnknownInCatchVariables": false
 	},
-	"include": ["credentials/**/*", "nodes/**/*", "utils/**/*.ts", "nodes/**/*.json", "types/*.ts"],
+	"include": [
+		"credentials/**/*",
+		"nodes/**/*",
+		"nodes/**/*.json",
+		"utils/**/*",
+		"types/*.ts",
+		"tsup.config.ts"
+	],
 	"references": [
 		{ "path": "../../workflow/tsconfig.build.json" },
+		{ "path": "../../nodes-base/tsconfig.build.json" },
 		{ "path": "../../core/tsconfig.build.json" }
 	]
 }

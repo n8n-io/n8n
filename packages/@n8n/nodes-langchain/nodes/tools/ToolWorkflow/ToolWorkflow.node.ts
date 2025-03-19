@@ -1,8 +1,8 @@
 import type { IVersionedNodeType, INodeTypeBaseDescription } from 'n8n-workflow';
 import { VersionedNodeType } from 'n8n-workflow';
 
-import { ToolWorkflowV1 } from './v1/ToolWorkflowV1.node';
-import { ToolWorkflowV2 } from './v2/ToolWorkflowV2.node';
+import { ToolWorkflowV1 } from './v1/ToolWorkflowV1.node.ts';
+import { ToolWorkflowV2 } from './v2/ToolWorkflowV2.node.ts';
 
 export class ToolWorkflow extends VersionedNodeType {
 	constructor() {

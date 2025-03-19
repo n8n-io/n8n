@@ -13,7 +13,7 @@ import type {
 	N8nStructuredOutputParser,
 } from '@utils/output_parsers/N8nOutputParser';
 
-import { OutputParserAutofixing } from '../OutputParserAutofixing.node';
+import { OutputParserAutofixing } from '../OutputParserAutofixing.node.ts';
 import { NAIVE_FIX_PROMPT } from '../prompt';
 
 describe('OutputParserAutofixing', () => {

@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type { IExecuteFunctions, INodeTypeBaseDescription } from 'n8n-workflow';
 
-import { HttpRequestV3 } from '../../V3/HttpRequestV3.node';
+import { HttpRequestV3 } from '../../V3/HttpRequestV3.node.ts';
 
 describe('HttpRequestV3', () => {
 	let node: HttpRequestV3;

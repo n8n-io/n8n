@@ -3,7 +3,7 @@ import nock from 'nock';
 
 import { testPollingTriggerNode } from '@test/nodes/TriggerHelpers';
 
-import { GoogleSheetsTrigger } from '../GoogleSheetsTrigger.node';
+import { GoogleSheetsTrigger } from '../GoogleSheetsTrigger.node.ts';
 
 describe('GoogleSheetsTrigger', () => {
 	const baseUrl = 'https://sheets.googleapis.com';

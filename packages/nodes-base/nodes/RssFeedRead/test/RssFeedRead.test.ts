@@ -3,7 +3,7 @@ import { returnJsonArray } from 'n8n-core';
 import type { IPollFunctions } from 'n8n-workflow';
 import Parser from 'rss-parser';
 
-import { RssFeedReadTrigger } from '../RssFeedReadTrigger.node';
+import { RssFeedReadTrigger } from '../RssFeedReadTrigger.node.ts';
 
 jest.mock('rss-parser');
 

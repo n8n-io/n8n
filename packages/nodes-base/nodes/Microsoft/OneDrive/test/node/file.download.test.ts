@@ -4,7 +4,7 @@ import { mock } from 'jest-mock-extended';
 import { type IHttpRequestMethods, type IExecuteFunctions, ApplicationError } from 'n8n-workflow';
 
 import * as genericFunctions from '../../GenericFunctions';
-import { MicrosoftOneDrive } from '../../MicrosoftOneDrive.node';
+import { MicrosoftOneDrive } from '../../MicrosoftOneDrive.node.ts';
 
 jest.mock('../../GenericFunctions', () => ({
 	...jest.requireActual('../../GenericFunctions'),

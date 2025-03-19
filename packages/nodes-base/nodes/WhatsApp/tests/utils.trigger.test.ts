@@ -1,4 +1,4 @@
-import { filterStatuses } from '../WhatsAppTrigger.node';
+import { filterStatuses } from '../WhatsAppTrigger.node.ts';
 
 describe('filterStatuses', () => {
 	const mockEvents = [

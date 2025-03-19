@@ -1,8 +1,8 @@
 import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 import { VersionedNodeType } from 'n8n-workflow';
 
-import { TodoistV1 } from './v1/TodoistV1.node';
-import { TodoistV2 } from './v2/TodoistV2.node';
+import { TodoistV1 } from './v1/TodoistV1.node.ts';
+import { TodoistV2 } from './v2/TodoistV2.node.ts';
 
 export class Todoist extends VersionedNodeType {
 	constructor() {

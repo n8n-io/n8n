@@ -3,7 +3,7 @@ import { ZepCloudVectorStore } from '@langchain/community/vectorstores/zep_cloud
 import { mock } from 'jest-mock-extended';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
 
-import { VectorStoreZep } from './VectorStoreZep.node';
+import { VectorStoreZep } from './VectorStoreZep.node.ts';
 
 describe('VectorStoreZep', () => {
 	const vectorStore = new VectorStoreZep();

@@ -1,8 +1,8 @@
 import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 import { VersionedNodeType } from 'n8n-workflow';
 
-import { RemoveDuplicatesV1 } from './v1/RemoveDuplicatesV1.node';
-import { RemoveDuplicatesV2 } from './v2/RemoveDuplicatesV2.node';
+import { RemoveDuplicatesV1 } from './v1/RemoveDuplicatesV1.node.ts';
+import { RemoveDuplicatesV2 } from './v2/RemoveDuplicatesV2.node.ts';
 export class RemoveDuplicates extends VersionedNodeType {
 	constructor() {
 		const baseDescription: INodeTypeBaseDescription = {

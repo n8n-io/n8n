@@ -3,7 +3,7 @@ import { mock } from 'jest-mock-extended';
 import { type INodeTypeBaseDescription, type ITriggerFunctions } from 'n8n-workflow';
 
 import { type ICredentialsDataImap } from '../../../../credentials/Imap.credentials';
-import { EmailReadImapV2 } from '../../v2/EmailReadImapV2.node';
+import { EmailReadImapV2 } from '../../v2/EmailReadImapV2.node.ts';
 
 jest.mock('@n8n/imap', () => {
 	const originalModule = jest.requireActual('@n8n/imap');

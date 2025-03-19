@@ -2,7 +2,7 @@
 import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, INodeExecutionData, INodeTypeBaseDescription } from 'n8n-workflow';
 
-import { RemoveDuplicatesV2 } from '../RemoveDuplicatesV2.node';
+import { RemoveDuplicatesV2 } from '../RemoveDuplicatesV2.node.ts';
 
 describe('RemoveDuplicatesV2', () => {
 	let node: RemoveDuplicatesV2;
