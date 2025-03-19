@@ -22,13 +22,13 @@
         "currency": {
             "type": "string"
         },
+        "subcategory": {
+            "type": "string"
+        },
         "supplier": {
             "type": "string"
         },
         "time": {
-            "type": "string"
-        },
-        "subcategory": {
             "type": "string"
         }
     },
