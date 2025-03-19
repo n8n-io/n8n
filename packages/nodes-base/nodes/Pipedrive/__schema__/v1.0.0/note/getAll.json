@@ -7,9 +7,6 @@
         "user_id": {
             "type": "integer"
         },
-        "project_id": {
-            "type": "null"
-        },
         "content": {
             "type": "string"
         },
@@ -32,9 +29,6 @@
             "type": "boolean"
         },
         "pinned_to_lead_flag": {
-            "type": "boolean"
-        },
-        "pinned_to_project_flag": {
             "type": "boolean"
         },
         "person": {
@@ -67,6 +61,12 @@
                 "icon_url",
                 "is_you"
             ]
+        },
+        "project_id": {
+            "type": "null"
+        },
+        "pinned_to_project_flag": {
+            "type": "boolean"
         }
     },
     "required": [
