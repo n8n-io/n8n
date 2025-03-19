@@ -41,6 +41,21 @@
         "lastModifiedBy": {
             "type": "object",
             "properties": {
+                "application": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "string"
+                        },
+                        "displayName": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "id",
+                        "displayName"
+                    ]
+                },
                 "user": {
                     "type": "object",
                     "properties": {
@@ -145,6 +160,17 @@
         },
         "size": {
             "type": "integer"
+        },
+        "shared": {
+            "type": "object",
+            "properties": {
+                "scope": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "scope"
+            ]
         }
     },
     "required": [
