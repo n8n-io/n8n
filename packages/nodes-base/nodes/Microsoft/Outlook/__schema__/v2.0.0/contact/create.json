@@ -22,9 +22,6 @@
         "parentFolderId": {
             "type": "string"
         },
-        "birthday": {
-            "type": "null"
-        },
         "fileAs": {
             "type": "string"
         },
@@ -55,9 +52,6 @@
         "profession": {
             "type": "null"
         },
-        "manager": {
-            "type": "null"
-        },
         "homePhones": {
             "type": "array",
             "items": {
@@ -81,10 +75,10 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "address": {
+                    "name": {
                         "type": "string"
                     },
-                    "name": {
+                    "address": {
                         "type": "string"
                     }
                 },
