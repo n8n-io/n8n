@@ -4,19 +4,16 @@
         "name": {
             "type": "string"
         },
-        "createTime": {
-            "type": "string"
-        },
         "sender": {
             "type": "object",
             "properties": {
                 "name": {
                     "type": "string"
                 },
-                "type": {
+                "displayName": {
                     "type": "string"
                 },
-                "displayName": {
+                "type": {
                     "type": "string"
                 },
                 "domainId": {
@@ -27,6 +24,9 @@
                 "name",
                 "type"
             ]
+        },
+        "createTime": {
+            "type": "string"
         },
         "thread": {
             "type": "object",
