@@ -1,0 +1,3 @@
+[submodule "BVQNode"]
+	path = BVQNode
+	url = https://github.com/SVAWorkflows/BVQNode.git
