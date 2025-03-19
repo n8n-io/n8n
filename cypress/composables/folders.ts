@@ -200,6 +200,14 @@ export function getWorkflowCardBreadcrumbs(workflowName: string) {
 export function getWorkflowCardBreadcrumbsEllipsis(workflowName: string) {
 	return getWorkflowCardBreadcrumbs(workflowName).find('[data-test-id="ellipsis"]');
 }
+
+export function getNewFolderNameInput() {
+	return cy.get('.add-folder-modal').filter(':visible').find('input.el-input__inner');
+}
+
+export function getNewFolderModalErrorMessage() {
+	return cy.get('.el-message-box__errormsg').filter(':visible');
+}
 /**
  * Actions
  */

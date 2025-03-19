@@ -25,6 +25,8 @@ import {
 	getListBreadcrumbs,
 	getMainBreadcrumbsEllipsis,
 	getMainBreadcrumbsEllipsisMenuItems,
+	getNewFolderModalErrorMessage,
+	getNewFolderNameInput,
 	getOverviewMenuItem,
 	getPersonalProjectMenuItem,
 	getProjectEmptyState,
@@ -69,17 +71,30 @@ describe('Folders', () => {
 		});
 
 		it('should not allow illegal characters in folder name', () => {
+			// This is thoroughly tested in unit tests
+			// Here we just make sure everything is working in the full UI
+			const ILLEGAL_CHARACTERS_NAME = 'hello[';
+			const ONLY_DOTS_NAME = '...';
+			const REGURAL_NAME = 'My Folder';
+
 			getPersonalProjectMenuItem().click();
 			getAddResourceDropdown().click();
 			cy.getByTestId('action-folder').click();
-			cy.get('[role=dialog]')
-				.filter(':visible')
-				.within(() => {
-					cy.get('input.el-input__inner').type('hello[', { delay: 50 });
-				});
-			cy.get('.el-message-box__errormsg')
-				.filter(':visible')
-				.should('contain.text', 'Folder name cannot contain the following characters');
+			getNewFolderNameInput().type(ILLEGAL_CHARACTERS_NAME, { delay: 50 });
+			getNewFolderModalErrorMessage().should(
+				'contain.text',
+				'Folder name cannot contain the following characters',
+			);
+			getNewFolderNameInput().clear();
+			getNewFolderNameInput().type(ONLY_DOTS_NAME, { delay: 50 });
+			getNewFolderModalErrorMessage().should(
+				'contain.text',
+				'Folder name cannot contain only dots',
+			);
+			getNewFolderNameInput().clear();
+			getNewFolderModalErrorMessage().should('contain.text', 'Folder name cannot be empty');
+			getNewFolderNameInput().type(REGURAL_NAME, { delay: 50 });
+			getNewFolderModalErrorMessage().should('not.exist');
 		});
 
 		it('should create folder from the list header button', () => {
