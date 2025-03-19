@@ -10,9 +10,6 @@
         "createdDateTime": {
             "type": "string"
         },
-        "cTag": {
-            "type": "string"
-        },
         "eTag": {
             "type": "string"
         },
@@ -25,11 +22,14 @@
         "name": {
             "type": "string"
         },
-        "size": {
-            "type": "integer"
-        },
         "webUrl": {
             "type": "string"
+        },
+        "cTag": {
+            "type": "string"
+        },
+        "size": {
+            "type": "integer"
         },
         "createdBy": {
             "type": "object",
@@ -37,34 +37,34 @@
                 "application": {
                     "type": "object",
                     "properties": {
-                        "displayName": {
+                        "id": {
                             "type": "string"
                         },
-                        "id": {
+                        "displayName": {
                             "type": "string"
                         }
                     },
                     "required": [
-                        "displayName",
-                        "id"
+                        "id",
+                        "displayName"
                     ]
                 },
                 "user": {
                     "type": "object",
                     "properties": {
-                        "displayName": {
+                        "email": {
                             "type": "string"
                         },
                         "id": {
                             "type": "string"
                         },
-                        "email": {
+                        "displayName": {
                             "type": "string"
                         }
                     },
                     "required": [
-                        "displayName",
-                        "id"
+                        "id",
+                        "displayName"
                     ]
                 }
             },
@@ -75,37 +75,37 @@
         "lastModifiedBy": {
             "type": "object",
             "properties": {
-                "application": {
-                    "type": "object",
-                    "properties": {
-                        "displayName": {
-                            "type": "string"
-                        },
-                        "id": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "displayName",
-                        "id"
-                    ]
-                },
                 "user": {
                     "type": "object",
                     "properties": {
-                        "displayName": {
+                        "email": {
                             "type": "string"
                         },
                         "id": {
                             "type": "string"
                         },
-                        "email": {
+                        "displayName": {
                             "type": "string"
                         }
                     },
                     "required": [
-                        "displayName",
-                        "id"
+                        "id",
+                        "displayName"
+                    ]
+                },
+                "application": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "string"
+                        },
+                        "displayName": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "id",
+                        "displayName"
                     ]
                 }
             },
@@ -116,10 +116,10 @@
         "parentReference": {
             "type": "object",
             "properties": {
-                "driveId": {
+                "driveType": {
                     "type": "string"
                 },
-                "driveType": {
+                "driveId": {
                     "type": "string"
                 },
                 "id": {
@@ -136,8 +136,8 @@
                 }
             },
             "required": [
-                "driveId",
                 "driveType",
+                "driveId",
                 "id",
                 "name",
                 "path"
