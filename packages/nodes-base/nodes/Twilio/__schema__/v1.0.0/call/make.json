@@ -1,7 +1,25 @@
 {
     "type": "object",
     "properties": {
-        "account_sid": {
+        "date_updated": {
+            "type": "null"
+        },
+        "price_unit": {
+            "type": "string"
+        },
+        "parent_call_sid": {
+            "type": "null"
+        },
+        "caller_name": {
+            "type": "null"
+        },
+        "duration": {
+            "type": "null"
+        },
+        "from": {
+            "type": "string"
+        },
+        "to": {
             "type": "string"
         },
         "annotation": {
@@ -10,32 +28,29 @@
         "answered_by": {
             "type": "null"
         },
+        "sid": {
+            "type": "string"
+        },
+        "queue_time": {
+            "type": "string"
+        },
+        "price": {
+            "type": "null"
+        },
         "api_version": {
             "type": "string"
         },
-        "caller_name": {
-            "type": "null"
-        },
-        "date_created": {
-            "type": "null"
-        },
-        "date_updated": {
-            "type": "null"
+        "status": {
+            "type": "string"
         },
         "direction": {
             "type": "string"
         },
-        "duration": {
+        "start_time": {
             "type": "null"
         },
-        "end_time": {
+        "date_created": {
             "type": "null"
-        },
-        "forwarded_from": {
-            "type": "null"
-        },
-        "from": {
-            "type": "string"
         },
         "from_formatted": {
             "type": "string"
@@ -43,81 +58,66 @@
         "group_sid": {
             "type": "null"
         },
-        "parent_call_sid": {
+        "trunk_sid": {
             "type": "null"
         },
-        "price": {
+        "forwarded_from": {
             "type": "null"
         },
-        "price_unit": {
+        "uri": {
             "type": "string"
         },
-        "queue_time": {
+        "account_sid": {
             "type": "string"
         },
-        "sid": {
-            "type": "string"
-        },
-        "start_time": {
+        "end_time": {
             "type": "null"
         },
-        "status": {
+        "to_formatted": {
             "type": "string"
         },
         "subresource_uris": {
             "type": "object",
             "properties": {
-                "events": {
-                    "type": "string"
-                },
                 "notifications": {
                     "type": "string"
                 },
-                "payments": {
-                    "type": "string"
-                },
-                "recordings": {
-                    "type": "string"
-                },
-                "siprec": {
-                    "type": "string"
-                },
-                "streams": {
+                "user_defined_messages": {
                     "type": "string"
                 },
                 "transcriptions": {
                     "type": "string"
                 },
+                "recordings": {
+                    "type": "string"
+                },
+                "streams": {
+                    "type": "string"
+                },
+                "payments": {
+                    "type": "string"
+                },
                 "user_defined_message_subscriptions": {
                     "type": "string"
                 },
-                "user_defined_messages": {
+                "siprec": {
+                    "type": "string"
+                },
+                "events": {
                     "type": "string"
                 }
             },
             "required": [
-                "events",
                 "notifications",
-                "payments",
-                "recordings",
-                "siprec",
-                "streams",
+                "user_defined_messages",
                 "transcriptions",
+                "recordings",
+                "streams",
+                "payments",
                 "user_defined_message_subscriptions",
-                "user_defined_messages"
+                "siprec",
+                "events"
             ]
-        },
-        "to": {
-            "type": "string"
-        },
-        "to_formatted": {
-            "type": "string"
-        },
-        "trunk_sid": {
-            "type": "null"
-        },
-        "uri": {
-            "type": "string"
         }
     },
     "version": 1
