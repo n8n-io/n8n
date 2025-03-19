@@ -93,7 +93,7 @@ watch([panelState, height], ([state, h]) => {
 				:class="[$style.resizeWrapper, panelState === 'closed' ? '' : $style.isOpen]"
 				@resize="onResizeDebounced"
 			>
-				<div ref="container" :class="$style.container">
+				<div ref="container" :class="[$style.container, 'ignore-key-press-canvas']" tabindex="0">
 					<N8nResizeWrapper
 						v-if="hasChat"
 						:supported-directions="['right']"
