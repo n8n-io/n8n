@@ -21,7 +21,7 @@
 		"node_modules": true,
 		"dist": true,
 		"pnpm-lock.yaml": true,
-		"**/*.snapshot.ts": true
+		"**/*.snapshot.json": true
 	},
 	"typescript.format.enable": false,
 	"typescript.tsdk": "node_modules/typescript/lib",
