@@ -193,6 +193,13 @@ export function getMoveWorkflowModal() {
 	return cy.getByTestId('moveFolder-modal');
 }
 
+export function getWorkflowCardBreadcrumbs(workflowName: string) {
+	return getWorkflowCard(workflowName).find('[data-test-id="workflow-card-breadcrumbs"]');
+}
+
+export function getWorkflowCardBreadcrumbsEllipsis(workflowName: string) {
+	return getWorkflowCardBreadcrumbs(workflowName).find('[data-test-id="ellipsis"]');
+}
 /**
  * Actions
  */
@@ -232,7 +239,7 @@ export function createWorkflowFromProjectHeader(folderName?: string, workflowNam
 	if (folderName) {
 		successToast().should(
 			'contain.text',
-			`Workflow successfully created in folder "${folderName}"`,
+			`Workflow successfully created in "Personal", within "${folderName}"`,
 		);
 	}
 }

@@ -31,6 +31,8 @@ import {
 	getProjectMenuItem,
 	getVisibleListBreadcrumbs,
 	getWorkflowCard,
+	getWorkflowCardBreadcrumbs,
+	getWorkflowCardBreadcrumbsEllipsis,
 	getWorkflowCards,
 	goToPersonalProject,
 	moveFolderFromFolderCardActions,
@@ -64,6 +66,20 @@ describe('Folders', () => {
 			// Clicking on the success toast should navigate to the folder
 			successToast().find('a').click();
 			getCurrentBreadcrumb().should('contain.text', 'My Folder');
+		});
+
+		it('should not allow illegal characters in folder name', () => {
+			getPersonalProjectMenuItem().click();
+			getAddResourceDropdown().click();
+			cy.getByTestId('action-folder').click();
+			cy.get('[role=dialog]')
+				.filter(':visible')
+				.within(() => {
+					cy.get('input.el-input__inner').type('hello[', { delay: 50 });
+				});
+			cy.get('.el-message-box__errormsg')
+				.filter(':visible')
+				.should('contain.text', 'Folder name cannot contain the following characters');
 		});
 
 		it('should create folder from the list header button', () => {
@@ -202,7 +218,10 @@ describe('Folders', () => {
 			// Create a new workflow from the empty state
 			createWorkflowFromEmptyState('My Workflow');
 			// Toast should inform that the workflow was created in the folder
-			successToast().should('contain.text', 'Workflow successfully created in folder "My Folder"');
+			successToast().should(
+				'contain.text',
+				'Workflow successfully created in "Test empty folder", within "My Folder"',
+			);
 			// Go back to the folder
 			getProjectMenuItem('Test empty folder').click();
 			getFolderCard('My Folder').should('exist');
@@ -418,6 +437,29 @@ describe('Folders', () => {
 			// Moved workflow should be there
 			getWorkflowCards().should('have.length', 1);
 			getWorkflowCard('Move me').should('exist');
+		});
+	});
+
+	describe('Workflow card breadcrumbs', () => {
+		it('should correctly show workflow card breadcrumbs', () => {
+			createNewProject('Test workflow breadcrumbs', { openAfterCreate: true });
+			createFolderFromProjectHeader('Parent Folder');
+			createFolderInsideFolder('Child Folder', 'Parent Folder');
+			getFolderCard('Child Folder').click();
+			createFolderFromListHeaderButton('Child Folder 2');
+			getFolderCard('Child Folder 2').click();
+			createWorkflowFromEmptyState('Breadcrumbs Test');
+			// Go to overview page
+			getOverviewMenuItem().click();
+			getWorkflowCard('Breadcrumbs Test').should('exist');
+			getWorkflowCardBreadcrumbs('Breadcrumbs Test').should('exist');
+			getWorkflowCardBreadcrumbsEllipsis('Breadcrumbs Test').should('exist');
+			getWorkflowCardBreadcrumbsEllipsis('Breadcrumbs Test').realHover({ position: 'topLeft' });
+			cy.get('[role=tooltip]').should('exist');
+			cy.get('[role=tooltip]').should(
+				'contain.text',
+				'est workflow breadcrumbs / Parent Folder / Child Folder / Child Folder 2',
+			);
 		});
 	});
 });
