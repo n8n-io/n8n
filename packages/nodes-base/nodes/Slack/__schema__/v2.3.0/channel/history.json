@@ -51,14 +51,6 @@
                                             },
                                             "url": {
                                                 "type": "string"
-                                            },
-                                            "style": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "bold": {
-                                                        "type": "boolean"
-                                                    }
-                                                }
                                             }
                                         },
                                         "required": [
@@ -79,7 +71,10 @@
                 ]
             }
         },
-        "subtype": {
+        "bot_id": {
+            "type": "string"
+        },
+        "app_id": {
             "type": "string"
         }
     },
