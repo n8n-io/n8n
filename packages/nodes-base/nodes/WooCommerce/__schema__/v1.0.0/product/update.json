@@ -289,6 +289,9 @@
                     "name": {
                         "type": "string"
                     },
+                    "slug": {
+                        "type": "string"
+                    },
                     "position": {
                         "type": "integer"
                     },
@@ -303,9 +306,6 @@
                         "items": {
                             "type": "string"
                         }
-                    },
-                    "slug": {
-                        "type": "string"
                     }
                 },
                 "required": [
@@ -382,6 +382,18 @@
         "has_options": {
             "type": "boolean"
         },
+        "post_password": {
+            "type": "string"
+        },
+        "global_unique_id": {
+            "type": "string"
+        },
+        "permalink_template": {
+            "type": "string"
+        },
+        "generated_slug": {
+            "type": "string"
+        },
         "_links": {
             "type": "object",
             "properties": {
@@ -432,18 +444,6 @@
                 "self",
                 "collection"
             ]
-        },
-        "post_password": {
-            "type": "string"
-        },
-        "global_unique_id": {
-            "type": "string"
-        },
-        "permalink_template": {
-            "type": "string"
-        },
-        "generated_slug": {
-            "type": "string"
         }
     },
     "required": [
@@ -486,7 +486,6 @@
         "backorders",
         "backorders_allowed",
         "backordered",
-        "low_stock_amount",
         "sold_individually",
         "weight",
         "dimensions",
@@ -513,7 +512,6 @@
         "related_ids",
         "meta_data",
         "stock_status",
-        "has_options",
         "_links"
     ],
     "version": 1
