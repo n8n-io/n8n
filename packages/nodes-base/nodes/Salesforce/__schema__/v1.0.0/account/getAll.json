@@ -16,11 +16,12 @@
                 "url"
             ]
         },
-        "Name": {
-            "type": "string"
-        },
         "Id": {
             "type": "string"
+        },
+        "Name": {
+            "type": "string"
         }
-    }
+    },
+    "version": 1
 }

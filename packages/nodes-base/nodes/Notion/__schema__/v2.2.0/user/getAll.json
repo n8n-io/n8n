@@ -25,11 +25,5 @@
             ]
         }
     },
-    "required": [
-        "object",
-        "id",
-        "name",
-        "avatar_url",
-        "type"
-    ]
+    "version": 1
 }

@@ -126,8 +126,7 @@
                                                 }
                                             },
                                             "required": [
-                                                "Name",
-                                                "Value"
+                                                "Name"
                                             ]
                                         },
                                         "nil": {
@@ -192,6 +191,9 @@
             "required": [
                 "value"
             ]
+        },
+        "PaymentRefNum": {
+            "type": "string"
         }
     },
     "required": [
@@ -207,5 +209,6 @@
         "TxnDate",
         "CurrencyRef",
         "Line"
-    ]
+    ],
+    "version": 1
 }

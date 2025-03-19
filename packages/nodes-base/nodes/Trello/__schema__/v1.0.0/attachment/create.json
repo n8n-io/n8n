@@ -10,6 +10,9 @@
         "idMember": {
             "type": "string"
         },
+        "isMalicious": {
+            "type": "boolean"
+        },
         "isUpload": {
             "type": "boolean"
         },
@@ -62,9 +65,7 @@
         },
         "pos": {
             "type": "integer"
-        },
-        "isMalicious": {
-            "type": "boolean"
         }
-    }
+    },
+    "version": 1
 }

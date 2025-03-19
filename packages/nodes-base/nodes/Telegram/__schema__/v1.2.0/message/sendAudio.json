@@ -42,10 +42,10 @@
                         "first_name": {
                             "type": "string"
                         },
-                        "type": {
+                        "username": {
                             "type": "string"
                         },
-                        "last_name": {
+                        "type": {
                             "type": "string"
                         }
                     },
@@ -91,7 +91,6 @@
             },
             "required": [
                 "message_id",
-                "from",
                 "chat",
                 "date"
             ]
@@ -100,5 +99,6 @@
     "required": [
         "ok",
         "result"
-    ]
+    ],
+    "version": 1
 }

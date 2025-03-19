@@ -7,6 +7,33 @@
         "badges": {
             "type": "object",
             "properties": {
+                "attachments": {
+                    "type": "integer"
+                },
+                "fogbugz": {
+                    "type": "string"
+                },
+                "checkItems": {
+                    "type": "integer"
+                },
+                "checkItemsChecked": {
+                    "type": "integer"
+                },
+                "checkItemsEarliestDue": {
+                    "type": "null"
+                },
+                "comments": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "boolean"
+                },
+                "dueComplete": {
+                    "type": "boolean"
+                },
+                "lastUpdatedByAi": {
+                    "type": "boolean"
+                },
                 "attachmentsByType": {
                     "type": "object",
                     "properties": {
@@ -41,42 +68,9 @@
                 },
                 "subscribed": {
                     "type": "boolean"
-                },
-                "attachments": {
-                    "type": "integer"
-                },
-                "fogbugz": {
-                    "type": "string"
-                },
-                "checkItems": {
-                    "type": "integer"
-                },
-                "checkItemsChecked": {
-                    "type": "integer"
-                },
-                "checkItemsEarliestDue": {
-                    "type": "null"
-                },
-                "comments": {
-                    "type": "integer"
-                },
-                "description": {
-                    "type": "boolean"
-                },
-                "dueComplete": {
-                    "type": "boolean"
-                },
-                "lastUpdatedByAi": {
-                    "type": "boolean"
                 }
             },
             "required": [
-                "attachmentsByType",
-                "externalSource",
-                "location",
-                "votes",
-                "viewingMemberVoted",
-                "subscribed",
                 "attachments",
                 "fogbugz",
                 "checkItems",
@@ -87,7 +81,13 @@
                 "due",
                 "dueComplete",
                 "lastUpdatedByAi",
-                "start"
+                "start",
+                "externalSource",
+                "attachmentsByType",
+                "location",
+                "votes",
+                "viewingMemberVoted",
+                "subscribed"
             ]
         },
         "checkItemStates": {
@@ -240,5 +240,6 @@
         "cardRole": {
             "type": "null"
         }
-    }
+    },
+    "version": 1
 }

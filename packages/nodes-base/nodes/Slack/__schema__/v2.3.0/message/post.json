@@ -112,9 +112,6 @@
                                                     "text": {
                                                         "type": "string"
                                                     },
-                                                    "url": {
-                                                        "type": "string"
-                                                    },
                                                     "style": {
                                                         "type": "object",
                                                         "properties": {
@@ -122,6 +119,9 @@
                                                                 "type": "boolean"
                                                             }
                                                         }
+                                                    },
+                                                    "url": {
+                                                        "type": "string"
                                                     }
                                                 },
                                                 "required": [
@@ -155,10 +155,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "ok",
-        "channel",
-        "message",
-        "message_timestamp"
-    ]
+    "version": 1
 }

@@ -4,13 +4,13 @@
         "Key": {
             "type": "string"
         },
-        "Size": {
-            "type": "string"
-        },
         "LastModified": {
             "type": "string"
         },
         "ETag": {
+            "type": "string"
+        },
+        "Size": {
             "type": "string"
         },
         "StorageClass": {
@@ -19,9 +19,9 @@
     },
     "required": [
         "Key",
-        "Size",
         "LastModified",
         "ETag",
-        "StorageClass"
-    ]
+        "Size"
+    ],
+    "version": 1
 }

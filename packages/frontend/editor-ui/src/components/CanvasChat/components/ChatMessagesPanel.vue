@@ -10,21 +10,29 @@ import ChatInput from '@n8n/chat/components/Input.vue';
 import { computed, ref } from 'vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useToast } from '@/composables/useToast';
+import PanelHeader from '@/components/CanvasChat/components/PanelHeader.vue';
+import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 
 interface Props {
 	pastChatMessages: string[];
 	messages: ChatMessage[];
 	sessionId: string;
 	showCloseButton?: boolean;
+	isOpen?: boolean;
+	isNewLogsEnabled?: boolean;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+	isOpen: true,
+	isNewLogsEnabled: false,
+});
 
 const emit = defineEmits<{
 	displayExecution: [id: string];
 	sendMessage: [message: string];
 	refreshSession: [];
 	close: [];
+	clickHeader: [];
 }>();
 
 const clipboard = useClipboard();
@@ -32,6 +40,12 @@ const locale = useI18n();
 const toast = useToast();
 
 const previousMessageIndex = ref(0);
+
+const sessionIdText = computed(() =>
+	locale.baseText('chat.window.session.id', {
+		interpolate: { id: `${props.sessionId.slice(0, 5)}...` },
+	}),
+);
 
 const inputPlaceholder = computed(() => {
 	if (props.messages.length > 0) {
@@ -124,11 +138,49 @@ async function copySessionId() {
 
 <template>
 	<div :class="$style.chat" data-test-id="workflow-lm-chat-dialog">
-		<header :class="$style.chatHeader">
+		<PanelHeader
+			v-if="isNewLogsEnabled"
+			:title="locale.baseText('chat.window.title')"
+			@click="emit('clickHeader')"
+		>
+			<template #actions>
+				<N8nTooltip v-if="clipboard.isSupported.value">
+					<template #content>
+						{{ sessionId }}
+						<br />
+						{{ locale.baseText('chat.window.session.id.copy') }}
+					</template>
+					<N8nButton
+						data-test-id="chat-session-id"
+						type="secondary"
+						size="mini"
+						@click.stop="copySessionId"
+						>{{ sessionIdText }}</N8nButton
+					>
+				</N8nTooltip>
+				<N8nTooltip
+					v-if="messages.length > 0"
+					:content="locale.baseText('chat.window.session.resetSession')"
+				>
+					<N8nIconButton
+						:class="$style.headerButton"
+						data-test-id="refresh-session-button"
+						outline
+						type="secondary"
+						size="small"
+						icon-size="medium"
+						icon="undo"
+						:title="locale.baseText('chat.window.session.reset')"
+						@click.stop="onRefreshSession"
+					/>
+				</N8nTooltip>
+			</template>
+		</PanelHeader>
+		<header v-else :class="$style.chatHeader">
 			<span :class="$style.chatTitle">{{ locale.baseText('chat.window.title') }}</span>
 			<div :class="$style.session">
 				<span>{{ locale.baseText('chat.window.session.title') }}</span>
-				<n8n-tooltip placement="left">
+				<N8nTooltip placement="left">
 					<template #content>
 						{{ sessionId }}
 					</template>
@@ -138,8 +190,8 @@ async function copySessionId() {
 						@click="clipboard.isSupported.value ? copySessionId() : null"
 						>{{ sessionId }}</span
 					>
-				</n8n-tooltip>
-				<n8n-icon-button
+				</N8nTooltip>
+				<N8nIconButton
 					:class="$style.headerButton"
 					data-test-id="refresh-session-button"
 					outline
@@ -149,7 +201,7 @@ async function copySessionId() {
 					:title="locale.baseText('chat.window.session.reset')"
 					@click="onRefreshSession"
 				/>
-				<n8n-icon-button
+				<N8nIconButton
 					v-if="showCloseButton"
 					:class="$style.headerButton"
 					outline
@@ -160,8 +212,14 @@ async function copySessionId() {
 				/>
 			</div>
 		</header>
-		<main :class="$style.chatBody">
-			<MessagesList :messages="messages" :class="$style.messages">
+		<main v-if="isOpen" :class="$style.chatBody">
+			<MessagesList
+				:messages="messages"
+				:class="$style.messages"
+				:empty-text="
+					isNewLogsEnabled ? locale.baseText('chat.window.chat.emptyChatMessage.v2') : undefined
+				"
+			>
 				<template #beforeMessage="{ message }">
 					<MessageOptionTooltip
 						v-if="message.sender === 'bot' && !message.id.includes('preload')"
@@ -193,7 +251,7 @@ async function copySessionId() {
 			</MessagesList>
 		</main>
 
-		<div :class="$style.messagesInput">
+		<div v-if="isOpen" :class="$style.messagesInput">
 			<ChatInput
 				data-test-id="lm-chat-inputs"
 				:placeholder="inputPlaceholder"
@@ -201,7 +259,7 @@ async function copySessionId() {
 			>
 				<template v-if="pastChatMessages.length > 0" #leftPanel>
 					<div :class="$style.messagesHistory">
-						<n8n-button
+						<N8nButton
 							title="Navigate to previous message"
 							icon="chevron-up"
 							type="tertiary"
@@ -209,7 +267,7 @@ async function copySessionId() {
 							size="mini"
 							@click="onArrowKeyDown({ currentInputValue: '', key: 'ArrowUp' })"
 						/>
-						<n8n-button
+						<N8nButton
 							title="Navigate to next message"
 							icon="chevron-down"
 							type="tertiary"
@@ -289,6 +347,9 @@ async function copySessionId() {
 	display: flex;
 	height: 100%;
 	overflow: auto;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
 }
 
 .messages {

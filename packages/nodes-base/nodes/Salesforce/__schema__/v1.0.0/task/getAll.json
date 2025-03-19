@@ -18,9 +18,16 @@
         },
         "Id": {
             "type": "string"
+        },
+        "Subject": {
+            "type": "string"
+        },
+        "Status": {
+            "type": "string"
         }
     },
     "required": [
         "attributes"
-    ]
+    ],
+    "version": 1
 }

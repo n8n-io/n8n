@@ -1,3 +1,4 @@
+import { type IconSize } from './icon';
 import type { TextFloat } from './text';
 
 const BUTTON_ELEMENT = ['button', 'a'] as const;
@@ -20,6 +21,7 @@ export interface IconButtonProps {
 	loading?: boolean;
 	outline?: boolean;
 	size?: ButtonSize;
+	iconSize?: Exclude<IconSize, 'xlarge'>;
 	text?: boolean;
 	type?: ButtonType;
 	nativeType?: ButtonNativeType;

@@ -4,9 +4,6 @@
         "id": {
             "type": "integer"
         },
-        "company_id": {
-            "type": "integer"
-        },
         "user_id": {
             "type": "integer"
         },
@@ -150,6 +147,10 @@
         },
         "type_name": {
             "type": "string"
+        },
+        "company_id": {
+            "type": "integer"
         }
-    }
+    },
+    "version": 1
 }
