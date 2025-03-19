@@ -181,32 +181,28 @@ export class ImportWorkflowsCommand extends BaseCommand {
 			path = path.replace(/\\/g, '/');
 		}
 
+		const workflowRepository = Container.get(WorkflowRepository);
+
 		if (separate) {
 			const files = await glob('*.json', {
 				cwd: path,
 				absolute: true,
 			});
-			const workflowInstances = files.map((file) => {
+			return files.map((file) => {
 				const workflow = jsonParse<IWorkflowToImport>(fs.readFileSync(file, { encoding: 'utf8' }));
 				if (!workflow.id) {
 					workflow.id = generateNanoId();
 				}
-
-				const workflowInstance = Container.get(WorkflowRepository).create(workflow);
-
-				return workflowInstance;
+				return workflowRepository.create(workflow);
 			});
-
-			return workflowInstances;
 		} else {
-			const workflows = jsonParse<IWorkflowToImport[]>(fs.readFileSync(path, { encoding: 'utf8' }));
+			const workflows = jsonParse<IWorkflowToImport | IWorkflowToImport[]>(
+				fs.readFileSync(path, { encoding: 'utf8' }),
+			);
 			const workflowsArray = Array.isArray(workflows) ? workflows : [workflows];
 			assertHasWorkflowsToImport(workflowsArray);
 
-			const workflowInstances = workflowsArray.map((w) =>
-				Container.get(WorkflowRepository).create(w),
-			);
-			return workflowInstances;
+			return workflowRepository.create(workflowsArray);
 		}
 	}
 
