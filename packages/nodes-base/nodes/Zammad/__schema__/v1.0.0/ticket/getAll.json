@@ -43,6 +43,14 @@
         "pending_time": {
             "type": "null"
         },
+        "preferences": {
+            "type": "object",
+            "properties": {
+                "channel_id": {
+                    "type": "integer"
+                }
+            }
+        },
         "updated_by_id": {
             "type": "integer"
         },
