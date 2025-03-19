@@ -399,7 +399,7 @@ export function getLifecycleHooksForScalingWorker(
 }
 
 /**
- * Returns ExecutionLifecycleHooks instance for main process if workflow runs via worker
+ * Returns ExecutionLifecycleHooks instance for main process in scaling mode.
  */
 export function getLifecycleHooksForScalingMain(
 	data: IWorkflowExecutionDataProcess,
@@ -455,11 +455,13 @@ export function getLifecycleHooksForScalingMain(
 	hooks.handlers.nodeExecuteBefore = [];
 	hooks.handlers.nodeExecuteAfter = [];
 
+	Container.get(ModuleRegistry).registerLifecycleHooks(hooks);
+
 	return hooks;
 }
 
 /**
- * Returns ExecutionLifecycleHooks instance for running the main workflow
+ * Returns ExecutionLifecycleHooks instance for the main process in regular mode
  */
 export function getLifecycleHooksForRegularMain(
 	data: IWorkflowExecutionDataProcess,

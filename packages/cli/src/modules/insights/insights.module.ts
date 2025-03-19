@@ -1,5 +1,5 @@
 import type { ExecutionLifecycleHooks } from 'n8n-core';
-import { Logger } from 'n8n-core';
+import { InstanceSettings, Logger } from 'n8n-core';
 
 import type { BaseN8nModule } from '@/decorators/module';
 import { N8nModule } from '@/decorators/module';
@@ -11,6 +11,7 @@ export class InsightsModule implements BaseN8nModule {
 	constructor(
 		private readonly logger: Logger,
 		private readonly insightsService: InsightsService,
+		private readonly instanceSettings: InstanceSettings,
 	) {
 		this.logger = this.logger.scoped('insights');
 	}
@@ -18,8 +19,11 @@ export class InsightsModule implements BaseN8nModule {
 	registerLifecycleHooks(hooks: ExecutionLifecycleHooks) {
 		const insightsService = this.insightsService;
 
-		hooks.addHandler('workflowExecuteAfter', async function (fullRunData) {
-			await insightsService.workflowExecuteAfterHandler(this, fullRunData);
-		});
+		// Workers should not be saving any insights
+		if (this.instanceSettings.instanceType !== 'worker') {
+			hooks.addHandler('workflowExecuteAfter', async function (fullRunData) {
+				await insightsService.workflowExecuteAfterHandler(this, fullRunData);
+			});
+		}
 	}
 }
