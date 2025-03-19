@@ -274,9 +274,6 @@
                             ]
                         }
                     },
-                    "sku": {
-                        "type": "string"
-                    },
                     "image": {
                         "type": "object",
                         "properties": {
@@ -319,9 +316,6 @@
                     "rate_code": {
                         "type": "string"
                     },
-                    "rate_id": {
-                        "type": "integer"
-                    },
                     "label": {
                         "type": "string"
                     },
@@ -333,6 +327,36 @@
                     },
                     "shipping_tax_total": {
                         "type": "string"
+                    },
+                    "meta_data": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "integer"
+                                },
+                                "key": {
+                                    "type": "string"
+                                },
+                                "value": {
+                                    "type": "string"
+                                },
+                                "display_key": {
+                                    "type": "string"
+                                },
+                                "display_value": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "key",
+                                "value",
+                                "display_key",
+                                "display_value"
+                            ]
+                        }
                     }
                 },
                 "required": [
@@ -548,6 +572,28 @@
                     "discount",
                     "discount_tax",
                     "meta_data"
+                ]
+            }
+        },
+        "refunds": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "reason": {
+                        "type": "string"
+                    },
+                    "total": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "reason",
+                    "total"
                 ]
             }
         },
