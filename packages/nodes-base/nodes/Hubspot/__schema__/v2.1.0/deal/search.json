@@ -18,9 +18,6 @@
                 },
                 "hs_object_id": {
                     "type": "string"
-                },
-                "hubspot_owner_id": {
-                    "type": "string"
                 }
             },
             "required": [
