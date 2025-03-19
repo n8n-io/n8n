@@ -13,9 +13,6 @@
         "created": {
             "type": "integer"
         },
-        "default_source": {
-            "type": "null"
-        },
         "delinquent": {
             "type": "boolean"
         },
