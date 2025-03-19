@@ -43,30 +43,6 @@
         "GeocodeAccuracy": {
             "type": "null"
         },
-        "Address": {
-            "type": "object",
-            "properties": {
-                "geocodeAccuracy": {
-                    "type": "null"
-                },
-                "latitude": {
-                    "type": "null"
-                },
-                "longitude": {
-                    "type": "null"
-                }
-            },
-            "required": [
-                "city",
-                "country",
-                "geocodeAccuracy",
-                "latitude",
-                "longitude",
-                "postalCode",
-                "state",
-                "street"
-            ]
-        },
         "Status": {
             "type": "string"
         },
@@ -109,14 +85,11 @@
         "IsPriorityRecord": {
             "type": "boolean"
         },
-        "AnnualRevenue": {
-            "type": "null"
+        "HasOptedOutOfEmail": {
+            "type": "boolean"
         },
         "IndividualId": {
             "type": "null"
-        },
-        "HasOptedOutOfEmail": {
-            "type": "boolean"
         }
     },
     "version": 1
