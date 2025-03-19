@@ -1,10 +1,10 @@
 {
     "type": "object",
     "properties": {
-        "gid": {
+        "email": {
             "type": "string"
         },
-        "email": {
+        "gid": {
             "type": "string"
         },
         "name": {
@@ -27,22 +27,9 @@
                     "resource_type": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "gid",
-                    "name",
-                    "resource_type"
-                ]
+                }
             }
         }
     },
-    "required": [
-        "gid",
-        "email",
-        "name",
-        "photo",
-        "resource_type",
-        "workspaces"
-    ],
     "version": 1
 }
