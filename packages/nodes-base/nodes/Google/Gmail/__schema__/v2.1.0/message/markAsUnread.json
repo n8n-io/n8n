@@ -26,10 +26,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "id",
-        "threadId",
-        "labelIds"
-    ],
     "version": 1
 }
