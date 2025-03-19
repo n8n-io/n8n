@@ -35,19 +35,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "resourceName",
-        "status",
-        "advertisingChannelType",
-        "name",
-        "id",
-        "videoViews",
-        "conversions",
-        "costMicros",
-        "impressions",
-        "interactions",
-        "period",
-        "amountMicros"
-    ],
     "version": 1
 }
