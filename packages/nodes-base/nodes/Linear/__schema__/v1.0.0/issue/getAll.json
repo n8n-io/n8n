@@ -33,6 +33,21 @@
         },
         "createdAt": {
             "type": "string"
+        },
+        "creator": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "displayName": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "displayName"
+            ]
         }
     },
     "required": [
