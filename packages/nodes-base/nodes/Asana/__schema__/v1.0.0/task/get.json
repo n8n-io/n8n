@@ -4,6 +4,25 @@
         "gid": {
             "type": "string"
         },
+        "assignee": {
+            "type": "object",
+            "properties": {
+                "gid": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "resource_type": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "gid",
+                "name",
+                "resource_type"
+            ]
+        },
         "assignee_status": {
             "type": "string"
         },
@@ -29,25 +48,6 @@
                     },
                     "description": {
                         "type": "string"
-                    },
-                    "created_by": {
-                        "type": "object",
-                        "properties": {
-                            "gid": {
-                                "type": "string"
-                            },
-                            "name": {
-                                "type": "string"
-                            },
-                            "resource_type": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "gid",
-                            "name",
-                            "resource_type"
-                        ]
                     },
                     "resource_subtype": {
                         "type": "string"
