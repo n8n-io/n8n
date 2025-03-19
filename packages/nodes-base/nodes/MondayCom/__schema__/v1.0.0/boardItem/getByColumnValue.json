@@ -66,13 +66,5 @@
             }
         }
     },
-    "required": [
-        "id",
-        "name",
-        "created_at",
-        "state",
-        "board",
-        "column_values"
-    ],
     "version": 1
 }
