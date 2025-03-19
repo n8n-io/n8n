@@ -22,9 +22,6 @@
         "position": {
             "type": "string"
         },
-        "notes": {
-            "type": "string"
-        },
         "status": {
             "type": "string"
         },
@@ -51,6 +48,9 @@
             }
         },
         "webViewLink": {
+            "type": "string"
+        },
+        "notes": {
             "type": "string"
         }
     },
