@@ -26,28 +26,6 @@
         "$field_states": {
             "type": "null"
         },
-        "$review_process": {
-            "type": "object",
-            "properties": {
-                "approve": {
-                    "type": "boolean"
-                },
-                "reject": {
-                    "type": "boolean"
-                },
-                "resubmit": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "approve",
-                "reject",
-                "resubmit"
-            ]
-        },
-        "$review": {
-            "type": "null"
-        },
         "$state": {
             "type": "string"
         },
@@ -56,9 +34,6 @@
         },
         "$locked_for_me": {
             "type": "boolean"
-        },
-        "Account_Name": {
-            "type": "string"
         },
         "id": {
             "type": "string"
@@ -95,6 +70,49 @@
         "$editable": {
             "type": "boolean"
         },
+        "$is_duplicate": {
+            "type": "boolean"
+        },
+        "$review_process": {
+            "type": "object",
+            "properties": {
+                "approve": {
+                    "type": "boolean"
+                },
+                "reject": {
+                    "type": "boolean"
+                },
+                "resubmit": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "approve",
+                "reject",
+                "resubmit"
+            ]
+        },
+        "$layout_id": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "id"
+            ]
+        },
+        "$review": {
+            "type": "null"
+        },
+        "Account_Name": {
+            "type": "string"
+        },
         "$in_merge": {
             "type": "boolean"
         },
@@ -120,12 +138,6 @@
             }
         },
         "$approval_state": {
-            "type": "string"
-        },
-        "$is_duplicate": {
-            "type": "boolean"
-        },
-        "Created_Time": {
             "type": "string"
         },
         "Account_Number": {
