@@ -1,13 +1,7 @@
 {
     "type": "object",
     "properties": {
-        "success": {
-            "type": "string"
-        },
         "debug": {
-            "type": "string"
-        },
-        "sms_type": {
             "type": "string"
         },
         "messages": {
@@ -15,17 +9,11 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "sender": {
-                        "type": "string"
-                    },
-                    "text": {
-                        "type": "string"
-                    },
                     "encoding": {
                         "type": "string"
+                    },
+                    "is_binary": {
+                        "type": "boolean"
                     },
                     "label": {
                         "type": "null"
@@ -33,41 +21,27 @@
                     "parts": {
                         "type": "integer"
                     },
-                    "udh": {
-                        "type": "null"
-                    },
-                    "is_binary": {
-                        "type": "boolean"
+                    "sender": {
+                        "type": "string"
                     },
                     "success": {
                         "type": "boolean"
+                    },
+                    "text": {
+                        "type": "string"
+                    },
+                    "udh": {
+                        "type": "null"
                     }
-                },
-                "required": [
-                    "id",
-                    "sender",
-                    "recipient",
-                    "text",
-                    "encoding",
-                    "label",
-                    "parts",
-                    "udh",
-                    "is_binary",
-                    "price",
-                    "success",
-                    "error",
-                    "error_text"
-                ]
+                }
             }
+        },
+        "sms_type": {
+            "type": "string"
+        },
+        "success": {
+            "type": "string"
         }
     },
-    "required": [
-        "success",
-        "total_price",
-        "balance",
-        "debug",
-        "sms_type",
-        "messages"
-    ],
     "version": 1
 }
