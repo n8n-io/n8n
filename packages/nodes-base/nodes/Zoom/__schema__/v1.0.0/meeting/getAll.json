@@ -44,7 +44,8 @@
         "duration",
         "timezone",
         "created_at",
-        "join_url"
+        "join_url",
+        "supportGoLive"
     ],
     "version": 1
 }
