@@ -1,16 +1,16 @@
 {
     "type": "object",
     "properties": {
-        "id": {
+        "userPrincipalName": {
             "type": "string"
         },
-        "createdDateTime": {
+        "id": {
             "type": "string"
         },
         "displayName": {
             "type": "string"
         },
-        "userPrincipalName": {
+        "createdDateTime": {
             "type": "string"
         },
         "mailNickname": {
