@@ -170,14 +170,14 @@
                 }
             }
         },
+        "num_members": {
+            "type": "integer"
+        },
         "previous_names": {
             "type": "array",
             "items": {
                 "type": "string"
             }
-        },
-        "num_members": {
-            "type": "integer"
         }
     },
     "required": [
