@@ -91,6 +91,9 @@
                         "email": {
                             "type": "string"
                         },
+                        "phone": {
+                            "type": "string"
+                        },
                         "tags": {
                             "type": "array",
                             "items": {
@@ -102,9 +105,6 @@
                             "items": {
                                 "type": "string"
                             }
-                        },
-                        "phone": {
-                            "type": "string"
                         }
                     },
                     "required": [
