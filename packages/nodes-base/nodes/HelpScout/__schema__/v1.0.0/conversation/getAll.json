@@ -46,10 +46,10 @@
                 "last": {
                     "type": "string"
                 },
-                "email": {
+                "photoUrl": {
                     "type": "string"
                 },
-                "photoUrl": {
+                "email": {
                     "type": "string"
                 }
             },
@@ -232,16 +232,13 @@
                             "type": {
                                 "type": "string"
                             },
-                            "status": {
-                                "type": "string"
-                            },
-                            "state": {
-                                "type": "string"
-                            },
                             "action": {
                                 "type": "object",
                                 "properties": {
                                     "type": {
+                                        "type": "string"
+                                    },
+                                    "text": {
                                         "type": "string"
                                     },
                                     "associatedEntities": {
@@ -258,9 +255,6 @@
                                     "associatedEntities"
                                 ]
                             },
-                            "body": {
-                                "type": "string"
-                            },
                             "source": {
                                 "type": "object",
                                 "properties": {
@@ -274,33 +268,6 @@
                                 "required": [
                                     "type",
                                     "via"
-                                ]
-                            },
-                            "customer": {
-                                "type": "object",
-                                "properties": {
-                                    "id": {
-                                        "type": "integer"
-                                    },
-                                    "first": {
-                                        "type": "string"
-                                    },
-                                    "last": {
-                                        "type": "string"
-                                    },
-                                    "photoUrl": {
-                                        "type": "string"
-                                    },
-                                    "email": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "id",
-                                    "first",
-                                    "last",
-                                    "photoUrl",
-                                    "email"
                                 ]
                             },
                             "createdBy": {
@@ -328,35 +295,6 @@
                                 "required": [
                                     "id",
                                     "type",
-                                    "first",
-                                    "last",
-                                    "email"
-                                ]
-                            },
-                            "assignedTo": {
-                                "type": "object",
-                                "properties": {
-                                    "id": {
-                                        "type": "integer"
-                                    },
-                                    "first": {
-                                        "type": "string"
-                                    },
-                                    "last": {
-                                        "type": "string"
-                                    },
-                                    "email": {
-                                        "type": "string"
-                                    },
-                                    "type": {
-                                        "type": "string"
-                                    },
-                                    "photoUrl": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "id",
                                     "first",
                                     "last",
                                     "email"
@@ -464,17 +402,6 @@
                             "_links": {
                                 "type": "object",
                                 "properties": {
-                                    "assignedTo": {
-                                        "type": "object",
-                                        "properties": {
-                                            "href": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "required": [
-                                            "href"
-                                        ]
-                                    },
                                     "createdByUser": {
                                         "type": "object",
                                         "properties": {
@@ -486,7 +413,7 @@
                                             "href"
                                         ]
                                     },
-                                    "customer": {
+                                    "assignedTo": {
                                         "type": "object",
                                         "properties": {
                                             "href": {
@@ -507,11 +434,90 @@
                                         "required": [
                                             "href"
                                         ]
+                                    },
+                                    "customer": {
+                                        "type": "object",
+                                        "properties": {
+                                            "href": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "href"
+                                        ]
                                     }
                                 }
                             },
+                            "assignedTo": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "integer"
+                                    },
+                                    "type": {
+                                        "type": "string"
+                                    },
+                                    "first": {
+                                        "type": "string"
+                                    },
+                                    "last": {
+                                        "type": "string"
+                                    },
+                                    "email": {
+                                        "type": "string"
+                                    },
+                                    "photoUrl": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "id",
+                                    "first",
+                                    "last",
+                                    "email"
+                                ]
+                            },
+                            "status": {
+                                "type": "string"
+                            },
+                            "state": {
+                                "type": "string"
+                            },
+                            "body": {
+                                "type": "string"
+                            },
+                            "customer": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "integer"
+                                    },
+                                    "first": {
+                                        "type": "string"
+                                    },
+                                    "last": {
+                                        "type": "string"
+                                    },
+                                    "photoUrl": {
+                                        "type": "string"
+                                    },
+                                    "email": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "id",
+                                    "first",
+                                    "last",
+                                    "photoUrl",
+                                    "email"
+                                ]
+                            },
                             "savedReplyId": {
                                 "type": "integer"
+                            },
+                            "openedAt": {
+                                "type": "string"
                             }
                         },
                         "required": [
@@ -570,6 +576,17 @@
                         "href"
                     ]
                 },
+                "createdByCustomer": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "href"
+                    ]
+                },
                 "closedBy": {
                     "type": "object",
                     "properties": {
@@ -593,17 +610,6 @@
                     ]
                 },
                 "web": {
-                    "type": "object",
-                    "properties": {
-                        "href": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "href"
-                    ]
-                },
-                "createdByCustomer": {
                     "type": "object",
                     "properties": {
                         "href": {
