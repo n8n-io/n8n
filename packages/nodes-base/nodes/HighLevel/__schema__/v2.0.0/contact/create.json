@@ -4,19 +4,39 @@
         "id": {
             "type": "string"
         },
+        "dateAdded": {
+            "type": "string"
+        },
+        "dateUpdated": {
+            "type": "string"
+        },
         "tags": {
             "type": "array",
             "items": {
                 "type": "string"
             }
         },
-        "dateAdded": {
-            "type": "string"
-        },
         "type": {
             "type": "string"
         },
+        "customFields": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id"
+                ]
+            }
+        },
         "locationId": {
+            "type": "string"
+        },
+        "firstName": {
             "type": "string"
         },
         "firstNameLowerCase": {
@@ -29,6 +49,12 @@
             "type": "string"
         },
         "lastNameLowerCase": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "emailLowerCase": {
             "type": "string"
         },
         "country": {
@@ -62,33 +88,16 @@
             "items": {
                 "type": "string"
             }
-        },
-        "firstName": {
-            "type": "string"
-        },
-        "emailLowerCase": {
-            "type": "string"
-        },
-        "email": {
-            "type": "string"
-        },
-        "dateUpdated": {
-            "type": "string"
-        },
-        "customFields": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "id"
-                ]
-            }
         }
     },
+    "required": [
+        "id",
+        "dateAdded",
+        "dateUpdated",
+        "tags",
+        "customFields",
+        "locationId",
+        "country"
+    ],
     "version": 1
 }
