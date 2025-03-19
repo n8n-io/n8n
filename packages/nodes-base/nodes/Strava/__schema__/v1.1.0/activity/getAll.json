@@ -133,6 +133,9 @@
         },
         "max_heartrate": {
             "type": "integer"
+        },
+        "device_watts": {
+            "type": "boolean"
         }
     },
     "version": 1
