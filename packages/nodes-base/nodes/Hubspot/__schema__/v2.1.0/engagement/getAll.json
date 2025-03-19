@@ -19,6 +19,24 @@
                 "lastUpdated": {
                     "type": "integer"
                 },
+                "type": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "integer"
+                },
+                "allAccessibleTeamIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "queueMembershipIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
                 "createdBy": {
                     "type": "integer"
                 },
@@ -28,34 +46,16 @@
                 "ownerId": {
                     "type": "integer"
                 },
-                "type": {
-                    "type": "string"
-                },
-                "timestamp": {
-                    "type": "integer"
-                },
-                "source": {
-                    "type": "string"
-                },
-                "allAccessibleTeamIds": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
                 "bodyPreview": {
                     "type": "string"
-                },
-                "queueMembershipIds": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
                 },
                 "bodyPreviewIsTruncated": {
                     "type": "boolean"
                 },
                 "bodyPreviewHtml": {
+                    "type": "string"
+                },
+                "source": {
                     "type": "string"
                 }
             },
@@ -158,13 +158,13 @@
                         "type": "integer"
                     }
                 },
+                "sendDefaultReminder": {
+                    "type": "boolean"
+                },
                 "priority": {
                     "type": "string"
                 },
                 "isAllDay": {
-                    "type": "boolean"
-                },
-                "sendDefaultReminder": {
                     "type": "boolean"
                 }
             }
