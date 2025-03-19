@@ -1,0 +1,105 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "url": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "time_zone": {
+            "type": "string"
+        },
+        "iana_time_zone": {
+            "type": "string"
+        },
+        "photo": {
+            "type": "null"
+        },
+        "locale_id": {
+            "type": "integer"
+        },
+        "locale": {
+            "type": "string"
+        },
+        "organization_id": {
+            "type": "null"
+        },
+        "role": {
+            "type": "string"
+        },
+        "verified": {
+            "type": "boolean"
+        },
+        "last_active": {
+            "type": "string"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "alias": {
+            "type": "null"
+        },
+        "active": {
+            "type": "boolean"
+        },
+        "shared": {
+            "type": "boolean"
+        },
+        "shared_agent": {
+            "type": "boolean"
+        },
+        "last_login_at": {
+            "type": "null"
+        },
+        "two_factor_auth_enabled": {
+            "type": "null"
+        },
+        "signature": {
+            "type": "null"
+        },
+        "details": {
+            "type": "null"
+        },
+        "role_type": {
+            "type": "null"
+        },
+        "custom_role_id": {
+            "type": "null"
+        },
+        "moderator": {
+            "type": "boolean"
+        },
+        "ticket_restriction": {
+            "type": "string"
+        },
+        "only_private_comments": {
+            "type": "boolean"
+        },
+        "restricted_agent": {
+            "type": "boolean"
+        },
+        "suspended": {
+            "type": "boolean"
+        },
+        "default_group_id": {
+            "type": "null"
+        },
+        "report_csv": {
+            "type": "boolean"
+        }
+    },
+    "version": 1
+}

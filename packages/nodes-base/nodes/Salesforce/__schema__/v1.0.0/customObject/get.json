@@ -19,12 +19,6 @@
         "Id": {
             "type": "string"
         },
-        "OwnerId": {
-            "type": "string"
-        },
-        "IsDeleted": {
-            "type": "boolean"
-        },
         "Name": {
             "type": "string"
         },
@@ -42,6 +36,13 @@
         },
         "SystemModstamp": {
             "type": "string"
+        },
+        "IsDeleted": {
+            "type": "boolean"
+        },
+        "OwnerId": {
+            "type": "string"
         }
-    }
+    },
+    "version": 1
 }

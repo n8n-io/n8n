@@ -1,9 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "company_id": {
-            "type": "integer"
-        },
         "reference_id": {
             "type": "null"
         },
@@ -52,16 +49,22 @@
         "lead": {
             "type": "null"
         },
+        "company_id": {
+            "type": "integer"
+        },
         "ID": {
             "type": "integer"
+        },
+        "Type": {
+            "type": "string"
+        },
+        "Lead": {
+            "type": "null"
         },
         "Assigned to user": {
             "type": "integer"
         },
         "Done": {
-            "type": "string"
-        },
-        "Type": {
             "type": "string"
         },
         "Due date": {
@@ -96,9 +99,6 @@
         },
         "Contact person": {
             "type": "integer"
-        },
-        "Lead": {
-            "type": "null"
         },
         "Update time": {
             "type": "string"
@@ -144,7 +144,6 @@
         }
     },
     "required": [
-        "company_id",
         "reference_type",
         "reference_id",
         "conference_meeting_client",
@@ -152,7 +151,6 @@
         "last_notification_user_id",
         "notification_language_id",
         "calendar_sync_include_context",
-        "deal_id",
         "active_flag",
         "update_user_id",
         "source_timezone",
@@ -175,6 +173,8 @@
         "deal_dropbox_bcc",
         "assigned_to_user_id",
         "type_name",
-        "lead"
-    ]
+        "lead",
+        "company_id"
+    ],
+    "version": 1
 }

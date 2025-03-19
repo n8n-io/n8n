@@ -259,7 +259,7 @@ export class Server extends AbstractServer {
 						dsn: this.globalConfig.sentry.frontendDsn,
 						environment: process.env.ENVIRONMENT || 'development',
 						serverName: process.env.DEPLOYMENT_NAME,
-						release: N8N_VERSION,
+						release: `n8n@${N8N_VERSION}`,
 					}),
 				);
 				res.end();

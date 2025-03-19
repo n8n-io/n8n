@@ -9,6 +9,14 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "operation": {
+                                "type": "string"
+                            }
+                        }
+                    },
                     "name": {
                         "type": "string"
                     },
@@ -23,34 +31,9 @@
                     },
                     "id": {
                         "type": "string"
-                    },
-                    "credentials": {
-                        "type": "object",
-                        "properties": {
-                            "googleSheetsOAuth2Api": {
-                                "type": "object",
-                                "properties": {
-                                    "id": {
-                                        "type": "string"
-                                    },
-                                    "name": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "id",
-                                    "name"
-                                ]
-                            }
-                        }
                     }
                 },
                 "required": [
-                    "parameters",
-                    "name",
-                    "type",
-                    "typeVersion",
-                    "position",
                     "id"
                 ]
             }
@@ -80,19 +63,5 @@
             "type": "integer"
         }
     },
-    "required": [
-        "name",
-        "nodes",
-        "settings",
-        "connections",
-        "staticData",
-        "active",
-        "versionId",
-        "id",
-        "meta",
-        "pinData",
-        "createdAt",
-        "updatedAt",
-        "triggerCount"
-    ]
+    "version": 1
 }

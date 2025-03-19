@@ -15,5 +15,6 @@
         "email",
         "status",
         "_id"
-    ]
+    ],
+    "version": 1
 }

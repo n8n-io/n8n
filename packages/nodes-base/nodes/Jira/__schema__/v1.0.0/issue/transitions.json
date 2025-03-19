@@ -91,5 +91,6 @@
         "isAvailable",
         "isConditional",
         "isLooped"
-    ]
+    ],
+    "version": 1
 }

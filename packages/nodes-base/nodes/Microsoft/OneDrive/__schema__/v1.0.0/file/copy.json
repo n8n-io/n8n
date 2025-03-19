@@ -4,5 +4,6 @@
         "location": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

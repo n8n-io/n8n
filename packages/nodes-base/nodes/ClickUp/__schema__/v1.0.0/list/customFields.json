@@ -25,5 +25,6 @@
         "date_created",
         "hide_from_guests",
         "required"
-    ]
+    ],
+    "version": 1
 }
