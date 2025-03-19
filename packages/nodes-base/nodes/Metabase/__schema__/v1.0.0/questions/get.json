@@ -44,9 +44,6 @@
                 "common_name"
             ]
         },
-        "initially_published_at": {
-            "type": "null"
-        },
         "can_write": {
             "type": "boolean"
         },
@@ -65,9 +62,6 @@
         "dashboard_count": {
             "type": "integer"
         },
-        "type": {
-            "type": "string"
-        },
         "creator_id": {
             "type": "integer"
         },
@@ -83,9 +77,6 @@
         "dataset_query": {
             "type": "object",
             "properties": {
-                "database": {
-                    "type": "integer"
-                },
                 "type": {
                     "type": "string"
                 },
@@ -97,14 +88,17 @@
                         }
                     },
                     "required": [
-                        "template-tags",
-                        "query"
+                        "query",
+                        "template-tags"
                     ]
+                },
+                "database": {
+                    "type": "integer"
                 }
             },
             "required": [
-                "database",
-                "type"
+                "type",
+                "database"
             ]
         },
         "id": {
@@ -154,23 +148,14 @@
         "collection": {
             "type": "object",
             "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "is_personal": {
-                    "type": "boolean"
-                },
                 "archived": {
                     "type": "boolean"
                 },
                 "slug": {
                     "type": "string"
                 },
-                "type": {
-                    "type": "null"
-                },
-                "is_sample": {
-                    "type": "boolean"
+                "name": {
+                    "type": "string"
                 },
                 "location": {
                     "type": "string"
@@ -180,6 +165,15 @@
                 },
                 "created_at": {
                     "type": "string"
+                },
+                "type": {
+                    "type": "null"
+                },
+                "is_sample": {
+                    "type": "boolean"
+                },
+                "is_personal": {
+                    "type": "boolean"
                 }
             },
             "required": [
@@ -201,6 +195,12 @@
         },
         "can_run_adhoc_query": {
             "type": "boolean"
+        },
+        "initially_published_at": {
+            "type": "null"
+        },
+        "type": {
+            "type": "string"
         }
     },
     "required": [
@@ -229,5 +229,6 @@
         "collection",
         "created_at",
         "public_uuid"
-    ]
+    ],
+    "version": 1
 }

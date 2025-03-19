@@ -16,6 +16,60 @@
         "properties": {
             "type": "object",
             "properties": {
+                "lastmodifieddate": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        },
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "value": {
+                                        "type": "string"
+                                    },
+                                    "source-type": {
+                                        "type": "string"
+                                    },
+                                    "source-label": {
+                                        "type": "null"
+                                    },
+                                    "updated-by-user-id": {
+                                        "type": "null"
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "selected": {
+                                        "type": "boolean"
+                                    },
+                                    "data-sensitivity": {
+                                        "type": "null"
+                                    },
+                                    "is-encrypted": {
+                                        "type": "null"
+                                    }
+                                },
+                                "required": [
+                                    "value",
+                                    "source-type",
+                                    "source-id",
+                                    "source-label",
+                                    "updated-by-user-id",
+                                    "timestamp",
+                                    "selected",
+                                    "data-sensitivity",
+                                    "is-encrypted"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "value"
+                    ]
+                },
                 "hs_is_contact": {
                     "type": "object",
                     "properties": {
@@ -71,234 +125,6 @@
                     },
                     "required": [
                         "value"
-                    ]
-                },
-                "lastmodifieddate": {
-                    "type": "object",
-                    "properties": {
-                        "value": {
-                            "type": "string"
-                        },
-                        "versions": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "value": {
-                                        "type": "string"
-                                    },
-                                    "source-type": {
-                                        "type": "string"
-                                    },
-                                    "source-label": {
-                                        "type": "null"
-                                    },
-                                    "updated-by-user-id": {
-                                        "type": "null"
-                                    },
-                                    "timestamp": {
-                                        "type": "integer"
-                                    },
-                                    "selected": {
-                                        "type": "boolean"
-                                    },
-                                    "data-sensitivity": {
-                                        "type": "null"
-                                    },
-                                    "is-encrypted": {
-                                        "type": "null"
-                                    }
-                                },
-                                "required": [
-                                    "value",
-                                    "source-type",
-                                    "source-id",
-                                    "source-label",
-                                    "updated-by-user-id",
-                                    "timestamp",
-                                    "selected",
-                                    "data-sensitivity",
-                                    "is-encrypted"
-                                ]
-                            }
-                        }
-                    },
-                    "required": [
-                        "value"
-                    ]
-                },
-                "ip_country_code": {
-                    "type": "object",
-                    "properties": {
-                        "value": {
-                            "type": "string"
-                        },
-                        "versions": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "value": {
-                                        "type": "string"
-                                    },
-                                    "source-type": {
-                                        "type": "string"
-                                    },
-                                    "source-id": {
-                                        "type": "string"
-                                    },
-                                    "source-label": {
-                                        "type": "null"
-                                    },
-                                    "updated-by-user-id": {
-                                        "type": "null"
-                                    },
-                                    "timestamp": {
-                                        "type": "integer"
-                                    },
-                                    "selected": {
-                                        "type": "boolean"
-                                    },
-                                    "data-sensitivity": {
-                                        "type": "null"
-                                    },
-                                    "is-encrypted": {
-                                        "type": "null"
-                                    }
-                                },
-                                "required": [
-                                    "value",
-                                    "source-type",
-                                    "source-id",
-                                    "source-label",
-                                    "updated-by-user-id",
-                                    "timestamp",
-                                    "selected",
-                                    "data-sensitivity",
-                                    "is-encrypted"
-                                ]
-                            }
-                        }
-                    },
-                    "required": [
-                        "value",
-                        "versions"
-                    ]
-                },
-                "ip_country": {
-                    "type": "object",
-                    "properties": {
-                        "value": {
-                            "type": "string"
-                        },
-                        "versions": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "value": {
-                                        "type": "string"
-                                    },
-                                    "source-type": {
-                                        "type": "string"
-                                    },
-                                    "source-id": {
-                                        "type": "string"
-                                    },
-                                    "source-label": {
-                                        "type": "null"
-                                    },
-                                    "updated-by-user-id": {
-                                        "type": "null"
-                                    },
-                                    "timestamp": {
-                                        "type": "integer"
-                                    },
-                                    "selected": {
-                                        "type": "boolean"
-                                    },
-                                    "data-sensitivity": {
-                                        "type": "null"
-                                    },
-                                    "is-encrypted": {
-                                        "type": "null"
-                                    }
-                                },
-                                "required": [
-                                    "value",
-                                    "source-type",
-                                    "source-id",
-                                    "source-label",
-                                    "updated-by-user-id",
-                                    "timestamp",
-                                    "selected",
-                                    "data-sensitivity",
-                                    "is-encrypted"
-                                ]
-                            }
-                        }
-                    },
-                    "required": [
-                        "value",
-                        "versions"
-                    ]
-                },
-                "hs_ip_timezone": {
-                    "type": "object",
-                    "properties": {
-                        "value": {
-                            "type": "string"
-                        },
-                        "versions": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "value": {
-                                        "type": "string"
-                                    },
-                                    "source-type": {
-                                        "type": "string"
-                                    },
-                                    "source-id": {
-                                        "type": "string"
-                                    },
-                                    "source-label": {
-                                        "type": "null"
-                                    },
-                                    "updated-by-user-id": {
-                                        "type": "null"
-                                    },
-                                    "timestamp": {
-                                        "type": "integer"
-                                    },
-                                    "selected": {
-                                        "type": "boolean"
-                                    },
-                                    "data-sensitivity": {
-                                        "type": "null"
-                                    },
-                                    "is-encrypted": {
-                                        "type": "null"
-                                    }
-                                },
-                                "required": [
-                                    "value",
-                                    "source-type",
-                                    "source-id",
-                                    "source-label",
-                                    "updated-by-user-id",
-                                    "timestamp",
-                                    "selected",
-                                    "data-sensitivity",
-                                    "is-encrypted"
-                                ]
-                            }
-                        }
-                    },
-                    "required": [
-                        "value",
-                        "versions"
                     ]
                 }
             },
@@ -427,5 +253,6 @@
                 ]
             }
         }
-    }
+    },
+    "version": 1
 }

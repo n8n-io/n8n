@@ -106,5 +106,6 @@
         "is_editable",
         "created_by",
         "target"
-    ]
+    ],
+    "version": 1
 }

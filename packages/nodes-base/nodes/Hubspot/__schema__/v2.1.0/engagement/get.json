@@ -31,9 +31,6 @@
                 "type": {
                     "type": "string"
                 },
-                "uid": {
-                    "type": "string"
-                },
                 "timestamp": {
                     "type": "integer"
                 },
@@ -59,6 +56,9 @@
                     "type": "boolean"
                 },
                 "bodyPreviewHtml": {
+                    "type": "string"
+                },
+                "uid": {
                     "type": "string"
                 }
             },
@@ -123,12 +123,23 @@
                 "cartIds"
             ]
         },
+        "attachments": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "id"
+                ]
+            }
+        },
         "metadata": {
             "type": "object",
             "properties": {
-                "body": {
-                    "type": "string"
-                },
                 "to": {
                     "type": "array",
                     "items": {
@@ -172,13 +183,17 @@
                         },
                         "required": [
                             "raw",
-                            "email",
-                            "firstName",
-                            "lastName"
+                            "email"
                         ]
                     }
                 },
+                "subject": {
+                    "type": "string"
+                },
                 "html": {
+                    "type": "string"
+                },
+                "status": {
                     "type": "string"
                 },
                 "ownerIdsFrom": {
@@ -193,60 +208,11 @@
                         "type": "integer"
                     }
                 },
-                "status": {
-                    "type": "string"
-                },
-                "subject": {
-                    "type": "string"
-                },
-                "from": {
-                    "type": "object",
-                    "properties": {
-                        "raw": {
-                            "type": "string"
-                        },
-                        "email": {
-                            "type": "string"
-                        },
-                        "firstName": {
-                            "type": "string"
-                        },
-                        "lastName": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "email"
-                    ]
-                },
-                "sender": {
-                    "type": "object",
-                    "properties": {
-                        "email": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "email"
-                    ]
-                },
-                "text": {
-                    "type": "string"
-                },
-                "messageId": {
-                    "type": "string"
-                },
-                "loggedFrom": {
-                    "type": "string"
-                },
-                "mediaProcessingStatus": {
-                    "type": "string"
-                },
-                "attachedVideoOpened": {
-                    "type": "boolean"
-                },
-                "attachedVideoWatched": {
-                    "type": "boolean"
+                "ownerIdsCc": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 }
             }
         }
@@ -256,5 +222,6 @@
         "associations",
         "attachments",
         "metadata"
-    ]
+    ],
+    "version": 1
 }

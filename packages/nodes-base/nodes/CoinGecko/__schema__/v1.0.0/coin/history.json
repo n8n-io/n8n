@@ -777,5 +777,6 @@
         "symbol",
         "name",
         "image"
-    ]
+    ],
+    "version": 1
 }

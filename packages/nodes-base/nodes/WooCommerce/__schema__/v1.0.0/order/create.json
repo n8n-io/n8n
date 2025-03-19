@@ -330,13 +330,50 @@
                 ]
             }
         },
+        "fee_lines": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "tax_class": {
+                        "type": "string"
+                    },
+                    "tax_status": {
+                        "type": "string"
+                    },
+                    "amount": {
+                        "type": "string"
+                    },
+                    "total": {
+                        "type": "string"
+                    },
+                    "total_tax": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "tax_class",
+                    "tax_status",
+                    "amount",
+                    "total",
+                    "total_tax",
+                    "taxes",
+                    "meta_data"
+                ]
+            }
+        },
         "payment_url": {
             "type": "string"
         },
         "is_editable": {
-            "type": "boolean"
-        },
-        "needs_payment": {
             "type": "boolean"
         },
         "needs_processing": {
@@ -437,5 +474,6 @@
         "date_paid_gmt",
         "currency_symbol",
         "_links"
-    ]
+    ],
+    "version": 1
 }

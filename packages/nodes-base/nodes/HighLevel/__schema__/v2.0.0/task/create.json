@@ -42,5 +42,6 @@
         "task",
         "traceId",
         "contactId"
-    ]
+    ],
+    "version": 1
 }

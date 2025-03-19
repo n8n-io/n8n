@@ -51,7 +51,6 @@
             },
             "required": [
                 "self",
-                "accountId",
                 "avatarUrls",
                 "displayName",
                 "active"
@@ -71,7 +70,6 @@
         }
     },
     "required": [
-        "id",
         "self",
         "filename",
         "author",
@@ -80,5 +78,6 @@
         "mimeType",
         "properties",
         "content"
-    ]
+    ],
+    "version": 1
 }
