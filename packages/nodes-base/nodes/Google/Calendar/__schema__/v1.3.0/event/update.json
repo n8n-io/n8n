@@ -46,11 +46,11 @@
                 "email": {
                     "type": "string"
                 },
-                "displayName": {
-                    "type": "string"
-                },
                 "self": {
                     "type": "boolean"
+                },
+                "displayName": {
+                    "type": "string"
                 }
             },
             "required": [
