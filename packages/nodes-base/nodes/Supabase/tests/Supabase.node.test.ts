@@ -105,13 +105,37 @@ describe('Test Supabase Node', () => {
 		supabaseApiRequest.mockRestore();
 	});
 
-	it('should set "public" schema in the headers for GET calls if no custom schema is used', async () => {
+	it('should not set schema headers if no custom schema is used', async () => {
 		const fakeExecuteFunction = createMockExecuteFunction({
 			resource: 'row',
 			operation: 'getAll',
 			returnAll: true,
 			useCustomSchema: false,
 			schema: 'public',
+			tableId: 'my_table',
+		});
+
+		await node.execute.call(fakeExecuteFunction);
+
+		expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+			'supabaseApi',
+			expect.objectContaining({
+				method: 'GET',
+				headers: expect.objectContaining({
+					Prefer: 'return=representation',
+				}),
+				uri: 'https://api.supabase.io/rest/v1/my_table',
+			}),
+		);
+	});
+
+	it('should set "public" schema in the headers for GET calls if custom schema is enabled but not specified', async () => {
+		const fakeExecuteFunction = createMockExecuteFunction({
+			resource: 'row',
+			operation: 'getAll',
+			returnAll: true,
+			useCustomSchema: true,
+			schema: '',
 			tableId: 'my_table',
 		});
 
@@ -130,13 +154,13 @@ describe('Test Supabase Node', () => {
 		);
 	});
 
-	it('should set "public" schema in the headers for POST calls if no custom schema is used', async () => {
+	it('should set "public" schema in the headers for POST calls if custom schema is enabled but not specified', async () => {
 		const fakeExecuteFunction = createMockExecuteFunction({
 			resource: 'row',
 			operation: 'create',
 			returnAll: true,
-			useCustomSchema: false,
-			schema: 'public',
+			useCustomSchema: true,
+			schema: '',
 			tableId: 'my_table',
 		});
 
@@ -155,11 +179,12 @@ describe('Test Supabase Node', () => {
 		);
 	});
 
-	it('should set the correct headers for GET calls if custom schema is used', async () => {
+	it('should set the schema headers for GET calls if custom schema is used', async () => {
 		const fakeExecuteFunction = createMockExecuteFunction({
 			resource: 'row',
 			operation: 'getAll',
 			returnAll: true,
+			useCustomSchema: true,
 			schema: 'custom_schema',
 			tableId: 'my_table',
 		});
@@ -179,11 +204,12 @@ describe('Test Supabase Node', () => {
 		);
 	});
 
-	it('should set the correct headers for POST calls if custom schema is used', async () => {
+	it('should set the schema headers for POST calls if custom schema is used', async () => {
 		const fakeExecuteFunction = createMockExecuteFunction({
 			resource: 'row',
 			operation: 'create',
 			returnAll: true,
+			useCustomSchema: true,
 			schema: 'custom_schema',
 			tableId: 'my_table',
 		});
