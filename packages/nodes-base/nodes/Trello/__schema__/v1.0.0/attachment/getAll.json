@@ -4,6 +4,9 @@
         "id": {
             "type": "string"
         },
+        "url": {
+            "type": "string"
+        },
         "date": {
             "type": "string"
         },
@@ -56,9 +59,6 @@
                     "width"
                 ]
             }
-        },
-        "url": {
-            "type": "string"
         },
         "pos": {
             "type": "integer"
