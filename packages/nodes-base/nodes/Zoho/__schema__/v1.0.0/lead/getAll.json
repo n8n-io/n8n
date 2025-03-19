@@ -1,6 +1,12 @@
 {
     "type": "object",
     "properties": {
+        "Full_Name": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
         "Owner": {
             "type": "object",
             "properties": {
@@ -41,9 +47,6 @@
         "$locked_for_me": {
             "type": "boolean"
         },
-        "id": {
-            "type": "string"
-        },
         "$approved": {
             "type": "boolean"
         },
@@ -68,6 +71,7 @@
             },
             "required": [
                 "delegate",
+                "takeover",
                 "approve",
                 "reject",
                 "resubmit"
@@ -109,9 +113,6 @@
                 "name",
                 "id"
             ]
-        },
-        "Full_Name": {
-            "type": "string"
         },
         "Modified_By": {
             "type": "object",
