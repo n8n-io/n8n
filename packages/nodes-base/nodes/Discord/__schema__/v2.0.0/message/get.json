@@ -98,6 +98,9 @@
                     "content_type": {
                         "type": "string"
                     },
+                    "content_scan_version": {
+                        "type": "integer"
+                    },
                     "placeholder": {
                         "type": "string"
                     },
@@ -127,10 +130,7 @@
                     "type": {
                         "type": "string"
                     },
-                    "url": {
-                        "type": "string"
-                    },
-                    "title": {
+                    "description": {
                         "type": "string"
                     },
                     "color": {
@@ -139,8 +139,44 @@
                     "content_scan_version": {
                         "type": "integer"
                     },
-                    "description": {
+                    "url": {
                         "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "thumbnail": {
+                        "type": "object",
+                        "properties": {
+                            "url": {
+                                "type": "string"
+                            },
+                            "proxy_url": {
+                                "type": "string"
+                            },
+                            "width": {
+                                "type": "integer"
+                            },
+                            "height": {
+                                "type": "integer"
+                            },
+                            "flags": {
+                                "type": "integer"
+                            },
+                            "placeholder": {
+                                "type": "string"
+                            },
+                            "placeholder_version": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "url",
+                            "proxy_url",
+                            "width",
+                            "height",
+                            "flags"
+                        ]
                     }
                 },
                 "required": [
@@ -153,6 +189,54 @@
         },
         "flags": {
             "type": "integer"
+        },
+        "components": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "integer"
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "components": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "type": {
+                                    "type": "integer"
+                                },
+                                "id": {
+                                    "type": "integer"
+                                },
+                                "style": {
+                                    "type": "integer"
+                                },
+                                "label": {
+                                    "type": "string"
+                                },
+                                "custom_id": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "type",
+                                "id",
+                                "style",
+                                "label"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "type",
+                    "id",
+                    "components"
+                ]
+            }
         },
         "id": {
             "type": "string"
@@ -182,6 +266,9 @@
                     "type": "null"
                 },
                 "accent_color": {
+                    "type": "null"
+                },
+                "collectibles": {
                     "type": "null"
                 },
                 "banner_color": {
