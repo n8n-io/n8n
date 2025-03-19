@@ -7,6 +7,12 @@
         "name": {
             "type": "string"
         },
+        "messageListVisibility": {
+            "type": "string"
+        },
+        "labelListVisibility": {
+            "type": "string"
+        },
         "type": {
             "type": "string"
         },
@@ -21,12 +27,6 @@
         },
         "threadsUnread": {
             "type": "integer"
-        },
-        "messageListVisibility": {
-            "type": "string"
-        },
-        "labelListVisibility": {
-            "type": "string"
         }
     },
     "version": 1
