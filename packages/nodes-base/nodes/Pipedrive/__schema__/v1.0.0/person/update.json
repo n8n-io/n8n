@@ -220,6 +220,12 @@
                 ]
             }
         },
+        "postal_address_lat": {
+            "type": "null"
+        },
+        "postal_address_long": {
+            "type": "null"
+        },
         "postal_address_subpremise": {
             "type": "null"
         },
@@ -231,12 +237,6 @@
         },
         "company_id": {
             "type": "integer"
-        },
-        "postal_address_lat": {
-            "type": "null"
-        },
-        "postal_address_long": {
-            "type": "null"
         }
     },
     "version": 1
