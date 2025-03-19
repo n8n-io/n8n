@@ -2990,8 +2990,6 @@
 	"testDefinition.runDetail.error.evaluationFailed.solution": "View evaluation execution",
 	"testDefinition.runDetail.error.triggerNoLongerExists": "Trigger in benchmark execution no longer exists in workflow.{link}.",
 	"testDefinition.runDetail.error.triggerNoLongerExists.solution": "View benchmark",
-	"testDefinition.runDetail.error.metricsMissing": "Metrics defined in test were not returned by evaluation workflow {link}.",
-	"testDefinition.runDetail.error.metricsMissing.solution": "Fix test configuration",
 	"testDefinition.runDetail.error.invalidMetrics": "Evaluation workflow returned invalid metrics. Only numeric values are expected. View evaluation execution. {link}.",
 	"testDefinition.runDetail.error.invalidMetrics.solution": "View evaluation execution",
 	"testDefinition.runTest": "Run Test",
