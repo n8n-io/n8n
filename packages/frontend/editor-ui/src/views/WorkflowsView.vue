@@ -185,8 +185,16 @@ const isShareable = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
 );
 
+const foldersEnabled = computed(() => {
+	return settingsStore.isFoldersFeatureEnabled;
+});
+
+const teamProjectsEnabled = computed(() => {
+	return projectsStore.isTeamProjectFeatureEnabled;
+});
+
 const showFolders = computed(() => {
-	return settingsStore.isFoldersFeatureEnabled && !isOverviewPage.value;
+	return foldersEnabled.value && !isOverviewPage.value;
 });
 
 const currentFolder = computed(() => {
@@ -1181,16 +1189,26 @@ const onCreateWorkflowClick = () => {
 		<template #header>
 			<ProjectHeader @create-folder="createFolderInCurrent" />
 		</template>
-		<template v-if="showFolders" #add-button>
-			<N8nTooltip placement="top" :disabled="readOnlyEnv || !hasPermissionToCreateFolders">
+		<template v-if="foldersEnabled" #add-button>
+			<N8nTooltip placement="top">
 				<template #content>
-					{{
-						currentParentName
-							? i18n.baseText('folders.add.to.parent.message', {
-									interpolate: { parent: currentParentName },
-								})
-							: i18n.baseText('folders.add.here.message')
-					}}
+					<span v-if="isOverviewPage">
+						<span v-if="teamProjectsEnabled">
+							{{ i18n.baseText('folders.add.overview.withProjects.message') }}
+						</span>
+						<span v-else>
+							{{ i18n.baseText('folders.add.overview.community.message') }}
+						</span>
+					</span>
+					<span v-else-if="!readOnlyEnv && hasPermissionToCreateFolders">
+						{{
+							currentParentName
+								? i18n.baseText('folders.add.to.parent.message', {
+										interpolate: { parent: currentParentName },
+									})
+								: i18n.baseText('folders.add.here.message')
+						}}
+					</span>
 				</template>
 				<N8nButton
 					size="small"
