@@ -1,4 +1,5 @@
 import { AiAssistantConfig } from './configs/aiAssistant.config';
+import { AuthConfig } from './configs/auth.config';
 import { CacheConfig } from './configs/cache.config';
 import { CredentialsConfig } from './configs/credentials.config';
 import { DatabaseConfig } from './configs/database.config';
@@ -38,6 +39,9 @@ export { WorkflowsConfig } from './configs/workflows.config';
 
 @Config
 export class GlobalConfig {
+	@Nested
+	auth: AuthConfig;
+
 	@Nested
 	database: DatabaseConfig;
 
