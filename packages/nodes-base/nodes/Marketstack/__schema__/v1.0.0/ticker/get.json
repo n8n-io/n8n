@@ -1,0 +1,61 @@
+{
+    "type": "object",
+    "properties": {
+        "name": {
+            "type": "string"
+        },
+        "symbol": {
+            "type": "string"
+        },
+        "has_intraday": {
+            "type": "boolean"
+        },
+        "has_eod": {
+            "type": "boolean"
+        },
+        "country": {
+            "type": "null"
+        },
+        "stock_exchange": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "acronym": {
+                    "type": "string"
+                },
+                "mic": {
+                    "type": "string"
+                },
+                "country_code": {
+                    "type": "string"
+                },
+                "city": {
+                    "type": "string"
+                },
+                "website": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "acronym",
+                "mic",
+                "country",
+                "country_code",
+                "city",
+                "website"
+            ]
+        }
+    },
+    "required": [
+        "name",
+        "symbol",
+        "has_intraday",
+        "has_eod",
+        "country",
+        "stock_exchange"
+    ],
+    "version": 1
+}
