@@ -1,4 +1,0 @@
-**/.terraform/*
-**/*.tfstate*
-**/*.tfvars
-privatekey.pem

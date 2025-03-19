@@ -1,5 +1,0 @@
-storybook-static
-**/*.stories.js
-
-# Auto-generated
-src/components.d.ts
