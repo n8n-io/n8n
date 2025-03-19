@@ -1,0 +1,347 @@
+{
+    "type": "object",
+    "properties": {
+        "SalesOrderLines": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "LineNumber": {
+                        "type": "integer"
+                    },
+                    "Product": {
+                        "type": "object",
+                        "properties": {
+                            "Guid": {
+                                "type": "string"
+                            },
+                            "ProductDescription": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "Guid",
+                            "ProductCode",
+                            "ProductDescription"
+                        ]
+                    },
+                    "DueDate": {
+                        "type": "string"
+                    },
+                    "OrderQuantity": {
+                        "type": "integer"
+                    },
+                    "XeroTaxCode": {
+                        "type": "string"
+                    },
+                    "SerialNumbers": {
+                        "type": "null"
+                    },
+                    "BatchNumbers": {
+                        "type": "null"
+                    },
+                    "Guid": {
+                        "type": "string"
+                    },
+                    "LastModifiedOn": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "LineNumber",
+                    "LineType",
+                    "Product",
+                    "DueDate",
+                    "OrderQuantity",
+                    "UnitPrice",
+                    "DiscountRate",
+                    "LineTotal",
+                    "Volume",
+                    "Weight",
+                    "Comments",
+                    "AverageLandedPriceAtTimeOfSale",
+                    "TaxRate",
+                    "LineTax",
+                    "XeroTaxCode",
+                    "BCUnitPrice",
+                    "BCLineTotal",
+                    "BCLineTax",
+                    "LineTaxCode",
+                    "XeroSalesAccount",
+                    "CostOfGoodsAccount",
+                    "SerialNumbers",
+                    "BatchNumbers",
+                    "Assembly",
+                    "Guid",
+                    "LastModifiedOn"
+                ]
+            }
+        },
+        "OrderNumber": {
+            "type": "string"
+        },
+        "OrderDate": {
+            "type": "string"
+        },
+        "OrderStatus": {
+            "type": "string"
+        },
+        "Customer": {
+            "type": "object",
+            "properties": {
+                "CustomerCode": {
+                    "type": "string"
+                },
+                "CustomerName": {
+                    "type": "string"
+                },
+                "CurrencyId": {
+                    "type": "integer"
+                },
+                "Guid": {
+                    "type": "string"
+                },
+                "LastModifiedOn": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "CustomerCode",
+                "CustomerName",
+                "CurrencyId",
+                "Guid",
+                "LastModifiedOn"
+            ]
+        },
+        "Warehouse": {
+            "type": "object",
+            "properties": {
+                "WarehouseCode": {
+                    "type": "string"
+                },
+                "WarehouseName": {
+                    "type": "string"
+                },
+                "IsDefault": {
+                    "type": "boolean"
+                },
+                "FaxNumber": {
+                    "type": "null"
+                },
+                "Obsolete": {
+                    "type": "boolean"
+                },
+                "Guid": {
+                    "type": "string"
+                },
+                "LastModifiedOn": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "WarehouseCode",
+                "WarehouseName",
+                "IsDefault",
+                "StreetNo",
+                "AddressLine1",
+                "AddressLine2",
+                "Suburb",
+                "City",
+                "Region",
+                "Country",
+                "PostCode",
+                "PhoneNumber",
+                "FaxNumber",
+                "MobileNumber",
+                "DDINumber",
+                "ContactName",
+                "Obsolete",
+                "Guid",
+                "LastModifiedOn"
+            ]
+        },
+        "ReceivedDate": {
+            "type": "null"
+        },
+        "Currency": {
+            "type": "object",
+            "properties": {
+                "CurrencyCode": {
+                    "type": "string"
+                },
+                "Description": {
+                    "type": "string"
+                },
+                "DefaultBuyRate": {
+                    "type": "null"
+                },
+                "DefaultSellRate": {
+                    "type": "null"
+                },
+                "Guid": {
+                    "type": "string"
+                },
+                "LastModifiedOn": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "CurrencyCode",
+                "Description",
+                "DefaultBuyRate",
+                "DefaultSellRate",
+                "Guid",
+                "LastModifiedOn"
+            ]
+        },
+        "Tax": {
+            "type": "object",
+            "properties": {
+                "TaxCode": {
+                    "type": "string"
+                },
+                "Description": {
+                    "type": "string"
+                },
+                "CanApplyToExpenses": {
+                    "type": "boolean"
+                },
+                "CanApplyToRevenue": {
+                    "type": "boolean"
+                },
+                "Obsolete": {
+                    "type": "boolean"
+                },
+                "Guid": {
+                    "type": "string"
+                },
+                "LastModifiedOn": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "TaxCode",
+                "Description",
+                "TaxRate",
+                "CanApplyToExpenses",
+                "CanApplyToRevenue",
+                "Obsolete",
+                "Guid",
+                "LastModifiedOn"
+            ]
+        },
+        "XeroTaxCode": {
+            "type": "string"
+        },
+        "AllocateProduct": {
+            "type": "boolean"
+        },
+        "SalesPerson": {
+            "type": "object",
+            "properties": {
+                "FullName": {
+                    "type": "string"
+                },
+                "Email": {
+                    "type": "string"
+                },
+                "Obsolete": {
+                    "type": "boolean"
+                },
+                "Guid": {
+                    "type": "string"
+                },
+                "LastModifiedOn": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "FullName",
+                "Email",
+                "Obsolete",
+                "Guid",
+                "LastModifiedOn"
+            ]
+        },
+        "SendAccountingJournalOnly": {
+            "type": "boolean"
+        },
+        "SourceId": {
+            "type": "null"
+        },
+        "CreatedBy": {
+            "type": "string"
+        },
+        "CreatedOn": {
+            "type": "string"
+        },
+        "LastModifiedBy": {
+            "type": "string"
+        },
+        "SalesAccount": {
+            "type": "null"
+        },
+        "SaveAddress": {
+            "type": "boolean"
+        },
+        "Guid": {
+            "type": "string"
+        },
+        "LastModifiedOn": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "SalesOrderLines",
+        "OrderNumber",
+        "OrderDate",
+        "RequiredDate",
+        "CompletedDate",
+        "OrderStatus",
+        "Customer",
+        "CustomerRef",
+        "Comments",
+        "Warehouse",
+        "ReceivedDate",
+        "DeliveryContact",
+        "DeliveryInstruction",
+        "DeliveryName",
+        "DeliveryStreetAddress",
+        "DeliveryStreetAddress2",
+        "DeliverySuburb",
+        "DeliveryCity",
+        "DeliveryRegion",
+        "DeliveryCountry",
+        "DeliveryPostCode",
+        "Currency",
+        "ExchangeRate",
+        "DiscountRate",
+        "Tax",
+        "TaxRate",
+        "XeroTaxCode",
+        "SubTotal",
+        "TaxTotal",
+        "Total",
+        "TotalVolume",
+        "TotalWeight",
+        "BCSubTotal",
+        "BCTaxTotal",
+        "BCTotal",
+        "PaymentDueDate",
+        "AllocateProduct",
+        "SalesOrderGroup",
+        "DeliveryMethod",
+        "SalesPerson",
+        "SendAccountingJournalOnly",
+        "SourceId",
+        "CreatedBy",
+        "CustomOrderStatus",
+        "CreatedOn",
+        "LastModifiedBy",
+        "SalesAccount",
+        "SaveAddress",
+        "Guid",
+        "LastModifiedOn"
+    ],
+    "version": 1
+}
