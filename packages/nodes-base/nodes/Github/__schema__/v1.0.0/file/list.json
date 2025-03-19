@@ -45,5 +45,17 @@
             ]
         }
     },
+    "required": [
+        "name",
+        "path",
+        "sha",
+        "size",
+        "url",
+        "html_url",
+        "git_url",
+        "download_url",
+        "type",
+        "_links"
+    ],
     "version": 1
 }
