@@ -129,27 +129,6 @@
             "properties": {
                 "footnotes": {
                     "type": "string"
-                },
-                "advanced_seo_description": {
-                    "type": "string"
-                },
-                "jetpack_seo_html_title": {
-                    "type": "string"
-                },
-                "jetpack_seo_noindex": {
-                    "type": "boolean"
-                },
-                "jetpack_post_was_ever_published": {
-                    "type": "boolean"
-                },
-                "_starter_page_template": {
-                    "type": "string"
-                },
-                "_wpcom_template_layout_category": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
                 }
             },
             "required": [
