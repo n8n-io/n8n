@@ -1,5 +1,5 @@
+import topLevel from './snapshots/toplevel.snapshot.json';
 import { sublimeSearch } from './sublimeSearch';
-import { topLevel } from './sublimeSearch.snapshot';
 
 describe('sublimeSearch', () => {
 	const testCases = [{ filter: 'agent', expectedOrder: ['Magento 2', 'AI Agent'] }];

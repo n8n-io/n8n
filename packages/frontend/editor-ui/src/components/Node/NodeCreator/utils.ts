@@ -92,7 +92,7 @@ export function searchNodes(searchFilter: string, items: INodeCreateElement[]) {
 
 	// In order to support the old search we need to remove the 'trigger' part
 	const trimmedFilter = searchFilter.toLowerCase().replace('trigger', '').trimEnd();
-
+	console.log(items);
 	// We have a snapshot of this call in sublimeSearch.test.ts to assert practical order for some cases
 	// Please kindly update the test call if you modify the weights here, and ideally regenerate the snapshot as described in its file.
 	const result = (
