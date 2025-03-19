@@ -7,43 +7,22 @@
         "created_at": {
             "type": "string"
         },
-        "id": {
-            "type": "integer"
+        "deleted_at": {
+            "type": "null"
         },
-        "uuid": {
-            "type": "string"
-        },
-        "slug": {
-            "type": "string"
-        },
-        "full_slug": {
+        "group_id": {
             "type": "string"
         },
         "sort_by_date": {
             "type": "null"
         },
-        "position": {
-            "type": "integer"
-        },
-        "tag_list": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "is_startpage": {
-            "type": "boolean"
-        },
-        "group_id": {
+        "updated_at": {
             "type": "string"
         },
-        "path": {
-            "type": "null"
+        "id": {
+            "type": "integer"
         },
-        "deleted_at": {
-            "type": "null"
-        },
-        "updated_at": {
+        "uuid": {
             "type": "string"
         },
         "is_folder": {
@@ -52,7 +31,22 @@
         "published": {
             "type": "boolean"
         },
+        "slug": {
+            "type": "string"
+        },
+        "path": {
+            "type": "null"
+        },
+        "full_slug": {
+            "type": "string"
+        },
+        "position": {
+            "type": "integer"
+        },
         "unpublished_changes": {
+            "type": "boolean"
+        },
+        "is_startpage": {
             "type": "boolean"
         },
         "pinned": {
@@ -99,8 +93,11 @@
         "content_type": {
             "type": "string"
         },
-        "can_not_view": {
-            "type": "boolean"
+        "tag_list": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
         },
         "scheduled_dates": {
             "type": "null"
@@ -108,21 +105,21 @@
     },
     "required": [
         "name",
+        "parent_id",
         "created_at",
+        "group_id",
+        "sort_by_date",
         "published_at",
-        "alternates",
         "id",
         "uuid",
         "slug",
+        "path",
         "full_slug",
-        "sort_by_date",
         "position",
-        "tag_list",
         "is_startpage",
-        "parent_id",
-        "group_id",
         "first_published_at",
-        "path"
+        "alternates",
+        "tag_list"
     ],
     "version": 1
 }
