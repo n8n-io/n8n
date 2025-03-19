@@ -1,38 +1,11 @@
 {
     "type": "object",
     "properties": {
-        "pathLower": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
         "name": {
-            "type": "string"
-        },
-        "lastModifiedClient": {
-            "type": "string"
-        },
-        "lastModifiedServer": {
             "type": "string"
         },
         "rev": {
             "type": "string"
-        },
-        "contentSize": {
-            "type": "integer"
-        },
-        "type": {
-            "type": "string"
-        },
-        "contentHash": {
-            "type": "string"
-        },
-        "pathDisplay": {
-            "type": "string"
-        },
-        "isDownloadable": {
-            "type": "boolean"
         }
     },
     "version": 1
