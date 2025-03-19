@@ -108,39 +108,20 @@
                     "resource_type": {
                         "type": "string"
                     },
-                    "created_by": {
-                        "type": "object",
-                        "properties": {
-                            "gid": {
-                                "type": "string"
-                            },
-                            "resource_type": {
-                                "type": "string"
-                            },
-                            "name": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "gid",
-                            "resource_type",
-                            "name"
-                        ]
+                    "enabled": {
+                        "type": "boolean"
                     },
-                    "resource_subtype": {
+                    "is_formula_field": {
+                        "type": "boolean"
+                    },
+                    "name": {
                         "type": "string"
                     },
                     "type": {
                         "type": "string"
                     },
-                    "name": {
+                    "resource_subtype": {
                         "type": "string"
-                    },
-                    "is_formula_field": {
-                        "type": "boolean"
-                    },
-                    "enabled": {
-                        "type": "boolean"
                     },
                     "enum_value": {
                         "type": "null"
@@ -175,6 +156,25 @@
                             ]
                         }
                     },
+                    "created_by": {
+                        "type": "object",
+                        "properties": {
+                            "gid": {
+                                "type": "string"
+                            },
+                            "resource_type": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "gid",
+                            "resource_type",
+                            "name"
+                        ]
+                    },
                     "precision": {
                         "type": "integer"
                     },
@@ -185,12 +185,12 @@
                 "required": [
                     "gid",
                     "resource_type",
-                    "created_by",
-                    "resource_subtype",
-                    "type",
-                    "name",
                     "enabled",
-                    "display_value"
+                    "name",
+                    "type",
+                    "resource_subtype",
+                    "display_value",
+                    "created_by"
                 ]
             }
         },
