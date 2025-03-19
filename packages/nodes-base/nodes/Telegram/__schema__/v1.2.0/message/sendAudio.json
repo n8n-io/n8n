@@ -42,7 +42,7 @@
                         "first_name": {
                             "type": "string"
                         },
-                        "username": {
+                        "last_name": {
                             "type": "string"
                         },
                         "type": {
