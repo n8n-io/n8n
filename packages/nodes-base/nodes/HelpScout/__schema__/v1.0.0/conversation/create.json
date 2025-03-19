@@ -100,7 +100,11 @@
                 "friendly": {
                     "type": "string"
                 }
-            }
+            },
+            "required": [
+                "time",
+                "friendly"
+            ]
         },
         "source": {
             "type": "object",
