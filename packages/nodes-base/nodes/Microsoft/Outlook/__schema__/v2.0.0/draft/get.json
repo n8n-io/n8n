@@ -1,25 +1,16 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "conversationId": {
-            "type": "string"
-        },
-        "subject": {
-            "type": "string"
-        },
-        "bodyPreview": {
-            "type": "string"
-        },
-        "hasAttachments": {
-            "type": "boolean"
-        },
         "@odata.context": {
             "type": "string"
         },
         "@odata.etag": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "conversationId": {
             "type": "string"
         },
         "body": {
@@ -36,6 +27,15 @@
                 "contentType",
                 "content"
             ]
+        },
+        "hasAttachments": {
+            "type": "boolean"
+        },
+        "subject": {
+            "type": "string"
+        },
+        "bodyPreview": {
+            "type": "string"
         }
     },
     "version": 1
