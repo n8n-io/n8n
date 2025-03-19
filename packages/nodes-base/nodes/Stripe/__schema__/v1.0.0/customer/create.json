@@ -54,14 +54,14 @@
         "livemode": {
             "type": "boolean"
         },
+        "next_invoice_sequence": {
+            "type": "integer"
+        },
         "tax_exempt": {
             "type": "string"
         },
         "test_clock": {
             "type": "null"
-        },
-        "next_invoice_sequence": {
-            "type": "integer"
         }
     },
     "required": [
