@@ -25,9 +25,6 @@
         "country": {
             "type": "string"
         },
-        "company_linkedin": {
-            "type": "string"
-        },
         "phone": {
             "type": "string"
         },
@@ -44,6 +41,9 @@
             "type": "string"
         },
         "vat": {
+            "type": "string"
+        },
+        "company_linkedin": {
             "type": "string"
         },
         "email": {
