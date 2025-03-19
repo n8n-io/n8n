@@ -7,15 +7,6 @@
         "campaignName": {
             "type": "string"
         },
-        "firstName": {
-            "type": "string"
-        },
-        "lastName": {
-            "type": "string"
-        },
-        "linkedinUrl": {
-            "type": "string"
-        },
         "email": {
             "type": "string"
         },
@@ -24,6 +15,15 @@
         },
         "isPaused": {
             "type": "boolean"
+        },
+        "firstName": {
+            "type": "string"
+        },
+        "lastName": {
+            "type": "string"
+        },
+        "linkedinUrl": {
+            "type": "string"
         }
     },
     "version": 1
