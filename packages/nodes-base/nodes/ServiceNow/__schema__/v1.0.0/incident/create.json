@@ -148,21 +148,6 @@
         "work_end": {
             "type": "string"
         },
-        "caller_id": {
-            "type": "object",
-            "properties": {
-                "link": {
-                    "type": "string"
-                },
-                "value": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "link",
-                "value"
-            ]
-        },
         "reopened_time": {
             "type": "string"
         },
