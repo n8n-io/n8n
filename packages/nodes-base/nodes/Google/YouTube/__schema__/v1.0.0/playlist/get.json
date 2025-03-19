@@ -127,8 +127,7 @@
                     "required": [
                         "default",
                         "medium",
-                        "high",
-                        "standard"
+                        "high"
                     ]
                 },
                 "channelTitle": {
