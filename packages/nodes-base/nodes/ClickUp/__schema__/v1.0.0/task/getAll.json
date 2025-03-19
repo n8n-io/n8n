@@ -78,6 +78,9 @@
                     "id": {
                         "type": "integer"
                     },
+                    "username": {
+                        "type": "string"
+                    },
                     "initials": {
                         "type": "string"
                     },
@@ -151,69 +154,6 @@
                     },
                     "unresolved": {
                         "type": "integer"
-                    },
-                    "items": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "id": {
-                                    "type": "string"
-                                },
-                                "name": {
-                                    "type": "string"
-                                },
-                                "orderindex": {
-                                    "type": "null"
-                                },
-                                "assignee": {
-                                    "type": "null"
-                                },
-                                "group_assignee": {
-                                    "type": "null"
-                                },
-                                "resolved": {
-                                    "type": "boolean"
-                                },
-                                "parent": {
-                                    "type": "null"
-                                },
-                                "date_created": {
-                                    "type": "string"
-                                },
-                                "start_date": {
-                                    "type": "null"
-                                },
-                                "start_date_time": {
-                                    "type": "boolean"
-                                },
-                                "due_date": {
-                                    "type": "null"
-                                },
-                                "due_date_time": {
-                                    "type": "boolean"
-                                },
-                                "sent_due_date_notif": {
-                                    "type": "null"
-                                }
-                            },
-                            "required": [
-                                "id",
-                                "name",
-                                "orderindex",
-                                "assignee",
-                                "group_assignee",
-                                "resolved",
-                                "parent",
-                                "date_created",
-                                "start_date",
-                                "start_date_time",
-                                "due_date",
-                                "due_date_time",
-                                "sent_due_date_notif",
-                                "children"
-                            ]
-                        }
                     }
                 },
                 "required": [
@@ -338,9 +278,6 @@
                     },
                     "workspace_id": {
                         "type": "string"
-                    },
-                    "chain_id": {
-                        "type": "null"
                     }
                 },
                 "required": [
