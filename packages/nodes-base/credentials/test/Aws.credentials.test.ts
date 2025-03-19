@@ -120,24 +120,112 @@ describe('Aws Credential', () => {
 		});
 
 		it('should return correct options for a global AWS service', async () => {
-			const result = await aws.authenticate(credentials, {
-				...requestOptions,
-				url: 'https://iam.amazonaws.com',
-				baseURL: '',
-			});
+			const result = await aws.authenticate(
+				{ ...credentials },
+				{ ...requestOptions, url: 'https://jeff.amazonaws.com', baseURL: '' },
+			);
 
 			expect(mockSign).toHaveBeenCalledWith(
 				{
 					...signOpts,
 					baseURL: '',
 					path: '/',
-					host: 'iam.amazonaws.com',
-					url: 'https://iam.amazonaws.com',
+					host: 'jeff.amazonaws.com',
+					url: 'https://jeff.amazonaws.com',
+					region: 'us-east-1',
 				},
 				securityHeaders,
 			);
 			expect(result.method).toBe('POST');
-			expect(result.url).toBe('https://iam.amazonaws.com/');
+			expect(result.url).toBe('https://jeff.amazonaws.com/');
+		});
+
+		it('should return correct options for the global S3 endpoint', async () => {
+			const result = await aws.authenticate(
+				{ ...credentials },
+				{ ...requestOptions, url: 'https://jeff.s3.amazonaws.com', baseURL: '' },
+			);
+
+			expect(mockSign).toHaveBeenCalledWith(
+				{
+					...signOpts,
+					baseURL: '',
+					path: '/',
+					host: 'jeff.s3.amazonaws.com',
+					url: 'https://jeff.s3.amazonaws.com',
+					region: 'eu-central-1',
+				},
+				securityHeaders,
+			);
+			expect(result.method).toBe('POST');
+			expect(result.url).toBe('https://jeff.s3.amazonaws.com/');
+		});
+
+		it('should return correct options for the regional S3 endpoint', async () => {
+			const result = await aws.authenticate(
+				{ ...credentials },
+				{ ...requestOptions, url: 'https://jeff.s3-ap-southeast-2.amazonaws.com', baseURL: '' },
+			);
+
+			expect(mockSign).toHaveBeenCalledWith(
+				{
+					...signOpts,
+					baseURL: '',
+					path: '/',
+					host: 'jeff.s3-ap-southeast-2.amazonaws.com',
+					url: 'https://jeff.s3-ap-southeast-2.amazonaws.com',
+					region: 'ap-southeast-2',
+				},
+				securityHeaders,
+			);
+			expect(result.method).toBe('POST');
+			expect(result.url).toBe('https://jeff.s3-ap-southeast-2.amazonaws.com/');
+		});
+
+		it('should use the whole URL as host if the URL is invalid', async () => {
+			const result = await aws.authenticate(
+				{ ...credentials },
+				{ ...requestOptions, url: 'https://amazonaws.com', baseURL: '' },
+			);
+
+			expect(mockSign).toHaveBeenCalledWith(
+				{
+					...signOpts,
+					baseURL: '',
+					path: '/',
+					host: 'amazonaws.com',
+					url: 'https://amazonaws.com',
+					region: 'eu-central-1',
+				},
+				securityHeaders,
+			);
+			expect(result.method).toBe('POST');
+			expect(result.url).toBe('https://amazonaws.com/');
+		});
+
+		it('should extract the region and service from a long URL', async () => {
+			const result = await aws.authenticate(
+				{ ...credentials },
+				{
+					...requestOptions,
+					url: 'https://jeffrey.the.space.donkey.ap-southeast-2.amazonaws.com',
+					baseURL: '',
+				},
+			);
+
+			expect(mockSign).toHaveBeenCalledWith(
+				{
+					...signOpts,
+					baseURL: '',
+					path: '/',
+					host: 'jeffrey.the.space.donkey.ap-southeast-2.amazonaws.com',
+					url: 'https://jeffrey.the.space.donkey.ap-southeast-2.amazonaws.com',
+					region: 'ap-southeast-2',
+				},
+				securityHeaders,
+			);
+			expect(result.method).toBe('POST');
+			expect(result.url).toBe('https://jeffrey.the.space.donkey.ap-southeast-2.amazonaws.com/');
 		});
 	});
 });
