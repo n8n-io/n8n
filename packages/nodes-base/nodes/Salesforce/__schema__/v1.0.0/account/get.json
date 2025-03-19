@@ -46,10 +46,10 @@
         "SystemModstamp": {
             "type": "string"
         },
-        "Jigsaw": {
+        "JigsawCompanyId": {
             "type": "null"
         },
-        "JigsawCompanyId": {
+        "Jigsaw": {
             "type": "null"
         },
         "SicDesc": {
