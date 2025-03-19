@@ -64,6 +64,28 @@
         "downloadable": {
             "type": "boolean"
         },
+        "downloads": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "file": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "file"
+                ]
+            }
+        },
         "download_limit": {
             "type": "integer"
         },
@@ -92,6 +114,9 @@
             "type": "boolean"
         },
         "backordered": {
+            "type": "boolean"
+        },
+        "sold_individually": {
             "type": "boolean"
         },
         "weight": {
@@ -273,7 +298,11 @@
                 },
                 "required": [
                     "id",
-                    "name"
+                    "name",
+                    "position",
+                    "visible",
+                    "variation",
+                    "options"
                 ]
             }
         },
@@ -336,7 +365,6 @@
                     }
                 },
                 "required": [
-                    "id",
                     "key",
                     "value"
                 ]
@@ -351,6 +379,31 @@
         "post_password": {
             "type": "string"
         },
+        "global_unique_id": {
+            "type": "string"
+        },
+        "brands": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "slug": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "slug"
+                ]
+            }
+        },
         "_links": {
             "type": "object",
             "properties": {
@@ -361,6 +414,20 @@
                         "properties": {
                             "href": {
                                 "type": "string"
+                            },
+                            "targetHints": {
+                                "type": "object",
+                                "properties": {
+                                    "allow": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                },
+                                "required": [
+                                    "allow"
+                                ]
                             }
                         },
                         "required": [
@@ -387,9 +454,6 @@
                 "self",
                 "collection"
             ]
-        },
-        "global_unique_id": {
-            "type": "string"
         }
     },
     "required": [
@@ -432,7 +496,6 @@
         "backorders",
         "backorders_allowed",
         "backordered",
-        "low_stock_amount",
         "sold_individually",
         "weight",
         "dimensions",
@@ -460,5 +523,6 @@
         "meta_data",
         "stock_status",
         "_links"
-    ]
+    ],
+    "version": 1
 }
