@@ -345,18 +345,6 @@
         "max_artifacts_size": {
             "type": "null"
         },
-        "approvals_before_merge": {
-            "type": "integer"
-        },
-        "mirror": {
-            "type": "boolean"
-        },
-        "marked_for_deletion_at": {
-            "type": "null"
-        },
-        "marked_for_deletion_on": {
-            "type": "null"
-        },
         "requirements_enabled": {
             "type": "boolean"
         },
@@ -364,21 +352,6 @@
             "type": "string"
         },
         "security_and_compliance_enabled": {
-            "type": "boolean"
-        },
-        "ci_restrict_pipeline_cancellation_role": {
-            "type": "string"
-        },
-        "merge_pipelines_enabled": {
-            "type": "boolean"
-        },
-        "merge_trains_enabled": {
-            "type": "boolean"
-        },
-        "merge_trains_skip_train_allowed": {
-            "type": "boolean"
-        },
-        "allow_pipeline_trigger_approve_deployment": {
             "type": "boolean"
         },
         "permissions": {
@@ -404,6 +377,33 @@
                 "project_access",
                 "group_access"
             ]
+        },
+        "approvals_before_merge": {
+            "type": "integer"
+        },
+        "mirror": {
+            "type": "boolean"
+        },
+        "marked_for_deletion_at": {
+            "type": "null"
+        },
+        "marked_for_deletion_on": {
+            "type": "null"
+        },
+        "ci_restrict_pipeline_cancellation_role": {
+            "type": "string"
+        },
+        "merge_pipelines_enabled": {
+            "type": "boolean"
+        },
+        "merge_trains_enabled": {
+            "type": "boolean"
+        },
+        "merge_trains_skip_train_allowed": {
+            "type": "boolean"
+        },
+        "allow_pipeline_trigger_approve_deployment": {
+            "type": "boolean"
         }
     },
     "version": 1
