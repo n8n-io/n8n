@@ -106,38 +106,11 @@
             "properties": {
                 "footnotes": {
                     "type": "string"
-                },
-                "advanced_seo_description": {
-                    "type": "string"
-                },
-                "jetpack_seo_html_title": {
-                    "type": "string"
-                },
-                "jetpack_seo_noindex": {
-                    "type": "boolean"
-                },
-                "jetpack_post_was_ever_published": {
-                    "type": "boolean"
-                },
-                "_starter_page_template": {
-                    "type": "string"
-                },
-                "_wpcom_template_layout_category": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
                 }
             },
             "required": [
                 "footnotes"
             ]
-        },
-        "class_list": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
         },
         "_links": {
             "type": "object",
@@ -311,21 +284,271 @@
                 "self",
                 "collection",
                 "about",
-                "author",
                 "replies",
                 "version-history",
                 "wp:attachment",
                 "curies"
             ]
         },
-        "jetpack_sharing_enabled": {
-            "type": "boolean"
-        },
-        "jetpack_likes_enabled": {
-            "type": "boolean"
-        },
-        "jetpack_shortlink": {
+        "yoast_head": {
             "type": "string"
+        },
+        "yoast_head_json": {
+            "type": "object",
+            "properties": {
+                "title": {
+                    "type": "string"
+                },
+                "robots": {
+                    "type": "object",
+                    "properties": {
+                        "index": {
+                            "type": "string"
+                        },
+                        "follow": {
+                            "type": "string"
+                        },
+                        "max-snippet": {
+                            "type": "string"
+                        },
+                        "max-image-preview": {
+                            "type": "string"
+                        },
+                        "max-video-preview": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "index",
+                        "follow"
+                    ]
+                },
+                "canonical": {
+                    "type": "string"
+                },
+                "og_locale": {
+                    "type": "string"
+                },
+                "og_type": {
+                    "type": "string"
+                },
+                "og_title": {
+                    "type": "string"
+                },
+                "og_url": {
+                    "type": "string"
+                },
+                "og_site_name": {
+                    "type": "string"
+                },
+                "article_modified_time": {
+                    "type": "string"
+                },
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "@context": {
+                            "type": "string"
+                        },
+                        "@graph": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "@id": {
+                                        "type": "string"
+                                    },
+                                    "url": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "isPartOf": {
+                                        "type": "object",
+                                        "properties": {
+                                            "@id": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "@id"
+                                        ]
+                                    },
+                                    "datePublished": {
+                                        "type": "string"
+                                    },
+                                    "dateModified": {
+                                        "type": "string"
+                                    },
+                                    "breadcrumb": {
+                                        "type": "object",
+                                        "properties": {
+                                            "@id": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "@id"
+                                        ]
+                                    },
+                                    "inLanguage": {
+                                        "type": "string"
+                                    },
+                                    "potentialAction": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "@type": {
+                                                    "type": "string"
+                                                },
+                                                "query-input": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "@type": {
+                                                            "type": "string"
+                                                        },
+                                                        "valueRequired": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "valueName": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "@type",
+                                                        "valueRequired",
+                                                        "valueName"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "@type",
+                                                "target"
+                                            ]
+                                        }
+                                    },
+                                    "itemListElement": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "@type": {
+                                                    "type": "string"
+                                                },
+                                                "position": {
+                                                    "type": "integer"
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                },
+                                                "item": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "@type",
+                                                "position",
+                                                "name"
+                                            ]
+                                        }
+                                    },
+                                    "description": {
+                                        "type": "string"
+                                    },
+                                    "image": {
+                                        "type": "object",
+                                        "properties": {
+                                            "@id": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "@id"
+                                        ]
+                                    },
+                                    "primaryImageOfPage": {
+                                        "type": "object",
+                                        "properties": {
+                                            "@id": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "@id"
+                                        ]
+                                    },
+                                    "thumbnailUrl": {
+                                        "type": "string"
+                                    },
+                                    "contentUrl": {
+                                        "type": "string"
+                                    },
+                                    "width": {
+                                        "type": "integer"
+                                    },
+                                    "height": {
+                                        "type": "integer"
+                                    },
+                                    "caption": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "@type",
+                                    "@id"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "@context",
+                        "@graph"
+                    ]
+                },
+                "twitter_misc": {
+                    "type": "object",
+                    "properties": {
+                        "Durée de lecture est.": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "description": {
+                    "type": "string"
+                },
+                "og_description": {
+                    "type": "string"
+                },
+                "article_publisher": {
+                    "type": "string"
+                },
+                "og_image": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "url": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "url"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "title",
+                "robots",
+                "og_locale",
+                "og_type",
+                "og_title",
+                "og_url",
+                "og_site_name",
+                "schema"
+            ]
         }
     },
     "required": [
@@ -339,5 +562,6 @@
         "author",
         "featured_media",
         "_links"
-    ]
+    ],
+    "version": 1
 }

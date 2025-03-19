@@ -79,6 +79,18 @@
         "is_starred": {
             "type": "boolean"
         },
+        "channels": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "groups": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
         "has_more_shares": {
             "type": "boolean"
         },
@@ -88,5 +100,6 @@
         "file_access": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

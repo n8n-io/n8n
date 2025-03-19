@@ -1,6 +1,11 @@
 import { defineStore } from 'pinia';
 import { STORES } from '@/constants';
-import type { FolderCreateResponse, FolderShortInfo, FolderTreeResponseItem } from '@/Interface';
+import type {
+	FolderCreateResponse,
+	FolderListItem,
+	FolderShortInfo,
+	FolderTreeResponseItem,
+} from '@/Interface';
 import * as workflowsApi from '@/api/workflows';
 import { useRootStore } from './root.store';
 import { ref } from 'vue';
@@ -90,6 +95,66 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		return count;
 	}
 
+	const deleteFoldersFromCache = (folderIds: string[]) => {
+		folderIds.forEach((folderId) => {
+			delete breadcrumbsCache.value[folderId];
+		});
+	};
+
+	async function deleteFolder(projectId: string, folderId: string, newParentId?: string) {
+		await workflowsApi.deleteFolder(rootStore.restApiContext, projectId, folderId, newParentId);
+	}
+
+	async function renameFolder(projectId: string, folderId: string, name: string) {
+		await workflowsApi.renameFolder(rootStore.restApiContext, projectId, folderId, name);
+	}
+
+	async function fetchProjectFolders(projectId: string) {
+		return await workflowsApi.getProjectFolders(rootStore.restApiContext, projectId);
+	}
+
+	async function fetchFoldersAvailableForMove(
+		projectId: string,
+		folderId?: string,
+		filter?: {
+			name?: string;
+		},
+	): Promise<FolderListItem[]> {
+		const folders = await workflowsApi.getProjectFolders(
+			rootStore.restApiContext,
+			projectId,
+			{
+				sortBy: 'updatedAt:desc',
+			},
+			{
+				excludeFolderIdAndDescendants: folderId,
+				name: filter?.name ? filter.name : undefined,
+			},
+		);
+		const forCache: FolderShortInfo[] = folders.map((folder) => ({
+			id: folder.id,
+			name: folder.name,
+			parentFolder: folder.parentFolder?.id,
+		}));
+		cacheFolders(forCache);
+		return folders;
+	}
+
+	async function moveFolder(
+		projectId: string,
+		folderId: string,
+		parentFolderId?: string,
+	): Promise<void> {
+		await workflowsApi.moveFolder(rootStore.restApiContext, projectId, folderId, parentFolderId);
+	}
+
+	async function fetchFolderContent(
+		projectId: string,
+		folderId: string,
+	): Promise<{ totalWorkflows: number; totalSubFolders: number }> {
+		return await workflowsApi.getFolderContent(rootStore.restApiContext, projectId, folderId);
+	}
+
 	return {
 		fetchTotalWorkflowsAndFoldersCount,
 		breadcrumbsCache,
@@ -98,5 +163,12 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		createFolder,
 		getFolderPath,
 		totalWorkflowCount,
+		deleteFolder,
+		deleteFoldersFromCache,
+		renameFolder,
+		fetchProjectFolders,
+		fetchFoldersAvailableForMove,
+		moveFolder,
+		fetchFolderContent,
 	};
 });

@@ -107,10 +107,7 @@
                 "footnotes": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "footnotes"
-            ]
+            }
         },
         "categories": {
             "type": "array",
@@ -312,6 +309,24 @@
                             "templated"
                         ]
                     }
+                },
+                "wp:featuredmedia": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "embeddable": {
+                                "type": "boolean"
+                            },
+                            "href": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "embeddable",
+                            "href"
+                        ]
+                    }
                 }
             },
             "required": [
@@ -325,5 +340,18 @@
                 "curies"
             ]
         }
-    }
+    },
+    "required": [
+        "id",
+        "date",
+        "slug",
+        "type",
+        "link",
+        "title",
+        "excerpt",
+        "author",
+        "featured_media",
+        "_links"
+    ],
+    "version": 1
 }

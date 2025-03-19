@@ -1,0 +1,268 @@
+{
+    "type": "object",
+    "properties": {
+        "number": {
+            "type": "integer"
+        },
+        "threads": {
+            "type": "integer"
+        },
+        "type": {
+            "type": "string"
+        },
+        "folderId": {
+            "type": "integer"
+        },
+        "status": {
+            "type": "string"
+        },
+        "state": {
+            "type": "string"
+        },
+        "subject": {
+            "type": "string"
+        },
+        "mailboxId": {
+            "type": "integer"
+        },
+        "createdBy": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "first": {
+                    "type": "string"
+                },
+                "last": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "photoUrl": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "type",
+                "first",
+                "last",
+                "email"
+            ]
+        },
+        "createdAt": {
+            "type": "string"
+        },
+        "closedBy": {
+            "type": "integer"
+        },
+        "closedByUser": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "first": {
+                    "type": "string"
+                },
+                "last": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "type",
+                "first",
+                "last",
+                "email"
+            ]
+        },
+        "userUpdatedAt": {
+            "type": "string"
+        },
+        "customerWaitingSince": {
+            "type": "object",
+            "properties": {
+                "time": {
+                    "type": "string"
+                },
+                "friendly": {
+                    "type": "string"
+                }
+            }
+        },
+        "source": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "via": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "type",
+                "via"
+            ]
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "color": {
+                        "type": "string"
+                    },
+                    "tag": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "color",
+                    "tag"
+                ]
+            }
+        },
+        "primaryCustomer": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "first": {
+                    "type": "string"
+                },
+                "last": {
+                    "type": "string"
+                },
+                "photoUrl": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "type",
+                "first",
+                "last",
+                "photoUrl",
+                "email"
+            ]
+        },
+        "_links": {
+            "type": "object",
+            "properties": {
+                "self": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "href"
+                    ]
+                },
+                "mailbox": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "href"
+                    ]
+                },
+                "primaryCustomer": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "href"
+                    ]
+                },
+                "createdByUser": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "href"
+                    ]
+                },
+                "closedBy": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "href"
+                    ]
+                },
+                "threads": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "href"
+                    ]
+                },
+                "web": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "href"
+                    ]
+                }
+            },
+            "required": [
+                "self",
+                "mailbox",
+                "primaryCustomer",
+                "closedBy",
+                "threads",
+                "web"
+            ]
+        }
+    },
+    "required": [
+        "id"
+    ],
+    "version": 1
+}

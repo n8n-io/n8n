@@ -59,6 +59,9 @@
                     "properties": {
                         "enabled": {
                             "type": "boolean"
+                        },
+                        "lockedTime": {
+                            "type": "string"
                         }
                     },
                     "required": [
@@ -70,6 +73,9 @@
                     "properties": {
                         "enabled": {
                             "type": "boolean"
+                        },
+                        "lockedTime": {
+                            "type": "string"
                         }
                     },
                     "required": [
@@ -89,23 +95,20 @@
         "locationType": {
             "type": "string"
         },
-        "rpo": {
-            "type": "string"
+        "hierarchicalNamespace": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "enabled"
+            ]
         }
     },
     "required": [
-        "kind",
-        "selfLink",
-        "id",
-        "name",
-        "projectNumber",
-        "metageneration",
-        "location",
-        "storageClass",
-        "etag",
-        "timeCreated",
-        "updated",
-        "softDeletePolicy",
-        "locationType"
-    ]
+        "kind"
+    ],
+    "version": 1
 }

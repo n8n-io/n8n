@@ -79,22 +79,88 @@
                 "calendarEventId"
             ]
         },
-        "media": {
-            "type": "object",
-            "properties": {
-                "audioUrl": {
-                    "type": "string"
+        "transcript": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "speakerId": {
+                        "type": "string"
+                    },
+                    "sentences": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "start": {
+                                    "type": "integer"
+                                },
+                                "end": {
+                                    "type": "integer"
+                                },
+                                "text": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "start",
+                                "end",
+                                "text"
+                            ]
+                        }
+                    }
                 },
-                "videoUrl": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "audioUrl"
-            ]
+                "required": [
+                    "speakerId",
+                    "topic",
+                    "sentences"
+                ]
+            }
+        },
+        "parties": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "emailAddress": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "userId": {
+                        "type": "string"
+                    },
+                    "affiliation": {
+                        "type": "string"
+                    },
+                    "phoneNumber": {
+                        "type": "string"
+                    },
+                    "methods": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "speakerId",
+                    "affiliation",
+                    "methods"
+                ]
+            }
         }
     },
     "required": [
         "metaData"
-    ]
+    ],
+    "version": 1
 }

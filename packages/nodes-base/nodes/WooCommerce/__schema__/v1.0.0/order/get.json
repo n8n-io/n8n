@@ -425,6 +425,9 @@
                             ]
                         }
                     },
+                    "tax_status": {
+                        "type": "string"
+                    },
                     "meta_data": {
                         "type": "array",
                         "items": {
@@ -436,7 +439,13 @@
                                 "key": {
                                     "type": "string"
                                 },
+                                "value": {
+                                    "type": "string"
+                                },
                                 "display_key": {
+                                    "type": "string"
+                                },
+                                "display_value": {
                                     "type": "string"
                                 }
                             },
@@ -487,6 +496,36 @@
                     },
                     "total_tax": {
                         "type": "string"
+                    },
+                    "meta_data": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "integer"
+                                },
+                                "key": {
+                                    "type": "string"
+                                },
+                                "value": {
+                                    "type": "string"
+                                },
+                                "display_key": {
+                                    "type": "string"
+                                },
+                                "display_value": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "key",
+                                "value",
+                                "display_key",
+                                "display_value"
+                            ]
+                        }
                     }
                 },
                 "required": [
@@ -545,6 +584,9 @@
                     },
                     "discount_type": {
                         "type": "string"
+                    },
+                    "nominal_amount": {
+                        "type": "integer"
                     },
                     "free_shipping": {
                         "type": "boolean"
@@ -615,6 +657,20 @@
                         "properties": {
                             "href": {
                                 "type": "string"
+                            },
+                            "targetHints": {
+                                "type": "object",
+                                "properties": {
+                                    "allow": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                },
+                                "required": [
+                                    "allow"
+                                ]
                             }
                         },
                         "required": [
@@ -642,5 +698,6 @@
                 "collection"
             ]
         }
-    }
+    },
+    "version": 1
 }

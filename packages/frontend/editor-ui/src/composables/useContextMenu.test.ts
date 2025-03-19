@@ -47,6 +47,7 @@ describe('useContextMenu', () => {
 		} as never);
 
 		vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([]);
+		vi.spyOn(NodeHelpers, 'isExecutable').mockReturnValue(true);
 	});
 
 	afterEach(() => {
@@ -106,6 +107,18 @@ describe('useContextMenu', () => {
 		expect(targetNodeIds.value).toEqual([basicChain.id]);
 	});
 
+	it('should disable test step option for sub-nodes (AI tool nodes)', () => {
+		const { open, isOpen, actions, targetNodeIds } = useContextMenu();
+		const subNode = nodeFactory({ type: 'n8n-nodes-base.hackerNewsTool' });
+		vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(subNode);
+		vi.spyOn(NodeHelpers, 'isExecutable').mockReturnValueOnce(false);
+		open(mockEvent, { source: 'node-right-click', nodeId: subNode.id });
+
+		expect(isOpen.value).toBe(true);
+		expect(actions.value.find((action) => action.id === 'execute')?.disabled).toBe(true);
+		expect(targetNodeIds.value).toEqual([subNode.id]);
+	});
+
 	it('should return the correct actions when right clicking a Node', () => {
 		const { open, isOpen, actions, targetNodeIds } = useContextMenu();
 		const node = nodeFactory();
@@ -141,7 +154,6 @@ describe('useContextMenu', () => {
 			expect(actions.value).toMatchSnapshot();
 			expect(targetNodeIds.value).toEqual([sticky.id]);
 		});
-
 		it('should return the correct actions when right clicking a Node', () => {
 			vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(true);
 			const { open, isOpen, actions, targetNodeIds } = useContextMenu();
