@@ -40,7 +40,11 @@ import {
 	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
-import { getCredentialExportPath, getWorkflowExportPath } from './source-control-helper.ee';
+import {
+	getCredentialExportPath,
+	getFoldersPath,
+	getWorkflowExportPath,
+} from './source-control-helper.ee';
 import type { ExportableCredential } from './types/exportable-credential';
 import type { ExportableFolder, WorkflowFolderMapping } from './types/exportable-folders';
 import type { ResourceOwner } from './types/resource-owner';
@@ -505,22 +509,24 @@ export class SourceControlImportService {
 		return mappedTags;
 	}
 
-	async importFoldersFromWorkFolder(user: User, candidate: SourceControlledFile) {
+	async importFoldersFromWorkFolder(user: User) {
+		const foldersFile = getFoldersPath(this.gitFolder);
+
 		let mappedFolders;
 		const projects = await this.projectRepository.find();
 		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
 
 		try {
-			this.logger.debug(`Importing folders from file ${candidate.file}`);
+			this.logger.debug(`Importing folders from file ${foldersFile}`);
 			mappedFolders = jsonParse<{
 				folders: ExportableFolder[];
 				workflowMappings: WorkflowFolderMapping[];
-			}>(await fsReadFile(candidate.file, { encoding: 'utf8' }), {
+			}>(await fsReadFile(foldersFile, { encoding: 'utf8' }), {
 				fallbackValue: { folders: [], workflowMappings: [] },
 			});
 		} catch (e) {
 			const error = ensureError(e);
-			this.logger.error(`Failed to import folders from file ${candidate.file}`, { error });
+			this.logger.error(`Failed to import folders from file ${foldersFile}`, { error });
 			return;
 		}
 

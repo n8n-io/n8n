@@ -15,6 +15,7 @@ import type { User } from '@/databases/entities/user';
 import type { Variables } from '@/databases/entities/variables';
 import { FolderRepository } from '@/databases/repositories/folder.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 
@@ -61,6 +62,7 @@ export class SourceControlService {
 		private sourceControlImportService: SourceControlImportService,
 		private tagRepository: TagRepository,
 		private folderRepository: FolderRepository,
+		private workflowRepository: WorkflowRepository,
 		private readonly eventService: EventService,
 	) {
 		const { gitFolder, sshFolder, sshKeyName } = sourceControlPreferencesService;
@@ -446,8 +448,8 @@ export class SourceControlService {
 		await this.sourceControlImportService.deleteVariablesNotInWorkfolder(variablesToBeDeleted);
 
 		const foldersToBeImported = this.getFoldersToImport(statusResult);
-		if (foldersToBeImported) {
-			await this.sourceControlImportService.importFoldersFromWorkFolder(user, foldersToBeImported);
+		if (foldersToBeImported ?? workflowsToBeImported) {
+			await this.sourceControlImportService.importFoldersFromWorkFolder(user);
 		}
 
 		const foldersToBeDeleted = this.getFoldersToDelete(statusResult);
@@ -900,6 +902,9 @@ export class SourceControlService {
 			select: ['updatedAt'],
 		});
 
+		const remoteWorkflows = await this.sourceControlImportService.getRemoteVersionIdsFromFiles();
+		const workflowIds = remoteWorkflows.map((e) => e.id);
+
 		const foldersMappingsRemote =
 			await this.sourceControlImportService.getRemoteFoldersAndMappingsFromFile();
 		const foldersMappingsLocal =
@@ -970,10 +975,16 @@ export class SourceControlService {
 			});
 		});
 
+		console.log('missing in local mapping', mappingsMissingInLocal);
+		console.log('missing in remote mapping', mappingsMissingInRemote);
+
 		mappingsMissingInLocal.forEach((item) => {
 			sourceControlledFiles.push({
 				id: item.parentFolderId,
-				name: foldersMappingsLocal.folders.find((e) => e.id === item.parentFolderId)?.name ?? '',
+				name:
+					foldersMappingsLocal.folders.find(
+						(e) => e.id === item.parentFolderId && workflowIds.includes(e.id),
+					)?.name ?? '',
 				type: 'folders',
 				status: 'modified',
 				location: options.direction === 'push' ? 'local' : 'remote',
@@ -983,18 +994,20 @@ export class SourceControlService {
 			});
 		});
 
-		mappingsMissingInRemote.forEach((item) => {
-			sourceControlledFiles.push({
-				id: item.parentFolderId,
-				name: foldersMappingsLocal.folders.find((e) => e.id === item.parentFolderId)?.name ?? '',
-				type: 'folders',
-				status: 'modified',
-				location: options.direction === 'push' ? 'local' : 'remote',
-				conflict: true,
-				file: getFoldersPath(this.gitFolder),
-				updatedAt: lastUpdatedFolder[0]?.updatedAt.toISOString(),
+		mappingsMissingInRemote
+			.filter((item) => workflowIds.includes(item.workflowId))
+			.forEach((item) => {
+				sourceControlledFiles.push({
+					id: item.parentFolderId,
+					name: foldersMappingsLocal.folders.find((e) => e.id === item.parentFolderId)?.name ?? '',
+					type: 'folders',
+					status: 'modified',
+					location: options.direction === 'push' ? 'local' : 'remote',
+					conflict: true,
+					file: getFoldersPath(this.gitFolder),
+					updatedAt: lastUpdatedFolder[0]?.updatedAt.toISOString(),
+				});
 			});
-		});
 
 		foldersModifiedInEither.forEach((item) => {
 			sourceControlledFiles.push({
