@@ -37,29 +37,6 @@
         "created_at": {
             "type": "string"
         },
-        "due": {
-            "type": "object",
-            "properties": {
-                "date": {
-                    "type": "string"
-                },
-                "string": {
-                    "type": "string"
-                },
-                "lang": {
-                    "type": "string"
-                },
-                "is_recurring": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "date",
-                "string",
-                "lang",
-                "is_recurring"
-            ]
-        },
         "url": {
             "type": "string"
         }
