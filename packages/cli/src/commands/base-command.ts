@@ -72,6 +72,7 @@ export abstract class BaseCommand extends Command {
 	protected async loadModules() {
 		for (const moduleName of this.modulesConfig.modules) {
 			await import(`../modules/${moduleName}/${moduleName}.module`);
+			this.logger.debug(`Loaded module "${moduleName}"`);
 		}
 	}
 
