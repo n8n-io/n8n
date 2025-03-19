@@ -4,10 +4,10 @@
         "_id": {
             "type": "string"
         },
-        "Created By": {
+        "Created Date": {
             "type": "string"
         },
-        "Created Date": {
+        "Created By": {
             "type": "string"
         },
         "Modified Date": {
