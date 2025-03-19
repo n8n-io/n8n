@@ -55,7 +55,7 @@
                         "value"
                     ]
                 },
-                "lastname": {
+                "company": {
                     "type": "object",
                     "properties": {
                         "value": {
@@ -66,7 +66,7 @@
                         "value"
                     ]
                 },
-                "company": {
+                "lastname": {
                     "type": "object",
                     "properties": {
                         "value": {
