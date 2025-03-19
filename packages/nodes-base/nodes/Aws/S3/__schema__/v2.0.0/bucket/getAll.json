@@ -1,10 +1,10 @@
 {
     "type": "object",
     "properties": {
-        "Name": {
+        "CreationDate": {
             "type": "string"
         },
-        "CreationDate": {
+        "Name": {
             "type": "string"
         }
     },
