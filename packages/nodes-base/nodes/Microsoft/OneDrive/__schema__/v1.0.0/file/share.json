@@ -22,13 +22,13 @@
         "link": {
             "type": "object",
             "properties": {
-                "scope": {
-                    "type": "string"
-                },
                 "type": {
                     "type": "string"
                 },
                 "webUrl": {
+                    "type": "string"
+                },
+                "scope": {
                     "type": "string"
                 },
                 "preventsDownload": {
