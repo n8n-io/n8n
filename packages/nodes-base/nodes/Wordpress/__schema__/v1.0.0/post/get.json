@@ -252,6 +252,24 @@
                         ]
                     }
                 },
+                "wp:featuredmedia": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "embeddable": {
+                                "type": "boolean"
+                            },
+                            "href": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "embeddable",
+                            "href"
+                        ]
+                    }
+                },
                 "wp:attachment": {
                     "type": "array",
                     "items": {
@@ -307,24 +325,6 @@
                             "name",
                             "href",
                             "templated"
-                        ]
-                    }
-                },
-                "wp:featuredmedia": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "embeddable": {
-                                "type": "boolean"
-                            },
-                            "href": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "embeddable",
-                            "href"
                         ]
                     }
                 }
