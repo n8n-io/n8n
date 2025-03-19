@@ -377,7 +377,6 @@ onMounted(async () => {
 	workflowListEventBus.on('folder-deleted', onFolderDeleted);
 	workflowListEventBus.on('folder-moved', moveFolder);
 	workflowListEventBus.on('workflow-moved', onWorkflowMoved);
-	workflowListEventBus.on('create-folder', createFolderInCurrent);
 });
 
 onBeforeUnmount(() => {
@@ -386,7 +385,6 @@ onBeforeUnmount(() => {
 	workflowListEventBus.off('folder-deleted', onFolderDeleted);
 	workflowListEventBus.off('folder-moved', moveFolder);
 	workflowListEventBus.off('workflow-moved', onWorkflowMoved);
-	workflowListEventBus.off('create-folder', createFolderInCurrent);
 });
 
 /**
@@ -407,9 +405,6 @@ const initialize = async () => {
 	]);
 	breadcrumbsLoading.value = false;
 	workflowsAndFolders.value = resourcesPage;
-	if (!foldersStore.workflowsListEventBus) {
-		foldersStore.workflowsListEventBus = workflowListEventBus;
-	}
 	loading.value = false;
 };
 

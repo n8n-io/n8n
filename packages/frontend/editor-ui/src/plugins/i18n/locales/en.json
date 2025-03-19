@@ -946,7 +946,6 @@
 	"folders.create.error.title": "Problem creating folder",
 	"folders.empty.actionbox.title": "Nothing in folder \"{folderName}\" yet",
 	"folders.registeredCommunity.cta.heading": "Get access to folders with registered community",
-	"folders.create.here": "Create new folder here",
 	"folders.breadcrumbs.noTruncated.message": "No hidden items in path",
 	"generic.oauth1Api": "OAuth1 API",
 	"generic.oauth2Api": "OAuth2 API",
