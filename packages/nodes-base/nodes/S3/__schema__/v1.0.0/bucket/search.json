@@ -1,22 +1,19 @@
 {
     "type": "object",
     "properties": {
-        "ETag": {
-            "type": "string"
-        },
         "Key": {
             "type": "string"
         },
         "LastModified": {
             "type": "string"
         },
+        "ETag": {
+            "type": "string"
+        },
         "Size": {
             "type": "string"
         },
         "StorageClass": {
-            "type": "string"
-        },
-        "Type": {
             "type": "string"
         }
     },
