@@ -1724,15 +1724,17 @@ export interface INodeTypeBaseDescription {
 	 * Whether the node will be wrapped for tool-use by AI Agents,
 	 * optionally with merged or replaced parts of the description
 	 */
-	usableAsTool?: true | AsToolDescription;
+	usableAsTool?: true | UsableAsToolDescription;
 }
 
 /**
- * NodeDescription props that are replaced if the node is used as a tool
+ * NodeDescription entries that replace the base node entries when
+ * the node is used as a tool
  *
- * Note that the codex is hardcoded and may need adjustment in the implementation
+ * Note that the new codex is hardcoded and may not behave as expected
+ * without additional changes to the implementation.
  */
-export type AsToolDescription = {
+export type UsableAsToolDescription = {
 	replacements?: Partial<Omit<INodeTypeBaseDescription, 'usableAsTool'>>;
 };
 
