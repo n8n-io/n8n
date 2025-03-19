@@ -67,11 +67,11 @@
                     "address": {
                         "type": "string"
                     },
-                    "primary": {
-                        "type": "boolean"
-                    },
                     "type": {
                         "type": "string"
+                    },
+                    "primary": {
+                        "type": "boolean"
                     }
                 },
                 "required": [
@@ -121,16 +121,13 @@
         "thumbnailPhotoEtag": {
             "type": "string"
         },
-        "recoveryEmail": {
-            "type": "string"
-        },
-        "aliases": {
+        "nonEditableAliases": {
             "type": "array",
             "items": {
                 "type": "string"
             }
         },
-        "nonEditableAliases": {
+        "aliases": {
             "type": "array",
             "items": {
                 "type": "string"
