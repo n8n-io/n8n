@@ -12,7 +12,7 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
-import { flatten, getResolvables } from '@utils/utilities';
+import { flatten, generatePairedItemData, getResolvables } from '@utils/utilities';
 
 import {
 	configurePool,
@@ -343,7 +343,12 @@ export class MicrosoftSql implements INodeType {
 				responseData = await deleteOperation(tables, pool);
 			}
 
-			returnData = this.helpers.returnJsonArray(responseData);
+			const itemData = generatePairedItemData(items.length);
+
+			returnData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData },
+			);
 		} catch (error) {
 			if (this.continueOnFail()) {
 				responseData = items;

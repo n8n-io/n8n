@@ -231,5 +231,6 @@
                 "emailAddress"
             ]
         }
-    }
+    },
+    "version": 1
 }

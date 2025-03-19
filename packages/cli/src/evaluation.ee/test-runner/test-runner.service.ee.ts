@@ -5,7 +5,6 @@ import { ExecutionCancelledError, NodeConnectionType, Workflow } from 'n8n-workf
 import type {
 	IDataObject,
 	IRun,
-	IRunData,
 	IRunExecutionData,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
@@ -13,11 +12,11 @@ import type {
 import assert from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
+import config from '@/config';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import type { MockedNodeItem, TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { TestRun } from '@/databases/entities/test-run.ee';
 import type { User } from '@/databases/entities/user';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { TestCaseExecutionRepository } from '@/databases/repositories/test-case-execution.repository.ee';
 import { TestMetricRepository } from '@/databases/repositories/test-metric.repository.ee';
@@ -31,15 +30,21 @@ import { getRunData } from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { EvaluationMetrics } from './evaluation-metrics.ee';
-import { createPinData, getPastExecutionTriggerNode } from './utils.ee';
+import {
+	createPinData,
+	formatTestCaseExecutionInputData,
+	getPastExecutionTriggerNode,
+} from './utils.ee';
 
-interface TestRunMetadata {
+export interface TestRunMetadata {
 	testRunId: string;
 	userId: string;
 }
 
-interface TestCaseRunMetadata extends TestRunMetadata {
+export interface TestCaseRunMetadata extends TestRunMetadata {
 	pastExecutionId: string;
+	annotation: ExecutionEntity['annotation'];
+	highlightedData: ExecutionEntity['metadata'];
 }
 
 /**
@@ -80,7 +85,7 @@ export class TestRunnerService {
 	 * Prepares the start nodes and trigger node data props for the `workflowRunner.run` method input.
 	 */
 	private getStartNodesData(
-		workflow: WorkflowEntity,
+		workflow: IWorkflowBase,
 		pastExecutionData: IRunExecutionData,
 		pastExecutionWorkflowData: IWorkflowBase,
 	): Pick<IWorkflowExecutionDataProcess, 'startNodes' | 'triggerToStartFrom'> {
@@ -140,7 +145,7 @@ export class TestRunnerService {
 	 * Waits for the workflow under test to finish execution.
 	 */
 	private async runTestCase(
-		workflow: WorkflowEntity,
+		workflow: IWorkflowBase,
 		pastExecutionData: IRunExecutionData,
 		pastExecutionWorkflowData: IWorkflowBase,
 		mockedNodes: MockedNodeItem[],
@@ -160,9 +165,17 @@ export class TestRunnerService {
 			pastExecutionWorkflowData,
 		);
 
+		const startNodesData = this.getStartNodesData(
+			workflow,
+			pastExecutionData,
+			pastExecutionWorkflowData,
+		);
+
 		// Prepare the data to run the workflow
+		// Evaluation executions should run the same way as manual,
+		// because they need pinned data and partial execution logic
 		const data: IWorkflowExecutionDataProcess = {
-			...this.getStartNodesData(workflow, pastExecutionData, pastExecutionWorkflowData),
+			...startNodesData,
 			executionMode: 'evaluation',
 			runData: {},
 			pinData,
@@ -170,6 +183,25 @@ export class TestRunnerService {
 			userId: metadata.userId,
 			partialExecutionVersion: 2,
 		};
+
+		// When in queue mode, we need to pass additional data to the execution
+		// the same way as it would be passed in manual mode
+		if (config.getEnv('executions.mode') === 'queue') {
+			data.executionData = {
+				startData: {
+					startNodes: startNodesData.startNodes,
+				},
+				resultData: {
+					pinData,
+					runData: {},
+				},
+				manualData: {
+					userId: metadata.userId,
+					partialExecutionVersion: 2,
+					triggerToStartFrom: startNodesData.triggerToStartFrom,
+				},
+			};
+		}
 
 		// Trigger the workflow under test with mocked data
 		const executionId = await this.workflowRunner.run(data);
@@ -197,9 +229,8 @@ export class TestRunnerService {
 	 * Run the evaluation workflow with the expected and actual run data.
 	 */
 	private async runTestCaseEvaluation(
-		evaluationWorkflow: WorkflowEntity,
-		expectedData: IRunData,
-		actualData: IRunData,
+		evaluationWorkflow: IWorkflowBase,
+		evaluationInputData: any,
 		abortSignal: AbortSignal,
 		metadata: TestCaseRunMetadata,
 	) {
@@ -207,15 +238,6 @@ export class TestRunnerService {
 		if (abortSignal.aborted) {
 			return;
 		}
-
-		// Prepare the evaluation wf input data.
-		// Provide both the expected data and the actual data
-		const evaluationInputData = {
-			json: {
-				originalExecution: expectedData,
-				newExecution: actualData,
-			},
-		};
 
 		// Prepare the data to run the evaluation workflow
 		const data = await getRunData(evaluationWorkflow, [evaluationInputData]);
@@ -298,6 +320,8 @@ export class TestRunnerService {
 			userId: user.id,
 		};
 
+		let testRunEndStatusForTelemetry;
+
 		const abortSignal = abortController.signal;
 		try {
 			// Get the evaluation workflow
@@ -344,7 +368,7 @@ export class TestRunnerService {
 			// Update test run status
 			await this.testRunRepository.markAsRunning(testRun.id, pastExecutions.length);
 
-			this.telemetry.track('User runs test', {
+			this.telemetry.track('User ran test', {
 				user_id: user.id,
 				test_id: test.id,
 				run_id: testRun.id,
@@ -375,7 +399,7 @@ export class TestRunnerService {
 					// Fetch past execution with data
 					const pastExecution = await this.executionRepository.findOne({
 						where: { id: pastExecutionId },
-						relations: ['executionData', 'metadata'],
+						relations: ['executionData', 'metadata', 'annotation', 'annotation.tags'],
 					});
 					assert(pastExecution, 'Execution not found');
 
@@ -384,6 +408,8 @@ export class TestRunnerService {
 					const testCaseMetadata = {
 						...testRunMetadata,
 						pastExecutionId,
+						highlightedData: pastExecution.metadata,
+						annotation: pastExecution.annotation,
 					};
 
 					// Run the test case and wait for it to finish
@@ -419,11 +445,18 @@ export class TestRunnerService {
 					// Get the original runData from the test case execution data
 					const originalRunData = executionData.resultData.runData;
 
+					const evaluationInputData = formatTestCaseExecutionInputData(
+						originalRunData,
+						pastExecution.executionData.workflowData,
+						testCaseRunData,
+						workflow,
+						testCaseMetadata,
+					);
+
 					// Run the evaluation workflow with the original and new run data
 					const evalExecution = await this.runTestCaseEvaluation(
 						evaluationWorkflow,
-						originalRunData,
-						testCaseRunData,
+						evaluationInputData,
 						abortSignal,
 						testCaseMetadata,
 					);
@@ -501,13 +534,17 @@ export class TestRunnerService {
 				await Db.transaction(async (trx) => {
 					await this.testRunRepository.markAsCancelled(testRun.id, trx);
 					await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRun.id, trx);
+
+					testRunEndStatusForTelemetry = 'cancelled';
 				});
 			} else {
 				const aggregatedMetrics = metrics.getAggregatedMetrics();
 
 				await this.testRunRepository.markAsCompleted(testRun.id, aggregatedMetrics);
 
-				this.logger.debug('Test run finished', { testId: test.id });
+				this.logger.debug('Test run finished', { testId: test.id, testRunId: testRun.id });
+
+				testRunEndStatusForTelemetry = 'completed';
 			}
 		} catch (e) {
 			if (e instanceof ExecutionCancelledError) {
@@ -520,15 +557,26 @@ export class TestRunnerService {
 					await this.testRunRepository.markAsCancelled(testRun.id, trx);
 					await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRun.id, trx);
 				});
+
+				testRunEndStatusForTelemetry = 'cancelled';
 			} else if (e instanceof TestRunError) {
 				await this.testRunRepository.markAsError(testRun.id, e.code, e.extra as IDataObject);
+				testRunEndStatusForTelemetry = 'error';
 			} else {
 				await this.testRunRepository.markAsError(testRun.id, 'UNKNOWN_ERROR');
+				testRunEndStatusForTelemetry = 'error';
 				throw e;
 			}
 		} finally {
 			// Clean up abort controller
 			this.abortControllers.delete(testRun.id);
+
+			// Send telemetry event
+			this.telemetry.track('Test run finished', {
+				test_id: test.id,
+				run_id: testRun.id,
+				status: testRunEndStatusForTelemetry,
+			});
 		}
 	}
 
@@ -555,5 +603,62 @@ export class TestRunnerService {
 				await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRunId, trx);
 			});
 		}
+	}
+
+	/**
+	 * Returns the example evaluation WF input for the test definition.
+	 * It uses the latest execution of a workflow under test as a source and formats it
+	 * the same way as the evaluation input would be formatted.
+	 * We explicitly provide annotation tag here (and DO NOT use the one from DB), because the test definition
+	 * might not be saved to the DB with the updated annotation tag at the moment we need to get the example data.
+	 */
+	async getExampleEvaluationInputData(test: TestDefinition, annotationTagId: string) {
+		// Select the id of latest execution with the annotation tag and workflow ID of the test
+		const lastPastExecution: Pick<ExecutionEntity, 'id'> | null = await this.executionRepository
+			.createQueryBuilder('execution')
+			.select('execution.id')
+			.leftJoin('execution.annotation', 'annotation')
+			.leftJoin('annotation.tags', 'annotationTag')
+			.where('annotationTag.id = :tagId', { tagId: annotationTagId })
+			.andWhere('execution.workflowId = :workflowId', { workflowId: test.workflowId })
+			.orderBy('execution.createdAt', 'DESC')
+			.getOne();
+
+		if (lastPastExecution === null) {
+			return null;
+		}
+
+		// Fetch past execution with data
+		const pastExecution = await this.executionRepository.findOne({
+			where: {
+				id: lastPastExecution.id,
+			},
+			relations: ['executionData', 'metadata', 'annotation', 'annotation.tags'],
+		});
+		assert(pastExecution, 'Execution not found');
+
+		const executionData = parse(pastExecution.executionData.data) as IRunExecutionData;
+
+		const sampleTestCaseMetadata = {
+			testRunId: 'sample-test-run-id',
+			userId: 'sample-user-id',
+			pastExecutionId: lastPastExecution.id,
+			highlightedData: pastExecution.metadata,
+			annotation: pastExecution.annotation,
+		};
+
+		// Get the original runData from the test case execution data
+		const originalRunData = executionData.resultData.runData;
+
+		// We use the same execution data for the original and new run data format example
+		const evaluationInputData = formatTestCaseExecutionInputData(
+			originalRunData,
+			pastExecution.executionData.workflowData,
+			originalRunData,
+			pastExecution.executionData.workflowData,
+			sampleTestCaseMetadata,
+		);
+
+		return evaluationInputData.json;
 	}
 }

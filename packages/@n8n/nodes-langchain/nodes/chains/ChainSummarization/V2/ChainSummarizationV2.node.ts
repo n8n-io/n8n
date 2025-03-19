@@ -321,16 +321,16 @@ export class ChainSummarizationV2 implements INodeType {
 			| 'simple'
 			| 'advanced';
 
-		const model = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
-			0,
-		)) as BaseLanguageModel;
-
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
+				const model = (await this.getInputConnectionData(
+					NodeConnectionType.AiLanguageModel,
+					0,
+				)) as BaseLanguageModel;
+
 				const summarizationMethodAndPrompts = this.getNodeParameter(
 					'options.summarizationMethodAndPrompts.values',
 					itemIndex,
@@ -411,9 +411,12 @@ export class ChainSummarizationV2 implements INodeType {
 					}
 
 					const processedItem = await processor.processItem(item, itemIndex);
-					const response = await chain.call({
-						input_documents: processedItem,
-					});
+					const response = await chain.invoke(
+						{
+							input_documents: processedItem,
+						},
+						{ signal: this.getExecutionCancelSignal() },
+					);
 					returnData.push({ json: { response } });
 				}
 			} catch (error) {

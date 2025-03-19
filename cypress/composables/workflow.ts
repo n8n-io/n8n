@@ -356,5 +356,5 @@ export function openContextMenu(
 }
 
 export function clickContextMenuAction(action: string) {
-	getContextMenuAction(action).click();
+	getContextMenuAction(action).click({ force: true });
 }

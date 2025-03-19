@@ -10,25 +10,10 @@
                 "type": "string"
             }
         },
-        "additionalPhones": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "phoneLabel": {
-                        "type": "null"
-                    },
-                    "phone": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "phoneLabel",
-                    "phone"
-                ]
-            }
-        },
         "dateAdded": {
+            "type": "string"
+        },
+        "dateUpdated": {
             "type": "string"
         },
         "type": {
@@ -52,14 +37,17 @@
         "lastNameLowerCase": {
             "type": "string"
         },
+        "email": {
+            "type": "string"
+        },
+        "emailLowerCase": {
+            "type": "string"
+        },
         "phone": {
             "type": "string"
         },
         "country": {
             "type": "string"
-        },
-        "dnd": {
-            "type": "boolean"
         },
         "createdBy": {
             "type": "object",
@@ -84,15 +72,6 @@
                 "timestamp"
             ]
         },
-        "emailLowerCase": {
-            "type": "string"
-        },
-        "email": {
-            "type": "string"
-        },
-        "dateUpdated": {
-            "type": "string"
-        },
         "followers": {
             "type": "array",
             "items": {
@@ -113,6 +92,22 @@
                     "value"
                 ]
             }
+        },
+        "additionalPhones": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "phone": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "phone",
+                    "phoneLabel"
+                ]
+            }
         }
-    }
+    },
+    "version": 1
 }

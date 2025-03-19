@@ -5,7 +5,7 @@ import type { ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { logAiEvent } from '../helpers';
+import { logAiEvent, unwrapNestedOutput } from '../helpers';
 
 const STRUCTURED_OUTPUT_KEY = '__structured__output';
 const STRUCTURED_OUTPUT_OBJECT_KEY = '__structured__output__object';
@@ -36,10 +36,13 @@ export class N8nStructuredOutputParser extends StructuredOutputParser<
 			const json = JSON.parse(jsonString.trim());
 			const parsed = await this.schema.parseAsync(json);
 
-			const result = (get(parsed, [STRUCTURED_OUTPUT_KEY, STRUCTURED_OUTPUT_OBJECT_KEY]) ??
+			let result = (get(parsed, [STRUCTURED_OUTPUT_KEY, STRUCTURED_OUTPUT_OBJECT_KEY]) ??
 				get(parsed, [STRUCTURED_OUTPUT_KEY, STRUCTURED_OUTPUT_ARRAY_KEY]) ??
 				get(parsed, STRUCTURED_OUTPUT_KEY) ??
 				parsed) as Record<string, unknown>;
+
+			// Unwrap any doubly-nested output structures (e.g., {output: {output: {...}}})
+			result = unwrapNestedOutput(result);
 
 			logAiEvent(this.context, 'ai-output-parsed', { text, response: result });
 

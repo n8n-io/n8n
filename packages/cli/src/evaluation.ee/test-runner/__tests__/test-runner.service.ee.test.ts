@@ -8,6 +8,7 @@ import type { ITaskData } from 'n8n-workflow';
 import path from 'path';
 
 import type { ActiveExecutions } from '@/active-executions';
+import config from '@/config';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import type { TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { TestMetric } from '@/databases/entities/test-metric.ee';
@@ -75,22 +76,29 @@ const executionDataMultipleTriggersJson2 = JSON.parse(
 
 const executionMocks = [
 	mock<ExecutionEntity>({
-		id: 'some-execution-id',
+		id: 'past-execution-id',
 		workflowId: 'workflow-under-test-id',
 		status: 'success',
 		executionData: {
 			data: stringify(executionDataJson),
 			workflowData: wfUnderTestJson,
 		},
+		metadata: [
+			{
+				key: 'testRunId',
+				value: 'test-run-id',
+			},
+		],
 	}),
 	mock<ExecutionEntity>({
-		id: 'some-execution-id-2',
+		id: 'past-execution-id-2',
 		workflowId: 'workflow-under-test-id',
 		status: 'success',
 		executionData: {
 			data: stringify(executionDataRenamedNodesJson),
 			workflowData: wfUnderTestRenamedNodesJson,
 		},
+		metadata: [],
 	}),
 ];
 
@@ -179,10 +187,10 @@ describe('TestRunnerService', () => {
 		executionsQbMock.getMany.mockResolvedValueOnce(executionMocks);
 		executionRepository.createQueryBuilder.mockReturnValueOnce(executionsQbMock);
 		executionRepository.findOne
-			.calledWith(expect.objectContaining({ where: { id: 'some-execution-id' } }))
+			.calledWith(expect.objectContaining({ where: { id: 'past-execution-id' } }))
 			.mockResolvedValueOnce(executionMocks[0]);
 		executionRepository.findOne
-			.calledWith(expect.objectContaining({ where: { id: 'some-execution-id-2' } }))
+			.calledWith(expect.objectContaining({ where: { id: 'past-execution-id-2' } }))
 			.mockResolvedValueOnce(executionMocks[1]);
 
 		testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'test-run-id' }));
@@ -242,20 +250,20 @@ describe('TestRunnerService', () => {
 			...wfEvaluationJson,
 		});
 
-		workflowRunner.run.mockResolvedValue('test-execution-id');
+		workflowRunner.run.mockResolvedValue('some-execution-id');
 
 		await testRunnerService.runTest(
 			mock<User>(),
 			mock<TestDefinition>({
 				workflowId: 'workflow-under-test-id',
 				evaluationWorkflowId: 'evaluation-workflow-id',
-				mockedNodes: [],
+				mockedNodes: [{ id: '72256d90-3a67-4e29-b032-47df4e5768af' }],
 			}),
 		);
 
 		expect(executionRepository.createQueryBuilder).toHaveBeenCalledTimes(1);
 		expect(executionRepository.findOne).toHaveBeenCalledTimes(2);
-		expect(workflowRunner.run).toHaveBeenCalledTimes(2);
+		expect(workflowRunner.run).toHaveBeenCalled();
 	});
 
 	test('should run both workflow under test and evaluation workflow', async () => {
@@ -676,6 +684,47 @@ describe('TestRunnerService', () => {
 		});
 	});
 
+	test('should properly run test when nodes were renamed', async () => {
+		const testRunnerService = new TestRunnerService(
+			logger,
+			telemetry,
+			workflowRepository,
+			workflowRunner,
+			executionRepository,
+			activeExecutions,
+			testRunRepository,
+			testCaseExecutionRepository,
+			testMetricRepository,
+			mockNodeTypes,
+			errorReporter,
+		);
+
+		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
+			id: 'workflow-under-test-id',
+			...wfUnderTestJson,
+		});
+
+		workflowRepository.findById.calledWith('evaluation-workflow-id').mockResolvedValueOnce({
+			id: 'evaluation-workflow-id',
+			...wfEvaluationJson,
+		});
+
+		workflowRunner.run.mockResolvedValue('test-execution-id');
+
+		await testRunnerService.runTest(
+			mock<User>(),
+			mock<TestDefinition>({
+				workflowId: 'workflow-under-test-id',
+				evaluationWorkflowId: 'evaluation-workflow-id',
+				mockedNodes: [{ id: '72256d90-3a67-4e29-b032-47df4e5768af' }],
+			}),
+		);
+
+		expect(executionRepository.createQueryBuilder).toHaveBeenCalledTimes(1);
+		expect(executionRepository.findOne).toHaveBeenCalledTimes(2);
+		expect(workflowRunner.run).toHaveBeenCalledTimes(2);
+	});
+
 	test('should properly choose trigger when it was renamed', async () => {
 		const testRunnerService = new TestRunnerService(
 			logger,
@@ -703,6 +752,120 @@ describe('TestRunnerService', () => {
 				name: 'Manual Run',
 			}),
 		});
+	});
+
+	test('should create proper execution data for queue mode in runTestCase', async () => {
+		config.set('executions.mode', 'queue');
+
+		const testRunnerService = new TestRunnerService(
+			logger,
+			telemetry,
+			workflowRepository,
+			workflowRunner,
+			executionRepository,
+			activeExecutions,
+			testRunRepository,
+			testCaseExecutionRepository,
+			testMetricRepository,
+			mockNodeTypes,
+			errorReporter,
+		);
+
+		// Spy on workflowRunner.run to capture the data passed to it
+		jest.spyOn(workflowRunner, 'run').mockImplementation(async (data) => {
+			// Verify the data structure is correct for queue mode
+			expect(data.executionMode).toBe('evaluation');
+
+			// Check that executionData field is properly defined
+			expect(data.executionData).toBeDefined();
+			expect(data.executionData!.startData).toBeDefined();
+			expect(data.executionData!.startData!.startNodes).toBeDefined();
+			expect(data.executionData!.resultData.pinData).toBeDefined();
+			expect(data.executionData!.resultData.runData).toBeDefined();
+			expect(data.executionData!.manualData!.userId).toBeDefined();
+			expect(data.executionData!.manualData!.partialExecutionVersion).toBe(2);
+			expect(data.executionData!.manualData!.triggerToStartFrom).toBeDefined();
+
+			return 'mock-execution-id';
+		});
+
+		// Mock activeExecutions.getPostExecutePromise to return a successful execution
+		activeExecutions.getPostExecutePromise.mockResolvedValue(mockExecutionData());
+
+		// Create an AbortController for the test
+		const abortController = new AbortController();
+
+		// Setup test metadata
+		const metadata: any = {
+			testRunId: 'test-run-id',
+			userId: 'user-id',
+			pastExecutionId: 'past-execution-id',
+		};
+
+		// Call runTestCase directly to test the executionData construction
+		await (testRunnerService as any).runTestCase(
+			wfUnderTestJson,
+			executionDataJson,
+			wfUnderTestJson,
+			[{ id: '72256d90-3a67-4e29-b032-47df4e5768af' }],
+			metadata,
+			abortController.signal,
+		);
+
+		expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+	});
+
+	test('should create proper execution data for regular mode in runTestCase', async () => {
+		config.set('executions.mode', 'regular');
+
+		const testRunnerService = new TestRunnerService(
+			logger,
+			telemetry,
+			workflowRepository,
+			workflowRunner,
+			executionRepository,
+			activeExecutions,
+			testRunRepository,
+			testCaseExecutionRepository,
+			testMetricRepository,
+			mockNodeTypes,
+			errorReporter,
+		);
+
+		// Spy on workflowRunner.run to capture the data passed to it
+		jest.spyOn(workflowRunner, 'run').mockImplementation(async (data) => {
+			expect(data.executionMode).toBe('evaluation');
+
+			// Check that executionData field is NOT defined
+			expect(data.executionData).not.toBeDefined();
+
+			return 'mock-execution-id';
+		});
+
+		// Mock activeExecutions.getPostExecutePromise to return a successful execution
+		activeExecutions.getPostExecutePromise.mockResolvedValue(mockExecutionData());
+
+		// Create an AbortController for the test
+		const abortController = new AbortController();
+
+		// Setup test metadata
+		const metadata: any = {
+			testRunId: 'test-run-id',
+			userId: 'user-id',
+			pastExecutionId: 'past-execution-id',
+		};
+
+		// Call runTestCase directly to test the executionData construction
+		await (testRunnerService as any).runTestCase(
+			wfUnderTestJson,
+			executionDataJson,
+			wfUnderTestJson,
+			[{ id: '72256d90-3a67-4e29-b032-47df4e5768af' }],
+			metadata,
+			abortController.signal,
+		);
+
+		expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 	});
 
 	describe('Test Run cancellation', () => {

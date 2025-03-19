@@ -1,6 +1,6 @@
 import { heartbeatMessageSchema } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { ApplicationError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 import type WebSocket from 'ws';
 
 import type { User } from '@/databases/entities/user';
@@ -34,7 +34,7 @@ export class WebSocketPush extends AbstractPush<WebSocket> {
 				this.onMessageReceived(pushRef, msg);
 			} catch (error) {
 				this.errorReporter.error(
-					new ApplicationError('Error parsing push message', {
+					new UnexpectedError('Error parsing push message', {
 						extra: {
 							userId,
 							data,

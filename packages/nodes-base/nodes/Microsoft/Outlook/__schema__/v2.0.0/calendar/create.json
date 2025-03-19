@@ -1,0 +1,66 @@
+{
+    "type": "object",
+    "properties": {
+        "@odata.context": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "color": {
+            "type": "string"
+        },
+        "hexColor": {
+            "type": "string"
+        },
+        "isDefaultCalendar": {
+            "type": "boolean"
+        },
+        "changeKey": {
+            "type": "string"
+        },
+        "canShare": {
+            "type": "boolean"
+        },
+        "canViewPrivateItems": {
+            "type": "boolean"
+        },
+        "canEdit": {
+            "type": "boolean"
+        },
+        "allowedOnlineMeetingProviders": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "defaultOnlineMeetingProvider": {
+            "type": "string"
+        },
+        "isTallyingResponses": {
+            "type": "boolean"
+        },
+        "isRemovable": {
+            "type": "boolean"
+        },
+        "owner": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "address": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "address"
+            ]
+        }
+    },
+    "version": 1
+}

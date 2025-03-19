@@ -386,7 +386,7 @@ export const getWorkflowFilenames = (dirname: string) => {
 	return workflows;
 };
 
-export const createMockExecuteFunction = (
+export const createMockExecuteFunction = <T = IExecuteFunctions>(
 	nodeParameters: IDataObject,
 	nodeMock: INode,
 	continueBool = false,
@@ -410,6 +410,6 @@ export const createMockExecuteFunction = (
 		helpers: {
 			constructExecutionMetaData,
 		},
-	} as unknown as IExecuteFunctions;
+	} as unknown as T;
 	return fakeExecuteFunction;
 };

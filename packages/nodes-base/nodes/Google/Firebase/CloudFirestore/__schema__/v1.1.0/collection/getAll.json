@@ -7,5 +7,6 @@
     },
     "required": [
         "name"
-    ]
+    ],
+    "version": 1
 }

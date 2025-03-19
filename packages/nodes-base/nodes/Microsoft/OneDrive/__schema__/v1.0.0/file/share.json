@@ -1,0 +1,45 @@
+{
+    "type": "object",
+    "properties": {
+        "@odata.context": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "roles": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "shareId": {
+            "type": "string"
+        },
+        "hasPassword": {
+            "type": "boolean"
+        },
+        "link": {
+            "type": "object",
+            "properties": {
+                "scope": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "webUrl": {
+                    "type": "string"
+                },
+                "preventsDownload": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "type",
+                "webUrl"
+            ]
+        }
+    },
+    "version": 1
+}

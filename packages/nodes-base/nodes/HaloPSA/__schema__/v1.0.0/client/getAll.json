@@ -1,0 +1,23 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "is_vip": {
+            "type": "boolean"
+        },
+        "notes": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "id",
+        "name",
+        "is_vip"
+    ],
+    "version": 1
+}

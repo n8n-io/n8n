@@ -1,0 +1,87 @@
+{
+    "type": "object",
+    "properties": {
+        "name": {
+            "type": "string"
+        },
+        "createTime": {
+            "type": "string"
+        },
+        "sender": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "displayName": {
+                    "type": "string"
+                },
+                "domainId": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "type"
+            ]
+        },
+        "thread": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name"
+            ]
+        },
+        "space": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "spaceThreadingState": {
+                    "type": "string"
+                },
+                "spaceType": {
+                    "type": "string"
+                },
+                "spaceHistoryState": {
+                    "type": "string"
+                },
+                "lastActiveTime": {
+                    "type": "string"
+                },
+                "membershipCount": {
+                    "type": "object",
+                    "properties": {
+                        "joinedDirectHumanUserCount": {
+                            "type": "integer"
+                        }
+                    },
+                    "required": [
+                        "joinedDirectHumanUserCount"
+                    ]
+                },
+                "spaceUri": {
+                    "type": "string"
+                },
+                "singleUserBotDm": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "name"
+            ]
+        }
+    },
+    "version": 1
+}

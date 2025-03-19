@@ -10,11 +10,17 @@ import {
 	DataDeduplicationService,
 	ErrorReporter,
 } from 'n8n-core';
-import { ApplicationError, ensureError, sleep } from 'n8n-workflow';
+import { ensureError, sleep, UserError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
 import config from '@/config';
-import { LICENSE_FEATURES, inDevelopment, inTest } from '@/constants';
+import {
+	LICENSE_FEATURES,
+	N8N_VERSION,
+	N8N_RELEASE_DATE,
+	inDevelopment,
+	inTest,
+} from '@/constants';
 import * as CrashJournal from '@/crash-journal';
 import * as Db from '@/db';
 import { getDataDeduplicationService } from '@/deduplication';
@@ -63,13 +69,14 @@ export abstract class BaseCommand extends Command {
 	async init(): Promise<void> {
 		this.errorReporter = Container.get(ErrorReporter);
 
-		const { backendDsn, n8nVersion, environment, deploymentName } = this.globalConfig.sentry;
+		const { backendDsn, environment, deploymentName } = this.globalConfig.sentry;
 		await this.errorReporter.init({
 			serverType: this.instanceSettings.instanceType,
 			dsn: backendDsn,
 			environment,
-			release: n8nVersion,
+			release: `n8n@${N8N_VERSION}`,
 			serverName: deploymentName,
+			releaseDate: N8N_RELEASE_DATE,
 		});
 		initExpressionEvaluator();
 
@@ -146,60 +153,28 @@ export abstract class BaseCommand extends Command {
 		const isSelected = config.getEnv('binaryDataManager.mode') === 's3';
 		const isAvailable = config.getEnv('binaryDataManager.availableModes').includes('s3');
 
-		if (!isSelected && !isAvailable) return;
+		if (!isSelected) return;
 
 		if (isSelected && !isAvailable) {
-			throw new ApplicationError(
+			throw new UserError(
 				'External storage selected but unavailable. Please make external storage available by adding "s3" to `N8N_AVAILABLE_BINARY_DATA_MODES`.',
 			);
 		}
 
 		const isLicensed = Container.get(License).isFeatureEnabled(LICENSE_FEATURES.BINARY_DATA_S3);
-
-		if (isSelected && isAvailable && isLicensed) {
-			this.logger.debug(
-				'License found for external storage - object store to init in read-write mode',
+		if (!isLicensed) {
+			this.logger.error(
+				'No license found for S3 storage. \n Either set `N8N_DEFAULT_BINARY_DATA_MODE` to something else, or upgrade to a license that supports this feature.',
 			);
-
-			await this._initObjectStoreService();
-
-			return;
+			return this.exit(1);
 		}
 
-		if (isSelected && isAvailable && !isLicensed) {
-			this.logger.debug(
-				'No license found for external storage - object store to init with writes blocked. To enable writes, please upgrade to a license that supports this feature.',
-			);
-
-			await this._initObjectStoreService({ isReadOnly: true });
-
-			return;
-		}
-
-		if (!isSelected && isAvailable) {
-			this.logger.debug(
-				'External storage unselected but available - object store to init with writes unused',
-			);
-
-			await this._initObjectStoreService();
-
-			return;
-		}
-	}
-
-	private async _initObjectStoreService(options = { isReadOnly: false }) {
-		const objectStoreService = Container.get(ObjectStoreService);
-
-		this.logger.debug('Initializing object store service');
-
+		this.logger.debug('License found for external storage - Initializing object store service');
 		try {
-			await objectStoreService.init();
-			objectStoreService.setReadonly(options.isReadOnly);
-
+			await Container.get(ObjectStoreService).init();
 			this.logger.debug('Object store init completed');
 		} catch (e) {
 			const error = e instanceof Error ? e : new Error(`${e}`);
-
 			this.logger.debug('Object store init failed', { error });
 		}
 	}
@@ -265,6 +240,7 @@ export abstract class BaseCommand extends Command {
 	}
 
 	async finally(error: Error | undefined) {
+		if (error?.message) this.logger.error(error.message);
 		if (inTest || this.id === 'start') return;
 		if (Db.connectionState.connected) {
 			await sleep(100); // give any in-flight query some time to finish
@@ -293,6 +269,8 @@ export abstract class BaseCommand extends Command {
 			this.shutdownService.shutdown();
 
 			await this.shutdownService.waitForShutdown();
+
+			await this.errorReporter.shutdown();
 
 			await this.stopProcess();
 

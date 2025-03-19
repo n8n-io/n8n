@@ -147,6 +147,33 @@
         },
         "status": {
             "type": "string"
+        },
+        "customFields": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "customFieldId": {
+                        "type": "string"
+                    },
+                    "userId": {
+                        "type": "string"
+                    },
+                    "customFieldName": {
+                        "type": "string"
+                    },
+                    "customFieldType": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "customFieldId",
+                    "userId",
+                    "value",
+                    "customFieldName",
+                    "customFieldType"
+                ]
+            }
         }
     },
     "required": [
@@ -160,5 +187,6 @@
         "settings",
         "status",
         "customFields"
-    ]
+    ],
+    "version": 1
 }

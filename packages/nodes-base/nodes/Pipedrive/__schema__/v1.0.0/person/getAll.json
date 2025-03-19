@@ -124,6 +124,9 @@
                     },
                     "primary": {
                         "type": "boolean"
+                    },
+                    "label": {
+                        "type": "string"
                     }
                 },
                 "required": [
@@ -174,20 +177,17 @@
         "postal_address_subpremise": {
             "type": "null"
         },
-        "postal_address_sublocality": {
-            "type": "null"
-        },
         "birthday": {
             "type": "null"
         },
         "owner_name": {
             "type": "string"
         },
-        "company_id": {
-            "type": "integer"
-        },
         "cc_email": {
             "type": "string"
+        },
+        "company_id": {
+            "type": "integer"
         },
         "postal_address_lat": {
             "type": "null"
@@ -199,8 +199,6 @@
     "required": [
         "related_open_deals_count",
         "related_closed_deals_count",
-        "participant_open_deals_count",
-        "participant_closed_deals_count",
         "files_count",
         "notes_count",
         "followers_count",
@@ -213,9 +211,8 @@
         "next_activity_id",
         "last_activity_id",
         "label_ids",
-        "org_name",
         "owner_name",
-        "primary_email",
         "cc_email"
-    ]
+    ],
+    "version": 1
 }

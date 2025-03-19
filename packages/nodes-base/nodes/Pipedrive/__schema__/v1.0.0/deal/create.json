@@ -74,15 +74,6 @@
         "title": {
             "type": "string"
         },
-        "acv": {
-            "type": "null"
-        },
-        "mrr": {
-            "type": "null"
-        },
-        "arr": {
-            "type": "null"
-        },
         "currency": {
             "type": "string"
         },
@@ -176,15 +167,6 @@
         "origin": {
             "type": "string"
         },
-        "origin_id": {
-            "type": "null"
-        },
-        "channel": {
-            "type": "null"
-        },
-        "channel_id": {
-            "type": "null"
-        },
         "stage_order_nr": {
             "type": "integer"
         },
@@ -209,15 +191,6 @@
         "weighted_value_currency": {
             "type": "string"
         },
-        "acv_currency": {
-            "type": "null"
-        },
-        "mrr_currency": {
-            "type": "null"
-        },
-        "arr_currency": {
-            "type": "null"
-        },
         "owner_name": {
             "type": "string"
         },
@@ -229,6 +202,24 @@
         },
         "person_hidden": {
             "type": "boolean"
+        },
+        "acv": {
+            "type": "null"
+        },
+        "mrr": {
+            "type": "null"
+        },
+        "arr": {
+            "type": "null"
+        },
+        "acv_currency": {
+            "type": "null"
+        },
+        "mrr_currency": {
+            "type": "null"
+        },
+        "arr_currency": {
+            "type": "null"
         }
     },
     "required": [
@@ -296,5 +287,6 @@
         "cc_email",
         "org_hidden",
         "person_hidden"
-    ]
+    ],
+    "version": 1
 }

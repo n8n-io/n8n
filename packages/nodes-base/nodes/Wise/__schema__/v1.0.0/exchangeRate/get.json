@@ -1,0 +1,21 @@
+{
+    "type": "object",
+    "properties": {
+        "source": {
+            "type": "string"
+        },
+        "target": {
+            "type": "string"
+        },
+        "time": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "rate",
+        "source",
+        "target",
+        "time"
+    ],
+    "version": 1
+}

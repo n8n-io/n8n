@@ -31,6 +31,17 @@
                 "CreateTime": {
                     "type": "string"
                 },
+                "LastModifiedByRef": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "value"
+                    ]
+                },
                 "LastUpdatedTime": {
                     "type": "string"
                 }
@@ -135,6 +146,21 @@
                                     "value"
                                 ]
                             },
+                            "ItemAccountRef": {
+                                "type": "object",
+                                "properties": {
+                                    "value": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "value",
+                                    "name"
+                                ]
+                            },
                             "TaxCodeRef": {
                                 "type": "object",
                                 "properties": {
@@ -185,15 +211,52 @@
                 "City": {
                     "type": "string"
                 },
-                "PostalCode": {
+                "CountrySubDivisionCode": {
                     "type": "string"
                 },
-                "CountrySubDivisionCode": {
+                "PostalCode": {
                     "type": "string"
                 }
             },
             "required": [
                 "Id"
+            ]
+        },
+        "ShipAddr": {
+            "type": "object",
+            "properties": {
+                "Id": {
+                    "type": "string"
+                },
+                "Line1": {
+                    "type": "string"
+                },
+                "City": {
+                    "type": "string"
+                },
+                "CountrySubDivisionCode": {
+                    "type": "string"
+                },
+                "PostalCode": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Id"
+            ]
+        },
+        "SalesTermRef": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "value"
             ]
         },
         "DueDate": {
@@ -220,26 +283,5 @@
             ]
         }
     },
-    "required": [
-        "AllowIPNPayment",
-        "AllowOnlinePayment",
-        "AllowOnlineCreditCardPayment",
-        "AllowOnlineACHPayment",
-        "domain",
-        "sparse",
-        "Id",
-        "SyncToken",
-        "MetaData",
-        "CustomField",
-        "TxnDate",
-        "CurrencyRef",
-        "LinkedTxn",
-        "Line",
-        "CustomerRef",
-        "DueDate",
-        "TotalAmt",
-        "PrintStatus",
-        "EmailStatus",
-        "Balance"
-    ]
+    "version": 1
 }

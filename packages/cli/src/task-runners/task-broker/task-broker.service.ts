@@ -7,7 +7,7 @@ import type {
 	TaskResultData,
 } from '@n8n/task-runner';
 import { Logger } from 'n8n-core';
-import { ApplicationError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import config from '@/config';
@@ -92,7 +92,7 @@ export class TaskBroker {
 		private readonly taskRunnerLifecycleEvents: TaskRunnerLifecycleEvents,
 	) {
 		if (this.taskRunnersConfig.taskTimeout <= 0) {
-			throw new ApplicationError('Task timeout must be greater than 0');
+			throw new UserError('Task timeout must be greater than 0');
 		}
 	}
 
@@ -420,17 +420,12 @@ export class TaskBroker {
 	private async getRunnerOrFailTask(taskId: Task['id']): Promise<TaskRunner> {
 		const task = this.tasks.get(taskId);
 		if (!task) {
-			throw new ApplicationError(`Cannot find runner, failed to find task (${taskId})`, {
-				level: 'error',
-			});
+			throw new UnexpectedError(`Cannot find runner, failed to find task (${taskId})`);
 		}
 		const runner = this.knownRunners.get(task.runnerId);
 		if (!runner) {
-			const error = new ApplicationError(
+			const error = new UnexpectedError(
 				`Cannot find runner, failed to find runner (${task.runnerId})`,
-				{
-					level: 'error',
-				},
 			);
 			await this.failTask(taskId, error);
 			throw error;

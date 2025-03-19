@@ -2,16 +2,17 @@ import type { SourceControlledFile } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { rmSync } from 'fs';
 import { Credentials, InstanceSettings, Logger } from 'n8n-core';
-import { ApplicationError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { UnexpectedError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { writeFile as fsWriteFile, rm as fsRm } from 'node:fs/promises';
 import path from 'path';
 
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import type { IWorkflowDb } from '@/interfaces';
+import { formatWorkflow } from '@/workflows/workflow.formatter';
 
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
@@ -84,7 +85,7 @@ export class SourceControlExportService {
 	}
 
 	private async writeExportableWorkflowsToExportFolder(
-		workflowsToBeExported: WorkflowEntity[],
+		workflowsToBeExported: IWorkflowDb[],
 		owners: Record<string, ResourceOwner>,
 	) {
 		await Promise.all(
@@ -119,7 +120,9 @@ export class SourceControlExportService {
 				const project = sharedWorkflow.project;
 
 				if (!project) {
-					throw new ApplicationError(`Workflow ${sharedWorkflow.workflow.display()} has no owner`);
+					throw new UnexpectedError(
+						`Workflow ${formatWorkflow(sharedWorkflow.workflow)} has no owner`,
+					);
 				}
 
 				if (project.type === 'personal') {
@@ -127,8 +130,8 @@ export class SourceControlExportService {
 						(pr) => pr.role === 'project:personalOwner',
 					);
 					if (!ownerRelation) {
-						throw new ApplicationError(
-							`Workflow ${sharedWorkflow.workflow.display()} has no owner`,
+						throw new UnexpectedError(
+							`Workflow ${formatWorkflow(sharedWorkflow.workflow)} has no owner`,
 						);
 					}
 					owners[sharedWorkflow.workflowId] = {
@@ -142,7 +145,7 @@ export class SourceControlExportService {
 						teamName: project.name,
 					};
 				} else {
-					throw new ApplicationError(
+					throw new UnexpectedError(
 						`Workflow belongs to unknown project type: ${project.type as string}`,
 					);
 				}
@@ -161,8 +164,8 @@ export class SourceControlExportService {
 				})),
 			};
 		} catch (error) {
-			if (error instanceof ApplicationError) throw error;
-			throw new ApplicationError('Failed to export workflows to work folder', { cause: error });
+			if (error instanceof UnexpectedError) throw error;
+			throw new UnexpectedError('Failed to export workflows to work folder', { cause: error });
 		}
 	}
 
@@ -192,7 +195,7 @@ export class SourceControlExportService {
 				],
 			};
 		} catch (error) {
-			throw new ApplicationError('Failed to export variables to work folder', {
+			throw new UnexpectedError('Failed to export variables to work folder', {
 				cause: error,
 			});
 		}
@@ -234,7 +237,7 @@ export class SourceControlExportService {
 				],
 			};
 		} catch (error) {
-			throw new ApplicationError('Failed to export variables to work folder', { cause: error });
+			throw new UnexpectedError('Failed to export variables to work folder', { cause: error });
 		}
 	}
 
@@ -333,7 +336,7 @@ export class SourceControlExportService {
 				missingIds,
 			};
 		} catch (error) {
-			throw new ApplicationError('Failed to export credentials to work folder', { cause: error });
+			throw new UnexpectedError('Failed to export credentials to work folder', { cause: error });
 		}
 	}
 }

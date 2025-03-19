@@ -36,5 +36,6 @@
         "board_folder_id",
         "board_kind",
         "owners"
-    ]
+    ],
+    "version": 1
 }

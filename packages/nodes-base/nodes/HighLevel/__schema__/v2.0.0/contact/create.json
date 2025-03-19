@@ -19,9 +19,6 @@
         "locationId": {
             "type": "string"
         },
-        "firstName": {
-            "type": "string"
-        },
         "firstNameLowerCase": {
             "type": "string"
         },
@@ -32,15 +29,6 @@
             "type": "string"
         },
         "lastNameLowerCase": {
-            "type": "string"
-        },
-        "email": {
-            "type": "string"
-        },
-        "emailLowerCase": {
-            "type": "string"
-        },
-        "phone": {
             "type": "string"
         },
         "country": {
@@ -69,14 +57,23 @@
                 "timestamp"
             ]
         },
-        "dateUpdated": {
-            "type": "string"
-        },
         "followers": {
             "type": "array",
             "items": {
                 "type": "string"
             }
+        },
+        "firstName": {
+            "type": "string"
+        },
+        "emailLowerCase": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "dateUpdated": {
+            "type": "string"
         },
         "customFields": {
             "type": "array",
@@ -92,5 +89,6 @@
                 ]
             }
         }
-    }
+    },
+    "version": 1
 }

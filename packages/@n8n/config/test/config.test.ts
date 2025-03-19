@@ -8,19 +8,18 @@ jest.mock('fs');
 const mockFs = mock<typeof fs>();
 fs.readFileSync = mockFs.readFileSync;
 
+const consoleWarnMock = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
 describe('GlobalConfig', () => {
 	beforeEach(() => {
 		Container.reset();
+		jest.clearAllMocks();
 	});
 
 	const originalEnv = process.env;
 	afterEach(() => {
 		process.env = originalEnv;
 	});
-
-	// deepCopy for diff to show plain objects
-	// eslint-disable-next-line n8n-local-rules/no-json-parse-json-stringify
-	const deepCopy = <T>(obj: T): T => JSON.parse(JSON.stringify(obj));
 
 	const defaultConfig: GlobalConfig = {
 		path: '/',
@@ -174,6 +173,7 @@ describe('GlobalConfig', () => {
 				includeApiStatusCodeLabel: false,
 				includeQueueMetrics: false,
 				queueMetricsInterval: 20,
+				activeWorkflowCountInterval: 60,
 			},
 			additionalNonUIRoutes: '',
 			disableProductionWebhooksOnMainProcess: false,
@@ -243,7 +243,6 @@ describe('GlobalConfig', () => {
 		sentry: {
 			backendDsn: '',
 			frontendDsn: '',
-			n8nVersion: '',
 			environment: '',
 			deploymentName: '',
 		},
@@ -306,15 +305,14 @@ describe('GlobalConfig', () => {
 			disabled: false,
 		},
 		partialExecutions: {
-			version: 1,
-			enforce: false,
+			version: 2,
 		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {
 		process.env = {};
 		const config = Container.get(GlobalConfig);
-		expect(deepCopy(config)).toEqual(defaultConfig);
+		expect(structuredClone(config)).toEqual(defaultConfig);
 		expect(mockFs.readFileSync).not.toHaveBeenCalled();
 	});
 
@@ -329,7 +327,7 @@ describe('GlobalConfig', () => {
 			N8N_TEMPLATES_ENABLED: '0',
 		};
 		const config = Container.get(GlobalConfig);
-		expect(deepCopy(config)).toEqual({
+		expect(structuredClone(config)).toEqual({
 			...defaultConfig,
 			database: {
 				logging: defaultConfig.database.logging,
@@ -370,7 +368,7 @@ describe('GlobalConfig', () => {
 		mockFs.readFileSync.calledWith(passwordFile, 'utf8').mockReturnValueOnce('password-from-file');
 
 		const config = Container.get(GlobalConfig);
-		expect(deepCopy(config)).toEqual({
+		expect(structuredClone(config)).toEqual({
 			...defaultConfig,
 			database: {
 				...defaultConfig.database,
@@ -381,5 +379,16 @@ describe('GlobalConfig', () => {
 			},
 		});
 		expect(mockFs.readFileSync).toHaveBeenCalled();
+	});
+
+	it('should handle invalid numbers', () => {
+		process.env = {
+			DB_LOGGING_MAX_EXECUTION_TIME: 'abcd',
+		};
+		const config = Container.get(GlobalConfig);
+		expect(config.database.logging.maxQueryExecutionTime).toEqual(0);
+		expect(consoleWarnMock).toHaveBeenCalledWith(
+			'Invalid number value for DB_LOGGING_MAX_EXECUTION_TIME: abcd',
+		);
 	});
 });
