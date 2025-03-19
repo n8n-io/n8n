@@ -1,23 +1,11 @@
 {
     "type": "object",
     "properties": {
-        "@odata.context": {
-            "type": "string"
-        },
-        "@odata.etag": {
-            "type": "string"
-        },
         "id": {
             "type": "string"
         },
-        "categories": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "hasAttachments": {
-            "type": "boolean"
+        "conversationId": {
+            "type": "string"
         },
         "subject": {
             "type": "string"
@@ -25,10 +13,13 @@
         "bodyPreview": {
             "type": "string"
         },
-        "conversationId": {
+        "hasAttachments": {
+            "type": "boolean"
+        },
+        "@odata.context": {
             "type": "string"
         },
-        "webLink": {
+        "@odata.etag": {
             "type": "string"
         },
         "body": {
@@ -47,5 +38,8 @@
             ]
         }
     },
+    "required": [
+        "id"
+    ],
     "version": 1
 }
