@@ -17,11 +17,6 @@ import type { DirectiveBinding, FunctionDirective } from 'vue';
  *
  * Compiles to: <p>42.5679</p>
  *
- * Example with specified decimal places forced:
- * <p v-n8n-smart-decimal:3.force>42</p>
- *
- * Compiles to: <p>42.000</p>
- *
  * Function Shorthand:
  * https://vuejs.org/guide/reusability/custom-directives#function-shorthand
  *
