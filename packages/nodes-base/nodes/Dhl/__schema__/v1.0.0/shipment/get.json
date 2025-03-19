@@ -188,13 +188,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "id",
-        "service",
-        "origin",
-        "destination",
-        "status",
-        "details"
-    ],
     "version": 1
 }
