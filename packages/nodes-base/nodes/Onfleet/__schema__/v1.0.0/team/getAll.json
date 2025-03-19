@@ -1,0 +1,50 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "timeCreated": {
+            "type": "integer"
+        },
+        "timeLastModified": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "workers": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "managers": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "enableSelfAssignment": {
+            "type": "boolean"
+        },
+        "tasks": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        }
+    },
+    "required": [
+        "id",
+        "timeCreated",
+        "timeLastModified",
+        "name",
+        "workers",
+        "managers",
+        "hub",
+        "enableSelfAssignment",
+        "tasks"
+    ],
+    "version": 1
+}
