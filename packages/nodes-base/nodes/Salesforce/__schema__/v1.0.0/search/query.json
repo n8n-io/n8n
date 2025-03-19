@@ -17,10 +17,10 @@
         },
         "Id": {
             "type": "string"
+        },
+        "Name": {
+            "type": "string"
         }
     },
-    "required": [
-        "attributes"
-    ],
     "version": 1
 }
