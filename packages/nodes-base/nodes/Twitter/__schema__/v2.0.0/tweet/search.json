@@ -1,7 +1,7 @@
 {
     "type": "object",
     "properties": {
-        "text": {
+        "id": {
             "type": "string"
         },
         "edit_history_tweet_ids": {
@@ -10,7 +10,10 @@
                 "type": "string"
             }
         },
-        "id": {
+        "text": {
+            "type": "string"
+        },
+        "author_id": {
             "type": "string"
         }
     },
