@@ -39,9 +39,6 @@
         },
         "url": {
             "type": "string"
-        },
-        "duration": {
-            "type": "null"
         }
     },
     "version": 1
