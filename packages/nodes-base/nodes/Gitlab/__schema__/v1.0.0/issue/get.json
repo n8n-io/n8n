@@ -84,9 +84,6 @@
                 "locked": {
                     "type": "boolean"
                 },
-                "avatar_url": {
-                    "type": "string"
-                },
                 "web_url": {
                     "type": "string"
                 }
