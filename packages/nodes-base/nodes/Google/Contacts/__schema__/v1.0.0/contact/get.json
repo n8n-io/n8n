@@ -9,6 +9,32 @@
         },
         "contactId": {
             "type": "string"
+        },
+        "names": {
+            "type": "object",
+            "properties": {
+                "displayName": {
+                    "type": "string"
+                },
+                "familyName": {
+                    "type": "string"
+                },
+                "givenName": {
+                    "type": "string"
+                },
+                "displayNameLastFirst": {
+                    "type": "string"
+                },
+                "unstructuredName": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "displayName",
+                "givenName",
+                "displayNameLastFirst",
+                "unstructuredName"
+            ]
         }
     },
     "version": 1
