@@ -58,12 +58,6 @@
                 ]
             }
         },
-        "mention_roles": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
         "attachments": {
             "type": "array",
             "items": {
@@ -84,14 +78,14 @@
                     "proxy_url": {
                         "type": "string"
                     },
-                    "content_scan_version": {
-                        "type": "integer"
+                    "content_type": {
+                        "type": "string"
                     },
                     "title": {
                         "type": "string"
                     },
-                    "content_type": {
-                        "type": "string"
+                    "content_scan_version": {
+                        "type": "integer"
                     }
                 },
                 "required": [
@@ -100,7 +94,6 @@
                     "size",
                     "url",
                     "proxy_url",
-                    "content_scan_version",
                     "title"
                 ]
             }
@@ -122,52 +115,8 @@
                     "color": {
                         "type": "integer"
                     },
-                    "author": {
-                        "type": "object",
-                        "properties": {
-                            "name": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "name"
-                        ]
-                    },
-                    "thumbnail": {
-                        "type": "object",
-                        "properties": {
-                            "url": {
-                                "type": "string"
-                            },
-                            "proxy_url": {
-                                "type": "string"
-                            },
-                            "width": {
-                                "type": "integer"
-                            },
-                            "height": {
-                                "type": "integer"
-                            },
-                            "flags": {
-                                "type": "integer"
-                            },
-                            "placeholder": {
-                                "type": "string"
-                            },
-                            "placeholder_version": {
-                                "type": "integer"
-                            }
-                        },
-                        "required": [
-                            "url",
-                            "proxy_url",
-                            "width",
-                            "height",
-                            "flags"
-                        ]
-                    },
-                    "url": {
-                        "type": "string"
+                    "content_scan_version": {
+                        "type": "integer"
                     }
                 },
                 "required": [
