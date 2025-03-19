@@ -334,7 +334,7 @@ test('`import:credential --userId ...` should succeed if the credential already 
 	// Import again changing nothing but the name and passing `--userId`
 	await command.run([
 		'--input=./test/integration/commands/import-credentials/credentials-updated.json',
-		`--projectId=${memberProject.id}`,
+		`--userId=${owner.id}`,
 	]);
 
 	//
@@ -356,7 +356,7 @@ test('`import:credential --userId ...` should succeed if the credential already 
 		sharings: [
 			expect.objectContaining({
 				credentialsId: '123',
-				projectId: memberProject.id,
+				projectId: ownerProject.id,
 				role: 'credential:owner',
 			}),
 		],
