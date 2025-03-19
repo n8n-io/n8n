@@ -1,10 +1,10 @@
 {
 	"extends": ["./tsconfig.json", "@n8n/typescript-config/tsconfig.build.json"],
 	"compilerOptions": {
-		"rootDir": "src",
+		"rootDirs": ["src", "../@n8n/constants/src", "../@n8n/utils/src"],
 		"outDir": "dist",
 		"tsBuildInfoFile": "dist/build.tsbuildinfo"
 	},
-	"include": ["src/**/*.ts"],
-	"exclude": ["test/**", "src/**/__tests__/**"]
+	"include": ["src/**/*.ts", "../@n8n/constants/src/**/*.ts", "../@n8n/utils/src/**/*.ts"],
+	"exclude": ["test/**", "src/**/__tests__/**", "../@n8n/utils/src/**/*.test.ts"]
 }

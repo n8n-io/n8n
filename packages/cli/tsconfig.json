@@ -4,7 +4,7 @@
 		"@n8n/typescript-config/tsconfig.backend.json"
 	],
 	"compilerOptions": {
-		"rootDir": ".",
+		"rootDirs": [".", "../@n8n/constants/src", "../@n8n/utils/src"],
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
 		"baseUrl": "src",
@@ -12,9 +12,8 @@
 			"@/*": ["./*"],
 			"@test/*": ["../test/shared/*"],
 			"@test-integration/*": ["../test/integration/shared/*"],
-			// @TODO Remove these once we switch to "moduleResolution": "bundler"
-			"@n8n/constants*": ["../../@n8n/constants/dist*"],
-			"@n8n/utils*": ["../../@n8n/utils/dist*"]
+			"@n8n/constants*": ["../../@n8n/constants/src*"],
+			"@n8n/utils*": ["../../@n8n/utils/src*"]
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		// TODO: remove all options below this line
@@ -28,7 +27,9 @@
 		{ "path": "../@n8n/api-types/tsconfig.build.json" },
 		{ "path": "../@n8n/client-oauth2/tsconfig.build.json" },
 		{ "path": "../@n8n/config/tsconfig.build.json" },
+		{ "path": "../@n8n/constants/tsconfig.json" },
 		{ "path": "../@n8n/di/tsconfig.build.json" },
-		{ "path": "../@n8n/permissions/tsconfig.build.json" }
+		{ "path": "../@n8n/permissions/tsconfig.build.json" },
+		{ "path": "../@n8n/utils/tsconfig.json" }
 	]
 }

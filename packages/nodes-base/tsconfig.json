@@ -7,9 +7,8 @@
 		"paths": {
 			"@test/*": ["./test/*"],
 			"@utils/*": ["./utils/*"],
-			// @TODO Remove these once we switch to "moduleResolution": "bundler"
-			"@n8n/constants*": ["../@n8n/constants/dist*"],
-			"@n8n/utils*": ["../@n8n/utils/dist*"]
+			"@n8n/constants*": ["../@n8n/constants/src*"],
+			"@n8n/utils*": ["../@n8n/utils/src*"]
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		// TODO: remove all options below this line
@@ -25,6 +24,8 @@
 	],
 	"references": [
 		{ "path": "../@n8n/imap/tsconfig.build.json" },
+		{ "path": "../@n8n/constants/tsconfig.json" },
+		{ "path": "../@n8n/utils/tsconfig.json" },
 		{ "path": "../workflow/tsconfig.build.json" },
 		{ "path": "../core/tsconfig.build.json" }
 	]

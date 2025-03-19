@@ -1,6 +1,6 @@
 import { ALPHABET } from '@n8n/constants/alphabet';
 
-import { randomInt } from '../random/randomInt';
+import { randomInt } from './randomInt';
 
 export function randomString(length: number): string;
 export function randomString(minLength: number, maxLength: number): string;
