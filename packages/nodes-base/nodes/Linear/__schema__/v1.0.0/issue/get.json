@@ -13,21 +13,6 @@
         "priority": {
             "type": "integer"
         },
-        "assignee": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "displayName": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "id",
-                "displayName"
-            ]
-        },
         "state": {
             "type": "object",
             "properties": {
