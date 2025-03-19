@@ -48,20 +48,12 @@ describe('useTestDefinitionForm', () => {
 		expect(state.value.description.value).toBe('');
 		expect(state.value.name.value).toContain('My Test');
 		expect(state.value.tags.value).toEqual([]);
-		expect(state.value.metrics).toEqual([]);
 		expect(state.value.evaluationWorkflow.value).toBe('');
 	});
 
 	it('should load test data', async () => {
 		const { loadTestData, state } = useTestDefinitionForm();
 		const fetchSpy = vi.spyOn(useTestDefinitionStore(), 'fetchAll');
-		const fetchMetricsSpy = vi.spyOn(useTestDefinitionStore(), 'fetchMetrics').mockResolvedValue([
-			{
-				id: 'metric1',
-				name: 'Metric 1',
-				testDefinitionId: TEST_DEF_A.id,
-			},
-		]);
 		const evaluationsStore = mockedStore(useTestDefinitionStore);
 
 		evaluationsStore.testDefinitionsById = {
@@ -71,14 +63,10 @@ describe('useTestDefinitionForm', () => {
 
 		await loadTestData(TEST_DEF_A.id, '123');
 		expect(fetchSpy).toBeCalled();
-		expect(fetchMetricsSpy).toBeCalledWith(TEST_DEF_A.id);
 		expect(state.value.name.value).toEqual(TEST_DEF_A.name);
 		expect(state.value.description.value).toEqual(TEST_DEF_A.description);
 		expect(state.value.tags.value).toEqual([TEST_DEF_A.annotationTagId]);
 		expect(state.value.evaluationWorkflow.value).toEqual(TEST_DEF_A.evaluationWorkflowId);
-		expect(state.value.metrics).toEqual([
-			{ id: 'metric1', name: 'Metric 1', testDefinitionId: TEST_DEF_A.id },
-		]);
 	});
 
 	it('should gracefully handle loadTestData when no test definition found', async () => {
@@ -94,7 +82,6 @@ describe('useTestDefinitionForm', () => {
 		expect(state.value.description.value).toBe('');
 		expect(state.value.name.value).toContain('My Test');
 		expect(state.value.tags.value).toEqual([]);
-		expect(state.value.metrics).toEqual([]);
 	});
 
 	it('should handle errors while loading test data', async () => {

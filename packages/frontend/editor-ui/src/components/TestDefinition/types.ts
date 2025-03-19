@@ -1,4 +1,3 @@
-import type { TestMetricRecord } from '@/api/testDefinition.ee';
 import type { INodeParameterResourceLocator } from 'n8n-workflow';
 
 export interface EditableField<T = string> {

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { TestMetricRecord } from '@/api/testDefinition.ee';
 import BlockArrow from '@/components/TestDefinition/EditDefinition/BlockArrow.vue';
 import EvaluationStep from '@/components/TestDefinition/EditDefinition/EvaluationStep.vue';
 import NodesPinning from '@/components/TestDefinition/EditDefinition/NodesPinning.vue';
