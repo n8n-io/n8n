@@ -268,6 +268,9 @@
                     "name": {
                         "type": "string"
                     },
+                    "slug": {
+                        "type": "string"
+                    },
                     "position": {
                         "type": "integer"
                     },
@@ -282,9 +285,6 @@
                         "items": {
                             "type": "string"
                         }
-                    },
-                    "slug": {
-                        "type": "string"
                     }
                 },
                 "required": [
@@ -364,6 +364,31 @@
         "post_password": {
             "type": "string"
         },
+        "global_unique_id": {
+            "type": "string"
+        },
+        "brands": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "slug": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "slug"
+                ]
+            }
+        },
         "_links": {
             "type": "object",
             "properties": {
@@ -414,31 +439,6 @@
                 "self",
                 "collection"
             ]
-        },
-        "global_unique_id": {
-            "type": "string"
-        },
-        "brands": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "integer"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "slug": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "id",
-                    "name",
-                    "slug"
-                ]
-            }
         }
     },
     "required": [
