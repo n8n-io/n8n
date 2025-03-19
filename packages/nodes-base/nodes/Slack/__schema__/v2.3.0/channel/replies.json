@@ -72,6 +72,12 @@
                                             },
                                             "text": {
                                                 "type": "string"
+                                            },
+                                            "url": {
+                                                "type": "string"
+                                            },
+                                            "user_id": {
+                                                "type": "string"
                                             }
                                         },
                                         "required": [
@@ -81,7 +87,8 @@
                                 }
                             },
                             "required": [
-                                "type"
+                                "type",
+                                "elements"
                             ]
                         }
                     }
@@ -92,64 +99,10 @@
                 ]
             }
         },
-        "bot_id": {
-            "type": "string"
-        },
-        "app_id": {
-            "type": "string"
-        },
-        "bot_profile": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "deleted": {
-                    "type": "boolean"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "updated": {
-                    "type": "integer"
-                },
-                "app_id": {
-                    "type": "string"
-                },
-                "icons": {
-                    "type": "object",
-                    "properties": {
-                        "image_36": {
-                            "type": "string"
-                        },
-                        "image_48": {
-                            "type": "string"
-                        },
-                        "image_72": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "image_36",
-                        "image_48",
-                        "image_72"
-                    ]
-                },
-                "team_id": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "id",
-                "deleted",
-                "name",
-                "updated",
-                "app_id",
-                "icons",
-                "team_id"
-            ]
-        },
         "parent_user_id": {
+            "type": "string"
+        },
+        "bot_id": {
             "type": "string"
         }
     },
