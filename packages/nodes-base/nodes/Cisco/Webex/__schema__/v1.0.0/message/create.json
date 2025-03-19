@@ -1,7 +1,16 @@
 {
     "type": "object",
     "properties": {
+        "created": {
+            "type": "string"
+        },
         "id": {
+            "type": "string"
+        },
+        "personEmail": {
+            "type": "string"
+        },
+        "personId": {
             "type": "string"
         },
         "roomId": {
@@ -12,25 +21,7 @@
         },
         "text": {
             "type": "string"
-        },
-        "personId": {
-            "type": "string"
-        },
-        "personEmail": {
-            "type": "string"
-        },
-        "created": {
-            "type": "string"
         }
     },
-    "required": [
-        "id",
-        "roomId",
-        "roomType",
-        "text",
-        "personId",
-        "personEmail",
-        "created"
-    ],
     "version": 1
 }
