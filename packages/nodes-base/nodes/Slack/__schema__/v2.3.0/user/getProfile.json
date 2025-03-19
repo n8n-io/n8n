@@ -45,8 +45,7 @@
                 },
                 "required": [
                     "emoji_name",
-                    "display_url",
-                    "unicode"
+                    "display_url"
                 ]
             }
         },
@@ -64,12 +63,6 @@
         },
         "email": {
             "type": "string"
-        },
-        "huddle_state": {
-            "type": "string"
-        },
-        "huddle_state_expiration_ts": {
-            "type": "integer"
         },
         "first_name": {
             "type": "string"
@@ -102,29 +95,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "title",
-        "phone",
-        "skype",
-        "real_name",
-        "real_name_normalized",
-        "display_name",
-        "display_name_normalized",
-        "fields",
-        "status_text",
-        "status_emoji",
-        "status_emoji_display_info",
-        "status_expiration",
-        "avatar_hash",
-        "first_name",
-        "last_name",
-        "image_24",
-        "image_32",
-        "image_48",
-        "image_72",
-        "image_192",
-        "image_512",
-        "status_text_canonical"
-    ],
     "version": 1
 }
