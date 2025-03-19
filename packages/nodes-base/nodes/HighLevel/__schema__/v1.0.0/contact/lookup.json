@@ -4,6 +4,12 @@
         "id": {
             "type": "string"
         },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
         "dateAdded": {
             "type": "string"
         },
@@ -43,11 +49,23 @@
         "source": {
             "type": "string"
         },
-        "tags": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
+        "timezone": {
+            "type": "string"
+        },
+        "fingerprint": {
+            "type": "string"
+        },
+        "state": {
+            "type": "string"
+        },
+        "city": {
+            "type": "string"
+        },
+        "address1": {
+            "type": "string"
+        },
+        "postalCode": {
+            "type": "string"
         },
         "customField": {
             "type": "array",
@@ -63,24 +81,6 @@
                     "value"
                 ]
             }
-        },
-        "timezone": {
-            "type": "string"
-        },
-        "fingerprint": {
-            "type": "string"
-        },
-        "city": {
-            "type": "string"
-        },
-        "address1": {
-            "type": "string"
-        },
-        "state": {
-            "type": "string"
-        },
-        "postalCode": {
-            "type": "string"
         },
         "assignedTo": {
             "type": "string"
