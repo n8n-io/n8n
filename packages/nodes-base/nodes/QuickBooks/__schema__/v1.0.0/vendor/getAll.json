@@ -46,6 +46,12 @@
                 "LastUpdatedTime"
             ]
         },
+        "GivenName": {
+            "type": "string"
+        },
+        "CompanyName": {
+            "type": "string"
+        },
         "DisplayName": {
             "type": "string"
         },
@@ -87,13 +93,7 @@
         "AcctNum": {
             "type": "string"
         },
-        "GivenName": {
-            "type": "string"
-        },
         "FamilyName": {
-            "type": "string"
-        },
-        "CompanyName": {
             "type": "string"
         },
         "PrimaryPhone": {
