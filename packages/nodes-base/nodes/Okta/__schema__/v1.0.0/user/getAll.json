@@ -1,0 +1,140 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "created": {
+            "type": "string"
+        },
+        "lastUpdated": {
+            "type": "string"
+        },
+        "profile": {
+            "type": "object",
+            "properties": {
+                "firstName": {
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "login": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "CA_HireDate": {
+                    "type": "string"
+                },
+                "manager": {
+                    "type": "string"
+                },
+                "CA_PersonioEmployeeStatus": {
+                    "type": "string"
+                },
+                "city": {
+                    "type": "string"
+                },
+                "displayName": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "employeeNumber": {
+                    "type": "string"
+                },
+                "CA_Team": {
+                    "type": "string"
+                },
+                "CA_FullRemote": {
+                    "type": "string"
+                },
+                "CA_ContractType": {
+                    "type": "string"
+                },
+                "department": {
+                    "type": "string"
+                },
+                "CA_ContractTerminationDate": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "firstName",
+                "lastName",
+                "login",
+                "email"
+            ]
+        },
+        "type": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id"
+            ]
+        },
+        "credentials": {
+            "type": "object",
+            "properties": {
+                "provider": {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "type",
+                        "name"
+                    ]
+                }
+            },
+            "required": [
+                "provider"
+            ]
+        },
+        "_links": {
+            "type": "object",
+            "properties": {
+                "self": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "href"
+                    ]
+                }
+            },
+            "required": [
+                "self"
+            ]
+        }
+    },
+    "required": [
+        "id",
+        "status",
+        "created",
+        "activated",
+        "lastLogin",
+        "lastUpdated",
+        "passwordChanged",
+        "profile"
+    ],
+    "version": 1
+}
