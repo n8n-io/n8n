@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "type": {
+            "type": "string"
+        },
         "position": {
             "type": "integer"
         },
@@ -54,9 +57,6 @@
         },
         "reviews": {
             "type": "integer"
-        },
-        "type": {
-            "type": "string"
         },
         "types": {
             "type": "array",
