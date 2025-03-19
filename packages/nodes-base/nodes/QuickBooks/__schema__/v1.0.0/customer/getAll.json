@@ -4,6 +4,52 @@
         "Taxable": {
             "type": "boolean"
         },
+        "BillAddr": {
+            "type": "object",
+            "properties": {
+                "Id": {
+                    "type": "string"
+                },
+                "Line1": {
+                    "type": "string"
+                },
+                "City": {
+                    "type": "string"
+                },
+                "CountrySubDivisionCode": {
+                    "type": "string"
+                },
+                "PostalCode": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Id"
+            ]
+        },
+        "ShipAddr": {
+            "type": "object",
+            "properties": {
+                "Id": {
+                    "type": "string"
+                },
+                "Line1": {
+                    "type": "string"
+                },
+                "City": {
+                    "type": "string"
+                },
+                "CountrySubDivisionCode": {
+                    "type": "string"
+                },
+                "PostalCode": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Id"
+            ]
+        },
         "Job": {
             "type": "boolean"
         },
@@ -58,6 +104,9 @@
         "FullyQualifiedName": {
             "type": "string"
         },
+        "CompanyName": {
+            "type": "string"
+        },
         "DisplayName": {
             "type": "string"
         },
@@ -88,55 +137,6 @@
             "required": [
                 "Address"
             ]
-        },
-        "BillAddr": {
-            "type": "object",
-            "properties": {
-                "Id": {
-                    "type": "string"
-                },
-                "Line1": {
-                    "type": "string"
-                },
-                "City": {
-                    "type": "string"
-                },
-                "CountrySubDivisionCode": {
-                    "type": "string"
-                },
-                "PostalCode": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "Id"
-            ]
-        },
-        "ShipAddr": {
-            "type": "object",
-            "properties": {
-                "Id": {
-                    "type": "string"
-                },
-                "Line1": {
-                    "type": "string"
-                },
-                "City": {
-                    "type": "string"
-                },
-                "CountrySubDivisionCode": {
-                    "type": "string"
-                },
-                "PostalCode": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "Id"
-            ]
-        },
-        "CompanyName": {
-            "type": "string"
         }
     },
     "version": 1
