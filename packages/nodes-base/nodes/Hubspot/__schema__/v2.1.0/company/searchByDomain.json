@@ -51,14 +51,14 @@
                                             "type": "integer"
                                         }
                                     },
-                                    "useTimestampAsPersistenceTimestamp": {
-                                        "type": "boolean"
-                                    },
                                     "requestId": {
                                         "type": "string"
                                     },
                                     "updatedByUserId": {
                                         "type": "integer"
+                                    },
+                                    "useTimestampAsPersistenceTimestamp": {
+                                        "type": "boolean"
                                     }
                                 },
                                 "required": [
