@@ -35,6 +35,9 @@
         "$process_flow": {
             "type": "boolean"
         },
+        "Assistant": {
+            "type": "null"
+        },
         "$locked_for_me": {
             "type": "boolean"
         },
@@ -117,6 +120,9 @@
                 "resubmit"
             ]
         },
+        "Other_Zip": {
+            "type": "null"
+        },
         "$layout_id": {
             "type": "object",
             "properties": {
@@ -131,6 +137,9 @@
                 "name",
                 "id"
             ]
+        },
+        "Asst_Phone": {
+            "type": "null"
         },
         "Full_Name": {
             "type": "string"
@@ -157,10 +166,16 @@
         "$review": {
             "type": "null"
         },
+        "Email_Opt_Out": {
+            "type": "boolean"
+        },
         "Modified_Time": {
             "type": "string"
         },
         "Unsubscribed_Time": {
+            "type": "null"
+        },
+        "Other_Street": {
             "type": "null"
         },
         "Last_Name": {
@@ -192,21 +207,6 @@
         },
         "$approval_state": {
             "type": "string"
-        },
-        "Other_Zip": {
-            "type": "null"
-        },
-        "Email_Opt_Out": {
-            "type": "boolean"
-        },
-        "Other_Street": {
-            "type": "null"
-        },
-        "Assistant": {
-            "type": "null"
-        },
-        "Asst_Phone": {
-            "type": "null"
         }
     },
     "required": [
