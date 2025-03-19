@@ -313,6 +313,8 @@ const handleTooltipClose = () => {
 
 .tooltip {
 	padding: var(--spacing-xs) var(--spacing-2xs);
+	min-width: 100px;
+	text-align: center;
 	& > div {
 		color: var(--color-text-lighter);
 		span {
@@ -352,6 +354,7 @@ const handleTooltipClose = () => {
 		color: var(--color-text-base);
 		font-size: var(--font-size-2xs);
 		font-weight: var(--font-weight-bold);
+		line-height: var(--font-line-heigh-xsmall);
 	}
 
 	.item a:hover * {

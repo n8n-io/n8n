@@ -9,10 +9,12 @@ import type {
 import * as workflowsApi from '@/api/workflows';
 import { useRootStore } from './root.store';
 import { ref } from 'vue';
-import { EventBus } from '@n8n/utils/event-bus';
+import type { EventBus } from '@n8n/utils/event-bus';
+import { useI18n } from '@/composables/useI18n';
 
 export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 	const rootStore = useRootStore();
+	const i18n = useI18n();
 
 	const totalWorkflowCount = ref<number>(0);
 
@@ -165,6 +167,69 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		workflowsListEventBus.value.emit('create-folder');
 	}
 
+	/**
+	 * Fetches the breadcrumbs items for a given folder, excluding the specified folderId.
+	 * @param projectId project in which the folder is located
+	 * @param folderId folder to get the breadcrumbs for
+	 * @returns
+	 */
+	async function getHiddenBreadcrumbsItems(projectId: string, folderId: string) {
+		const path = await getFolderPath(projectId, folderId);
+		const filteredPath = path.filter((folder) => folder.id !== folderId);
+
+		if (filteredPath.length === 0) {
+			return [
+				{
+					id: '-1',
+					label: i18n.baseText('folders.breadcrumbs.noTruncated.message'),
+				},
+			];
+		}
+
+		// Process a folder and all its nested children recursively
+		const processFolderWithChildren = (
+			folder: FolderTreeResponseItem,
+		): Array<{ id: string; label: string }> => {
+			if (folder.id === folderId) return [];
+
+			const result = [
+				{
+					id: folder.id,
+					label: folder.name,
+				},
+			];
+
+			// Process all children and their descendants
+			if (folder.children?.length) {
+				const childItems = folder.children
+					.filter((child) => child.id !== folderId)
+					.flatMap((child) => {
+						// Add this child
+						const childResult = [
+							{
+								id: child.id,
+								label: child.name,
+							},
+						];
+
+						// Add all descendants of this child
+						if (child.children?.length) {
+							childResult.push(...processFolderWithChildren(child).slice(1));
+						}
+
+						return childResult;
+					});
+
+				result.push(...childItems);
+			}
+
+			return result;
+		};
+
+		// Process all folders in the path
+		return filteredPath.flatMap(processFolderWithChildren);
+	}
+
 	return {
 		fetchTotalWorkflowsAndFoldersCount,
 		breadcrumbsCache,
@@ -182,5 +247,6 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		fetchFolderContent,
 		workflowsListEventBus,
 		emitCreateFolderEvent,
+		getHiddenBreadcrumbsItems,
 	};
 });

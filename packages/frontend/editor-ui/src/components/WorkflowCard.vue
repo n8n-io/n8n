@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import {
 	DUPLICATE_MODAL_KEY,
 	MODAL_CONFIRM,
@@ -26,6 +26,10 @@ import { ResourceType } from '@/utils/projects.utils';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { WorkflowResource } from './layouts/ResourcesListLayout.vue';
 import type { IUser } from 'n8n-workflow';
+import { type ProjectIcon as CardProjectIcon, ProjectTypes } from '@/types/projects.types';
+import { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import { useFoldersStore } from '@/stores/folders.store';
+import { FolderPathItem, FolderTreeResponseItem } from '@/Interface';
 
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -68,13 +72,47 @@ const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
+const foldersStore = useFoldersStore();
+
+const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {}));
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.workflow').toLowerCase());
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const workflowPermissions = computed(() => getResourcePermissions(props.data.scopes).workflow);
+const isOverviewPage = computed(() => route.name === VIEWS.WORKFLOWS);
 
 const showFolders = computed(() => {
 	return settingsStore.isFoldersFeatureEnabled && route.name !== VIEWS.WORKFLOWS;
+});
+
+const projectIcon = computed<CardProjectIcon>(() => {
+	const defaultIcon: CardProjectIcon = { type: 'icon', value: 'layer-group' };
+	if (props.data.homeProject?.type === ProjectTypes.Personal) {
+		return { type: 'icon', value: 'user' };
+	} else if (props.data.homeProject?.type === ProjectTypes.Team) {
+		return props.data.homeProject.icon ?? defaultIcon;
+	}
+	return defaultIcon;
+});
+
+const projectName = computed(() => {
+	if (props.data.homeProject?.type === ProjectTypes.Personal) {
+		return locale.baseText('projects.menu.personal');
+	}
+	return props.data.homeProject?.name;
+});
+
+const cardBreadcrumbs = computed<PathItem[]>(() => {
+	if (props.data.parentFolder) {
+		return [
+			{
+				id: props.data.parentFolder.id,
+				name: props.data.parentFolder.name,
+				label: props.data.parentFolder.name,
+			},
+		];
+	}
+	return [];
 });
 
 const actions = computed(() => {
@@ -236,6 +274,17 @@ async function deleteWorkflow() {
 	emit('workflow:deleted');
 }
 
+const fetchHiddenBreadCrumbsItems = async () => {
+	if (!props.data.homeProject?.id || !props.data.parentFolder) {
+		hiddenBreadcrumbsItemsAsync.value = Promise.resolve([]);
+	} else {
+		hiddenBreadcrumbsItemsAsync.value = foldersStore.getHiddenBreadcrumbsItems(
+			props.data.homeProject.id,
+			props.data.parentFolder.id,
+		);
+	}
+};
+
 function moveResource() {
 	uiStore.openModalWithData({
 		name: PROJECT_MOVE_RESOURCE_MODAL,
@@ -289,7 +338,31 @@ const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
+				<div v-if="isOverviewPage" :class="$style.breadcrumbs">
+					<n8n-breadcrumbs
+						:items="cardBreadcrumbs"
+						:hidden-items="hiddenBreadcrumbsItemsAsync"
+						:path-truncated="true"
+						:show-border="true"
+						:highlight-last-item="false"
+						theme="small"
+						data-test-id="workflow-card-breadcrumbs"
+						@tooltip-opened="fetchHiddenBreadCrumbsItems"
+					>
+						<template v-if="data.homeProject" #prepend>
+							<div :class="$style['home-project']">
+								<n8n-link :to="`/projects/${data.homeProject.id}`">
+									<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" />
+									<n8n-text size="small" :compact="true" :bold="true" color="text-base">{{
+										projectName
+									}}</n8n-text>
+								</n8n-link>
+							</div>
+						</template>
+					</n8n-breadcrumbs>
+				</div>
 				<ProjectCardBadge
+					v-else
 					:class="$style.cardBadge"
 					:resource="data"
 					:resource-type="ResourceType.Workflow"
