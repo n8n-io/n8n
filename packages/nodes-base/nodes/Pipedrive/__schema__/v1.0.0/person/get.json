@@ -40,6 +40,30 @@
                 "type": "integer"
             }
         },
+        "im": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "value": {
+                        "type": "string"
+                    },
+                    "primary": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "value",
+                    "primary"
+                ]
+            }
+        },
+        "postal_address_lat": {
+            "type": "null"
+        },
+        "postal_address_long": {
+            "type": "null"
+        },
         "cc_email": {
             "type": "string"
         },
@@ -81,6 +105,49 @@
                 "has_pic",
                 "pic_hash",
                 "active_flag",
+                "value"
+            ]
+        },
+        "org_id": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "people_count": {
+                    "type": "integer"
+                },
+                "owner_id": {
+                    "type": "integer"
+                },
+                "label_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "active_flag": {
+                    "type": "boolean"
+                },
+                "cc_email": {
+                    "type": "string"
+                },
+                "owner_name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "name",
+                "people_count",
+                "owner_id",
+                "address",
+                "label_ids",
+                "active_flag",
+                "cc_email",
+                "owner_name",
                 "value"
             ]
         },
@@ -158,30 +225,6 @@
         },
         "update_time": {
             "type": "string"
-        },
-        "im": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "value": {
-                        "type": "string"
-                    },
-                    "primary": {
-                        "type": "boolean"
-                    }
-                },
-                "required": [
-                    "value",
-                    "primary"
-                ]
-            }
-        },
-        "postal_address_lat": {
-            "type": "null"
-        },
-        "postal_address_long": {
-            "type": "null"
         }
     },
     "version": 1
