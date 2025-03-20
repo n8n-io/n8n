@@ -4,11 +4,11 @@ import type {
 	INodeTypeDescription,
 	INodeParameters,
 	INodeProperties,
+	NodeConnectionType,
 	NodeParameterValue,
 } from 'n8n-workflow';
 import {
 	NodeHelpers,
-	NodeConnectionType,
 	NodeConnectionTypes,
 	deepCopy,
 	isINodePropertyCollectionList,

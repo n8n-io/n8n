@@ -1,22 +1,26 @@
 <script setup lang="ts">
 import { useStorage } from '@/composables/useStorage';
 import { saveAs } from 'file-saver';
-import {
-	type IBinaryData,
-	type IConnectedNode,
-	type IDataObject,
-	type INodeExecutionData,
-	type INodeOutputConfiguration,
-	type IRunData,
-	type IRunExecutionData,
-	type ITaskMetadata,
-	type NodeError,
-	type NodeHint,
-	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
-	type Workflow,
-	parseErrorMetadata,
+import type {
+	IBinaryData,
+	IConnectedNode,
+	IDataObject,
+	INodeExecutionData,
+	INodeOutputConfiguration,
+	IRunData,
+	IRunExecutionData,
+	ITaskMetadata,
+	NodeError,
+	NodeHint,
+	Workflow,
+	NodeConnectionType,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
+import {
+	parseErrorMetadata,
+	NodeConnectionTypes,
+	NodeHelpers,
+	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
+} from 'n8n-workflow';
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
 
 import type {

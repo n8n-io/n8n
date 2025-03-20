@@ -22,7 +22,7 @@ import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { N8nText } from '@n8n/design-system';
 import {
 	createResultError,
-	NodeConnectionType,
+	type NodeConnectionType,
 	NodeConnectionTypes,
 	type IConnectedNode,
 	type IDataObject,

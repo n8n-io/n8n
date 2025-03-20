@@ -14,7 +14,7 @@ import { waitingNodeTooltip } from '@/utils/executionUtils';
 import { uniqBy } from 'lodash-es';
 import { N8nIcon, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
 import type { INodeInputConfiguration, INodeOutputConfiguration, Workflow } from 'n8n-workflow';
-import { NodeConnectionType, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
+import { type NodeConnectionType, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { storeToRefs } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { useNDVStore } from '../stores/ndv.store';
