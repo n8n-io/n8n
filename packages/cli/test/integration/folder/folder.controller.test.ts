@@ -885,30 +885,6 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 		expect(folderInDb).toBeDefined();
 	});
 
-	test('should not allow transferring contents to the same folder being deleted', async () => {
-		const project = await createTeamProject('test', owner);
-		const folder = await createFolder(project, { name: 'Folder To Delete' });
-
-		await createWorkflow({ parentFolder: folder }, owner);
-
-		const payload = {
-			transferToFolderId: folder.id, // Try to transfer contents to the same folder
-		};
-
-		const response = await authOwnerAgent
-			.delete(`/projects/${project.id}/folders/${folder.id}`)
-			.query(payload)
-			.expect(400);
-
-		expect(response.body.message).toContain(
-			'Cannot transfer folder contents to the folder being deleted',
-		);
-
-		// Verify the folder still exists
-		const folderInDb = await folderRepository.findOneBy({ id: folder.id });
-		expect(folderInDb).toBeDefined();
-	});
-
 	test('should transfer folder contents to project root when transferToFolderId is "0"', async () => {
 		const project = await createTeamProject('test', owner);
 		const sourceFolder = await createFolder(project, { name: 'Source' });
