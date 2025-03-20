@@ -731,14 +731,14 @@ const initialized = ref(false);
 onMounted(() => {
 	props.eventBus.on('fitView', onFitView);
 	props.eventBus.on('nodes:select', onSelectNodes);
-
+	props.eventBus.on('tidyUp', onTidyUp);
 	window.addEventListener('blur', onWindowBlur);
 });
 
 onUnmounted(() => {
 	props.eventBus.off('fitView', onFitView);
 	props.eventBus.off('nodes:select', onSelectNodes);
-
+	props.eventBus.off('tidyUp', onTidyUp);
 	window.removeEventListener('blur', onWindowBlur);
 });
 

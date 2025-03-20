@@ -17,6 +17,7 @@ import AssistantLoadingMessage from '../AskAssistantLoadingMessage/AssistantLoad
 import AssistantText from '../AskAssistantText/AssistantText.vue';
 import BetaTag from '../BetaTag/BetaTag.vue';
 import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
+import WorkflowGeneratedMessage from './messages/workflow/WorkflowGeneratedMessage.vue';
 
 const { t } = useI18n();
 
@@ -41,6 +42,7 @@ const emit = defineEmits<{
 	codeReplace: [string];
 	codeUndo: [string];
 	modeChange: [string];
+	insertWorkflow: [string];
 }>();
 
 const onClose = () => emit('close');
@@ -95,6 +97,10 @@ function growInput() {
 	chatInput.value.style.height = 'auto';
 	const scrollHeight = chatInput.value.scrollHeight;
 	chatInput.value.style.height = `${Math.min(scrollHeight, MAX_CHAT_INPUT_HEIGHT)}px`;
+}
+
+function onInsertWorkflow(code: string) {
+	emit('insertWorkflow', code);
 }
 </script>
 
@@ -177,6 +183,13 @@ function growInput() {
 							:message="message"
 							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
 							:user="user"
+						/>
+						<WorkflowGeneratedMessage
+							v-else-if="message.type === 'workflow-generated'"
+							:message="message"
+							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
+							:user="user"
+							@insert-workflow="onInsertWorkflow"
 						/>
 
 						<div

@@ -15,10 +15,12 @@ defineProps<Props>();
 </script>
 
 <template>
-	<BaseWorkflowMessage :message="message" :is-first-of-role="isFirstOfRole" :user="user">
-		<template #icon>
-			<n8n-icon icon="list" size="medium" />
-		</template>
+	<BaseWorkflowMessage
+		:message="message"
+		:is-first-of-role="isFirstOfRole"
+		:user="user"
+		next-step="Selecting nodes..."
+	>
 		<template #title> Generated Workflow Steps </template>
 		<ol :class="$style.stepsList">
 			<li v-for="step in message.steps" :key="step">{{ step }}</li>

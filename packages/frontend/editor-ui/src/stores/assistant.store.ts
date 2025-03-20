@@ -252,6 +252,14 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					nodes: msg.nodes,
 					read,
 				});
+			} else if (msg.type === 'workflow-generated' && 'codeSnippet' in msg) {
+				messages.push({
+					id,
+					type: 'workflow-generated',
+					role: 'assistant',
+					codeSnippet: msg.codeSnippet,
+					read,
+				});
 			} else if (msg.type === 'workflow-connections' && 'workflowJSON' in msg) {
 				messages.push({
 					id,
@@ -441,9 +449,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 						authType: nodeInfo?.authType?.name,
 					}
 				: undefined,
-			currentWorkflow: workflowDataStale.value
-				? assistantHelpers.simplifyWorkflowForAssistant(workflowsStore.workflow)
-				: undefined,
+			currentWorkflow: assistantHelpers.simplifyWorkflowForAssistant(workflowsStore.workflow),
 			executionData:
 				workflowExecutionDataStale.value && executionResult
 					? assistantHelpers.simplifyResultData(executionResult)

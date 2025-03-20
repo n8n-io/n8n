@@ -15,11 +15,13 @@ defineProps<Props>();
 </script>
 
 <template>
-	<BaseWorkflowMessage :message="message" :is-first-of-role="isFirstOfRole" :user="user">
-		<template #icon>
-			<n8n-icon icon="code" size="medium" />
-		</template>
-		<template #title> Composed Workflow Nodes </template>
+	<BaseWorkflowMessage
+		:message="message"
+		:is-first-of-role="isFirstOfRole"
+		:user="user"
+		next-step="Generating final workflow..."
+	>
+		<template #title>Composed Workflow Nodes</template>
 		<div :class="$style.nodesList">
 			<div v-for="node in message.nodes" :key="node.name" :class="$style.node">
 				<div :class="$style.nodeName">{{ node.name }}</div>

@@ -940,6 +940,11 @@ async function onImportWorkflowDataEvent(data: IDataObject) {
 
 	fitView();
 	selectNodes(workflowData.nodes?.map((node) => node.id) ?? []);
+	if (data.tidyUp) {
+		setTimeout(() => {
+			canvasEventBus.emit('tidyUp', 'import-workflow-data');
+		}, 0);
+	}
 }
 
 async function onImportWorkflowUrlEvent(data: IDataObject) {

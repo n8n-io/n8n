@@ -6,6 +6,8 @@ import { computed } from 'vue';
 import SlideTransition from '@/components/transitions/SlideTransition.vue';
 import AskAssistantChat from '@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { nodeViewEventBus } from '@/event-bus';
+import type { IWorkflowDataUpdate } from '@/Interface';
 
 const assistantStore = useAssistantStore();
 const usersStore = useUsersStore();

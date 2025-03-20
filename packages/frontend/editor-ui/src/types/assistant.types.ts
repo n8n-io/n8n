@@ -221,6 +221,12 @@ export namespace ChatRequest {
 		};
 	}
 
+	interface WorkflowGeneratedMessage {
+		role: 'assistant';
+		type: 'workflow-generated';
+		codeSnippet: string;
+	}
+
 	export type MessageResponse =
 		| ((
 				| AssistantChatMessage
@@ -232,6 +238,7 @@ export namespace ChatRequest {
 				| WorkflowNodeMessage
 				| WorkflowComposedMessage
 				| WorkflowConnectionsMessage
+				| WorkflowGeneratedMessage
 		  ) & {
 				quickReplies?: QuickReplyOption[];
 		  })

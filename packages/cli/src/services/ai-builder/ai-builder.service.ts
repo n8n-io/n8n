@@ -265,8 +265,7 @@ export class AiBuilderService {
 		async function generateWorkflowJSON(state: typeof WorkflowState.State) {
 			await dispatchCustomEvent('generated_workflow_json', {
 				role: 'assistant',
-				type: 'message',
-				text: 'Workflow JSON generated',
+				type: 'workflow-generated',
 				codeSnippet: JSON.stringify(state.workflowJSON, null, 4),
 			});
 			return { workflowJSON: JSON.stringify(state.workflowJSON, null, 2) };

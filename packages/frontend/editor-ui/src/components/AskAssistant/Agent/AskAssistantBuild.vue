@@ -6,6 +6,8 @@ import { computed } from 'vue';
 import SlideTransition from '@/components/transitions/SlideTransition.vue';
 import AskAssistantChat from '@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { IWorkflowDataUpdate } from '@/Interface';
+import { nodeViewEventBus } from '@/event-bus';
 
 const assistantStore = useAssistantStore();
 const usersStore = useUsersStore();
@@ -67,6 +69,18 @@ function onClose() {
 	assistantStore.closeChat();
 	telemetry.track('User closed assistant', { source: 'top-toggle' });
 }
+
+function onInsertWorkflow(code: string) {
+	let workflowData: IWorkflowDataUpdate;
+	try {
+		workflowData = JSON.parse(code);
+	} catch (error) {
+		console.error('Error parsing workflow data', error);
+		return;
+	}
+
+	nodeViewEventBus.emit('importWorkflowData', { data: workflowData, tidyUp: true });
+}
 </script>
 
 <template>
@@ -94,8 +108,7 @@ function onClose() {
 					mode="AI Builder"
 					@close="onClose"
 					@message="onUserMessage"
-					@code-replace="onCodeReplace"
-					@code-undo="undoCodeDiff"
+					@insertWorkflow="onInsertWorkflow"
 				>
 					<template #placeholder> Please describe the workflow you want to create. </template>
 				</AskAssistantChat>

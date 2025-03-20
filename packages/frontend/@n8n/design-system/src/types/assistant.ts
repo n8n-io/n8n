@@ -133,6 +133,11 @@ export namespace ChatUI {
 			position: [number, number];
 		}>;
 	}
+	export interface WorkflowGeneratedMessage {
+		role: 'assistant';
+		type: 'workflow-generated';
+		codeSnippet: string;
+	}
 
 	export interface WorkflowConnectionsMessage {
 		role: 'assistant';
@@ -183,6 +188,7 @@ export namespace ChatUI {
 		| WorkflowNodeMessage
 		| WorkflowComposedMessage
 		| WorkflowConnectionsMessage
+		| WorkflowGeneratedMessage
 	) & {
 		id: string;
 		read: boolean;
