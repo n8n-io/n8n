@@ -32,6 +32,7 @@ describe('Folders', () => {
 	before(() => {
 		cy.resetDatabase();
 		cy.enableFeature('sharing');
+		cy.enableFeature('folders');
 		cy.enableFeature('advancedPermissions');
 		cy.enableFeature('projectRole:admin');
 		cy.enableFeature('projectRole:editor');
