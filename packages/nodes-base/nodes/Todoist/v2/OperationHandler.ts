@@ -263,7 +263,7 @@ export class MoveHandler implements OperationHandler {
 		const body: SyncRequest = {
 			commands: [
 				{
-					type: CommandType.ITEM_MOVE,
+					type: CommandTypes.ITEM_MOVE,
 					uuid: uuid(),
 					args: {
 						id: taskId,
@@ -353,7 +353,7 @@ export class SyncHandler implements OperationHandler {
 	}
 
 	private requiresProjectId(command: Command) {
-		return command.type === CommandType.ITEM_ADD;
+		return command.type === CommandTypes.ITEM_ADD;
 	}
 
 	private enrichTempId(command: Command, tempIdMapping: Map<string, string>, projectId: number) {
@@ -364,6 +364,6 @@ export class SyncHandler implements OperationHandler {
 	}
 
 	private requiresTempId(command: Command) {
-		return command.type === CommandType.ITEM_ADD;
+		return command.type === CommandTypes.ITEM_ADD;
 	}
 }

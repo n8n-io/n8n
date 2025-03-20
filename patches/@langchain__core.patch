@@ -1,0 +1,12 @@
+diff --git a/package.json b/package.json
+index d101b1fb9e23b3c20483e8c42d109cdc9591a340..e279de7143505863afe279aeedf358cb5e1b676c 100644
+--- a/package.json
++++ b/package.json
+@@ -89,6 +89,7 @@
+     "vectorstores"
+   ],
+   "exports": {
++    "./dist/*": { "types": "./dist/*.d.ts" },
+     "./agents": {
+       "types": {
+         "import": "./agents.d.ts",

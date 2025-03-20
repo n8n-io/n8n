@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type { BaseChatMemory } from '@langchain/community/dist/memory/chat_memory';
+import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import { ZepMemory } from '@langchain/community/memory/zep';
 import { ZepCloudMemory } from '@langchain/community/memory/zep_cloud';
 import type { InputValues, MemoryVariables } from '@langchain/core/memory';

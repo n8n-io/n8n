@@ -6,12 +6,12 @@
 	"compilerOptions": {
 		"baseUrl": ".",
 		"paths": {
-			"@utils/*": ["./utils/*"]
+			"@utils/*": ["./utils/*", "../../nodes-base/utils/*"],
+			"n8n-nodes-base/*": ["../../nodes-base/*"]
 		},
 		"module": "esnext",
 		"moduleResolution": "bundler",
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
-		"allowImportingTsExtensions": true,
 		// TODO: remove all options below this line
 		"useUnknownInCatchVariables": false
 	},
@@ -25,7 +25,6 @@
 	],
 	"references": [
 		{ "path": "../../workflow/tsconfig.build.json" },
-		{ "path": "../../nodes-base/tsconfig.build.json" },
 		{ "path": "../../core/tsconfig.build.json" }
 	]
 }
