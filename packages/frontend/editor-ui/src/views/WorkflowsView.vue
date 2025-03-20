@@ -1107,6 +1107,13 @@ const moveWorkflowToFolder = async (payload: {
 	name: string;
 	parentFolderId?: string;
 }) => {
+	if (isCommunity.value && canUserRegisterCommunityPlus.value) {
+		uiStore.openModalWithData({
+			name: COMMUNITY_PLUS_ENROLLMENT_MODAL,
+			data: { customHeading: i18n.baseText('folders.registeredCommunity.cta.heading') },
+		});
+		return;
+	}
 	uiStore.openMoveToFolderModal(
 		'workflow',
 		{ id: payload.id, name: payload.name, parentFolderId: payload.parentFolderId },
