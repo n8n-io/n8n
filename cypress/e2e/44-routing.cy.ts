@@ -1,4 +1,5 @@
 import {
+	getCancelSaveChangesButton,
 	getCloseSaveChangesButton,
 	getSaveChangesModal,
 } from '../composables/modals/save-changes-modal';
@@ -27,7 +28,14 @@ describe('Workflows', () => {
 
 		getHomeButton().click();
 
+		// We expect to still be on the workflow route here
+		cy.url().should('include', '/workflow/');
+
 		getSaveChangesModal().should('be.visible');
+		getCancelSaveChangesButton().click();
+
+		// Only now do we switch
+		cy.url().should('include', getWorkflowsPageUrl());
 	});
 
 	it('should correct route after cancelling saveChangesModal', () => {
