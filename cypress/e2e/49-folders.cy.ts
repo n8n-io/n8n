@@ -211,6 +211,7 @@ describe('Folders', () => {
 
 			// In personal, we should see previously created folders
 			getPersonalProjectMenuItem().click();
+			getAddResourceDropdown().click();
 			cy.getByTestId('action-folder').should('exist');
 			createFolderFromProjectHeader('Personal Folder');
 			getFolderCards().should('exist');
