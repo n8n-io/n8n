@@ -610,6 +610,21 @@ export class Github implements INodeType {
 						},
 					},
 					{
+						displayName: 'By File Name',
+						name: 'filename',
+						type: 'string',
+						placeholder: 'e.g. main.yaml or main.yml',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[a-zA-Z0-9_-]+.(yaml|yml)',
+									errorMessage: 'Not a valid Github Workflow File Name',
+								},
+							},
+						],
+					},
+					{
 						displayName: 'By ID',
 						name: 'name',
 						type: 'string',
