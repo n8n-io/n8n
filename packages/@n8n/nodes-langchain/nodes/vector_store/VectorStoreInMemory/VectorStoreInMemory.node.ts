@@ -2,12 +2,12 @@ import type { MemoryVectorStore } from 'langchain/vectorstores/memory';
 import type { INodeProperties } from 'n8n-workflow';
 
 import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
-import { MemoryVectorStoreManager } from '../shared/MemoryVectorStoreManager';
+import { MemoryVectorStoreManager } from '../shared/MemoryManager/MemoryVectorStoreManager';
 
 const insertFields: INodeProperties[] = [
 	{
 		displayName:
-			'The embedded data are stored in the server memory, so they will be lost when the server is restarted. Additionally, if the amount of data is too large, it may cause the server to crash due to insufficient memory.',
+			'<strong>For experimental use only</strong>: Data is stored in memory and will be lost if n8n restarts. Data may also be cleared if available memory gets low. <a href="https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoreinmemory/">More info</a>',
 		name: 'notice',
 		type: 'notice',
 		default: '',
@@ -48,7 +48,7 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 	async getVectorStoreClient(context, _filter, embeddings, itemIndex) {
 		const workflowId = context.getWorkflow().id;
 		const memoryKey = context.getNodeParameter('memoryKey', itemIndex) as string;
-		const vectorStoreSingleton = MemoryVectorStoreManager.getInstance(embeddings);
+		const vectorStoreSingleton = MemoryVectorStoreManager.getInstance(embeddings, context.logger);
 
 		return await vectorStoreSingleton.getVectorStore(`${workflowId}__${memoryKey}`);
 	},
@@ -56,7 +56,7 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 		const memoryKey = context.getNodeParameter('memoryKey', itemIndex) as string;
 		const clearStore = context.getNodeParameter('clearStore', itemIndex) as boolean;
 		const workflowId = context.getWorkflow().id;
-		const vectorStoreInstance = MemoryVectorStoreManager.getInstance(embeddings);
+		const vectorStoreInstance = MemoryVectorStoreManager.getInstance(embeddings, context.logger);
 
 		await vectorStoreInstance.addDocuments(`${workflowId}__${memoryKey}`, documents, clearStore);
 	},

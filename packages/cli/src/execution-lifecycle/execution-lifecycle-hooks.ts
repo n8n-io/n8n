@@ -395,6 +395,8 @@ export function getLifecycleHooksForScalingWorker(
 		hookFunctionsPush(hooks, optionalParameters);
 	}
 
+	Container.get(ModuleRegistry).registerLifecycleHooks(hooks);
+
 	return hooks;
 }
 
