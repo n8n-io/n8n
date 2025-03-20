@@ -11,6 +11,10 @@ import type {
 	WorkflowExecuteMode,
 	SupplyData,
 	AINodeConnectionType,
+	IDataObject,
+	ISupplyDataFunctions,
+	INodeType,
+	INode,
 } from 'n8n-workflow';
 import {
 	NodeConnectionType,
@@ -23,6 +27,50 @@ import { createNodeAsTool } from './create-node-as-tool';
 import type { ExecuteContext, WebhookContext } from '../../node-execution-context';
 // eslint-disable-next-line import/no-cycle
 import { SupplyDataContext } from '../../node-execution-context/supply-data-context';
+
+export function makeHandleToolInvocation(
+	contextFactory: (runIndex: number) => ISupplyDataFunctions,
+	connectedNode: INode,
+	connectedNodeType: INodeType,
+) {
+	let toolRunIndex = 0;
+	return async (toolArgs: IDataObject) => {
+		const runIndex = toolRunIndex++;
+		const context = contextFactory(runIndex);
+		context.addInputData(NodeConnectionType.AiTool, [[{ json: toolArgs }]]);
+
+		try {
+			// Execute the sub-node with the proxied context
+			const result = await connectedNodeType.execute?.call(context as unknown as IExecuteFunctions);
+
+			// Process and map the results
+			const mappedResults = result?.[0]?.flatMap((item) => item.json);
+			let response: string | typeof mappedResults = mappedResults;
+
+			// Warn if any (unusable) binary data was returned
+			if (result?.some((x) => x.some((y) => y.binary))) {
+				if (!mappedResults || mappedResults.flatMap((x) => Object.keys(x ?? {})).length === 0) {
+					response =
+						'Error: The Tool attempted to return binary data, which is not supported in Agents';
+				} else {
+					console.warn(
+						`Response from Tool '${connectedNode.name}' included binary data, which is not supported in Agents. The binary data was omitted from the response.`,
+					);
+				}
+			}
+
+			// Add output data to the context
+			context.addOutputData(NodeConnectionType.AiTool, runIndex, [[{ json: { response } }]]);
+
+			// Return the stringified results
+			return JSON.stringify(response);
+		} catch (error) {
+			const nodeError = new NodeOperationError(connectedNode, error as Error);
+			context.addOutputData(NodeConnectionType.AiTool, runIndex, nodeError);
+			return 'Error during node execution: ' + (nodeError.description ?? nodeError.message);
+		}
+	};
+}
 
 export async function getInputConnectionData(
 	this: ExecuteContext | WebhookContext | SupplyDataContext,
@@ -97,37 +145,14 @@ export async function getInputConnectionData(
 				 * This keeps track of how many times this specific AI tool node has been invoked.
 				 * It is incremented on every invocation of the tool to keep the output of each invocation separate from each other.
 				 */
-				let toolRunIndex = 0;
 				const supplyData = createNodeAsTool({
 					node: connectedNode,
 					nodeType: connectedNodeType,
-					handleToolInvocation: async (toolArgs) => {
-						const runIndex = toolRunIndex++;
-						const context = contextFactory(runIndex, {});
-						context.addInputData(NodeConnectionType.AiTool, [[{ json: toolArgs }]]);
-
-						try {
-							// Execute the sub-node with the proxied context
-							const result = await connectedNodeType.execute?.call(
-								context as unknown as IExecuteFunctions,
-							);
-
-							// Process and map the results
-							const mappedResults = result?.[0]?.flatMap((item) => item.json);
-
-							// Add output data to the context
-							context.addOutputData(NodeConnectionType.AiTool, runIndex, [
-								[{ json: { response: mappedResults } }],
-							]);
-
-							// Return the stringified results
-							return JSON.stringify(mappedResults);
-						} catch (error) {
-							const nodeError = new NodeOperationError(connectedNode, error as Error);
-							context.addOutputData(NodeConnectionType.AiTool, runIndex, nodeError);
-							return 'Error during node execution: ' + nodeError.description;
-						}
-					},
+					handleToolInvocation: makeHandleToolInvocation(
+						(i) => contextFactory(i, {}),
+						connectedNode,
+						connectedNodeType,
+					),
 				});
 				nodes.push(supplyData);
 			} else {
