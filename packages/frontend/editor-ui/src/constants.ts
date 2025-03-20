@@ -430,11 +430,28 @@ export const MODAL_CANCEL = 'cancel';
 export const MODAL_CONFIRM = 'confirm';
 export const MODAL_CLOSE = 'close';
 
-/**
- *	Invalid characters: \/:*?"<>|
- * 	Invalid name: empty or only dots
- */
-export const VALID_FOLDER_NAME_REGEX = /^(?!\.+$)(?!\s+$)[^\\/:*?"<>|]{1,100}$/;
+export const ILLEGAL_FOLDER_CHARACTERS = [
+	'[',
+	']',
+	'^',
+	'\\',
+	'/',
+	':',
+	'*',
+	'?',
+	'"',
+	'<',
+	'>',
+	'|',
+];
+export const FOLDER_NAME_ILLEGAL_CHARACTERS_REGEX = new RegExp(
+	`[${ILLEGAL_FOLDER_CHARACTERS.map((char) => {
+		return char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	}).join('')}]`,
+);
+
+export const FOLDER_NAME_ONLY_DOTS_REGEX = /^\.+$/;
+export const FOLDER_NAME_MAX_LENGTH = 100;
 export const VALID_EMAIL_REGEX =
 	/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 export const VALID_WORKFLOW_IMPORT_URL_REGEX = /^http[s]?:\/\/.*\.json$/i;
