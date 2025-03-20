@@ -148,6 +148,14 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		parentFolderId?: string,
 	): Promise<void> {
 		await workflowsApi.moveFolder(rootStore.restApiContext, projectId, folderId, parentFolderId);
+		// Update the cache after moving the folder
+		delete breadcrumbsCache.value[folderId];
+		if (parentFolderId) {
+			const folder = breadcrumbsCache.value[folderId];
+			if (folder) {
+				folder.parentFolder = parentFolderId;
+			}
+		}
 	}
 
 	async function fetchFolderContent(
