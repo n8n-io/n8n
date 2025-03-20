@@ -24,7 +24,7 @@ export async function createManyWorkflows(
 }
 
 export function newWorkflow(attributes: Partial<IWorkflowDb> = {}): IWorkflowDb {
-	const { active, name, nodes, connections, versionId } = attributes;
+	const { active, name, nodes, connections, versionId, settings } = attributes;
 
 	const workflowEntity = Container.get(WorkflowRepository).create({
 		active: active ?? false,
@@ -41,7 +41,7 @@ export function newWorkflow(attributes: Partial<IWorkflowDb> = {}): IWorkflowDb 
 		],
 		connections: connections ?? {},
 		versionId: versionId ?? uuid(),
-		settings: {},
+		settings: settings ?? {},
 		...attributes,
 	});
 
@@ -119,8 +119,9 @@ export async function shareWorkflowWithProjects(
 }
 
 export async function getWorkflowSharing(workflow: IWorkflowBase) {
-	return await Container.get(SharedWorkflowRepository).findBy({
-		workflowId: workflow.id,
+	return await Container.get(SharedWorkflowRepository).find({
+		where: { workflowId: workflow.id },
+		relations: { project: true },
 	});
 }
 
