@@ -43,14 +43,16 @@ export interface Command {
 	};
 }
 
-export const enum CommandType {
-	ITEM_MOVE = 'item_move',
-	ITEM_ADD = 'item_add',
-	ITEM_UPDATE = 'item_update',
-	ITEM_REORDER = 'item_reorder',
-	ITEM_DELETE = 'item_delete',
-	ITEM_COMPLETE = 'item_complete',
-}
+export const CommandTypes = {
+	ITEM_MOVE: 'item_move',
+	ITEM_ADD: 'item_add',
+	ITEM_UPDATE: 'item_update',
+	ITEM_REORDER: 'item_reorder',
+	ITEM_DELETE: 'item_delete',
+	ITEM_COMPLETE: 'item_complete',
+} as const;
+
+export type CommandType = (typeof CommandTypes)[keyof typeof CommandTypes];
 
 async function getLabelNameFromId(ctx: Context, labelIds: number[]): Promise<string[]> {
 	const labelList = [];
