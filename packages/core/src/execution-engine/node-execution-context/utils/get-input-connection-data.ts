@@ -30,8 +30,8 @@ import { SupplyDataContext } from '../../node-execution-context/supply-data-cont
 
 export function makeHandleToolInvocation(
 	contextFactory: (runIndex: number) => ISupplyDataFunctions,
-	connectedNode: INode,
-	connectedNodeType: INodeType,
+	node: INode,
+	nodeType: INodeType,
 ) {
 	let toolRunIndex = 0;
 	return async (toolArgs: IDataObject) => {
@@ -41,7 +41,7 @@ export function makeHandleToolInvocation(
 
 		try {
 			// Execute the sub-node with the proxied context
-			const result = await connectedNodeType.execute?.call(context as unknown as IExecuteFunctions);
+			const result = await nodeType.execute?.call(context as unknown as IExecuteFunctions);
 
 			// Process and map the results
 			const mappedResults = result?.[0]?.flatMap((item) => item.json);
@@ -54,7 +54,7 @@ export function makeHandleToolInvocation(
 						'Error: The Tool attempted to return binary data, which is not supported in Agents';
 				} else {
 					console.warn(
-						`Response from Tool '${connectedNode.name}' included binary data, which is not supported in Agents. The binary data was omitted from the response.`,
+						`Response from Tool '${node.name}' included binary data, which is not supported in Agents. The binary data was omitted from the response.`,
 					);
 				}
 			}
@@ -65,7 +65,7 @@ export function makeHandleToolInvocation(
 			// Return the stringified results
 			return JSON.stringify(response);
 		} catch (error) {
-			const nodeError = new NodeOperationError(connectedNode, error as Error);
+			const nodeError = new NodeOperationError(node, error as Error);
 			context.addOutputData(NodeConnectionType.AiTool, runIndex, nodeError);
 			return 'Error during node execution: ' + (nodeError.description ?? nodeError.message);
 		}
