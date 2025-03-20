@@ -1138,7 +1138,7 @@ const onWorkflowMoved = async (payload: {
 			(resource): resource is WorkflowListItem => resource.id === payload.workflow.id,
 		);
 		await workflowsStore.updateWorkflow(payload.workflow.id, {
-			parentFolderId: payload.newParent.type === 'project' ? undefined : payload.newParent.id,
+			parentFolderId: payload.newParent.type === 'project' ? '0' : payload.newParent.id,
 			versionId: workflowResource?.versionId,
 		});
 		await fetchWorkflows();
