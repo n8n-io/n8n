@@ -188,7 +188,7 @@ const onFolderSelected = (payload: { id: string; name: string; type: 'folder' | 
 							v-if="projectsStore.currentProject"
 							:current-folder-id="props.activeId"
 							:current-project-id="projectsStore.currentProject?.id"
-							:parent-folder-id="currentFolder?.parentFolder?.id"
+							:parent-folder-id="folderToDelete?.parentFolder"
 							@location:selected="onFolderSelected"
 						/>
 					</div>
