@@ -1,20 +1,16 @@
 import {
-	getCancelSaveChangesButton,
 	getCloseSaveChangesButton,
 	getSaveChangesModal,
 } from '../composables/modals/save-changes-modal';
 import { getHomeButton } from '../composables/projects';
+import { addNodeToCanvas } from '../composables/workflow';
 import {
 	getCreateWorkflowButton,
+	getNewWorkflowCardButton,
 	getWorkflowsPageUrl,
 	visitWorkflowsPage,
 } from '../composables/workflowsPage';
 import { EDIT_FIELDS_SET_NODE_NAME } from '../constants';
-import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
-import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
-
-const WorkflowsPage = new WorkflowsPageClass();
-const WorkflowPage = new WorkflowPageClass();
 
 describe('Workflows', () => {
 	beforeEach(() => {
@@ -22,12 +18,12 @@ describe('Workflows', () => {
 	});
 
 	it('should ask to save unsaved changes before leaving route', () => {
-		WorkflowsPage.getters.newWorkflowButtonCard().should('be.visible');
-		WorkflowsPage.getters.newWorkflowButtonCard().click();
+		getNewWorkflowCardButton().should('be.visible');
+		getNewWorkflowCardButton().click();
 
 		cy.createFixtureWorkflow('Test_workflow_1.json', 'Empty State Card Workflow');
 
-		WorkflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
+		addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
 
 		getHomeButton().click();
 
@@ -38,7 +34,7 @@ describe('Workflows', () => {
 		getCreateWorkflowButton().click();
 
 		cy.createFixtureWorkflow('Test_workflow_1.json', 'Empty State Card Workflow');
-		WorkflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
+		addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
 
 		// Here we go back via browser rather than the home button
 		// As this already updates the route
