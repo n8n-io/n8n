@@ -641,6 +641,7 @@
       "dist/nodes/Microsoft/OneDrive/MicrosoftOneDriveTrigger.node.js",
       "dist/nodes/Microsoft/Outlook/MicrosoftOutlook.node.js",
       "dist/nodes/Microsoft/Outlook/MicrosoftOutlookTrigger.node.js",
+      "dist/nodes/Microsoft/SharePoint/MicrosoftSharePoint.node.js",
       "dist/nodes/Microsoft/Sql/MicrosoftSql.node.js",
       "dist/nodes/Microsoft/Storage/AzureStorage.node.js",
       "dist/nodes/Microsoft/Teams/MicrosoftTeams.node.js",
