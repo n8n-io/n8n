@@ -19,6 +19,7 @@ export const INSIGHTS_UNIT_MAPPING: Record<InsightsSummaryType, string> = {
 export const enum INSIGHT_IMPACT_TYPES {
 	POSITIVE = 'positive',
 	NEGATIVE = 'negative',
+	NEUTRAL = 'neutral',
 }
 
 export const INSIGHTS_UNIT_IMPACT_MAPPING: Record<InsightsSummaryType, INSIGHT_IMPACT_TYPES> = {
@@ -26,5 +27,5 @@ export const INSIGHTS_UNIT_IMPACT_MAPPING: Record<InsightsSummaryType, INSIGHT_I
 	failed: INSIGHT_IMPACT_TYPES.NEGATIVE,
 	failureRate: INSIGHT_IMPACT_TYPES.NEGATIVE, // Higher failureRate is bad → negative (red)
 	timeSaved: INSIGHT_IMPACT_TYPES.POSITIVE, // More time saved is good → positive (green)
-	averageRunTime: INSIGHT_IMPACT_TYPES.NEGATIVE, // Higher avgRunTime is bad → negative (red)
+	averageRunTime: INSIGHT_IMPACT_TYPES.NEUTRAL, // Not good or bad → neutral (grey)
 } as const;

@@ -26,17 +26,17 @@ const summaryTitles = computed<Record<keyof InsightsSummary, string>>(() => ({
 
 const getSign = (n: number) => (n > 0 ? '+' : undefined);
 const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
-	if (value === 0) {
-		return '';
-	}
 	const impact = INSIGHTS_UNIT_IMPACT_MAPPING[id];
+	if (value === 0 || impact === INSIGHT_IMPACT_TYPES.NEUTRAL) {
+		return $style.neutral;
+	}
 	if (impact === INSIGHT_IMPACT_TYPES.POSITIVE) {
 		return value > 0 ? $style.positive : $style.negative;
 	}
 	if (impact === INSIGHT_IMPACT_TYPES.NEGATIVE) {
 		return value < 0 ? $style.positive : $style.negative;
 	}
-	return '';
+	return $style.neutral;
 };
 </script>
 
@@ -73,10 +73,8 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 						>
 						<small :class="getImpactStyle(id, deviation)">
 							<N8nIcon
-								v-if="deviation > 0 || deviation < 0"
 								:class="[$style.icon, getImpactStyle(id, deviation)]"
-								:icon="deviation > 0 ? 'caret-up' : 'caret-down'"
-								color="text-light"
+								:icon="deviation === 0 ? 'caret-right' : deviation > 0 ? 'caret-up' : 'caret-down'"
 							/>
 							{{ getSign(deviation) }}{{ deviation }}
 						</small>
@@ -102,13 +100,19 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 		border-radius: 6px;
 		list-style: none;
 		background-color: var(--color-background-xlight);
+		overflow-x: auto;
 
 		li {
 			display: flex;
-			justify-content: center;
+			justify-content: flex-start;
 			align-items: center;
-			border-right: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+			flex: 1;
+			border-left: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 			padding: 0 var(--spacing-xl) 0 var(--spacing-l);
+
+			&:first-child {
+				border-left: 0;
+			}
 		}
 
 		p {
@@ -134,6 +138,7 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 					small {
 						padding: 0;
 						height: 21px;
+						font-weight: var(--font-weight-bold);
 
 						.icon {
 							height: 20px;
@@ -183,6 +188,14 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 
 .negative {
 	color: var(--color-danger);
+}
+
+.neutral {
+	color: var(--color-text-light);
+
+	.icon {
+		font-size: 23px;
+	}
 }
 
 .icon {
