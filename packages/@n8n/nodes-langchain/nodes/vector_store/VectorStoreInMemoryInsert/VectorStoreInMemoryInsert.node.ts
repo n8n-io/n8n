@@ -11,7 +11,7 @@ import {
 
 import type { N8nJsonLoader } from '@utils/N8nJsonLoader';
 
-import { MemoryVectorStoreManager } from '../shared/MemoryVectorStoreManager';
+import { MemoryVectorStoreManager } from '../shared/MemoryManager/MemoryVectorStoreManager';
 import { processDocuments } from '../shared/processDocuments';
 
 // This node is deprecated. Use VectorStoreInMemory instead.
@@ -103,7 +103,7 @@ export class VectorStoreInMemoryInsert implements INodeType {
 
 		const workflowId = this.getWorkflow().id;
 
-		const vectorStoreInstance = MemoryVectorStoreManager.getInstance(embeddings);
+		const vectorStoreInstance = MemoryVectorStoreManager.getInstance(embeddings, this.logger);
 		await vectorStoreInstance.addDocuments(
 			`${workflowId}__${memoryKey}`,
 			processedDocuments,
