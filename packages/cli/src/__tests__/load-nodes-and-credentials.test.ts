@@ -47,7 +47,7 @@ describe('LoadNodesAndCredentials', () => {
 				description: {
 					displayName: 'Test Node',
 					name: 'testNode',
-					group: ['test'],
+					group: ['input'],
 					description: 'A test node',
 					version: 1,
 					defaults: {},
@@ -187,6 +187,30 @@ describe('LoadNodesAndCredentials', () => {
 				subcategories: {
 					AI: ['Tools'],
 					Tools: ['Other Tools'],
+				},
+				resources: {
+					primaryDocumentation: [{ url: 'https://example.com' }],
+				},
+			});
+		});
+
+		it('should handle nodes with existing codex with tool subcategory overwrite', () => {
+			fullNodeWrapper.description.codex = {
+				categories: ['AI'],
+				subcategories: {
+					AI: ['Tools'],
+					Tools: ['Recommended'],
+				},
+				resources: {
+					primaryDocumentation: [{ url: 'https://example.com' }],
+				},
+			};
+			const result = instance.convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.codex).toEqual({
+				categories: ['AI'],
+				subcategories: {
+					AI: ['Tools'],
+					Tools: ['Recommended'],
 				},
 				resources: {
 					primaryDocumentation: [{ url: 'https://example.com' }],
