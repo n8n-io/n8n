@@ -1096,6 +1096,12 @@ export function getNodeInputs(
 
 	// Calculate the outputs dynamically
 	try {
+		console.log(
+			workflow.expression,
+			nodeTypeData.inputs,
+			workflow.expression.getSimpleParameterValue(node, nodeTypeData.inputs, 'internal', {}),
+		);
+
 		return (workflow.expression.getSimpleParameterValue(
 			node,
 			nodeTypeData.inputs,

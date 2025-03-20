@@ -174,6 +174,8 @@ export function useCanvasMapping({
 						)
 					: [];
 
+			console.log(node.name, acc[node.id]);
+
 			return acc;
 		}, {}),
 	);

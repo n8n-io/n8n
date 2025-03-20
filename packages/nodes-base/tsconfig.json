@@ -11,7 +11,6 @@
 		"module": "esnext",
 		"moduleResolution": "bundler",
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
-		"allowImportingTsExtensions": true,
 		// TODO: remove all options below this line
 		"noImplicitReturns": false,
 		"useUnknownInCatchVariables": false
