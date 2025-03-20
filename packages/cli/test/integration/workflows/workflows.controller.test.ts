@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { DateTime } from 'luxon';
-import type { INode, IPinData, IWorkflowBase } from 'n8n-workflow';
+import { PROJECT_ROOT, type INode, type IPinData, type IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -2045,7 +2045,7 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(updatedWorkflow.meta).toEqual(payload.meta);
 	});
 
-	test('should update workflow parent folder', async () => {
+	test('should move workflow to folder', async () => {
 		const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
 		const folder1 = await createFolder(ownerPersonalProject, { name: 'folder1' });
 
@@ -2065,6 +2065,25 @@ describe('PATCH /workflows/:workflowId', () => {
 		});
 
 		expect(updatedWorkflow.parentFolder?.id).toBe(folder1.id);
+	});
+
+	test('should move workflow to project root', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const payload = {
+			versionId: workflow.versionId,
+			parentFolderId: PROJECT_ROOT,
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const updatedWorkflow = await Container.get(WorkflowRepository).findOneOrFail({
+			where: { id: workflow.id },
+			relations: ['parentFolder'],
+		});
+
+		expect(updatedWorkflow.parentFolder).toBe(null);
 	});
 
 	test('should fail if trying update workflow parent folder with a folder that does not belong to project', async () => {
