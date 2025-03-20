@@ -15,6 +15,7 @@ import {
 } from '@/features/insights/chartjs.utils';
 import { useInsightsStore } from '@/features/insights/insights.store';
 import InsightsSummary from '@/features/insights/InsightsSummary.vue';
+import { useI18n } from '@/composables/useI18n';
 
 const props = defineProps<{
 	insightType: InsightsSummaryType;
@@ -22,6 +23,7 @@ const props = defineProps<{
 
 const route = useRoute();
 const router = useRouter();
+const i18n = useI18n();
 type Filter = { time_span: string };
 const getDefaultFilter = (query: LocationQuery): Filter => {
 	const { time_span } = query as Filter;
@@ -214,8 +216,10 @@ const rows = ref(
 </script>
 
 <template>
-	<div class="insights-view">
-		<N8nHeading bold tag="h2" size="xlarge">Insights</N8nHeading>
+	<div :class="$style.insightsView">
+		<N8nHeading bold tag="h2" size="xlarge">{{
+			i18n.baseText('insights.dashboard.title')
+		}}</N8nHeading>
 		<div style="display: flex; justify-content: space-between">
 			<div style="display: flex; gap: 6px">
 				<N8nSelect
@@ -231,10 +235,6 @@ const rows = ref(
 					</N8nOption>
 				</N8nSelect>
 			</div>
-			<div style="display: flex; gap: 6px">
-				<N8nButton type="tertiary"> Notifications</N8nButton>
-				<N8nButton type="tertiary"> Export </N8nButton>
-			</div>
 		</div>
 
 		<div>
@@ -242,55 +242,39 @@ const rows = ref(
 				:summary="insightsStore.summary.state"
 				:loading="insightsStore.summary.isLoading"
 			/>
-			<div class="content">
+			<div :class="$style.insightsContent">
 				<div style="height: 292px">
 					<template v-if="isLoadingCounts"> loading </template>
 					<template v-else>
-						<div class="legend">
+						<div>
 							<button
 								v-for="(legend, index) in legends"
 								:key="index"
 								type="button"
-								:class="{ strike: legend.hidden }"
+								:class="{ [$style.strike]: legend.hidden }"
 								@click="legend.onClick"
 							>
 								{{ legend.text }}
 							</button>
 						</div>
 						<template v-if="insightType === 'total'">
-							<Bar
-								:data="barChartData"
-								:options="barChartOptions"
-								:plugins="[LegendPlugin]"
-								class="line-chart"
-							/>
+							<Bar :data="barChartData" :options="barChartOptions" :plugins="[LegendPlugin]" />
 						</template>
 						<template v-if="insightType === 'failed'">
-							<Bar
-								:data="barChartData"
-								:options="barChartOptions"
-								:plugins="[LegendPlugin]"
-								class="line-chart"
-							/>
+							<Bar :data="barChartData" :options="barChartOptions" :plugins="[LegendPlugin]" />
 						</template>
 						<template v-if="insightType === 'failureRate'">
-							<Bar
-								:data="barChartData"
-								:options="barChartOptions"
-								:plugins="[LegendPlugin]"
-								class="line-chart"
-							/>
+							<Bar :data="barChartData" :options="barChartOptions" :plugins="[LegendPlugin]" />
 						</template>
 						<template v-if="insightType === 'timeSaved'">
 							<Line
 								:data="lineChartData"
 								:options="lineChartOptions"
-								class="line-chart"
 								:plugins="[Filler, LegendPlugin]"
 							/>
 						</template>
 						<template v-if="insightType === 'averageRunTime'">
-							<div class="callout">
+							<div :class="$style.callout">
 								<N8nIcon icon="lock" size="size"></N8nIcon>
 								<N8nText bold tag="h3" size="large"
 									>Upgrade to Pro or Enterprise to see full data</N8nText
@@ -332,8 +316,8 @@ const rows = ref(
 	</div>
 </template>
 
-<style scoped lang="scss">
-.insights-view {
+<style lang="scss" module>
+.insightsView {
 	padding: var(--spacing-l) var(--spacing-2xl);
 	flex: 1;
 	display: flex;
@@ -341,20 +325,19 @@ const rows = ref(
 	gap: 30px;
 	overflow: auto;
 }
-.content {
+
+.insightsContent {
 	padding: 16px 24px;
 	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 	border-top: 0;
 	border-bottom-left-radius: 6px;
 	border-bottom-right-radius: 6px;
 }
-.summary {
-	border-bottom-right-radius: 0;
-	border-bottom-left-radius: 0;
-}
+
 .strike {
 	text-decoration: line-through;
 }
+
 .callout {
 	display: flex;
 	flex-direction: column;

@@ -3072,5 +3072,6 @@
 	"insights.banner.title.failed": "Failed",
 	"insights.banner.title.failureRate": "Failure rate",
 	"insights.banner.title.timeSaved": "Time saved",
-	"insights.banner.title.averageRunTime": "Avg. run time"
+	"insights.banner.title.averageRunTime": "Avg. run time",
+	"insights.dashboard.title": "Insights"
 }
