@@ -1203,7 +1203,10 @@ const onCreateWorkflowClick = () => {
 			<ProjectHeader @create-folder="createFolderInCurrent" />
 		</template>
 		<template v-if="foldersEnabled" #add-button>
-			<N8nTooltip placement="top" :disabled="readOnlyEnv || !hasPermissionToCreateFolders">
+			<N8nTooltip
+				placement="top"
+				:disabled="!(isOverviewPage || (!readOnlyEnv && hasPermissionToCreateFolders))"
+			>
 				<template #content>
 					<span v-if="isOverviewPage">
 						<span v-if="teamProjectsEnabled">
