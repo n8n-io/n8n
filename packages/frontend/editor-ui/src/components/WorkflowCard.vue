@@ -108,6 +108,13 @@ const cardBreadcrumbs = computed<PathItem[]>(() => {
 				id: props.data.parentFolder.id,
 				name: props.data.parentFolder.name,
 				label: props.data.parentFolder.name,
+				href: router.resolve({
+					name: VIEWS.PROJECTS_FOLDERS,
+					params: {
+						projectId: props.data.homeProject?.id,
+						folderId: props.data.parentFolder.id,
+					},
+				}).href,
 			},
 		];
 	}
@@ -299,6 +306,12 @@ function moveResource() {
 const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
 	emit('workflow:active-toggle', value);
 };
+
+const onBreadcrumbItemClick = async (item: PathItem) => {
+	if (item.href) {
+		await router.push(item.href);
+	}
+};
 </script>
 
 <template>
@@ -348,6 +361,7 @@ const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
 						theme="small"
 						data-test-id="workflow-card-breadcrumbs"
 						@tooltip-opened="fetchHiddenBreadCrumbsItems"
+						@item-selected="onBreadcrumbItemClick"
 					>
 						<template v-if="data.homeProject" #prepend>
 							<div :class="$style['home-project']">
