@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, useCssModule } from 'vue';
+import { smartDecimal } from '@n8n/utils/number/smartDecimal';
 import { useI18n } from '@/composables/useI18n';
 import type { InsightsSummary } from '@n8n/api-types';
 import type { InsightsSummaryDisplay } from '@/features/insights/insights.types';
@@ -69,14 +70,14 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 					</span>
 					<span v-else>
 						<em
-							>{{ value }} <i>{{ unit }}</i></em
+							>{{ smartDecimal(value) }} <i>{{ unit }}</i></em
 						>
 						<small :class="getImpactStyle(id, deviation)">
 							<N8nIcon
 								:class="[$style.icon, getImpactStyle(id, deviation)]"
 								:icon="deviation === 0 ? 'caret-right' : deviation > 0 ? 'caret-up' : 'caret-down'"
 							/>
-							{{ getSign(deviation) }}{{ deviation }}
+							{{ getSign(deviation) }}{{ smartDecimal(deviation) }}
 						</small>
 					</span>
 				</p>
@@ -90,10 +91,10 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 	display: grid;
 	grid-template-rows: auto 1fr;
 	padding: var(--spacing-xs) 0 var(--spacing-2xl);
-	height: 181px;
 
 	ul {
 		display: flex;
+		height: 91px;
 		align-items: stretch;
 		justify-content: flex-start;
 		border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);

@@ -22,8 +22,8 @@ export const fetchInsightsSummary = async (context: IRestApiContext): Promise<In
 				unit: 'ratio',
 			},
 			timeSaved: {
-				value: 54 * 60 * 60,
-				deviation: -5 * 60 * 60,
+				value: 200000,
+				deviation: -18593,
 				unit: 'time',
 			},
 			averageRunTime: {
