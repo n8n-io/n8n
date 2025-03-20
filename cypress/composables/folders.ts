@@ -59,6 +59,10 @@ export function getHomeProjectBreadcrumb() {
 	return getListBreadcrumbs().findChildByTestId('home-project');
 }
 
+export function getListBreadcrumbItem(name: string) {
+	return getListBreadcrumbs().findChildByTestId('breadcrumbs-item').contains(name);
+}
+
 export function getVisibleListBreadcrumbs() {
 	return getListBreadcrumbs().findChildByTestId('breadcrumbs-item');
 }

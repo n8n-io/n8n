@@ -22,6 +22,7 @@ import {
 	getFolderCards,
 	getFolderEmptyState,
 	getHomeProjectBreadcrumb,
+	getListBreadcrumbItem,
 	getListBreadcrumbs,
 	getMainBreadcrumbsEllipsis,
 	getMainBreadcrumbsEllipsisMenuItems,
@@ -366,6 +367,8 @@ describe('Folders', () => {
 			getFolderCard('Move me - I am empty').click();
 			getFolderEmptyState().should('exist');
 			successToast().should('contain.text', 'Move me - I am empty has been moved to Destination 3');
+			// Breadcrumbs should show the destination folder
+			getListBreadcrumbItem('Destination 3').should('exist');
 		});
 
 		it('should move folder with contents to another folder - from folder card action', () => {
@@ -389,6 +392,8 @@ describe('Folders', () => {
 			// Both the workflow and the folder should be there
 			getFolderCards().should('have.length', 1);
 			getWorkflowCards().should('have.length', 1);
+			// Breadcrumbs should show the destination folder
+			getListBreadcrumbItem('Destination 4').should('exist');
 		});
 
 		it('should move empty folder to another folder - from list breadcrumbs', () => {
@@ -419,6 +424,8 @@ describe('Folders', () => {
 			// After navigating to the moved folder, both the workflow and the folder should be there
 			getFolderCards().should('have.length', 1);
 			getWorkflowCards().should('have.length', 1);
+			// Breadcrumbs should show the destination folder
+			getListBreadcrumbItem('Destination 6').should('exist');
 		});
 
 		it('should move folder to project root - from folder card action', () => {
@@ -431,6 +438,11 @@ describe('Folders', () => {
 			// Child folder should be in the root
 			goToPersonalProject();
 			getFolderCard('Move me to root').should('exist');
+			// Navigate to the moved folder and check breadcrumbs
+			getFolderCard('Move me to root').click();
+			getHomeProjectBreadcrumb().should('contain.text', 'Personal');
+			getListBreadcrumbs().findChildByTestId('breadcrumbs-item').should('not.exist');
+			getCurrentBreadcrumb().should('contain.text', 'Move me to root');
 		});
 
 		it('should move workflow from project root to folder', () => {
