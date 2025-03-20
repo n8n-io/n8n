@@ -363,6 +363,10 @@ export interface FolderListItem extends BaseFolderItem {
 	resource: 'folder';
 }
 
+export interface ChangeLocationSearchResult extends BaseFolderItem {
+	resource: 'folder' | 'project';
+}
+
 export type FolderPathItem = PathItem & { parentFolder?: string };
 
 export type WorkflowListResource = WorkflowListItem | FolderListItem;

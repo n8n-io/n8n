@@ -1060,19 +1060,22 @@ const deleteFolder = async (folderId: string, workflowCount: number, subFolderCo
 
 const moveFolder = async (payload: {
 	folder: { id: string; name: string };
-	newParent: { id: string; name: string };
+	newParent: { id: string; name: string; type: 'folder' | 'project' };
 }) => {
 	if (!route.params.projectId) return;
 	try {
 		await foldersStore.moveFolder(
 			route.params.projectId as string,
 			payload.folder.id,
-			payload.newParent.id,
+			payload.newParent.type === 'project' ? '0' : payload.newParent.id,
 		);
 		const isCurrentFolder = currentFolderId.value === payload.folder.id;
 		const newFolderURL = router.resolve({
 			name: VIEWS.PROJECTS_FOLDERS,
-			params: { projectId: route.params.projectId, folderId: payload.newParent.id },
+			params: {
+				projectId: route.params.projectId,
+				folderId: payload.newParent.type === 'project' ? undefined : payload.newParent.id,
+			},
 		}).href;
 		if (isCurrentFolder) {
 			// If we just moved the current folder, automatically navigate to the new folder
@@ -1113,19 +1116,22 @@ const moveWorkflowToFolder = async (payload: {
 
 const onWorkflowMoved = async (payload: {
 	workflow: { id: string; name: string; oldParentId: string };
-	newParent: { id: string; name: string };
+	newParent: { id: string; name: string; type: 'folder' | 'project' };
 }) => {
 	if (!route.params.projectId) return;
 	try {
 		const newFolderURL = router.resolve({
 			name: VIEWS.PROJECTS_FOLDERS,
-			params: { projectId: route.params.projectId, folderId: payload.newParent.id },
+			params: {
+				projectId: route.params.projectId,
+				folderId: payload.newParent.type === 'project' ? undefined : payload.newParent.id,
+			},
 		}).href;
 		const workflowResource = workflowsAndFolders.value.find(
 			(resource): resource is WorkflowListItem => resource.id === payload.workflow.id,
 		);
 		await workflowsStore.updateWorkflow(payload.workflow.id, {
-			parentFolderId: payload.newParent.id,
+			parentFolderId: payload.newParent.type === 'project' ? undefined : payload.newParent.id,
 			versionId: workflowResource?.versionId,
 		});
 		await fetchWorkflows();
@@ -1190,7 +1196,7 @@ const onCreateWorkflowClick = () => {
 			<ProjectHeader @create-folder="createFolderInCurrent" />
 		</template>
 		<template v-if="foldersEnabled" #add-button>
-			<N8nTooltip placement="top">
+			<N8nTooltip placement="top" :disabled="readOnlyEnv || !hasPermissionToCreateFolders">
 				<template #content>
 					<span v-if="isOverviewPage">
 						<span v-if="teamProjectsEnabled">

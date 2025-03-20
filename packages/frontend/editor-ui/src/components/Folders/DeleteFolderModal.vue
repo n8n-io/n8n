@@ -33,7 +33,7 @@ const projectsStore = useProjectsStore();
 const loading = ref(false);
 const operation = ref('');
 const deleteConfirmText = ref('');
-const selectedFolder = ref<{ id: string; name: string } | null>(null);
+const selectedFolder = ref<{ id: string; name: string; type: 'folder' | 'project' } | null>(null);
 const projectFolders = ref<FolderListItem[]>([]);
 
 const currentFolder = computed(() => {
@@ -111,11 +111,10 @@ async function onSubmit() {
 	try {
 		loading.value = true;
 
-		await foldersStore.deleteFolder(
-			route.params.projectId as string,
-			props.activeId,
-			selectedFolder.value?.id ?? undefined,
-		);
+		const newParentId =
+			selectedFolder.value?.type === 'project' ? '0' : (selectedFolder.value?.id ?? undefined);
+
+		await foldersStore.deleteFolder(route.params.projectId as string, props.activeId, newParentId);
 
 		let message = '';
 		if (selectedFolder.value) {
@@ -141,7 +140,7 @@ async function onSubmit() {
 	}
 }
 
-const onFolderSelected = (payload: { id: string; name: string }) => {
+const onFolderSelected = (payload: { id: string; name: string; type: 'folder' | 'project' }) => {
 	selectedFolder.value = payload;
 };
 </script>
@@ -190,7 +189,7 @@ const onFolderSelected = (payload: { id: string; name: string }) => {
 							:current-folder-id="props.activeId"
 							:current-project-id="projectsStore.currentProject?.id"
 							:parent-folder-id="currentFolder?.parentFolder?.id"
-							@folder:selected="onFolderSelected"
+							@location:selected="onFolderSelected"
 						/>
 					</div>
 					<el-radio

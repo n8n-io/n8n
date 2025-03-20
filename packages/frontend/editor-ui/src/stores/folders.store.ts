@@ -1,8 +1,8 @@
 import { defineStore } from 'pinia';
 import { STORES } from '@/constants';
 import type {
+	ChangeLocationSearchResult,
 	FolderCreateResponse,
-	FolderListItem,
 	FolderShortInfo,
 	FolderTreeResponseItem,
 } from '@/Interface';
@@ -121,7 +121,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		filter?: {
 			name?: string;
 		},
-	): Promise<FolderListItem[]> {
+	): Promise<ChangeLocationSearchResult[]> {
 		const folders = await workflowsApi.getProjectFolders(
 			rootStore.restApiContext,
 			projectId,
