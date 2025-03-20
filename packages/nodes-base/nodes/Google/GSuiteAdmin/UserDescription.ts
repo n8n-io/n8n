@@ -72,11 +72,11 @@ export const userFields: INodeProperties[] = [
 			mode: 'list',
 			value: '',
 		},
-		description: 'Select the user you want to add to the group',
+		description: 'Select the user to perform the operation on',
 		displayOptions: {
 			show: {
 				resource: ['user'],
-				operation: ['addToGroup'],
+				operation: ['addToGroup', 'delete', 'get', 'removeFromGroup', 'update'],
 			},
 		},
 		modes: [
@@ -122,11 +122,11 @@ export const userFields: INodeProperties[] = [
 			mode: 'list',
 			value: '',
 		},
-		description: 'Select the group you want to add the user to',
+		description: 'Select the group to perform the operation on',
 		displayOptions: {
 			show: {
 				resource: ['user'],
-				operation: ['addToGroup'],
+				operation: ['addToGroup', 'removeFromGroup'],
 			},
 		},
 		modes: [
@@ -540,111 +540,8 @@ export const userFields: INodeProperties[] = [
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 user:delete                                */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'User',
-		name: 'userId',
-		default: {
-			mode: 'list',
-			value: '',
-		},
-		displayOptions: {
-			show: {
-				operation: ['delete'],
-				resource: ['user'],
-			},
-		},
-		description: 'Select the user you want to delete',
-		modes: [
-			{
-				displayName: 'From list',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchUsers',
-				},
-			},
-			{
-				displayName: 'By Email',
-				name: 'userEmail',
-				type: 'string',
-				hint: 'Enter the user email',
-				placeholder: 'e.g. sales@example.com',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
-							errorMessage: 'Please enter a valid email address.',
-						},
-					},
-				],
-			},
-			{
-				displayName: 'By ID',
-				name: 'userId',
-				type: 'string',
-				hint: 'Enter the user id',
-				placeholder: 'e.g. 123456789879230471055',
-			},
-		],
-		required: true,
-		type: 'resourceLocator',
-	},
-	/* -------------------------------------------------------------------------- */
 	/*                                 user:get                                   */
 	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'User',
-		name: 'userId',
-		type: 'resourceLocator',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['get'],
-				resource: ['user'],
-			},
-		},
-		default: {
-			mode: 'list',
-			value: '',
-		},
-		description: 'Select the user you want to retrieve',
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchUsers',
-				},
-			},
-			{
-				displayName: 'By Email',
-				name: 'userEmail',
-				type: 'string',
-				hint: 'Enter the user email',
-				placeholder: 'e.g. sales@example.com',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
-							errorMessage: 'Please enter a valid email address.',
-						},
-					},
-				],
-			},
-			{
-				displayName: 'By ID',
-				name: 'groupId',
-				type: 'string',
-				hint: 'Enter the user id',
-				placeholder: 'e.g. 0123kx3o1habcdf',
-			},
-		],
-	},
 	{
 		displayName: 'Output',
 		name: 'output',
@@ -994,145 +891,8 @@ export const userFields: INodeProperties[] = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                 user:removeFromGroup                                */
-	/* -------------------------------------------------------------------------- */
-
-	{
-		displayName: 'User',
-		name: 'userId',
-		required: true,
-		type: 'resourceLocator',
-		default: {
-			mode: 'list',
-			value: '',
-		},
-		description: 'Select the user you want to remove from the group',
-		displayOptions: {
-			show: {
-				resource: ['user'],
-				operation: ['removeFromGroup'],
-			},
-		},
-		modes: [
-			{
-				displayName: 'From list',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchUsers',
-				},
-			},
-			{
-				displayName: 'By Email',
-				name: 'userEmail',
-				type: 'string',
-				hint: 'Enter the user email',
-				placeholder: 'e.g. sales@example.com',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
-							errorMessage: 'Please enter a valid email address.',
-						},
-					},
-				],
-			},
-			{
-				displayName: 'By ID',
-				name: 'userId',
-				type: 'string',
-				hint: 'Enter the user id',
-				placeholder: 'e.g. 123456789879230471055',
-			},
-		],
-	},
-	{
-		displayName: 'Group',
-		name: 'groupId',
-		required: true,
-		type: 'resourceLocator',
-		default: {
-			mode: 'list',
-			value: '',
-		},
-		description: 'Select the group you want to remove the user from',
-		displayOptions: {
-			show: {
-				resource: ['user'],
-				operation: ['removeFromGroup'],
-			},
-		},
-		modes: [
-			{
-				displayName: 'From list',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchGroups',
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'groupId',
-				type: 'string',
-				placeholder: 'e.g. 0123kx3o1habcdf',
-			},
-		],
-	},
-	/* -------------------------------------------------------------------------- */
 	/*                                 user:update                                */
 	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'User',
-		name: 'userId',
-		type: 'resourceLocator',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['update'],
-				resource: ['user'],
-			},
-		},
-		default: {
-			mode: 'list',
-			value: '',
-		},
-		modes: [
-			{
-				displayName: 'From list',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchUsers',
-				},
-			},
-			{
-				displayName: 'By Email',
-				name: 'userEmail',
-				type: 'string',
-				hint: 'Enter the user email',
-				placeholder: 'e.g. sales@example.com',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
-							errorMessage: 'Please enter a valid email address.',
-						},
-					},
-				],
-			},
-			{
-				displayName: 'By ID',
-				name: 'userId',
-				type: 'string',
-				hint: 'Enter the user id',
-				placeholder: 'e.g. 123456789879230471055',
-			},
-		],
-		description: 'Select the user you want to update',
-	},
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',

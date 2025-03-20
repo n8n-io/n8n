@@ -115,10 +115,10 @@ export const groupFields: INodeProperties[] = [
 			mode: 'list',
 			value: '',
 		},
-		description: 'Select the group you want to delete',
+		description: 'Select the group to perform the operation on',
 		displayOptions: {
 			show: {
-				operation: ['delete'],
+				operation: ['delete', 'get', 'update'],
 				resource: ['group'],
 			},
 		},
@@ -140,42 +140,6 @@ export const groupFields: INodeProperties[] = [
 		],
 		required: true,
 		type: 'resourceLocator',
-	},
-	/* -------------------------------------------------------------------------- */
-	/*                                 group:get                                  */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Group',
-		name: 'groupId',
-		type: 'resourceLocator',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['get'],
-				resource: ['group'],
-			},
-		},
-		default: {
-			mode: 'list',
-			value: '',
-		},
-		description: 'Select the group you want to retrieve',
-		modes: [
-			{
-				displayName: 'From list',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchGroups',
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'groupId',
-				type: 'string',
-				placeholder: 'e.g. 0123kx3o1habcdf',
-			},
-		],
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 group:getAll                               */
@@ -311,39 +275,6 @@ export const groupFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 group:update                               */
 	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Group',
-		name: 'groupId',
-		displayOptions: {
-			show: {
-				operation: ['update'],
-				resource: ['group'],
-			},
-		},
-		default: {
-			mode: 'list',
-			value: '',
-		},
-		description: 'Select the group you want to update',
-		modes: [
-			{
-				displayName: 'From list',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchGroups',
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'groupId',
-				type: 'string',
-				placeholder: 'e.g. 0123kx3o1habcdf',
-			},
-		],
-		required: true,
-		type: 'resourceLocator',
-	},
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
