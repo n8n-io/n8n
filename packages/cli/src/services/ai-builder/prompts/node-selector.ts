@@ -29,6 +29,7 @@ For each workflow step, provide:
 1. 1-3 recommended nodes in order of preference
 2. Concise reasoning for why each node is suitable
 3. Use EXACT, FULL node names from <node_name> tags
+4. Pay attention to case sensitivity, e.g. "n8n-nodes-base.msql" is NOT "n8n-nodes-base.mySql"!
 
 ## Output Format
 Return ONLY a structured JSON response:

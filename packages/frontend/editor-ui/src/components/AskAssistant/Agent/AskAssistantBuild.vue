@@ -4,7 +4,7 @@ import { useDebounce } from '@/composables/useDebounce';
 import { useUsersStore } from '@/stores/users.store';
 import { computed } from 'vue';
 import SlideTransition from '@/components/transitions/SlideTransition.vue';
-import AskAssistantChat from 'n8n-design-system/components/AskAssistantChat/AskAssistantChat.vue';
+import AskAssistantChat from '@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 
 const assistantStore = useAssistantStore();

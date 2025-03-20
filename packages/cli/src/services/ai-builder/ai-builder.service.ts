@@ -3,7 +3,7 @@ import { HumanMessage, ToolMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import { StateGraph, END, START } from '@langchain/langgraph';
 import { Service } from '@n8n/di';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { ApplicationError, jsonParse, OperationalError } from 'n8n-workflow';
 import type { IUser, INodeTypeDescription, INode } from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';
@@ -104,12 +104,8 @@ export class AiBuilderService {
 		) => {
 			const getNodeMessage = (node: INodeTypeDescription) => {
 				return `
-					<node_name>
-						${node.name}
-					</node_name>
-					<node_description>
-						${node.description}
-					</node_description>
+					<node_name>${node.name}</node_name>
+					<node_description>${node.description}</node_description>
 				`;
 			};
 			const message = `
@@ -117,10 +113,10 @@ export class AiBuilderService {
 					${state.prompt}
 				</user_request>
 				<steps>
-					${state.steps.join(', ')}
+					${state.steps.join('\n')}
 				</steps>
 				<allowed_n8n_nodes>
-					${this.parsedNodeTypes.map(getNodeMessage).join('\n\n')}
+					${this.parsedNodeTypes.map(getNodeMessage).join('')}
 				</allowed_n8n_nodes>
 			`;
 			const result = await nodeSelectionAgent.invoke(

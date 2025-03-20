@@ -3,8 +3,8 @@ import { useI18n } from '@/composables/useI18n';
 import { useStyles } from '@/composables/useStyles';
 import { useAssistantStore } from '@/stores/assistant.store';
 import { useCanvasStore } from '@/stores/canvas.store';
-import AssistantAvatar from 'n8n-design-system/components/AskAssistantAvatar/AssistantAvatar.vue';
-import AskAssistantButton from 'n8n-design-system/components/AskAssistantButton/AskAssistantButton.vue';
+import AssistantAvatar from '@n8n/design-system/components/AskAssistantAvatar/AssistantAvatar.vue';
+import AskAssistantButton from '@n8n/design-system/components/AskAssistantButton/AskAssistantButton.vue';
 import { computed } from 'vue';
 
 const assistantStore = useAssistantStore();
