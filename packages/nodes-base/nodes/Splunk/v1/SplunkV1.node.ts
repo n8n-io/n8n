@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	INodeTypeBaseDescription,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import {
 	firedAlertOperations,
@@ -45,8 +45,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Splunk',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{
 			name: 'splunkApi',

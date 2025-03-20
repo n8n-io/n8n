@@ -1,6 +1,6 @@
 import basicAuth from 'basic-auth';
 import jwt from 'jsonwebtoken';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	IWebhookFunctions,
 	INodeExecutionData,
@@ -65,14 +65,14 @@ export const configuredOutputs = (parameters: WebhookParameters) => {
 	if (!Array.isArray(httpMethod))
 		return [
 			{
-				type: `${NodeConnectionType.Main}`,
+				type: `${NodeConnectionTypes.Main}`,
 				displayName: httpMethod,
 			},
 		];
 
 	const outputs = httpMethod.map((method) => {
 		return {
-			type: `${NodeConnectionType.Main}`,
+			type: `${NodeConnectionTypes.Main}`,
 			displayName: method,
 		};
 	});

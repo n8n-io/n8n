@@ -10,7 +10,7 @@ import {
 	type INodeTypeDescription,
 	type IWebhookResponseData,
 	type IBinaryKeyData,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { downloadFile, getChannelInfo, getUserInfo } from './SlackTriggerHelpers';
@@ -29,7 +29,7 @@ export class SlackTrigger implements INodeType {
 			name: 'Slack Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		webhooks: [
 			{
 				name: 'default',

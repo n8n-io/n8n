@@ -1,4 +1,4 @@
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	INodeInputConfiguration,
 	INodeInputFilter,
@@ -7,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	INodeProperties,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import { promptTypeOptions, textFromPreviousNode, textInput } from '@utils/descriptions';
@@ -46,14 +47,14 @@ function getInputs(
 		inputs: SpecialInput[],
 	): Array<NodeConnectionType | INodeInputConfiguration> => {
 		const displayNames: { [key: string]: string } = {
-			[NodeConnectionType.AiLanguageModel]: 'Model',
-			[NodeConnectionType.AiMemory]: 'Memory',
-			[NodeConnectionType.AiTool]: 'Tool',
-			[NodeConnectionType.AiOutputParser]: 'Output Parser',
+			[NodeConnectionTypes.AiLanguageModel]: 'Model',
+			[NodeConnectionTypes.AiMemory]: 'Memory',
+			[NodeConnectionTypes.AiTool]: 'Tool',
+			[NodeConnectionTypes.AiOutputParser]: 'Output Parser',
 		};
 
 		return inputs.map(({ type, filter }) => {
-			const isModelType = type === NodeConnectionType.AiLanguageModel;
+			const isModelType = type === NodeConnectionTypes.AiLanguageModel;
 			let displayName = type in displayNames ? displayNames[type] : undefined;
 			if (
 				isModelType &&
@@ -65,11 +66,13 @@ function getInputs(
 				type,
 				displayName,
 				required: isModelType,
-				maxConnections: [
-					NodeConnectionType.AiLanguageModel,
-					NodeConnectionType.AiMemory,
-					NodeConnectionType.AiOutputParser,
-				].includes(type as NodeConnectionType)
+				maxConnections: (
+					[
+						NodeConnectionTypes.AiLanguageModel,
+						NodeConnectionTypes.AiMemory,
+						NodeConnectionTypes.AiOutputParser,
+					] as NodeConnectionType[]
+				).includes(type)
 					? 1
 					: undefined,
 			};
@@ -87,7 +90,7 @@ function getInputs(
 	if (agent === 'conversationalAgent') {
 		specialInputs = [
 			{
-				type: NodeConnectionType.AiLanguageModel,
+				type: NodeConnectionTypes.AiLanguageModel,
 				filter: {
 					nodes: [
 						'@n8n/n8n-nodes-langchain.lmChatAnthropic',
@@ -105,19 +108,19 @@ function getInputs(
 				},
 			},
 			{
-				type: NodeConnectionType.AiMemory,
+				type: NodeConnectionTypes.AiMemory,
 			},
 			{
-				type: NodeConnectionType.AiTool,
+				type: NodeConnectionTypes.AiTool,
 			},
 			{
-				type: NodeConnectionType.AiOutputParser,
+				type: NodeConnectionTypes.AiOutputParser,
 			},
 		];
 	} else if (agent === 'toolsAgent') {
 		specialInputs = [
 			{
-				type: NodeConnectionType.AiLanguageModel,
+				type: NodeConnectionTypes.AiLanguageModel,
 				filter: {
 					nodes: [
 						'@n8n/n8n-nodes-langchain.lmChatAnthropic',
@@ -135,20 +138,20 @@ function getInputs(
 				},
 			},
 			{
-				type: NodeConnectionType.AiMemory,
+				type: NodeConnectionTypes.AiMemory,
 			},
 			{
-				type: NodeConnectionType.AiTool,
+				type: NodeConnectionTypes.AiTool,
 				required: true,
 			},
 			{
-				type: NodeConnectionType.AiOutputParser,
+				type: NodeConnectionTypes.AiOutputParser,
 			},
 		];
 	} else if (agent === 'openAiFunctionsAgent') {
 		specialInputs = [
 			{
-				type: NodeConnectionType.AiLanguageModel,
+				type: NodeConnectionTypes.AiLanguageModel,
 				filter: {
 					nodes: [
 						'@n8n/n8n-nodes-langchain.lmChatOpenAi',
@@ -157,57 +160,57 @@ function getInputs(
 				},
 			},
 			{
-				type: NodeConnectionType.AiMemory,
+				type: NodeConnectionTypes.AiMemory,
 			},
 			{
-				type: NodeConnectionType.AiTool,
+				type: NodeConnectionTypes.AiTool,
 				required: true,
 			},
 			{
-				type: NodeConnectionType.AiOutputParser,
+				type: NodeConnectionTypes.AiOutputParser,
 			},
 		];
 	} else if (agent === 'reActAgent') {
 		specialInputs = [
 			{
-				type: NodeConnectionType.AiLanguageModel,
+				type: NodeConnectionTypes.AiLanguageModel,
 			},
 			{
-				type: NodeConnectionType.AiTool,
+				type: NodeConnectionTypes.AiTool,
 			},
 			{
-				type: NodeConnectionType.AiOutputParser,
+				type: NodeConnectionTypes.AiOutputParser,
 			},
 		];
 	} else if (agent === 'sqlAgent') {
 		specialInputs = [
 			{
-				type: NodeConnectionType.AiLanguageModel,
+				type: NodeConnectionTypes.AiLanguageModel,
 			},
 			{
-				type: NodeConnectionType.AiMemory,
+				type: NodeConnectionTypes.AiMemory,
 			},
 		];
 	} else if (agent === 'planAndExecuteAgent') {
 		specialInputs = [
 			{
-				type: NodeConnectionType.AiLanguageModel,
+				type: NodeConnectionTypes.AiLanguageModel,
 			},
 			{
-				type: NodeConnectionType.AiTool,
+				type: NodeConnectionTypes.AiTool,
 			},
 			{
-				type: NodeConnectionType.AiOutputParser,
+				type: NodeConnectionTypes.AiOutputParser,
 			},
 		];
 	}
 
 	if (hasOutputParser === false) {
 		specialInputs = specialInputs.filter(
-			(input) => input.type !== NodeConnectionType.AiOutputParser,
+			(input) => input.type !== NodeConnectionTypes.AiOutputParser,
 		);
 	}
-	return [NodeConnectionType.Main, ...getInputData(specialInputs)];
+	return [NodeConnectionTypes.Main, ...getInputData(specialInputs)];
 }
 
 const agentTypeProperty: INodeProperties = {
@@ -292,7 +295,7 @@ export class Agent implements INodeType {
 				return getInputs(agent, hasOutputParser)
 			})($parameter.agent, $parameter.hasOutputParser === undefined || $parameter.hasOutputParser === true)
 		}}`,
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
@@ -432,7 +435,7 @@ export class Agent implements INodeType {
 				},
 			},
 			{
-				displayName: `Connect an <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${NodeConnectionType.AiOutputParser}'>output parser</a> on the canvas to specify the output format you require`,
+				displayName: `Connect an <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${NodeConnectionTypes.AiOutputParser}'>output parser</a> on the canvas to specify the output format you require`,
 				name: 'notice',
 				type: 'notice',
 				default: '',

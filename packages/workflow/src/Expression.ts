@@ -348,6 +348,9 @@ export class Expression {
 			[Function, AsyncFunction].forEach(({ prototype }) =>
 				Object.defineProperty(prototype, 'constructor', { value: fnConstructors.mock }),
 			);
+
+			console.log({ expression, data });
+
 			return evaluateExpression(expression, data);
 		} catch (error) {
 			if (isExpressionError(error)) throw error;

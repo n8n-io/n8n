@@ -16,7 +16,7 @@ import {
 	type Workflow,
 	parseErrorMetadata,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
+import { NodeConnectionType, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
 
 import type {
@@ -164,7 +164,7 @@ const emit = defineEmits<{
 	];
 }>();
 
-const connectionType = ref<NodeConnectionType>(NodeConnectionType.Main);
+const connectionType = ref<NodeConnectionType>(NodeConnectionTypes.Main);
 const dataSize = ref(0);
 const showData = ref(false);
 const userEnabledShowData = ref(false);
@@ -1082,7 +1082,7 @@ function getRunLabel(option: number) {
 function getRawInputData(
 	runIndex: number,
 	outputIndex: number,
-	connectionType: NodeConnectionType = NodeConnectionType.Main,
+	connectionType: NodeConnectionType = NodeConnectionTypes.Main,
 ): INodeExecutionData[] {
 	let inputData: INodeExecutionData[] = [];
 
@@ -1130,7 +1130,7 @@ function getFilteredData(data: INodeExecutionData[]): INodeExecutionData[] {
 function getDataCount(
 	runIndex: number,
 	outputIndex: number,
-	connectionType: NodeConnectionType = NodeConnectionType.Main,
+	connectionType: NodeConnectionType = NodeConnectionTypes.Main,
 ) {
 	if (!node.value) {
 		return 0;
@@ -1165,7 +1165,7 @@ function init() {
 		const outputs = getResolvedNodeOutputs();
 		outputTypes = NodeHelpers.getConnectionTypes(outputs);
 	}
-	connectionType.value = outputTypes.length === 0 ? NodeConnectionType.Main : outputTypes[0];
+	connectionType.value = outputTypes.length === 0 ? NodeConnectionTypes.Main : outputTypes[0];
 	if (binaryData.value.length > 0) {
 		ndvStore.setPanelDisplayMode({
 			pane: props.paneType,

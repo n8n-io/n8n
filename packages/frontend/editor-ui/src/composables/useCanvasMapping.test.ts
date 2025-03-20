@@ -1,6 +1,6 @@
 import type { Ref } from 'vue';
 import { ref } from 'vue';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import type { Workflow, INode, NodeApiError } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 
@@ -213,8 +213,8 @@ describe('useCanvasMapping', () => {
 			const nodes = [manualTriggerNode, setNode];
 			const connections = {
 				[manualTriggerNode.name]: {
-					[NodeConnectionType.Main]: [
-						[{ node: setNode.name, type: NodeConnectionType.Main, index: 0 }],
+					[NodeConnectionTypes.Main]: [
+						[{ node: setNode.name, type: NodeConnectionTypes.Main, index: 0 }],
 					],
 				},
 			};
@@ -230,31 +230,31 @@ describe('useCanvasMapping', () => {
 			});
 
 			expect(mappedNodes.value[0]?.data?.connections[CanvasConnectionMode.Output]).toHaveProperty(
-				NodeConnectionType.Main,
+				NodeConnectionTypes.Main,
 			);
 			expect(
 				mappedNodes.value[0]?.data?.connections[CanvasConnectionMode.Output][
-					NodeConnectionType.Main
+					NodeConnectionTypes.Main
 				][0]?.[0],
 			).toEqual(
 				expect.objectContaining({
 					node: setNode.name,
-					type: NodeConnectionType.Main,
+					type: NodeConnectionTypes.Main,
 					index: 0,
 				}),
 			);
 
 			expect(mappedNodes.value[1]?.data?.connections[CanvasConnectionMode.Input]).toHaveProperty(
-				NodeConnectionType.Main,
+				NodeConnectionTypes.Main,
 			);
 			expect(
 				mappedNodes.value[1]?.data?.connections[CanvasConnectionMode.Input][
-					NodeConnectionType.Main
+					NodeConnectionTypes.Main
 				][0]?.[0],
 			).toEqual(
 				expect.objectContaining({
 					node: manualTriggerNode.name,
-					type: NodeConnectionType.Main,
+					type: NodeConnectionTypes.Main,
 					index: 0,
 				}),
 			);
@@ -390,7 +390,7 @@ describe('useCanvasMapping', () => {
 							executionTime: 0,
 							source: [],
 							data: {
-								[NodeConnectionType.Main]: [[{ json: {} }, { json: {} }]],
+								[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }]],
 							},
 						},
 					]);
@@ -403,7 +403,7 @@ describe('useCanvasMapping', () => {
 
 					expect(nodeExecutionRunDataOutputMapById.value).toEqual({
 						[nodes[0].id]: {
-							[NodeConnectionType.Main]: {
+							[NodeConnectionTypes.Main]: {
 								0: {
 									iterations: 1,
 									total: 2,
@@ -433,8 +433,8 @@ describe('useCanvasMapping', () => {
 									executionTime: 0,
 									source: [],
 									data: {
-										[NodeConnectionType.Main]: [[{ json: {} }]],
-										[NodeConnectionType.AiAgent]: [[{ json: {} }, { json: {} }]],
+										[NodeConnectionTypes.Main]: [[{ json: {} }]],
+										[NodeConnectionTypes.AiAgent]: [[{ json: {} }, { json: {} }]],
 									},
 								},
 							];
@@ -445,7 +445,7 @@ describe('useCanvasMapping', () => {
 									executionTime: 0,
 									source: [],
 									data: {
-										[NodeConnectionType.Main]: [[{ json: {} }, { json: {} }, { json: {} }]],
+										[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }, { json: {} }]],
 									},
 								},
 							];
@@ -462,13 +462,13 @@ describe('useCanvasMapping', () => {
 
 					expect(nodeExecutionRunDataOutputMapById.value).toEqual({
 						node1: {
-							[NodeConnectionType.Main]: {
+							[NodeConnectionTypes.Main]: {
 								0: {
 									iterations: 1,
 									total: 1,
 								},
 							},
-							[NodeConnectionType.AiAgent]: {
+							[NodeConnectionTypes.AiAgent]: {
 								0: {
 									iterations: 1,
 									total: 2,
@@ -476,7 +476,7 @@ describe('useCanvasMapping', () => {
 							},
 						},
 						node2: {
-							[NodeConnectionType.Main]: {
+							[NodeConnectionTypes.Main]: {
 								0: {
 									iterations: 1,
 									total: 3,
@@ -501,7 +501,7 @@ describe('useCanvasMapping', () => {
 							executionTime: 0,
 							source: [],
 							data: {
-								[NodeConnectionType.Main]: [[{ json: {} }]],
+								[NodeConnectionTypes.Main]: [[{ json: {} }]],
 							},
 						},
 						{
@@ -509,7 +509,7 @@ describe('useCanvasMapping', () => {
 							executionTime: 0,
 							source: [],
 							data: {
-								[NodeConnectionType.Main]: [[{ json: {} }, { json: {} }, { json: {} }]],
+								[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }, { json: {} }]],
 							},
 						},
 						{
@@ -517,7 +517,7 @@ describe('useCanvasMapping', () => {
 							executionTime: 0,
 							source: [],
 							data: {
-								[NodeConnectionType.Main]: [[{ json: {} }, { json: {} }]],
+								[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }]],
 							},
 						},
 					]);
@@ -530,7 +530,7 @@ describe('useCanvasMapping', () => {
 
 					expect(nodeExecutionRunDataOutputMapById.value).toEqual({
 						[nodes[0].id]: {
-							[NodeConnectionType.Main]: {
+							[NodeConnectionTypes.Main]: {
 								0: {
 									iterations: 3,
 									total: 6,
@@ -1120,8 +1120,8 @@ describe('useCanvasMapping', () => {
 			const nodes = [manualTriggerNode, setNode];
 			const connections = {
 				[manualTriggerNode.name]: {
-					[NodeConnectionType.Main]: [
-						[{ node: setNode.name, type: NodeConnectionType.Main, index: 0 }],
+					[NodeConnectionTypes.Main]: [
+						[{ node: setNode.name, type: NodeConnectionTypes.Main, index: 0 }],
 					],
 				},
 			};
@@ -1138,13 +1138,13 @@ describe('useCanvasMapping', () => {
 
 			const source = manualTriggerNode.id;
 			const sourceHandle = createCanvasConnectionHandleString({
-				type: NodeConnectionType.Main,
+				type: NodeConnectionTypes.Main,
 				index: 0,
 				mode: CanvasConnectionMode.Output,
 			});
 			const target = setNode.id;
 			const targetHandle = createCanvasConnectionHandleString({
-				type: NodeConnectionType.Main,
+				type: NodeConnectionTypes.Main,
 				index: 0,
 				mode: CanvasConnectionMode.Input,
 			});
@@ -1161,13 +1161,13 @@ describe('useCanvasMapping', () => {
 						source: {
 							node: manualTriggerNode.name,
 							index: 0,
-							type: NodeConnectionType.Main,
+							type: NodeConnectionTypes.Main,
 						},
 						status: undefined,
 						target: {
 							node: setNode.name,
 							index: 0,
-							type: NodeConnectionType.Main,
+							type: NodeConnectionTypes.Main,
 						},
 					},
 					id: connectionId,
@@ -1187,11 +1187,11 @@ describe('useCanvasMapping', () => {
 			const nodes = [manualTriggerNode, setNode];
 			const connections = {
 				[manualTriggerNode.name]: {
-					[NodeConnectionType.AiTool]: [
-						[{ node: setNode.name, type: NodeConnectionType.AiTool, index: 0 }],
+					[NodeConnectionTypes.AiTool]: [
+						[{ node: setNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
 					],
-					[NodeConnectionType.AiDocument]: [
-						[{ node: setNode.name, type: NodeConnectionType.AiDocument, index: 1 }],
+					[NodeConnectionTypes.AiDocument]: [
+						[{ node: setNode.name, type: NodeConnectionTypes.AiDocument, index: 1 }],
 					],
 				},
 			};
@@ -1208,13 +1208,13 @@ describe('useCanvasMapping', () => {
 
 			const sourceA = manualTriggerNode.id;
 			const sourceHandleA = createCanvasConnectionHandleString({
-				type: NodeConnectionType.AiTool,
+				type: NodeConnectionTypes.AiTool,
 				index: 0,
 				mode: CanvasConnectionMode.Output,
 			});
 			const targetA = setNode.id;
 			const targetHandleA = createCanvasConnectionHandleString({
-				type: NodeConnectionType.AiTool,
+				type: NodeConnectionTypes.AiTool,
 				index: 0,
 				mode: CanvasConnectionMode.Input,
 			});
@@ -1227,13 +1227,13 @@ describe('useCanvasMapping', () => {
 
 			const sourceB = manualTriggerNode.id;
 			const sourceHandleB = createCanvasConnectionHandleString({
-				type: NodeConnectionType.AiDocument,
+				type: NodeConnectionTypes.AiDocument,
 				index: 0,
 				mode: CanvasConnectionMode.Output,
 			});
 			const targetB = setNode.id;
 			const targetHandleB = createCanvasConnectionHandleString({
-				type: NodeConnectionType.AiDocument,
+				type: NodeConnectionTypes.AiDocument,
 				index: 1,
 				mode: CanvasConnectionMode.Input,
 			});
@@ -1250,13 +1250,13 @@ describe('useCanvasMapping', () => {
 						source: {
 							node: manualTriggerNode.name,
 							index: 0,
-							type: NodeConnectionType.AiTool,
+							type: NodeConnectionTypes.AiTool,
 						},
 						status: undefined,
 						target: {
 							node: setNode.name,
 							index: 0,
-							type: NodeConnectionType.AiTool,
+							type: NodeConnectionTypes.AiTool,
 						},
 					},
 					id: connectionIdA,
@@ -1273,13 +1273,13 @@ describe('useCanvasMapping', () => {
 						source: {
 							node: manualTriggerNode.name,
 							index: 0,
-							type: NodeConnectionType.AiDocument,
+							type: NodeConnectionTypes.AiDocument,
 						},
 						status: undefined,
 						target: {
 							node: setNode.name,
 							index: 1,
-							type: NodeConnectionType.AiDocument,
+							type: NodeConnectionTypes.AiDocument,
 						},
 					},
 					id: connectionIdB,

@@ -15,7 +15,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	BINARY_ENCODING,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	NodeOperationError,
 	SEND_AND_WAIT_OPERATION,
 } from 'n8n-workflow';
@@ -55,8 +55,8 @@ export class SlackV2 implements INodeType {
 			defaults: {
 				name: 'Slack',
 			},
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			usableAsTool: true,
 			credentials: [
 				{
