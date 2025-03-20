@@ -6,7 +6,6 @@ import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@/composables/useI18n';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useRoute } from 'vue-router';
-import type { FolderListItem } from '@/Interface';
 import { useProjectsStore } from '@/stores/projects.store';
 import { ProjectTypes } from '@/types/projects.types';
 
@@ -34,11 +33,6 @@ const loading = ref(false);
 const operation = ref('');
 const deleteConfirmText = ref('');
 const selectedFolder = ref<{ id: string; name: string; type: 'folder' | 'project' } | null>(null);
-const projectFolders = ref<FolderListItem[]>([]);
-
-const currentFolder = computed(() => {
-	return projectFolders.value.find((folder) => folder.id === props.activeId);
-});
 
 const folderToDelete = computed(() => {
 	if (!props.activeId) return null;
