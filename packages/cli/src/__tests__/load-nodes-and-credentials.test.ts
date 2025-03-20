@@ -47,7 +47,7 @@ describe('LoadNodesAndCredentials', () => {
 				description: {
 					displayName: 'Test Node',
 					name: 'testNode',
-					group: ['test'],
+					group: ['input'],
 					description: 'A test node',
 					version: 1,
 					defaults: {},
