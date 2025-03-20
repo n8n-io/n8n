@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { MongoDBChatMessageHistory } from '@langchain/mongodb';
-import { BufferMemory, BufferWindowMemory } from 'langchain/memory';
+import { BufferWindowMemory } from 'langchain/memory';
 import { MongoClient } from 'mongodb';
 import type {
 	ISupplyDataFunctions,
@@ -144,7 +144,7 @@ export class MemoryMongoDbChat implements INodeType {
 				returnMessages: true,
 				inputKey: 'input',
 				outputKey: 'output',
-				k: this.getNodeParameter('contextWindowLength', itemIndex),
+				k: this.getNodeParameter('contextWindowLength', itemIndex) as number,
 			});
 
 			return {
