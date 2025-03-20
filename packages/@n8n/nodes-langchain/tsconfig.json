@@ -6,8 +6,7 @@
 	"compilerOptions": {
 		"baseUrl": ".",
 		"paths": {
-			"@utils/*": ["./utils/*"],
-			"n8n-nodes-base*": ["n8n-nodes-base/dist*"]
+			"@utils/*": ["./utils/*"]
 		},
 		"module": "esnext",
 		"moduleResolution": "bundler",

@@ -2,7 +2,7 @@ import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import { type IExecuteFunctions } from 'n8n-workflow';
 
-import { WhatsApp } from '../../WhatsApp.node.ts';
+import { WhatsApp } from '../../WhatsApp.node';
 
 describe('Test WhatsApp Business Cloud, sendAndWait operation', () => {
 	let whatsApp: WhatsApp;

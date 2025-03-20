@@ -3,7 +3,7 @@ import { mock } from 'jest-mock-extended';
 import { SEND_AND_WAIT_OPERATION, type IExecuteFunctions } from 'n8n-workflow';
 
 import { description } from '../../../../v2/actions/node.description';
-import { MicrosoftOutlookV2 } from '../../../../v2/MicrosoftOutlookV2.node.ts';
+import { MicrosoftOutlookV2 } from '../../../../v2/MicrosoftOutlookV2.node';
 import * as transport from '../../../../v2/transport';
 
 jest.mock('../../../../v2/transport', () => {

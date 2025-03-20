@@ -10,7 +10,7 @@ import {
 
 import { testWorkflows, getWorkflowFilenames } from '@test/nodes/Helpers';
 
-import * as IfV2 from '../../V2/IfV2.node.ts';
+import * as IfV2 from '../../V2/IfV2.node';
 
 jest.mock('lodash/set', () => jest.fn());
 

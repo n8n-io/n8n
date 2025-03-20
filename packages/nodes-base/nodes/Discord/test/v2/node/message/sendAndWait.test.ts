@@ -3,7 +3,7 @@ import { mock } from 'jest-mock-extended';
 import { SEND_AND_WAIT_OPERATION, type IExecuteFunctions } from 'n8n-workflow';
 
 import { versionDescription } from '../../../../v2/actions/versionDescription';
-import { DiscordV2 } from '../../../../v2/DiscordV2.node.ts';
+import { DiscordV2 } from '../../../../v2/DiscordV2.node';
 import * as transport from '../../../../v2/transport/discord.api';
 
 jest.mock('../../../../v2/transport/discord.api', () => {

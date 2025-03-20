@@ -1,8 +1,8 @@
 import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 import { VersionedNodeType } from 'n8n-workflow';
 
-import { SplunkV1 } from './v1/SplunkV1.node.ts';
-import { SplunkV2 } from './v2/SplunkV2.node.ts';
+import { SplunkV1 } from './v1/SplunkV1.node';
+import { SplunkV2 } from './v2/SplunkV2.node';
 
 export class Splunk extends VersionedNodeType {
 	constructor() {

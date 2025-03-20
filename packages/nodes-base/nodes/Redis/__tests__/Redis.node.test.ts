@@ -10,7 +10,7 @@ const mockClient = mock<RedisClient>();
 const createClient = jest.fn().mockReturnValue(mockClient);
 jest.mock('redis', () => ({ createClient }));
 
-import { Redis } from '../Redis.node.ts';
+import { Redis } from '../Redis.node';
 import type { RedisClient } from '../types';
 import { redisConnectionTest, setupRedisClient } from '../utils';
 

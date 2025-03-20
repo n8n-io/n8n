@@ -4,7 +4,7 @@ import type { IWebhookFunctions } from 'n8n-workflow';
 
 import { testWorkflows, getWorkflowFilenames } from '@test/nodes/Helpers';
 
-import { Webhook } from '../Webhook.node.ts';
+import { Webhook } from '../Webhook.node';
 
 const workflows = getWorkflowFilenames(__dirname);
 

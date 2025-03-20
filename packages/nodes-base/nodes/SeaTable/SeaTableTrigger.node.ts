@@ -1,8 +1,8 @@
 import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 import { VersionedNodeType } from 'n8n-workflow';
 
-import { SeaTableTriggerV1 } from './v1/SeaTableTriggerV1.node.ts';
-import { SeaTableTriggerV2 } from './v2/SeaTableTriggerV2.node.ts';
+import { SeaTableTriggerV1 } from './v1/SeaTableTriggerV1.node';
+import { SeaTableTriggerV2 } from './v2/SeaTableTriggerV2.node';
 
 export class SeaTableTrigger extends VersionedNodeType {
 	constructor() {

@@ -3,7 +3,7 @@ import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { Summarize } from '../../Summarize.node.ts';
+import { Summarize } from '../../Summarize.node';
 import type { Aggregations } from '../../utils';
 
 let summarizeNode: Summarize;

@@ -3,7 +3,7 @@ import { mock } from 'jest-mock-extended';
 import { type INode, SEND_AND_WAIT_OPERATION, type IExecuteFunctions } from 'n8n-workflow';
 
 import * as genericFunctions from '../../GenericFunctions';
-import { GoogleChat } from '../../GoogleChat.node.ts';
+import { GoogleChat } from '../../GoogleChat.node';
 
 jest.mock('../../GenericFunctions', () => {
 	const originalModule = jest.requireActual('../../GenericFunctions');

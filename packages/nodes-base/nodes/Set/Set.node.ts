@@ -1,8 +1,8 @@
 import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 import { VersionedNodeType } from 'n8n-workflow';
 
-import { SetV1 } from './v1/SetV1.node.ts';
-import { SetV2 } from './v2/SetV2.node.ts';
+import { SetV1 } from './v1/SetV1.node';
+import { SetV2 } from './v2/SetV2.node';
 
 export class Set extends VersionedNodeType {
 	constructor() {

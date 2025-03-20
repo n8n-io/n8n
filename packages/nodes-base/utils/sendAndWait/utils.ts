@@ -22,7 +22,7 @@ import {
 	createEmailBodyWithoutN8nAttribution,
 } from './email-templates';
 import type { IEmail } from './interfaces';
-import { formFieldsProperties } from '../../nodes/Form/Form.node.ts';
+import { formFieldsProperties } from '../../nodes/Form/Form.node';
 import { prepareFormData, prepareFormReturnItem, resolveRawData } from '../../nodes/Form/utils';
 import { escapeHtml } from '../utilities';
 

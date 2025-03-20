@@ -2,7 +2,7 @@ import * as n8nWorkflow from 'n8n-workflow';
 
 import { testTriggerNode } from '@test/nodes/TriggerHelpers';
 
-import { ScheduleTrigger } from '../ScheduleTrigger.node.ts';
+import { ScheduleTrigger } from '../ScheduleTrigger.node';
 
 describe('ScheduleTrigger', () => {
 	Object.defineProperty(n8nWorkflow, 'randomInt', {

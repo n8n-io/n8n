@@ -4,7 +4,7 @@ import get from 'lodash/get';
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 
 import { makeZodSchemaFromAttributes } from '../helpers';
-import { InformationExtractor } from '../InformationExtractor.node.ts';
+import { InformationExtractor } from '../InformationExtractor.node';
 import type { AttributeDefinition } from '../types';
 
 const mockPersonAttributes: AttributeDefinition[] = [

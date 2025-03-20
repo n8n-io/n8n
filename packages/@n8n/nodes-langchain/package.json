@@ -123,6 +123,12 @@
       "dist/nodes/vector_store/VectorStoreZepLoad/VectorStoreZepLoad.node.js"
     ]
   },
+  "exports": {
+    ".": "./index.js",
+    "./*": {
+      "require": "./dist/*.js"
+    }
+  },
   "devDependencies": {
     "@types/basic-auth": "catalog:",
     "@types/cheerio": "^0.22.15",

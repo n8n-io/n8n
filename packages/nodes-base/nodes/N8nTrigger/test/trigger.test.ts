@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { N8nTrigger } from '../N8nTrigger.node.ts';
+import { N8nTrigger } from '../N8nTrigger.node';
 
 describe('N8nTrigger', () => {
 	let n8nTrigger: N8nTrigger;

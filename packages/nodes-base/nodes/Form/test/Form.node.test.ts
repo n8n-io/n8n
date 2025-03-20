@@ -9,7 +9,7 @@ import type {
 	NodeTypeAndVersion,
 } from 'n8n-workflow';
 
-import { Form } from '../Form.node.ts';
+import { Form } from '../Form.node';
 
 jest.mock('../../../utils/sendAndWait/configureWaitTillDate.util', () => ({
 	configureWaitTillDate: jest.fn(), // Mocked function

@@ -2,7 +2,7 @@ import { captor, mock } from 'jest-mock-extended';
 import { returnJsonArray } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, ITriggerFunctions } from 'n8n-workflow';
 
-import { RedisTrigger } from '../RedisTrigger.node.ts';
+import { RedisTrigger } from '../RedisTrigger.node';
 import type { RedisClient } from '../types';
 import { setupRedisClient } from '../utils';
 

@@ -3,7 +3,7 @@ import { NodeOperationError, type INode } from 'n8n-workflow';
 
 import { testVersionedWebhookTriggerNode } from '@test/nodes/TriggerHelpers';
 
-import { FormTrigger } from '../FormTrigger.node.ts';
+import { FormTrigger } from '../FormTrigger.node';
 
 describe('FormTrigger', () => {
 	beforeEach(() => {

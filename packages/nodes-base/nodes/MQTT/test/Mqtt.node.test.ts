@@ -3,7 +3,7 @@ import type { MqttClient } from 'mqtt';
 import type { ICredentialDataDecryptedObject, IExecuteFunctions } from 'n8n-workflow';
 
 import { createClient } from '../GenericFunctions';
-import { Mqtt } from '../Mqtt.node.ts';
+import { Mqtt } from '../Mqtt.node';
 
 jest.mock('../GenericFunctions', () => {
 	const mockMqttClient = mock<MqttClient>();

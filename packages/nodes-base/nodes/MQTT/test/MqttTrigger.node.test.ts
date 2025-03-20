@@ -4,7 +4,7 @@ import { returnJsonArray } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, ITriggerFunctions } from 'n8n-workflow';
 
 import { createClient } from '../GenericFunctions';
-import { MqttTrigger } from '../MqttTrigger.node.ts';
+import { MqttTrigger } from '../MqttTrigger.node';
 
 jest.mock('../GenericFunctions', () => {
 	const mockMqttClient = mock<MqttClient>();

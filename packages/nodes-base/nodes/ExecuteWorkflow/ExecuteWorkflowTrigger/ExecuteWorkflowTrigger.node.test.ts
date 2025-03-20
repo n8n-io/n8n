@@ -1,7 +1,7 @@
 import { mock } from 'jest-mock-extended';
 import type { FieldValueOption, IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
 
-import { ExecuteWorkflowTrigger } from './ExecuteWorkflowTrigger.node.ts';
+import { ExecuteWorkflowTrigger } from './ExecuteWorkflowTrigger.node';
 import { WORKFLOW_INPUTS } from '../../../utils/workflowInputsResourceMapping/constants';
 import { getFieldEntries } from '../../../utils/workflowInputsResourceMapping/GenericFunctions';
 

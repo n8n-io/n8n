@@ -1,8 +1,8 @@
 import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 import { VersionedNodeType } from 'n8n-workflow';
 
-import { ChainSummarizationV1 } from './V1/ChainSummarizationV1.node.ts';
-import { ChainSummarizationV2 } from './V2/ChainSummarizationV2.node.ts';
+import { ChainSummarizationV1 } from './V1/ChainSummarizationV1.node';
+import { ChainSummarizationV2 } from './V2/ChainSummarizationV2.node';
 
 export class ChainSummarization extends VersionedNodeType {
 	constructor() {

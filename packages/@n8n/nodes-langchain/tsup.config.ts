@@ -7,9 +7,9 @@ export default defineConfig({
 	format: ['cjs'],
 	clean: true,
 	dts: false,
+	bundle: false,
 	cjsInterop: true,
 	sourcemap: false,
 	splitting: false,
-	minify: true,
-	external: ['cpufeatures', 'ssh2'],
+	minify: false,
 });

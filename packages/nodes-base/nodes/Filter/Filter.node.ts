@@ -1,8 +1,8 @@
 import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 import { VersionedNodeType } from 'n8n-workflow';
 
-import { FilterV1 } from './V1/FilterV1.node.ts';
-import { FilterV2 } from './V2/FilterV2.node.ts';
+import { FilterV1 } from './V1/FilterV1.node';
+import { FilterV2 } from './V2/FilterV2.node';
 
 export class Filter extends VersionedNodeType {
 	constructor() {

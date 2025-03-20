@@ -9,7 +9,7 @@ import {
 
 import type { N8nStructuredOutputParser } from '@utils/output_parsers/N8nStructuredOutputParser';
 
-import { OutputParserStructured } from '../OutputParserStructured.node.ts';
+import { OutputParserStructured } from '../OutputParserStructured.node';
 
 describe('OutputParserStructured', () => {
 	let outputParser: OutputParserStructured;

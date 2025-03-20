@@ -10,7 +10,7 @@ import {
 	type NodeTypeAndVersion,
 } from 'n8n-workflow';
 
-import { RespondToWebhook } from '../RespondToWebhook.node.ts';
+import { RespondToWebhook } from '../RespondToWebhook.node';
 
 describe('RespondToWebhook Node', () => {
 	let respondToWebhook: RespondToWebhook;

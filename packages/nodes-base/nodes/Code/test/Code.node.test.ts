@@ -6,7 +6,7 @@ import { ApplicationError } from 'n8n-workflow';
 
 import { testWorkflows, getWorkflowFilenames, initBinaryDataService } from '@test/nodes/Helpers';
 
-import { Code } from '../Code.node.ts';
+import { Code } from '../Code.node';
 import { ValidationError } from '../ValidationError';
 
 describe('Test Code Node', () => {

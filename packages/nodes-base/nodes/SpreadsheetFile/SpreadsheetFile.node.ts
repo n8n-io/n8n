@@ -1,8 +1,8 @@
 import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 import { VersionedNodeType } from 'n8n-workflow';
 
-import { SpreadsheetFileV1 } from './v1/SpreadsheetFileV1.node.ts';
-import { SpreadsheetFileV2 } from './v2/SpreadsheetFileV2.node.ts';
+import { SpreadsheetFileV1 } from './v1/SpreadsheetFileV1.node';
+import { SpreadsheetFileV2 } from './v2/SpreadsheetFileV2.node';
 
 export class SpreadsheetFile extends VersionedNodeType {
 	constructor() {

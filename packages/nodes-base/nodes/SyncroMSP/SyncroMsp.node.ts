@@ -1,7 +1,7 @@
 import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 import { VersionedNodeType } from 'n8n-workflow';
 
-import { SyncroMspV1 } from './v1/SyncroMspV1.node.ts';
+import { SyncroMspV1 } from './v1/SyncroMspV1.node';
 
 export class SyncroMsp extends VersionedNodeType {
 	constructor() {

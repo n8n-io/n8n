@@ -1,9 +1,9 @@
 import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 import { VersionedNodeType } from 'n8n-workflow';
 
-import { ItemListsV1 } from './V1/ItemListsV1.node.ts';
-import { ItemListsV2 } from './V2/ItemListsV2.node.ts';
-import { ItemListsV3 } from './V3/ItemListsV3.node.ts';
+import { ItemListsV1 } from './V1/ItemListsV1.node';
+import { ItemListsV2 } from './V2/ItemListsV2.node';
+import { ItemListsV3 } from './V3/ItemListsV3.node';
 
 export class ItemLists extends VersionedNodeType {
 	constructor() {

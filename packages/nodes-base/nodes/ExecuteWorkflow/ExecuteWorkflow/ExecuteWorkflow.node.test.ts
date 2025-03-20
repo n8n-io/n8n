@@ -1,7 +1,7 @@
 import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, IWorkflowDataProxyData } from 'n8n-workflow';
 
-import { ExecuteWorkflow } from './ExecuteWorkflow.node.ts';
+import { ExecuteWorkflow } from './ExecuteWorkflow.node';
 import { getWorkflowInfo } from './GenericFunctions';
 
 jest.mock('./GenericFunctions');

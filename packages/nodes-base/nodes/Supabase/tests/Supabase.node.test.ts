@@ -10,7 +10,7 @@ import {
 } from 'n8n-workflow';
 
 import * as utils from '../GenericFunctions';
-import { Supabase } from '../Supabase.node.ts';
+import { Supabase } from '../Supabase.node';
 
 describe('Test Supabase Node', () => {
 	const node = new Supabase();

@@ -8,7 +8,7 @@ import { NodeConnectionType } from 'n8n-workflow';
 import * as helperModule from '@utils/helpers';
 import * as outputParserModule from '@utils/output_parsers/N8nOutputParser';
 
-import { ChainLlm } from '../ChainLlm.node.ts';
+import { ChainLlm } from '../ChainLlm.node';
 import * as executeChainModule from '../methods/chainExecutor';
 
 jest.mock('@utils/helpers', () => ({
