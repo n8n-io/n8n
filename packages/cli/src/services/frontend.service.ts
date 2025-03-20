@@ -103,7 +103,7 @@ export class FrontendService {
 			versionCli: N8N_VERSION,
 			concurrency: config.getEnv('executions.concurrency.productionLimit'),
 			authCookie: {
-				secure: config.getEnv('secure_cookie'),
+				secure: this.globalConfig.auth.cookie.secure,
 			},
 			releaseChannel: this.globalConfig.generic.releaseChannel,
 			oauthCallbackUrls: {
