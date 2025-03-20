@@ -16,7 +16,7 @@ import {
 	VIEWS,
 	DEFAULT_WORKFLOW_PAGE_SIZE,
 	MODAL_CONFIRM,
-	VALID_FOLDER_NAME_REGEX,
+	COMMUNITY_PLUS_ENROLLMENT_MODAL,
 } from '@/constants';
 import type {
 	IUser,
@@ -59,6 +59,8 @@ import { debounce } from 'lodash-es';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useFoldersStore } from '@/stores/folders.store';
+import { useFolders } from '@/composables/useFolders';
+import { useUsageStore } from '@/stores/usage.store';
 
 interface Filters extends BaseFilters {
 	status: string | boolean;
@@ -84,6 +86,7 @@ const route = useRoute();
 const router = useRouter();
 const message = useMessage();
 const toast = useToast();
+const folderHelpers = useFolders();
 
 const sourceControlStore = useSourceControlStore();
 const usersStore = useUsersStore();
@@ -95,6 +98,7 @@ const telemetry = useTelemetry();
 const uiStore = useUIStore();
 const tagsStore = useTagsStore();
 const foldersStore = useFoldersStore();
+const usageStore = useUsageStore();
 
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
@@ -180,8 +184,17 @@ const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const isShareable = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
 );
+
+const foldersEnabled = computed(() => {
+	return settingsStore.isFoldersFeatureEnabled;
+});
+
+const teamProjectsEnabled = computed(() => {
+	return projectsStore.isTeamProjectFeatureEnabled;
+});
+
 const showFolders = computed(() => {
-	return settingsStore.isFoldersFeatureEnabled && !isOverviewPage.value;
+	return foldersEnabled.value && !isOverviewPage.value;
 });
 
 const currentFolder = computed(() => {
@@ -298,6 +311,19 @@ const emptyListDescription = computed(() => {
 	}
 });
 
+const hasFilters = computed(() => {
+	return !!(
+		filters.value.search ||
+		filters.value.status !== StatusFilter.ALL ||
+		filters.value.tags.length
+	);
+});
+
+const isCommunity = computed(() => usageStore.planName.toLowerCase() === 'community');
+const canUserRegisterCommunityPlus = computed(
+	() => getResourcePermissions(usersStore.currentUser?.globalScopes).community.register,
+);
+
 /**
  * WATCHERS, STORE SUBSCRIPTIONS AND EVENT BUS HANDLERS
  */
@@ -383,6 +409,7 @@ const initialize = async () => {
 		usersStore.fetchUsers(),
 		fetchWorkflows(),
 		workflowsStore.fetchActiveWorkflows(),
+		usageStore.getLicenseInfo(),
 	]);
 	breadcrumbsLoading.value = false;
 	workflowsAndFolders.value = resourcesPage;
@@ -837,11 +864,14 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 	if (!clickedFolder) return;
 	switch (payload.action) {
 		case FOLDER_LIST_ITEM_ACTIONS.CREATE:
-			await createFolder({
-				id: clickedFolder.id,
-				name: clickedFolder.name,
-				type: 'folder',
-			});
+			await createFolder(
+				{
+					id: clickedFolder.id,
+					name: clickedFolder.name,
+					type: 'folder',
+				},
+				{ openAfterCreate: true },
+			);
 			break;
 		case FOLDER_LIST_ITEM_ACTIONS.CREATE_WORKFLOW:
 			currentFolderId.value = clickedFolder.id;
@@ -876,14 +906,16 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 
 // Reusable action handlers
 // Both action handlers ultimately call these methods once folder to apply action to is determined
-const createFolder = async (parent: { id: string; name: string; type: 'project' | 'folder' }) => {
+const createFolder = async (
+	parent: { id: string; name: string; type: 'project' | 'folder' },
+	options: { openAfterCreate: boolean } = { openAfterCreate: false },
+) => {
 	const promptResponsePromise = message.prompt(
 		i18n.baseText('folders.add.to.parent.message', { interpolate: { parent: parent.name } }),
 		{
 			confirmButtonText: i18n.baseText('generic.create'),
 			cancelButtonText: i18n.baseText('generic.cancel'),
-			inputErrorMessage: i18n.baseText('folders.invalidName.message'),
-			inputPattern: VALID_FOLDER_NAME_REGEX,
+			inputValidator: folderHelpers.validateFolderName,
 			customClass: 'add-folder-modal',
 		},
 	);
@@ -917,31 +949,39 @@ const createFolder = async (parent: { id: string; name: string; type: 'project' 
 				},
 				type: 'success',
 			});
-			// If we are on an empty list, just add the new folder to the list
-			if (!workflowsAndFolders.value.length) {
-				workflowsAndFolders.value = [
-					{
-						id: newFolder.id,
-						name: newFolder.name,
-						resource: 'folder',
-						createdAt: newFolder.createdAt,
-						updatedAt: newFolder.updatedAt,
-						homeProject: projectsStore.currentProject as ProjectSharingData,
-						sharedWithProjects: [],
-						workflowCount: 0,
-						subFolderCount: 0,
-					},
-				];
-				foldersStore.cacheFolders([
-					{ id: newFolder.id, name: newFolder.name, parentFolder: currentFolder.value?.id },
-				]);
-			} else {
-				// Else fetch again with same filters & pagination applied
-				await fetchWorkflows();
-			}
 			telemetry.track('User created folder', {
 				folder_id: newFolder.id,
 			});
+			if (options.openAfterCreate) {
+				// Navigate to parent folder id option specified by the caller
+				await router.push({
+					name: VIEWS.PROJECTS_FOLDERS,
+					params: { projectId: route.params.projectId, folderId: parent.id },
+				});
+			} else {
+				// If we are on an empty list, just add the new folder to the list
+				if (!workflowsAndFolders.value.length) {
+					workflowsAndFolders.value = [
+						{
+							id: newFolder.id,
+							name: newFolder.name,
+							resource: 'folder',
+							createdAt: newFolder.createdAt,
+							updatedAt: newFolder.updatedAt,
+							homeProject: projectsStore.currentProject as ProjectSharingData,
+							sharedWithProjects: [],
+							workflowCount: 0,
+							subFolderCount: 0,
+						},
+					];
+					foldersStore.cacheFolders([
+						{ id: newFolder.id, name: newFolder.name, parentFolder: currentFolder.value?.id },
+					]);
+				} else {
+					// Else fetch again with same filters & pagination applied
+					await fetchWorkflows();
+				}
+			}
 		} catch (error) {
 			toast.showError(error, i18n.baseText('folders.create.error.title'));
 		}
@@ -956,10 +996,9 @@ const renameFolder = async (folderId: string) => {
 		{
 			confirmButtonText: i18n.baseText('generic.rename'),
 			cancelButtonText: i18n.baseText('generic.cancel'),
-			inputErrorMessage: i18n.baseText('folders.invalidName.message'),
 			inputValue: folder.name,
-			inputPattern: VALID_FOLDER_NAME_REGEX,
 			customClass: 'rename-folder-modal',
+			inputValidator: folderHelpers.validateFolderName,
 		},
 	);
 	const promptResponse = await promptResponsePromise;
@@ -985,6 +1024,14 @@ const renameFolder = async (folderId: string) => {
 };
 
 const createFolderInCurrent = async () => {
+	// Show the community plus enrollment modal if the user is in a community plan
+	if (isCommunity.value && canUserRegisterCommunityPlus.value) {
+		uiStore.openModalWithData({
+			name: COMMUNITY_PLUS_ENROLLMENT_MODAL,
+			data: { customHeading: i18n.baseText('folders.registeredCommunity.cta.heading') },
+		});
+		return;
+	}
 	if (!route.params.projectId) return;
 	const currentParent = currentFolder.value?.name || projectName.value;
 	if (!currentParent) return;
@@ -1013,19 +1060,22 @@ const deleteFolder = async (folderId: string, workflowCount: number, subFolderCo
 
 const moveFolder = async (payload: {
 	folder: { id: string; name: string };
-	newParent: { id: string; name: string };
+	newParent: { id: string; name: string; type: 'folder' | 'project' };
 }) => {
 	if (!route.params.projectId) return;
 	try {
 		await foldersStore.moveFolder(
 			route.params.projectId as string,
 			payload.folder.id,
-			payload.newParent.id,
+			payload.newParent.type === 'project' ? '0' : payload.newParent.id,
 		);
 		const isCurrentFolder = currentFolderId.value === payload.folder.id;
 		const newFolderURL = router.resolve({
 			name: VIEWS.PROJECTS_FOLDERS,
-			params: { projectId: route.params.projectId, folderId: payload.newParent.id },
+			params: {
+				projectId: route.params.projectId,
+				folderId: payload.newParent.type === 'project' ? undefined : payload.newParent.id,
+			},
 		}).href;
 		if (isCurrentFolder) {
 			// If we just moved the current folder, automatically navigate to the new folder
@@ -1057,6 +1107,13 @@ const moveWorkflowToFolder = async (payload: {
 	name: string;
 	parentFolderId?: string;
 }) => {
+	if (isCommunity.value && canUserRegisterCommunityPlus.value) {
+		uiStore.openModalWithData({
+			name: COMMUNITY_PLUS_ENROLLMENT_MODAL,
+			data: { customHeading: i18n.baseText('folders.registeredCommunity.cta.heading') },
+		});
+		return;
+	}
 	uiStore.openMoveToFolderModal(
 		'workflow',
 		{ id: payload.id, name: payload.name, parentFolderId: payload.parentFolderId },
@@ -1066,19 +1123,22 @@ const moveWorkflowToFolder = async (payload: {
 
 const onWorkflowMoved = async (payload: {
 	workflow: { id: string; name: string; oldParentId: string };
-	newParent: { id: string; name: string };
+	newParent: { id: string; name: string; type: 'folder' | 'project' };
 }) => {
 	if (!route.params.projectId) return;
 	try {
 		const newFolderURL = router.resolve({
 			name: VIEWS.PROJECTS_FOLDERS,
-			params: { projectId: route.params.projectId, folderId: payload.newParent.id },
+			params: {
+				projectId: route.params.projectId,
+				folderId: payload.newParent.type === 'project' ? undefined : payload.newParent.id,
+			},
 		}).href;
 		const workflowResource = workflowsAndFolders.value.find(
 			(resource): resource is WorkflowListItem => resource.id === payload.workflow.id,
 		);
 		await workflowsStore.updateWorkflow(payload.workflow.id, {
-			parentFolderId: payload.newParent.id,
+			parentFolderId: payload.newParent.type === 'project' ? '0' : payload.newParent.id,
 			versionId: workflowResource?.versionId,
 		});
 		await fetchWorkflows();
@@ -1103,6 +1163,16 @@ const onWorkflowMoved = async (payload: {
 	} catch (error) {
 		toast.showError(error, i18n.baseText('folders.move.workflow.error.title'));
 	}
+};
+
+const onCreateWorkflowClick = () => {
+	void router.push({
+		name: VIEWS.NEW_WORKFLOW,
+		query: {
+			projectId: currentProject.value?.id,
+			parentFolderId: route.params.folderId as string,
+		},
+	});
 };
 </script>
 
@@ -1132,19 +1202,32 @@ const onWorkflowMoved = async (payload: {
 		<template #header>
 			<ProjectHeader @create-folder="createFolderInCurrent" />
 		</template>
-		<template v-if="showFolders" #add-button>
-			<N8nTooltip placement="top" :disabled="readOnlyEnv || !hasPermissionToCreateFolders">
+		<template v-if="foldersEnabled" #add-button>
+			<N8nTooltip
+				placement="top"
+				:disabled="!(isOverviewPage || (!readOnlyEnv && hasPermissionToCreateFolders))"
+			>
 				<template #content>
-					{{
-						currentParentName
-							? i18n.baseText('folders.add.to.parent.message', {
-									interpolate: { parent: currentParentName },
-								})
-							: i18n.baseText('folders.add.here.message')
-					}}
+					<span v-if="isOverviewPage">
+						<span v-if="teamProjectsEnabled">
+							{{ i18n.baseText('folders.add.overview.withProjects.message') }}
+						</span>
+						<span v-else>
+							{{ i18n.baseText('folders.add.overview.community.message') }}
+						</span>
+					</span>
+					<span v-else-if="!readOnlyEnv && hasPermissionToCreateFolders">
+						{{
+							currentParentName
+								? i18n.baseText('folders.add.to.parent.message', {
+										interpolate: { parent: currentParentName },
+									})
+								: i18n.baseText('folders.add.here.message')
+						}}
+					</span>
 				</template>
 				<N8nButton
-					size="large"
+					size="small"
 					icon="folder-plus"
 					type="tertiary"
 					data-test-id="add-folder-button"
@@ -1211,7 +1294,7 @@ const onWorkflowMoved = async (payload: {
 			/>
 			<WorkflowCard
 				v-else
-				data-test-id="resources-list-item"
+				data-test-id="resources-list-item-workflow"
 				class="mb-2xs"
 				:data="data as WorkflowResource"
 				:workflow-list-event-bus="workflowListEventBus"
@@ -1225,7 +1308,7 @@ const onWorkflowMoved = async (payload: {
 			/>
 		</template>
 		<template #empty>
-			<div class="text-center mt-s">
+			<div class="text-center mt-s" data-test-id="list-empty-state">
 				<N8nHeading tag="h2" size="xlarge" class="mb-2xs">
 					{{
 						currentUser.firstName
@@ -1308,6 +1391,34 @@ const onWorkflowMoved = async (payload: {
 				</N8nSelect>
 			</div>
 		</template>
+		<template #postamble>
+			<div
+				v-if="workflowsAndFolders.length === 0 && currentFolder && !hasFilters"
+				:class="$style['empty-folder-container']"
+				data-test-id="empty-folder-container"
+			>
+				<n8n-action-box
+					data-test-id="empty-folder-action-box"
+					:heading="
+						i18n.baseText('folders.empty.actionbox.title', {
+							interpolate: { folderName: currentFolder.name },
+						})
+					"
+					:button-text="i18n.baseText('generic.create.workflow')"
+					button-type="secondary"
+					:button-disabled="readOnlyEnv || !projectPermissions.workflow.create"
+					@click:button="onCreateWorkflowClick"
+				>
+					<template #disabledButtonTooltip>
+						{{
+							readOnlyEnv
+								? i18n.baseText('readOnlyEnv.cantAdd.workflow')
+								: i18n.baseText('generic.missing.permissions')
+						}}
+					</template></n8n-action-box
+				>
+			</div>
+		</template>
 	</ResourcesListLayout>
 </template>
 
@@ -1358,7 +1469,8 @@ const onWorkflowMoved = async (payload: {
 }
 
 .add-folder-button {
-	width: 40px;
+	width: 30px;
+	height: 30px;
 }
 
 .breadcrumbs-container {
@@ -1372,6 +1484,12 @@ const onWorkflowMoved = async (payload: {
 		margin: 0;
 		height: 40px;
 		width: 400px;
+	}
+}
+
+.empty-folder-container {
+	button {
+		margin-top: var(--spacing-2xs);
 	}
 }
 </style>

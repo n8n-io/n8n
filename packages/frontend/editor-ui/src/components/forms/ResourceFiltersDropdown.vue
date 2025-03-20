@@ -113,6 +113,7 @@ onBeforeMount(async () => {
 			<n8n-button
 				icon="filter"
 				type="tertiary"
+				size="small"
 				:active="hasFilters"
 				:class="{
 					[$style['filter-button']]: true,
@@ -165,7 +166,8 @@ onBeforeMount(async () => {
 
 <style lang="scss" module>
 .filter-button {
-	height: 40px;
+	height: 30px;
+	width: 30px;
 	align-items: center;
 
 	&.no-label {
