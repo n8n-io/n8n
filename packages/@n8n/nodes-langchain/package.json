@@ -36,6 +36,7 @@
       "dist/credentials/PineconeApi.credentials.js",
       "dist/credentials/QdrantApi.credentials.js",
       "dist/credentials/SerpApi.credentials.js",
+      "dist/credentials/VoyageAiApi.credentials.js",
       "dist/credentials/WolframAlphaApi.credentials.js",
       "dist/credentials/XataApi.credentials.js",
       "dist/credentials/ZepApi.credentials.js"
@@ -63,6 +64,7 @@
       "dist/nodes/embeddings/EmbeddingsMistralCloud/EmbeddingsMistralCloud.node.js",
       "dist/nodes/embeddings/EmbeddingsOpenAI/EmbeddingsOpenAi.node.js",
       "dist/nodes/embeddings/EmbeddingsOllama/EmbeddingsOllama.node.js",
+      "dist/nodes/embeddings/EmbeddingsVoyageAI/EmbeddingsVoyageAi.node.js",
       "dist/nodes/llms/LMChatAnthropic/LmChatAnthropic.node.js",
       "dist/nodes/llms/LmChatAzureOpenAi/LmChatAzureOpenAi.node.js",
       "dist/nodes/llms/LmChatAwsBedrock/LmChatAwsBedrock.node.js",
