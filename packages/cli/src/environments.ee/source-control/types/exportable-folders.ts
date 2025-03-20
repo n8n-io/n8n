@@ -3,4 +3,6 @@ export type ExportableFolder = {
 	name: string;
 	parentFolderId: string | null;
 	homeProjectId: string;
+	createdAt: string;
+	updatedAt: string;
 };

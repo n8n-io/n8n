@@ -218,6 +218,8 @@ export class SourceControlExportService {
 				select: {
 					id: true,
 					name: true,
+					createdAt: true,
+					updatedAt: true,
 					parentFolder: {
 						id: true,
 					},
@@ -235,20 +237,6 @@ export class SourceControlExportService {
 				};
 			}
 
-			const mappings = await this.workflowRepository.find({
-				where: {
-					parentFolder: {
-						id: Not(IsNull()),
-					},
-				},
-				select: {
-					parentFolder: {
-						id: true,
-					},
-				},
-				relations: ['parentFolder'],
-			});
-
 			const fileName = getFoldersPath(this.gitFolder);
 			await fsWriteFile(
 				fileName,
@@ -259,10 +247,8 @@ export class SourceControlExportService {
 							name: f.name,
 							parentFolderId: f.parentFolder?.id ?? null,
 							homeProjectId: f.homeProject.id,
-						})),
-						workflowMappings: mappings.map((m) => ({
-							workflowId: m.id,
-							parentFolderId: m.parentFolder?.id ?? null,
+							createdAt: f.createdAt.toISOString(),
+							updatedAt: f.updatedAt.toISOString(),
 						})),
 					},
 					null,

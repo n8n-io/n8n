@@ -236,6 +236,8 @@ export class SourceControlImportService {
 			select: {
 				id: true,
 				name: true,
+				createdAt: true,
+				updatedAt: true,
 				parentFolder: { id: true },
 				homeProject: { id: true },
 			},
@@ -247,6 +249,8 @@ export class SourceControlImportService {
 				name: f.name,
 				parentFolderId: f.parentFolder?.id ?? null,
 				homeProjectId: f.homeProject.id,
+				createdAt: f.createdAt.toISOString(),
+				updatedAt: f.updatedAt.toISOString(),
 			})),
 		};
 	}
