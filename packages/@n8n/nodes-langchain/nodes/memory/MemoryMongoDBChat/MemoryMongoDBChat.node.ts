@@ -21,10 +21,10 @@ import {
 	expressionSessionKeyProperty,
 } from '../descriptions';
 
-export class MemoryMongoDBChat implements INodeType {
+export class MemoryMongoDbChat implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'MongoDB Chat Memory',
-		name: 'memoryMongoDBChat',
+		name: 'memoryMongoDbChat',
 		icon: 'file:mongodb.svg',
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3],
