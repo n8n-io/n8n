@@ -104,8 +104,8 @@ export class LmChatOpenAi implements INodeType {
 										properties: {
 											// If the baseURL is not set or is set to api.openai.com, include only chat models
 											pass: `={{
-												($parameter.options?.baseURL && !$parameter.options?.baseURL?.includes('api.openai.com')) ||
-												($credentials?.url && !$credentials.url.includes('api.openai.com')) ||
+												($parameter.options?.baseURL && !$parameter.options?.baseURL?.startsWith('https://api.openai.com/')) ||
+												($credentials?.url && !$credentials.url.startsWith('https://api.openai.com/')) ||
 												$responseItem.id.startsWith('ft:') ||
 												$responseItem.id.startsWith('o1') ||
 												$responseItem.id.startsWith('o3') ||
