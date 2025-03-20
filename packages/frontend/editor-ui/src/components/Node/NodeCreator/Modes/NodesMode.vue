@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { camelCase } from 'lodash-es';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import type {
 	ActionTypeDescription,
 	INodeCreateElement,
@@ -35,6 +35,8 @@ import { useActions } from '../composables/useActions';
 import { SEND_AND_WAIT_OPERATION, type INodeParameters } from 'n8n-workflow';
 
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
+import { useCommunityNodesStore } from '@/stores/communityNodes.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 export interface Props {
 	rootView: 'trigger' | 'action';
@@ -47,6 +49,11 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const uiStore = useUIStore();
 const rootStore = useRootStore();
+const communityNodesStore = useCommunityNodesStore();
+
+if (Object.keys(communityNodesStore.installedPackages).length === 0) {
+	await communityNodesStore.fetchInstalledPackages();
+}
 
 const { mergedNodes, actions, onSubcategorySelected } = useNodeCreatorStore();
 const { pushViewStack, popViewStack } = useViewStacks();
@@ -55,7 +62,21 @@ const { setAddedNodeActionParameters } = useActions();
 const { registerKeyHook } = useKeyboardNavigation();
 
 const activeViewStack = computed(() => useViewStacks().activeViewStack);
-const globalSearchItemsDiff = computed(() => useViewStacks().globalSearchItemsDiff);
+
+const communityNodesSearch = ref<INodeCreateElement[]>([]);
+
+const globalSearchItemsDiff = computed(() => {
+	const communityItems: INodeCreateElement[] = [];
+	const items = useViewStacks().globalSearchItemsDiff.filter((item) => {
+		if (useNodeTypesStore().verifiedNodeTypes.includes(item.key)) {
+			communityItems.push(item);
+			return false;
+		}
+		return true;
+	});
+	communityNodesSearch.value = communityItems;
+	return items;
+});
 
 function getFilteredActions(node: NodeCreateElement) {
 	const nodeActions = actions?.[node.key] || [];
@@ -125,13 +146,18 @@ function onSelected(item: INodeCreateElement) {
 				icon,
 				iconType: iconUrl ? 'file' : 'icon',
 			};
+
 			const packageName = item.key.split('.')[0];
+			const installed = communityNodesStore.installedPackages[packageName] !== undefined;
+			const verified = useNodeTypesStore().verifiedNodeTypes.includes(item.key);
+
 			const communityNodeDetails = {
 				title: item.properties.displayName,
-				description: item.properties.description ?? 'Community',
+				description: item.properties.description,
 				nodeIcon,
-				installed: true,
+				installed,
 				packageName,
+				verified,
 			};
 			if (nodeActions.length) {
 				const transformedActions = nodeActions?.map((a) =>
@@ -329,6 +355,15 @@ registerKeyHook('MainViewArrowLeft', {
 			:elements="globalSearchItemsDiff"
 			:category="i18n.baseText('nodeCreator.categoryNames.otherCategories')"
 			@selected="onSelected"
+		>
+		</CategorizedItemsRenderer>
+		<!-- Results in communty nodes -->
+		<CategorizedItemsRenderer
+			v-if="communityNodesSearch.length > 0"
+			:elements="communityNodesSearch"
+			category="More from the community"
+			@selected="onSelected"
+			:expanded="true"
 		>
 		</CategorizedItemsRenderer>
 	</span>

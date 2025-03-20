@@ -120,6 +120,13 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 				searchBase = filterOutAiNodes(searchBase);
 			}
 
+			searchBase = searchBase.filter((item) => {
+				if (useNodeTypesStore().verifiedNodeTypes.includes(item.key)) {
+					return false;
+				}
+				return true;
+			});
+
 			const searchResults = extendItemsWithUUID(searchNodes(stack.search || '', searchBase));
 
 			const groupedNodes = groupIfAiNodes(searchResults, false) ?? searchResults;
