@@ -138,19 +138,13 @@ export class MemoryMongoDbChat implements INodeType {
 				sessionId,
 			});
 
-			const memClass = this.getNode().typeVersion < 1.1 ? BufferMemory : BufferWindowMemory;
-			const kOptions =
-				this.getNode().typeVersion < 1.1
-					? {}
-					: { k: this.getNodeParameter('contextWindowLength', itemIndex) };
-
-			const memory = new memClass({
+			const memory = new BufferWindowMemory({
 				memoryKey: 'chat_history',
 				chatHistory: mongoDBChatHistory,
 				returnMessages: true,
 				inputKey: 'input',
 				outputKey: 'output',
-				...kOptions,
+				k: this.getNodeParameter('contextWindowLength', itemIndex),
 			});
 
 			return {
