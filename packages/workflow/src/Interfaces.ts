@@ -1723,10 +1723,22 @@ export interface INodeTypeBaseDescription {
 	hidden?: true;
 
 	/**
-	 * Whether the node will be wrapped for tool-use by AI Agents
+	 * Whether the node will be wrapped for tool-use by AI Agents,
+	 * optionally replacing provided parts of the description
 	 */
-	usableAsTool?: true;
+	usableAsTool?: true | UsableAsToolDescription;
 }
+
+/**
+ * NodeDescription entries that replace the base node entries when
+ * the node is used as a tool
+ *
+ * Note that the new codex is hardcoded and may not behave as expected
+ * without additional changes to the implementation.
+ */
+export type UsableAsToolDescription = {
+	replacements?: Partial<Omit<INodeTypeBaseDescription, 'usableAsTool'>>;
+};
 
 export interface INodePropertyRouting {
 	operations?: IN8nRequestOperations; // Should be changed, does not sound right
