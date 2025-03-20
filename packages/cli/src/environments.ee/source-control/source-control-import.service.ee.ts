@@ -249,8 +249,8 @@ export class SourceControlImportService {
 				name: f.name,
 				parentFolderId: f.parentFolder?.id ?? null,
 				homeProjectId: f.homeProject.id,
-				createdAt: f.createdAt.toISOString(),
-				updatedAt: f.updatedAt.toISOString(),
+				createdAt: f.createdAt.toUTCString(),
+				updatedAt: f.updatedAt.toUTCString(),
 			})),
 		};
 	}
@@ -308,26 +308,24 @@ export class SourceControlImportService {
 		// We must iterate over the array and run the whole process workflow by workflow
 		for (const candidate of candidates) {
 			this.logger.debug(`Parsing workflow file ${candidate.file}`);
-			const importedWorkflow = jsonParse<IWorkflowToImport & { owner: string }>(
-				await fsReadFile(candidate.file, { encoding: 'utf8' }),
-			);
+			const importedWorkflow = jsonParse<
+				IWorkflowToImport & { owner: string; parentFolderId: string | null }
+			>(await fsReadFile(candidate.file, { encoding: 'utf8' }));
 			if (!importedWorkflow?.id) {
 				continue;
 			}
 			const existingWorkflow = existingWorkflows.find((e) => e.id === importedWorkflow.id);
 			importedWorkflow.active = existingWorkflow?.active ?? false;
-			//@ts-ignore
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument
-			importedWorkflow.parentFolderId = existingFolderIds.includes(importedWorkflow.parentFolderId)
-				? //@ts-ignore
-					importedWorkflow.parentFolderId
-				: null;
-			console.log('this is the imported workflow', importedWorkflow);
+
+			const parentFolderId = importedWorkflow.parentFolderId ?? '';
+
 			this.logger.debug(`Updating workflow id ${importedWorkflow.id ?? 'new'}`);
+
 			const upsertResult = await this.workflowRepository.upsert(
-				//@ts-ignore
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				{ ...importedWorkflow, parentFolder: { id: importedWorkflow.parentFolderId } },
+				{
+					...importedWorkflow,
+					parentFolder: existingFolderIds.includes(parentFolderId) ? { id: parentFolderId } : null,
+				},
 				['id'],
 			);
 			if (upsertResult?.identifiers?.length !== 1) {
@@ -561,6 +559,8 @@ export class SourceControlImportService {
 					homeProject: {
 						id: projects.find((p) => p.id === folder.homeProjectId)?.id ?? personalProject.id,
 					},
+					createdAt: folder.createdAt,
+					updatedAt: folder.updatedAt,
 				});
 				await this.folderRepository.upsert(folderCopy, {
 					skipUpdateIfNoValuesChanged: true,

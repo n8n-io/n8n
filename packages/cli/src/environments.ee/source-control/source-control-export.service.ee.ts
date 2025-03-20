@@ -1,7 +1,7 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In, IsNull, Not } from '@n8n/typeorm';
+import { In } from '@n8n/typeorm';
 import { rmSync } from 'fs';
 import { Credentials, InstanceSettings, Logger } from 'n8n-core';
 import { UnexpectedError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
@@ -247,8 +247,8 @@ export class SourceControlExportService {
 							name: f.name,
 							parentFolderId: f.parentFolder?.id ?? null,
 							homeProjectId: f.homeProject.id,
-							createdAt: f.createdAt.toISOString(),
-							updatedAt: f.updatedAt.toISOString(),
+							createdAt: f.createdAt.toUTCString(),
+							updatedAt: f.updatedAt.toUTCString(),
 						})),
 					},
 					null,
