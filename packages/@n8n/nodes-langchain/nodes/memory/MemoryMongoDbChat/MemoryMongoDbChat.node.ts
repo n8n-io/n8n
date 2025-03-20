@@ -14,12 +14,7 @@ import { getSessionId } from '@utils/helpers';
 import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
-import {
-	sessionIdOption,
-	sessionKeyProperty,
-	contextWindowLengthProperty,
-	expressionSessionKeyProperty,
-} from '../descriptions';
+import { sessionIdOption, sessionKeyProperty, expressionSessionKeyProperty } from '../descriptions';
 
 export class MemoryMongoDbChat implements INodeType {
 	description: INodeTypeDescription = {
@@ -27,7 +22,7 @@ export class MemoryMongoDbChat implements INodeType {
 		name: 'memoryMongoDbChat',
 		icon: 'file:mongodb.svg',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1],
 		description: 'Stores the chat history in MongoDB collection.',
 		defaults: {
 			name: 'MongoDB Chat Memory',
@@ -59,7 +54,7 @@ export class MemoryMongoDbChat implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
 			sessionIdOption,
-			expressionSessionKeyProperty(1.2),
+			expressionSessionKeyProperty(1),
 			sessionKeyProperty,
 			{
 				displayName: 'Collection Name',
@@ -76,10 +71,6 @@ export class MemoryMongoDbChat implements INodeType {
 				default: '',
 				description:
 					'The database name to store the chat history in. If not provided, the database from credentials will be used.',
-			},
-			{
-				...contextWindowLengthProperty,
-				displayOptions: { hide: { '@version': [{ _cnd: { lt: 1.1 } }] } },
 			},
 		],
 	};
