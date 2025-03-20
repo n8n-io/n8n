@@ -26,7 +26,7 @@ type Filter = { time_span: string };
 const getDefaultFilter = (query: LocationQuery): Filter => {
 	const { time_span } = query as Filter;
 	return {
-		time_span: time_span ?? '30',
+		time_span: time_span ?? '7',
 	};
 };
 const filters = computed(() => getDefaultFilter(route.query));
