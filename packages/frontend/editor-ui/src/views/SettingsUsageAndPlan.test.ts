@@ -63,7 +63,9 @@ describe('SettingsUsageAndPlan', () => {
 		expect(getByRole('button', { name: 'Unlock' })).toBeVisible();
 
 		await userEvent.click(getByRole('button', { name: 'Unlock' }));
-		expect(uiStore.openModal).toHaveBeenCalledWith(COMMUNITY_PLUS_ENROLLMENT_MODAL);
+		expect(uiStore.openModalWithData).toHaveBeenCalledWith(
+			expect.objectContaining({ name: COMMUNITY_PLUS_ENROLLMENT_MODAL }),
+		);
 	});
 
 	it('should show community registered badge', async () => {

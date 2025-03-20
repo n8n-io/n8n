@@ -514,7 +514,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowsPage.getters.workflowCards().should('have.length', 3);
 			workflowsPage.getters
 				.workflowCards()
-				.filter(':has(.n8n-badge:contains("Project"))')
+				.filter(':has([data-test-id="workflow-card-breadcrumbs"]:contains("Project"))')
 				.should('have.length', 2);
 			workflowsPage.getters.workflowCardActions('Workflow in Home project').click();
 			workflowsPage.getters.workflowMoveButton().click();
