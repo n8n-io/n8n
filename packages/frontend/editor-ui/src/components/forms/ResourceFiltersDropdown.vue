@@ -167,10 +167,10 @@ onBeforeMount(async () => {
 <style lang="scss" module>
 .filter-button {
 	height: 30px;
-	width: 30px;
 	align-items: center;
 
 	&.no-label {
+		width: 30px;
 		span + span {
 			margin: 0;
 		}
