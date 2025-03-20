@@ -241,22 +241,12 @@ const rows = ref(
 			<InsightsSummary
 				:summary="insightsStore.summary.state"
 				:loading="insightsStore.summary.isLoading"
+				:class="$style.insightsBanner"
 			/>
 			<div :class="$style.insightsContent">
 				<div style="height: 292px">
 					<template v-if="isLoadingCounts"> loading </template>
 					<template v-else>
-						<div>
-							<button
-								v-for="(legend, index) in legends"
-								:key="index"
-								type="button"
-								:class="{ [$style.strike]: legend.hidden }"
-								@click="legend.onClick"
-							>
-								{{ legend.text }}
-							</button>
-						</div>
 						<template v-if="insightType === 'total'">
 							<Bar :data="barChartData" :options="barChartOptions" :plugins="[LegendPlugin]" />
 						</template>
@@ -326,12 +316,21 @@ const rows = ref(
 	overflow: auto;
 }
 
+.insightsBanner {
+	padding-bottom: 0;
+
+	ul {
+		border-radius: 0;
+	}
+}
+
 .insightsContent {
-	padding: 16px 24px;
+	padding: var(--spacing-2xl) var(--spacing-2xl) var(--spacing-l);
 	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 	border-top: 0;
 	border-bottom-left-radius: 6px;
 	border-bottom-right-radius: 6px;
+	background: var(--color-background-xlight);
 }
 
 .strike {
