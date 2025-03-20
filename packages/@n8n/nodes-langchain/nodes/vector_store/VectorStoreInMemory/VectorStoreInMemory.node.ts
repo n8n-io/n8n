@@ -7,7 +7,7 @@ import { MemoryVectorStoreManager } from '../shared/MemoryManager/MemoryVectorSt
 const insertFields: INodeProperties[] = [
 	{
 		displayName:
-			'The embedded data are stored in the server memory, so they will be lost when the server is restarted. Additionally, if the amount of data is too large, it may cause the server to crash due to insufficient memory.',
+			'<strong>For experimental use only</strong>: Data is stored in memory and will be lost if n8n restarts. Data may also be cleared if available memory gets low. <a href="https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoreinmemory/">More info</a>',
 		name: 'notice',
 		type: 'notice',
 		default: '',

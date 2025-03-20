@@ -5,7 +5,7 @@ import type { IMemoryCalculator } from './types';
 
 // Memory estimation constants
 const FLOAT_SIZE_BYTES = 8; // Size of a float64 in bytes
-const CHAR_SIZE_BYTES = 2; // Size of a JavaScript character in bytes
+const CHAR_SIZE_BYTES = 2; // Size of a JavaScript character in bytes(2 bytes per character in UTF-16)
 const VECTOR_OVERHEAD_BYTES = 200; // Estimated overhead per vector
 const EMBEDDING_DIMENSIONS = 1536; // Fixed embedding dimensions
 const EMBEDDING_SIZE_BYTES = EMBEDDING_DIMENSIONS * FLOAT_SIZE_BYTES;
@@ -26,7 +26,6 @@ export class MemoryCalculator implements IMemoryCalculator {
 
 		// Single pass through documents for content and metadata estimation
 		for (const doc of documents) {
-			// Content size - strings in JS use 2 bytes per character in UTF-16
 			if (doc.pageContent) {
 				totalContentSize += doc.pageContent.length * CHAR_SIZE_BYTES;
 			}
@@ -53,8 +52,7 @@ export class MemoryCalculator implements IMemoryCalculator {
 		// Calculate total batch size with a safety factor to avoid underestimation
 		const calculatedSize = totalContentSize + totalMetadataSize + embeddingSize + overhead;
 
-		// Apply a safety factor of 1.2 (20% extra) to account for any missed memory usage
-		return Math.ceil(calculatedSize * 1.2);
+		return Math.ceil(calculatedSize);
 	}
 
 	/**
@@ -86,7 +84,6 @@ export class MemoryCalculator implements IMemoryCalculator {
 			storeSize += VECTOR_OVERHEAD_BYTES;
 		}
 
-		// Apply safety factor
-		return Math.ceil(storeSize * 1.1);
+		return Math.ceil(storeSize);
 	}
 }
