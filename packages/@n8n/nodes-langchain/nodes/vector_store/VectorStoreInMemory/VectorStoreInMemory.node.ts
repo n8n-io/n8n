@@ -1,13 +1,13 @@
 import type { MemoryVectorStore } from 'langchain/vectorstores/memory';
 import type { INodeProperties } from 'n8n-workflow';
 
-import { createVectorStoreNode } from '../shared/createVectorStoreNode';
+import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
 import { MemoryVectorStoreManager } from '../shared/MemoryVectorStoreManager';
 
 const insertFields: INodeProperties[] = [
 	{
 		displayName:
-			'The embbded data are stored in the server memory, so they will be lost when the server is restarted. Additionally, if the amount of data is too large, it may cause the server to crash due to insufficient memory.',
+			'The embedded data are stored in the server memory, so they will be lost when the server is restarted. Additionally, if the amount of data is too large, it may cause the server to crash due to insufficient memory.',
 		name: 'notice',
 		type: 'notice',
 		default: '',
@@ -23,9 +23,10 @@ const insertFields: INodeProperties[] = [
 
 export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore>({
 	meta: {
-		displayName: 'In-Memory Vector Store',
+		displayName: 'Simple Vector Store',
 		name: 'vectorStoreInMemory',
-		description: 'Work with your data in In-Memory Vector Store',
+		description:
+			"Work with your data in a Simple Vector Store. Don't use this for production usage.",
 		icon: 'fa:database',
 		iconColor: 'black',
 		docsUrl:

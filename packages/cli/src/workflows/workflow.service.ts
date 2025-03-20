@@ -5,6 +5,7 @@ import type { Scope } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import omit from 'lodash/omit';
 import pick from 'lodash/pick';
 import { BinaryDataService, Logger } from 'n8n-core';
@@ -27,6 +28,7 @@ import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { hasSharing, type ListQuery } from '@/requests';
+import { FolderService } from '@/services/folder.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -57,6 +59,7 @@ export class WorkflowService {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly eventService: EventService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly folderService: FolderService,
 	) {}
 
 	async getMany(
@@ -179,6 +182,7 @@ export class WorkflowService {
 		workflowUpdateData: WorkflowEntity,
 		workflowId: string,
 		tagIds?: string[],
+		parentFolderId?: string,
 		forceSave?: boolean,
 	): Promise<WorkflowEntity> {
 		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
@@ -263,20 +267,25 @@ export class WorkflowService {
 			await validateEntity(workflowUpdateData);
 		}
 
-		await this.workflowRepository.update(
-			workflowId,
-			pick(workflowUpdateData, [
-				'name',
-				'active',
-				'nodes',
-				'connections',
-				'meta',
-				'settings',
-				'staticData',
-				'pinData',
-				'versionId',
-			]),
-		);
+		const updatePayload: QueryDeepPartialEntity<WorkflowEntity> = pick(workflowUpdateData, [
+			'name',
+			'active',
+			'nodes',
+			'connections',
+			'meta',
+			'settings',
+			'staticData',
+			'pinData',
+			'versionId',
+		]);
+
+		if (parentFolderId) {
+			const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflow.id);
+			await this.folderService.findFolderInProjectOrFail(parentFolderId, project?.id ?? '');
+			updatePayload.parentFolder = { id: parentFolderId };
+		}
+
+		await this.workflowRepository.update(workflowId, updatePayload);
 
 		const tagsDisabled = this.globalConfig.tags.disabled;
 

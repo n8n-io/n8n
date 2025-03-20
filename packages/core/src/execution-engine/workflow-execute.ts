@@ -5,7 +5,6 @@
 import { Container } from '@n8n/di';
 import * as assert from 'assert/strict';
 import { setMaxListeners } from 'events';
-import { omit } from 'lodash';
 import get from 'lodash/get';
 import type {
 	ExecutionBaseError,
@@ -40,6 +39,7 @@ import type {
 	IRunNodeResponse,
 	IWorkflowIssues,
 	INodeIssues,
+	INodeType,
 } from 'n8n-workflow';
 import {
 	LoggerProxy as Logger,
@@ -49,6 +49,8 @@ import {
 	sleep,
 	ExecutionCancelledError,
 	Node,
+	UnexpectedError,
+	UserError,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
@@ -352,21 +354,58 @@ export class WorkflowExecute {
 			`Could not find a node with the name ${destinationNodeName} in the workflow.`,
 		);
 
+		let graph = DirectedGraph.fromWorkflow(workflow);
+
+		// Edge Case 1:
+		// Support executing a single node that is not connected to a trigger
+		const destinationHasNoParents = graph.getDirectParentConnections(destination).length === 0;
+		if (destinationHasNoParents) {
+			// short cut here, only create a subgraph and the stacks
+			graph = findSubgraph({
+				graph: filterDisabledNodes(graph),
+				destination,
+				trigger: destination,
+			});
+			const filteredNodes = graph.getNodes();
+			runData = cleanRunData(runData, graph, new Set([destination]));
+			const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
+				recreateNodeExecutionStack(graph, new Set([destination]), runData, pinData ?? {});
+
+			this.status = 'running';
+			this.runExecutionData = {
+				startData: {
+					destinationNode: destinationNodeName,
+					runNodeFilter: Array.from(filteredNodes.values()).map((node) => node.name),
+				},
+				resultData: {
+					runData,
+					pinData,
+				},
+				executionData: {
+					contextData: {},
+					nodeExecutionStack,
+					metadata: {},
+					waitingExecution,
+					waitingExecutionSource,
+				},
+			};
+
+			return this.processRunExecutionData(graph.toWorkflow({ ...workflow }));
+		}
+
 		// 1. Find the Trigger
 		const trigger = findTriggerForPartialExecution(workflow, destinationNodeName);
 		if (trigger === undefined) {
-			throw new ApplicationError(
-				'The destination node is not connected to any trigger. Partial executions need a trigger.',
-			);
+			throw new UserError('Connect a trigger to run this node');
 		}
 
 		// 2. Find the Subgraph
-		let graph = DirectedGraph.fromWorkflow(workflow);
 		graph = findSubgraph({ graph: filterDisabledNodes(graph), destination, trigger });
 		const filteredNodes = graph.getNodes();
 
 		// 3. Find the Start Nodes
-		runData = omit(runData, dirtyNodeNames);
+		const dirtyNodes = graph.getNodesByNames(dirtyNodeNames);
+		runData = cleanRunData(runData, graph, dirtyNodes);
 		let startNodes = findStartNodes({ graph, trigger, destination, runData, pinData });
 
 		// 4. Detect Cycles
@@ -378,7 +417,7 @@ export class WorkflowExecute {
 
 		// 7. Recreate Execution Stack
 		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
-			recreateNodeExecutionStack(graph, new Set(startNodes), runData, pinData ?? {});
+			recreateNodeExecutionStack(graph, startNodes, runData, pinData ?? {});
 
 		// 8. Execute
 		this.status = 'running';
@@ -424,10 +463,15 @@ export class WorkflowExecute {
 			let metaRunData: ITaskMetadata;
 			for (const nodeName of Object.keys(metadata)) {
 				for ([index, metaRunData] of metadata[nodeName].entries()) {
-					runData[nodeName][index].metadata = {
-						...(runData[nodeName][index].metadata ?? {}),
-						...metaRunData,
-					};
+					const taskData = runData[nodeName]?.[index];
+					if (taskData) {
+						taskData.metadata = { ...taskData.metadata, ...metaRunData };
+					} else {
+						Container.get(ErrorReporter).error(
+							new UnexpectedError('Taskdata missing at the end of an execution'),
+							{ extra: { nodeName, index } },
+						);
+					}
 				}
 			}
 		}
@@ -866,6 +910,10 @@ export class WorkflowExecute {
 
 		if (stillDataMissing) {
 			waitingNodeIndex = waitingNodeIndex!;
+			const waitingExecutionSource =
+				this.runExecutionData.executionData!.waitingExecutionSource![connectionData.node][
+					waitingNodeIndex
+				].main;
 
 			// Additional data is needed to run node so add it to waiting
 			this.prepareWaitingToExecution(
@@ -881,11 +929,7 @@ export class WorkflowExecute {
 
 			this.runExecutionData.executionData!.waitingExecutionSource![connectionData.node][
 				waitingNodeIndex
-			].main[connectionData.index] = {
-				previousNode: parentNodeName,
-				previousNodeOutput: outputIndex || undefined,
-				previousNodeRun: runIndex || undefined,
-			};
+			].main = waitingExecutionSource;
 		} else {
 			// All data is there so add it directly to stack
 			this.runExecutionData.executionData!.nodeExecutionStack[enqueueFn]({
@@ -971,6 +1015,22 @@ export class WorkflowExecute {
 		return workflowIssues;
 	}
 
+	private getCustomOperation(node: INode, type: INodeType) {
+		if (!type.customOperations) return undefined;
+
+		if (!node.parameters) return undefined;
+
+		const { customOperations } = type;
+		const { resource, operation } = node.parameters;
+
+		if (typeof resource !== 'string' || typeof operation !== 'string') return undefined;
+		if (!customOperations[resource] || !customOperations[resource][operation]) return undefined;
+
+		const customOperation = customOperations[resource][operation];
+
+		return customOperation;
+	}
+
 	/** Executes the given node */
 	// eslint-disable-next-line complexity
 	async runNode(
@@ -1000,8 +1060,16 @@ export class WorkflowExecute {
 
 		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
+		const isDeclarativeNode = nodeType.description.requestDefaults !== undefined;
+
+		const customOperation = this.getCustomOperation(node, nodeType);
+
 		let connectionInputData: INodeExecutionData[] = [];
-		if (nodeType.execute || (!nodeType.poll && !nodeType.trigger && !nodeType.webhook)) {
+		if (
+			nodeType.execute ||
+			customOperation ||
+			(!nodeType.poll && !nodeType.trigger && !nodeType.webhook)
+		) {
 			// Only stop if first input is empty for execute runs. For all others run anyways
 			// because then it is a trigger node. As they only pass data through and so the input-data
 			// becomes output-data it has to be possible.
@@ -1060,7 +1128,7 @@ export class WorkflowExecute {
 			inputData = newInputData;
 		}
 
-		if (nodeType.execute) {
+		if (nodeType.execute || customOperation) {
 			const closeFunctions: CloseFunction[] = [];
 			const context = new ExecuteContext(
 				workflow,
@@ -1076,10 +1144,16 @@ export class WorkflowExecute {
 				abortSignal,
 			);
 
-			const data =
-				nodeType instanceof Node
-					? await nodeType.execute(context)
-					: await nodeType.execute.call(context);
+			let data;
+
+			if (customOperation) {
+				data = await customOperation.call(context);
+			} else if (nodeType.execute) {
+				data =
+					nodeType instanceof Node
+						? await nodeType.execute(context)
+						: await nodeType.execute.call(context);
+			}
 
 			const closeFunctionsResults = await Promise.allSettled(
 				closeFunctions.map(async (fn) => await fn()),
@@ -1152,8 +1226,10 @@ export class WorkflowExecute {
 			}
 			// For trigger nodes in any mode except "manual" do we simply pass the data through
 			return { data: inputData.main as INodeExecutionData[][] };
-		} else if (nodeType.webhook) {
-			// For webhook nodes always simply pass the data through
+		} else if (nodeType.webhook && !isDeclarativeNode) {
+			// Check if the node have requestDefaults(Declarative Node),
+			// else for webhook nodes always simply pass the data through
+			// as webhook method would be called by WebhookService
 			return { data: inputData.main as INodeExecutionData[][] };
 		} else {
 			// NOTE: This block is only called by nodes tests.

@@ -4,13 +4,19 @@
         "id": {
             "type": "integer"
         },
-        "dateoccurred": {
-            "type": "string"
-        },
         "summary": {
             "type": "string"
         },
         "details": {
+            "type": "string"
+        },
+        "agent_id": {
+            "type": "integer"
+        },
+        "targetdate": {
+            "type": "string"
+        },
+        "dateoccurred": {
             "type": "string"
         },
         "status_id": {
@@ -46,9 +52,6 @@
         "team": {
             "type": "string"
         },
-        "agent_id": {
-            "type": "integer"
-        },
         "category_1": {
             "type": "string"
         },
@@ -82,21 +85,6 @@
         "onhold": {
             "type": "boolean"
         },
-        "respondbydate": {
-            "type": "string"
-        },
-        "responsedate": {
-            "type": "string"
-        },
-        "slaresponsestate": {
-            "type": "string"
-        },
-        "fixbydate": {
-            "type": "string"
-        },
-        "dateassigned": {
-            "type": "string"
-        },
         "excludefromsla": {
             "type": "boolean"
         },
@@ -114,15 +102,6 @@
         },
         "department_id": {
             "type": "integer"
-        },
-        "reportedby": {
-            "type": "string"
-        },
-        "user_email": {
-            "type": "string"
-        },
-        "emailtolist": {
-            "type": "string"
         },
         "matched_kb_id": {
             "type": "integer"
@@ -148,9 +127,6 @@
         "workflow_step": {
             "type": "integer"
         },
-        "workflow_seq": {
-            "type": "integer"
-        },
         "pipeline_stage_id": {
             "type": "integer"
         },
@@ -174,9 +150,6 @@
         },
         "starttimeslot": {
             "type": "integer"
-        },
-        "targetdate": {
-            "type": "string"
         },
         "targettime": {
             "type": "string"
@@ -285,11 +258,36 @@
         },
         "purchaseordernumber": {
             "type": "string"
+        },
+        "respondbydate": {
+            "type": "string"
+        },
+        "fixbydate": {
+            "type": "string"
+        },
+        "responsedate": {
+            "type": "string"
+        },
+        "slaresponsestate": {
+            "type": "string"
+        },
+        "reportedby": {
+            "type": "string"
+        },
+        "emailtolist": {
+            "type": "string"
+        },
+        "emailcclist": {
+            "type": "string"
+        },
+        "user_email": {
+            "type": "string"
         }
     },
     "required": [
         "id",
         "agent_id",
         "targetdate"
-    ]
+    ],
+    "version": 1
 }

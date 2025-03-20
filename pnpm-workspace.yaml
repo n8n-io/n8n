@@ -1,7 +1,6 @@
 packages:
   - packages/*
   - packages/@n8n/*
-  - packages/@n8n_io/*
   - packages/frontend/**
   - cypress
 
@@ -12,7 +11,7 @@ catalog:
   '@types/lodash': ^4.14.195
   '@types/uuid': ^10.0.0
   '@types/xml2js': ^0.4.14
-  axios: 1.7.4
+  axios: 1.8.2
   basic-auth: 2.0.1
   callsites: 3.1.0
   chokidar: 4.0.1
@@ -34,21 +33,20 @@ catalog:
 catalogs:
   frontend:
     '@testing-library/jest-dom': ^6.6.3
-    '@testing-library/user-event': ^14.6.0
+    '@testing-library/user-event': ^14.6.1
     '@testing-library/vue': ^8.1.0
     '@vue/tsconfig': ^0.7.0
     '@vueuse/core': ^10.11.0
-    '@vitest/coverage-v8': ^3.0.5
+    '@vitest/coverage-v8': ^3.0.7
     '@vitejs/plugin-vue': ^5.2.1
     '@sentry/vue': ^8.33.1
-    tsup: ^8.3.6
-    typescript: ^5.6.2
-    vite: ^6.0.2
-    vite-plugin-dts: ^4.3.0
-    vitest: ^3.0.5
-    vitest-mock-extended: ^2.0.2
+    tsup: ^8.4.0
+    typescript: ^5.8.2
+    vite: ^6.2.0
+    vitest: ^3.0.7
+    vitest-mock-extended: ^3.0.1
     vue: ^3.5.13
     vue-router: ^4.5.0
-    vue-tsc: ^2.1.10
+    vue-tsc: ^2.2.8
     vue-markdown-render: ^2.2.1
     highlight.js: ^11.8.0

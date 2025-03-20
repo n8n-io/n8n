@@ -97,6 +97,13 @@ export const reActAgentAgentProperties: INodeProperties[] = [
 				},
 			},
 			{
+				displayName: 'Max Iterations',
+				name: 'maxIterations',
+				type: 'number',
+				default: 10,
+				description: 'The maximum number of iterations the agent will run before stopping',
+			},
+			{
 				displayName: 'Return Intermediate Steps',
 				name: 'returnIntermediateSteps',
 				type: 'boolean',

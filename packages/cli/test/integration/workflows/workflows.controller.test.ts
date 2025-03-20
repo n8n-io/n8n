@@ -58,13 +58,14 @@ let projectService: ProjectService;
 
 beforeEach(async () => {
 	await testDb.truncate([
-		'Workflow',
 		'SharedWorkflow',
-		'Tag',
 		'WorkflowHistory',
-		'Project',
 		'ProjectRelation',
 		'Folder',
+		'Workflow',
+		'Tag',
+		'Project',
+		'User',
 	]);
 	projectRepository = Container.get(ProjectRepository);
 	projectService = Container.get(ProjectService);
@@ -377,6 +378,115 @@ describe('POST /workflows', () => {
 				code: 400,
 				message: "You don't have the permissions to save the workflow in this project.",
 			});
+	});
+
+	test('create link workflow with folder if one is provided', async () => {
+		//
+		// ARRANGE
+		//
+		const personalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+		const folder = await createFolder(personalProject, { name: 'Folder 1' });
+
+		const workflow = makeWorkflow();
+
+		//
+		// ACT
+		//
+		const response = await authOwnerAgent
+			.post('/workflows')
+			.send({ ...workflow, parentFolderId: folder.id });
+
+		//
+		// ASSERT
+		//
+
+		expect(response.body.data).toMatchObject({
+			active: false,
+			id: expect.any(String),
+			name: workflow.name,
+			sharedWithProjects: [],
+			usedCredentials: [],
+			homeProject: {
+				id: personalProject.id,
+				name: personalProject.name,
+				type: personalProject.type,
+			},
+			parentFolder: {
+				id: folder.id,
+				name: folder.name,
+			},
+		});
+		expect(response.body.data.shared).toBeUndefined();
+	});
+
+	test('create workflow without parent folder if no folder is provided', async () => {
+		//
+		// ARRANGE
+		//
+		const personalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+		const workflow = makeWorkflow();
+
+		//
+		// ACT
+		//
+		const response = await authOwnerAgent
+			.post('/workflows')
+			.send({ ...workflow })
+			.expect(200);
+
+		//
+		// ASSERT
+		//
+
+		expect(response.body.data).toMatchObject({
+			active: false,
+			id: expect.any(String),
+			name: workflow.name,
+			sharedWithProjects: [],
+			usedCredentials: [],
+			homeProject: {
+				id: personalProject.id,
+				name: personalProject.name,
+				type: personalProject.type,
+			},
+			parentFolder: null,
+		});
+		expect(response.body.data.shared).toBeUndefined();
+	});
+
+	test('create workflow without parent is provided folder does not exist in the project', async () => {
+		//
+		// ARRANGE
+		//
+		const personalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+		const workflow = makeWorkflow();
+
+		//
+		// ACT
+		//
+		const response = await authOwnerAgent
+			.post('/workflows')
+			.send({ ...workflow, parentFolderId: 'non-existing-folder-id' })
+			.expect(200);
+
+		//
+		// ASSERT
+		//
+
+		expect(response.body.data).toMatchObject({
+			active: false,
+			id: expect.any(String),
+			name: workflow.name,
+			sharedWithProjects: [],
+			usedCredentials: [],
+			homeProject: {
+				id: personalProject.id,
+				name: personalProject.name,
+				type: personalProject.type,
+			},
+			parentFolder: null,
+		});
+		expect(response.body.data.shared).toBeUndefined();
 	});
 });
 
@@ -1210,7 +1320,8 @@ describe('GET /workflows?includeFolders=true', () => {
 						type: ownerPersonalProject.type,
 					},
 					parentFolder: null,
-					workflowsCount: 0,
+					workflowCount: 0,
+					subFolderCount: 0,
 				}),
 			]),
 		});
@@ -1932,6 +2043,48 @@ describe('PATCH /workflows/:workflowId', () => {
 
 		expect(updatedWorkflow.id).toBe(workflow.id);
 		expect(updatedWorkflow.meta).toEqual(payload.meta);
+	});
+
+	test('should update workflow parent folder', async () => {
+		const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+		const folder1 = await createFolder(ownerPersonalProject, { name: 'folder1' });
+
+		const workflow = await createWorkflow({}, owner);
+		const payload = {
+			versionId: workflow.versionId,
+			parentFolderId: folder1.id,
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const updatedWorkflow = await Container.get(WorkflowRepository).findOneOrFail({
+			where: { id: workflow.id },
+			relations: ['parentFolder'],
+		});
+
+		expect(updatedWorkflow.parentFolder?.id).toBe(folder1.id);
+	});
+
+	test('should fail if trying update workflow parent folder with a folder that does not belong to project', async () => {
+		const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+		const memberPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+			member.id,
+		);
+
+		await createFolder(ownerPersonalProject, { name: 'folder1' });
+		const folder2 = await createFolder(memberPersonalProject, { name: 'folder2' });
+
+		const workflow = await createWorkflow({}, owner);
+		const payload = {
+			versionId: workflow.versionId,
+			parentFolderId: folder2.id,
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(500);
 	});
 });
 

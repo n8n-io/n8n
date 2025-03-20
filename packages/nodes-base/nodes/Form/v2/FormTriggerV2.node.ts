@@ -19,6 +19,7 @@ import {
 	respondWithOptions,
 	webhookPath,
 } from '../common.descriptions';
+import { cssVariables } from '../cssVariables';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
 import { formWebhook } from '../utils';
 
@@ -179,6 +180,22 @@ const descriptionV2: INodeTypeDescription = {
 							'@version': [{ _cnd: { gt: 2 } }],
 						},
 					},
+				},
+				{
+					displayName: 'Custom Form Styling',
+					name: 'customCss',
+					type: 'string',
+					typeOptions: {
+						rows: 10,
+						editor: 'cssEditor',
+					},
+					displayOptions: {
+						show: {
+							'@version': [{ _cnd: { gt: 2 } }],
+						},
+					},
+					default: cssVariables.trim(),
+					description: 'Override default styling of the public form interface with CSS',
 				},
 			],
 		},

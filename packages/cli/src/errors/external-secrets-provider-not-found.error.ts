@@ -1,6 +1,6 @@
-import { ApplicationError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 
-export class ExternalSecretsProviderNotFoundError extends ApplicationError {
+export class ExternalSecretsProviderNotFoundError extends UnexpectedError {
 	constructor(public providerName: string) {
 		super(`External secrets provider not found: ${providerName}`);
 	}

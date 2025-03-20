@@ -30,6 +30,6 @@
     "flatted": "catalog:",
     "lodash": "catalog:",
     "nanoid": "catalog:",
-    "start-server-and-test": "^2.0.8"
+    "start-server-and-test": "^2.0.10"
   }
 }

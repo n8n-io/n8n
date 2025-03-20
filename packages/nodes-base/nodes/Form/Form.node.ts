@@ -18,6 +18,7 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
+import { cssVariables } from './cssVariables';
 import { renderFormCompletion } from './formCompletionUtils';
 import { renderFormNode } from './formNodeUtils';
 import { configureWaitTillDate } from '../../utils/sendAndWait/configureWaitTillDate.util';
@@ -107,6 +108,17 @@ const pageProperties = updateDisplayOptions(
 					type: 'string',
 					default: 'Submit',
 				},
+				{
+					displayName: 'Custom Form Styling',
+					name: 'customCss',
+					type: 'string',
+					typeOptions: {
+						rows: 10,
+						editor: 'cssEditor',
+					},
+					default: cssVariables.trim(),
+					description: 'Override default styling of the public form interface with CSS',
+				},
 			],
 		},
 	],
@@ -141,6 +153,11 @@ const completionProperties = updateDisplayOptions(
 					value: 'showText',
 					description: 'Display simple text or HTML',
 				},
+				{
+					name: 'Return Binary File',
+					value: 'returnBinary',
+					description: 'Return incoming binary file',
+				},
 			],
 		},
 		{
@@ -164,7 +181,7 @@ const completionProperties = updateDisplayOptions(
 			required: true,
 			displayOptions: {
 				show: {
-					respondWith: ['text'],
+					respondWith: ['text', 'returnBinary'],
 				},
 			},
 		},
@@ -178,7 +195,7 @@ const completionProperties = updateDisplayOptions(
 			},
 			displayOptions: {
 				show: {
-					respondWith: ['text'],
+					respondWith: ['text', 'returnBinary'],
 				},
 			},
 		},
@@ -198,6 +215,21 @@ const completionProperties = updateDisplayOptions(
 			placeholder: 'e.g. Thanks for filling the form',
 			description: 'The text to display on the page. Use HTML to show a customized web page.',
 		},
+		{
+			displayName: 'Input Data Field Name',
+			name: 'inputDataFieldName',
+			type: 'string',
+			displayOptions: {
+				show: {
+					respondWith: ['returnBinary'],
+				},
+			},
+			default: 'data',
+			placeholder: 'e.g. data',
+			description:
+				'Find the name of input field containing the binary data to return in the Input panel on the left, in the Binary tab',
+			hint: 'The name of the input field containing the binary file data to be returned',
+		},
 		...waitTimeProperties,
 		{
 			displayName: 'Options',
@@ -205,10 +237,23 @@ const completionProperties = updateDisplayOptions(
 			type: 'collection',
 			placeholder: 'Add option',
 			default: {},
-			options: [{ ...formTitle, required: false, displayName: 'Completion Page Title' }],
+			options: [
+				{ ...formTitle, required: false, displayName: 'Completion Page Title' },
+				{
+					displayName: 'Custom Form Styling',
+					name: 'customCss',
+					type: 'string',
+					typeOptions: {
+						rows: 10,
+						editor: 'cssEditor',
+					},
+					default: cssVariables.trim(),
+					description: 'Override default styling of the public form interface with CSS',
+				},
+			],
 			displayOptions: {
 				show: {
-					respondWith: ['text'],
+					respondWith: ['text', 'returnBinary'],
 				},
 			},
 		},
@@ -311,15 +356,7 @@ export class Form extends Node {
 				});
 			}
 		} else {
-			fields = (context.getNodeParameter('formFields.values', []) as FormFieldsParameter).map(
-				(field) => {
-					if (field.fieldType === 'hiddenField') {
-						field.fieldLabel = field.fieldName as string;
-					}
-
-					return field;
-				},
-			);
+			fields = context.getNodeParameter('formFields.values', []) as FormFieldsParameter;
 		}
 
 		const method = context.getRequestObject().method;

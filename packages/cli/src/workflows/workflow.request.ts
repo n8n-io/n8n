@@ -22,6 +22,7 @@ export declare namespace WorkflowRequest {
 		hash: string;
 		meta: Record<string, unknown>;
 		projectId: string;
+		parentFolderId?: string;
 	}>;
 
 	type ManualRunPayload = {

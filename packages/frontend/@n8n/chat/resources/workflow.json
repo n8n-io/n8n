@@ -22,7 +22,7 @@
 				"sessionKey": "={{ $json.sessionId }}"
 			},
 			"id": "b416df7b-4802-462f-8f74-f0a71dc4c0be",
-			"name": "Window Buffer Memory",
+			"name": "Simple Memory",
 			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
 			"typeVersion": 1,
 			"position": [340, 540]
@@ -66,7 +66,7 @@
 				]
 			]
 		},
-		"Window Buffer Memory": {
+		"Simple Memory": {
 			"ai_memory": [
 				[
 					{

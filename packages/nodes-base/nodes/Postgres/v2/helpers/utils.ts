@@ -30,6 +30,16 @@ export function isJSON(str: string) {
 	}
 }
 
+export function evaluateExpression(expression: NodeParameterValueType) {
+	if (expression === undefined) {
+		return '';
+	} else if (expression === null) {
+		return 'null';
+	} else {
+		return typeof expression === 'object' ? JSON.stringify(expression) : expression.toString();
+	}
+}
+
 export function stringToArray(str: NodeParameterValueType | undefined) {
 	if (str === undefined) return [];
 	return String(str)

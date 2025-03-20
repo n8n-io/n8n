@@ -488,11 +488,11 @@
                 "currency",
                 "contact",
                 "group",
+                "owner",
+                "stage",
                 "cdate",
                 "mdate",
                 "description",
-                "owner",
-                "stage",
                 "organization",
                 "status",
                 "nextdate",
@@ -514,5 +514,6 @@
         "dealGroups",
         "dealStages",
         "deal"
-    ]
+    ],
+    "version": 1
 }

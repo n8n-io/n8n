@@ -2,7 +2,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import type { TEntitlement, TFeatures, TLicenseBlock } from '@n8n_io/license-sdk';
 import { LicenseManager } from '@n8n_io/license-sdk';
-import { InstanceSettings, ObjectStoreService, Logger } from 'n8n-core';
+import { InstanceSettings, Logger } from 'n8n-core';
 
 import config from '@/config';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
@@ -106,7 +106,6 @@ export class License {
 
 			const features = this.manager.getFeatures();
 			this.checkIsLicensedForMultiMain(features);
-			this.checkIsLicensedForBinaryDataS3(features);
 
 			this.logger.debug('License initialized');
 		} catch (error: unknown) {
@@ -132,12 +131,18 @@ export class License {
 	}
 
 	async onFeatureChange(_features: TFeatures): Promise<void> {
+		const { isMultiMain, isLeader } = this.instanceSettings;
+
+		if (Object.keys(_features).length === 0) {
+			this.logger.error('Empty license features recieved', { isMultiMain, isLeader });
+			return;
+		}
+
 		this.logger.debug('License feature change detected', _features);
 
 		this.checkIsLicensedForMultiMain(_features);
-		this.checkIsLicensedForBinaryDataS3(_features);
 
-		if (this.instanceSettings.isMultiMain && !this.instanceSettings.isLeader) {
+		if (isMultiMain && !isLeader) {
 			this.logger
 				.scoped(['scaling', 'multi-main-setup', 'license'])
 				.debug('Instance is not leader, skipping sending of "reload-license" command...');
@@ -295,6 +300,10 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY);
 	}
 
+	isFoldersEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.FOLDERS);
+	}
+
 	getCurrentEntitlements() {
 		return this.manager?.getCurrentEntitlements() ?? [];
 	}
@@ -339,10 +348,6 @@ export class License {
 		return this.getFeatureValue(LICENSE_QUOTAS.USERS_LIMIT) ?? UNLIMITED_LICENSE_QUOTA;
 	}
 
-	getApiKeysPerUserLimit() {
-		return this.getFeatureValue(LICENSE_QUOTAS.API_KEYS_PER_USER_LIMIT) ?? 1;
-	}
-
 	getTriggerLimit() {
 		return this.getFeatureValue(LICENSE_QUOTAS.TRIGGER_LIMIT) ?? UNLIMITED_LICENSE_QUOTA;
 	}
@@ -381,14 +386,6 @@ export class License {
 		return this.getUsersLimit() === UNLIMITED_LICENSE_QUOTA;
 	}
 
-	async reinit() {
-		if (this.manager) {
-			await this.manager.reset();
-		}
-		await this.init({ forceRecreate: true });
-		this.logger.debug('License reinitialized');
-	}
-
 	/**
 	 * Ensures that the instance is licensed for multi-main setup if multi-main mode is enabled
 	 */
@@ -413,20 +410,11 @@ export class License {
 		}
 	}
 
-	/**
-	 * Ensures that the instance is licensed for binary data S3 if S3 is selected and available
-	 */
-	private checkIsLicensedForBinaryDataS3(features: TFeatures) {
-		const isS3Selected = config.getEnv('binaryDataManager.mode') === 's3';
-		const isS3Available = config.getEnv('binaryDataManager.availableModes').includes('s3');
-		const isS3Licensed = features['feat:binaryDataS3'];
+	enableAutoRenewals() {
+		this.manager?.enableAutoRenewals();
+	}
 
-		if (isS3Selected && isS3Available && !isS3Licensed) {
-			this.logger.debug(
-				'License changed with no support for external storage - blocking writes on object store. To restore writes, please upgrade to a license that supports this feature.',
-			);
-
-			Container.get(ObjectStoreService).setReadonly(true);
-		}
+	disableAutoRenewals() {
+		this.manager?.disableAutoRenewals();
 	}
 }

@@ -1,0 +1,44 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "closed": {
+            "type": "boolean"
+        },
+        "color": {
+            "type": "null"
+        },
+        "idBoard": {
+            "type": "string"
+        },
+        "type": {
+            "type": "null"
+        },
+        "datasource": {
+            "type": "object",
+            "properties": {
+                "filter": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "filter"
+            ]
+        }
+    },
+    "required": [
+        "id",
+        "name",
+        "closed",
+        "color",
+        "idBoard",
+        "pos",
+        "limits"
+    ],
+    "version": 1
+}

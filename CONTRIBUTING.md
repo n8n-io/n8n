@@ -49,8 +49,8 @@ The most important directories:
   execution, active webhooks and
   workflows. **Contact n8n before
   starting on any changes here**
-- [/packages/design-system](/packages/design-system) - Vue frontend components
-- [/packages/editor-ui](/packages/editor-ui) - Vue frontend workflow editor
+- [/packages/frontend/@n8n/design-system](/packages/design-system) - Vue frontend components
+- [/packages/frontend/editor-ui](/packages/editor-ui) - Vue frontend workflow editor
 - [/packages/node-dev](/packages/node-dev) - CLI to create new n8n-nodes
 - [/packages/nodes-base](/packages/nodes-base) - Base n8n nodes
 - [/packages/workflow](/packages/workflow) - Workflow code with interfaces which

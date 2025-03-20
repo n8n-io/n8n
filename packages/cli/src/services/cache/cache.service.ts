@@ -1,7 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import { caching } from 'cache-manager';
-import { ApplicationError, jsonStringify } from 'n8n-workflow';
+import { jsonStringify, UserError } from 'n8n-workflow';
 
 import config from '@/config';
 import { Time } from '@/constants';
@@ -155,9 +155,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		if (!key?.length) return;
 
 		if (this.cache.kind === 'memory') {
-			throw new ApplicationError('Method `expire` not yet implemented for in-memory cache', {
-				level: 'warning',
-			});
+			throw new UserError('Method `expire` not yet implemented for in-memory cache');
 		}
 
 		await this.cache.store.expire(key, ttlMs * Time.milliseconds.toSeconds);

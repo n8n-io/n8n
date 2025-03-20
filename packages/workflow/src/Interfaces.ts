@@ -6,7 +6,7 @@ import type * as express from 'express';
 import type FormData from 'form-data';
 import type { PathLike } from 'fs';
 import type { IncomingHttpHeaders } from 'http';
-import type { RequestBodyMatcher } from 'nock';
+import type { ReplyHeaders, RequestBodyMatcher, RequestHeaderMatcher } from 'nock';
 import type { Client as SSHClient } from 'ssh2';
 import type { Readable } from 'stream';
 import type { SecureContextOptions } from 'tls';
@@ -985,6 +985,10 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getExecutionCancelSignal(): AbortSignal | undefined;
 		onExecutionCancellation(handler: () => unknown): void;
 		logAiEvent(eventName: AiEvent, msg?: string | undefined): void;
+		cloneWith(replacements: {
+			runIndex: number;
+			inputData: INodeExecutionData[][];
+		}): ISupplyDataFunctions;
 	};
 
 export interface IExecutePaginationFunctions extends IExecuteSingleFunctions {
@@ -1238,7 +1242,7 @@ export type NodePropertyTypes =
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
-export type EditorType = 'codeNodeEditor' | 'jsEditor' | 'htmlEditor' | 'sqlEditor';
+export type EditorType = 'codeNodeEditor' | 'jsEditor' | 'htmlEditor' | 'sqlEditor' | 'cssEditor';
 export type CodeNodeEditorLanguage = (typeof CODE_LANGUAGES)[number];
 export type CodeExecutionMode = (typeof CODE_EXECUTION_MODES)[number];
 export type SQLDialect =
@@ -1556,12 +1560,12 @@ export interface SupplyData {
 	closeFunction?: CloseFunction;
 }
 
+type NodeOutput = INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null;
+
 export interface INodeType {
 	description: INodeTypeDescription;
 	supplyData?(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData>;
-	execute?(
-		this: IExecuteFunctions,
-	): Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null>;
+	execute?(this: IExecuteFunctions): Promise<NodeOutput>;
 	poll?(this: IPollFunctions): Promise<INodeExecutionData[][] | null>;
 	trigger?(this: ITriggerFunctions): Promise<ITriggerResponse | undefined>;
 	webhook?(this: IWebhookFunctions): Promise<IWebhookResponseData>;
@@ -1596,6 +1600,18 @@ export interface INodeType {
 	webhookMethods?: {
 		[name in WebhookType]?: {
 			[method in WebhookSetupMethodNames]: (this: IHookFunctions) => Promise<boolean>;
+		};
+	};
+	/**
+	 * Defines custom operations for nodes that do not implement an `execute` method, such as declarative nodes.
+	 * This function will be invoked instead of `execute` for a specific resource and operation.
+	 * Should be either `execute` or `customOperations` defined for a node, but not both.
+	 *
+	 * @property customOperations - Maps specific resource and operation to a custom function
+	 */
+	customOperations?: {
+		[resource: string]: {
+			[operation: string]: (this: IExecuteFunctions) => Promise<NodeOutput>;
 		};
 	};
 }
@@ -1683,6 +1699,8 @@ export type IconRef = `fa:${string}` | `node:${string}.${string}`;
 export type IconFile = `file:${string}.png` | `file:${string}.svg`;
 export type Icon = IconRef | Themed<IconFile>;
 
+type NodeGroupType = 'input' | 'output' | 'organization' | 'schedule' | 'transform' | 'trigger';
+
 export interface INodeTypeBaseDescription {
 	displayName: string;
 	name: string;
@@ -1690,7 +1708,7 @@ export interface INodeTypeBaseDescription {
 	iconColor?: ThemeIconColor;
 	iconUrl?: Themed<string>;
 	badgeIconUrl?: Themed<string>;
-	group: string[];
+	group: NodeGroupType[];
 	description: string;
 	documentationUrl?: string;
 	subtitle?: string;
@@ -1705,10 +1723,22 @@ export interface INodeTypeBaseDescription {
 	hidden?: true;
 
 	/**
-	 * Whether the node will be wrapped for tool-use by AI Agents
+	 * Whether the node will be wrapped for tool-use by AI Agents,
+	 * optionally replacing provided parts of the description
 	 */
-	usableAsTool?: true;
+	usableAsTool?: true | UsableAsToolDescription;
 }
+
+/**
+ * NodeDescription entries that replace the base node entries when
+ * the node is used as a tool
+ *
+ * Note that the new codex is hardcoded and may not behave as expected
+ * without additional changes to the implementation.
+ */
+export type UsableAsToolDescription = {
+	replacements?: Partial<Omit<INodeTypeBaseDescription, 'usableAsTool'>>;
+};
 
 export interface INodePropertyRouting {
 	operations?: IN8nRequestOperations; // Should be changed, does not sound right
@@ -2031,7 +2061,7 @@ export interface IWebhookResponseData {
 }
 
 export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryBinary' | 'noData';
-export type WebhookResponseMode = 'onReceived' | 'lastNode' | 'responseNode';
+export type WebhookResponseMode = 'onReceived' | 'lastNode' | 'responseNode' | 'formPage';
 
 export interface INodeTypes {
 	getByName(nodeType: string): INodeType | IVersionedNodeType;
@@ -2396,8 +2426,10 @@ export interface WorkflowTestData {
 			method: 'delete' | 'get' | 'patch' | 'post' | 'put';
 			path: string;
 			requestBody?: RequestBodyMatcher;
+			requestHeaders?: Record<string, RequestHeaderMatcher>;
 			statusCode: number;
 			responseBody: string | object;
+			responseHeaders?: ReplyHeaders;
 		}>;
 	};
 	trigger?: {

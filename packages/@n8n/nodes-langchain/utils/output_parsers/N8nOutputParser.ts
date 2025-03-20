@@ -12,15 +12,17 @@ export type N8nOutputParser =
 
 export { N8nOutputFixingParser, N8nItemListOutputParser, N8nStructuredOutputParser };
 
-export async function getOptionalOutputParsers(ctx: IExecuteFunctions): Promise<N8nOutputParser[]> {
-	let outputParsers: N8nOutputParser[] = [];
+export async function getOptionalOutputParser(
+	ctx: IExecuteFunctions,
+): Promise<N8nOutputParser | undefined> {
+	let outputParser: N8nOutputParser | undefined;
 
 	if (ctx.getNodeParameter('hasOutputParser', 0, true) === true) {
-		outputParsers = (await ctx.getInputConnectionData(
+		outputParser = (await ctx.getInputConnectionData(
 			NodeConnectionType.AiOutputParser,
 			0,
-		)) as N8nOutputParser[];
+		)) as N8nOutputParser;
 	}
 
-	return outputParsers;
+	return outputParser;
 }

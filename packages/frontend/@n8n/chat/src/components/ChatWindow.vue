@@ -40,9 +40,9 @@ function toggle() {
 	position: fixed;
 	display: flex;
 	flex-direction: column;
-	bottom: var(--chat--window--bottom, var(--chat--spacing));
-	right: var(--chat--window--right, var(--chat--spacing));
-	z-index: var(--chat--window--z-index, 9999);
+	bottom: var(--chat--window--bottom);
+	right: var(--chat--window--right);
+	z-index: var(--chat--window--z-index);
 
 	max-width: calc(100% - var(--chat--window--right, var(--chat--spacing)) * 2);
 	max-height: calc(100% - var(--chat--window--bottom, var(--chat--spacing)) * 2);
@@ -71,8 +71,8 @@ function toggle() {
 		background: var(--chat--toggle--background);
 		color: var(--chat--toggle--color);
 		cursor: pointer;
-		width: var(--chat--toggle--width, var(--chat--toggle--size));
-		height: var(--chat--toggle--height, var(--chat--toggle--size));
+		width: var(--chat--toggle--width);
+		height: var(--chat--toggle--height);
 		border-radius: var(--chat--toggle--border-radius, 50%);
 		display: inline-flex;
 		align-items: center;

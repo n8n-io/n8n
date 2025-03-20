@@ -10,13 +10,13 @@
         "mode": {
             "type": "string"
         },
-        "retryOf": {
-            "type": "null"
-        },
         "retrySuccessId": {
             "type": "null"
         },
         "status": {
+            "type": "string"
+        },
+        "createdAt": {
             "type": "string"
         },
         "startedAt": {
@@ -28,5 +28,6 @@
         "workflowId": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

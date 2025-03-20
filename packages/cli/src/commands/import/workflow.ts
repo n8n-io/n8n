@@ -3,7 +3,7 @@ import { Flags } from '@oclif/core';
 import glob from 'fast-glob';
 import fs from 'fs';
 import type { IWorkflowBase, WorkflowId } from 'n8n-workflow';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { jsonParse, UserError } from 'n8n-workflow';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
@@ -17,20 +17,16 @@ import { ImportService } from '@/services/import.service';
 
 import { BaseCommand } from '../base-command';
 
-function assertHasWorkflowsToImport(workflows: unknown): asserts workflows is IWorkflowToImport[] {
-	if (!Array.isArray(workflows)) {
-		throw new ApplicationError(
-			'File does not seem to contain workflows. Make sure the workflows are contained in an array.',
-		);
-	}
-
+function assertHasWorkflowsToImport(
+	workflows: unknown[],
+): asserts workflows is IWorkflowToImport[] {
 	for (const workflow of workflows) {
 		if (
 			typeof workflow !== 'object' ||
 			!Object.prototype.hasOwnProperty.call(workflow, 'nodes') ||
 			!Object.prototype.hasOwnProperty.call(workflow, 'connections')
 		) {
-			throw new ApplicationError('File does not seem to contain valid workflows.');
+			throw new UserError('File does not seem to contain valid workflows.');
 		}
 	}
 }
@@ -81,7 +77,7 @@ export class ImportWorkflowsCommand extends BaseCommand {
 		}
 
 		if (flags.projectId && flags.userId) {
-			throw new ApplicationError(
+			throw new UserError(
 				'You cannot use `--userId` and `--projectId` together. Use one or the other.',
 			);
 		}
@@ -93,7 +89,7 @@ export class ImportWorkflowsCommand extends BaseCommand {
 		const result = await this.checkRelations(workflows, flags.projectId, flags.userId);
 
 		if (!result.success) {
-			throw new ApplicationError(result.message);
+			throw new UserError(result.message);
 		}
 
 		this.logger.info(`Importing ${workflows.length} workflows...`);
@@ -185,30 +181,28 @@ export class ImportWorkflowsCommand extends BaseCommand {
 			path = path.replace(/\\/g, '/');
 		}
 
+		const workflowRepository = Container.get(WorkflowRepository);
+
 		if (separate) {
 			const files = await glob('*.json', {
 				cwd: path,
 				absolute: true,
 			});
-			const workflowInstances = files.map((file) => {
+			return files.map((file) => {
 				const workflow = jsonParse<IWorkflowToImport>(fs.readFileSync(file, { encoding: 'utf8' }));
 				if (!workflow.id) {
 					workflow.id = generateNanoId();
 				}
-
-				const workflowInstance = Container.get(WorkflowRepository).create(workflow);
-
-				return workflowInstance;
+				return workflowRepository.create(workflow);
 			});
-
-			return workflowInstances;
 		} else {
-			const workflows = jsonParse<IWorkflowToImport[]>(fs.readFileSync(path, { encoding: 'utf8' }));
+			const workflows = jsonParse<IWorkflowToImport | IWorkflowToImport[]>(
+				fs.readFileSync(path, { encoding: 'utf8' }),
+			);
+			const workflowsArray = Array.isArray(workflows) ? workflows : [workflows];
+			assertHasWorkflowsToImport(workflowsArray);
 
-			const workflowInstances = workflows.map((w) => Container.get(WorkflowRepository).create(w));
-			assertHasWorkflowsToImport(workflows);
-
-			return workflowInstances;
+			return workflowRepository.create(workflowsArray);
 		}
 	}
 
@@ -220,7 +214,7 @@ export class ImportWorkflowsCommand extends BaseCommand {
 		if (!userId) {
 			const owner = await Container.get(UserRepository).findOneBy({ role: 'global:owner' });
 			if (!owner) {
-				throw new ApplicationError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
+				throw new UserError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
 			}
 			userId = owner.id;
 		}
