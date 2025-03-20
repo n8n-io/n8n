@@ -56,6 +56,7 @@ const showSettings = computed(
 );
 
 const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
+
 const showFolders = computed(() => {
 	return settingsStore.isFoldersFeatureEnabled && route.name !== VIEWS.WORKFLOWS;
 });
@@ -189,7 +190,7 @@ const onSelect = (action: string) => {
 }
 
 .actions {
-	padding: var(--spacing-2xs) 0 var(--spacing-l);
+	padding: var(--spacing-2xs) 0 var(--spacing-xs);
 }
 
 @include mixins.breakpoint('xs-only') {
