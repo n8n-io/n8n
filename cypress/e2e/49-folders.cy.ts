@@ -420,6 +420,18 @@ describe('Folders', () => {
 			getWorkflowCards().should('have.length', 1);
 		});
 
+		it('should move folder to project root - from folder card action', () => {
+			goToPersonalProject();
+			createFolderFromProjectHeader('Test parent');
+			createFolderInsideFolder('Move me to root', 'Test parent');
+			moveFolderFromFolderCardActions('Move me to root', 'Personal');
+			// Parent folder should be empty
+			getFolderEmptyState().should('exist');
+			// Child folder should be in the root
+			goToPersonalProject();
+			getFolderCard('Move me to root').should('exist');
+		});
+
 		it('should move workflow from project root to folder', () => {
 			goToPersonalProject();
 			createWorkflowFromProjectHeader(undefined, 'Move me');
