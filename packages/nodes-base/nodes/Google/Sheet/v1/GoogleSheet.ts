@@ -259,9 +259,17 @@ export class GoogleSheet {
 			return [];
 		}
 
-		// Create the keys array
+		// Create the keys array and handle duplicates
+		const keyCount: { [key: string]: number } = {};
 		for (let columnIndex = 0; columnIndex < inputData[keyRow].length; columnIndex++) {
-			keys.push(inputData[keyRow][columnIndex]);
+			let key = inputData[keyRow][columnIndex];
+			if (keyCount[key] !== undefined) {
+				keyCount[key] += 1;
+				key = `${key}_${keyCount[key]}`;
+			} else {
+				keyCount[key] = 0;
+			}
+			keys.push(key);
 		}
 
 		return this.structureData(inputData, dataStartRow, keys);

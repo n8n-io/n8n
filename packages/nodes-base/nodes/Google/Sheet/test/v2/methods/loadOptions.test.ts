@@ -109,6 +109,25 @@ describe('Google Sheets Functions', () => {
 		});
 	});
 
+	describe('getSheetHeaderRow - Duplicate Columns', () => {
+		it('should return column headers with duplicate names', async () => {
+			mockGoogleSheetInstance.spreadsheetGetSheet.mockResolvedValue({
+				title: 'Sheet1',
+			});
+			mockGoogleSheetInstance.getData.mockResolvedValue([['Header1', 'Header1', 'Header2']]);
+			mockGoogleSheetInstance.testFilter.mockReturnValue(['Header1', 'Header1', 'Header2']);
+
+			const result = await getSheetHeaderRow.call(
+				mockLoadOptionsFunctions as ILoadOptionsFunctions,
+			);
+			expect(result).toEqual([
+				{ name: 'Header1', value: 'Header1' },
+				{ name: 'Header1_1', value: 'Header1_1' },
+				{ name: 'Header2', value: 'Header2' },
+			]);
+		});
+	});
+
 	describe('getSheetHeaderRowAndAddColumn', () => {
 		it('should add a new column and exclude the column to match on', async () => {
 			mockGoogleSheetInstance.spreadsheetGetSheet.mockResolvedValue({
