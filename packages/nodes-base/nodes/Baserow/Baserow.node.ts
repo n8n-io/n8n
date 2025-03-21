@@ -10,18 +10,22 @@ import {
 
 import {
 	baserowApiRequest,
+	baserowFileUploadRequest,
 	baserowApiRequestAllItems,
 	getJwtToken,
 	TableFieldMapper,
 	toOptions,
+	getTableFields,
 } from './GenericFunctions';
 import { operationFields } from './OperationDescription';
 import type {
 	BaserowCredentials,
 	FieldsUiValues,
+	FileOperation,
 	GetAllAdditionalOptions,
 	LoadedResource,
-	Operation,
+	Resource,
+	RowOperation,
 	Row,
 } from './types';
 
@@ -53,6 +57,10 @@ export class Baserow implements INodeType {
 				type: 'options',
 				noDataExpression: true,
 				options: [
+					{
+						name: 'File',
+						value: 'file',
+					},
 					{
 						name: 'Row',
 						value: 'row',
@@ -103,6 +111,48 @@ export class Baserow implements INodeType {
 					},
 				],
 				default: 'getAll',
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['file'],
+					},
+				},
+				options: [
+					{
+						name: 'Upload',
+						value: 'upload',
+						description: 'Upload a file',
+						action: 'Upload a file',
+					},
+					{
+						name: 'Upload via URL',
+						value: 'upload-via-url',
+						description: 'Upload a file via URL',
+						action: 'Upload a file via URL',
+					},
+				],
+				default: 'upload',
+			},
+			{
+				displayName: 'Input Data Field Name',
+				name: 'binaryPropertyName',
+
+				type: 'string',
+				default: 'data',
+				displayOptions: {
+					show: {
+						operation: ['upload'],
+						resource: ['file'],
+					},
+				},
+				required: true,
+				description:
+					'The name of the input field containing the binary file data to be uploaded. Supported file types: PNG, JPEG.',
 			},
 			...operationFields,
 		],
@@ -155,182 +205,250 @@ export class Baserow implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const mapper = new TableFieldMapper();
-		const returnData: INodeExecutionData[] = [];
-		const operation = this.getNodeParameter('operation', 0) as Operation;
 
-		const tableId = this.getNodeParameter('tableId', 0) as string;
+		const returnData: INodeExecutionData[] = [];
+		const resource = this.getNodeParameter('resource', 0) as Resource;
+		const operation = this.getNodeParameter('operation', 0) as RowOperation | FileOperation;
+
 		const credentials = await this.getCredentials<BaserowCredentials>('baserowApi');
 		const jwtToken = await getJwtToken.call(this, credentials);
-		const fields = await mapper.getTableFields.call(this, tableId, jwtToken);
-		mapper.createMappings(fields);
 
 		for (let i = 0; i < items.length; i++) {
 			try {
-				if (operation === 'getAll') {
-					// ----------------------------------
-					//             getAll
-					// ----------------------------------
+				if (resource === 'row') {
+					const tableId = this.getNodeParameter('tableId', 0) as string;
+					const fields = await getTableFields.call(this, tableId, jwtToken);
 
-					// https://api.baserow.io/api/redoc/#operation/list_database_table_rows
+					const mapper = new TableFieldMapper();
+					mapper.createMappings(fields);
 
-					const { order, filters, filterType, search } = this.getNodeParameter(
-						'additionalOptions',
-						i,
-					) as GetAllAdditionalOptions;
+					if (operation === 'getAll') {
+						// ----------------------------------
+						//             getAll
+						// ----------------------------------
 
-					const qs: IDataObject = {};
+						// https://api.baserow.io/api/redoc/#operation/list_database_table_rows
 
-					if (order?.fields) {
-						qs.order_by = order.fields
-							.map(({ field, direction }) => `${direction}${mapper.setField(field)}`)
-							.join(',');
-					}
+						const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
+						const limit = this.getNodeParameter('limit', 0, 0);
 
-					if (filters?.fields) {
-						filters.fields.forEach(({ field, operator, value }) => {
-							qs[`filter__field_${mapper.setField(field)}__${operator}`] = value;
-						});
-					}
+						const { order, filters, filterType, search } = this.getNodeParameter(
+							'additionalOptions',
+							i,
+						) as GetAllAdditionalOptions;
 
-					if (filterType) {
-						qs.filter_type = filterType;
-					}
+						const qs: IDataObject = {};
 
-					if (search) {
-						qs.search = search;
-					}
-
-					const endpoint = `/api/database/rows/table/${tableId}/`;
-					const rows = (await baserowApiRequestAllItems.call(
-						this,
-						'GET',
-						endpoint,
-						jwtToken,
-						{},
-						qs,
-					)) as Row[];
-
-					rows.forEach((row) => mapper.idsToNames(row));
-					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(rows),
-						{ itemData: { item: i } },
-					);
-					returnData.push(...executionData);
-				} else if (operation === 'get') {
-					// ----------------------------------
-					//             get
-					// ----------------------------------
-
-					// https://api.baserow.io/api/redoc/#operation/get_database_table_row
-
-					const rowId = this.getNodeParameter('rowId', i) as string;
-					const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
-					const row = await baserowApiRequest.call(this, 'GET', endpoint, jwtToken);
-
-					mapper.idsToNames(row as Row);
-					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(row as Row),
-						{ itemData: { item: i } },
-					);
-					returnData.push(...executionData);
-				} else if (operation === 'create') {
-					// ----------------------------------
-					//             create
-					// ----------------------------------
-
-					// https://api.baserow.io/api/redoc/#operation/create_database_table_row
-
-					const body: IDataObject = {};
-
-					const dataToSend = this.getNodeParameter('dataToSend', 0) as
-						| 'defineBelow'
-						| 'autoMapInputData';
-
-					if (dataToSend === 'autoMapInputData') {
-						const incomingKeys = Object.keys(items[i].json);
-						const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
-						const inputDataToIgnore = rawInputsToIgnore.split(',').map((c) => c.trim());
-
-						for (const key of incomingKeys) {
-							if (inputDataToIgnore.includes(key)) continue;
-							body[key] = items[i].json[key];
-							mapper.namesToIds(body);
+						if (order?.fields) {
+							qs.order_by = order.fields
+								.map(({ field, direction }) => `${direction}${mapper.setField(field)}`)
+								.join(',');
 						}
-					} else {
-						const fieldsUi = this.getNodeParameter('fieldsUi.fieldValues', i, []) as FieldsUiValues;
-						for (const field of fieldsUi) {
-							body[`field_${field.fieldId}`] = field.fieldValue;
+
+						if (filters?.fields) {
+							filters.fields.forEach(({ field, operator, value }) => {
+								qs[`filter__field_${mapper.setField(field)}__${operator}`] = value;
+							});
 						}
+
+						if (filterType) {
+							qs.filter_type = filterType;
+						}
+
+						if (search) {
+							qs.search = search;
+						}
+
+						const endpoint = `/api/database/rows/table/${tableId}/`;
+						const rows = (await baserowApiRequestAllItems.call(
+							this,
+							'GET',
+							endpoint,
+							jwtToken,
+							{},
+							qs,
+							returnAll,
+							limit,
+						)) as Row[];
+
+						rows.forEach((row) => mapper.idsToNames(row));
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(rows),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					} else if (operation === 'get') {
+						// ----------------------------------
+						//             get
+						// ----------------------------------
+
+						// https://api.baserow.io/api/redoc/#operation/get_database_table_row
+
+						const rowId = this.getNodeParameter('rowId', i) as string;
+						const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
+						const row = await baserowApiRequest.call(this, 'GET', endpoint, jwtToken);
+
+						mapper.idsToNames(row as Row);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(row as Row),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					} else if (operation === 'create') {
+						// ----------------------------------
+						//             create
+						// ----------------------------------
+
+						// https://api.baserow.io/api/redoc/#operation/create_database_table_row
+
+						const body: IDataObject = {};
+
+						const dataToSend = this.getNodeParameter('dataToSend', 0) as
+							| 'defineBelow'
+							| 'autoMapInputData';
+
+						if (dataToSend === 'autoMapInputData') {
+							const incomingKeys = Object.keys(items[i].json);
+							const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
+							const inputDataToIgnore = rawInputsToIgnore.split(',').map((c) => c.trim());
+
+							for (const key of incomingKeys) {
+								if (inputDataToIgnore.includes(key)) continue;
+								body[key] = items[i].json[key];
+								mapper.namesToIds(body);
+							}
+						} else {
+							const fieldsUi = this.getNodeParameter(
+								'fieldsUi.fieldValues',
+								i,
+								[],
+							) as FieldsUiValues;
+							for (const field of fieldsUi) {
+								body[`field_${field.fieldId}`] = field.fieldValue;
+							}
+						}
+
+						const endpoint = `/api/database/rows/table/${tableId}/`;
+						const createdRow = await baserowApiRequest.call(this, 'POST', endpoint, jwtToken, body);
+
+						mapper.idsToNames(createdRow as Row);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(createdRow as Row),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//             update
+						// ----------------------------------
+
+						// https://api.baserow.io/api/redoc/#operation/update_database_table_row
+
+						const rowId = this.getNodeParameter('rowId', i) as string;
+
+						const body: IDataObject = {};
+
+						const dataToSend = this.getNodeParameter('dataToSend', 0) as
+							| 'defineBelow'
+							| 'autoMapInputData';
+
+						if (dataToSend === 'autoMapInputData') {
+							const incomingKeys = Object.keys(items[i].json);
+							const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
+							const inputsToIgnore = rawInputsToIgnore.split(',').map((c) => c.trim());
+
+							for (const key of incomingKeys) {
+								if (inputsToIgnore.includes(key)) continue;
+								body[key] = items[i].json[key];
+								mapper.namesToIds(body);
+							}
+						} else {
+							const fieldsUi = this.getNodeParameter(
+								'fieldsUi.fieldValues',
+								i,
+								[],
+							) as FieldsUiValues;
+							for (const field of fieldsUi) {
+								body[`field_${field.fieldId}`] = field.fieldValue;
+							}
+						}
+
+						const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
+						const updatedRow = await baserowApiRequest.call(
+							this,
+							'PATCH',
+							endpoint,
+							jwtToken,
+							body,
+						);
+
+						mapper.idsToNames(updatedRow as Row);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(updatedRow as Row),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					} else if (resource === 'row' && operation === 'delete') {
+						// ----------------------------------
+						//             delete
+						// ----------------------------------
+
+						// https://api.baserow.io/api/redoc/#operation/delete_database_table_row
+
+						const rowId = this.getNodeParameter('rowId', i) as string;
+
+						const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
+						await baserowApiRequest.call(this, 'DELETE', endpoint, jwtToken);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							[{ json: { success: true } }],
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					}
+				} else if (resource === 'file') {
+					if (operation === 'upload-via-url') {
+						// ----------------------------------
+						//             upload-via-url
+						// ----------------------------------
 
-					const endpoint = `/api/database/rows/table/${tableId}/`;
-					const createdRow = await baserowApiRequest.call(this, 'POST', endpoint, jwtToken, body);
+						// https://api.baserow.io/api/redoc/#tag/User-files/operation/upload_via_url
 
-					mapper.idsToNames(createdRow as Row);
-					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(createdRow as Row),
-						{ itemData: { item: i } },
-					);
-					returnData.push(...executionData);
-				} else if (operation === 'update') {
-					// ----------------------------------
-					//             update
-					// ----------------------------------
+						const url = this.getNodeParameter('url', i) as string;
+						const endpoint = '/api/user-files/upload-via-url/';
+						const body = { url };
+						const file = await baserowApiRequest.call(this, 'POST', endpoint, jwtToken, body);
 
-					// https://api.baserow.io/api/redoc/#operation/update_database_table_row
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(file),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					} else if (operation === 'upload') {
+						// ----------------------------------
+						//             upload
+						// ----------------------------------
 
-					const rowId = this.getNodeParameter('rowId', i) as string;
+						// https://api.baserow.io/api/redoc/#tag/User-files/operation/upload_file
 
-					const body: IDataObject = {};
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+						const { fileName, mimeType } = this.helpers.assertBinaryData(i, binaryPropertyName);
+						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
-					const dataToSend = this.getNodeParameter('dataToSend', 0) as
-						| 'defineBelow'
-						| 'autoMapInputData';
+						const file = await baserowFileUploadRequest.call(
+							this,
+							jwtToken,
+							binaryDataBuffer,
+							fileName as string,
+							mimeType,
+						);
 
-					if (dataToSend === 'autoMapInputData') {
-						const incomingKeys = Object.keys(items[i].json);
-						const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
-						const inputsToIgnore = rawInputsToIgnore.split(',').map((c) => c.trim());
-
-						for (const key of incomingKeys) {
-							if (inputsToIgnore.includes(key)) continue;
-							body[key] = items[i].json[key];
-							mapper.namesToIds(body);
-						}
-					} else {
-						const fieldsUi = this.getNodeParameter('fieldsUi.fieldValues', i, []) as FieldsUiValues;
-						for (const field of fieldsUi) {
-							body[`field_${field.fieldId}`] = field.fieldValue;
-						}
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(file),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					}
-
-					const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
-					const updatedRow = await baserowApiRequest.call(this, 'PATCH', endpoint, jwtToken, body);
-
-					mapper.idsToNames(updatedRow as Row);
-					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(updatedRow as Row),
-						{ itemData: { item: i } },
-					);
-					returnData.push(...executionData);
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//             delete
-					// ----------------------------------
-
-					// https://api.baserow.io/api/redoc/#operation/delete_database_table_row
-
-					const rowId = this.getNodeParameter('rowId', i) as string;
-
-					const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
-					await baserowApiRequest.call(this, 'DELETE', endpoint, jwtToken);
-
-					const executionData = this.helpers.constructExecutionMetaData(
-						[{ json: { success: true } }],
-						{ itemData: { item: i } },
-					);
-					returnData.push(...executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
