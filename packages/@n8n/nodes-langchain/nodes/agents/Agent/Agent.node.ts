@@ -53,7 +53,7 @@ function getInputs(
 		};
 
 		return inputs.map(({ type, filter }) => {
-			const isModelType = type === 'ai_languageModel';
+			const isModelType = type === ('ai_languageModel' as NodeConnectionType);
 			let displayName = type in displayNames ? displayNames[type] : undefined;
 			if (
 				isModelType &&
