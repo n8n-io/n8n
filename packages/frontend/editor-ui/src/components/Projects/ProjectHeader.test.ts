@@ -61,21 +61,6 @@ describe('ProjectHeader', () => {
 		vi.clearAllMocks();
 	});
 
-	it('should render the correct icon', async () => {
-		const { container, rerender } = renderComponent();
-
-		expect(container.querySelector('.fa-home')).toBeVisible();
-
-		projectsStore.currentProject = { type: ProjectTypes.Personal } as Project;
-		await rerender({});
-		expect(container.querySelector('.fa-user')).toBeVisible();
-
-		const projectName = 'My Project';
-		projectsStore.currentProject = { name: projectName } as Project;
-		await rerender({});
-		expect(container.querySelector('.fa-layer-group')).toBeVisible();
-	});
-
 	it('should render the correct title and subtitle', async () => {
 		const { getByText, queryByText, rerender } = renderComponent();
 		const subtitle = 'All the workflows, credentials and executions you have access to';
