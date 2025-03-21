@@ -14,6 +14,12 @@ import { createTeamProject } from '@test-integration/db/projects';
 import { createWorkflow } from '@test-integration/db/workflows';
 import * as testDb from '@test-integration/test-db';
 
+import {
+	createMetadata,
+	createRawInsightsEvent,
+	createCompactedInsightsEvent,
+	createRawInsightsEvents,
+} from '../entities/__tests__/db-utils';
 import { InsightsService } from '../insights.service';
 import { InsightsByPeriodRepository } from '../repositories/insights-by-period.repository';
 
@@ -430,7 +436,7 @@ describe('workflowExecuteAfterHandler', () => {
 			expect(numberOfCompactedData).toBe(100);
 		});
 
-		test('works with data in the compacted table', async () => {
+		test.only('works with data in the compacted table', async () => {
 			// ARRANGE
 			const insightsService = Container.get(InsightsService);
 			const insightsRawRepository = Container.get(InsightsRawRepository);

@@ -5,11 +5,19 @@ import type { ExecutionStatus, IRun, WorkflowExecuteMode } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { SharedWorkflow } from '@/databases/entities/shared-workflow';
-import { InsightsByPeriodRepository } from '@/databases/repositories/insights-by-period.repository';
-import { InsightsRawRepository } from '@/databases/repositories/insights-raw.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { InsightsMetadata } from '@/modules/insights/entities/insights-metadata';
 import { InsightsRaw } from '@/modules/insights/entities/insights-raw';
+import { sql } from '@/utils/sql';
+
+import type { PeriodUnits } from './entities/insights-shared';
+import { PeriodUnitToNumber } from './entities/insights-shared';
+import { InsightsConfig } from './insights.config';
+import { InsightsByPeriodRepository } from './repositories/insights-by-period.repository';
+import { InsightsRawRepository } from './repositories/insights-raw.repository';
+
+const config = Container.get(InsightsConfig);
+const dbType = Container.get(GlobalConfig).database.type;
 
 const shouldSkipStatus: Record<ExecutionStatus, boolean> = {
 	success: false,
@@ -44,7 +52,7 @@ export class InsightsService {
 		private readonly insightsRawRepository: InsightsRawRepository,
 	) {
 		// TODO: check if there is a better way to schedule this
-		const intervalMilliseconds = config.insights.compactionIntervalMinutes * 60 * 1000;
+		const intervalMilliseconds = config.compactionIntervalMinutes * 60 * 1000;
 		setInterval(async () => await this.compactInsights(), intervalMilliseconds);
 	}
 
@@ -147,7 +155,7 @@ export class InsightsService {
 			.select(['id', 'metaId', 'type', 'value'].map((fieldName) => this.escapeField(fieldName)))
 			.addSelect('timestamp', 'periodStart')
 			.orderBy('timestamp', 'ASC')
-			.limit(config.insights.compactionBatchSize as number);
+			.limit(config.compactionBatchSize);
 
 		return await this.compactSourceDataIntoInsightPeriod({
 			sourceBatchQuery: batchQuery.getSql(),
@@ -169,7 +177,7 @@ export class InsightsService {
 			.where(`${this.escapeField('periodUnit')} = 0`)
 			.andWhere(`${this.escapeField('periodStart')} < ${this.getPeriodFilterExpr('day')}`)
 			.orderBy(this.escapeField('periodStart'), 'ASC')
-			.limit(config.insights.compactionBatchSize as number);
+			.limit(config.compactionBatchSize);
 
 		return await this.compactSourceDataIntoInsightPeriod({
 			sourceBatchQuery: batchQuery.getSql(),
@@ -180,7 +188,7 @@ export class InsightsService {
 	private getPeriodFilterExpr(periodUnit: PeriodUnits) {
 		const daysAgo = periodUnit === 'day' ? 90 : 180;
 		// Database-specific period start expression to filter out data to compact by days matching the periodUnit
-		let periodStartExpr = `strftime('%s', date('now', '-${daysAgo} days'))`;
+		let periodStartExpr = `date('now', '-${daysAgo} days')`;
 		if (dbType === 'postgresdb') {
 			periodStartExpr = `CURRENT_DATE - INTERVAL '${daysAgo} day'`;
 		} else if (dbType === 'mysqldb' || dbType === 'mariadb') {
@@ -193,7 +201,7 @@ export class InsightsService {
 	private getPeriodStartExpr(periodUnit: PeriodUnits) {
 		// Database-specific period start expression to truncate timestamp to the periodUnit
 		// SQLite by default
-		let periodStartExpr = `unixepoch(strftime('%Y-%m-%d ${periodUnit === 'hour' ? '%H' : '00'}:00:00', periodStart, 'unixepoch'))`;
+		let periodStartExpr = `strftime('%Y-%m-%d ${periodUnit === 'hour' ? '%H' : '00'}:00:00.000', periodStart)`;
 		if (dbType === 'mysqldb' || dbType === 'mariadb') {
 			periodStartExpr =
 				periodUnit === 'hour'

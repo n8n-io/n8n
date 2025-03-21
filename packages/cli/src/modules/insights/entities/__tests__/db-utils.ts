@@ -108,14 +108,7 @@ export async function createCompactedInsightsEvent(
 	event.type = parameters.type;
 	event.value = parameters.value;
 	event.periodUnit = parameters.periodUnit;
-	if (dbType === 'sqlite') {
-		event.periodStart = parameters.periodStart
-			.toUTC()
-			.startOf(parameters.periodUnit)
-			.toSeconds() as any;
-	} else {
-		event.periodStart = parameters.periodStart.toUTC().startOf(parameters.periodUnit).toJSDate();
-	}
+	event.periodStart = parameters.periodStart.toUTC().startOf(parameters.periodUnit).toJSDate();
 
 	return await insightsByPeriodRepository.save(event);
 }
