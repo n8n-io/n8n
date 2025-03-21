@@ -15,7 +15,7 @@ import { mock } from 'vitest-mock-extended';
 import type { IWorkflowDb } from '@/Interface';
 import {
 	createResultOk,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IDataObject,
 	type INodeExecutionData,
 } from 'n8n-workflow';
@@ -96,11 +96,11 @@ async function setupStore() {
 		...defaultNodeDescriptions,
 		mockNodeTypeDescription({
 			name: MANUAL_TRIGGER_NODE_TYPE,
-			outputs: [NodeConnectionType.Main],
+			outputs: [NodeConnectionTypes.Main],
 		}),
 		mockNodeTypeDescription({
 			name: IF_NODE_TYPE,
-			outputs: [NodeConnectionType.Main, NodeConnectionType.Main],
+			outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
 		}),
 	]);
 	workflowsStore.workflow = workflow;

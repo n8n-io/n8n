@@ -1,6 +1,6 @@
 import {
 	NodeOperationError,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
@@ -32,8 +32,8 @@ export class Summarize implements INodeType {
 		defaults: {
 			name: 'Summarize',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Fields to Summarize',

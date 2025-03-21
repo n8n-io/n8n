@@ -6,7 +6,7 @@ import {
 	type INodePropertyOptions,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeTypeBaseDescription,
 } from 'n8n-workflow';
 
@@ -32,7 +32,7 @@ export class SeaTableTriggerV1 implements INodeType {
 			],
 			polling: true,
 			inputs: [],
-			outputs: [NodeConnectionType.Main],
+			outputs: [NodeConnectionTypes.Main],
 			properties: [
 				{
 					displayName: 'Table Name or ID',

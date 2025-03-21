@@ -89,6 +89,7 @@
 	"generic.next": "Next",
 	"generic.pro": "Pro",
 	"generic.variable_plural": "Variables",
+	"generic.folders_plural": "Folders",
 	"generic.variable": "Variable | {count} Variables",
 	"generic.viewDocs": "View docs",
 	"generic.workflows": "Workflows",

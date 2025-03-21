@@ -25,7 +25,7 @@ import type {
 	NodeParameterValue,
 	Workflow,
 } from 'n8n-workflow';
-import { NodeConnectionType, ExpressionEvaluatorProxy, NodeHelpers } from 'n8n-workflow';
+import { NodeConnectionTypes, ExpressionEvaluatorProxy, NodeHelpers } from 'n8n-workflow';
 
 import type {
 	ICredentialsResponse,
@@ -123,7 +123,7 @@ export function resolveParameter<T = IDataObject>(
 		) as T;
 	}
 
-	const inputName = NodeConnectionType.Main;
+	const inputName = NodeConnectionTypes.Main;
 
 	const activeNode =
 		useNDVStore().activeNode ?? useWorkflowsStore().getNodeByName(opts.contextNodeName || '');
@@ -416,7 +416,7 @@ export function executeData(
 					].main) {
 						for (const connection of mainConnections ?? []) {
 							if (
-								connection.type === NodeConnectionType.Main &&
+								connection.type === NodeConnectionTypes.Main &&
 								connection.node === parentNodeName
 							) {
 								previousNodeOutput = connection.index;

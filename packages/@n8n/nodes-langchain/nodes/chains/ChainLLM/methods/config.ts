@@ -3,8 +3,8 @@ import {
 	HumanMessagePromptTemplate,
 	SystemMessagePromptTemplate,
 } from '@langchain/core/prompts';
-import type { IDataObject, INodeProperties } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import type { IDataObject, INodeInputConfiguration, INodeProperties } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { promptTypeOptions, textFromPreviousNode } from '@utils/descriptions';
 import { getTemplateNoticeField } from '@utils/sharedFields';
@@ -13,7 +13,7 @@ import { getTemplateNoticeField } from '@utils/sharedFields';
  * Dynamic input configuration generation based on node parameters
  */
 export function getInputs(parameters: IDataObject) {
-	const inputs = [
+	const inputs: INodeInputConfiguration[] = [
 		{ displayName: '', type: 'main' },
 		{
 			displayName: 'Model',
@@ -260,7 +260,7 @@ export const nodeProperties: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: `Connect an <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${NodeConnectionType.AiOutputParser}'>output parser</a> on the canvas to specify the output format you require`,
+		displayName: `Connect an <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${NodeConnectionTypes.AiOutputParser}'>output parser</a> on the canvas to specify the output format you require`,
 		name: 'notice',
 		type: 'notice',
 		default: '',

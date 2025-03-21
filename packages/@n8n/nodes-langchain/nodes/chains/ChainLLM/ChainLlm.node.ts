@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { getPromptInputByType } from '@utils/helpers';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
@@ -55,7 +55,7 @@ export class ChainLlm implements INodeType {
 			},
 		},
 		inputs: `={{ ((parameter) => { ${getInputs.toString()}; return getInputs(parameter) })($parameter) }}`,
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [],
 		properties: nodeProperties,
 	};
@@ -73,7 +73,7 @@ export class ChainLlm implements INodeType {
 			try {
 				// Get the language model
 				const llm = (await this.getInputConnectionData(
-					NodeConnectionType.AiLanguageModel,
+					NodeConnectionTypes.AiLanguageModel,
 					0,
 				)) as BaseLanguageModel;
 

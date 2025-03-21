@@ -36,7 +36,7 @@ import type {
 import { MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
 import { MiniMap } from '@vue-flow/minimap';
 import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import {
 	computed,
 	nextTick,
@@ -460,7 +460,7 @@ onEdgeMouseEnter(({ edge }) => {
 onEdgeMouseMove(
 	useThrottleFn(({ edge, event }) => {
 		const type = edge.data.source.type;
-		if (type !== NodeConnectionType.AiTool) {
+		if (type !== NodeConnectionTypes.AiTool) {
 			return;
 		}
 

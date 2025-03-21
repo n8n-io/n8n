@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
 import type { DeepPartial } from '@n8n/typeorm';
 import type { IWorkflowBase } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { Project } from '@/databases/entities/project';
@@ -161,7 +161,9 @@ export async function createWorkflowWithTrigger(
 					position: [780, 300],
 				},
 			],
-			connections: { Cron: { main: [[{ node: 'Set', type: NodeConnectionType.Main, index: 0 }]] } },
+			connections: {
+				Cron: { main: [[{ node: 'Set', type: NodeConnectionTypes.Main, index: 0 }]] },
+			},
 			...attributes,
 		},
 		user,
