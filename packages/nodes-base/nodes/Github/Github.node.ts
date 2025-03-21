@@ -2605,8 +2605,7 @@ export class Github implements INodeType {
 
 						endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}/dispatches`;
 
-						const refResourceLocator = this.getNodeParameter('ref', i) as { value: string };
-						const ref = refResourceLocator.value;
+						const ref = this.getNodeParameter('ref', i, '', { extractValue: true }) as string;
 						body.ref = ref;
 
 						const inputs = validateJSON(
