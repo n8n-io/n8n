@@ -7,13 +7,55 @@
                 "type": "string"
             }
         },
+        "created_at": {
+            "type": "string"
+        },
+        "fr_escalated": {
+            "type": "boolean"
+        },
         "fwd_emails": {
             "type": "array",
             "items": {
                 "type": "string"
             }
         },
+        "id": {
+            "type": "integer"
+        },
+        "is_escalated": {
+            "type": "boolean"
+        },
+        "nr_due_by": {
+            "type": "null"
+        },
+        "nr_escalated": {
+            "type": "boolean"
+        },
+        "priority": {
+            "type": "integer"
+        },
         "reply_cc_emails": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "requester_id": {
+            "type": "integer"
+        },
+        "source": {
+            "type": "integer"
+        },
+        "spam": {
+            "type": "boolean"
+        },
+        "status": {
+            "type": "integer"
+        },
+        "subject": {
+            "type": "string"
+        },
+        "tags": {
             "type": "array",
             "items": {
                 "type": "string"
@@ -25,82 +67,9 @@
                 "type": "string"
             }
         },
-        "fr_escalated": {
-            "type": "boolean"
-        },
-        "spam": {
-            "type": "boolean"
-        },
-        "priority": {
-            "type": "integer"
-        },
-        "requester_id": {
-            "type": "integer"
-        },
-        "source": {
-            "type": "integer"
-        },
-        "status": {
-            "type": "integer"
-        },
-        "subject": {
-            "type": "string"
-        },
-        "id": {
-            "type": "integer"
-        },
-        "is_escalated": {
-            "type": "boolean"
-        },
-        "created_at": {
-            "type": "string"
-        },
         "updated_at": {
             "type": "string"
-        },
-        "tags": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "nr_due_by": {
-            "type": "null"
-        },
-        "nr_escalated": {
-            "type": "boolean"
         }
     },
-    "required": [
-        "cc_emails",
-        "fwd_emails",
-        "reply_cc_emails",
-        "ticket_cc_emails",
-        "fr_escalated",
-        "spam",
-        "email_config_id",
-        "group_id",
-        "priority",
-        "requester_id",
-        "responder_id",
-        "source",
-        "company_id",
-        "status",
-        "subject",
-        "association_type",
-        "support_email",
-        "to_emails",
-        "product_id",
-        "id",
-        "type",
-        "due_by",
-        "fr_due_by",
-        "is_escalated",
-        "custom_fields",
-        "created_at",
-        "updated_at",
-        "associated_tickets_count",
-        "tags"
-    ],
     "version": 1
 }

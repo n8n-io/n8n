@@ -1,20 +1,20 @@
 {
     "type": "object",
     "properties": {
+        "created_at": {
+            "type": "string"
+        },
         "id": {
             "type": "integer"
         },
-        "state": {
-            "type": "string"
-        },
-        "created_at": {
-            "type": "string"
+        "referrer": {
+            "type": "null"
         },
         "source": {
             "type": "string"
         },
-        "referrer": {
-            "type": "null"
+        "state": {
+            "type": "string"
         },
         "subscribable_id": {
             "type": "integer"
@@ -25,38 +25,20 @@
         "subscriber": {
             "type": "object",
             "properties": {
-                "id": {
-                    "type": "integer"
+                "created_at": {
+                    "type": "string"
                 },
                 "email_address": {
                     "type": "string"
                 },
+                "id": {
+                    "type": "integer"
+                },
                 "state": {
                     "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
                 }
-            },
-            "required": [
-                "id",
-                "first_name",
-                "email_address",
-                "state",
-                "created_at",
-                "fields"
-            ]
+            }
         }
     },
-    "required": [
-        "id",
-        "state",
-        "created_at",
-        "source",
-        "referrer",
-        "subscribable_id",
-        "subscribable_type",
-        "subscriber"
-    ],
     "version": 1
 }

@@ -5,8 +5,5 @@
             "type": "integer"
         }
     },
-    "required": [
-        "status"
-    ],
     "version": 1
 }

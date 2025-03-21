@@ -1,19 +1,13 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
-        },
-        "tableType": {
+        "browserLink": {
             "type": "string"
         },
         "href": {
             "type": "string"
         },
-        "browserLink": {
+        "id": {
             "type": "string"
         },
         "name": {
@@ -22,38 +16,29 @@
         "parent": {
             "type": "object",
             "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "type": {
+                "browserLink": {
                     "type": "string"
                 },
                 "href": {
                     "type": "string"
                 },
-                "browserLink": {
+                "id": {
                     "type": "string"
                 },
                 "name": {
                     "type": "string"
+                },
+                "type": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "id",
-                "type",
-                "href",
-                "browserLink",
-                "name"
-            ]
+            }
+        },
+        "tableType": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
         }
     },
-    "required": [
-        "id",
-        "type",
-        "tableType",
-        "href",
-        "browserLink",
-        "name"
-    ],
     "version": 1
 }

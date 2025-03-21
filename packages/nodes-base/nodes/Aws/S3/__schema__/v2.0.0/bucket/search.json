@@ -1,19 +1,19 @@
 {
     "type": "object",
     "properties": {
-        "Key": {
+        "ChecksumAlgorithm": {
             "type": "string"
         },
-        "LastModified": {
+        "ChecksumType": {
             "type": "string"
         },
         "ETag": {
             "type": "string"
         },
-        "ChecksumAlgorithm": {
+        "Key": {
             "type": "string"
         },
-        "ChecksumType": {
+        "LastModified": {
             "type": "string"
         },
         "Size": {
