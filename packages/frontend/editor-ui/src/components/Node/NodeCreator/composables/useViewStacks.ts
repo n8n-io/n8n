@@ -39,9 +39,12 @@ import { useKeyboardNavigation } from './useKeyboardNavigation';
 
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { AI_TRANSFORM_NODE_TYPE } from 'n8n-workflow';
-import type { NodeConnectionType, INodeInputFilter, Themed } from 'n8n-workflow';
+import type { NodeConnectionType, INodeInputFilter } from 'n8n-workflow';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { useUIStore } from '@/stores/ui.store';
+import { type NodeIconSource } from '@/utils/nodeIcon';
+import { getThemedValue } from '@/utils/nodeTypesUtils';
 
 interface ViewStack {
 	uuid?: string;
@@ -50,12 +53,7 @@ interface ViewStack {
 	search?: string;
 	subcategory?: string;
 	info?: string;
-	nodeIcon?: {
-		iconType?: string;
-		icon?: Themed<string>;
-		color?: string;
-	};
-	iconUrl?: string;
+	nodeIcon?: NodeIconSource;
 	rootView?: NodeFilterType;
 	activeIndex?: number;
 	transitionDirection?: 'in' | 'out';
@@ -314,6 +312,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 		await nextTick();
 
+		const iconName = getThemedValue(relatedAIView?.properties.icon, useUIStore().appliedTheme);
 		pushViewStack(
 			{
 				title: relatedAIView?.properties.title,
@@ -321,11 +320,13 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 				rootView: AI_OTHERS_NODE_CREATOR_VIEW,
 				mode: 'nodes',
 				items: nodeCreatorStore.allNodeCreatorNodes,
-				nodeIcon: {
-					iconType: 'icon',
-					icon: relatedAIView?.properties.icon,
-					color: relatedAIView?.properties.iconProps?.color,
-				},
+				nodeIcon: iconName
+					? {
+							type: 'icon',
+							name: iconName,
+							color: relatedAIView?.properties.iconProps?.color,
+						}
+					: undefined,
 				panelClass: relatedAIView?.properties.panelClass,
 				baseFilter: (i: INodeCreateElement) => {
 					// AI Code node could have any connection type so we don't want to display it

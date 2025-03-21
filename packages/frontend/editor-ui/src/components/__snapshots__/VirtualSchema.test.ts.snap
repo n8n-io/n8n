@@ -74,6 +74,7 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
                 >
                   <img
                     class="nodeIconImage"
+                    src="/nodes/test-node/icon.svg"
                   />
                   <!--v-if-->
                 </div>
@@ -424,6 +425,7 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
                 >
                   <img
                     class="nodeIconImage"
+                    src="/nodes/test-node/icon.svg"
                   />
                   <!--v-if-->
                 </div>
@@ -810,6 +812,7 @@ exports[`VirtualSchema.vue > renders previous nodes schema for AI tools 1`] = `
       >
         <img
           class="nodeIconImage"
+          src="/nodes/test-node/icon.svg"
         />
         <!--v-if-->
       </div>
@@ -882,6 +885,7 @@ exports[`VirtualSchema.vue > renders schema for correct output branch 1`] = `
       >
         <img
           class="nodeIconImage"
+          src="/nodes/test-node/icon.svg"
         />
         <!--v-if-->
       </div>
@@ -1414,6 +1418,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
                 >
                   <img
                     class="nodeIconImage"
+                    src="/nodes/test-node/icon.svg"
                   />
                   <!--v-if-->
                 </div>
@@ -1976,6 +1981,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
                 >
                   <img
                     class="nodeIconImage"
+                    src="/nodes/test-node/icon.svg"
                   />
                   <!--v-if-->
                 </div>
@@ -2168,6 +2174,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
                 >
                   <img
                     class="nodeIconImage"
+                    src="/nodes/test-node/icon.svg"
                   />
                   <!--v-if-->
                 </div>

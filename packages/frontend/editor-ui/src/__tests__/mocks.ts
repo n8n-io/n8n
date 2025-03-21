@@ -82,6 +82,7 @@ export const mockNodeTypeDescription = ({
 		codex,
 		credentials,
 		documentationUrl: 'https://docs',
+		iconUrl: 'nodes/test-node/icon.svg',
 		webhooks: undefined,
 	});
 
