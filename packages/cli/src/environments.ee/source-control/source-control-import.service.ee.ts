@@ -540,16 +540,6 @@ export class SourceControlImportService {
 
 		await Promise.all(
 			mappedFolders.folders.map(async (folder) => {
-				const findByName = await this.folderRepository.findOne({
-					where: { name: folder.name },
-					select: ['id'],
-				});
-				if (findByName && findByName.id !== folder.id) {
-					throw new UserError(
-						`A folder with the name <strong>${folder.name}</strong> already exists locally.<br />Please either rename the local folder, or the remote one with the id <strong>${folder.id}</strong> in the folders.json file.`,
-					);
-				}
-
 				const folderCopy = this.folderRepository.create({
 					id: folder.id,
 					name: folder.name,
