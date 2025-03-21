@@ -1,4 +1,8 @@
 import type { InsightsSummary } from '@n8n/api-types';
+import type {
+	InsightsByTime,
+	InsightsByWorkflow,
+} from '@n8n/api-types/src/schemas/insights.schema';
 
 import { Get, GlobalScope, RestController } from '@/decorators';
 import { paginationListQueryMiddleware } from '@/middlewares/list-query/pagination';
@@ -20,7 +24,8 @@ export class InsightsController {
 	// TODO: api test for this
 	// TODO: use proper response type once defined
 	@Get('/by-workflow', { middlewares: [paginationListQueryMiddleware, sortByQueryMiddleware] })
-	async getInsightsByWorkflow(req: ListQuery.Options) {
+	@GlobalScope('insights:list')
+	async getInsightsByWorkflow(req: ListQuery.Options): Promise<InsightsByWorkflow> {
 		return await this.insightsService.getInsightsByWorkflow({
 			nbDays: 14, // TODO: extract into proper constant
 			skip: req.skip,
@@ -32,7 +37,8 @@ export class InsightsController {
 	// TODO: api test for this
 	// TODO: use proper response type once defined
 	@Get('/by-time', { middlewares: [paginationListQueryMiddleware, sortByQueryMiddleware] })
-	async getInsightsByTime() {
+	@GlobalScope('insights:list')
+	async getInsightsByTime(): Promise<InsightsByTime[]> {
 		return await this.insightsService.getInsightsByTime(14);
 	}
 }
