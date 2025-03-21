@@ -63,7 +63,7 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 				:key="id"
 				:data-test-id="`insights-summary-tab-${id}`"
 			>
-				<RouterLink :to="to" :exact-active-class="$style.activeTab">
+				<router-link :to="to" :exact-active-class="$style.activeTab">
 					<strong>{{ summaryTitles[id] }}</strong>
 					<span v-if="value === 0 && id === 'timeSaved'" :class="$style.empty">
 						<em>--</em>
@@ -94,7 +94,7 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 							{{ getSign(deviation) }}{{ smartDecimal(deviation) }}
 						</small>
 					</span>
-				</RouterLink>
+				</router-link>
 			</li>
 		</ul>
 	</div>

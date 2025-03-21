@@ -1,6 +1,16 @@
+import { reactive } from 'vue';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { InsightsSummaryDisplay } from '@/features/insights/insights.types';
+
+vi.mock('vue-router', async () => {
+	const actual = await vi.importActual('vue-router');
+	return {
+		...actual,
+		useRouter: () => ({}),
+		useRoute: () => reactive({}),
+	};
+});
 
 const renderComponent = createComponentRenderer(InsightsSummary);
 
