@@ -221,7 +221,7 @@ export const fromFileOptions: INodeProperties = {
 			},
 			default: false,
 			description:
-				"Whether to handle unclosed quotes in CSV fields as part of the field's content instead of throwing a parsing error.",
+				"Whether to handle unclosed quotes in CSV fields as part of the field's content instead of throwing a parsing error",
 		},
 		{
 			displayName: 'Header Row',
