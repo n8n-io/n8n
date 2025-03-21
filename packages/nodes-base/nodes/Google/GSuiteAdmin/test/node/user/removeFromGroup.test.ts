@@ -9,16 +9,16 @@ import * as transport from '../../../GenericFunctions';
 const googleApiRequestSpy = jest.spyOn(transport, 'googleApiRequest');
 
 googleApiRequestSpy.mockImplementation(async (method: string, resource: string) => {
-	if (method === 'GET' && resource === '/directory/v1/customer/my_customer/devices/chromeos/') {
-		return {
-			kind: 'admin#directory#chromeosdevices',
-			etag: '"6gJ8FoxdqGNyNxXYrlQh-KP52AygR_AihQSbYcusikU/oMWMqbsluP5m2PCo8Y7WmWeHGP4"',
-		};
+	if (
+		method === 'DELETE' &&
+		resource === '/directory/v1/groups/01302m922pmp3e4/members/114393134535981252528'
+	) {
+		return {};
 	}
 });
 
-describe('Google Workspace Admin - Get Many Devices', () => {
-	const workflows = ['nodes/Google/GSuiteAdmin/test/node/device/getAll.workflow.json'];
+describe('Google Workspace Admin - Remove User From Group', () => {
+	const workflows = ['nodes/Google/GSuiteAdmin/test/node/user/removeFromGroup.workflow.json'];
 	const tests = workflowToTests(workflows);
 	const nodeTypes = setup(tests);
 
@@ -26,34 +26,17 @@ describe('Google Workspace Admin - Get Many Devices', () => {
 		const { result } = await executeWorkflow(testData, types);
 		const resultNodeData = getResultNodeData(result, testData);
 
-		const expectedOutput = [
-			{
-				json: {
-					kind: 'admin#directory#chromeosdevices',
-					etag: '"6gJ8FoxdqGNyNxXYrlQh-KP52AygR_AihQSbYcusikU/oMWMqbsluP5m2PCo8Y7WmWeHGP4"',
-				},
-			},
-		];
+		const expectedOutput = { json: { removed: true } };
 
 		resultNodeData.forEach(({ resultData }) => {
-			expect(resultData).toEqual([expectedOutput]);
+			expect(resultData).toEqual([[expectedOutput]]);
 		});
 
 		expect(googleApiRequestSpy).toHaveBeenCalledTimes(1);
 		expect(googleApiRequestSpy).toHaveBeenCalledWith(
-			'GET',
-			'/directory/v1/customer/my_customer/devices/chromeos/',
-			{},
-			{
-				customer: 'my_customer',
-				includeChildOrgunits: false,
-				maxResults: 100,
-				orderBy: 'notes',
-				orgUnitPath: '/admin-google Testing OU/Child OU',
-				projection: 'basic',
-			},
+			'DELETE',
+			'/directory/v1/groups/01302m922pmp3e4/members/114393134535981252528',
 		);
-
 		expect(result.finished).toEqual(true);
 	};
 

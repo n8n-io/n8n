@@ -8,17 +8,22 @@ import * as transport from '../../../GenericFunctions';
 
 const googleApiRequestSpy = jest.spyOn(transport, 'googleApiRequest');
 
-googleApiRequestSpy.mockImplementation(async (method: string, resource: string) => {
-	if (method === 'GET' && resource === '/directory/v1/customer/my_customer/devices/chromeos/') {
+googleApiRequestSpy.mockImplementation(async (method: string, endpoint: string) => {
+	if (method === 'GET' && endpoint.includes('/directory/v1/users/')) {
 		return {
-			kind: 'admin#directory#chromeosdevices',
-			etag: '"6gJ8FoxdqGNyNxXYrlQh-KP52AygR_AihQSbYcusikU/oMWMqbsluP5m2PCo8Y7WmWeHGP4"',
+			primaryEmail: 'newoneuser@example.com',
 		};
 	}
+
+	if (method === 'POST' && endpoint.includes('/directory/v1/groups/')) {
+		return { added: true };
+	}
+
+	return {};
 });
 
-describe('Google Workspace Admin - Get Many Devices', () => {
-	const workflows = ['nodes/Google/GSuiteAdmin/test/node/device/getAll.workflow.json'];
+describe('Google Workspace Admin - Add User to Group', () => {
+	const workflows = ['nodes/Google/GSuiteAdmin/test/node/user/addToGroup.workflow.json'];
 	const tests = workflowToTests(workflows);
 	const nodeTypes = setup(tests);
 
@@ -29,8 +34,7 @@ describe('Google Workspace Admin - Get Many Devices', () => {
 		const expectedOutput = [
 			{
 				json: {
-					kind: 'admin#directory#chromeosdevices',
-					etag: '"6gJ8FoxdqGNyNxXYrlQh-KP52AygR_AihQSbYcusikU/oMWMqbsluP5m2PCo8Y7WmWeHGP4"',
+					added: true,
 				},
 			},
 		];
@@ -39,19 +43,18 @@ describe('Google Workspace Admin - Get Many Devices', () => {
 			expect(resultData).toEqual([expectedOutput]);
 		});
 
-		expect(googleApiRequestSpy).toHaveBeenCalledTimes(1);
+		expect(googleApiRequestSpy).toHaveBeenCalledTimes(2);
 		expect(googleApiRequestSpy).toHaveBeenCalledWith(
 			'GET',
-			'/directory/v1/customer/my_customer/devices/chromeos/',
-			{},
-			{
-				customer: 'my_customer',
-				includeChildOrgunits: false,
-				maxResults: 100,
-				orderBy: 'notes',
-				orgUnitPath: '/admin-google Testing OU/Child OU',
-				projection: 'basic',
-			},
+			'/directory/v1/users/114393134535981252528',
+		);
+		expect(googleApiRequestSpy).toHaveBeenCalledWith(
+			'POST',
+			'/directory/v1/groups/01302m922pmp3e4/members',
+			expect.objectContaining({
+				email: 'newoneuser@example.com',
+				role: 'MEMBER',
+			}),
 		);
 
 		expect(result.finished).toEqual(true);

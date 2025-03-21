@@ -1,0 +1,31 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"operation": "delete",
+				"userId": {
+					"__rl": true,
+					"value": "101817116922964852528",
+					"mode": "list",
+					"cachedResultName": "NewOne User"
+				}
+			},
+			"type": "n8n-nodes-base.gSuiteAdmin",
+			"typeVersion": 1,
+			"position": [-800, 820],
+			"id": "b6469cb3-1798-4be3-99a2-47d603e467d6",
+			"name": "Delete User"
+		}
+	],
+	"connections": {},
+	"pinData": {
+		"Delete User": [
+			{
+				"deleted": true
+			}
+		]
+	},
+	"meta": {
+		"instanceId": "89e65be0357665f2979194b835f6d640a06bafcde3fe7370430baa3de4d0a22d"
+	}
+}

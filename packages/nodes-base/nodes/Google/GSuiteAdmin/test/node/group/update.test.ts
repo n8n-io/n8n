@@ -9,21 +9,26 @@ import * as transport from '../../../GenericFunctions';
 const googleApiRequestSpy = jest.spyOn(transport, 'googleApiRequest');
 
 googleApiRequestSpy.mockImplementation(async (method: string, resource: string) => {
-	if (
-		method === 'POST' &&
-		resource ===
-			'/directory/v1/customer/my_customer/devices/chromeos/9140fcff-7ba7-4324-8552-f7de68481b4c/action'
-	) {
+	if (method === 'PUT' && resource === '/directory/v1/groups/01302m922p525286') {
 		return {
-			kind: 'admin#directory#chromeosdeviceAction',
-			action: 'reenable',
-			status: 'SUCCESS',
+			kind: 'admin#directory#group',
+			id: '01302m922p525286',
+			etag: '"DfV-pPPVZc7PJf2fSsHJTl4434ddGbO8iFIk3L4uBsQ/j-sWTPmbX5555RNjrFdaXXXk"',
+			email: 'new3@example.com',
+			name: 'new2',
+			description: 'new1',
+			adminCreated: true,
+			aliases: ['new@example.com', 'NewOnes@example.com', 'new2@example.com'],
+			nonEditableAliases: [
+				'NewOnes@example.com.test-google-a.com',
+				'new@example.com.test-google-a.com',
+			],
 		};
 	}
 });
 
-describe('Google Workspace Admin - Change Device Status', () => {
-	const workflows = ['nodes/Google/GSuiteAdmin/test/node/device/changeStatus.workflow.json'];
+describe('Google Workspace Admin - Update Group', () => {
+	const workflows = ['nodes/Google/GSuiteAdmin/test/node/group/update.workflow.json'];
 	const tests = workflowToTests(workflows);
 	const nodeTypes = setup(tests);
 
@@ -34,9 +39,18 @@ describe('Google Workspace Admin - Change Device Status', () => {
 		const expectedOutput = [
 			{
 				json: {
-					kind: 'admin#directory#chromeosdeviceAction',
-					action: 'reenable',
-					status: 'SUCCESS',
+					kind: 'admin#directory#group',
+					id: '01302m922p525286',
+					etag: '"DfV-pPPVZc7PJf2fSsHJTl4434ddGbO8iFIk3L4uBsQ/j-sWTPmbX5555RNjrFdaXXXk"',
+					email: 'new3@example.com',
+					name: 'new2',
+					description: 'new1',
+					adminCreated: true,
+					aliases: ['new@example.com', 'NewOnes@example.com', 'new2@example.com'],
+					nonEditableAliases: [
+						'NewOnes@example.com.test-google-a.com',
+						'new@example.com.test-google-a.com',
+					],
 				},
 			},
 		];
@@ -47,10 +61,12 @@ describe('Google Workspace Admin - Change Device Status', () => {
 
 		expect(googleApiRequestSpy).toHaveBeenCalledTimes(1);
 		expect(googleApiRequestSpy).toHaveBeenCalledWith(
-			'POST',
-			'/directory/v1/customer/my_customer/devices/chromeos/9140fcff-7ba7-4324-8552-f7de68481b4c/action',
+			'PUT',
+			'/directory/v1/groups/01302m922p525286',
 			expect.objectContaining({
-				action: 'reenable',
+				email: 'new3@example.com',
+				name: 'new2',
+				description: 'new1',
 			}),
 		);
 		expect(result.finished).toEqual(true);

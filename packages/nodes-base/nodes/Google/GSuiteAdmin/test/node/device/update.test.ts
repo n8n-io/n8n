@@ -8,7 +8,7 @@ import * as transport from '../../../GenericFunctions';
 
 const googleApiRequestSpy = jest.spyOn(transport, 'googleApiRequest');
 
-googleApiRequestSpy.mockImplementation(async (method: string, resource: string, body?: object) => {
+googleApiRequestSpy.mockImplementation(async (method: string, resource: string) => {
 	if (
 		method === 'PUT' &&
 		resource ===
@@ -85,7 +85,7 @@ describe('Google Workspace Admin - Update Device', () => {
 			},
 		];
 
-		resultNodeData.forEach(({ nodeName, resultData }) => {
+		resultNodeData.forEach(({ resultData }) => {
 			expect(resultData).toEqual([expectedOutput]);
 		});
 

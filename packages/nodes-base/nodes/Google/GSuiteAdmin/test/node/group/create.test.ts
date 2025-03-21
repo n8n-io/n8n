@@ -9,16 +9,21 @@ import * as transport from '../../../GenericFunctions';
 const googleApiRequestSpy = jest.spyOn(transport, 'googleApiRequest');
 
 googleApiRequestSpy.mockImplementation(async (method: string, resource: string) => {
-	if (method === 'GET' && resource === '/directory/v1/customer/my_customer/devices/chromeos/') {
+	if (method === 'POST' && resource === '/directory/v1/groups') {
 		return {
-			kind: 'admin#directory#chromeosdevices',
-			etag: '"6gJ8FoxdqGNyNxXYrlQh-KP52AygR_AihQSbYcusikU/oMWMqbsluP5m2PCo8Y7WmWeHGP4"',
+			kind: 'admin#directory#group',
+			id: '01tuee742txc3k4',
+			etag: '"Cff-ppPVZc7PJf2fWsHJTl4444MdGbO8iFIk3L4uBwQ/ifaP-fffffb1DYLTXXgQ5XB_77777"',
+			email: 'New@example.com',
+			name: 'NewOne3',
+			description: 'test',
+			adminCreated: true,
 		};
 	}
 });
 
-describe('Google Workspace Admin - Get Many Devices', () => {
-	const workflows = ['nodes/Google/GSuiteAdmin/test/node/device/getAll.workflow.json'];
+describe('Google Workspace Admin - Create Group', () => {
+	const workflows = ['nodes/Google/GSuiteAdmin/test/node/group/create.workflow.json'];
 	const tests = workflowToTests(workflows);
 	const nodeTypes = setup(tests);
 
@@ -29,8 +34,13 @@ describe('Google Workspace Admin - Get Many Devices', () => {
 		const expectedOutput = [
 			{
 				json: {
-					kind: 'admin#directory#chromeosdevices',
-					etag: '"6gJ8FoxdqGNyNxXYrlQh-KP52AygR_AihQSbYcusikU/oMWMqbsluP5m2PCo8Y7WmWeHGP4"',
+					kind: 'admin#directory#group',
+					id: '01tuee742txc3k4',
+					etag: '"Cff-ppPVZc7PJf2fWsHJTl4444MdGbO8iFIk3L4uBwQ/ifaP-fffffb1DYLTXXgQ5XB_77777"',
+					email: 'New@example.com',
+					name: 'NewOne3',
+					description: 'test',
+					adminCreated: true,
 				},
 			},
 		];
@@ -41,19 +51,13 @@ describe('Google Workspace Admin - Get Many Devices', () => {
 
 		expect(googleApiRequestSpy).toHaveBeenCalledTimes(1);
 		expect(googleApiRequestSpy).toHaveBeenCalledWith(
-			'GET',
-			'/directory/v1/customer/my_customer/devices/chromeos/',
-			{},
-			{
-				customer: 'my_customer',
-				includeChildOrgunits: false,
-				maxResults: 100,
-				orderBy: 'notes',
-				orgUnitPath: '/admin-google Testing OU/Child OU',
-				projection: 'basic',
-			},
+			'POST',
+			'/directory/v1/groups',
+			expect.objectContaining({
+				email: 'New@example.com',
+				description: 'test',
+			}),
 		);
-
 		expect(result.finished).toEqual(true);
 	};
 
