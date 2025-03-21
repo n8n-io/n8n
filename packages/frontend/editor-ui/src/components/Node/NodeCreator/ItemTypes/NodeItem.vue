@@ -60,7 +60,12 @@ const description = computed<string>(() => {
 		fallback: props.nodeType.description,
 	});
 });
-const showActionArrow = computed(() => hasActions.value && !isSendAndWaitCategory.value);
+const showActionArrow = computed(() => {
+	if (isCommunityNode.value && !activeViewStack.communityNodeDetails) {
+		return true;
+	}
+	return hasActions.value && !isSendAndWaitCategory.value;
+});
 const isSendAndWaitCategory = computed(() => activeViewStack.subcategory === HITL_SUBCATEGORY);
 const dataTestId = computed(() =>
 	hasActions.value ? 'node-creator-action-item' : 'node-creator-node-item',
@@ -143,7 +148,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 			<NodeIcon :class="$style.nodeIcon" :node-type="nodeType" />
 		</template>
 
-		<template v-if="isCommunityNode" #tooltip>
+		<template v-if="isCommunityNode && !activeViewStack.communityNodeDetails" #tooltip>
 			<p
 				v-n8n-html="
 					i18n.baseText('generic.communityNode.tooltip', {

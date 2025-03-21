@@ -72,6 +72,19 @@ interface ViewStack {
 	actionsFilter?: (items: ActionTypeDescription[]) => ActionTypeDescription[];
 	panelClass?: string;
 	sections?: string[] | NodeViewItemSection[];
+	communityNodeDetails?: {
+		title: string;
+		packageName: string;
+		description: string;
+		installed: boolean;
+		verified?: boolean;
+		nodeIcon?: {
+			iconType?: string;
+			icon?: Themed<string>;
+			color?: string;
+		};
+		iconUrl?: string;
+	};
 }
 
 export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
@@ -106,6 +119,13 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			) {
 				searchBase = filterOutAiNodes(searchBase);
 			}
+
+			searchBase = searchBase.filter((item) => {
+				if (useNodeTypesStore().verifiedNodeTypes.includes(item.key)) {
+					return false;
+				}
+				return true;
+			});
 
 			const searchResults = extendItemsWithUUID(searchNodes(stack.search || '', searchBase));
 

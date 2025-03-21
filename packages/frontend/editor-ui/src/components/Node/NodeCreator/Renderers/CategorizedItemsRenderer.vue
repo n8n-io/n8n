@@ -9,6 +9,7 @@ import { useViewStacks } from '../composables/useViewStacks';
 import ItemsRenderer from './ItemsRenderer.vue';
 import CategoryItem from '../ItemTypes/CategoryItem.vue';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useUsersStore } from '@/stores/users.store';
 
 export interface Props {
 	elements: INodeCreateElement[];
@@ -24,7 +25,7 @@ const props = withDefaults(defineProps<Props>(), {
 	elements: () => [],
 });
 
-const { popViewStack } = useViewStacks();
+const { popViewStack, activeViewStack } = useViewStacks();
 const { registerKeyHook } = useKeyboardNavigation();
 const { workflowId } = useWorkflowsStore();
 const nodeCreatorStore = useNodeCreatorStore();
@@ -32,6 +33,10 @@ const nodeCreatorStore = useNodeCreatorStore();
 const activeItemId = computed(() => useKeyboardNavigation()?.activeItemId);
 const actionCount = computed(() => props.elements.filter(({ type }) => type === 'action').length);
 const expanded = ref(props.expanded ?? false);
+const isPreview = computed(
+	() => activeViewStack.communityNodeDetails && !activeViewStack.communityNodeDetails.installed,
+);
+const isOwner = computed(() => useUsersStore().isInstanceOwner);
 
 function toggleExpanded() {
 	setExpanded(!expanded.value);
@@ -115,12 +120,19 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 		<div v-if="expanded && actionCount > 0 && $slots.default" :class="$style.contentSlot">
 			<slot />
 		</div>
+		<div v-if="isPreview && isOwner" :class="$style.installHint">
+			<n8n-icon color="text-light" icon="info-circle" size="large" />
+			<n8n-text color="text-base" size="medium">
+				Install this node to start using actions
+			</n8n-text>
+		</div>
 		<!-- Pass through listeners & empty slot to ItemsRenderer -->
 		<ItemsRenderer
 			v-if="expanded"
 			v-bind="$attrs"
 			:elements="elements"
 			:is-trigger="isTriggerCategory"
+			:class="[{ [$style.preview]: isPreview }]"
 		>
 			<template #default> </template>
 			<template #empty>
@@ -152,5 +164,19 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 }
 .categorizedItemsRenderer {
 	padding-bottom: var(--spacing-s);
+}
+.preview {
+	opacity: 0.7;
+	pointer-events: none;
+	cursor: default;
+}
+.installHint {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-s);
+	margin: var(--spacing-xs);
+	padding: var(--spacing-xs);
+	border: var(--border-width-base) solid var(--color-foreground-base);
+	border-radius: 0.25em;
 }
 </style>

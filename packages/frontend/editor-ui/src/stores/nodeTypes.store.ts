@@ -30,6 +30,7 @@ export type NodeTypesStore = ReturnType<typeof useNodeTypesStore>;
 
 export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	const nodeTypes = ref<NodeTypesByTypeNameAndVersion>({});
+	const verifiedNodeTypes = ref<string[]>([]);
 
 	const rootStore = useRootStore();
 
@@ -270,8 +271,11 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 
 	const getNodeTypes = async () => {
 		const nodeTypes = await nodeTypesApi.getNodeTypes(rootStore.baseUrl);
+		const communityTypes = (await nodeTypesApi.getCommunityNodeTypes()) ?? [];
+
 		if (nodeTypes.length) {
-			setNodeTypes(nodeTypes);
+			communityTypes.forEach((nodeType) => verifiedNodeTypes.value.push(nodeType.name));
+			setNodeTypes(nodeTypes.concat(communityTypes));
 		}
 	};
 
@@ -334,6 +338,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		visibleNodeTypesByOutputConnectionTypeNames,
 		visibleNodeTypesByInputConnectionTypeNames,
 		isConfigurableNode,
+		verifiedNodeTypes,
 		getResourceMapperFields,
 		getLocalResourceMapperFields,
 		getNodeParameterActionResult,
