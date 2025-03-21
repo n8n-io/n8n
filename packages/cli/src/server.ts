@@ -232,8 +232,6 @@ export class Server extends AbstractServer {
 		await this.registerAdditionalControllers();
 
 		// register all known controllers
-		// NOTE: example for the controller registry, do something similar for the
-		// module registry
 		Container.get(ControllerRegistry).activate(app);
 
 		// ----------------------------------------
