@@ -848,6 +848,197 @@ describe('getInsightsSummary', () => {
 			total: { deviation: -1, unit: 'count', value: 4 },
 		});
 	});
+
+	describe('getInsightsByWorkflow', () => {
+		let insightsService: InsightsService;
+		beforeAll(async () => {
+			insightsService = Container.get(InsightsService);
+		});
+
+		let project: Project;
+		let workflow1: IWorkflowDb & WorkflowEntity;
+		let workflow2: IWorkflowDb & WorkflowEntity;
+		let workflow3: IWorkflowDb & WorkflowEntity;
+
+		beforeEach(async () => {
+			await truncateAll();
+
+			project = await createTeamProject();
+			workflow1 = await createWorkflow({}, project);
+			workflow2 = await createWorkflow({}, project);
+			workflow3 = await createWorkflow({}, project);
+		});
+
+		test('compacted data are are grouped by workflow correctly', async () => {
+			// ARRANGE
+			for (const workflow of [workflow1, workflow2]) {
+				await createCompactedInsightsEvent(workflow, {
+					type: 'success',
+					value: workflow === workflow1 ? 1 : 2,
+					periodUnit: 'day',
+					periodStart: DateTime.utc(),
+				});
+				await createCompactedInsightsEvent(workflow, {
+					type: 'success',
+					value: 1,
+					periodUnit: 'day',
+					periodStart: DateTime.utc().minus({ day: 2 }),
+				});
+				await createCompactedInsightsEvent(workflow, {
+					type: 'failure',
+					value: 2,
+					periodUnit: 'day',
+					periodStart: DateTime.utc(),
+				});
+				// last 14 days
+				await createCompactedInsightsEvent(workflow, {
+					type: 'success',
+					value: 1,
+					periodUnit: 'day',
+					periodStart: DateTime.utc().minus({ days: 10 }),
+				});
+				await createCompactedInsightsEvent(workflow, {
+					type: 'runtime_ms',
+					value: 123,
+					periodUnit: 'day',
+					periodStart: DateTime.utc().minus({ days: 10 }),
+				});
+			}
+
+			// ACT
+			const byWorkflow = await insightsService.getInsightsByWorkflow({
+				nbDays: 14,
+			});
+
+			// ASSERT
+			expect(byWorkflow.count).toEqual(2);
+			expect(byWorkflow.data).toHaveLength(2);
+
+			// expect first workflow to be workflow 2, because it has a bigger total (default sorting)
+			expect(byWorkflow.data[0]).toEqual({
+				workflowId: workflow2.id,
+				workflowName: workflow2.name,
+				projectId: project.id,
+				projectName: project.name,
+				total: 6,
+				failureRate: 2 / 6,
+				failed: 2,
+				runTime: 123,
+				succeeded: 4,
+				timeSaved: 0,
+				averageRunTime: 123 / 6,
+			});
+
+			expect(byWorkflow.data[1]).toEqual({
+				workflowId: workflow1.id,
+				workflowName: workflow1.name,
+				projectId: project.id,
+				projectName: project.name,
+				total: 5,
+				failureRate: 2 / 5,
+				failed: 2,
+				runTime: 123,
+				succeeded: 3,
+				timeSaved: 0,
+				averageRunTime: 123 / 5,
+			});
+		});
+	});
+
+	describe('getInsightsByTime', () => {
+		let insightsService: InsightsService;
+		beforeAll(async () => {
+			insightsService = Container.get(InsightsService);
+		});
+
+		let project: Project;
+		let workflow1: IWorkflowDb & WorkflowEntity;
+		let workflow2: IWorkflowDb & WorkflowEntity;
+		let workflow3: IWorkflowDb & WorkflowEntity;
+
+		beforeEach(async () => {
+			await truncateAll();
+
+			project = await createTeamProject();
+			workflow1 = await createWorkflow({}, project);
+			workflow2 = await createWorkflow({}, project);
+			workflow3 = await createWorkflow({}, project);
+		});
+
+		test('compacted data are are grouped by time correctly', async () => {
+			// ARRANGE
+			for (const workflow of [workflow1, workflow2]) {
+				await createCompactedInsightsEvent(workflow, {
+					type: 'success',
+					value: workflow === workflow1 ? 1 : 2,
+					periodUnit: 'day',
+					periodStart: DateTime.utc(),
+				});
+				await createCompactedInsightsEvent(workflow, {
+					type: 'failure',
+					value: 2,
+					periodUnit: 'day',
+					periodStart: DateTime.utc(),
+				});
+				await createCompactedInsightsEvent(workflow, {
+					type: 'success',
+					value: 1,
+					periodUnit: 'day',
+					periodStart: DateTime.utc().minus({ day: 2 }),
+				});
+				await createCompactedInsightsEvent(workflow, {
+					type: 'success',
+					value: 1,
+					periodUnit: 'day',
+					periodStart: DateTime.utc().minus({ days: 10 }),
+				});
+				await createCompactedInsightsEvent(workflow, {
+					type: 'runtime_ms',
+					value: workflow === workflow1 ? 10 : 20,
+					periodUnit: 'day',
+					periodStart: DateTime.utc().minus({ days: 10 }),
+				});
+			}
+
+			// ACT
+			const byTime = await insightsService.getInsightsByTime(14);
+
+			// ASSERT
+			expect(byTime).toHaveLength(3);
+
+			// expect date to be sorted by oldest first
+			expect(byTime[0].date).toEqual(DateTime.utc().minus({ days: 10 }).startOf('day').toISO());
+			expect(byTime[1].date).toEqual(DateTime.utc().minus({ days: 2 }).startOf('day').toISO());
+			expect(byTime[2].date).toEqual(DateTime.utc().startOf('day').toISO());
+
+			expect(byTime[0].values).toEqual({
+				total: 2,
+				succeeded: 2,
+				failed: 0,
+				failureRate: 0,
+				averageRunTime: 15,
+				timeSaved: 0,
+			});
+
+			expect(byTime[1].values).toEqual({
+				total: 2,
+				succeeded: 2,
+				failed: 0,
+				failureRate: 0,
+				averageRunTime: 0,
+				timeSaved: 0,
+			});
+
+			expect(byTime[2].values).toEqual({
+				total: 7,
+				succeeded: 3,
+				failed: 4,
+				failureRate: 4 / 7,
+				averageRunTime: 0,
+				timeSaved: 0,
+			});
+		});
+	});
 });
 
 describe('getInsightsByWorkflow', () => {
