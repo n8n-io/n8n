@@ -7,13 +7,14 @@ import type { ExecutionStatus, IRun, WorkflowExecuteMode } from 'n8n-workflow';
 import type { Project } from '@/databases/entities/project';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { IWorkflowDb } from '@/interfaces';
-import type { TypeUnits } from '@/modules/insights/entities/insights-shared';
+import type { TypeUnit } from '@/modules/insights/entities/insights-shared';
 import { InsightsMetadataRepository } from '@/modules/insights/repositories/insights-metadata.repository';
 import { InsightsRawRepository } from '@/modules/insights/repositories/insights-raw.repository';
 import { createTeamProject } from '@test-integration/db/projects';
 import { createWorkflow } from '@test-integration/db/workflows';
 import * as testDb from '@test-integration/test-db';
 
+import { createCompactedInsightsEvent } from '../entities/__tests__/db-utils';
 import { InsightsService } from '../insights.service';
 import { InsightsByPeriodRepository } from '../repositories/insights-by-period.repository';
 
@@ -30,13 +31,21 @@ async function truncateAll() {
 	}
 }
 
+// Initialize DB once for all tests
+beforeAll(async () => {
+	await testDb.init();
+});
+
+// Terminate DB once after all tests complete
+afterAll(async () => {
+	await testDb.terminate();
+});
+
 describe('workflowExecuteAfterHandler', () => {
 	let insightsService: InsightsService;
 	let insightsRawRepository: InsightsRawRepository;
 	let insightsMetadataRepository: InsightsMetadataRepository;
 	beforeAll(async () => {
-		await testDb.init();
-
 		insightsService = Container.get(InsightsService);
 		insightsRawRepository = Container.get(InsightsRawRepository);
 		insightsMetadataRepository = Container.get(InsightsMetadataRepository);
@@ -59,7 +68,7 @@ describe('workflowExecuteAfterHandler', () => {
 		);
 	});
 
-	test.each<{ status: ExecutionStatus; type: TypeUnits }>([
+	test.each<{ status: ExecutionStatus; type: TypeUnit }>([
 		{ status: 'success', type: 'success' },
 		{ status: 'error', type: 'failure' },
 		{ status: 'crashed', type: 'failure' },
@@ -243,5 +252,70 @@ describe('workflowExecuteAfterHandler', () => {
 		await expect(insightsService.workflowExecuteAfterHandler(ctx, run)).rejects.toThrowError(
 			`Could not find an owner for the workflow with the name '${workflow.name}' and the id '${workflow.id}'`,
 		);
+	});
+});
+
+describe('getInsightsSummary', () => {
+	let insightsService: InsightsService;
+	beforeAll(async () => {
+		insightsService = Container.get(InsightsService);
+	});
+
+	let project: Project;
+	let workflow: IWorkflowDb & WorkflowEntity;
+
+	beforeEach(async () => {
+		await truncateAll();
+
+		project = await createTeamProject();
+		workflow = await createWorkflow({}, project);
+	});
+
+	test('compacted data are summarized correctly', async () => {
+		// ARRANGE
+		// last 7 days
+		await createCompactedInsightsEvent(workflow, {
+			type: 'success',
+			value: 1,
+			periodUnit: 'day',
+			periodStart: DateTime.utc(),
+		});
+		await createCompactedInsightsEvent(workflow, {
+			type: 'success',
+			value: 1,
+			periodUnit: 'day',
+			periodStart: DateTime.utc().minus({ day: 2 }),
+		});
+		await createCompactedInsightsEvent(workflow, {
+			type: 'failure',
+			value: 2,
+			periodUnit: 'day',
+			periodStart: DateTime.utc(),
+		});
+		// last 14 days
+		await createCompactedInsightsEvent(workflow, {
+			type: 'success',
+			value: 1,
+			periodUnit: 'day',
+			periodStart: DateTime.utc().minus({ days: 10 }),
+		});
+		await createCompactedInsightsEvent(workflow, {
+			type: 'runtime_ms',
+			value: 123,
+			periodUnit: 'day',
+			periodStart: DateTime.utc().minus({ days: 10 }),
+		});
+
+		// ACT
+		const summary = await insightsService.getInsightsSummary();
+
+		// ASSERT
+		expect(summary).toEqual({
+			averageRunTime: { deviation: -123, unit: 'time', value: 0 },
+			failed: { deviation: 2, unit: 'count', value: 2 },
+			failureRate: { deviation: 0.5, unit: 'ratio', value: 0.5 },
+			timeSaved: { deviation: 0, unit: 'time', value: 0 },
+			total: { deviation: 3, unit: 'count', value: 4 },
+		});
 	});
 });

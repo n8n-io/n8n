@@ -8,7 +8,7 @@ import * as testDb from '@test-integration/test-db';
 import { createMetadata, createRawInsightsEvent } from './db-utils';
 import { InsightsRawRepository } from '../../repositories/insights-raw.repository';
 import { InsightsRaw } from '../insights-raw';
-import type { TypeUnits } from '../insights-shared';
+import type { TypeUnit } from '../insights-shared';
 
 let insightsRawRepository: InsightsRawRepository;
 
@@ -26,7 +26,7 @@ afterAll(async () => {
 });
 
 describe('Insights Raw Entity', () => {
-	test.each(['success', 'failure', 'runtime_ms', 'time_saved_min'] satisfies TypeUnits[])(
+	test.each(['success', 'failure', 'runtime_ms', 'time_saved_min'] satisfies TypeUnit[])(
 		'`%s` can be serialized and deserialized correctly',
 		(typeUnit) => {
 			// ARRANGE
