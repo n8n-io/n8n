@@ -12,22 +12,12 @@ export interface IRequestBody {
 	ExclusiveStartKey?: IAttributeValue;
 }
 
-// Legacy v1 types
-export interface ILegacyAttributeValue {
-	[attribute: string]: ILegacyAttributeValueValue;
-}
-
-export interface ILegacyAttributeValueValue {
-	[type: string]: string | string[] | boolean | null;
-}
-
-// New v1.1 types
 export interface IAttributeValue {
-	[attribute: string]: DynamoDBAttributeValue;
+	[attribute: string]: IAttributeValueValue;
 }
 
 export interface IAttributeValueValue {
-	[type: string]: DynamoDBAttributeValue;
+	[type: string]: string | string[] | IAttributeValue[];
 }
 
 export interface IAttributeValueUi {
@@ -85,46 +75,14 @@ export type FieldsUiValues = Array<{
 	fieldValue: string;
 }>;
 
-// Legacy v1 types
-export type LegacyPutItemUi = {
+export type PutItemUi = {
 	attribute: string;
 	type: 'S' | 'N';
 	value: string;
 };
 
-export type LegacyAdjustedPutItem = {
+export type AdjustedPutItem = {
 	[attribute: string]: {
 		[type: string]: string;
 	};
 };
-
-// DynamoDB attribute value type (v1.1)
-export type DynamoDBAttributeValue = {
-	S?: string;
-	N?: string;
-	B?: string;
-	BOOL?: boolean;
-	NULL?: boolean;
-	M?: { [key: string]: DynamoDBAttributeValue };
-	L?: DynamoDBAttributeValue[];
-	SS?: string[];
-	NS?: string[];
-	BS?: string[];
-};
-
-// Combined types that support both versions
-export type PutItemUi =
-	| {
-			[key: string]: string | number | boolean | null | undefined | object | unknown[];
-	  }
-	| LegacyPutItemUi;
-
-export type AdjustedPutItem =
-	| {
-			[attribute: string]: DynamoDBAttributeValue;
-	  }
-	| LegacyAdjustedPutItem;
-
-export function isLegacyPutItem(item: PutItemUi): item is LegacyPutItemUi {
-	return 'attribute' in item && 'type' in item && 'value' in item;
-}
