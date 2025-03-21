@@ -1,20 +1,23 @@
 <script setup lang="ts">
 import { computed, useCssModule } from 'vue';
-import { smartDecimal } from '@n8n/utils/number/smartDecimal';
-import { useI18n } from '@/composables/useI18n';
+import { useRoute } from 'vue-router';
 import type { InsightsSummary } from '@n8n/api-types';
+import { smartDecimal } from '@n8n/utils/number/smartDecimal';
+import { VIEWS } from '@/constants';
+import { useI18n } from '@/composables/useI18n';
 import type { InsightsSummaryDisplay } from '@/features/insights/insights.types';
 import {
 	INSIGHT_IMPACT_TYPES,
 	INSIGHTS_UNIT_IMPACT_MAPPING,
 } from '@/features/insights/insights.constants';
 
-defineProps<{
+const props = defineProps<{
 	summary: InsightsSummaryDisplay;
 	loading?: boolean;
 }>();
 
 const i18n = useI18n();
+const route = useRoute();
 const $style = useCssModule();
 
 const summaryTitles = computed<Record<keyof InsightsSummary, string>>(() => ({
@@ -24,6 +27,13 @@ const summaryTitles = computed<Record<keyof InsightsSummary, string>>(() => ({
 	timeSaved: i18n.baseText('insights.banner.title.timeSaved'),
 	averageRunTime: i18n.baseText('insights.banner.title.averageRunTime'),
 }));
+
+const summaryWithRouteLocations = computed(() =>
+	props.summary.map((s) => ({
+		...s,
+		to: { name: VIEWS.INSIGHTS, params: { insightType: s.id }, query: route.query },
+	})),
+);
 
 const getSign = (n: number) => (n > 0 ? '+' : undefined);
 const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
@@ -49,11 +59,11 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 		<N8nLoading v-if="loading" :class="$style.loading" :cols="5" />
 		<ul v-else data-test-id="insights-summary-tabs">
 			<li
-				v-for="{ id, value, deviation, unit } in summary"
+				v-for="{ id, value, deviation, unit, to } in summaryWithRouteLocations"
 				:key="id"
 				:data-test-id="`insights-summary-tab-${id}`"
 			>
-				<p>
+				<router-link :to="to" :exact-active-class="$style.activeTab">
 					<strong>{{ summaryTitles[id] }}</strong>
 					<span v-if="value === 0 && id === 'timeSaved'" :class="$style.empty">
 						<em>--</em>
@@ -84,7 +94,7 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 							{{ getSign(deviation) }}{{ smartDecimal(deviation) }}
 						</small>
 					</span>
-				</p>
+				</router-link>
 			</li>
 		</ul>
 	</div>
@@ -100,7 +110,7 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 		display: flex;
 		height: 91px;
 		align-items: stretch;
-		justify-content: flex-start;
+		justify-content: space-evenly;
 		border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 		border-radius: 6px;
 		list-style: none;
@@ -109,9 +119,9 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 
 		li {
 			display: flex;
-			justify-content: flex-start;
-			align-items: center;
-			flex: 1;
+			justify-content: stretch;
+			align-items: stretch;
+			flex: 1 0;
 			border-left: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 			padding: 0 var(--spacing-xl) 0 var(--spacing-l);
 
@@ -120,8 +130,26 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 			}
 		}
 
-		p {
+		a {
 			display: grid;
+			align-items: center;
+			width: 100%;
+			height: 100%;
+			padding: var(--spacing-m) var(--spacing-l);
+			border-bottom: 4px solid transparent;
+
+			&:hover {
+				background-color: var(--color-background-xlight);
+				transition: background-color 0.3s;
+			}
+
+			&.activeTab {
+				background-color: var(--color-background-xlight);
+				border-color: var(--color-primary);
+				transition:
+					background-color,
+					border-color 0.3s ease-in-out;
+			}
 
 			strong {
 				color: var(--color-text-dark);
