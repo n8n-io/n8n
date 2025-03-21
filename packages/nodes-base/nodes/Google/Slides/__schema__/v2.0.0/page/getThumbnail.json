@@ -1,20 +1,15 @@
 {
     "type": "object",
     "properties": {
-        "width": {
-            "type": "integer"
+        "contentUrl": {
+            "type": "string"
         },
         "height": {
             "type": "integer"
         },
-        "contentUrl": {
-            "type": "string"
+        "width": {
+            "type": "integer"
         }
     },
-    "required": [
-        "width",
-        "height",
-        "contentUrl"
-    ],
     "version": 1
 }

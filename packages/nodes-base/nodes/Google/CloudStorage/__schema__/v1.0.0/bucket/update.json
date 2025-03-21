@@ -1,56 +1,19 @@
 {
     "type": "object",
     "properties": {
-        "kind": {
-            "type": "string"
-        },
-        "selfLink": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "projectNumber": {
+        "etag": {
             "type": "string"
         },
         "generation": {
             "type": "string"
         },
-        "metageneration": {
-            "type": "string"
-        },
-        "location": {
-            "type": "string"
-        },
-        "storageClass": {
-            "type": "string"
-        },
-        "etag": {
-            "type": "string"
-        },
-        "timeCreated": {
-            "type": "string"
-        },
-        "updated": {
-            "type": "string"
-        },
-        "softDeletePolicy": {
+        "hierarchicalNamespace": {
             "type": "object",
             "properties": {
-                "retentionDurationSeconds": {
-                    "type": "string"
-                },
-                "effectiveTime": {
-                    "type": "string"
+                "enabled": {
+                    "type": "boolean"
                 }
-            },
-            "required": [
-                "retentionDurationSeconds",
-                "effectiveTime"
-            ]
+            }
         },
         "iamConfiguration": {
             "type": "object",
@@ -64,10 +27,10 @@
                         "lockedTime": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "enabled"
-                    ]
+                    }
+                },
+                "publicAccessPrevention": {
+                    "type": "string"
                 },
                 "uniformBucketLevelAccess": {
                     "type": "object",
@@ -78,55 +41,57 @@
                         "lockedTime": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "enabled"
-                    ]
-                },
-                "publicAccessPrevention": {
-                    "type": "string"
+                    }
                 }
-            },
-            "required": [
-                "bucketPolicyOnly",
-                "uniformBucketLevelAccess",
-                "publicAccessPrevention"
-            ]
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "kind": {
+            "type": "string"
+        },
+        "location": {
+            "type": "string"
         },
         "locationType": {
+            "type": "string"
+        },
+        "metageneration": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "projectNumber": {
             "type": "string"
         },
         "rpo": {
             "type": "string"
         },
-        "hierarchicalNamespace": {
+        "selfLink": {
+            "type": "string"
+        },
+        "softDeletePolicy": {
             "type": "object",
             "properties": {
-                "enabled": {
-                    "type": "boolean"
+                "effectiveTime": {
+                    "type": "string"
+                },
+                "retentionDurationSeconds": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "enabled"
-            ]
+            }
+        },
+        "storageClass": {
+            "type": "string"
+        },
+        "timeCreated": {
+            "type": "string"
+        },
+        "updated": {
+            "type": "string"
         }
     },
-    "required": [
-        "kind",
-        "selfLink",
-        "id",
-        "name",
-        "projectNumber",
-        "generation",
-        "metageneration",
-        "location",
-        "storageClass",
-        "etag",
-        "timeCreated",
-        "updated",
-        "softDeletePolicy",
-        "iamConfiguration",
-        "locationType"
-    ],
     "version": 1
 }

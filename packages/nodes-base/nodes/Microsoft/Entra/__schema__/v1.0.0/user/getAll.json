@@ -1,16 +1,13 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
         "createdDateTime": {
             "type": "string"
         },
         "displayName": {
             "type": "string"
         },
-        "userPrincipalName": {
+        "id": {
             "type": "string"
         },
         "mailNickname": {
@@ -18,10 +15,10 @@
         },
         "securityIdentifier": {
             "type": "string"
+        },
+        "userPrincipalName": {
+            "type": "string"
         }
     },
-    "required": [
-        "id"
-    ],
     "version": 1
 }

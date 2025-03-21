@@ -1,47 +1,10 @@
 {
     "type": "object",
     "properties": {
-        "name": {
-            "type": "string"
-        },
-        "nodes": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "operation": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "type": {
-                        "type": "string"
-                    },
-                    "position": {
-                        "type": "array",
-                        "items": {
-                            "type": "integer"
-                        }
-                    },
-                    "id": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "id"
-                ]
-            }
-        },
         "active": {
             "type": "boolean"
         },
-        "versionId": {
+        "createdAt": {
             "type": "string"
         },
         "id": {
@@ -50,17 +13,37 @@
         "meta": {
             "type": "null"
         },
+        "name": {
+            "type": "string"
+        },
+        "nodes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "pinData": {
             "type": "null"
         },
-        "createdAt": {
-            "type": "string"
+        "triggerCount": {
+            "type": "integer"
         },
         "updatedAt": {
             "type": "string"
         },
-        "triggerCount": {
-            "type": "integer"
+        "versionId": {
+            "type": "string"
         }
     },
     "version": 1
