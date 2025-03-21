@@ -47,8 +47,12 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 			i18n.baseText('insights.banner.title', { interpolate: { count: 7 } })
 		}}</N8nHeading>
 		<N8nLoading v-if="loading" :class="$style.loading" :cols="5" />
-		<ul v-else>
-			<li v-for="{ id, value, deviation, unit } in summary" :key="id">
+		<ul v-else data-test-id="insights-summary-tabs">
+			<li
+				v-for="{ id, value, deviation, unit } in summary"
+				:key="id"
+				:data-test-id="`insights-summary-tab-${id}`"
+			>
 				<p>
 					<strong>{{ summaryTitles[id] }}</strong>
 					<span v-if="value === 0 && id === 'timeSaved'" :class="$style.empty">
