@@ -16,11 +16,10 @@ import type { IWorkflowDb } from '@/Interface';
 import {
 	createResultOk,
 	NodeConnectionType,
-	type IDataObject,
+	type IBinaryData,
 	type INodeExecutionData,
 } from 'n8n-workflow';
 import * as nodeHelpers from '@/composables/useNodeHelpers';
-import * as workflowHelpers from '@/composables/useWorkflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
 import { fireEvent } from '@testing-library/dom';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -108,14 +107,14 @@ async function setupStore() {
 	return pinia;
 }
 
-function mockNodeOutputData(nodeName: string, data: IDataObject[], outputIndex = 0) {
+function mockNodeOutputData(nodeName: string, data: INodeExecutionData[], outputIndex = 0) {
 	const originalNodeHelpers = nodeHelpers.useNodeHelpers();
 	vi.spyOn(nodeHelpers, 'useNodeHelpers').mockImplementation(() => {
 		return {
 			...originalNodeHelpers,
 			getNodeInputData: vi.fn((node, _, output) => {
 				if (node.name === nodeName && output === outputIndex) {
-					return data.map((json) => ({ json }));
+					return data;
 				}
 				return [];
 			}),
@@ -146,7 +145,7 @@ describe('VirtualSchema.vue', () => {
 
 	beforeEach(async () => {
 		cleanup();
-		vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue(123);
+		vi.resetAllMocks();
 		vi.setSystemTime('2025-01-01');
 		renderComponent = createComponentRenderer(VirtualSchema, {
 			global: {
@@ -181,6 +180,20 @@ describe('VirtualSchema.vue', () => {
 		// Collapse second node
 		await userEvent.click(getAllByTestId('run-data-schema-header')[1]);
 		expect(getAllByText("No fields - item(s) exist, but they're empty").length).toBe(1);
+	});
+
+	it('renders schema for empty data with binary', async () => {
+		mockNodeOutputData(mockNode1.name, [{ json: {}, binary: { data: mock<IBinaryData>() } }]);
+
+		const { getByText } = renderComponent({
+			props: { nodes: [{ name: mockNode1.name, indicies: [], depth: 1 }] },
+		});
+
+		await waitFor(() =>
+			expect(
+				getByText("Only binary data exists. View it using the 'Binary' tab"),
+			).toBeInTheDocument(),
+		);
 	});
 
 	it('renders schema for data', async () => {
@@ -307,10 +320,7 @@ describe('VirtualSchema.vue', () => {
 	it('renders schema for correct output branch', async () => {
 		mockNodeOutputData(
 			'If',
-			[
-				{ id: 1, name: 'John' },
-				{ id: 2, name: 'Jane' },
-			],
+			[{ json: { id: 1, name: 'John' } }, { json: { id: 2, name: 'Jane' } }],
 			1,
 		);
 		const { getAllByTestId } = renderComponent({
@@ -330,10 +340,7 @@ describe('VirtualSchema.vue', () => {
 	it('renders previous nodes schema for AI tools', async () => {
 		mockNodeOutputData(
 			'If',
-			[
-				{ id: 1, name: 'John' },
-				{ id: 2, name: 'Jane' },
-			],
+			[{ json: { id: 1, name: 'John' } }, { json: { id: 2, name: 'Jane' } }],
 			0,
 		);
 		const { getAllByTestId } = renderComponent({
