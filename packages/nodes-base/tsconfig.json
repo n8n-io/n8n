@@ -8,8 +8,6 @@
 			"@test/*": ["./test/*"],
 			"@utils/*": ["./utils/*"]
 		},
-		"module": "esnext",
-		"moduleResolution": "bundler",
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		// TODO: remove all options below this line
 		"noImplicitReturns": false,
