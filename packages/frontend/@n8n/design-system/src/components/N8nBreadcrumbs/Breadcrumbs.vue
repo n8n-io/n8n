@@ -19,6 +19,7 @@ type Props = {
 	loadingSkeletonRows?: number;
 	separator?: string;
 	highlightLastItem?: boolean;
+	hiddenItemsTrigger?: 'hover' | 'click';
 	// Setting this to true will show the ellipsis even if there are no hidden items
 	pathTruncated?: boolean;
 };
@@ -40,6 +41,7 @@ const props = withDefaults(defineProps<Props>(), {
 	separator: '/',
 	highlightLastItem: true,
 	isPathTruncated: false,
+	hiddenItemsTrigger: 'click',
 });
 
 const loadedHiddenItems = ref<PathItem[]>([]);
@@ -153,6 +155,7 @@ const handleTooltipClose = () => {
 						:loading-row-count="loadingSkeletonRows"
 						:disabled="dropdownDisabled"
 						:class="$style['action-toggle']"
+						:popper-class="$style['hidden-items-menu-popper']"
 						theme="dark"
 						placement="bottom"
 						size="small"
@@ -169,7 +172,8 @@ const handleTooltipClose = () => {
 					v-else
 					:popper-class="$style.tooltip"
 					:disabled="dropdownDisabled"
-					trigger="click"
+					:trigger="hiddenItemsTrigger"
+					placement="bottom"
 					@before-show="handleTooltipShow"
 					@hide="handleTooltipClose"
 				>
@@ -199,6 +203,7 @@ const handleTooltipClose = () => {
 						[$style.item]: true,
 						[$style.current]: props.highlightLastItem && index === items.length - 1,
 					}"
+					:title="item.label"
 					:data-test-id="
 						index === items.length - 1 ? 'breadcrumbs-item-current' : 'breadcrumbs-item'
 					"
@@ -238,6 +243,13 @@ const handleTooltipClose = () => {
 	align-items: center;
 }
 
+.item * {
+	display: block;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
 .item.current span {
 	color: var(--color-text-dark);
 }
@@ -272,6 +284,21 @@ const handleTooltipClose = () => {
 	color: var(--color-text-base);
 }
 
+.hidden-items-menu-popper {
+	& > div ul {
+		max-height: 250px;
+		overflow: auto;
+	}
+
+	li {
+		max-width: var(--spacing-5xl);
+		display: block;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+}
+
 .tooltip-loading {
 	min-width: var(--spacing-3xl);
 	width: 100%;
@@ -289,6 +316,7 @@ const handleTooltipClose = () => {
 
 .tooltip {
 	padding: var(--spacing-xs) var(--spacing-2xs);
+	text-align: center;
 	& > div {
 		color: var(--color-text-lighter);
 		span {
@@ -319,11 +347,16 @@ const handleTooltipClose = () => {
 		gap: var(--spacing-5xs);
 	}
 
+	.item {
+		max-width: var(--spacing-3xl);
+	}
+
 	.item,
 	.item * {
 		color: var(--color-text-base);
 		font-size: var(--font-size-2xs);
-		font-weight: 600;
+		font-weight: var(--font-weight-bold);
+		line-height: var(--font-line-heigh-xsmall);
 	}
 
 	.item a:hover * {
@@ -331,7 +364,7 @@ const handleTooltipClose = () => {
 	}
 
 	.separator {
-		font-size: var(--font-size-m);
+		font-size: var(--font-size-s);
 		color: var(--color-text-base);
 	}
 }
@@ -345,7 +378,11 @@ const handleTooltipClose = () => {
 	.item,
 	.item * {
 		color: var(--color-text-base);
-		font-size: var(--font-size-m);
+		font-size: var(--font-size-s);
+	}
+
+	.item {
+		max-width: var(--spacing-5xl);
 	}
 
 	.item a:hover * {

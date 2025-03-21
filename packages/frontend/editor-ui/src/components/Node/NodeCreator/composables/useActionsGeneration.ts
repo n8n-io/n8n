@@ -255,7 +255,7 @@ function resourceCategories(nodeTypeDescription: INodeTypeDescription): ActionTy
 							},
 							displayName,
 							group: ['trigger'],
-						};
+						} as ActionTypeDescription;
 					},
 				);
 

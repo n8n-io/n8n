@@ -23,7 +23,7 @@ import type {
 	IParameterLabel,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { CREDENTIAL_EMPTY_VALUE, isINodePropertyOptions, NodeHelpers } from 'n8n-workflow';
+import { CREDENTIAL_EMPTY_VALUE, NodeHelpers } from 'n8n-workflow';
 
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import CredentialsSelect from '@/components/CredentialsSelect.vue';
@@ -574,7 +574,7 @@ const shouldCaptureForPosthog = computed(() => {
 function isValidParameterOption(
 	option: INodePropertyOptions | INodeProperties | INodePropertyCollection,
 ): option is INodePropertyOptions {
-	return isINodePropertyOptions(option) && isPresent(option.value) && isPresent(option.name);
+	return 'value' in option && isPresent(option.value) && isPresent(option.name);
 }
 
 function isRemoteParameterOption(option: INodePropertyOptions) {
@@ -1788,7 +1788,7 @@ onUpdated(async () => {
 	padding-right: 20px;
 
 	.option-headline {
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight-medium);
 		line-height: var(--font-line-height-regular);
 		overflow-wrap: break-word;
 	}

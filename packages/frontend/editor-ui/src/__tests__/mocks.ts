@@ -11,7 +11,7 @@ import type {
 	INodeTypeDescription,
 	INodeIssues,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeHelpers, Workflow } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers, Workflow } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
@@ -52,8 +52,8 @@ export const mockNodeTypeDescription = ({
 	name = SET_NODE_TYPE,
 	version = 1,
 	credentials = [],
-	inputs = [NodeConnectionType.Main],
-	outputs = [NodeConnectionType.Main],
+	inputs = [NodeConnectionTypes.Main],
+	outputs = [NodeConnectionTypes.Main],
 	codex = undefined,
 	properties = [],
 }: {

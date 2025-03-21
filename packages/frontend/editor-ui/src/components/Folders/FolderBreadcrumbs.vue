@@ -57,7 +57,7 @@ const onAction = (action: string) => {
 			<template v-if="currentProject" #prepend>
 				<div :class="$style['home-project']" data-test-id="home-project">
 					<n8n-link :to="`/projects/${currentProject.id}`">
-						<N8nText size="large" color="text-base">{{ projectName }}</N8nText>
+						<N8nText size="medium" color="text-base">{{ projectName }}</N8nText>
 					</n8n-link>
 				</div>
 			</template>
@@ -65,6 +65,7 @@ const onAction = (action: string) => {
 		<n8n-action-toggle
 			v-if="breadcrumbs.visibleItems"
 			:actions="actions"
+			:class="$style['action-toggle']"
 			theme="dark"
 			data-test-id="folder-breadcrumbs-actions"
 			@action="onAction"
@@ -76,6 +77,12 @@ const onAction = (action: string) => {
 .container {
 	display: flex;
 	align-items: center;
+}
+
+.action-toggle {
+	span[role='button'] {
+		color: var(--color-text-base);
+	}
 }
 
 .home-project {

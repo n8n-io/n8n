@@ -1,44 +1,17 @@
 {
     "type": "object",
     "properties": {
-        "ok": {
-            "type": "boolean"
-        },
-        "type": {
+        "channel": {
             "type": "string"
         },
         "message": {
             "type": "object",
             "properties": {
-                "user": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "ts": {
-                    "type": "string"
-                },
-                "client_msg_id": {
-                    "type": "string"
-                },
-                "text": {
-                    "type": "string"
-                },
-                "team": {
-                    "type": "string"
-                },
-                "thread_ts": {
-                    "type": "string"
-                },
                 "blocks": {
                     "type": "array",
                     "items": {
                         "type": "object",
                         "properties": {
-                            "type": {
-                                "type": "string"
-                            },
                             "block_id": {
                                 "type": "string"
                             },
@@ -47,78 +20,49 @@
                                 "items": {
                                     "type": "object",
                                     "properties": {
-                                        "type": {
-                                            "type": "string"
-                                        },
                                         "elements": {
                                             "type": "array",
                                             "items": {
                                                 "type": "object",
                                                 "properties": {
-                                                    "type": {
-                                                        "type": "string"
-                                                    },
-                                                    "user_id": {
-                                                        "type": "string"
-                                                    },
                                                     "text": {
                                                         "type": "string"
                                                     },
-                                                    "elements": {
-                                                        "type": "array",
-                                                        "items": {
-                                                            "type": "object",
-                                                            "properties": {
-                                                                "type": {
-                                                                    "type": "string"
-                                                                },
-                                                                "text": {
-                                                                    "type": "string"
-                                                                },
-                                                                "style": {
-                                                                    "type": "object",
-                                                                    "properties": {
-                                                                        "bold": {
-                                                                            "type": "boolean"
-                                                                        }
-                                                                    },
-                                                                    "required": [
-                                                                        "bold"
-                                                                    ]
-                                                                }
-                                                            },
-                                                            "required": [
-                                                                "type"
-                                                            ]
-                                                        }
+                                                    "type": {
+                                                        "type": "string"
                                                     },
                                                     "url": {
                                                         "type": "string"
                                                     }
-                                                },
-                                                "required": [
-                                                    "type"
-                                                ]
+                                                }
                                             }
+                                        },
+                                        "type": {
+                                            "type": "string"
                                         }
-                                    },
-                                    "required": [
-                                        "type"
-                                    ]
+                                    }
                                 }
+                            },
+                            "type": {
+                                "type": "string"
                             }
-                        },
-                        "required": [
-                            "type",
-                            "block_id"
-                        ]
+                        }
                     }
+                },
+                "client_msg_id": {
+                    "type": "string"
+                },
+                "permalink": {
+                    "type": "string"
                 },
                 "reactions": {
                     "type": "array",
                     "items": {
                         "type": "object",
                         "properties": {
+                            "count": {
+                                "type": "integer"
+                            },
                             "name": {
                                 "type": "string"
                             },
@@ -127,38 +71,33 @@
                                 "items": {
                                     "type": "string"
                                 }
-                            },
-                            "count": {
-                                "type": "integer"
                             }
-                        },
-                        "required": [
-                            "name",
-                            "users",
-                            "count"
-                        ]
+                        }
                     }
                 },
-                "permalink": {
+                "team": {
+                    "type": "string"
+                },
+                "text": {
+                    "type": "string"
+                },
+                "ts": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "user": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "type",
-                "ts",
-                "text",
-                "blocks",
-                "reactions"
-            ]
+            }
         },
-        "channel": {
+        "ok": {
+            "type": "boolean"
+        },
+        "type": {
             "type": "string"
         }
     },
-    "required": [
-        "ok",
-        "type",
-        "message",
-        "channel"
-    ]
+    "version": 1
 }

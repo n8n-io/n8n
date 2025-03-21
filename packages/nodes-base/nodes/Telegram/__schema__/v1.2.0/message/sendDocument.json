@@ -7,40 +7,14 @@
         "result": {
             "type": "object",
             "properties": {
-                "message_id": {
-                    "type": "integer"
-                },
-                "from": {
-                    "type": "object",
-                    "properties": {
-                        "id": {
-                            "type": "integer"
-                        },
-                        "is_bot": {
-                            "type": "boolean"
-                        },
-                        "first_name": {
-                            "type": "string"
-                        },
-                        "username": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "id",
-                        "is_bot",
-                        "first_name",
-                        "username"
-                    ]
-                },
                 "chat": {
                     "type": "object",
                     "properties": {
-                        "id": {
-                            "type": "integer"
-                        },
                         "first_name": {
                             "type": "string"
+                        },
+                        "id": {
+                            "type": "integer"
                         },
                         "last_name": {
                             "type": "string"
@@ -51,11 +25,7 @@
                         "username": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "id",
-                        "type"
-                    ]
+                    }
                 },
                 "date": {
                     "type": "integer"
@@ -63,39 +33,45 @@
                 "document": {
                     "type": "object",
                     "properties": {
-                        "file_name": {
-                            "type": "string"
-                        },
                         "file_id": {
                             "type": "string"
                         },
-                        "file_unique_id": {
+                        "file_name": {
                             "type": "string"
                         },
                         "file_size": {
                             "type": "integer"
                         },
+                        "file_unique_id": {
+                            "type": "string"
+                        },
                         "mime_type": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "file_name",
-                        "file_id",
-                        "file_unique_id",
-                        "file_size"
-                    ]
+                    }
+                },
+                "from": {
+                    "type": "object",
+                    "properties": {
+                        "first_name": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "integer"
+                        },
+                        "is_bot": {
+                            "type": "boolean"
+                        },
+                        "username": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "message_id": {
+                    "type": "integer"
                 }
-            },
-            "required": [
-                "message_id",
-                "chat",
-                "date"
-            ]
+            }
         }
     },
-    "required": [
-        "ok",
-        "result"
-    ]
+    "version": 1
 }

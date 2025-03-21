@@ -1,4 +1,4 @@
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import assert from 'node:assert';
 import qs from 'node:querystring';
 
@@ -54,7 +54,7 @@ describe('AwsSes Node', () => {
 								[
 									{
 										node: 'AWS SES',
-										type: NodeConnectionType.Main,
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 								],
@@ -142,7 +142,7 @@ describe('AwsSes Node', () => {
 								[
 									{
 										node: 'AWS SES',
-										type: NodeConnectionType.Main,
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 								],
