@@ -546,9 +546,8 @@ export class SourceControlImportService {
 					homeProject: {
 						id: projects.find((p) => p.id === folder.homeProjectId)?.id ?? personalProject.id,
 					},
-					createdAt: folder.createdAt,
-					updatedAt: folder.updatedAt,
 				});
+
 				await this.folderRepository.upsert(folderCopy, {
 					skipUpdateIfNoValuesChanged: true,
 					conflictPaths: { id: true },
@@ -563,6 +562,8 @@ export class SourceControlImportService {
 					{ id: folder.id },
 					{
 						parentFolder: folder.parentFolderId ? { id: folder.parentFolderId } : null,
+						createdAt: folder.createdAt,
+						updatedAt: folder.updatedAt,
 					},
 				);
 			}),
