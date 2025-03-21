@@ -2,7 +2,7 @@
 import { onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import GlobalExecutionsList from '@/components/executions/global/GlobalExecutionsList.vue';
-import InsightsSummary from '@/features/insights/InsightsSummary.vue';
+import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';

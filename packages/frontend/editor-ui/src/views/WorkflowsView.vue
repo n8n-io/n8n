@@ -62,7 +62,7 @@ import { useFoldersStore } from '@/stores/folders.store';
 import { useFolders } from '@/composables/useFolders';
 import { useUsageStore } from '@/stores/usage.store';
 import { useInsightsStore } from '@/features/insights/insights.store';
-import InsightsSummary from '@/features/insights/InsightsSummary.vue';
+import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useOverview } from '@/composables/useOverview';
 
 interface Filters extends BaseFilters {

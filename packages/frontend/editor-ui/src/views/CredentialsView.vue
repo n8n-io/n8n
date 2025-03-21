@@ -33,7 +33,7 @@ import { pickBy } from 'lodash-es';
 import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
 import { isCredentialsResource } from '@/utils/typeGuards';
 import { useInsightsStore } from '@/features/insights/insights.store';
-import InsightsSummary from '@/features/insights/InsightsSummary.vue';
+import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useOverview } from '@/composables/useOverview';
 
 const props = defineProps<{
