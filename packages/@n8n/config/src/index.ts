@@ -36,6 +36,7 @@ export { S3Config } from './configs/external-storage.config';
 export { LOG_SCOPES } from './configs/logging.config';
 export type { LogScope } from './configs/logging.config';
 export { WorkflowsConfig } from './configs/workflows.config';
+export * from './custom-types';
 
 @Config
 export class GlobalConfig {
