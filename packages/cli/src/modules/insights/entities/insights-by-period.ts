@@ -1,6 +1,5 @@
 import { BaseEntity, Column, Entity, PrimaryGeneratedColumn } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
-import { z } from 'zod';
 
 import type { PeriodUnits } from './insights-shared';
 import {

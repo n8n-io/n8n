@@ -436,7 +436,7 @@ describe('workflowExecuteAfterHandler', () => {
 			expect(numberOfCompactedData).toBe(100);
 		});
 
-		test.only('works with data in the compacted table', async () => {
+		test('works with data in the compacted table', async () => {
 			// ARRANGE
 			const insightsService = Container.get(InsightsService);
 			const insightsRawRepository = Container.get(InsightsRawRepository);
