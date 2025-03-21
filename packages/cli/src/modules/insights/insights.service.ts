@@ -310,7 +310,7 @@ export class InsightsService {
 		nbDays: number;
 		skip?: number;
 		take?: number;
-		sortBy?: string;
+		sortBy?: InsightByWorkflowSortBy;
 	}) {
 		const { count, rows } = await this.insightsByPeriodRepository.getInsightsByWorkflow({
 			nbDays,
