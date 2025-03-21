@@ -26,11 +26,11 @@ function getInputs(parameters: IDataObject) {
 	const chunkingMode = parameters?.chunkingMode;
 	const operationMode = parameters?.operationMode;
 	const inputs: INodeInputConfiguration[] = [
-		{ displayName: '', type: NodeConnectionTypes.Main },
+		{ displayName: '', type: 'main' },
 		{
 			displayName: 'Model',
 			maxConnections: 1,
-			type: NodeConnectionTypes.AiLanguageModel,
+			type: 'ai_languageModel',
 			required: true,
 		},
 	];
@@ -38,7 +38,7 @@ function getInputs(parameters: IDataObject) {
 	if (operationMode === 'documentLoader') {
 		inputs.push({
 			displayName: 'Document',
-			type: NodeConnectionTypes.AiDocument,
+			type: 'ai_document',
 			required: true,
 			maxConnections: 1,
 		});
@@ -48,7 +48,7 @@ function getInputs(parameters: IDataObject) {
 	if (chunkingMode === 'advanced') {
 		inputs.push({
 			displayName: 'Text Splitter',
-			type: NodeConnectionTypes.AiTextSplitter,
+			type: 'ai_textSplitter',
 			required: false,
 			maxConnections: 1,
 		});

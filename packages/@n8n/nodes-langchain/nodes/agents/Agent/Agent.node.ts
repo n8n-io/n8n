@@ -47,14 +47,14 @@ function getInputs(
 		inputs: SpecialInput[],
 	): Array<NodeConnectionType | INodeInputConfiguration> => {
 		const displayNames: { [key: string]: string } = {
-			[NodeConnectionTypes.AiLanguageModel]: 'Model',
-			[NodeConnectionTypes.AiMemory]: 'Memory',
-			[NodeConnectionTypes.AiTool]: 'Tool',
-			[NodeConnectionTypes.AiOutputParser]: 'Output Parser',
+			ai_languageModel: 'Model',
+			ai_memory: 'Memory',
+			ai_tool: 'Tool',
+			ai_outputParser: 'Output Parser',
 		};
 
 		return inputs.map(({ type, filter }) => {
-			const isModelType = type === NodeConnectionTypes.AiLanguageModel;
+			const isModelType = type === ('ai_languageModel' as NodeConnectionType);
 			let displayName = type in displayNames ? displayNames[type] : undefined;
 			if (
 				isModelType &&
@@ -66,13 +66,9 @@ function getInputs(
 				type,
 				displayName,
 				required: isModelType,
-				maxConnections: (
-					[
-						NodeConnectionTypes.AiLanguageModel,
-						NodeConnectionTypes.AiMemory,
-						NodeConnectionTypes.AiOutputParser,
-					] as NodeConnectionType[]
-				).includes(type)
+				maxConnections: ['ai_languageModel', 'ai_memory', 'ai_outputParser'].includes(
+					type as NodeConnectionType,
+				)
 					? 1
 					: undefined,
 			};
