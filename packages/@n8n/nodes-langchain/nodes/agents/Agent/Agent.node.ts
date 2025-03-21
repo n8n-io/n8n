@@ -86,7 +86,7 @@ function getInputs(
 	if (agent === 'conversationalAgent') {
 		specialInputs = [
 			{
-				type: NodeConnectionTypes.AiLanguageModel,
+				type: 'ai_languageModel',
 				filter: {
 					nodes: [
 						'@n8n/n8n-nodes-langchain.lmChatAnthropic',
@@ -104,19 +104,19 @@ function getInputs(
 				},
 			},
 			{
-				type: NodeConnectionTypes.AiMemory,
+				type: 'ai_memory',
 			},
 			{
-				type: NodeConnectionTypes.AiTool,
+				type: 'ai_tool',
 			},
 			{
-				type: NodeConnectionTypes.AiOutputParser,
+				type: 'ai_outputParser',
 			},
 		];
 	} else if (agent === 'toolsAgent') {
 		specialInputs = [
 			{
-				type: NodeConnectionTypes.AiLanguageModel,
+				type: 'ai_languageModel',
 				filter: {
 					nodes: [
 						'@n8n/n8n-nodes-langchain.lmChatAnthropic',
@@ -134,20 +134,20 @@ function getInputs(
 				},
 			},
 			{
-				type: NodeConnectionTypes.AiMemory,
+				type: 'ai_memory',
 			},
 			{
-				type: NodeConnectionTypes.AiTool,
+				type: 'ai_tool',
 				required: true,
 			},
 			{
-				type: NodeConnectionTypes.AiOutputParser,
+				type: 'ai_outputParser',
 			},
 		];
 	} else if (agent === 'openAiFunctionsAgent') {
 		specialInputs = [
 			{
-				type: NodeConnectionTypes.AiLanguageModel,
+				type: 'ai_languageModel',
 				filter: {
 					nodes: [
 						'@n8n/n8n-nodes-langchain.lmChatOpenAi',
@@ -156,57 +156,55 @@ function getInputs(
 				},
 			},
 			{
-				type: NodeConnectionTypes.AiMemory,
+				type: 'ai_memory',
 			},
 			{
-				type: NodeConnectionTypes.AiTool,
+				type: 'ai_tool',
 				required: true,
 			},
 			{
-				type: NodeConnectionTypes.AiOutputParser,
+				type: 'ai_outputParser',
 			},
 		];
 	} else if (agent === 'reActAgent') {
 		specialInputs = [
 			{
-				type: NodeConnectionTypes.AiLanguageModel,
+				type: 'ai_languageModel',
 			},
 			{
-				type: NodeConnectionTypes.AiTool,
+				type: 'ai_tool',
 			},
 			{
-				type: NodeConnectionTypes.AiOutputParser,
+				type: 'ai_outputParser',
 			},
 		];
 	} else if (agent === 'sqlAgent') {
 		specialInputs = [
 			{
-				type: NodeConnectionTypes.AiLanguageModel,
+				type: 'ai_languageModel',
 			},
 			{
-				type: NodeConnectionTypes.AiMemory,
+				type: 'ai_memory',
 			},
 		];
 	} else if (agent === 'planAndExecuteAgent') {
 		specialInputs = [
 			{
-				type: NodeConnectionTypes.AiLanguageModel,
+				type: 'ai_languageModel',
 			},
 			{
-				type: NodeConnectionTypes.AiTool,
+				type: 'ai_tool',
 			},
 			{
-				type: NodeConnectionTypes.AiOutputParser,
+				type: 'ai_outputParser',
 			},
 		];
 	}
 
 	if (hasOutputParser === false) {
-		specialInputs = specialInputs.filter(
-			(input) => input.type !== NodeConnectionTypes.AiOutputParser,
-		);
+		specialInputs = specialInputs.filter((input) => input.type !== 'ai_outputParser');
 	}
-	return [NodeConnectionTypes.Main, ...getInputData(specialInputs)];
+	return ['main', ...getInputData(specialInputs)];
 }
 
 const agentTypeProperty: INodeProperties = {
