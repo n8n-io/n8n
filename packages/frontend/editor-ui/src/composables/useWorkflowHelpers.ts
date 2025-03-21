@@ -1,6 +1,7 @@
 import {
 	HTTP_REQUEST_NODE_TYPE,
 	MODAL_CANCEL,
+	MODAL_CLOSE,
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
@@ -827,6 +828,12 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 
 			const workflowDataRequest: IWorkflowDataUpdate = await getWorkflowDataToSave();
 
+			// This can happen if the user has another workflow in the browser history and navigates
+			// via the browser back button, encountering our warning dialog with the new route already set
+			if (workflowDataRequest.id !== currentWorkflow) {
+				throw new Error('Attempted to save a workflow different from the current workflow');
+			}
+
 			if (name) {
 				workflowDataRequest.name = name.trim();
 			}
@@ -1134,23 +1141,34 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 					showClose: true,
 				},
 			);
-
 			if (confirmModal === MODAL_CONFIRM) {
 				const saved = await saveCurrentWorkflow({}, false);
 				if (saved) {
 					await npsSurveyStore.fetchPromptsData();
-				}
-				uiStore.stateIsDirty = false;
-
-				const goToNext = await confirm();
-				if (goToNext) {
-					next();
+					uiStore.stateIsDirty = false;
+					const goToNext = await confirm();
+					next(goToNext);
+				} else {
+					next(
+						router.resolve({
+							name: VIEWS.WORKFLOW,
+							params: { name: workflowsStore.workflow.id },
+						}),
+					);
 				}
 			} else if (confirmModal === MODAL_CANCEL) {
 				await cancel();
 
 				uiStore.stateIsDirty = false;
 				next();
+			} else if (confirmModal === MODAL_CLOSE) {
+				// The route may have already changed due to the browser back button, so let's restore it
+				next(
+					router.resolve({
+						name: VIEWS.WORKFLOW,
+						params: { name: workflowsStore.workflow.id },
+					}),
+				);
 			}
 		} else {
 			next();
