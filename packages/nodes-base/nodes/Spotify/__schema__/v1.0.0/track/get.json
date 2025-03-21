@@ -18,10 +18,7 @@
                                     "spotify": {
                                         "type": "string"
                                     }
-                                },
-                                "required": [
-                                    "spotify"
-                                ]
+                                }
                             },
                             "href": {
                                 "type": "string"
@@ -38,15 +35,7 @@
                             "uri": {
                                 "type": "string"
                             }
-                        },
-                        "required": [
-                            "external_urls",
-                            "href",
-                            "id",
-                            "name",
-                            "type",
-                            "uri"
-                        ]
+                        }
                     }
                 },
                 "available_markets": {
@@ -61,10 +50,7 @@
                         "spotify": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "spotify"
-                    ]
+                    }
                 },
                 "href": {
                     "type": "string"
@@ -77,21 +63,16 @@
                     "items": {
                         "type": "object",
                         "properties": {
+                            "height": {
+                                "type": "integer"
+                            },
                             "url": {
                                 "type": "string"
                             },
                             "width": {
                                 "type": "integer"
-                            },
-                            "height": {
-                                "type": "integer"
                             }
-                        },
-                        "required": [
-                            "url",
-                            "width",
-                            "height"
-                        ]
+                        }
                     }
                 },
                 "name": {
@@ -112,22 +93,7 @@
                 "uri": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "album_type",
-                "artists",
-                "available_markets",
-                "external_urls",
-                "href",
-                "id",
-                "images",
-                "name",
-                "release_date",
-                "release_date_precision",
-                "total_tracks",
-                "type",
-                "uri"
-            ]
+            }
         },
         "artists": {
             "type": "array",
@@ -140,10 +106,7 @@
                             "spotify": {
                                 "type": "string"
                             }
-                        },
-                        "required": [
-                            "spotify"
-                        ]
+                        }
                     },
                     "href": {
                         "type": "string"
@@ -160,15 +123,7 @@
                     "uri": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "external_urls",
-                    "href",
-                    "id",
-                    "name",
-                    "type",
-                    "uri"
-                ]
+                }
             }
         },
         "available_markets": {
@@ -192,10 +147,7 @@
                 "isrc": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "isrc"
-            ]
+            }
         },
         "external_urls": {
             "type": "object",
@@ -203,10 +155,7 @@
                 "spotify": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "spotify"
-            ]
+            }
         },
         "href": {
             "type": "string"

@@ -1,14 +1,35 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "integer"
+        "active_flag": {
+            "type": "boolean"
+        },
+        "add_time": {
+            "type": "string"
+        },
+        "billing_frequency": {
+            "type": "string"
+        },
+        "currency": {
+            "type": "string"
         },
         "deal_id": {
             "type": "integer"
         },
-        "product_id": {
+        "discount": {
             "type": "integer"
+        },
+        "discount_type": {
+            "type": "string"
+        },
+        "enabled_flag": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "last_edit": {
+            "type": "string"
         },
         "name": {
             "type": "string"
@@ -16,23 +37,14 @@
         "order_nr": {
             "type": "integer"
         },
-        "quantity": {
+        "product": {
+            "type": "null"
+        },
+        "product_id": {
             "type": "integer"
         },
-        "currency": {
-            "type": "string"
-        },
-        "active_flag": {
-            "type": "boolean"
-        },
-        "enabled_flag": {
-            "type": "boolean"
-        },
-        "add_time": {
-            "type": "string"
-        },
-        "last_edit": {
-            "type": "string"
+        "quantity": {
+            "type": "integer"
         },
         "quantity_formatted": {
             "type": "string"
@@ -42,46 +54,7 @@
         },
         "tax_method": {
             "type": "string"
-        },
-        "discount": {
-            "type": "integer"
-        },
-        "discount_type": {
-            "type": "string"
-        },
-        "billing_frequency": {
-            "type": "string"
-        },
-        "product": {
-            "type": "null"
         }
     },
-    "required": [
-        "id",
-        "deal_id",
-        "product_id",
-        "product_variation_id",
-        "name",
-        "order_nr",
-        "item_price",
-        "quantity",
-        "sum",
-        "currency",
-        "active_flag",
-        "enabled_flag",
-        "add_time",
-        "last_edit",
-        "comments",
-        "tax",
-        "quantity_formatted",
-        "sum_formatted",
-        "tax_method",
-        "discount",
-        "discount_type",
-        "billing_frequency",
-        "billing_frequency_cycles",
-        "billing_start_date",
-        "product"
-    ],
     "version": 1
 }

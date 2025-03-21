@@ -1,14 +1,121 @@
 {
     "type": "object",
     "properties": {
-        "gid": {
+        "actual_time_minutes": {
+            "type": "integer"
+        },
+        "assignee_status": {
             "type": "string"
         },
-        "resource_type": {
-            "type": "string"
+        "completed": {
+            "type": "boolean"
         },
         "created_at": {
             "type": "string"
+        },
+        "custom_fields": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "created_by": {
+                        "type": "object",
+                        "properties": {
+                            "gid": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "resource_type": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "enabled": {
+                        "type": "boolean"
+                    },
+                    "enum_options": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "color": {
+                                    "type": "string"
+                                },
+                                "enabled": {
+                                    "type": "boolean"
+                                },
+                                "gid": {
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "type": "string"
+                                },
+                                "resource_type": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "enum_value": {
+                        "type": "null"
+                    },
+                    "gid": {
+                        "type": "string"
+                    },
+                    "is_formula_field": {
+                        "type": "boolean"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "number_value": {
+                        "type": "null"
+                    },
+                    "precision": {
+                        "type": "integer"
+                    },
+                    "resource_subtype": {
+                        "type": "string"
+                    },
+                    "resource_type": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "due_at": {
+            "type": "null"
+        },
+        "followers": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "gid": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "resource_type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "gid": {
+            "type": "string"
+        },
+        "hearted": {
+            "type": "boolean"
+        },
+        "liked": {
+            "type": "boolean"
         },
         "modified_at": {
             "type": "string"
@@ -19,57 +126,11 @@
         "notes": {
             "type": "string"
         },
-        "start_at": {
-            "type": "null"
-        },
-        "start_on": {
-            "type": "null"
-        },
-        "resource_subtype": {
-            "type": "string"
-        },
-        "due_at": {
-            "type": "null"
-        },
-        "assignee_status": {
-            "type": "string"
-        },
-        "completed": {
-            "type": "boolean"
-        },
-        "actual_time_minutes": {
-            "type": "integer"
-        },
-        "workspace": {
-            "type": "object",
-            "properties": {
-                "gid": {
-                    "type": "string"
-                },
-                "resource_type": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "gid",
-                "resource_type",
-                "name"
-            ]
-        },
         "num_hearts": {
             "type": "integer"
         },
         "num_likes": {
             "type": "integer"
-        },
-        "hearted": {
-            "type": "boolean"
-        },
-        "liked": {
-            "type": "boolean"
         },
         "parent": {
             "type": "object",
@@ -77,176 +138,46 @@
                 "gid": {
                     "type": "string"
                 },
-                "resource_type": {
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
                 },
                 "resource_subtype": {
                     "type": "string"
+                },
+                "resource_type": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "gid",
-                "resource_type",
-                "name",
-                "resource_subtype"
-            ]
+            }
         },
         "permalink_url": {
             "type": "string"
         },
-        "custom_fields": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "gid": {
-                        "type": "string"
-                    },
-                    "resource_type": {
-                        "type": "string"
-                    },
-                    "created_by": {
-                        "type": "object",
-                        "properties": {
-                            "gid": {
-                                "type": "string"
-                            },
-                            "resource_type": {
-                                "type": "string"
-                            },
-                            "name": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "gid",
-                            "resource_type",
-                            "name"
-                        ]
-                    },
-                    "resource_subtype": {
-                        "type": "string"
-                    },
-                    "type": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "is_formula_field": {
-                        "type": "boolean"
-                    },
-                    "enabled": {
-                        "type": "boolean"
-                    },
-                    "enum_value": {
-                        "type": "null"
-                    },
-                    "enum_options": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "gid": {
-                                    "type": "string"
-                                },
-                                "resource_type": {
-                                    "type": "string"
-                                },
-                                "enabled": {
-                                    "type": "boolean"
-                                },
-                                "name": {
-                                    "type": "string"
-                                },
-                                "color": {
-                                    "type": "string"
-                                }
-                            },
-                            "required": [
-                                "gid",
-                                "resource_type",
-                                "enabled",
-                                "name",
-                                "color"
-                            ]
-                        }
-                    },
-                    "precision": {
-                        "type": "integer"
-                    },
-                    "number_value": {
-                        "type": "null"
-                    }
-                },
-                "required": [
-                    "gid",
-                    "resource_type",
-                    "created_by",
-                    "resource_subtype",
-                    "type",
-                    "name",
-                    "enabled",
-                    "display_value"
-                ]
-            }
+        "resource_subtype": {
+            "type": "string"
         },
-        "followers": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "gid": {
-                        "type": "string"
-                    },
-                    "resource_type": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    }
+        "resource_type": {
+            "type": "string"
+        },
+        "start_at": {
+            "type": "null"
+        },
+        "start_on": {
+            "type": "null"
+        },
+        "workspace": {
+            "type": "object",
+            "properties": {
+                "gid": {
+                    "type": "string"
                 },
-                "required": [
-                    "gid",
-                    "resource_type",
-                    "name"
-                ]
+                "name": {
+                    "type": "string"
+                },
+                "resource_type": {
+                    "type": "string"
+                }
             }
         }
     },
-    "required": [
-        "gid",
-        "projects",
-        "memberships",
-        "resource_type",
-        "created_at",
-        "modified_at",
-        "name",
-        "notes",
-        "assignee",
-        "tags",
-        "start_at",
-        "start_on",
-        "resource_subtype",
-        "due_at",
-        "due_on",
-        "completed_at",
-        "assignee_status",
-        "completed",
-        "actual_time_minutes",
-        "workspace",
-        "num_hearts",
-        "num_likes",
-        "hearted",
-        "liked",
-        "hearts",
-        "likes",
-        "parent",
-        "permalink_url",
-        "followers"
-    ],
     "version": 1
 }

@@ -1,11 +1,11 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
         "finished": {
             "type": "boolean"
+        },
+        "id": {
+            "type": "string"
         },
         "mode": {
             "type": "string"

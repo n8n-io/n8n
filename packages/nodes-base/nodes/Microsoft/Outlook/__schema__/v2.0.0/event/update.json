@@ -7,16 +7,54 @@
         "@odata.etag": {
             "type": "string"
         },
-        "id": {
-            "type": "string"
+        "allowNewTimeProposals": {
+            "type": "boolean"
         },
-        "createdDateTime": {
-            "type": "string"
+        "attendees": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "emailAddress": {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "status": {
+                        "type": "object",
+                        "properties": {
+                            "response": {
+                                "type": "string"
+                            },
+                            "time": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
         },
-        "lastModifiedDateTime": {
-            "type": "string"
+        "body": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "contentType": {
+                    "type": "string"
+                }
+            }
         },
-        "changeKey": {
+        "bodyPreview": {
             "type": "string"
         },
         "categories": {
@@ -25,125 +63,11 @@
                 "type": "string"
             }
         },
-        "originalStartTimeZone": {
+        "changeKey": {
             "type": "string"
         },
-        "originalEndTimeZone": {
+        "createdDateTime": {
             "type": "string"
-        },
-        "iCalUId": {
-            "type": "string"
-        },
-        "uid": {
-            "type": "string"
-        },
-        "reminderMinutesBeforeStart": {
-            "type": "integer"
-        },
-        "isReminderOn": {
-            "type": "boolean"
-        },
-        "hasAttachments": {
-            "type": "boolean"
-        },
-        "subject": {
-            "type": "string"
-        },
-        "bodyPreview": {
-            "type": "string"
-        },
-        "importance": {
-            "type": "string"
-        },
-        "sensitivity": {
-            "type": "string"
-        },
-        "isAllDay": {
-            "type": "boolean"
-        },
-        "isCancelled": {
-            "type": "boolean"
-        },
-        "isOrganizer": {
-            "type": "boolean"
-        },
-        "responseRequested": {
-            "type": "boolean"
-        },
-        "seriesMasterId": {
-            "type": "null"
-        },
-        "showAs": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
-        },
-        "webLink": {
-            "type": "string"
-        },
-        "isOnlineMeeting": {
-            "type": "boolean"
-        },
-        "onlineMeetingProvider": {
-            "type": "string"
-        },
-        "allowNewTimeProposals": {
-            "type": "boolean"
-        },
-        "occurrenceId": {
-            "type": "null"
-        },
-        "isDraft": {
-            "type": "boolean"
-        },
-        "hideAttendees": {
-            "type": "boolean"
-        },
-        "responseStatus": {
-            "type": "object",
-            "properties": {
-                "response": {
-                    "type": "string"
-                },
-                "time": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "response",
-                "time"
-            ]
-        },
-        "body": {
-            "type": "object",
-            "properties": {
-                "contentType": {
-                    "type": "string"
-                },
-                "content": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "contentType",
-                "content"
-            ]
-        },
-        "start": {
-            "type": "object",
-            "properties": {
-                "dateTime": {
-                    "type": "string"
-                },
-                "timeZone": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "dateTime",
-                "timeZone"
-            ]
         },
         "end": {
             "type": "object",
@@ -154,11 +78,43 @@
                 "timeZone": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "dateTime",
-                "timeZone"
-            ]
+            }
+        },
+        "hasAttachments": {
+            "type": "boolean"
+        },
+        "hideAttendees": {
+            "type": "boolean"
+        },
+        "iCalUId": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "importance": {
+            "type": "string"
+        },
+        "isAllDay": {
+            "type": "boolean"
+        },
+        "isCancelled": {
+            "type": "boolean"
+        },
+        "isDraft": {
+            "type": "boolean"
+        },
+        "isOnlineMeeting": {
+            "type": "boolean"
+        },
+        "isOrganizer": {
+            "type": "boolean"
+        },
+        "isReminderOn": {
+            "type": "boolean"
+        },
+        "lastModifiedDateTime": {
+            "type": "string"
         },
         "location": {
             "type": "object",
@@ -172,12 +128,7 @@
                 "uniqueIdType": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "displayName",
-                "locationType",
-                "uniqueIdType"
-            ]
+            }
         },
         "locations": {
             "type": "array",
@@ -196,63 +147,14 @@
                     "uniqueIdType": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "displayName",
-                    "locationType",
-                    "uniqueId",
-                    "uniqueIdType"
-                ]
+                }
             }
         },
-        "recurrence": {
+        "occurrenceId": {
             "type": "null"
         },
-        "attendees": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "type": {
-                        "type": "string"
-                    },
-                    "status": {
-                        "type": "object",
-                        "properties": {
-                            "response": {
-                                "type": "string"
-                            },
-                            "time": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "response",
-                            "time"
-                        ]
-                    },
-                    "emailAddress": {
-                        "type": "object",
-                        "properties": {
-                            "name": {
-                                "type": "string"
-                            },
-                            "address": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "name",
-                            "address"
-                        ]
-                    }
-                },
-                "required": [
-                    "type",
-                    "status",
-                    "emailAddress"
-                ]
-            }
+        "onlineMeetingProvider": {
+            "type": "string"
         },
         "organizer": {
             "type": "object",
@@ -260,22 +162,73 @@
                 "emailAddress": {
                     "type": "object",
                     "properties": {
-                        "name": {
-                            "type": "string"
-                        },
                         "address": {
                             "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
                         }
-                    },
-                    "required": [
-                        "name",
-                        "address"
-                    ]
+                    }
                 }
-            },
-            "required": [
-                "emailAddress"
-            ]
+            }
+        },
+        "originalEndTimeZone": {
+            "type": "string"
+        },
+        "originalStartTimeZone": {
+            "type": "string"
+        },
+        "recurrence": {
+            "type": "null"
+        },
+        "reminderMinutesBeforeStart": {
+            "type": "integer"
+        },
+        "responseRequested": {
+            "type": "boolean"
+        },
+        "responseStatus": {
+            "type": "object",
+            "properties": {
+                "response": {
+                    "type": "string"
+                },
+                "time": {
+                    "type": "string"
+                }
+            }
+        },
+        "sensitivity": {
+            "type": "string"
+        },
+        "seriesMasterId": {
+            "type": "null"
+        },
+        "showAs": {
+            "type": "string"
+        },
+        "start": {
+            "type": "object",
+            "properties": {
+                "dateTime": {
+                    "type": "string"
+                },
+                "timeZone": {
+                    "type": "string"
+                }
+            }
+        },
+        "subject": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "uid": {
+            "type": "string"
+        },
+        "webLink": {
+            "type": "string"
         }
     },
     "version": 1
