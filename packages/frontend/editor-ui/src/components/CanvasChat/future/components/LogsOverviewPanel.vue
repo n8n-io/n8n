@@ -115,9 +115,12 @@ function onClearExecutionData() {
 	padding: var(--spacing-2xs);
 	flex-grow: 1;
 	overflow: auto;
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	justify-content: stretch;
 
 	&.empty {
-		display: flex;
 		align-items: center;
 		justify-content: center;
 	}
@@ -144,6 +147,9 @@ function onClearExecutionData() {
 
 .tree {
 	margin-top: var(--spacing-2xs);
+	flex-grow: 1;
+	flex-shrink: 1;
+	overflow: auto;
 }
 
 .switchViewButtons {
