@@ -150,7 +150,7 @@ const buildChartFromDataset = (dataSource: string) => {
 };
 const barChartOptions = ref<ChartOptions<'bar'>>(generateBarChartOptions());
 const lineChartOptions = ref<ChartOptions<'line'>>(generateLineChartOptions());
-const { legends, LegendPlugin } = useLegendPlugin();
+const { LegendPlugin } = useLegendPlugin();
 const lineChartData = computed(
 	() =>
 		({
