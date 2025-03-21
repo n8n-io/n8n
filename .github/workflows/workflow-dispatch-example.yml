@@ -1,0 +1,25 @@
+name: Workflow Dispatch Example
+
+on:
+  workflow_dispatch:
+    inputs:
+      resumeUrl:
+        description: 'URL to call to notify n8n that the workflow has completed.'
+        required: false
+        default: ''
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Notify n8n to resume workflow
+        if: always()
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            RESUME_URL="${{ github.event.inputs.resumeUrl }}"
+            if [ -n "$RESUME_URL" ]; then
+              echo "Calling n8n webhook URL: $RESUME_URL"
+              curl -X POST "$RESUME_URL" -H "Content-Type: application/json" -d '{"status": "completed"}'
+            fi
+          fi
