@@ -26,7 +26,7 @@ import { UserRepository } from '@/databases/repositories/user.repository';
 import { VariablesRepository } from '@/databases/repositories/variables.repository';
 import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { IWorkflowToImport } from '@/interfaces';
+import type { IWorkflowEnvironmentData, IWorkflowToImport } from '@/interfaces';
 import { isUniqueConstraintError } from '@/response-helper';
 import { TagService } from '@/services/tag.service';
 import { assertNever } from '@/utils';
@@ -91,8 +91,9 @@ export class SourceControlImportService {
 		const remoteWorkflowFilesParsed = await Promise.all(
 			remoteWorkflowFiles.map(async (file) => {
 				this.logger.debug(`Parsing workflow file ${file}`);
-				const remote = jsonParse<IWorkflowToImport>(await fsReadFile(file, { encoding: 'utf8' }));
-				console.log('this is the remote', remote);
+				const remote = jsonParse<IWorkflowEnvironmentData>(
+					await fsReadFile(file, { encoding: 'utf8' }),
+				);
 
 				if (!remote?.id) {
 					return undefined;
@@ -101,9 +102,7 @@ export class SourceControlImportService {
 					id: remote.id,
 					versionId: remote.versionId,
 					name: remote.name,
-					//@ts-ignore asasas
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					parentFolderId: remote?.parentFolderId ?? null,
+					parentFolderId: remote.parentFolderId,
 					remoteId: remote.id,
 					filename: getWorkflowExportPath(remote.id, this.workflowExportFolder),
 				} as SourceControlWorkflowVersionId;
@@ -249,8 +248,8 @@ export class SourceControlImportService {
 				name: f.name,
 				parentFolderId: f.parentFolder?.id ?? null,
 				homeProjectId: f.homeProject.id,
-				createdAt: f.createdAt.toUTCString(),
-				updatedAt: f.updatedAt.toUTCString(),
+				createdAt: f.createdAt.toISOString(),
+				updatedAt: f.updatedAt.toISOString(),
 			})),
 		};
 	}

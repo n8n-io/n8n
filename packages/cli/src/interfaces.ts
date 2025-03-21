@@ -104,6 +104,15 @@ export interface IWorkflowResponse extends IWorkflowBase {
 	id: string;
 }
 
+export interface IWorkflowEnvironmentData
+	extends Omit<IWorkflowBase, 'staticData' | 'pinData' | 'createdAt' | 'updatedAt'> {
+	owner: {
+		type: 'personal';
+		personalEmail: string;
+	};
+	parentFolderId: string | null;
+}
+
 // ----------------------------------
 //            credentials
 // ----------------------------------
