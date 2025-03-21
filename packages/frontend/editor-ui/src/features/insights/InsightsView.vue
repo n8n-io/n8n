@@ -13,6 +13,8 @@ import {
 	generateBarChartOptions,
 } from './chartjs.utils';
 import { useInsightsStore } from '@/features/insights/insights.store';
+import InsightsSummary from '@/features/insights/InsightsSummary.vue';
+import { useInsights } from '@/features/insights/insights.composable';
 const props = defineProps<{
 	insightType: string;
 }>();
@@ -52,13 +54,13 @@ const timeOptions = [
 ];
 const colorPrimary = useCssVar('--color-primary', document.body);
 const insightsStore = useInsightsStore();
-const {
-	state: summaries,
-	execute: fetchSummary,
-	isLoading: isLoadingSummary,
-} = useAsyncState(async () => await insightsStore.fetchSummary(), [], {
-	immediate: true,
-});
+const { state: summaries, execute: fetchSummary } = useAsyncState(
+	async () => await insightsStore.fetchSummary(),
+	[],
+	{
+		immediate: true,
+	},
+);
 watch(
 	() => filters.value.time_span,
 	async () => await fetchSummary(),
@@ -223,7 +225,6 @@ const rows = ref(
 <template>
 	<div class="insights-view">
 		<N8nHeading bold tag="h2" size="xlarge">Insights</N8nHeading>
-
 		<div style="display: flex; justify-content: space-between">
 			<div style="display: flex; gap: 6px">
 				<N8nSelect
@@ -246,7 +247,7 @@ const rows = ref(
 		</div>
 
 		<div>
-			<N8nHeading bold tag="h3" size="medium" class="mb-s">Production executions</N8nHeading>
+			<InsightsSummary :summaries="tabs" />
 			<div class="content">
 				<div style="height: 292px">
 					<template v-if="isLoadingCounts"> loading </template>

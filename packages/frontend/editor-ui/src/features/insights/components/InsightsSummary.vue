@@ -53,7 +53,7 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 				:key="id"
 				:data-test-id="`insights-summary-tab-${id}`"
 			>
-				<p>
+				<RouterLink :to="to">
 					<strong>{{ summaryTitles[id] }}</strong>
 					<span v-if="value === 0 && id === 'timeSaved'" :class="$style.empty">
 						<em>--</em>
@@ -84,7 +84,7 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 							{{ getSign(deviation) }}{{ smartDecimal(deviation) }}
 						</small>
 					</span>
-				</p>
+				</RouterLink>
 			</li>
 		</ul>
 	</div>
@@ -120,7 +120,7 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 			}
 		}
 
-		p {
+		a {
 			display: grid;
 
 			strong {
