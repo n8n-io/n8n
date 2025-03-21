@@ -61,7 +61,6 @@ describe('permissions', () => {
 			'workflow:update',
 			'folder:create',
 			'insights:list',
-			'insights:read',
 		];
 
 		const permissionRecord: PermissionsRecord = {
