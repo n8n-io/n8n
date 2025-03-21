@@ -33,6 +33,9 @@ import { WorkflowEntity } from './workflow-entity';
 import { WorkflowHistory } from './workflow-history';
 import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
+import { InsightsByPeriod } from '../../modules/insights/entities/insights-by-period';
+import { InsightsMetadata } from '../../modules/insights/entities/insights-metadata';
+import { InsightsRaw } from '../../modules/insights/entities/insights-raw';
 
 export const entities = {
 	AnnotationTagEntity,
@@ -70,4 +73,7 @@ export const entities = {
 	TestCaseExecution,
 	Folder,
 	FolderTagMapping,
+	InsightsRaw,
+	InsightsMetadata,
+	InsightsByPeriod,
 };

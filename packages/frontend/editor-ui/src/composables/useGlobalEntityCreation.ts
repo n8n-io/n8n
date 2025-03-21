@@ -34,6 +34,7 @@ export const useGlobalEntityCreation = () => {
 	const cloudPlanStore = useCloudPlanStore();
 	const projectsStore = useProjectsStore();
 	const sourceControlStore = useSourceControlStore();
+
 	const router = useRouter();
 	const i18n = useI18n();
 	const toast = useToast();

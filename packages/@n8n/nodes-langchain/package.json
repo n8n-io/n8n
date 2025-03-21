@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "1.83.0",
+  "version": "1.84.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -109,6 +109,7 @@
       "dist/nodes/vector_store/VectorStoreInMemory/VectorStoreInMemory.node.js",
       "dist/nodes/vector_store/VectorStoreInMemoryInsert/VectorStoreInMemoryInsert.node.js",
       "dist/nodes/vector_store/VectorStoreInMemoryLoad/VectorStoreInMemoryLoad.node.js",
+      "dist/nodes/vector_store/VectorStoreMongoDBAtlas/VectorStoreMongoDBAtlas.node.js",
       "dist/nodes/vector_store/VectorStorePGVector/VectorStorePGVector.node.js",
       "dist/nodes/vector_store/VectorStorePinecone/VectorStorePinecone.node.js",
       "dist/nodes/vector_store/VectorStorePineconeInsert/VectorStorePineconeInsert.node.js",
@@ -129,8 +130,8 @@
     "@types/json-schema": "^7.0.15",
     "@types/mime-types": "^2.1.0",
     "@types/pg": "^8.11.6",
-    "@types/temp": "^0.9.1",
     "@types/sanitize-html": "^2.11.0",
+    "@types/temp": "^0.9.1",
     "n8n-core": "workspace:*"
   },
   "dependencies": {
@@ -150,6 +151,7 @@
     "@langchain/google-vertexai": "0.1.8",
     "@langchain/groq": "0.1.3",
     "@langchain/mistralai": "0.2.0",
+    "@langchain/mongodb": "^0.1.0",
     "@langchain/ollama": "0.1.4",
     "@langchain/openai": "0.3.17",
     "@langchain/pinecone": "0.1.3",
@@ -178,6 +180,7 @@
     "lodash": "catalog:",
     "mammoth": "1.7.2",
     "mime-types": "2.1.35",
+    "mongodb": "6.11.0",
     "n8n-nodes-base": "workspace:*",
     "n8n-workflow": "workspace:*",
     "openai": "4.78.1",

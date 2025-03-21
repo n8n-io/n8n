@@ -1,7 +1,13 @@
 {
     "type": "object",
     "properties": {
+        "archived": {
+            "type": "boolean"
+        },
         "id": {
+            "type": "string"
+        },
+        "settings_str": {
             "type": "string"
         },
         "title": {
@@ -9,19 +15,7 @@
         },
         "type": {
             "type": "string"
-        },
-        "settings_str": {
-            "type": "string"
-        },
-        "archived": {
-            "type": "boolean"
         }
     },
-    "required": [
-        "id",
-        "title",
-        "type",
-        "settings_str",
-        "archived"
-    ]
+    "version": 1
 }

@@ -15,8 +15,9 @@ import type {
 	INodeExecutionData,
 	ISupplyDataFunctions,
 	ITaskMetadata,
+	NodeConnectionType,
 } from 'n8n-workflow';
-import { NodeOperationError, NodeConnectionType, parseErrorMetadata } from 'n8n-workflow';
+import { NodeOperationError, NodeConnectionTypes, parseErrorMetadata } from 'n8n-workflow';
 
 import { logAiEvent, isToolsInstance, isBaseChatMemory, isBaseChatMessageHistory } from './helpers';
 import { N8nBinaryLoader } from './N8nBinaryLoader';
@@ -116,7 +117,7 @@ export function logWrapper(
 			if (isBaseChatMemory(originalInstance)) {
 				if (prop === 'loadMemoryVariables' && 'loadMemoryVariables' in target) {
 					return async (values: InputValues): Promise<MemoryVariables> => {
-						connectionType = NodeConnectionType.AiMemory;
+						connectionType = NodeConnectionTypes.AiMemory;
 
 						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { action: 'loadMemoryVariables', values } }],
@@ -139,7 +140,7 @@ export function logWrapper(
 					};
 				} else if (prop === 'saveContext' && 'saveContext' in target) {
 					return async (input: InputValues, output: OutputValues): Promise<MemoryVariables> => {
-						connectionType = NodeConnectionType.AiMemory;
+						connectionType = NodeConnectionTypes.AiMemory;
 
 						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { action: 'saveContext', input, output } }],
@@ -168,7 +169,7 @@ export function logWrapper(
 			if (isBaseChatMessageHistory(originalInstance)) {
 				if (prop === 'getMessages' && 'getMessages' in target) {
 					return async (): Promise<BaseMessage[]> => {
-						connectionType = NodeConnectionType.AiMemory;
+						connectionType = NodeConnectionTypes.AiMemory;
 						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { action: 'getMessages' } }],
 						]);
@@ -189,7 +190,7 @@ export function logWrapper(
 					};
 				} else if (prop === 'addMessage' && 'addMessage' in target) {
 					return async (message: BaseMessage): Promise<void> => {
-						connectionType = NodeConnectionType.AiMemory;
+						connectionType = NodeConnectionTypes.AiMemory;
 						const payload = { action: 'addMessage', message };
 						const { index } = executeFunctions.addInputData(connectionType, [[{ json: payload }]]);
 
@@ -214,7 +215,7 @@ export function logWrapper(
 						query: string,
 						config?: Callbacks | BaseCallbackConfig,
 					): Promise<Document[]> => {
-						connectionType = NodeConnectionType.AiRetriever;
+						connectionType = NodeConnectionTypes.AiRetriever;
 						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { query, config } }],
 						]);
@@ -255,7 +256,7 @@ export function logWrapper(
 				// Docs -> Embeddings
 				if (prop === 'embedDocuments' && 'embedDocuments' in target) {
 					return async (documents: string[]): Promise<number[][]> => {
-						connectionType = NodeConnectionType.AiEmbedding;
+						connectionType = NodeConnectionTypes.AiEmbedding;
 						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { documents } }],
 						]);
@@ -276,7 +277,7 @@ export function logWrapper(
 				// Query -> Embeddings
 				if (prop === 'embedQuery' && 'embedQuery' in target) {
 					return async (query: string): Promise<number[]> => {
-						connectionType = NodeConnectionType.AiEmbedding;
+						connectionType = NodeConnectionTypes.AiEmbedding;
 						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { query } }],
 						]);
@@ -303,7 +304,7 @@ export function logWrapper(
 				// Process All
 				if (prop === 'processAll' && 'processAll' in target) {
 					return async (items: INodeExecutionData[]): Promise<number[]> => {
-						connectionType = NodeConnectionType.AiDocument;
+						connectionType = NodeConnectionTypes.AiDocument;
 						const { index } = executeFunctions.addInputData(connectionType, [items]);
 
 						const response = (await callMethodAsync.call(target, {
@@ -322,7 +323,7 @@ export function logWrapper(
 				// Process Each
 				if (prop === 'processItem' && 'processItem' in target) {
 					return async (item: INodeExecutionData, itemIndex: number): Promise<number[]> => {
-						connectionType = NodeConnectionType.AiDocument;
+						connectionType = NodeConnectionTypes.AiDocument;
 						const { index } = executeFunctions.addInputData(connectionType, [[item]]);
 
 						const response = (await callMethodAsync.call(target, {
@@ -346,7 +347,7 @@ export function logWrapper(
 			if (originalInstance instanceof TextSplitter) {
 				if (prop === 'splitText' && 'splitText' in target) {
 					return async (text: string): Promise<string[]> => {
-						connectionType = NodeConnectionType.AiTextSplitter;
+						connectionType = NodeConnectionTypes.AiTextSplitter;
 						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { textSplitter: text } }],
 						]);
@@ -370,7 +371,7 @@ export function logWrapper(
 			if (isToolsInstance(originalInstance)) {
 				if (prop === '_call' && '_call' in target) {
 					return async (query: string): Promise<string> => {
-						connectionType = NodeConnectionType.AiTool;
+						connectionType = NodeConnectionTypes.AiTool;
 						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { query } }],
 						]);
@@ -399,7 +400,7 @@ export function logWrapper(
 						filter?: BiquadFilterType | undefined,
 						_callbacks?: Callbacks | undefined,
 					): Promise<Document[]> => {
-						connectionType = NodeConnectionType.AiVectorStore;
+						connectionType = NodeConnectionTypes.AiVectorStore;
 						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { query, k, filter } }],
 						]);

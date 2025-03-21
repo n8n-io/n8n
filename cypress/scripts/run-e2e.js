@@ -47,7 +47,6 @@ switch (scenario) {
 			testCommand: 'cypress open',
 			customEnv: {
 				CYPRESS_NODE_VIEW_VERSION: 2,
-				N8N_FOLDERS_ENABLED: true,
 			},
 		});
 		break;
@@ -59,7 +58,6 @@ switch (scenario) {
 			customEnv: {
 				CYPRESS_NODE_VIEW_VERSION: 1,
 				CYPRESS_BASE_URL: 'http://localhost:8080',
-				N8N_FOLDERS_ENABLED: true,
 			},
 		});
 		break;
@@ -71,7 +69,6 @@ switch (scenario) {
 			customEnv: {
 				CYPRESS_NODE_VIEW_VERSION: 2,
 				CYPRESS_BASE_URL: 'http://localhost:8080',
-				N8N_FOLDERS_ENABLED: true,
 			},
 		});
 		break;
@@ -85,7 +82,6 @@ switch (scenario) {
 			testCommand: `cypress run --headless ${specParam}`,
 			customEnv: {
 				CYPRESS_NODE_VIEW_VERSION: 2,
-				N8N_FOLDERS_ENABLED: true,
 			},
 		});
 		break;
