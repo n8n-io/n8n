@@ -506,7 +506,7 @@ function findExtendedFunction(input: unknown, functionName: string): FoundFuncti
  * extend(input, "functionName", [...args]);
  * ```
  */
-export function extend(input: unknown, functionName: string, args: unknown[]) {
+export function extend(input: unknown, functionName: string, args: unknown[]): unknown {
 	const foundFunction = findExtendedFunction(input, functionName);
 
 	// No type specific or generic function found. Check to see if

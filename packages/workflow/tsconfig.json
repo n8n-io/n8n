@@ -6,7 +6,11 @@
 		"paths": {
 			"@/*": ["./*"]
 		},
-		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
+		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
+		"composite": true,
+		"declaration": true,
+		"declarationMap": true,
+		"isolatedDeclarations": true
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts"]
 }

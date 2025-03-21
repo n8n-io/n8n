@@ -133,7 +133,7 @@ export class Workflow {
 		this.expression = new Expression(this);
 	}
 
-	overrideStaticData(staticData?: IDataObject) {
+	overrideStaticData(staticData?: IDataObject): void {
 		this.staticData = ObservableObject.create(staticData || {}, undefined, {
 			ignoreEmptyOnFirstChild: true,
 		});
@@ -226,7 +226,7 @@ export class Workflow {
 		return this.staticData[key] as IDataObject;
 	}
 
-	setTestStaticData(testStaticData: IDataObject) {
+	setTestStaticData(testStaticData: IDataObject): void {
 		this.testStaticData = testStaticData;
 	}
 
@@ -323,7 +323,7 @@ export class Workflow {
 		parameterValue: NodeParameterValueType,
 		currentName: string,
 		newName: string,
-		{ hasRenamableContent } = { hasRenamableContent: false },
+		{ hasRenamableContent }: { hasRenamableContent: boolean } = { hasRenamableContent: false },
 	): NodeParameterValueType {
 		if (typeof parameterValue !== 'object') {
 			// Reached the actual value
@@ -411,7 +411,7 @@ export class Workflow {
 	 * @param {string} currentName The current name of the node
 	 * @param {string} newName The new name
 	 */
-	renameNode(currentName: string, newName: string) {
+	renameNode(currentName: string, newName: string): void {
 		// Rename the node itself
 		if (this.nodes[currentName] !== undefined) {
 			this.nodes[newName] = this.nodes[currentName];

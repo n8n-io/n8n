@@ -32,7 +32,7 @@ const zip = (keys: unknown[], values: unknown[]): unknown => {
 	}, {});
 };
 
-const average = (...args: number[]) => {
+const average = (...args: number[]): number => {
 	return aAverage(args);
 };
 
@@ -40,7 +40,7 @@ const not = (value: unknown): boolean => {
 	return !value;
 };
 
-function ifEmpty<T, V>(value: V, defaultValue: T) {
+function ifEmpty<T, V>(value: V, defaultValue: T): T | V {
 	if (arguments.length !== 2) {
 		throw new ExpressionError('expected two arguments (value, defaultValue) for this function');
 	}
@@ -58,19 +58,46 @@ function ifEmpty<T, V>(value: V, defaultValue: T) {
 	return value;
 }
 
-ifEmpty.doc = {
-	name: 'ifEmpty',
-	description:
-		'Returns the default value if the value is empty. Empty values are undefined, null, empty strings, arrays without elements and objects without keys.',
-	returnType: 'any',
-	args: [
-		{ name: 'value', type: 'any' },
-		{ name: 'defaultValue', type: 'any' },
-	],
-	docURL: 'https://docs.n8n.io/code/builtin/convenience',
+namespace ifEmpty {
+	export const doc = {
+		name: 'ifEmpty',
+		description:
+			'Returns the default value if the value is empty. Empty values are undefined, null, empty strings, arrays without elements and objects without keys.',
+		returnType: 'any',
+		args: [
+			{ name: 'value', type: 'any' },
+			{ name: 'defaultValue', type: 'any' },
+		] as const,
+		docURL: 'https://docs.n8n.io/code/builtin/convenience',
+	};
+}
+// ifEmpty.doc = {
+// 	name: 'ifEmpty',
+// 	description:
+// 		'Returns the default value if the value is empty. Empty values are undefined, null, empty strings, arrays without elements and objects without keys.',
+// 	returnType: 'any',
+// 	args: [
+// 		{ name: 'value', type: 'any' },
+// 		{ name: 'defaultValue', type: 'any' },
+// 	],
+// 	docURL: 'https://docs.n8n.io/code/builtin/convenience',
+// };
+
+type ExtendedFunctions = {
+	min: (...values: number[]) => number;
+	max: (...values: number[]) => number;
+	not: (value: unknown) => boolean;
+	average: (...args: number[]) => number;
+	numberList: (start: number, end: number) => number[];
+	zip: (keys: unknown[], values: unknown[]) => unknown;
+	$min: (...values: number[]) => number;
+	$max: (...values: number[]) => number;
+	$average: (...args: number[]) => number;
+	$not: (value: unknown) => boolean;
+	$ifEmpty: typeof ifEmpty;
 };
 
-export const extendedFunctions = {
+export const extendedFunctions: ExtendedFunctions = {
 	min,
 	max,
 	not,

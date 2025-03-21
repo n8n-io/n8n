@@ -6,10 +6,10 @@ export interface GlobalState {
 
 let globalState: GlobalState = { defaultTimezone: 'America/New_York' };
 
-export function setGlobalState(state: GlobalState) {
+export function setGlobalState(state: GlobalState): void {
 	globalState = state;
 }
 
-export function getGlobalState() {
+export function getGlobalState(): GlobalState {
 	return deepCopy(globalState);
 }

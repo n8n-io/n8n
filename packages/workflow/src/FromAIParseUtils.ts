@@ -305,7 +305,7 @@ export function extractFromAICalls(str: string): FromAIArgument[] {
  * @param payload The current object or value being traversed.
  * @param collectedArgs The array collecting FromAIArgument objects.
  */
-export function traverseNodeParameters(payload: unknown, collectedArgs: FromAIArgument[]) {
+export function traverseNodeParameters(payload: unknown, collectedArgs: FromAIArgument[]): void {
 	if (typeof payload === 'string') {
 		const fromAICalls = extractFromAICalls(payload);
 		fromAICalls.forEach((call) => collectedArgs.push(call));

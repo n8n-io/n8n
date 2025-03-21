@@ -64,11 +64,11 @@ export class WorkflowDataProxy {
 		private siblingParameters: INodeParameters,
 		private mode: WorkflowExecuteMode,
 		private additionalKeys: IWorkflowDataProxyAdditionalKeys,
-		private executeData?: IExecuteData,
+		private executeData?: IExecuteData | undefined,
 		private defaultReturnRunIndex = -1,
 		private selfData: IDataObject = {},
 		private contextNodeName: string = activeNodeName,
-		private envProviderState?: EnvProviderState,
+		private envProviderState?: EnvProviderState | undefined,
 	) {
 		this.runExecutionData = isScriptingNode(this.contextNodeName, workflow)
 			? runExecutionData !== null

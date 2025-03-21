@@ -462,31 +462,33 @@ toDate.doc = {
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toDate',
 };
 
-toDateTime.doc = {
-	name: 'toDateTime',
-	description:
-		'Converts the string to a <a target="_blank" href="https://moment.github.io/luxon/api-docs/">Luxon</a> DateTime. Useful for further transformation. Supported formats for the string are ISO 8601, HTTP, RFC2822, SQL and Unix timestamp in milliseconds. To parse other formats, use <a target="_blank" href=”https://moment.github.io/luxon/api-docs/index.html#datetimefromformat”> <code>DateTime.fromFormat()</code></a>.',
-	section: 'cast',
-	returnType: 'DateTime',
-	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toDateTime',
-	examples: [
-		{ example: '"2024-03-29T18:06:31.798+01:00".toDateTime()' },
-		{ example: '"Fri, 29 Mar 2024 18:08:01 +0100".toDateTime()' },
-		{ example: '"20240329".toDateTime()' },
-		{ example: '"1711732132990".toDateTime("ms")' },
-		{ example: '"31-01-2024".toDateTime("dd-MM-yyyy")' },
-	],
-	args: [
-		{
-			name: 'format',
-			optional: true,
-			description:
-				'The format of the date string. Options are <code>ms</code> (for Unix timestamp in milliseconds), <code>s</code> (for Unix timestamp in seconds), <code>us</code> (for Unix timestamp in microseconds) or <code>excel</code> (for days since 1900). Custom formats can be specified using <a href="https://moment.github.io/luxon/#/formatting?id=table-of-tokens">Luxon tokens</a>.',
-			type: 'string',
-		},
-	],
-};
+export namespace toDateTime {
+	export const doc = {
+		name: 'toDateTime',
+		description:
+			'Converts the string to a <a target="_blank" href="https://moment.github.io/luxon/api-docs/">Luxon</a> DateTime. Useful for further transformation. Supported formats for the string are ISO 8601, HTTP, RFC2822, SQL and Unix timestamp in milliseconds. To parse other formats, use <a target="_blank" href=”https://moment.github.io/luxon/api-docs/index.html#datetimefromformat”> <code>DateTime.fromFormat()</code></a>.',
+		section: 'cast',
+		returnType: 'DateTime',
+		docURL:
+			'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toDateTime',
+		examples: [
+			{ example: '"2024-03-29T18:06:31.798+01:00".toDateTime()' },
+			{ example: '"Fri, 29 Mar 2024 18:08:01 +0100".toDateTime()' },
+			{ example: '"20240329".toDateTime()' },
+			{ example: '"1711732132990".toDateTime("ms")' },
+			{ example: '"31-01-2024".toDateTime("dd-MM-yyyy")' },
+		] as const,
+		args: [
+			{
+				name: 'format',
+				optional: true,
+				description:
+					'The format of the date string. Options are <code>ms</code> (for Unix timestamp in milliseconds), <code>s</code> (for Unix timestamp in seconds), <code>us</code> (for Unix timestamp in microseconds) or <code>excel</code> (for days since 1900). Custom formats can be specified using <a href="https://moment.github.io/luxon/#/formatting?id=table-of-tokens">Luxon tokens</a>.',
+				type: 'string',
+			},
+		] as const,
+	};
+}
 
 toBoolean.doc = {
 	name: 'toBoolean',
@@ -704,22 +706,24 @@ isNotEmpty.doc = {
 	],
 };
 
-toJsonString.doc = {
-	name: 'toJsonString',
-	description:
-		'Prepares the string to be inserted into a JSON object. Escapes any quotes and special characters (e.g. new lines), and wraps the string in quotes.The same as JavaScript’s JSON.stringify().',
-	section: 'edit',
-	returnType: 'string',
-	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toJsonString',
-	examples: [
-		{
-			example: 'The "best" colours: red\nbrown.toJsonString()',
-			evaluated: '"The \\"best\\" colours: red\\nbrown"',
-		},
-		{ example: 'foo.toJsonString()', evaluated: '"foo"' },
-	],
-};
+export namespace toJsonString {
+	export const doc = {
+		name: 'toJsonString',
+		description:
+			'Prepares the string to be inserted into a JSON object. Escapes any quotes and special characters (e.g. new lines), and wraps the string in quotes.The same as JavaScript’s JSON.stringify().',
+		section: 'edit',
+		returnType: 'string',
+		docURL:
+			'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toJsonString',
+		examples: [
+			{
+				example: 'The "best" colours: red\nbrown.toJsonString()',
+				evaluated: '"The \\"best\\" colours: red\\nbrown"',
+			},
+			{ example: 'foo.toJsonString()', evaluated: '"foo"' },
+		] as const,
+	};
+}
 
 extractEmail.doc = {
 	name: 'extractEmail',

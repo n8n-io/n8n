@@ -90,9 +90,9 @@ function areOverlapping(
 	);
 }
 
-const URL_PARTS_REGEX = /(?<protocolPlusDomain>.*?\..*?)(?<pathname>\/.*)/;
+const URL_PARTS_REGEX: RegExp = /(?<protocolPlusDomain>.*?\..*?)(?<pathname>\/.*)/;
 
-export function getDomainBase(raw: string, urlParts = URL_PARTS_REGEX): string {
+export function getDomainBase(raw: string, urlParts: RegExp = URL_PARTS_REGEX): string {
 	try {
 		const url = new URL(raw);
 
@@ -124,7 +124,7 @@ function sanitizeRoute(raw: string, check = isSensitive, char = ANONYMIZATION_CH
 /**
  * Return pathname plus query string from URL, anonymizing IDs in route and query params.
  */
-export function getDomainPath(raw: string, urlParts = URL_PARTS_REGEX): string {
+export function getDomainPath(raw: string, urlParts: RegExp = URL_PARTS_REGEX): string {
 	try {
 		const url = new URL(raw);
 

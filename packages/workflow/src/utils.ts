@@ -35,11 +35,11 @@ export const isObjectEmpty = (obj: object | null | undefined): boolean => {
 export type Primitives = string | number | boolean | bigint | symbol | null | undefined;
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
-export const deepCopy = <T extends ((object | Date) & { toJSON?: () => string }) | Primitives>(
+export function deepCopy<T extends ((object | Date) & { toJSON?: () => string }) | Primitives>(
 	source: T,
-	hash = new WeakMap(),
-	path = '',
-): T => {
+	hash: WeakMap<WeakKey, T> = new WeakMap(),
+	path: string = '',
+): T {
 	const hasOwnProp = Object.prototype.hasOwnProperty.bind(source);
 	// Primitives & Null & Function
 	if (typeof source !== 'object' || source === null || typeof source === 'function') {
@@ -51,7 +51,7 @@ export const deepCopy = <T extends ((object | Date) & { toJSON?: () => string })
 		return source.toJSON() as T;
 	}
 	if (hash.has(source)) {
-		return hash.get(source);
+		return hash.get(source)!;
 	}
 	// Array
 	if (Array.isArray(source)) {
@@ -71,7 +71,7 @@ export const deepCopy = <T extends ((object | Date) & { toJSON?: () => string })
 		}
 	}
 	return clone;
-};
+}
 // eslint-enable
 
 function syntaxNodeToValue(expression?: SyntaxNode | null): unknown {
@@ -155,7 +155,10 @@ type JSONStringifyOptions = {
 	replaceCircularRefs?: boolean;
 };
 
-export const replaceCircularReferences = <T>(value: T, knownObjects = new WeakSet()): T => {
+export const replaceCircularReferences = <T>(
+	value: T,
+	knownObjects: WeakSet<WeakKey> = new WeakSet(),
+): T => {
 	if (typeof value !== 'object' || value === null || value instanceof RegExp) return value;
 	if ('toJSON' in value && typeof value.toJSON === 'function') return value.toJSON() as T;
 	if (knownObjects.has(value)) return '[Circular Reference]' as T;
@@ -210,7 +213,7 @@ export const isTraversableObject = (value: any): value is JsonObject => {
 	return value && typeof value === 'object' && !Array.isArray(value) && !!Object.keys(value).length;
 };
 
-export const removeCircularRefs = (obj: JsonObject, seen = new Set()) => {
+export const removeCircularRefs = (obj: JsonObject, seen: Set<unknown> = new Set()): void => {
 	seen.add(obj);
 	Object.entries(obj).forEach(([key, value]) => {
 		if (isTraversableObject(value)) {
@@ -235,7 +238,7 @@ export const removeCircularRefs = (obj: JsonObject, seen = new Set()) => {
 export function updateDisplayOptions(
 	displayOptions: IDisplayOptions,
 	properties: INodeProperties[],
-) {
+): INodeProperties[] {
 	return properties.map((nodeProperty) => {
 		return {
 			...nodeProperty,

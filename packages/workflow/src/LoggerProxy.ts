@@ -6,7 +6,7 @@ export let warn: Logger['warn'] = noOp;
 export let info: Logger['info'] = noOp;
 export let debug: Logger['debug'] = noOp;
 
-export const init = (logger: Logger) => {
+export const init = (logger: Logger): void => {
 	error = (message, meta) => logger.error(message, meta);
 	warn = (message, meta) => logger.warn(message, meta);
 	info = (message, meta) => logger.info(message, meta);

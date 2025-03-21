@@ -65,9 +65,8 @@ function keepFieldsContaining(value: object, extraArgs: string[]): object {
 	return newObject;
 }
 
-export function compact(value: object): object {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const newObj: any = {};
+function compact(value: object): object {
+	const newObj: Record<string, unknown> = {};
 	for (const [key, val] of Object.entries(value)) {
 		if (val !== null && val !== undefined && val !== 'nil' && val !== '') {
 			if (typeof val === 'object') {
@@ -75,20 +74,18 @@ export function compact(value: object): object {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
 				newObj[key] = compact(val);
 			} else {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 				newObj[key] = val;
 			}
 		}
 	}
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 	return newObj;
 }
 
-export function urlEncode(value: object) {
+function urlEncode(value: object) {
 	return new URLSearchParams(value as Record<string, string>).toString();
 }
 
-export function toJsonString(value: object) {
+function toJsonString(value: object) {
 	return JSON.stringify(value);
 }
 

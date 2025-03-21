@@ -63,7 +63,8 @@ function toFloat(value: number) {
 }
 
 type DateTimeFormat = 'ms' | 's' | 'us' | 'excel';
-export function toDateTime(value: number, extraArgs: [DateTimeFormat]) {
+
+function toDateTimeImpl(value: number, extraArgs: [DateTimeFormat]) {
 	const [valueFormat = 'ms'] = extraArgs;
 
 	if (!['ms', 's', 'us', 'excel'].includes(valueFormat)) {
@@ -91,6 +92,9 @@ export function toDateTime(value: number, extraArgs: [DateTimeFormat]) {
 		default:
 			return DateTime.fromMillis(value);
 	}
+}
+export function toDateTime(value: number, extraArgs: [DateTimeFormat]): DateTime {
+	return toDateTimeImpl(value, extraArgs);
 }
 
 ceil.doc = {
@@ -201,7 +205,7 @@ toBoolean.doc = {
 		'https://docs.n8n.io/code/builtin/data-transformation-functions/numbers/#number-toBoolean',
 };
 
-toDateTime.doc = {
+toDateTimeImpl.doc = {
 	name: 'toDateTime',
 	description:
 		'Converts a numerical timestamp into a <a target="_blank" href="https://moment.github.io/luxon/api-docs/">Luxon</a> DateTime. The format of the timestamp must be specified if it\'s not in milliseconds. Uses the timezone specified in workflow settings if available; otherwise, it defaults to the timezone set for the instance.',
@@ -265,6 +269,6 @@ export const numberExtensions: ExtensionMap = {
 		toBoolean,
 		toInt,
 		toFloat,
-		toDateTime,
+		toDateTime: toDateTimeImpl,
 	},
 };

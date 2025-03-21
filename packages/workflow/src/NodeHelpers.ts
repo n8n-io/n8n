@@ -36,6 +36,7 @@ import type {
 	DisplayCondition,
 	NodeHint,
 	INodeExecutionData,
+	NodeParameterValueType,
 } from './Interfaces';
 import { validateFilterParameter } from './NodeParameters/FilterParameter';
 import {
@@ -488,7 +489,7 @@ export function displayParameter(
 	node: Pick<INode, 'typeVersion'> | null, // Allow null as it does also get used by credentials and they do not have versioning yet
 	nodeValuesRoot?: INodeParameters,
 	displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
-) {
+): boolean {
 	if (!parameter[displayKey]) {
 		return true;
 	}
@@ -541,7 +542,7 @@ export function displayParameterPath(
 	path: string,
 	node: Pick<INode, 'typeVersion'> | null,
 	displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
-) {
+): boolean {
 	let resolvedNodeValues = nodeValues;
 	if (path !== '') {
 		resolvedNodeValues = get(nodeValues, path) as INodeParameters;
@@ -1434,7 +1435,7 @@ export function getParameterValueByPath(
 	nodeValues: INodeParameters,
 	parameterName: string,
 	path: string,
-) {
+): NodeParameterValueType {
 	return get(nodeValues, path ? `${path}.${parameterName}` : parameterName);
 }
 
@@ -1648,7 +1649,7 @@ export function getParameterIssues(
  * @param {INodeIssues} destination The issues to merge into
  * @param {(INodeIssues | null)} source The issues to merge
  */
-export function mergeIssues(destination: INodeIssues, source: INodeIssues | null) {
+export function mergeIssues(destination: INodeIssues, source: INodeIssues | null): void {
 	if (source === null) {
 		// Nothing to merge
 		return;
@@ -1719,11 +1720,15 @@ export function getVersionedNodeType(
 	return object;
 }
 
-export function isTriggerNode(nodeTypeData: INodeTypeDescription) {
+export function isTriggerNode(nodeTypeData: INodeTypeDescription): boolean {
 	return nodeTypeData.group.includes('trigger');
 }
 
-export function isExecutable(workflow: Workflow, node: INode, nodeTypeData: INodeTypeDescription) {
+export function isExecutable(
+	workflow: Workflow,
+	node: INode,
+	nodeTypeData: INodeTypeDescription,
+): boolean {
 	const outputs = getNodeOutputs(workflow, node, nodeTypeData);
 	const outputNames = getConnectionTypes(outputs);
 	return outputNames.includes(NodeConnectionType.Main) || isTriggerNode(nodeTypeData);
