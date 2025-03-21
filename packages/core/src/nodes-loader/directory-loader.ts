@@ -22,7 +22,12 @@ import { UnrecognizedCredentialTypeError } from '@/errors/unrecognized-credentia
 import { UnrecognizedNodeTypeError } from '@/errors/unrecognized-node-type.error';
 import { Logger } from '@/logging/logger';
 
-import { commonCORSParameters, commonPollingParameters, CUSTOM_NODES_CATEGORY } from './constants';
+import {
+	commonCORSParameters,
+	commonPollingParameters,
+	commonToolParameters,
+	CUSTOM_NODES_CATEGORY,
+} from './constants';
 import { loadClassInIsolation } from './load-class-in-isolation';
 
 function toJSON(this: ICredentialType) {
@@ -348,9 +353,12 @@ export abstract class DirectoryLoader {
 	}
 
 	private applySpecialNodeParameters(nodeType: INodeType): void {
-		const { properties, polling, supportsCORS } = nodeType.description;
+		const { properties, polling, commonToolProperties, supportsCORS } = nodeType.description;
 		if (polling) {
 			properties.unshift(...commonPollingParameters);
+		}
+		if (commonToolProperties) {
+			properties.unshift(...commonToolParameters);
 		}
 		if (nodeType.webhook && supportsCORS) {
 			const optionsProperty = properties.find(({ name }) => name === 'options');

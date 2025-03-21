@@ -1921,6 +1921,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	maxNodes?: number; // How many nodes of that type can be created in a workflow
 	polling?: true | undefined;
 	supportsCORS?: true | undefined;
+	commonToolProperties?: boolean | undefined;
 	requestDefaults?: DeclarativeRestApiSettings.HttpRequestOptions;
 	requestOperations?: IN8nRequestOperations;
 	hooks?: {
