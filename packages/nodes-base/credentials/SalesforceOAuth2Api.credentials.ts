@@ -11,6 +11,12 @@ export class SalesforceOAuth2Api implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			default: 'pkce',
+		},
+		{
 			displayName: 'Environment Type',
 			name: 'environment',
 			type: 'options',
@@ -25,12 +31,6 @@ export class SalesforceOAuth2Api implements ICredentialType {
 				},
 			],
 			default: 'production',
-		},
-		{
-			displayName: 'Grant Type',
-			name: 'grantType',
-			type: 'hidden',
-			default: 'authorizationCode',
 		},
 		{
 			displayName: 'Authorization URL',
