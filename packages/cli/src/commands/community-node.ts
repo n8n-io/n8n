@@ -16,7 +16,7 @@ export class CommunityNode extends BaseCommand {
 	static description = '\nUninstall a community node and its credentials';
 
 	static examples = [
-		'$ n8n community-node --uninstall --type n8n-nodes-evolution-api',
+		'$ n8n community-node --uninstall --package n8n-nodes-evolution-api',
 		'$ n8n community-node --uninstall --credential evolutionApi --userId 1234',
 	];
 
