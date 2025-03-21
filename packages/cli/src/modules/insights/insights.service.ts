@@ -11,6 +11,7 @@ import { InsightsRaw } from '@/modules/insights/entities/insights-raw';
 import { InsightsConfig } from './insights.config';
 import { InsightsByPeriodRepository } from './repositories/insights-by-period.repository';
 import { InsightsRawRepository } from './repositories/insights-raw.repository';
+import { OnShutdown } from '@/decorators/on-shutdown';
 
 const config = Container.get(InsightsConfig);
 
@@ -41,14 +42,26 @@ const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
 
 @Service()
 export class InsightsService {
+	private compactInsightsTimer: NodeJS.Timer | undefined;
+
 	constructor(
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
 		private readonly insightsRawRepository: InsightsRawRepository,
 	) {
-		// TODO: check if there is a better way to schedule this
 		const intervalMilliseconds = config.compactionIntervalMinutes * 60 * 1000;
-		setInterval(async () => await this.compactInsights(), intervalMilliseconds);
+		this.compactInsightsTimer = setInterval(
+			async () => await this.compactInsights(),
+			intervalMilliseconds,
+		);
+	}
+
+	@OnShutdown()
+	shutdown() {
+		if (this.compactInsightsTimer !== undefined) {
+			clearInterval(this.compactInsightsTimer);
+			this.compactInsightsTimer = undefined;
+		}
 	}
 
 	async workflowExecuteAfterHandler(ctx: ExecutionLifecycleHooks, fullRunData: IRun) {
