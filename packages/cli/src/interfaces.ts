@@ -96,15 +96,11 @@ export interface IWorkflowDb extends IWorkflowBase {
 	parentFolder?: Folder | null;
 }
 
-export interface IWorkflowToImport extends IWorkflowBase {
-	tags: ITagToImport[];
-}
-
 export interface IWorkflowResponse extends IWorkflowBase {
 	id: string;
 }
 
-export interface IWorkflowEnvironmentData
+export interface IWorkflowToImport
 	extends Omit<IWorkflowBase, 'staticData' | 'pinData' | 'createdAt' | 'updatedAt'> {
 	owner: {
 		type: 'personal';

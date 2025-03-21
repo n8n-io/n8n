@@ -8,7 +8,7 @@ import type { FolderRepository } from '@/databases/repositories/folder.repositor
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 import { SourceControlImportService } from '../source-control-import.service.ee';
-import type { ExportableFolder, WorkflowFolderMapping } from '../types/exportable-folders';
+import type { ExportableFolder } from '../types/exportable-folders';
 
 jest.mock('fast-glob');
 
@@ -168,14 +168,21 @@ describe('SourceControlImportService', () => {
 		it('should parse folders and mappings file correctly', async () => {
 			globMock.mockResolvedValue(['/mock/folders.json']);
 
+			const now = new Date();
+
 			const mockFoldersData: {
 				folders: ExportableFolder[];
-				workflowMappings: WorkflowFolderMapping[];
 			} = {
 				folders: [
-					{ id: 'folder1', name: 'folder 1', parentFolderId: null, homeProjectId: 'project1' },
+					{
+						id: 'folder1',
+						name: 'folder 1',
+						parentFolderId: null,
+						homeProjectId: 'project1',
+						createdAt: now.toISOString(),
+						updatedAt: now.toISOString(),
+					},
 				],
-				workflowMappings: [{ workflowId: 'workflow1', parentFolderId: 'folder1' }],
 			};
 
 			fsReadFile.mockResolvedValue(JSON.stringify(mockFoldersData));
@@ -183,7 +190,6 @@ describe('SourceControlImportService', () => {
 			const result = await service.getRemoteFoldersAndMappingsFromFile();
 
 			expect(result.folders).toEqual(mockFoldersData.folders);
-			expect(result.workflowMappings).toEqual(mockFoldersData.workflowMappings);
 		});
 
 		it('should return empty folders and mappings if no file found', async () => {
@@ -192,7 +198,6 @@ describe('SourceControlImportService', () => {
 			const result = await service.getRemoteFoldersAndMappingsFromFile();
 
 			expect(result.folders).toHaveLength(0);
-			expect(result.workflowMappings).toHaveLength(0);
 		});
 	});
 
@@ -235,9 +240,6 @@ describe('SourceControlImportService', () => {
 			expect(result.folders[0]).toHaveProperty('name');
 			expect(result.folders[0]).toHaveProperty('parentFolderId');
 			expect(result.folders[0]).toHaveProperty('homeProjectId');
-			expect(result.workflowMappings).toHaveLength(1);
-			expect(result.workflowMappings[0]).toHaveProperty('parentFolderId');
-			expect(result.workflowMappings[0]).toHaveProperty('workflowId');
 		});
 	});
 
