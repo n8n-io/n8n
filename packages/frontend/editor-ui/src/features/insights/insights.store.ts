@@ -18,7 +18,7 @@ export const useInsightsStore = defineStore('insights', () => {
 	const summary = useAsyncState(
 		async () => {
 			if (!globalInsightsPermissions.value.list) {
-				return;
+				return [];
 			}
 
 			const raw = await insightsApi.fetchInsightsSummary(rootStore.restApiContext);
