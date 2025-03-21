@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "copyright": {
+            "type": "string"
+        },
         "date": {
             "type": "string"
         },
@@ -20,9 +23,6 @@
             "type": "string"
         },
         "url": {
-            "type": "string"
-        },
-        "copyright": {
             "type": "string"
         }
     },

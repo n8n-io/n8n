@@ -7,10 +7,46 @@
         "@odata.etag": {
             "type": "string"
         },
-        "id": {
+        "attendees": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "emailAddress": {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "status": {
+                        "type": "object",
+                        "properties": {
+                            "response": {
+                                "type": "string"
+                            },
+                            "time": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "bodyPreview": {
             "type": "string"
         },
-        "subject": {
+        "calendar@odata.associationLink": {
+            "type": "string"
+        },
+        "calendar@odata.navigationLink": {
             "type": "string"
         },
         "end": {
@@ -22,23 +58,26 @@
                 "timeZone": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "dateTime",
-                "timeZone"
-            ]
+            }
         },
-        "calendar@odata.associationLink": {
+        "id": {
             "type": "string"
         },
-        "calendar@odata.navigationLink": {
-            "type": "string"
-        },
-        "bodyPreview": {
-            "type": "string"
-        },
-        "webLink": {
-            "type": "string"
+        "organizer": {
+            "type": "object",
+            "properties": {
+                "emailAddress": {
+                    "type": "object",
+                    "properties": {
+                        "address": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
         },
         "start": {
             "type": "object",
@@ -49,84 +88,14 @@
                 "timeZone": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "dateTime",
-                "timeZone"
-            ]
-        },
-        "attendees": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "type": {
-                        "type": "string"
-                    },
-                    "status": {
-                        "type": "object",
-                        "properties": {
-                            "response": {
-                                "type": "string"
-                            },
-                            "time": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "response",
-                            "time"
-                        ]
-                    },
-                    "emailAddress": {
-                        "type": "object",
-                        "properties": {
-                            "name": {
-                                "type": "string"
-                            },
-                            "address": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "name",
-                            "address"
-                        ]
-                    }
-                },
-                "required": [
-                    "type",
-                    "status",
-                    "emailAddress"
-                ]
             }
         },
-        "organizer": {
-            "type": "object",
-            "properties": {
-                "emailAddress": {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string"
-                        },
-                        "address": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "name",
-                        "address"
-                    ]
-                }
-            },
-            "required": [
-                "emailAddress"
-            ]
+        "subject": {
+            "type": "string"
+        },
+        "webLink": {
+            "type": "string"
         }
     },
-    "required": [
-        "@odata.context"
-    ],
     "version": 1
 }

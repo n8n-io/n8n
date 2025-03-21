@@ -1,8 +1,14 @@
 {
     "type": "object",
     "properties": {
+        "emailaddress": {
+            "type": "string"
+        },
         "id": {
             "type": "integer"
+        },
+        "inactive": {
+            "type": "boolean"
         },
         "name": {
             "type": "string"
@@ -12,19 +18,7 @@
         },
         "surname": {
             "type": "string"
-        },
-        "emailaddress": {
-            "type": "string"
-        },
-        "inactive": {
-            "type": "boolean"
         }
     },
-    "required": [
-        "id",
-        "name",
-        "site_id",
-        "inactive"
-    ],
     "version": 1
 }

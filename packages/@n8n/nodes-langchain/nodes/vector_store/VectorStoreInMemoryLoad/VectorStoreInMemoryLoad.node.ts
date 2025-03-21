@@ -10,7 +10,7 @@ import {
 
 import { logWrapper } from '@utils/logWrapper';
 
-import { MemoryVectorStoreManager } from '../shared/MemoryVectorStoreManager';
+import { MemoryVectorStoreManager } from '../shared/MemoryManager/MemoryVectorStoreManager';
 
 // This node is deprecated. Use VectorStoreInMemory instead.
 export class VectorStoreInMemoryLoad implements INodeType {
@@ -70,7 +70,7 @@ export class VectorStoreInMemoryLoad implements INodeType {
 		const workflowId = this.getWorkflow().id;
 		const memoryKey = this.getNodeParameter('memoryKey', 0) as string;
 
-		const vectorStoreSingleton = MemoryVectorStoreManager.getInstance(embeddings);
+		const vectorStoreSingleton = MemoryVectorStoreManager.getInstance(embeddings, this.logger);
 		const vectorStoreInstance = await vectorStoreSingleton.getVectorStore(
 			`${workflowId}__${memoryKey}`,
 		);

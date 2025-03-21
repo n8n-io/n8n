@@ -1,10 +1,16 @@
 {
     "type": "object",
     "properties": {
-        "timestamp": {
+        "firstName": {
+            "type": "string"
+        },
+        "lastName": {
             "type": "string"
         },
         "profileUrl": {
+            "type": "string"
+        },
+        "timestamp": {
             "type": "string"
         }
     },
