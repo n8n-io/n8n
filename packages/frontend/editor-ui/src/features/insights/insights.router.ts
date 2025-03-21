@@ -2,7 +2,8 @@ import { RouterView, type RouteRecordRaw } from 'vue-router';
 import { VIEWS } from '@/constants';
 
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
-const InsightsView = async () => await import('@/features/insights/InsightsView.vue');
+const InsightsDashboard = async () =>
+	await import('@/features/insights/components/InsightsDashboard.vue');
 
 export const insightsRoutes: RouteRecordRaw[] = [
 	{
@@ -22,7 +23,7 @@ export const insightsRoutes: RouteRecordRaw[] = [
 					if (to.params.insightType) return true;
 					return Object.assign(to, { params: { ...to.params, insightType: 'total' } });
 				},
-				component: InsightsView,
+				component: InsightsDashboard,
 				props: true,
 			},
 		],

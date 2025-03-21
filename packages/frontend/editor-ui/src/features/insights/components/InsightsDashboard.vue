@@ -14,7 +14,7 @@ import {
 	generateBarChartOptions,
 } from '@/features/insights/chartjs.utils';
 import { useInsightsStore } from '@/features/insights/insights.store';
-import InsightsSummary from '@/features/insights/InsightsSummary.vue';
+import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useI18n } from '@/composables/useI18n';
 
 const props = defineProps<{
