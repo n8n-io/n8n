@@ -11,7 +11,7 @@ export class InsightsController {
 	constructor(private readonly insightsService: InsightsService) {}
 
 	@Get('/summary')
-	@GlobalScope('insights:read')
+	@GlobalScope('insights:list')
 	async getInsightsSummary(): Promise<InsightsSummary> {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return await this.insightsService.getInsightsSummary();
