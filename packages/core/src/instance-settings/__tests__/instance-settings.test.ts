@@ -106,14 +106,10 @@ describe('InstanceSettings', () => {
 			const settings = createInstanceSettings();
 			expect(settings.encryptionKey).not.toEqual('test_key');
 			expect(mockFs.mkdirSync).toHaveBeenCalledWith('/test/.n8n', { recursive: true });
-			expect(mockFs.writeFileSync).toHaveBeenCalledWith(
-				'/test/.n8n/config',
-				expect.stringContaining('"encryptionKey":'),
-				{
-					encoding: 'utf-8',
-					mode: undefined,
-				},
-			);
+			expect(mockFs.writeFileSync).toHaveBeenCalledWith('/test/.n8n/config', '{}', {
+				encoding: 'utf-8',
+				mode: undefined,
+			});
 		});
 
 		it('should create a new settings file without explicit permissions if N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false', () => {
@@ -122,14 +118,10 @@ describe('InstanceSettings', () => {
 			const settings = createInstanceSettings();
 			expect(settings.encryptionKey).not.toEqual('test_key');
 			expect(mockFs.mkdirSync).toHaveBeenCalledWith('/test/.n8n', { recursive: true });
-			expect(mockFs.writeFileSync).toHaveBeenCalledWith(
-				'/test/.n8n/config',
-				expect.stringContaining('"encryptionKey":'),
-				{
-					encoding: 'utf-8',
-					mode: undefined,
-				},
-			);
+			expect(mockFs.writeFileSync).toHaveBeenCalledWith('/test/.n8n/config', '{}', {
+				encoding: 'utf-8',
+				mode: undefined,
+			});
 		});
 
 		it('should create a new settings file with explicit permissions if N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true', () => {
@@ -140,14 +132,10 @@ describe('InstanceSettings', () => {
 			});
 			expect(settings.encryptionKey).not.toEqual('test_key');
 			expect(mockFs.mkdirSync).toHaveBeenCalledWith('/test/.n8n', { recursive: true });
-			expect(mockFs.writeFileSync).toHaveBeenCalledWith(
-				'/test/.n8n/config',
-				expect.stringContaining('"encryptionKey":'),
-				{
-					encoding: 'utf-8',
-					mode: 0o600,
-				},
-			);
+			expect(mockFs.writeFileSync).toHaveBeenCalledWith('/test/.n8n/config', '{}', {
+				encoding: 'utf-8',
+				mode: 0o600,
+			});
 		});
 
 		it('should pick up the encryption key from env var N8N_ENCRYPTION_KEY', () => {
@@ -159,14 +147,10 @@ describe('InstanceSettings', () => {
 			);
 			expect(settings.encryptionKey).not.toEqual('test_key');
 			expect(mockFs.mkdirSync).toHaveBeenCalledWith('/test/.n8n', { recursive: true });
-			expect(mockFs.writeFileSync).toHaveBeenCalledWith(
-				'/test/.n8n/config',
-				expect.stringContaining('"encryptionKey":'),
-				{
-					encoding: 'utf-8',
-					mode: undefined,
-				},
-			);
+			expect(mockFs.writeFileSync).toHaveBeenCalledWith('/test/.n8n/config', '{}', {
+				encoding: 'utf-8',
+				mode: undefined,
+			});
 		});
 
 		it("should not set the permissions of the settings file if 'N8N_IGNORE_SETTINGS_FILE_PERMISSIONS' is true", () => {
@@ -175,14 +159,10 @@ describe('InstanceSettings', () => {
 			const settings = createInstanceSettings();
 			expect(settings.encryptionKey).not.toEqual('test_key');
 			expect(mockFs.mkdirSync).toHaveBeenCalledWith('/test/.n8n', { recursive: true });
-			expect(mockFs.writeFileSync).toHaveBeenCalledWith(
-				'/test/.n8n/config',
-				expect.stringContaining('"encryptionKey":'),
-				{
-					encoding: 'utf-8',
-					mode: undefined,
-				},
-			);
+			expect(mockFs.writeFileSync).toHaveBeenCalledWith('/test/.n8n/config', '{}', {
+				encoding: 'utf-8',
+				mode: undefined,
+			});
 		});
 	});
 
