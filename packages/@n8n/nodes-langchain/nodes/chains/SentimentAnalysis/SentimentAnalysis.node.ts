@@ -2,7 +2,7 @@ import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { HumanMessage } from '@langchain/core/messages';
 import { SystemMessagePromptTemplate, ChatPromptTemplate } from '@langchain/core/prompts';
 import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -24,7 +24,7 @@ const configuredOutputs = (parameters: INodeParameters, defaultCategories: strin
 	const categories = (options?.categories as string) ?? defaultCategories;
 	const categoriesArray = categories.split(',').map((cat) => cat.trim());
 
-	const ret = categoriesArray.map((cat) => ({ type: NodeConnectionType.Main, displayName: cat }));
+	const ret = categoriesArray.map((cat) => ({ type: NodeConnectionTypes.Main, displayName: cat }));
 	return ret;
 };
 
@@ -54,11 +54,11 @@ export class SentimentAnalysis implements INodeType {
 			name: 'Sentiment Analysis',
 		},
 		inputs: [
-			{ displayName: '', type: NodeConnectionType.Main },
+			{ displayName: '', type: NodeConnectionTypes.Main },
 			{
 				displayName: 'Model',
 				maxConnections: 1,
-				type: NodeConnectionType.AiLanguageModel,
+				type: NodeConnectionTypes.AiLanguageModel,
 				required: true,
 			},
 		],
@@ -140,7 +140,7 @@ export class SentimentAnalysis implements INodeType {
 		const items = this.getInputData();
 
 		const llm = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
+			NodeConnectionTypes.AiLanguageModel,
 			0,
 		)) as BaseLanguageModel;
 

@@ -1,58 +1,49 @@
 {
     "type": "object",
     "properties": {
-        "hash": {
-            "type": "string"
-        },
-        "owner": {
-            "type": "string"
-        },
-        "group": {
-            "type": "string"
-        },
-        "stage": {
-            "type": "string"
-        },
-        "title": {
-            "type": "string"
-        },
-        "description": {
-            "type": "string"
-        },
-        "percent": {
+        "activitycount": {
             "type": "string"
         },
         "cdate": {
             "type": "string"
         },
-        "mdate": {
-            "type": "string"
-        },
-        "value": {
-            "type": "string"
-        },
         "currency": {
             "type": "string"
         },
-        "status": {
+        "description": {
             "type": "string"
         },
-        "activitycount": {
+        "group": {
             "type": "string"
         },
-        "nextdealid": {
+        "hash": {
             "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "isDisabled": {
+            "type": "boolean"
         },
         "links": {
             "type": "object",
             "properties": {
-                "dealActivities": {
+                "account": {
                     "type": "string"
                 },
                 "contact": {
                     "type": "string"
                 },
                 "contactDeals": {
+                    "type": "string"
+                },
+                "customerAccount": {
+                    "type": "string"
+                },
+                "dealActivities": {
+                    "type": "string"
+                },
+                "dealCustomFieldData": {
                     "type": "string"
                 },
                 "group": {
@@ -62,12 +53,6 @@
                     "type": "string"
                 },
                 "notes": {
-                    "type": "string"
-                },
-                "account": {
-                    "type": "string"
-                },
-                "customerAccount": {
                     "type": "string"
                 },
                 "organization": {
@@ -84,33 +69,32 @@
                 },
                 "tasks": {
                     "type": "string"
-                },
-                "dealCustomFieldData": {
-                    "type": "string"
                 }
-            },
-            "required": [
-                "dealActivities",
-                "contact",
-                "contactDeals",
-                "group",
-                "nextTask",
-                "notes",
-                "account",
-                "customerAccount",
-                "organization",
-                "owner",
-                "scoreValues",
-                "stage",
-                "tasks",
-                "dealCustomFieldData"
-            ]
+            }
         },
-        "id": {
+        "mdate": {
             "type": "string"
         },
-        "isDisabled": {
-            "type": "boolean"
+        "nextdealid": {
+            "type": "string"
+        },
+        "owner": {
+            "type": "string"
+        },
+        "percent": {
+            "type": "string"
+        },
+        "stage": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "value": {
+            "type": "string"
         }
     },
     "version": 1

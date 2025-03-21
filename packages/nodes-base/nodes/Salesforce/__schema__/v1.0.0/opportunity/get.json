@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "AccountId": {
+            "type": "string"
+        },
         "attributes": {
             "type": "object",
             "properties": {
@@ -10,68 +13,19 @@
                 "url": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "type",
-                "url"
-            ]
-        },
-        "Id": {
-            "type": "string"
-        },
-        "IsDeleted": {
-            "type": "boolean"
-        },
-        "AccountId": {
-            "type": "string"
-        },
-        "Name": {
-            "type": "string"
-        },
-        "StageName": {
-            "type": "string"
-        },
-        "Probability": {
-            "type": "integer"
+            }
         },
         "CloseDate": {
-            "type": "string"
-        },
-        "IsClosed": {
-            "type": "boolean"
-        },
-        "IsWon": {
-            "type": "boolean"
-        },
-        "ForecastCategory": {
-            "type": "string"
-        },
-        "ForecastCategoryName": {
-            "type": "string"
-        },
-        "HasOpportunityLineItem": {
-            "type": "boolean"
-        },
-        "OwnerId": {
-            "type": "string"
-        },
-        "CreatedDate": {
             "type": "string"
         },
         "CreatedById": {
             "type": "string"
         },
-        "LastModifiedDate": {
+        "CreatedDate": {
             "type": "string"
         },
-        "LastModifiedById": {
+        "Fiscal": {
             "type": "string"
-        },
-        "SystemModstamp": {
-            "type": "string"
-        },
-        "PushCount": {
-            "type": "integer"
         },
         "FiscalQuarter": {
             "type": "integer"
@@ -79,17 +33,56 @@
         "FiscalYear": {
             "type": "integer"
         },
-        "Fiscal": {
+        "ForecastCategory": {
             "type": "string"
         },
-        "SyncedQuoteId": {
-            "type": "null"
+        "ForecastCategoryName": {
+            "type": "string"
         },
         "HasOpenActivity": {
             "type": "boolean"
         },
+        "HasOpportunityLineItem": {
+            "type": "boolean"
+        },
         "HasOverdueTask": {
             "type": "boolean"
+        },
+        "Id": {
+            "type": "string"
+        },
+        "IsClosed": {
+            "type": "boolean"
+        },
+        "IsDeleted": {
+            "type": "boolean"
+        },
+        "IsWon": {
+            "type": "boolean"
+        },
+        "LastModifiedById": {
+            "type": "string"
+        },
+        "LastModifiedDate": {
+            "type": "string"
+        },
+        "Name": {
+            "type": "string"
+        },
+        "OwnerId": {
+            "type": "string"
+        },
+        "Probability": {
+            "type": "integer"
+        },
+        "PushCount": {
+            "type": "integer"
+        },
+        "StageName": {
+            "type": "string"
+        },
+        "SystemModstamp": {
+            "type": "string"
         }
     },
     "version": 1

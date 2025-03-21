@@ -15,6 +15,7 @@ const props = defineProps<{
 	modalName: string;
 	data?: {
 		closeCallback?: () => void;
+		customHeading?: string;
 	};
 }>();
 
@@ -89,7 +90,7 @@ const confirm = async () => {
 					<N8nBadge>{{ i18n.baseText('communityPlusModal.badge') }}</N8nBadge>
 				</p>
 				<N8nText tag="h1" align="center" size="xlarge" class="mb-m">{{
-					i18n.baseText('communityPlusModal.title')
+					data?.customHeading ?? i18n.baseText('communityPlusModal.title')
 				}}</N8nText>
 				<N8nText tag="p">{{ i18n.baseText('communityPlusModal.description') }}</N8nText>
 				<ul :class="$style.features">
@@ -112,6 +113,13 @@ const confirm = async () => {
 						<N8nText>
 							<strong>{{ i18n.baseText('communityPlusModal.features.third.title') }}</strong>
 							{{ i18n.baseText('communityPlusModal.features.third.description') }}
+						</N8nText>
+					</li>
+					<li>
+						<i> 📁</i>
+						<N8nText>
+							<strong>{{ i18n.baseText('communityPlusModal.features.fourth.title') }}</strong>
+							{{ i18n.baseText('communityPlusModal.features.fourth.description') }}
 						</N8nText>
 					</li>
 				</ul>

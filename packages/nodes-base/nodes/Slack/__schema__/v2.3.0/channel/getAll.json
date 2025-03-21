@@ -1,13 +1,28 @@
 {
     "type": "object",
     "properties": {
+        "context_team_id": {
+            "type": "string"
+        },
+        "created": {
+            "type": "integer"
+        },
+        "creator": {
+            "type": "string"
+        },
         "id": {
             "type": "string"
         },
-        "name": {
-            "type": "string"
+        "is_archived": {
+            "type": "boolean"
         },
         "is_channel": {
+            "type": "boolean"
+        },
+        "is_ext_shared": {
+            "type": "boolean"
+        },
+        "is_general": {
             "type": "boolean"
         },
         "is_group": {
@@ -16,28 +31,10 @@
         "is_im": {
             "type": "boolean"
         },
+        "is_member": {
+            "type": "boolean"
+        },
         "is_mpim": {
-            "type": "boolean"
-        },
-        "is_private": {
-            "type": "boolean"
-        },
-        "created": {
-            "type": "integer"
-        },
-        "is_archived": {
-            "type": "boolean"
-        },
-        "is_general": {
-            "type": "boolean"
-        },
-        "unlinked": {
-            "type": "integer"
-        },
-        "name_normalized": {
-            "type": "string"
-        },
-        "is_shared": {
             "type": "boolean"
         },
         "is_org_shared": {
@@ -46,67 +43,29 @@
         "is_pending_ext_shared": {
             "type": "boolean"
         },
-        "context_team_id": {
+        "is_private": {
+            "type": "boolean"
+        },
+        "is_shared": {
+            "type": "boolean"
+        },
+        "name": {
             "type": "string"
         },
-        "updated": {
+        "name_normalized": {
+            "type": "string"
+        },
+        "num_members": {
             "type": "integer"
         },
         "parent_conversation": {
             "type": "null"
         },
-        "creator": {
-            "type": "string"
-        },
-        "is_ext_shared": {
-            "type": "boolean"
-        },
-        "shared_team_ids": {
+        "previous_names": {
             "type": "array",
             "items": {
                 "type": "string"
             }
-        },
-        "is_member": {
-            "type": "boolean"
-        },
-        "topic": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                },
-                "creator": {
-                    "type": "string"
-                },
-                "last_set": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "value",
-                "creator",
-                "last_set"
-            ]
-        },
-        "purpose": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                },
-                "creator": {
-                    "type": "string"
-                },
-                "last_set": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "value",
-                "creator",
-                "last_set"
-            ]
         },
         "properties": {
             "type": "object",
@@ -123,32 +82,23 @@
                         "quip_thread_id": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "file_id",
-                        "quip_thread_id"
-                    ]
+                    }
                 },
                 "tabs": {
                     "type": "array",
                     "items": {
                         "type": "object",
                         "properties": {
-                            "type": {
+                            "id": {
                                 "type": "string"
                             },
                             "label": {
                                 "type": "string"
                             },
-                            "id": {
+                            "type": {
                                 "type": "string"
                             }
-                        },
-                        "required": [
-                            "type",
-                            "label",
-                            "id"
-                        ]
+                        }
                     }
                 },
                 "tabz": {
@@ -159,10 +109,7 @@
                             "type": {
                                 "type": "string"
                             }
-                        },
-                        "required": [
-                            "type"
-                        ]
+                        }
                     }
                 },
                 "use_case": {
@@ -170,24 +117,46 @@
                 }
             }
         },
-        "previous_names": {
+        "purpose": {
+            "type": "object",
+            "properties": {
+                "creator": {
+                    "type": "string"
+                },
+                "last_set": {
+                    "type": "integer"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "shared_team_ids": {
             "type": "array",
             "items": {
                 "type": "string"
             }
         },
-        "num_members": {
+        "topic": {
+            "type": "object",
+            "properties": {
+                "creator": {
+                    "type": "string"
+                },
+                "last_set": {
+                    "type": "integer"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "unlinked": {
+            "type": "integer"
+        },
+        "updated": {
             "type": "integer"
         }
     },
-    "required": [
-        "id",
-        "is_im",
-        "created",
-        "is_archived",
-        "is_org_shared",
-        "context_team_id",
-        "updated"
-    ],
     "version": 1
 }

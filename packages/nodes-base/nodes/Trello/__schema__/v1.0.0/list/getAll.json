@@ -1,26 +1,8 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
         "closed": {
             "type": "boolean"
-        },
-        "idBoard": {
-            "type": "string"
-        },
-        "subscribed": {
-            "type": "boolean"
-        },
-        "softLimit": {
-            "type": "null"
-        },
-        "type": {
-            "type": "null"
         },
         "datasource": {
             "type": "object",
@@ -28,23 +10,26 @@
                 "filter": {
                     "type": "boolean"
                 }
-            },
-            "required": [
-                "filter"
-            ]
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "idBoard": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "softLimit": {
+            "type": "null"
+        },
+        "subscribed": {
+            "type": "boolean"
+        },
+        "type": {
+            "type": "null"
         }
     },
-    "required": [
-        "id",
-        "name",
-        "closed",
-        "color",
-        "idBoard",
-        "pos",
-        "subscribed",
-        "softLimit",
-        "type",
-        "datasource"
-    ],
     "version": 1
 }

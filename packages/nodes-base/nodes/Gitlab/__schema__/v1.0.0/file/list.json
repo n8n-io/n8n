@@ -4,16 +4,16 @@
         "id": {
             "type": "string"
         },
-        "name": {
+        "mode": {
             "type": "string"
         },
-        "type": {
+        "name": {
             "type": "string"
         },
         "path": {
             "type": "string"
         },
-        "mode": {
+        "type": {
             "type": "string"
         }
     },
