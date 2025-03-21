@@ -116,7 +116,6 @@ export class InsightsService {
 		});
 	}
 
-	// TODO: add return type once rebased on master and InsightsSummary is
 	// available
 	async getInsightsSummary(): Promise<InsightsSummary> {
 		const rows = await this.insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates();
