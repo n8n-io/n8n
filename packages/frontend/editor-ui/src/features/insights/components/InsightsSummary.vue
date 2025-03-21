@@ -114,6 +114,7 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 		border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 		border-radius: 6px;
 		list-style: none;
+		background-color: var(--color-background-xlight);
 		overflow-x: auto;
 
 		li {
@@ -122,6 +123,7 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 			align-items: stretch;
 			flex: 1 0;
 			border-left: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+			padding: 0 var(--spacing-xl) 0 var(--spacing-l);
 
 			&:first-child {
 				border-left: 0;
