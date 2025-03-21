@@ -35,6 +35,7 @@ interface ICreateMemberBody {
 	email_address: string;
 	email_type?: string;
 	status?: Status;
+	status_if_new?: Status;
 	language?: string;
 	vip?: boolean;
 	location?: ILocation;
@@ -1129,6 +1130,35 @@ export class Mailchimp implements INodeType {
 						description: "Subscriber's current status",
 					},
 					{
+						displayName: 'Status If New',
+						name: 'status_if_new',
+						type: 'options',
+						options: [
+							{
+								name: 'Cleaned',
+								value: 'cleaned',
+							},
+							{
+								name: 'Pending',
+								value: 'pending',
+							},
+							{
+								name: 'Subscribed',
+								value: 'subscribed',
+							},
+							{
+								name: 'Transactional',
+								value: 'transactional',
+							},
+							{
+								name: 'Unsubscribed',
+								value: 'unsubscribed',
+							},
+						],
+						default: '',
+						description: "This status is required only if the email address is not already present on the list",
+					},
+					{
 						displayName: 'Vip',
 						name: 'vip',
 						type: 'boolean',
@@ -1929,6 +1959,9 @@ export class Mailchimp implements INodeType {
 						}
 						if (updateFields.ipOptIn) {
 							body.ip_opt = updateFields.ipOptIn as string;
+						}
+						if (updateFields.status_if_new) {
+							body.status_if_new = updateFields.status_if_new as Status;
 						}
 						if (updateFields.timestampOpt) {
 							body.timestamp_opt = moment(updateFields.timestampOpt as string).format(
