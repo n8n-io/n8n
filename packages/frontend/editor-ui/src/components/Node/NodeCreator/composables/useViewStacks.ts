@@ -43,6 +43,20 @@ import type { NodeConnectionType, INodeInputFilter, Themed } from 'n8n-workflow'
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useSettingsStore } from '@/stores/settings.store';
 
+type CommunityNodeDetails = {
+	title: string;
+	packageName: string;
+	description: string;
+	installed: boolean;
+	verified?: boolean;
+	nodeIcon?: {
+		iconType?: string;
+		icon?: Themed<string>;
+		color?: string;
+	};
+	iconUrl?: string;
+};
+
 interface ViewStack {
 	uuid?: string;
 	title?: string;
@@ -72,19 +86,7 @@ interface ViewStack {
 	actionsFilter?: (items: ActionTypeDescription[]) => ActionTypeDescription[];
 	panelClass?: string;
 	sections?: string[] | NodeViewItemSection[];
-	communityNodeDetails?: {
-		title: string;
-		packageName: string;
-		description: string;
-		installed: boolean;
-		verified?: boolean;
-		nodeIcon?: {
-			iconType?: string;
-			icon?: Themed<string>;
-			color?: string;
-		};
-		iconUrl?: string;
-	};
+	communityNodeDetails?: CommunityNodeDetails;
 }
 
 export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
@@ -171,12 +173,18 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		return viewStacks.value[viewStacks.value.length - 1];
 	}
 
+	function getAllNodeCreateElements() {
+		return nodeCreatorStore.mergedNodes.map((item) =>
+			transformNodeType(item),
+		) as NodeCreateElement[];
+	}
+
 	// Generate a delta between the global search results(all nodes) and the stack search results
 	const globalSearchItemsDiff = computed<INodeCreateElement[]>(() => {
 		const stack = getLastActiveStack();
 		if (!stack?.search || isAiSubcategoryView(stack)) return [];
 
-		const allNodes = nodeCreatorStore.mergedNodes.map((item) => transformNodeType(item));
+		const allNodes = getAllNodeCreateElements();
 		// Apply filtering for AI nodes if the current view is not the AI root view
 		const filteredNodes = isAiRootView(stack) ? allNodes : filterOutAiNodes(allNodes);
 
@@ -497,5 +505,6 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		updateCurrentViewStack,
 		pushViewStack,
 		popViewStack,
+		getAllNodeCreateElements,
 	};
 });

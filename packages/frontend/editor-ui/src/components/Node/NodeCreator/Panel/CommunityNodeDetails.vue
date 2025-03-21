@@ -2,8 +2,12 @@
 import { computed, onMounted, ref } from 'vue';
 import { useViewStacks } from '../composables/useViewStacks';
 import { useUsersStore } from '@/stores/users.store';
+import { useCommunityNodesStore } from '@/stores/communityNodes.store';
+import { useToast } from '@/composables/useToast';
+import { i18n } from '@/plugins/i18n';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
-const { activeViewStack } = useViewStacks();
+const { activeViewStack, pushViewStack } = useViewStacks();
 
 const { communityNodeDetails } = activeViewStack;
 
@@ -13,6 +17,10 @@ interface DownloadData {
 
 const publisherName = ref<string | undefined>(undefined);
 const downloads = ref<string | null>(null);
+const loading = ref(false);
+
+const communityNodesStore = useCommunityNodesStore();
+const toast = useToast();
 
 const isOwner = computed(() => useUsersStore().isInstanceOwner);
 
@@ -22,9 +30,29 @@ const ownersEmail = computed(() =>
 		.map((user) => user.email),
 );
 
-async function installPackage() {
-	console.log('Install package');
-}
+const onInstallClick = async () => {
+	if (activeViewStack.communityNodeDetails && !communityNodeDetails?.installed) {
+		try {
+			loading.value = true;
+			await communityNodesStore.installPackage(activeViewStack.communityNodeDetails.packageName);
+			loading.value = false;
+
+			const viewStack = { ...activeViewStack };
+			viewStack.communityNodeDetails!.installed = true;
+			await useNodeTypesStore().getNodeTypes();
+			pushViewStack(activeViewStack, { resetStacks: true });
+
+			toast.showMessage({
+				title: i18n.baseText('settings.communityNodes.messages.install.success'),
+				type: 'success',
+			});
+		} catch (error) {
+			toast.showError(error, i18n.baseText('settings.communityNodes.messages.install.error'));
+		} finally {
+			loading.value = false;
+		}
+	}
+};
 
 const formatNumber = (number: number) => {
 	if (!number) return null;
@@ -94,11 +122,11 @@ onMounted(async () => {
 				</div>
 				<N8nButton
 					v-else-if="isOwner"
-					:loading="false"
-					:disabled="false"
+					:loading="loading"
+					:disabled="loading"
 					label="Install Node"
 					size="small"
-					@click="installPackage"
+					@click="onInstallClick"
 				/>
 			</div>
 		</div>

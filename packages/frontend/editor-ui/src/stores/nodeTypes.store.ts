@@ -20,6 +20,7 @@ import type {
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useCredentialsStore } from './credentials.store';
+import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 import { useRootStore } from './root.store';
 import * as utils from '@/utils/credentialOnlyNodes';
 import { groupNodeTypesByNameAndType } from '@/utils/nodeTypes/nodeTypeTransforms';
@@ -270,10 +271,22 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 
 	const getNodeTypes = async () => {
 		const nodeTypes = await nodeTypesApi.getNodeTypes(rootStore.baseUrl);
-		const communityTypes = (await nodeTypesApi.getCommunityNodeTypes()) ?? [];
+		let communityTypes = (await nodeTypesApi.getCommunityNodeTypes()) ?? [];
+
+		const communityNodesStore = useCommunityNodesStore();
+
+		if (Object.keys(communityNodesStore.installedPackages).length === 0) {
+			await communityNodesStore.fetchInstalledPackages();
+		}
+
+		communityTypes = communityTypes.filter((nodeType) => {
+			verifiedNodeTypes.value.push(nodeType.name);
+			return !communityNodesStore.installedPackages[
+				nodeType.name.split('.')[0].replace('-preview', '')
+			];
+		});
 
 		if (nodeTypes.length) {
-			communityTypes.forEach((nodeType) => verifiedNodeTypes.value.push(nodeType.name));
 			setNodeTypes(nodeTypes.concat(communityTypes));
 		}
 	};

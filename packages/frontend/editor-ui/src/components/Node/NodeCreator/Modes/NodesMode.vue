@@ -35,7 +35,7 @@ import { useActions } from '../composables/useActions';
 import { SEND_AND_WAIT_OPERATION, type INodeParameters } from 'n8n-workflow';
 
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
-import { useCommunityNodesStore } from '@/stores/communityNodes.store';
+
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 export interface Props {
@@ -49,11 +49,6 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const uiStore = useUIStore();
 const rootStore = useRootStore();
-const communityNodesStore = useCommunityNodesStore();
-
-if (Object.keys(communityNodesStore.installedPackages).length === 0) {
-	await communityNodesStore.fetchInstalledPackages();
-}
 
 const { mergedNodes, actions, onSubcategorySelected } = useNodeCreatorStore();
 const { pushViewStack, popViewStack } = useViewStacks();
@@ -147,8 +142,8 @@ function onSelected(item: INodeCreateElement) {
 				iconType: iconUrl ? 'file' : 'icon',
 			};
 
-			const packageName = item.key.split('.')[0];
-			const installed = communityNodesStore.installedPackages[packageName] !== undefined;
+			const installed = !item.key.includes('-preview');
+			const packageName = item.key.split('.')[0].replace('-preview', '');
 			const verified = useNodeTypesStore().verifiedNodeTypes.includes(item.key);
 
 			const communityNodeDetails = {

@@ -132,7 +132,7 @@ const nodesPreview = [
 		name: 'n8n-nodes-preview-chatwoot.chatwoot',
 	},
 	{
-		displayName: 'Evolution API PREWIEW',
+		displayName: 'Evolution API Preview',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"]}}',
@@ -633,7 +633,8 @@ const nodesPreview = [
 				credentialDocumentation: [{ url: 'https://doc.evolution-api.com/api-reference' }],
 			},
 		},
-		iconUrl: 'icons/n8n-nodes-evolution-api/dist/nodes/EvolutionApi/evolutionapi.svg',
+		iconUrl:
+			'https://raw.githubusercontent.com/oriondesign2015/n8n-nodes-evolution-api/refs/heads/main/nodes/EvolutionApi/evolutionapi.svg',
 		name: 'n8n-nodes-preview-evolution-api.evolutionApi',
 	},
 	{
