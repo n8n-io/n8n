@@ -1,123 +1,87 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "deleted": {
+        "archived": {
             "type": "boolean"
         },
         "content": {
             "type": "string"
         },
-        "priority": {
-            "type": "null"
+        "deleted": {
+            "type": "boolean"
         },
         "folder": {
             "type": "object",
             "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
+                "access": {
+                    "type": "boolean"
                 },
                 "hidden": {
                     "type": "boolean"
                 },
-                "access": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "id",
-                "name",
-                "hidden",
-                "access"
-            ]
-        },
-        "space": {
-            "type": "object",
-            "properties": {
                 "id": {
                     "type": "string"
                 },
                 "name": {
                     "type": "string"
-                },
-                "access": {
-                    "type": "boolean"
                 }
-            },
-            "required": [
-                "id",
-                "name",
-                "access"
-            ]
+            }
+        },
+        "id": {
+            "type": "string"
         },
         "inbound_address": {
             "type": "string"
         },
-        "archived": {
-            "type": "boolean"
+        "name": {
+            "type": "string"
+        },
+        "permission_level": {
+            "type": "string"
+        },
+        "priority": {
+            "type": "null"
+        },
+        "space": {
+            "type": "object",
+            "properties": {
+                "access": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
         },
         "statuses": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "id": {
+                    "color": {
                         "type": "string"
                     },
-                    "status": {
+                    "id": {
                         "type": "string"
                     },
                     "orderindex": {
                         "type": "integer"
                     },
-                    "color": {
-                        "type": "string"
-                    },
-                    "type": {
+                    "status": {
                         "type": "string"
                     },
                     "status_group": {
                         "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
                     }
-                },
-                "required": [
-                    "id",
-                    "status",
-                    "orderindex",
-                    "color",
-                    "type",
-                    "status_group"
-                ]
+                }
             }
-        },
-        "permission_level": {
-            "type": "string"
         }
     },
-    "required": [
-        "id",
-        "name",
-        "deleted",
-        "orderindex",
-        "priority",
-        "assignee",
-        "due_date",
-        "start_date",
-        "folder",
-        "space",
-        "inbound_address",
-        "archived",
-        "override_statuses",
-        "statuses",
-        "permission_level"
-    ],
     "version": 1
 }
