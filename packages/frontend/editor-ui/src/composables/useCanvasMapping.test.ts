@@ -148,6 +148,10 @@ describe('useCanvasMapping', () => {
 							options: {
 								configurable: false,
 								configuration: false,
+								icon: {
+									src: '/nodes/test-node/icon.svg',
+									type: 'file',
+								},
 								trigger: true,
 								inputs: {
 									labelSize: 'small',
@@ -262,7 +266,7 @@ describe('useCanvasMapping', () => {
 		});
 
 		describe('render', () => {
-			it.only('should handle render options for default node type', () => {
+			it('should handle render options for default node type', () => {
 				const manualTriggerNode = mockNode({
 					name: 'Manual Trigger',
 					type: MANUAL_TRIGGER_NODE_TYPE,
