@@ -7,7 +7,7 @@ import type { ExecutionStatus, IRun, WorkflowExecuteMode } from 'n8n-workflow';
 import type { Project } from '@/databases/entities/project';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { IWorkflowDb } from '@/interfaces';
-import type { TypeUnits } from '@/modules/insights/entities/insights-shared';
+import type { TypeUnit } from '@/modules/insights/entities/insights-shared';
 import { InsightsMetadataRepository } from '@/modules/insights/repositories/insights-metadata.repository';
 import { InsightsRawRepository } from '@/modules/insights/repositories/insights-raw.repository';
 import { createTeamProject } from '@test-integration/db/projects';
@@ -74,7 +74,7 @@ describe('workflowExecuteAfterHandler', () => {
 		);
 	});
 
-	test.each<{ status: ExecutionStatus; type: TypeUnits }>([
+	test.each<{ status: ExecutionStatus; type: TypeUnit }>([
 		{ status: 'success', type: 'success' },
 		{ status: 'error', type: 'failure' },
 		{ status: 'crashed', type: 'failure' },

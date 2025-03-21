@@ -8,7 +8,7 @@ import { OnShutdown } from '@/decorators/on-shutdown';
 import { InsightsMetadata } from '@/modules/insights/entities/insights-metadata';
 import { InsightsRaw } from '@/modules/insights/entities/insights-raw';
 
-import type { TypeUnits } from './entities/insights-shared';
+import type { TypeUnit } from './entities/insights-shared';
 import { NumberToType } from './entities/insights-shared';
 import { InsightsConfig } from './insights.config';
 import { InsightsByPeriodRepository } from './repositories/insights-by-period.repository';
@@ -187,8 +187,8 @@ export class InsightsService {
 
 		// Initialize data structures for both periods
 		const data = {
-			current: { byType: {} as Record<TypeUnits, number> },
-			previous: { byType: {} as Record<TypeUnits, number> },
+			current: { byType: {} as Record<TypeUnit, number> },
+			previous: { byType: {} as Record<TypeUnit, number> },
 		};
 
 		// Organize data by period and type
@@ -200,7 +200,7 @@ export class InsightsService {
 		});
 
 		// Get values with defaults for missing data
-		const getValueByType = (period: 'current' | 'previous', type: TypeUnits) =>
+		const getValueByType = (period: 'current' | 'previous', type: TypeUnit) =>
 			data[period]?.byType[type] ?? 0;
 
 		// Calculate metrics
