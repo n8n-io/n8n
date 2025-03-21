@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, useCssModule } from 'vue';
 import { useRoute } from 'vue-router';
-import { smartDecimal } from '@n8n/utils/number/smartDecimal';
 import type { InsightsSummary } from '@n8n/api-types';
+import { smartDecimal } from '@n8n/utils/number/smartDecimal';
 import { VIEWS } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import type { InsightsSummaryDisplay } from '@/features/insights/insights.types';
