@@ -196,7 +196,9 @@ describe('SourceControlExportService', () => {
 	describe('exportFoldersToWorkFolder', () => {
 		it('should export folders to work folder', async () => {
 			// Arrange
-			folderRepository.find.mockResolvedValue([mock()]);
+			folderRepository.find.mockResolvedValue([
+				mock({ updatedAt: new Date(), createdAt: new Date() }),
+			]);
 			workflowRepository.find.mockResolvedValue([mock()]);
 
 			// Act

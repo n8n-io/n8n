@@ -226,7 +226,9 @@ describe('SourceControlImportService', () => {
 		it('should return data from DB', async () => {
 			// Arrange
 
-			folderRepository.find.mockResolvedValue([mock()]);
+			folderRepository.find.mockResolvedValue([
+				mock({ createdAt: new Date(), updatedAt: new Date() }),
+			]);
 			workflowRepository.find.mockResolvedValue([mock()]);
 
 			// Act

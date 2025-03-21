@@ -178,7 +178,10 @@ describe('SourceControlService', () => {
 			// Define a folder that does only exist locally.
 			// Pulling this would delete it so it should be marked as a conflict.
 			// Pushing this is conflict free.
-			const folder = mock<FolderWithWorkflowAndSubFolderCount>({ updatedAt: new Date() });
+			const folder = mock<FolderWithWorkflowAndSubFolderCount>({
+				updatedAt: new Date(),
+				createdAt: new Date(),
+			});
 			folderRepository.find.mockResolvedValue([folder]);
 			sourceControlImportService.getRemoteFoldersAndMappingsFromFile.mockResolvedValue({
 				folders: [],
