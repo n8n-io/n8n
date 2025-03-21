@@ -16,11 +16,11 @@ export const INSIGHTS_UNIT_MAPPING: Record<InsightsSummaryType, string> = {
 	averageRunTime: 's',
 } as const;
 
-export const enum INSIGHT_IMPACT_TYPES {
-	POSITIVE = 'positive',
-	NEGATIVE = 'negative',
-	NEUTRAL = 'neutral',
-}
+export const INSIGHT_IMPACT_TYPES = {
+	POSITIVE: 'positive',
+	NEGATIVE: 'negative',
+	NEUTRAL: 'neutral',
+} as const;
 
 export const INSIGHTS_UNIT_IMPACT_MAPPING: Record<InsightsSummaryType, INSIGHT_IMPACT_TYPES> = {
 	total: INSIGHT_IMPACT_TYPES.POSITIVE,
