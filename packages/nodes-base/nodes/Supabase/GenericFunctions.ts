@@ -26,6 +26,7 @@ export async function supabaseApiRequest(
 	const credentials = await this.getCredentials<{
 		host: string;
 		serviceRole: string;
+		schema: string;
 	}>('supabaseApi');
 
 	const options: IRequestOptions = {
@@ -41,6 +42,13 @@ export async function supabaseApiRequest(
 	try {
 		if (Object.keys(headers).length !== 0) {
 			options.headers = Object.assign({}, options.headers, headers);
+		}
+		if (options.headers) {
+			if (options.method && ['POST', 'PATCH', 'PUT', 'DELETE'].includes(options.method)) {
+				options.headers['Content-Profile'] = credentials.schema;
+			} else if (options.method && ['GET', 'HEAD'].includes(options.method)) {
+				options.headers['Accept-Profile'] = credentials.schema;
+			}
 		}
 		if (Object.keys(body).length === 0) {
 			delete options.body;
