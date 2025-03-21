@@ -28,6 +28,7 @@ describe('permissions', () => {
 			workersView: {},
 			workflow: {},
 			folder: {},
+			insights: {},
 		});
 	});
 	it('getResourcePermissions', () => {
