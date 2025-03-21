@@ -2,7 +2,6 @@
 import ConcurrentExecutionsHeader from '@/components/executions/ConcurrentExecutionsHeader.vue';
 import ExecutionsFilter from '@/components/executions/ExecutionsFilter.vue';
 import GlobalExecutionsListItem from '@/components/executions/global/GlobalExecutionsListItem.vue';
-import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useMessage } from '@/composables/useMessage';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
@@ -334,7 +333,7 @@ const goToUpgrade = () => {
 
 <template>
 	<div :class="$style.execListWrapper">
-		<ProjectHeader />
+		<slot />
 		<div :class="$style.execListHeaderControls">
 			<ExecutionsFilter
 				:workflows="workflows"
