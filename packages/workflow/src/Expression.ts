@@ -322,7 +322,6 @@ export class Expression {
 		// Execute the expression
 		const extendedExpression = extendSyntax(parameterValue);
 		const returnValue = this.renderExpression(extendedExpression, data);
-		console.log({ returnValue });
 		if (typeof returnValue === 'function') {
 			if (returnValue.name === '$') throw new ApplicationError('invalid syntax');
 
