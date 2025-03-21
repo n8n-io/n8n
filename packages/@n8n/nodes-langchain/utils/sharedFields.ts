@@ -1,4 +1,4 @@
-import { NodeConnectionType, type INodeProperties } from 'n8n-workflow';
+import { NodeConnectionTypes, type INodeProperties } from 'n8n-workflow';
 
 export const metadataFilterField: INodeProperties = {
 	displayName: 'Metadata Filter',
@@ -43,36 +43,36 @@ export function getTemplateNoticeField(templateId: number): INodeProperties {
 }
 
 const connectionsString = {
-	[NodeConnectionType.AiAgent]: {
+	[NodeConnectionTypes.AiAgent]: {
 		// Root AI view
 		connection: '',
 		locale: 'AI Agent',
 	},
-	[NodeConnectionType.AiChain]: {
+	[NodeConnectionTypes.AiChain]: {
 		// Root AI view
 		connection: '',
 		locale: 'AI Chain',
 	},
-	[NodeConnectionType.AiDocument]: {
-		connection: NodeConnectionType.AiDocument,
+	[NodeConnectionTypes.AiDocument]: {
+		connection: NodeConnectionTypes.AiDocument,
 		locale: 'Document Loader',
 	},
-	[NodeConnectionType.AiVectorStore]: {
-		connection: NodeConnectionType.AiVectorStore,
+	[NodeConnectionTypes.AiVectorStore]: {
+		connection: NodeConnectionTypes.AiVectorStore,
 		locale: 'Vector Store',
 	},
-	[NodeConnectionType.AiRetriever]: {
-		connection: NodeConnectionType.AiRetriever,
+	[NodeConnectionTypes.AiRetriever]: {
+		connection: NodeConnectionTypes.AiRetriever,
 		locale: 'Vector Store Retriever',
 	},
 };
 
 type AllowedConnectionTypes =
-	| NodeConnectionType.AiAgent
-	| NodeConnectionType.AiChain
-	| NodeConnectionType.AiDocument
-	| NodeConnectionType.AiVectorStore
-	| NodeConnectionType.AiRetriever;
+	| typeof NodeConnectionTypes.AiAgent
+	| typeof NodeConnectionTypes.AiChain
+	| typeof NodeConnectionTypes.AiDocument
+	| typeof NodeConnectionTypes.AiVectorStore
+	| typeof NodeConnectionTypes.AiRetriever;
 
 function determineArticle(nextWord: string): string {
 	// check if the next word starts with a vowel sound

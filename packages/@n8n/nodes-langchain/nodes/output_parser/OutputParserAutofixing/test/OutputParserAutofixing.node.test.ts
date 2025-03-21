@@ -5,8 +5,12 @@ import { OutputParserException } from '@langchain/core/output_parsers';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import { normalizeItems } from 'n8n-core';
-import type { ISupplyDataFunctions, IWorkflowDataProxyData } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import type {
+	ISupplyDataFunctions,
+	IWorkflowDataProxyData,
+	NodeConnectionType,
+} from 'n8n-workflow';
+import { ApplicationError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import type {
 	N8nOutputFixingParser,
@@ -34,8 +38,8 @@ describe('OutputParserAutofixing', () => {
 		thisArg.addInputData.mockReturnValue({ index: 0 });
 		thisArg.addOutputData.mockReturnValue();
 		thisArg.getInputConnectionData.mockImplementation(async (type: NodeConnectionType) => {
-			if (type === NodeConnectionType.AiLanguageModel) return mockModel;
-			if (type === NodeConnectionType.AiOutputParser) return mockStructuredOutputParser;
+			if (type === NodeConnectionTypes.AiLanguageModel) return mockModel;
+			if (type === NodeConnectionTypes.AiOutputParser) return mockStructuredOutputParser;
 
 			throw new ApplicationError('Unexpected connection type');
 		});
