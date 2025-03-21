@@ -22,7 +22,10 @@ export const INSIGHT_IMPACT_TYPES = {
 	NEUTRAL: 'neutral',
 } as const;
 
-export const INSIGHTS_UNIT_IMPACT_MAPPING: Record<InsightsSummaryType, INSIGHT_IMPACT_TYPES> = {
+export const INSIGHTS_UNIT_IMPACT_MAPPING: Record<
+	InsightsSummaryType,
+	(typeof INSIGHT_IMPACT_TYPES)[keyof typeof INSIGHT_IMPACT_TYPES]
+> = {
 	total: INSIGHT_IMPACT_TYPES.POSITIVE,
 	failed: INSIGHT_IMPACT_TYPES.NEGATIVE,
 	failureRate: INSIGHT_IMPACT_TYPES.NEGATIVE, // Higher failureRate is bad → negative (red)

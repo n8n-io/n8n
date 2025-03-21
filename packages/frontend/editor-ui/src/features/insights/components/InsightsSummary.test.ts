@@ -15,7 +15,7 @@ describe('InsightsSummary', () => {
 		).not.toThrow();
 	});
 
-	test.each([
+	test.each<InsightsSummaryDisplay[]>([
 		[
 			[
 				{ id: 'total', value: 525, deviation: 85, unit: '' },
