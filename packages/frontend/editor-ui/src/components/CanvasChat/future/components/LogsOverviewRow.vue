@@ -23,28 +23,41 @@ const runData = computed<ITaskData | undefined>(() =>
 );
 const type = computed(() => (node.value ? nodeTypeStore.getNodeType(node.value.type) : undefined));
 const depth = computed(() => (props.node.level ?? 1) - 1);
-const isLastChild = computed(() => {
-	const siblings = props.data.parent?.children ?? [];
 
-	return props.data === siblings[siblings.length - 1];
-});
+function isLastChild(level: number) {
+	let parent = props.data.parent;
+	let data: TreeNode | undefined = props.data;
+
+	for (let i = 0; i < depth.value - level; i++) {
+		data = parent;
+		parent = parent?.parent;
+	}
+
+	const siblings = parent?.children ?? [];
+
+	return data === siblings[siblings.length - 1];
+}
 </script>
 
 <template>
-	<div v-if="node !== undefined && runData !== undefined" :class="$style.container">
-		<div v-for="level in depth" :key="level" :class="$style.indent">
-			<div v-if="level === depth" :class="$style.connectorCurved" />
-			<!-- TODO: the condition below is incomplete -->
-			<div v-if="level !== depth || !isLastChild" :class="$style.connectorStraight" />
-		</div>
+	<div v-if="node !== undefined" :class="$style.container">
+		<template v-for="level in depth" :key="level">
+			<div
+				:class="{
+					[$style.indent]: true,
+					[$style.connectorCurved]: level === depth,
+					[$style.connectorStraight]: !isLastChild(level),
+				}"
+			/>
+		</template>
 		<div :class="$style.selectable">
 			<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
 			<N8nText tag="div" :bold="true" size="small" :class="$style.name">{{ node.name }}</N8nText>
 			<N8nText tag="div" color="text-light" size="small" :class="$style.attribute">{{
-				`${upperFirst(runData.executionStatus)} in ${runData.executionTime}ms`
+				`${upperFirst(runData?.executionStatus)} in ${runData?.executionTime}ms`
 			}}</N8nText>
 			<N8nText tag="div" color="text-light" size="small" :class="$style.attribute">{{
-				`Started ${new Date(runData.startTime).toLocaleString()}`
+				`Started ${new Date(runData?.startTime ?? 0).toLocaleString()}`
 			}}</N8nText>
 			<N8nText tag="div" color="text-light" size="small" :class="$style.attribute">{{
 				`${9999} Tokens`
@@ -96,24 +109,26 @@ const isLastChild = computed(() => {
 	align-self: stretch;
 	position: relative;
 	overflow: hidden;
-}
 
-.connectorCurved {
-	position: absolute;
-	left: var(--spacing-s);
-	bottom: var(--spacing-s);
-	border: 2px solid var(--color-canvas-dot);
-	width: var(--spacing-l);
-	height: var(--spacing-l);
-	border-radius: var(--border-radius-large);
-}
+	&.connectorCurved:before {
+		content: '';
+		position: absolute;
+		left: var(--spacing-s);
+		bottom: var(--spacing-s);
+		border: 2px solid var(--color-canvas-dot);
+		width: var(--spacing-l);
+		height: var(--spacing-l);
+		border-radius: var(--border-radius-large);
+	}
 
-.connectorStraight {
-	position: absolute;
-	left: var(--spacing-s);
-	top: 0;
-	border-left: 2px solid var(--color-canvas-dot);
-	height: 100%;
+	&.connectorStraight:after {
+		content: '';
+		position: absolute;
+		left: var(--spacing-s);
+		top: 0;
+		border-left: 2px solid var(--color-canvas-dot);
+		height: 100%;
+	}
 }
 
 .icon {
