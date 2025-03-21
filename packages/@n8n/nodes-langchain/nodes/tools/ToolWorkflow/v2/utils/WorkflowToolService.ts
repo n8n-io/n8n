@@ -21,7 +21,7 @@ import type {
 import {
 	generateZodSchema,
 	jsonParse,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	NodeOperationError,
 	parseErrorMetadata,
 	traverseNodeParameters,
@@ -113,7 +113,7 @@ export class WorkflowToolService {
 				}
 
 				void context.addOutputData(
-					NodeConnectionType.AiTool,
+					NodeConnectionTypes.AiTool,
 					localRunIndex,
 					[responseData],
 					metadata,
@@ -126,7 +126,7 @@ export class WorkflowToolService {
 
 				const metadata = parseErrorMetadata(error);
 				void context.addOutputData(
-					NodeConnectionType.AiTool,
+					NodeConnectionTypes.AiTool,
 					localRunIndex,
 					executionError,
 					metadata,

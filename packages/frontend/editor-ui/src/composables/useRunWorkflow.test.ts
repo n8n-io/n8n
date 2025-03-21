@@ -9,7 +9,7 @@ import {
 	type Workflow,
 	type IExecuteData,
 	type ITaskData,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeConnections,
 } from 'n8n-workflow';
 
@@ -340,12 +340,12 @@ describe('useRunWorkflow({ router })', () => {
 			];
 			vi.mocked(workflowsStore).outgoingConnectionsByNodeName.mockImplementation((nodeName) =>
 				nodeName === parentName
-					? { main: [[{ node: executeName, type: NodeConnectionType.Main, index: 0 }]] }
+					? { main: [[{ node: executeName, type: NodeConnectionTypes.Main, index: 0 }]] }
 					: ({} as INodeConnections),
 			);
 			vi.mocked(workflowsStore).incomingConnectionsByNodeName.mockImplementation((nodeName) =>
 				nodeName === executeName
-					? { main: [[{ node: parentName, type: NodeConnectionType.Main, index: 0 }]] }
+					? { main: [[{ node: parentName, type: NodeConnectionTypes.Main, index: 0 }]] }
 					: ({} as INodeConnections),
 			);
 			vi.mocked(workflowsStore).getWorkflowRunData = {

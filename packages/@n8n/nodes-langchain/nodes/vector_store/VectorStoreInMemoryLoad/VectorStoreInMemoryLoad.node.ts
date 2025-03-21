@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { Embeddings } from '@langchain/core/embeddings';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
@@ -43,11 +43,11 @@ export class VectorStoreInMemoryLoad implements INodeType {
 			{
 				displayName: 'Embedding',
 				maxConnections: 1,
-				type: NodeConnectionType.AiEmbedding,
+				type: NodeConnectionTypes.AiEmbedding,
 				required: true,
 			},
 		],
-		outputs: [NodeConnectionType.AiVectorStore],
+		outputs: [NodeConnectionTypes.AiVectorStore],
 		outputNames: ['Vector Store'],
 		properties: [
 			{
@@ -63,7 +63,7 @@ export class VectorStoreInMemoryLoad implements INodeType {
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const embeddings = (await this.getInputConnectionData(
-			NodeConnectionType.AiEmbedding,
+			NodeConnectionTypes.AiEmbedding,
 			itemIndex,
 		)) as Embeddings;
 

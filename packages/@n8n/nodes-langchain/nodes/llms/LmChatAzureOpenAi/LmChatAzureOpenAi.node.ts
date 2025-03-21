@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { AzureChatOpenAI } from '@langchain/openai';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
@@ -42,7 +42,7 @@ export class LmChatAzureOpenAi implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiLanguageModel],
+		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
 			{
@@ -51,7 +51,7 @@ export class LmChatAzureOpenAi implements INodeType {
 			},
 		],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
 			{
 				displayName:
 					'If using JSON response format, you must include word "json" in the prompt in your chain or agent. Also, make sure to select latest models released post November 2023.',

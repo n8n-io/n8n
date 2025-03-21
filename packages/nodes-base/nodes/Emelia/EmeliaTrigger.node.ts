@@ -1,5 +1,5 @@
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IDataObject,
 	type IHookFunctions,
 	type ILoadOptionsFunctions,
@@ -30,7 +30,7 @@ export class EmeliaTrigger implements INodeType {
 			name: 'Emelia Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'emeliaApi',

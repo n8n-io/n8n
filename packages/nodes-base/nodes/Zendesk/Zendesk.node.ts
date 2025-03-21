@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, NodeConnectionType } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, NodeConnectionTypes } from 'n8n-workflow';
 
 import { validateJSON, zendeskApiRequest, zendeskApiRequestAllItems } from './GenericFunctions';
 import { organizationFields, organizationOperations } from './OrganizationDescription';
@@ -30,8 +30,8 @@ export class Zendesk implements INodeType {
 			name: 'Zendesk',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'zendeskApi',

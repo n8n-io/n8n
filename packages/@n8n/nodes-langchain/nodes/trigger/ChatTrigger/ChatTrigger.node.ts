@@ -1,6 +1,6 @@
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import { pick } from 'lodash';
-import { Node, NodeConnectionType } from 'n8n-workflow';
+import { Node, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IWebhookFunctions,
@@ -70,12 +70,12 @@ export class ChatTrigger extends Node {
 				{
 					displayName: 'Memory',
 					maxConnections: 1,
-					type: '${NodeConnectionType.AiMemory}',
+					type: '${NodeConnectionTypes.AiMemory}',
 					required: true,
 				}
 			];
 		 })() }}`,
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
@@ -554,7 +554,7 @@ ${cssVariables}
 
 		if (bodyData.action === 'loadPreviousSession') {
 			if (options?.loadPreviousSession === 'memory') {
-				const memory = (await ctx.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
+				const memory = (await ctx.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
 					| BaseChatMemory
 					| undefined;
 				const messages = ((await memory?.chatHistory.getMessages()) ?? [])
