@@ -2,7 +2,7 @@ import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { logAiEvent } from '@utils/helpers';
 import type { N8nBinaryLoader } from '@utils/N8nBinaryLoader';
@@ -23,7 +23,7 @@ export async function handleInsertOperation<T extends VectorStore = VectorStore>
 	const nodeVersion = context.getNode().typeVersion;
 	// Get the input items and document data
 	const items = context.getInputData();
-	const documentInput = (await context.getInputConnectionData(NodeConnectionType.AiDocument, 0)) as
+	const documentInput = (await context.getInputConnectionData(NodeConnectionTypes.AiDocument, 0)) as
 		| N8nJsonLoader
 		| N8nBinaryLoader
 		| Array<Document<Record<string, unknown>>>;

@@ -9,8 +9,8 @@ import hljs from 'highlight.js/lib/core';
 import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
-import { NodeConnectionType } from 'n8n-workflow';
-import type { NodeError, IDataObject } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
+import type { NodeConnectionType, NodeError, IDataObject } from 'n8n-workflow';
 
 const props = defineProps<{
 	runData: IAiDataContent;
@@ -29,13 +29,16 @@ const contentParsed = ref(false);
 const parsedRun = ref(undefined as ParsedAiContent | undefined);
 function getInitialExpandedState() {
 	const collapsedTypes = {
-		input: [NodeConnectionType.AiDocument, NodeConnectionType.AiTextSplitter],
+		input: [
+			NodeConnectionTypes.AiDocument,
+			NodeConnectionTypes.AiTextSplitter,
+		] as NodeConnectionType[],
 		output: [
-			NodeConnectionType.AiDocument,
-			NodeConnectionType.AiEmbedding,
-			NodeConnectionType.AiTextSplitter,
-			NodeConnectionType.AiVectorStore,
-		],
+			NodeConnectionTypes.AiDocument,
+			NodeConnectionTypes.AiEmbedding,
+			NodeConnectionTypes.AiTextSplitter,
+			NodeConnectionTypes.AiVectorStore,
+		] as NodeConnectionType[],
 	};
 
 	return !collapsedTypes[props.runData.inOut].includes(props.runData.type);

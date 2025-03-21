@@ -4,7 +4,7 @@ import type { IExecutionResponse, INodeUi, Schema } from '@/Interface';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeExecutionData,
 	type ITaskDataConnections,
 } from 'n8n-workflow';
@@ -560,7 +560,7 @@ describe('useDataSchema', () => {
 		});
 
 		const mockExecutionDataMarker = Symbol() as unknown as INodeExecutionData[];
-		const Main = NodeConnectionType.Main;
+		const Main = NodeConnectionTypes.Main;
 
 		test.each<
 			[

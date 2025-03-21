@@ -3,7 +3,8 @@ import type {
 	EnterpriseEditionFeatureValue,
 	NodeCreatorOpenSource,
 } from './Interface';
-import { NodeConnectionType } from 'n8n-workflow';
+import type { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	CanvasInjectionData,
 	CanvasNodeHandleInjectionData,
@@ -301,9 +302,8 @@ export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fB
 
 // Node Connection Types
 export const NODE_CONNECTION_TYPE_ALLOW_MULTIPLE: NodeConnectionType[] = [
-	NodeConnectionType.AiTool,
-
-	NodeConnectionType.Main,
+	NodeConnectionTypes.AiTool,
+	NodeConnectionTypes.Main,
 ];
 
 // General
