@@ -1,53 +1,31 @@
 {
     "type": "object",
     "properties": {
-        "Name": {
-            "type": "string"
+        "Active": {
+            "type": "boolean"
         },
         "Description": {
             "type": "string"
         },
-        "Active": {
-            "type": "boolean"
+        "domain": {
+            "type": "string"
         },
         "FullyQualifiedName": {
             "type": "string"
         },
-        "Taxable": {
-            "type": "boolean"
-        },
-        "Type": {
+        "Id": {
             "type": "string"
         },
         "IncomeAccountRef": {
             "type": "object",
             "properties": {
-                "value": {
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
+                },
+                "value": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "value",
-                "name"
-            ]
-        },
-        "TrackQtyOnHand": {
-            "type": "boolean"
-        },
-        "domain": {
-            "type": "string"
-        },
-        "sparse": {
-            "type": "boolean"
-        },
-        "Id": {
-            "type": "string"
-        },
-        "SyncToken": {
-            "type": "string"
+            }
         },
         "MetaData": {
             "type": "object",
@@ -58,11 +36,25 @@
                 "LastUpdatedTime": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "CreateTime",
-                "LastUpdatedTime"
-            ]
+            }
+        },
+        "Name": {
+            "type": "string"
+        },
+        "sparse": {
+            "type": "boolean"
+        },
+        "SyncToken": {
+            "type": "string"
+        },
+        "Taxable": {
+            "type": "boolean"
+        },
+        "TrackQtyOnHand": {
+            "type": "boolean"
+        },
+        "Type": {
+            "type": "string"
         }
     },
     "version": 1

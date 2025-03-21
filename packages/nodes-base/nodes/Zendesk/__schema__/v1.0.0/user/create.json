@@ -1,59 +1,68 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "integer"
-        },
-        "url": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "created_at": {
-            "type": "string"
-        },
-        "updated_at": {
-            "type": "string"
-        },
-        "time_zone": {
-            "type": "string"
-        },
-        "iana_time_zone": {
-            "type": "string"
-        },
-        "photo": {
-            "type": "null"
-        },
-        "locale_id": {
-            "type": "integer"
-        },
-        "locale": {
-            "type": "string"
-        },
-        "organization_id": {
-            "type": "null"
-        },
-        "role": {
-            "type": "string"
-        },
-        "verified": {
+        "active": {
             "type": "boolean"
-        },
-        "last_active": {
-            "type": "string"
-        },
-        "tags": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
         },
         "alias": {
             "type": "null"
         },
-        "active": {
+        "created_at": {
+            "type": "string"
+        },
+        "custom_role_id": {
+            "type": "null"
+        },
+        "default_group_id": {
+            "type": "null"
+        },
+        "details": {
+            "type": "null"
+        },
+        "iana_time_zone": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "last_active": {
+            "type": "string"
+        },
+        "last_login_at": {
+            "type": "null"
+        },
+        "locale": {
+            "type": "string"
+        },
+        "locale_id": {
+            "type": "integer"
+        },
+        "moderator": {
             "type": "boolean"
+        },
+        "name": {
+            "type": "string"
+        },
+        "only_private_comments": {
+            "type": "boolean"
+        },
+        "organization_id": {
+            "type": "null"
+        },
+        "photo": {
+            "type": "null"
+        },
+        "report_csv": {
+            "type": "boolean"
+        },
+        "restricted_agent": {
+            "type": "boolean"
+        },
+        "role": {
+            "type": "string"
+        },
+        "role_type": {
+            "type": "null"
         },
         "shared": {
             "type": "boolean"
@@ -61,43 +70,34 @@
         "shared_agent": {
             "type": "boolean"
         },
-        "last_login_at": {
-            "type": "null"
-        },
-        "two_factor_auth_enabled": {
-            "type": "null"
-        },
         "signature": {
             "type": "null"
-        },
-        "details": {
-            "type": "null"
-        },
-        "role_type": {
-            "type": "null"
-        },
-        "custom_role_id": {
-            "type": "null"
-        },
-        "moderator": {
-            "type": "boolean"
-        },
-        "ticket_restriction": {
-            "type": "string"
-        },
-        "only_private_comments": {
-            "type": "boolean"
-        },
-        "restricted_agent": {
-            "type": "boolean"
         },
         "suspended": {
             "type": "boolean"
         },
-        "default_group_id": {
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "ticket_restriction": {
+            "type": "string"
+        },
+        "time_zone": {
+            "type": "string"
+        },
+        "two_factor_auth_enabled": {
             "type": "null"
         },
-        "report_csv": {
+        "updated_at": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
+        },
+        "verified": {
             "type": "boolean"
         }
     },

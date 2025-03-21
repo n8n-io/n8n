@@ -7,68 +7,38 @@
         "result": {
             "type": "object",
             "properties": {
-                "message_id": {
-                    "type": "integer"
-                },
-                "from": {
+                "chat": {
                     "type": "object",
                     "properties": {
+                        "first_name": {
+                            "type": "string"
+                        },
                         "id": {
                             "type": "integer"
                         },
-                        "is_bot": {
-                            "type": "boolean"
+                        "last_name": {
+                            "type": "string"
                         },
-                        "first_name": {
+                        "type": {
                             "type": "string"
                         },
                         "username": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "id",
-                        "is_bot",
-                        "first_name",
-                        "username"
-                    ]
-                },
-                "chat": {
-                    "type": "object",
-                    "properties": {
-                        "id": {
-                            "type": "integer"
-                        },
-                        "type": {
-                            "type": "string"
-                        },
-                        "first_name": {
-                            "type": "string"
-                        },
-                        "last_name": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "id",
-                        "type"
-                    ]
+                    }
                 },
                 "date": {
                     "type": "integer"
-                },
-                "text": {
-                    "type": "string"
                 },
                 "entities": {
                     "type": "array",
                     "items": {
                         "type": "object",
                         "properties": {
-                            "offset": {
+                            "length": {
                                 "type": "integer"
                             },
-                            "length": {
+                            "offset": {
                                 "type": "integer"
                             },
                             "type": {
@@ -77,26 +47,34 @@
                             "url": {
                                 "type": "string"
                             }
-                        },
-                        "required": [
-                            "offset",
-                            "length",
-                            "type"
-                        ]
+                        }
                     }
+                },
+                "from": {
+                    "type": "object",
+                    "properties": {
+                        "first_name": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "integer"
+                        },
+                        "is_bot": {
+                            "type": "boolean"
+                        },
+                        "username": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "message_id": {
+                    "type": "integer"
+                },
+                "text": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "message_id",
-                "chat",
-                "date",
-                "text"
-            ]
+            }
         }
     },
-    "required": [
-        "ok",
-        "result"
-    ],
     "version": 1
 }

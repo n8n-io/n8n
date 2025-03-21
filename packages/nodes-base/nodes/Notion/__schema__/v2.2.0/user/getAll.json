@@ -1,16 +1,13 @@
 {
     "type": "object",
     "properties": {
-        "object": {
-            "type": "string"
-        },
         "id": {
             "type": "string"
         },
         "name": {
             "type": "string"
         },
-        "type": {
+        "object": {
             "type": "string"
         },
         "person": {
@@ -19,10 +16,10 @@
                 "email": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "email"
-            ]
+            }
+        },
+        "type": {
+            "type": "string"
         }
     },
     "version": 1

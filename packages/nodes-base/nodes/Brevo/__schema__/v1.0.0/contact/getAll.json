@@ -1,23 +1,25 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "integer"
-        },
-        "emailBlacklisted": {
-            "type": "boolean"
-        },
-        "smsBlacklisted": {
-            "type": "boolean"
+        "attributes": {
+            "type": "object",
+            "properties": {
+                "SMS": {
+                    "type": "string"
+                }
+            }
         },
         "createdAt": {
             "type": "string"
         },
-        "modifiedAt": {
-            "type": "string"
-        },
         "email": {
             "type": "string"
+        },
+        "emailBlacklisted": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "integer"
         },
         "listIds": {
             "type": "array",
@@ -28,27 +30,12 @@
         "listUnsubscribed": {
             "type": "null"
         },
-        "attributes": {
-            "type": "object",
-            "properties": {
-                "SMS": {
-                    "type": "string"
-                },
-                "FIRSTNAME": {
-                    "type": "string"
-                }
-            }
+        "modifiedAt": {
+            "type": "string"
+        },
+        "smsBlacklisted": {
+            "type": "boolean"
         }
     },
-    "required": [
-        "id",
-        "emailBlacklisted",
-        "smsBlacklisted",
-        "createdAt",
-        "modifiedAt",
-        "listIds",
-        "listUnsubscribed",
-        "attributes"
-    ],
     "version": 1
 }

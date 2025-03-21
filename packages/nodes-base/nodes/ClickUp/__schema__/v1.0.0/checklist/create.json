@@ -4,9 +4,6 @@
         "id": {
             "type": "string"
         },
-        "task_id": {
-            "type": "string"
-        },
         "name": {
             "type": "string"
         },
@@ -16,18 +13,12 @@
         "resolved": {
             "type": "integer"
         },
+        "task_id": {
+            "type": "string"
+        },
         "unresolved": {
             "type": "integer"
         }
     },
-    "required": [
-        "id",
-        "task_id",
-        "name",
-        "orderindex",
-        "resolved",
-        "unresolved",
-        "items"
-    ],
     "version": 1
 }
