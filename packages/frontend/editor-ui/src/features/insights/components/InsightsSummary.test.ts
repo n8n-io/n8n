@@ -16,6 +16,7 @@ describe('InsightsSummary', () => {
 	});
 
 	test.each<InsightsSummaryDisplay[]>([
+		[[]],
 		[
 			[
 				{ id: 'total', value: 525, deviation: 85, unit: '' },

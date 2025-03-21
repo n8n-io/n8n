@@ -1,6 +1,8 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`InsightsSummary > should render the summary correctly 1`] = `
+exports[`InsightsSummary > should render the summary correctly 1`] = `"<!--v-if-->"`;
+
+exports[`InsightsSummary > should render the summary correctly 2`] = `
 "<div class="insights">
   <h3 class="n8n-heading text-light size-small bold mb-xs mb-xs">Production executions for the last 7 days</h3>
   <ul data-test-id="insights-summary-tabs">
@@ -23,7 +25,7 @@ exports[`InsightsSummary > should render the summary correctly 1`] = `
 </div>"
 `;
 
-exports[`InsightsSummary > should render the summary correctly 2`] = `
+exports[`InsightsSummary > should render the summary correctly 3`] = `
 "<div class="insights">
   <h3 class="n8n-heading text-light size-small bold mb-xs mb-xs">Production executions for the last 7 days</h3>
   <ul data-test-id="insights-summary-tabs">
@@ -49,7 +51,7 @@ exports[`InsightsSummary > should render the summary correctly 2`] = `
 </div>"
 `;
 
-exports[`InsightsSummary > should render the summary correctly 3`] = `
+exports[`InsightsSummary > should render the summary correctly 4`] = `
 "<div class="insights">
   <h3 class="n8n-heading text-light size-small bold mb-xs mb-xs">Production executions for the last 7 days</h3>
   <ul data-test-id="insights-summary-tabs">

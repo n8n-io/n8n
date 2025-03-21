@@ -42,7 +42,7 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 </script>
 
 <template>
-	<div :class="$style.insights">
+	<div v-if="summary.length" :class="$style.insights">
 		<N8nHeading bold tag="h3" size="small" color="text-light" class="mb-xs">{{
 			i18n.baseText('insights.banner.title', { interpolate: { count: 7 } })
 		}}</N8nHeading>

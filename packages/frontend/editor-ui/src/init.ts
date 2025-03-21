@@ -29,12 +29,10 @@ export async function initializeCore() {
 	const settingsStore = useSettingsStore();
 	const usersStore = useUsersStore();
 	const versionsStore = useVersionsStore();
-	const insightsStore = useInsightsStore();
 
 	await settingsStore.initialize();
 
 	void useExternalHooks().run('app.mount');
-	void insightsStore.summary.execute();
 
 	if (!settingsStore.isPreviewMode) {
 		await usersStore.initialize();
@@ -69,6 +67,7 @@ export async function initializeAuthenticatedFeatures(
 	const cloudPlanStore = useCloudPlanStore();
 	const projectsStore = useProjectsStore();
 	const rolesStore = useRolesStore();
+	const insightsStore = useInsightsStore();
 
 	if (sourceControlStore.isEnterpriseSourceControlEnabled) {
 		try {
@@ -106,6 +105,7 @@ export async function initializeAuthenticatedFeatures(
 		projectsStore.getPersonalProject(),
 		projectsStore.getProjectsCount(),
 		rolesStore.fetchRoles(),
+		insightsStore.summary.execute(),
 	]);
 
 	authenticatedFeaturesInitialized = true;
