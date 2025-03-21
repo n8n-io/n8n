@@ -187,9 +187,9 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			dbType === 'sqlite'
 				? sql`
 						SELECT
-							strftime('%s', datetime('now', '-7 days')) AS current_start,
-							strftime('%s', datetime('now')) AS current_end,
-							strftime('%s', datetime('now', '-14 days')) AS previous_start
+							datetime('now', '-7 days') AS current_start,
+							datetime('now') AS current_end,
+							datetime('now', '-14 days') AS previous_start
 					`
 				: dbType === 'postgresdb'
 					? sql`

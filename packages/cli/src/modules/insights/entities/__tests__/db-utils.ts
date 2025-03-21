@@ -1,4 +1,3 @@
-import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { DateTime } from 'luxon';
 import type { IWorkflowBase } from 'n8n-workflow';
@@ -19,8 +18,6 @@ async function getWorkflowSharing(workflow: IWorkflowBase) {
 		relations: { project: true },
 	});
 }
-export const { type: dbType } = Container.get(GlobalConfig).database;
-
 export const { type: dbType } = Container.get(GlobalConfig).database;
 
 export async function createMetadata(workflow: WorkflowEntity) {
@@ -64,11 +61,7 @@ export async function createRawInsightsEvent(
 	event.type = parameters.type;
 	event.value = parameters.value;
 	if (parameters.timestamp) {
-		if (dbType === 'sqlite') {
-			event.timestamp = parameters.timestamp.toUTC().toSeconds() as any;
-		} else {
-			event.timestamp = parameters.timestamp.toUTC().toJSDate();
-		}
+		event.timestamp = parameters.timestamp.toUTC().toJSDate();
 	}
 	return await insightsRawRepository.save(event);
 }
