@@ -1,10 +1,10 @@
 import { Service } from '@n8n/di';
 import type express from 'express';
 import { Logger } from 'n8n-core';
+import type { INodes, IWorkflowBase } from 'n8n-workflow';
 import {
+	createDeferredPromise,
 	FORM_NODE_TYPE,
-	type INodes,
-	type IWorkflowBase,
 	SEND_AND_WAIT_OPERATION,
 	WAIT_NODE_TYPE,
 	Workflow,
@@ -20,7 +20,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 
 import { WebhookService } from './webhook.service';
 import type {
-	IWebhookResponseCallbackData,
+	IWebhookResponsePromiseData,
 	IWebhookManager,
 	WaitingWebhookRequest,
 } from './webhook.types';
@@ -81,10 +81,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		});
 	}
 
-	async executeWebhook(
-		req: WaitingWebhookRequest,
-		res: express.Response,
-	): Promise<IWebhookResponseCallbackData> {
+	async executeWebhook(req: WaitingWebhookRequest, res: express.Response): Promise<void> {
 		const { path: executionId, suffix } = req.params;
 
 		this.logReceivedWebhook(req.method, executionId);
@@ -113,7 +110,7 @@ export class WaitingWebhooks implements IWebhookManager {
 			const { nodes } = this.createWorkflow(workflowData);
 			if (this.isSendAndWaitRequest(nodes, suffix)) {
 				res.render('send-and-wait-no-action-required', { isTestWebhook: false });
-				return { noWebhookResponse: true };
+				return;
 			} else {
 				throw new ConflictError(`The execution "${executionId} has finished already.`);
 			}
@@ -127,7 +124,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		 */
 		if (execution.mode === 'manual') execution.data.isTestWebhook = true;
 
-		return await this.getWebhookExecutionData({
+		await this.getWebhookExecutionData({
 			execution,
 			req,
 			res,
@@ -151,7 +148,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		lastNodeExecuted: string;
 		executionId: string;
 		suffix?: string;
-	}): Promise<IWebhookResponseCallbackData> {
+	}): Promise<void> {
 		// Set the node as disabled so that the data does not get executed again as it would result
 		// in starting the wait all over again
 		this.disableNode(execution, req.method);
@@ -188,7 +185,7 @@ export class WaitingWebhooks implements IWebhookManager {
 
 			if (this.isSendAndWaitRequest(workflow.nodes, suffix)) {
 				res.render('send-and-wait-no-action-required', { isTestWebhook: false });
-				return { noWebhookResponse: true };
+				return;
 			}
 
 			if (!execution.data.resultData.error && execution.status === 'waiting') {
@@ -203,7 +200,7 @@ export class WaitingWebhooks implements IWebhookManager {
 				);
 
 				if (hasChildForms) {
-					return { noWebhookResponse: true };
+					return;
 				}
 			}
 
@@ -212,27 +209,20 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		const runExecutionData = execution.data;
 
-		return await new Promise((resolve, reject) => {
-			const executionMode = 'webhook';
-			void WebhookHelpers.executeWebhook(
-				workflow,
-				webhookData,
-				workflowData,
-				workflowStartNode,
-				executionMode,
-				runExecutionData.pushRef,
-				runExecutionData,
-				execution.id,
-				req,
-				res,
-
-				(error: Error | null, data: object) => {
-					if (error !== null) {
-						return reject(error);
-					}
-					resolve(data);
-				},
-			);
-		});
+		const executionMode = 'webhook';
+		const responsePromise = createDeferredPromise<IWebhookResponsePromiseData>();
+		await WebhookHelpers.executeWebhook(
+			workflow,
+			webhookData,
+			workflowData,
+			workflowStartNode,
+			executionMode,
+			runExecutionData.pushRef,
+			runExecutionData,
+			execution.id,
+			req,
+			res,
+			responsePromise,
+		);
 	}
 }
