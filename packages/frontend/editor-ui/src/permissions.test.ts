@@ -124,7 +124,6 @@ describe('permissions', () => {
 			},
 			insights: {
 				list: true,
-				read: true,
 			},
 		};
 
