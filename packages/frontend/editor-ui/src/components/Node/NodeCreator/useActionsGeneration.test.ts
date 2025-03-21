@@ -1,4 +1,4 @@
-import { NodeConnectionType, type INodeProperties, type INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionTypes, type INodeProperties, type INodeTypeDescription } from 'n8n-workflow';
 import { useActionsGenerator } from './composables/useActionsGeneration';
 
 describe('useActionsGenerator', () => {
@@ -14,8 +14,8 @@ describe('useActionsGenerator', () => {
 		defaults: {
 			name: 'Test',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [],
 	};
 

@@ -1,4 +1,4 @@
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import * as Helpers from '@test/nodes/Helpers';
@@ -60,7 +60,7 @@ describe('Peekalink Node', () => {
 								[
 									{
 										node: 'Peekalink',
-										type: NodeConnectionType.Main,
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 								],
@@ -132,7 +132,7 @@ describe('Peekalink Node', () => {
 								[
 									{
 										node: 'Peekalink',
-										type: NodeConnectionType.Main,
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 								],

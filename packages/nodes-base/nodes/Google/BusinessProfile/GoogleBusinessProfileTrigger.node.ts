@@ -1,6 +1,6 @@
 import {
 	NodeApiError,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IPollFunctions,
 	type IDataObject,
 	type INodeExecutionData,
@@ -31,7 +31,7 @@ export class GoogleBusinessProfileTrigger implements INodeType {
 		],
 		polling: true,
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Event',

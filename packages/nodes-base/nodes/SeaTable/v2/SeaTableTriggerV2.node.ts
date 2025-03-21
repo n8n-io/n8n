@@ -4,7 +4,7 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeTypeBaseDescription,
 	type IDataObject,
 } from 'n8n-workflow';
@@ -42,7 +42,7 @@ export class SeaTableTriggerV2 implements INodeType {
 			],
 			polling: true,
 			inputs: [],
-			outputs: [NodeConnectionType.Main],
+			outputs: [NodeConnectionTypes.Main],
 			properties: [
 				{
 					displayName: 'Event',

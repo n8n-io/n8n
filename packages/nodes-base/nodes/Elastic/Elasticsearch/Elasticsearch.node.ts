@@ -7,7 +7,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionType, jsonParse, NodeApiError } from 'n8n-workflow';
+import { NodeConnectionTypes, jsonParse, NodeApiError } from 'n8n-workflow';
 
 import { documentFields, documentOperations, indexFields, indexOperations } from './descriptions';
 import {
@@ -30,8 +30,8 @@ export class Elasticsearch implements INodeType {
 			name: 'Elasticsearch',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'elasticsearchApi',

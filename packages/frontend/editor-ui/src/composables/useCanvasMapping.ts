@@ -38,7 +38,7 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	NodeHelpers,
 	SEND_AND_WAIT_OPERATION,
 	WAIT_INDEFINITELY,
@@ -194,7 +194,7 @@ export function useCanvasMapping({
 		const labelSizes: CanvasNodeDefaultRenderLabelSize[] = ['small', 'medium', 'large'];
 		const labelSizeIndexes = ports.reduce<number[]>(
 			(sizeAcc, input) => {
-				if (input.type === NodeConnectionType.Main) {
+				if (input.type === NodeConnectionTypes.Main) {
 					sizeAcc.push(getLabelSize(input.label ?? ''));
 				}
 
