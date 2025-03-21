@@ -4,6 +4,7 @@ import { Line, Bar } from 'vue-chartjs';
 import { Filler, type ChartOptions, type ChartData } from 'chart.js';
 import { useCssVar, useAsyncState } from '@vueuse/core';
 import { useRoute, useRouter, type LocationQuery } from 'vue-router';
+import type { InsightsSummaryType } from '@n8n/api-types';
 import {
 	lineDatasetWithGradient,
 	dashedLineDatasetWithGradient,
@@ -11,12 +12,14 @@ import {
 	useLegendPlugin,
 	generateLineChartOptions,
 	generateBarChartOptions,
-} from './chartjs.utils';
+} from '@/features/insights/chartjs.utils';
 import { useInsightsStore } from '@/features/insights/insights.store';
 import InsightsSummary from '@/features/insights/InsightsSummary.vue';
+
 const props = defineProps<{
-	insightType: string;
+	insightType: InsightsSummaryType;
 }>();
+
 const route = useRoute();
 const router = useRouter();
 type Filter = { time_span: string };
@@ -53,23 +56,12 @@ const timeOptions = [
 ];
 const colorPrimary = useCssVar('--color-primary', document.body);
 const insightsStore = useInsightsStore();
-const { state: summaries, execute: fetchSummary } = useAsyncState(
-	async () => await insightsStore.fetchSummary(),
-	[],
-	{
-		immediate: true,
-	},
-);
+
 watch(
 	() => filters.value.time_span,
-	async () => await fetchSummary(),
+	async () => await insightsStore.summary.execute(),
 );
-const tabs = computed(() =>
-	summaries.value.map((summary) => ({
-		...summary,
-		to: { params: { insightType: summary.id }, query: route.query },
-	})),
-);
+
 const {
 	state: counts,
 	execute: fetchCounts,
@@ -246,7 +238,10 @@ const rows = ref(
 		</div>
 
 		<div>
-			<InsightsSummary :summaries="tabs" />
+			<InsightsSummary
+				:summary="insightsStore.summary.state"
+				:loading="insightsStore.summary.isLoading"
+			/>
 			<div class="content">
 				<div style="height: 292px">
 					<template v-if="isLoadingCounts"> loading </template>
@@ -294,7 +289,7 @@ const rows = ref(
 								:plugins="[Filler, LegendPlugin]"
 							/>
 						</template>
-						<template v-if="insightType === 'runTime'">
+						<template v-if="insightType === 'averageRunTime'">
 							<div class="callout">
 								<N8nIcon icon="lock" size="size"></N8nIcon>
 								<N8nText bold tag="h3" size="large"

@@ -1,20 +1,23 @@
 <script setup lang="ts">
 import { computed, useCssModule } from 'vue';
+import { useRoute } from 'vue-router';
 import { smartDecimal } from '@n8n/utils/number/smartDecimal';
-import { useI18n } from '@/composables/useI18n';
 import type { InsightsSummary } from '@n8n/api-types';
+import { VIEWS } from '@/constants';
+import { useI18n } from '@/composables/useI18n';
 import type { InsightsSummaryDisplay } from '@/features/insights/insights.types';
 import {
 	INSIGHT_IMPACT_TYPES,
 	INSIGHTS_UNIT_IMPACT_MAPPING,
 } from '@/features/insights/insights.constants';
 
-defineProps<{
+const props = defineProps<{
 	summary: InsightsSummaryDisplay;
 	loading?: boolean;
 }>();
 
 const i18n = useI18n();
+const route = useRoute();
 const $style = useCssModule();
 
 const summaryTitles = computed<Record<keyof InsightsSummary, string>>(() => ({
@@ -24,6 +27,13 @@ const summaryTitles = computed<Record<keyof InsightsSummary, string>>(() => ({
 	timeSaved: i18n.baseText('insights.banner.title.timeSaved'),
 	averageRunTime: i18n.baseText('insights.banner.title.averageRunTime'),
 }));
+
+const summaryWithRouteLocations = computed(() =>
+	props.summary.map((s) => ({
+		...s,
+		to: { name: VIEWS.INSIGHTS, params: { insightType: s.id }, query: route.query },
+	})),
+);
 
 const getSign = (n: number) => (n > 0 ? '+' : undefined);
 const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
@@ -49,7 +59,7 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 		<N8nLoading v-if="loading" :class="$style.loading" :cols="5" />
 		<ul v-else data-test-id="insights-summary-tabs">
 			<li
-				v-for="{ id, value, deviation, unit } in summary"
+				v-for="{ id, value, deviation, unit, to } in summaryWithRouteLocations"
 				:key="id"
 				:data-test-id="`insights-summary-tab-${id}`"
 			>
