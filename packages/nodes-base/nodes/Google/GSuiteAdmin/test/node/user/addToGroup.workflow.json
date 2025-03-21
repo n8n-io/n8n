@@ -1,0 +1,43 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"operation": "addToGroup",
+				"userId": {
+					"__rl": true,
+					"value": "114393134535981252528",
+					"mode": "list",
+					"cachedResultName": "NewOne User"
+				},
+				"groupId": {
+					"__rl": true,
+					"value": "01302m922pmp3e4",
+					"mode": "list",
+					"cachedResultName": "new"
+				}
+			},
+			"type": "n8n-nodes-base.gSuiteAdmin",
+			"typeVersion": 1,
+			"position": [-800, 1160],
+			"id": "136e2e63-90d2-41bd-9853-36e84601233d",
+			"name": "Add To Group",
+			"credentials": {
+				"gSuiteAdminOAuth2Api": {
+					"id": "OXfPMaggXFJ0RLkw",
+					"name": "Google Workspace Admin account"
+				}
+			}
+		}
+	],
+	"connections": {},
+	"pinData": {
+		"Add To Group": [
+			{
+				"added": true
+			}
+		]
+	},
+	"meta": {
+		"instanceId": "89e65be0357665f2979194b835f6d640a06bafcde3fe7370430baa3de4d0a22d"
+	}
+}

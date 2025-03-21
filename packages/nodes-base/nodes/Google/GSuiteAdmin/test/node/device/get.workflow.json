@@ -1,0 +1,55 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"resource": "device",
+				"deviceId": {
+					"__rl": true,
+					"value": "9999ffff-7aa7-4444-8555-f7de48484b4a",
+					"mode": "list",
+					"cachedResultName": "5DD1155DD44"
+				}
+			},
+			"type": "n8n-nodes-base.gSuiteAdmin",
+			"typeVersion": 1,
+			"position": [-400, -160],
+			"id": "069dd01e-cf17-4817-bc1d-92eb256b3f8c",
+			"name": "Get Device",
+			"credentials": {
+				"gSuiteAdminOAuth2Api": {
+					"id": "OXfPMaggXFJ0RLkw",
+					"name": "Google Workspace Admin account"
+				}
+			}
+		}
+	],
+	"connections": {},
+	"pinData": {
+		"Get Device": [
+			{
+				"kind": "admin#directory#chromeosdevice",
+				"etag": "\"6aJ8FaadqGNnNxXYrlQq-KK55AttR_AihQSbYcusikU/4cn5DGy7Rq3p932xo9lUxrwisdk\"",
+				"deviceId": "9999ffff-7aa7-4444-8555-f7de48484b4a",
+				"serialNumber": "5DD1155DD44",
+				"status": "DISABLED",
+				"lastSync": "2025-02-12T07:17:16.950Z",
+				"annotatedUser": "my user",
+				"annotatedLocation": "test",
+				"annotatedAssetId": "1234567788",
+				"notes": "test",
+				"orgUnitPath": "/",
+				"orgUnitId": "00pp8a2z1uu85pp",
+				"extendedSupportEligible": false,
+				"chromeOsType": "chromeOs",
+				"diskSpaceUsage": {
+					"capacityBytes": "549755813888",
+					"usedBytes": "549755813888"
+				}
+			}
+		]
+	},
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "89e65be0357665f2979194b835f6d640a06bafcde3fe7370430baa3de4d0a22d"
+	}
+}
