@@ -351,6 +351,13 @@ sourceControlStore.$onAction(({ name, after }) => {
 	after(async () => await initialize());
 });
 
+const onWorkflowDeleted = async () => {
+	await Promise.all([
+		fetchWorkflows(),
+		foldersStore.fetchTotalWorkflowsAndFoldersCount(route.params.projectId as string | undefined),
+	]);
+};
+
 const onFolderDeleted = async (payload: {
 	folderId: string;
 	workflowCount: number;
@@ -359,6 +366,9 @@ const onFolderDeleted = async (payload: {
 	const folderInfo = foldersStore.getCachedFolder(payload.folderId);
 	foldersStore.deleteFoldersFromCache([payload.folderId, folderInfo?.parentFolder ?? '']);
 	// If the deleted folder is the current folder, navigate to the parent folder
+	await foldersStore.fetchTotalWorkflowsAndFoldersCount(
+		route.params.projectId as string | undefined,
+	);
 
 	if (currentFolderId.value === payload.folderId) {
 		void router.push({
@@ -1303,7 +1313,7 @@ const onCreateWorkflowClick = () => {
 				:workflow-list-event-bus="workflowListEventBus"
 				:read-only="readOnlyEnv"
 				@click:tag="onClickTag"
-				@workflow:deleted="fetchWorkflows"
+				@workflow:deleted="onWorkflowDeleted"
 				@workflow:moved="fetchWorkflows"
 				@workflow:duplicated="fetchWorkflows"
 				@workflow:active-toggle="onWorkflowActiveToggle"
