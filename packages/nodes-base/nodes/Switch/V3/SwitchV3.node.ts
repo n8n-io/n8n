@@ -23,21 +23,21 @@ const configuredOutputs = (parameters: INodeParameters) => {
 
 	if (mode === 'expression') {
 		return Array.from({ length: parameters.numberOutputs as number }, (_, i) => ({
-			type: `${NodeConnectionTypes.Main}`,
+			type: 'main',
 			displayName: i.toString(),
 		}));
 	} else {
 		const rules = ((parameters.rules as IDataObject)?.values as IDataObject[]) ?? [];
 		const ruleOutputs = rules.map((rule, index) => {
 			return {
-				type: `${NodeConnectionTypes.Main}`,
+				type: 'main',
 				displayName: rule.outputKey || index.toString(),
 			};
 		});
 		if ((parameters.options as IDataObject)?.fallbackOutput === 'extra') {
 			const renameFallbackOutput = (parameters.options as IDataObject)?.renameFallbackOutput;
 			ruleOutputs.push({
-				type: `${NodeConnectionTypes.Main}`,
+				type: 'main',
 				displayName: renameFallbackOutput || 'Fallback',
 			});
 		}
