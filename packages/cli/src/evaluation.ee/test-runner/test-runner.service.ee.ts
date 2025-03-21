@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { parse } from 'flatted';
 import { ErrorReporter, Logger } from 'n8n-core';
-import { ExecutionCancelledError, NodeConnectionType, Workflow } from 'n8n-workflow';
+import { ExecutionCancelledError, NodeConnectionTypes, Workflow } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IRun,
@@ -128,7 +128,7 @@ export class TestRunnerService {
 
 		// Start nodes are the nodes that are connected to the trigger node
 		const startNodes = workflowInstance
-			.getChildNodes(triggerNode, NodeConnectionType.Main, 1)
+			.getChildNodes(triggerNode, NodeConnectionTypes.Main, 1)
 			.map((nodeName) => ({
 				name: nodeName,
 				sourceData: { previousNode: pastExecutionTriggerNode },

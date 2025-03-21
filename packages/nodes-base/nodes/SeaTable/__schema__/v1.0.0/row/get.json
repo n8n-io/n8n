@@ -4,6 +4,9 @@
         "_archived": {
             "type": "boolean"
         },
+        "_ctime": {
+            "type": "string"
+        },
         "_id": {
             "type": "string"
         },
@@ -14,9 +17,6 @@
             "type": "null"
         },
         "_mtime": {
-            "type": "string"
-        },
-        "_ctime": {
             "type": "string"
         }
     },

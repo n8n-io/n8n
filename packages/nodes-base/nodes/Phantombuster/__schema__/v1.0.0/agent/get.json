@@ -1,61 +1,55 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "scriptOrgName": {
-            "type": "string"
-        },
-        "scriptId": {
-            "type": "string"
-        },
-        "script": {
+        "argument": {
             "type": "string"
         },
         "branch": {
             "type": "string"
         },
-        "environment": {
-            "type": "string"
-        },
-        "argument": {
-            "type": "string"
-        },
         "code": {
             "type": "null"
         },
-        "launchType": {
-            "type": "string"
-        },
-        "nbLaunches": {
-            "type": "integer"
-        },
-        "s3Folder": {
-            "type": "string"
-        },
-        "orgS3Folder": {
-            "type": "string"
-        },
-        "updatedAt": {
-            "type": "integer"
-        },
-        "name": {
+        "environment": {
             "type": "string"
         },
         "fileMgmt": {
             "type": "string"
         },
+        "id": {
+            "type": "string"
+        },
+        "lastEndType": {
+            "type": "string"
+        },
+        "launchType": {
+            "type": "string"
+        },
         "maxParallelism": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "nbLaunches": {
             "type": "integer"
         },
         "notifications": {
             "type": "object",
             "properties": {
-                "mailManualExitError": {
+                "mailAutomaticExitError": {
                     "type": "boolean"
                 },
-                "mailManualTimeError": {
+                "mailAutomaticExitSuccess": {
+                    "type": "boolean"
+                },
+                "mailAutomaticLaunchError": {
+                    "type": "boolean"
+                },
+                "mailAutomaticTimeError": {
+                    "type": "boolean"
+                },
+                "mailManualExitError": {
                     "type": "boolean"
                 },
                 "mailManualExitSuccess": {
@@ -64,53 +58,32 @@
                 "mailManualLaunchError": {
                     "type": "boolean"
                 },
-                "mailAutomaticExitError": {
-                    "type": "boolean"
-                },
-                "mailAutomaticTimeError": {
-                    "type": "boolean"
-                },
-                "mailAutomaticExitSuccess": {
-                    "type": "boolean"
-                },
-                "mailAutomaticLaunchError": {
+                "mailManualTimeError": {
                     "type": "boolean"
                 }
-            },
-            "required": [
-                "mailManualExitError",
-                "mailManualTimeError",
-                "mailManualExitSuccess",
-                "mailManualLaunchError",
-                "mailAutomaticExitError",
-                "mailAutomaticTimeError",
-                "mailAutomaticExitSuccess",
-                "mailAutomaticLaunchError"
-            ]
+            }
         },
-        "lastEndType": {
+        "orgS3Folder": {
             "type": "string"
+        },
+        "s3Folder": {
+            "type": "string"
+        },
+        "script": {
+            "type": "string"
+        },
+        "scriptId": {
+            "type": "string"
+        },
+        "scriptOrgName": {
+            "type": "string"
+        },
+        "updatedAt": {
+            "type": "integer"
         },
         "wasSetupValidWhenSubmittedByTheFrontend": {
             "type": "boolean"
         }
     },
-    "required": [
-        "id",
-        "scriptOrgName",
-        "scriptId",
-        "script",
-        "branch",
-        "environment",
-        "argument",
-        "code",
-        "launchType",
-        "nbLaunches",
-        "s3Folder",
-        "orgS3Folder",
-        "updatedAt",
-        "name",
-        "fileMgmt"
-    ],
     "version": 1
 }
