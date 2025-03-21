@@ -4,8 +4,8 @@ import {
 	type PGVectorStoreArgs,
 } from '@langchain/community/vectorstores/pgvector';
 import type { EmbeddingsInterface } from '@langchain/core/embeddings';
-import { configurePostgres } from 'n8n-nodes-base/dist/nodes/Postgres/transport';
-import type { PostgresNodeCredentials } from 'n8n-nodes-base/dist/nodes/Postgres/v2/helpers/interfaces';
+import { configurePostgres } from 'n8n-nodes-base/nodes/Postgres/transport/index';
+import type { PostgresNodeCredentials } from 'n8n-nodes-base/nodes/Postgres/v2/helpers/interfaces';
 import type { INodeProperties } from 'n8n-workflow';
 import type pg from 'pg';
 

@@ -9,7 +9,7 @@ import { BaseRetriever } from '@langchain/core/retrievers';
 import type { Tool } from '@langchain/core/tools';
 import { VectorStore } from '@langchain/core/vectorstores';
 import { TextSplitter } from '@langchain/textsplitters';
-import type { BaseDocumentLoader } from 'langchain/dist/document_loaders/base';
+import type { BaseDocumentLoader } from 'langchain/document_loaders/base';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
