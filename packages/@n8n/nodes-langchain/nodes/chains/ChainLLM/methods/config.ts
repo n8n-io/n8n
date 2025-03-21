@@ -14,11 +14,11 @@ import { getTemplateNoticeField } from '@utils/sharedFields';
  */
 export function getInputs(parameters: IDataObject) {
 	const inputs = [
-		{ displayName: '', type: NodeConnectionType.Main },
+		{ displayName: '', type: 'main' },
 		{
 			displayName: 'Model',
 			maxConnections: 1,
-			type: NodeConnectionType.AiLanguageModel,
+			type: 'ai_languageModel',
 			required: true,
 		},
 	];
@@ -29,7 +29,7 @@ export function getInputs(parameters: IDataObject) {
 	if (hasOutputParser === undefined || hasOutputParser === true) {
 		inputs.push({
 			displayName: 'Output Parser',
-			type: NodeConnectionType.AiOutputParser,
+			type: 'ai_outputParser',
 			maxConnections: 1,
 			required: false,
 		});
