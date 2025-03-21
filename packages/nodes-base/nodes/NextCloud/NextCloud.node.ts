@@ -472,6 +472,10 @@ export class NextCloud implements INodeType {
 						value: 1,
 					},
 					{
+						name: 'Internal Link',
+						value: 200,
+					},
+					{
 						name: 'Public Link',
 						value: 3,
 					},
@@ -594,6 +598,13 @@ export class NextCloud implements INodeType {
 								value: 2,
 							},
 						],
+						displayOptions: {
+							show: {
+								'/resource': ['file', 'folder'],
+								'/operation': ['share'],
+								'/shareType': [7, 4, 1, 3, 0],
+							},
+						},
 						default: 1,
 						description: 'The share permissions to set',
 					},
@@ -877,6 +888,7 @@ export class NextCloud implements INodeType {
 		let endpoint = '';
 		let requestMethod: IHttpRequestMethods = 'GET';
 		let responseData: any;
+		let useWebDavEndpoint: boolean = true;
 
 		let body: string | Buffer | IDataObject = '';
 		const headers: IDataObject = {};
@@ -958,32 +970,52 @@ export class NextCloud implements INodeType {
 						//         share
 						// ----------------------------------
 
-						requestMethod = 'POST';
-
-						endpoint = 'ocs/v2.php/apps/files_sharing/api/v1/shares';
-
-						headers['OCS-APIRequest'] = true;
-						headers['Content-Type'] = 'application/x-www-form-urlencoded';
-
 						const bodyParameters = this.getNodeParameter('options', i);
-
 						bodyParameters.path = this.getNodeParameter('path', i) as string;
 						bodyParameters.shareType = this.getNodeParameter('shareType', i) as number;
 
-						if (bodyParameters.shareType === 0) {
-							bodyParameters.shareWith = this.getNodeParameter('user', i) as string;
-						} else if (bodyParameters.shareType === 7) {
-							bodyParameters.shareWith = this.getNodeParameter('circleId', i) as number;
-						} else if (bodyParameters.shareType === 4) {
-							bodyParameters.shareWith = this.getNodeParameter('email', i) as string;
-						} else if (bodyParameters.shareType === 1) {
-							bodyParameters.shareWith = this.getNodeParameter('groupId', i) as number;
-						}
+						// Internal link?
+						if (bodyParameters.shareType === 200) {
+							// ----------------------------------
+							//      share:internalLink
+							// ----------------------------------
 
-						// @ts-ignore
-						body = new URLSearchParams(bodyParameters).toString();
+							headers['Content-Type'] = 'application/xml';
+							body = `<?xml version="1.0" encoding="UTF-8"?>
+							<d:propfind xmlns:d="DAV:">
+								<d:prop xmlns:oc="http://owncloud.org/ns">
+									<oc:fileid/>
+								</d:prop>
+							</d:propfind>`;
+
+							requestMethod = 'PROPFIND' as IHttpRequestMethods;
+							endpoint = this.getNodeParameter('path', i) as string;
+						} else {
+							requestMethod = 'POST';
+							useWebDavEndpoint = false;
+
+							endpoint = 'ocs/v2.php/apps/files_sharing/api/v1/shares';
+
+							headers['OCS-APIRequest'] = true;
+							headers['Content-Type'] = 'application/x-www-form-urlencoded';
+
+							if (bodyParameters.shareType === 0) {
+								bodyParameters.shareWith = this.getNodeParameter('user', i) as string;
+							} else if (bodyParameters.shareType === 7) {
+								bodyParameters.shareWith = this.getNodeParameter('circleId', i) as number;
+							} else if (bodyParameters.shareType === 4) {
+								bodyParameters.shareWith = this.getNodeParameter('email', i) as string;
+							} else if (bodyParameters.shareType === 1) {
+								bodyParameters.shareWith = this.getNodeParameter('groupId', i) as number;
+							}
+
+							// @ts-ignore
+							body = new URLSearchParams(bodyParameters).toString();
+						}
 					}
 				} else if (resource === 'user') {
+					useWebDavEndpoint = false;
+
 					if (operation === 'create') {
 						// ----------------------------------
 						//         user:create
@@ -1097,6 +1129,7 @@ export class NextCloud implements INodeType {
 						headers,
 						encoding,
 						qs,
+						useWebDavEndpoint,
 					);
 				} catch (error) {
 					if (this.continueOnFail()) {
@@ -1134,32 +1167,81 @@ export class NextCloud implements INodeType {
 						endpoint,
 					);
 				} else if (['file', 'folder'].includes(resource) && operation === 'share') {
-					// eslint-disable-next-line @typescript-eslint/no-loop-func
-					const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
-						parseString(responseData as string, { explicitArray: false }, (err, data) => {
-							if (err) {
-								return reject(err);
-							}
+					const bodyParameters = this.getNodeParameter('options', i);
+					bodyParameters.path = this.getNodeParameter('path', i) as string;
+					bodyParameters.shareType = this.getNodeParameter('shareType', i) as number;
 
-							if (data.ocs.meta.status !== 'ok') {
-								return reject(
-									new NodeApiError(
-										this.getNode(),
-										(data.ocs.meta.message as JsonObject) || (data.ocs.meta.status as JsonObject),
-									),
-								);
-							}
+					if (bodyParameters.shareType === 200) {
+						// Make sure, we end the path in a slash because this is what will be returned by NextCloud
+						if (bodyParameters.path.slice(-1) !== '/') {
+							bodyParameters.path += '/';
+						}
 
-							resolve(data.ocs.data as IDataObject);
+						// eslint-disable-next-line @typescript-eslint/no-loop-func
+						const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
+							parseString(responseData as string, { explicitArray: false }, (err, data) => {
+								if (err) {
+									return reject(err);
+								}
+								resolve(data as IDataObject);
+							});
 						});
-					});
+						const baseUrl = credentials.webDavUrl.toString().replace('/remote.php/webdav', '');
+						if (
+							jsonResponseData['d:multistatus'] !== undefined &&
+							jsonResponseData['d:multistatus'] !== null &&
+							(jsonResponseData['d:multistatus'] as IDataObject)['d:response'] !== null
+						) {
+							// @ts-ignore
+							const response = jsonResponseData['d:multistatus']['d:response'];
+							// when getting the file id for a folder, we also get the whole folder content.
+							// In that case we need to find the file id of the folder itself
+							if (Array.isArray(response)) {
+								response.forEach((item: IDataObject) => {
+									if (
+										item['d:href']?.toString().replace('/remote.php/webdav', '') ===
+										bodyParameters.path
+									) {
+										// @ts-ignore
+										const fileid = item['d:propstat']['d:prop']['oc:fileid'] as IDataObject;
+										const internalLink = `${baseUrl}/f/${fileid}`;
+										returnData.push({ json: { link: internalLink }, pairedItem: { item: i } });
+									}
+								});
+							} else {
+								const fileid = response['d:propstat']['d:prop']['oc:fileid'] as IDataObject;
+								const internalLink = `${baseUrl}/f/${fileid}`;
+								returnData.push({ json: { link: internalLink }, pairedItem: { item: i } });
+							}
+						}
+					} else {
+						// eslint-disable-next-line @typescript-eslint/no-loop-func
+						const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
+							parseString(responseData as string, { explicitArray: false }, (err, data) => {
+								if (err) {
+									return reject(err);
+								}
 
-					const executionData = this.helpers.constructExecutionMetaData(
-						wrapData(jsonResponseData),
-						{ itemData: { item: i } },
-					);
+								if (data.ocs.meta.status !== 'ok') {
+									return reject(
+										new NodeApiError(
+											this.getNode(),
+											(data.ocs.meta.message as JsonObject) || (data.ocs.meta.status as JsonObject),
+										),
+									);
+								}
 
-					returnData.push(...executionData);
+								resolve(data.ocs.data as IDataObject);
+							});
+						});
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							wrapData(jsonResponseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
+					}
 				} else if (resource === 'user') {
 					if (operation !== 'getAll') {
 						// eslint-disable-next-line @typescript-eslint/no-loop-func
