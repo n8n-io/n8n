@@ -25,6 +25,40 @@ import { getRequestHelperFunctions } from './utils/request-helper-functions';
 import { returnJsonArray } from './utils/return-json-array';
 import { getNodeWebhookUrl } from './utils/webhook-helper-functions';
 
+/**
+ * Specialized execution context for webhook nodes.
+ * Handles HTTP request/response for webhook-triggered workflows.
+ *
+ * ### Responsibilities
+ *
+ * - Providing access to HTTP request data (body, headers, query params)
+ * - Managing HTTP response sending
+ * - Handling webhook URLs and test webhooks
+ * - Supporting file uploads and binary data processing
+ *
+ * ### Response Modes
+ *
+ * - **Immediate**: Responds as soon as the webhook node executes
+ * - **ResponseNode**: Waits to get a response from a specific Response-to-* node
+ * - **LastNode**: Waits for the entire workflow to complete
+ *
+ * ### Webhook Flow
+ *
+ * ```mermaid
+ * sequenceDiagram
+ *   participant Client
+ *   participant Server
+ *   participant WC as WebhookContext
+ *   participant WE as WorkflowExecute
+ *
+ *   Client->>Server: HTTP Request to webhook URL
+ *   Server->>WC: Create context with request/response
+ *   WC->>WC: Process request data
+ *   WC->>WE: Trigger workflow execution
+ *   WE-->>WC: Execute workflow (may be async)
+ *   WC->>Client: Send response (immediate or deferred)
+ * ```
+ */
 export class WebhookContext extends NodeExecutionContext implements IWebhookFunctions {
 	readonly helpers: IWebhookFunctions['helpers'];
 

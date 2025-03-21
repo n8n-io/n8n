@@ -1,3 +1,40 @@
+/**
+ * # Node Execution Contexts
+ *
+ * This module provides specialized execution contexts for different node types and execution scenarios.
+ * Each context type provides the appropriate environment and utilities for its specific execution needs.
+ *
+ * ## Context Types
+ *
+ * - **NodeExecutionContext**: Base abstract class for all contexts
+ * - **BaseExecuteContext**: Foundation for regular execution contexts
+ * - **ExecuteContext**: Regular node execution
+ * - **ExecuteSingleContext**: Single-item node execution
+ * - **WebhookContext**: Webhook node execution with HTTP request/response handling
+ * - **TriggerContext**: Trigger node execution for starting workflows
+ * - **PollContext**: Polling node execution for periodically checking for data
+ * - **LoadOptionsContext**: Dynamic options loading for node parameters
+ * - **HookContext**: Pre/post execution hooks
+ * - **CredentialsTestContext**: Testing node credentials
+ * - **SupplyDataContext**: Supplying data to nodes
+ *
+ * ## Context Hierarchy
+ *
+ * ```mermaid
+ * classDiagram
+ *     NodeExecutionContext <|-- BaseExecuteContext
+ *     NodeExecutionContext <|-- WebhookContext
+ *     NodeExecutionContext <|-- TriggerContext
+ *     NodeExecutionContext <|-- PollContext
+ *     NodeExecutionContext <|-- LoadOptionsContext
+ *     NodeExecutionContext <|-- HookContext
+ *     NodeExecutionContext <|-- CredentialsTestContext
+ *     NodeExecutionContext <|-- SupplyDataContext
+ *     BaseExecuteContext <|-- ExecuteContext
+ *     BaseExecuteContext <|-- ExecuteSingleContext
+ * ```
+ */
+
 export { CredentialTestContext } from './credentials-test-context';
 export { ExecuteContext } from './execute-context';
 export { ExecuteSingleContext } from './execute-single-context';
