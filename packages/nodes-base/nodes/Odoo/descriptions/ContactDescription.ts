@@ -186,6 +186,31 @@ export const contactDescription: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		default: {},
+		placeholder: 'Add option',
+		displayOptions: {
+			show: {
+				operation: ['create'],
+				resource: ['contact'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Language',
+				name: 'language',
+				type: 'options',
+				description: 'Choose from the list',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getSupportedLanguages',
+				},
+			},
+		],
+	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                contact:get                                 */
@@ -245,7 +270,7 @@ export const contactDescription: INodeProperties[] = [
 		name: 'options',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add option',
 		displayOptions: {
 			show: {
 				operation: ['getAll', 'get'],
@@ -262,6 +287,16 @@ export const contactDescription: INodeProperties[] = [
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getModelFields',
+				},
+			},
+			{
+				displayName: 'Language',
+				name: 'language',
+				type: 'options',
+				description: 'Choose from the list',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getSupportedLanguages',
 				},
 			},
 		],
@@ -408,6 +443,60 @@ export const contactDescription: INodeProperties[] = [
 				name: 'website',
 				type: 'string',
 				default: '',
+			},
+		],
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		default: {},
+		placeholder: 'Add option',
+		displayOptions: {
+			show: {
+				operation: ['update'],
+				resource: ['contact'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Language',
+				name: 'language',
+				type: 'options',
+				description: 'Choose from the list',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getSupportedLanguages',
+				},
+			},
+		],
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                contact:delete                              */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		default: {},
+		placeholder: 'Add option',
+		displayOptions: {
+			show: {
+				operation: ['delete'],
+				resource: ['contact'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Language',
+				name: 'language',
+				type: 'options',
+				description: 'Choose from the list',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getSupportedLanguages',
+				},
 			},
 		],
 	},
