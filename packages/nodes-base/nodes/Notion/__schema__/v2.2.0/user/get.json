@@ -1,0 +1,29 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "object": {
+            "type": "string"
+        },
+        "person": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                }
+            }
+        },
+        "request_id": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

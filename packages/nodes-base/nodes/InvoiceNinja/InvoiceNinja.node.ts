@@ -7,38 +7,25 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { invoiceNinjaApiRequest, invoiceNinjaApiRequestAllItems } from './GenericFunctions';
-
-import { clientFields, clientOperations } from './ClientDescription';
-
-import { invoiceFields, invoiceOperations } from './InvoiceDescription';
-
-import type { IClient, IContact } from './ClientInterface';
-
-import type { IInvoice, IItem } from './invoiceInterface';
-
-import { taskFields, taskOperations } from './TaskDescription';
-
-import type { ITask } from './TaskInterface';
-
-import { paymentFields, paymentOperations } from './PaymentDescription';
-
-import type { IPayment } from './PaymentInterface';
-
-import { expenseFields, expenseOperations } from './ExpenseDescription';
-
-import type { IExpense } from './ExpenseInterface';
-
-import { quoteFields, quoteOperations } from './QuoteDescription';
-
-import type { IQuote } from './QuoteInterface';
 import { isoCountryCodes } from '@utils/ISOCountryCodes';
 
 import { bankTransactionFields, bankTransactionOperations } from './BankTransactionDescription';
-
 import type { IBankTransaction, IBankTransactions } from './BankTransactionInterface';
+import { clientFields, clientOperations } from './ClientDescription';
+import type { IClient, IContact } from './ClientInterface';
+import { expenseFields, expenseOperations } from './ExpenseDescription';
+import type { IExpense } from './ExpenseInterface';
+import { invoiceNinjaApiRequest, invoiceNinjaApiRequestAllItems } from './GenericFunctions';
+import { invoiceFields, invoiceOperations } from './InvoiceDescription';
+import type { IInvoice, IItem } from './invoiceInterface';
+import { paymentFields, paymentOperations } from './PaymentDescription';
+import type { IPayment } from './PaymentInterface';
+import { quoteFields, quoteOperations } from './QuoteDescription';
+import type { IQuote } from './QuoteInterface';
+import { taskFields, taskOperations } from './TaskDescription';
+import type { ITask } from './TaskInterface';
 
 export class InvoiceNinja implements INodeType {
 	description: INodeTypeDescription = {
@@ -52,8 +39,9 @@ export class InvoiceNinja implements INodeType {
 		defaults: {
 			name: 'Invoice Ninja',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'invoiceNinjaApi',
@@ -1083,10 +1071,10 @@ export class InvoiceNinja implements INodeType {
 						const body: IBankTransactions = { transactions: [] };
 						const bankTransaction: IBankTransaction = {};
 						if (bankTransactionId) {
-							bankTransaction.id = bankTransactionId as string;
+							bankTransaction.id = bankTransactionId;
 						}
 						if (paymentId) {
-							bankTransaction.payment_id = paymentId as string;
+							bankTransaction.payment_id = paymentId;
 						}
 						body.transactions.push(bankTransaction);
 						responseData = await invoiceNinjaApiRequest.call(

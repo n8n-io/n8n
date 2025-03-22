@@ -2,7 +2,6 @@ import type { IDataObject, INodeProperties } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 
 import { groups } from './Json/Groups';
-
 import { tools } from './Json/Tools';
 
 function capitalize(str: string): string {

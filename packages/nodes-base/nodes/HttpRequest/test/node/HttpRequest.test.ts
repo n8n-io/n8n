@@ -1,5 +1,6 @@
-import { parse as parseUrl } from 'url';
 import nock from 'nock';
+import { parse as parseUrl } from 'url';
+
 import {
 	initBinaryDataService,
 	setup,
@@ -16,7 +17,6 @@ describe('Test HTTP Request Node', () => {
 
 	beforeAll(async () => {
 		await initBinaryDataService();
-		nock.disableNetConnect();
 
 		function getPaginationReturnData(this: nock.ReplyFnContext, limit = 10, skip = 0) {
 			const nextUrl = `${baseUrl}/users?skip=${skip + limit}&limit=${limit}`;
@@ -191,11 +191,6 @@ describe('Test HTTP Request Node', () => {
 				return getPaginationReturnData.call(this, limit, skip);
 			});
 	});
-
-	afterAll(() => {
-		nock.restore();
-	});
-
 	const nodeTypes = setup(tests);
 
 	for (const testData of tests) {

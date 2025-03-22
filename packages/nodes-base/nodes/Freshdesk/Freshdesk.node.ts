@@ -7,18 +7,16 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import { contactFields, contactOperations } from './ContactDescription';
+import type { ICreateContactBody } from './ContactInterface';
 import {
 	capitalize,
 	freshdeskApiRequest,
 	freshdeskApiRequestAllItems,
 	// validateJSON,
 } from './GenericFunctions';
-
-import type { ICreateContactBody } from './ContactInterface';
-
-import { contactFields, contactOperations } from './ContactDescription';
 
 const enum Status {
 	Open = 2,
@@ -83,8 +81,9 @@ export class Freshdesk implements INodeType {
 		defaults: {
 			name: 'Freshdesk',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'freshdeskApi',

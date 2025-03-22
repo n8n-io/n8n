@@ -22,6 +22,7 @@ export type FormTriggerData = {
 	validForm: boolean;
 	formTitle: string;
 	formDescription?: string;
+	formDescriptionMetadata?: string;
 	formSubmittedHeader?: string;
 	formSubmittedText?: string;
 	redirectUrl?: string;
@@ -30,13 +31,7 @@ export type FormTriggerData = {
 	useResponseData?: boolean;
 	appendAttribution?: boolean;
 	buttonLabel?: string;
-};
-
-export type CompletionPageConfig = {
-	pageTitle?: string;
-	completionMessage?: string;
-	completionTitle?: string;
-	redirectUrl?: string;
+	dangerousCustomCss?: string;
 };
 
 export const FORM_TRIGGER_AUTHENTICATION_PROPERTY = 'authentication';

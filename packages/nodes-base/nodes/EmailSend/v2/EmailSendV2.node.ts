@@ -5,11 +5,15 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import * as send from './send.operation';
+import * as sendAndWait from './sendAndWait.operation';
+import { smtpConnectionTest } from './utils';
+import { sendAndWaitWebhooksDescription } from '../../../utils/sendAndWait/descriptions';
+import { sendAndWaitWebhook } from '../../../utils/sendAndWait/utils';
 
-const versionDescription: INodeTypeDescription = {
+export const versionDescription: INodeTypeDescription = {
 	displayName: 'Send Email',
 	name: 'emailSend',
 	icon: 'fa:envelope',
@@ -20,8 +24,8 @@ const versionDescription: INodeTypeDescription = {
 		name: 'Send Email',
 		color: '#00bb88',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	usableAsTool: true,
 	credentials: [
 		{
@@ -30,6 +34,7 @@ const versionDescription: INodeTypeDescription = {
 			testedBy: 'smtpConnectionTest',
 		},
 	],
+	webhooks: sendAndWaitWebhooksDescription,
 	properties: [
 		{
 			displayName: 'Resource',
@@ -47,7 +52,7 @@ const versionDescription: INodeTypeDescription = {
 		{
 			displayName: 'Operation',
 			name: 'operation',
-			type: 'hidden',
+			type: 'options',
 			noDataExpression: true,
 			default: 'send',
 			options: [
@@ -56,9 +61,15 @@ const versionDescription: INodeTypeDescription = {
 					value: 'send',
 					action: 'Send an Email',
 				},
+				{
+					name: 'Send and Wait for Response',
+					value: SEND_AND_WAIT_OPERATION,
+					action: 'Send message and wait for response',
+				},
 			],
 		},
 		...send.description,
+		...sendAndWait.description,
 	],
 };
 
@@ -73,13 +84,22 @@ export class EmailSendV2 implements INodeType {
 	}
 
 	methods = {
-		credentialTest: { smtpConnectionTest: send.smtpConnectionTest },
+		credentialTest: { smtpConnectionTest },
 	};
+
+	webhook = sendAndWaitWebhook;
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		let returnData: INodeExecutionData[][] = [];
+		const operation = this.getNodeParameter('operation', 0);
 
-		returnData = await send.execute.call(this);
+		if (operation === SEND_AND_WAIT_OPERATION) {
+			returnData = await sendAndWait.execute.call(this);
+		}
+
+		if (operation === 'send') {
+			returnData = await send.execute.call(this);
+		}
 
 		return returnData;
 	}

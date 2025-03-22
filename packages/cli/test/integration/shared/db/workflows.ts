@@ -1,19 +1,20 @@
+import { Container } from '@n8n/di';
 import type { DeepPartial } from '@n8n/typeorm';
-import { NodeConnectionType } from 'n8n-workflow';
-import Container from 'typedi';
+import type { IWorkflowBase } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { Project } from '@/databases/entities/project';
 import type { SharedWorkflow, WorkflowSharingRole } from '@/databases/entities/shared-workflow';
 import { User } from '@/databases/entities/user';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import type { IWorkflowDb } from '@/interfaces';
 
 export async function createManyWorkflows(
 	amount: number,
-	attributes: Partial<WorkflowEntity> = {},
+	attributes: Partial<IWorkflowDb> = {},
 	user?: User,
 ) {
 	const workflowRequests = [...Array(amount)].map(
@@ -22,8 +23,8 @@ export async function createManyWorkflows(
 	return await Promise.all(workflowRequests);
 }
 
-export function newWorkflow(attributes: Partial<WorkflowEntity> = {}): WorkflowEntity {
-	const { active, name, nodes, connections, versionId } = attributes;
+export function newWorkflow(attributes: Partial<IWorkflowDb> = {}): IWorkflowDb {
+	const { active, name, nodes, connections, versionId, settings } = attributes;
 
 	const workflowEntity = Container.get(WorkflowRepository).create({
 		active: active ?? false,
@@ -40,6 +41,7 @@ export function newWorkflow(attributes: Partial<WorkflowEntity> = {}): WorkflowE
 		],
 		connections: connections ?? {},
 		versionId: versionId ?? uuid(),
+		settings: settings ?? {},
 		...attributes,
 	});
 
@@ -52,7 +54,7 @@ export function newWorkflow(attributes: Partial<WorkflowEntity> = {}): WorkflowE
  * @param user user to assign the workflow to
  */
 export async function createWorkflow(
-	attributes: Partial<WorkflowEntity> = {},
+	attributes: Partial<IWorkflowDb> = {},
 	userOrProject?: User | Project,
 ) {
 	const workflow = await Container.get(WorkflowRepository).save(newWorkflow(attributes));
@@ -83,7 +85,7 @@ export async function createWorkflow(
 	return workflow;
 }
 
-export async function shareWorkflowWithUsers(workflow: WorkflowEntity, users: User[]) {
+export async function shareWorkflowWithUsers(workflow: IWorkflowBase, users: User[]) {
 	const sharedWorkflows: Array<DeepPartial<SharedWorkflow>> = await Promise.all(
 		users.map(async (user) => {
 			const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
@@ -100,7 +102,7 @@ export async function shareWorkflowWithUsers(workflow: WorkflowEntity, users: Us
 }
 
 export async function shareWorkflowWithProjects(
-	workflow: WorkflowEntity,
+	workflow: IWorkflowBase,
 	projectsWithRole: Array<{ project: Project; role?: WorkflowSharingRole }>,
 ) {
 	const newSharedWorkflow = await Promise.all(
@@ -116,9 +118,10 @@ export async function shareWorkflowWithProjects(
 	return await Container.get(SharedWorkflowRepository).save(newSharedWorkflow);
 }
 
-export async function getWorkflowSharing(workflow: WorkflowEntity) {
-	return await Container.get(SharedWorkflowRepository).findBy({
-		workflowId: workflow.id,
+export async function getWorkflowSharing(workflow: IWorkflowBase) {
+	return await Container.get(SharedWorkflowRepository).find({
+		where: { workflowId: workflow.id },
+		relations: { project: true },
 	});
 }
 
@@ -127,7 +130,7 @@ export async function getWorkflowSharing(workflow: WorkflowEntity) {
  * @param user user to assign the workflow to
  */
 export async function createWorkflowWithTrigger(
-	attributes: Partial<WorkflowEntity> = {},
+	attributes: Partial<IWorkflowDb> = {},
 	user?: User,
 ) {
 	const workflow = await createWorkflow(
@@ -158,7 +161,9 @@ export async function createWorkflowWithTrigger(
 					position: [780, 300],
 				},
 			],
-			connections: { Cron: { main: [[{ node: 'Set', type: NodeConnectionType.Main, index: 0 }]] } },
+			connections: {
+				Cron: { main: [[{ node: 'Set', type: NodeConnectionTypes.Main, index: 0 }]] },
+			},
 			...attributes,
 		},
 		user,

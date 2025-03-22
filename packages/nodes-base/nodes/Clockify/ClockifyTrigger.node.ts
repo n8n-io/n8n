@@ -1,5 +1,4 @@
 import moment from 'moment-timezone';
-
 import type {
 	IPollFunctions,
 	IDataObject,
@@ -9,11 +8,10 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
-
-import { clockifyApiRequest } from './GenericFunctions';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { EntryTypeEnum } from './EntryTypeEnum';
+import { clockifyApiRequest } from './GenericFunctions';
 import type { IUserDto } from './UserDtos';
 import type { IWorkspaceDto } from './WorkpaceInterfaces';
 
@@ -29,7 +27,7 @@ export class ClockifyTrigger implements INodeType {
 			name: 'Clockify Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'clockifyApi',

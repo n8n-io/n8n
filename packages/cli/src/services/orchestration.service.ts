@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container, Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import Container, { Service } from 'typedi';
 
 import config from '@/config';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';

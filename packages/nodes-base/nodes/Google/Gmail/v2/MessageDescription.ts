@@ -1,4 +1,5 @@
 import { SEND_AND_WAIT_OPERATION, type INodeProperties } from 'n8n-workflow';
+
 import { appendAttributionOption } from '../../../../utils/descriptions';
 
 export const messageOperations: INodeProperties[] = [

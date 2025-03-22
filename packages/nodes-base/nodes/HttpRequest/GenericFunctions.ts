@@ -1,4 +1,7 @@
-import type { SecureContextOptions } from 'tls';
+import FormData from 'form-data';
+import get from 'lodash/get';
+import isPlainObject from 'lodash/isPlainObject';
+import set from 'lodash/set';
 import {
 	deepCopy,
 	type ICredentialDataDecryptedObject,
@@ -8,14 +11,10 @@ import {
 	type IOAuth2Options,
 	type IRequestOptions,
 } from 'n8n-workflow';
+import type { SecureContextOptions } from 'tls';
 
-import set from 'lodash/set';
-import isPlainObject from 'lodash/isPlainObject';
-
-import FormData from 'form-data';
-import get from 'lodash/get';
-import { formatPrivateKey } from '../../utils/utilities';
 import type { HttpSslAuthCredentials } from './interfaces';
+import { formatPrivateKey } from '../../utils/utilities';
 
 export type BodyParameter = {
 	name: string;
@@ -176,6 +175,9 @@ export const getOAuth2AdditionalParameters = (nodeCredentialType: string) => {
 		},
 		mauticOAuth2Api: {
 			includeCredentialsOnRefreshOnBody: true,
+		},
+		microsoftAzureMonitorOAuth2Api: {
+			tokenExpiredStatusCode: 403,
 		},
 		microsoftDynamicsOAuth2Api: {
 			property: 'id_token',

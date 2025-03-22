@@ -4,10 +4,10 @@ import type {
 	INodeTypeDescription,
 	ITriggerResponse,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import { redisConnectionTest, setupRedisClient } from './utils';
 import type { RedisCredential } from './types';
+import { redisConnectionTest, setupRedisClient } from './utils';
 
 interface Options {
 	jsonParseBody: boolean;
@@ -26,7 +26,7 @@ export class RedisTrigger implements INodeType {
 			name: 'Redis Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'redis',

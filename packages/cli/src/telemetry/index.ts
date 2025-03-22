@@ -1,9 +1,9 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container, Service } from '@n8n/di';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
 import axios from 'axios';
-import { InstanceSettings } from 'n8n-core';
+import { InstanceSettings, Logger } from 'n8n-core';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
-import { Container, Service } from 'typedi';
 
 import { LOWEST_SHUTDOWN_PRIORITY, N8N_VERSION } from '@/constants';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
@@ -13,10 +13,9 @@ import { WorkflowRepository } from '@/databases/repositories/workflow.repository
 import { OnShutdown } from '@/decorators/on-shutdown';
 import type { IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
-import { Logger } from '@/logging/logger.service';
 import { PostHogClient } from '@/posthog';
 
-import { SourceControlPreferencesService } from '../environments/source-control/source-control-preferences.service.ee';
+import { SourceControlPreferencesService } from '../environments.ee/source-control/source-control-preferences.service.ee';
 
 type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';
 

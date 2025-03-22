@@ -4,12 +4,9 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+
+import { dataLocationOnSheet, outputFormatting } from './commonDescription';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
-import {
-	getRangeString,
-	prepareSheetData,
-	untilSheetSelected,
-} from '../../helpers/GoogleSheets.utils';
 import type {
 	ILookupValues,
 	RangeDetectionOptions,
@@ -17,8 +14,11 @@ import type {
 	SheetRangeData,
 	ValueRenderOption,
 } from '../../helpers/GoogleSheets.types';
-
-import { dataLocationOnSheet, outputFormatting } from './commonDescription';
+import {
+	getRangeString,
+	prepareSheetData,
+	untilSheetSelected,
+} from '../../helpers/GoogleSheets.utils';
 
 const combineFiltersOptions: INodeProperties = {
 	displayName: 'Combine Filters',

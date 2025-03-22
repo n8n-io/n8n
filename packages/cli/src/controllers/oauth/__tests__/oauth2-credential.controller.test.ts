@@ -1,25 +1,28 @@
+import { Container } from '@n8n/di';
 import Csrf from 'csrf';
 import { type Response } from 'express';
-import { mock } from 'jest-mock-extended';
-import { Cipher } from 'n8n-core';
+import { captor, mock } from 'jest-mock-extended';
+import { Cipher, type InstanceSettings, Logger } from 'n8n-core';
+import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import nock from 'nock';
-import Container from 'typedi';
 
-import { Time } from '@/constants';
+import { CREDENTIAL_BLANKING_VALUE, Time } from '@/constants';
 import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller';
 import { CredentialsHelper } from '@/credentials-helper';
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import type { User } from '@/databases/entities/user';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { VariablesService } from '@/environments/variables/variables.service.ee';
+import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
-import { Logger } from '@/logging/logger.service';
 import type { OAuthRequest } from '@/requests';
-import { SecretsHelper } from '@/secrets-helpers';
+import { SecretsHelper } from '@/secrets-helpers.ee';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { mockInstance } from '@test/mocking';
+
+jest.mock('@/workflow-execute-additional-data');
 
 describe('OAuth2CredentialController', () => {
 	mockInstance(Logger);
@@ -27,7 +30,12 @@ describe('OAuth2CredentialController', () => {
 	mockInstance(VariablesService, {
 		getAllCached: async () => [],
 	});
-	const cipher = mockInstance(Cipher);
+	const additionalData = mock<IWorkflowExecuteAdditionalData>();
+	(WorkflowExecuteAdditionalData.getBase as jest.Mock).mockReturnValue(additionalData);
+
+	const cipher = new Cipher(mock<InstanceSettings>({ encryptionKey: 'password' }));
+	Container.set(Cipher, cipher);
+
 	const externalHooks = mockInstance(ExternalHooks);
 	const credentialsHelper = mockInstance(CredentialsHelper);
 	const credentialsRepository = mockInstance(CredentialsRepository);
@@ -44,6 +52,7 @@ describe('OAuth2CredentialController', () => {
 		id: '1',
 		name: 'Test Credential',
 		type: 'oAuth2Api',
+		data: cipher.encrypt({}),
 	});
 
 	const controller = Container.get(OAuth2CredentialController);
@@ -85,7 +94,6 @@ describe('OAuth2CredentialController', () => {
 			jest.spyOn(Csrf.prototype, 'create').mockReturnValueOnce('token');
 			sharedCredentialsRepository.findCredentialForUser.mockResolvedValueOnce(credential);
 			credentialsHelper.getDecrypted.mockResolvedValueOnce({});
-			cipher.encrypt.mockReturnValue('encrypted');
 
 			const req = mock<OAuthRequest.OAuth2Credential.Auth>({ user, query: { id: '1' } });
 			const authUri = await controller.getAuthUri(req);
@@ -99,14 +107,26 @@ describe('OAuth2CredentialController', () => {
 				createdAt: timestamp,
 				userId: '123',
 			});
+			const dataCaptor = captor();
 			expect(credentialsRepository.update).toHaveBeenCalledWith(
 				'1',
 				expect.objectContaining({
-					data: 'encrypted',
+					data: dataCaptor,
 					id: '1',
 					name: 'Test Credential',
 					type: 'oAuth2Api',
 				}),
+			);
+			expect(cipher.decrypt(dataCaptor.value)).toEqual(
+				JSON.stringify({ csrfSecret: 'csrf-secret' }),
+			);
+			expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
+				additionalData,
+				credential,
+				credential.type,
+				'internal',
+				undefined,
+				false,
 			);
 		});
 	});
@@ -233,7 +253,6 @@ describe('OAuth2CredentialController', () => {
 					'code=code&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A5678%2Frest%2Foauth2-credential%2Fcallback',
 				)
 				.reply(200, { access_token: 'access-token', refresh_token: 'refresh-token' });
-			cipher.encrypt.mockReturnValue('encrypted');
 
 			await controller.handleCallback(req, res);
 
@@ -243,16 +262,111 @@ describe('OAuth2CredentialController', () => {
 					redirectUri: 'http://localhost:5678/rest/oauth2-credential/callback',
 				}),
 			]);
-			expect(cipher.encrypt).toHaveBeenCalledWith({
-				oauthTokenData: { access_token: 'access-token', refresh_token: 'refresh-token' },
-			});
+			const dataCaptor = captor();
 			expect(credentialsRepository.update).toHaveBeenCalledWith(
 				'1',
 				expect.objectContaining({
-					data: 'encrypted',
+					data: dataCaptor,
 					id: '1',
 					name: 'Test Credential',
 					type: 'oAuth2Api',
+				}),
+			);
+			expect(cipher.decrypt(dataCaptor.value)).toEqual(
+				JSON.stringify({
+					oauthTokenData: { access_token: 'access-token', refresh_token: 'refresh-token' },
+				}),
+			);
+			expect(res.render).toHaveBeenCalledWith('oauth-callback');
+			expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
+				additionalData,
+				credential,
+				credential.type,
+				'internal',
+				undefined,
+				true,
+			);
+		});
+
+		it('merges oauthTokenData if it already exists', async () => {
+			credentialsRepository.findOneBy.mockResolvedValueOnce(credential);
+			credentialsHelper.getDecrypted.mockResolvedValueOnce({
+				csrfSecret,
+				oauthTokenData: { token: true },
+			});
+			jest.spyOn(Csrf.prototype, 'verify').mockReturnValueOnce(true);
+			nock('https://example.domain')
+				.post(
+					'/token',
+					'code=code&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A5678%2Frest%2Foauth2-credential%2Fcallback',
+				)
+				.reply(200, { access_token: 'access-token', refresh_token: 'refresh-token' });
+
+			await controller.handleCallback(req, res);
+
+			expect(externalHooks.run).toHaveBeenCalledWith('oauth2.callback', [
+				expect.objectContaining({
+					clientId: 'test-client-id',
+					redirectUri: 'http://localhost:5678/rest/oauth2-credential/callback',
+				}),
+			]);
+			const dataCaptor = captor();
+			expect(credentialsRepository.update).toHaveBeenCalledWith(
+				'1',
+				expect.objectContaining({
+					data: dataCaptor,
+					id: '1',
+					name: 'Test Credential',
+					type: 'oAuth2Api',
+				}),
+			);
+			expect(cipher.decrypt(dataCaptor.value)).toEqual(
+				JSON.stringify({
+					oauthTokenData: {
+						token: true,
+						access_token: 'access-token',
+						refresh_token: 'refresh-token',
+					},
+				}),
+			);
+			expect(res.render).toHaveBeenCalledWith('oauth-callback');
+		});
+
+		it('overwrites oauthTokenData if it is a string', async () => {
+			credentialsRepository.findOneBy.mockResolvedValueOnce(credential);
+			credentialsHelper.getDecrypted.mockResolvedValueOnce({
+				csrfSecret,
+				oauthTokenData: CREDENTIAL_BLANKING_VALUE,
+			});
+			jest.spyOn(Csrf.prototype, 'verify').mockReturnValueOnce(true);
+			nock('https://example.domain')
+				.post(
+					'/token',
+					'code=code&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A5678%2Frest%2Foauth2-credential%2Fcallback',
+				)
+				.reply(200, { access_token: 'access-token', refresh_token: 'refresh-token' });
+
+			await controller.handleCallback(req, res);
+
+			expect(externalHooks.run).toHaveBeenCalledWith('oauth2.callback', [
+				expect.objectContaining({
+					clientId: 'test-client-id',
+					redirectUri: 'http://localhost:5678/rest/oauth2-credential/callback',
+				}),
+			]);
+			const dataCaptor = captor();
+			expect(credentialsRepository.update).toHaveBeenCalledWith(
+				'1',
+				expect.objectContaining({
+					data: dataCaptor,
+					id: '1',
+					name: 'Test Credential',
+					type: 'oAuth2Api',
+				}),
+			);
+			expect(cipher.decrypt(dataCaptor.value)).toEqual(
+				JSON.stringify({
+					oauthTokenData: { access_token: 'access-token', refresh_token: 'refresh-token' },
 				}),
 			);
 			expect(res.render).toHaveBeenCalledWith('oauth-callback');

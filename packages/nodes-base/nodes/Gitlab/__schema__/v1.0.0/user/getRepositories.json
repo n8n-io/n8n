@@ -1,0 +1,426 @@
+{
+    "type": "object",
+    "properties": {
+        "_links": {
+            "type": "object",
+            "properties": {
+                "cluster_agents": {
+                    "type": "string"
+                },
+                "events": {
+                    "type": "string"
+                },
+                "issues": {
+                    "type": "string"
+                },
+                "labels": {
+                    "type": "string"
+                },
+                "members": {
+                    "type": "string"
+                },
+                "merge_requests": {
+                    "type": "string"
+                },
+                "repo_branches": {
+                    "type": "string"
+                },
+                "self": {
+                    "type": "string"
+                }
+            }
+        },
+        "allow_merge_on_skipped_pipeline": {
+            "type": "null"
+        },
+        "analytics_access_level": {
+            "type": "string"
+        },
+        "archived": {
+            "type": "boolean"
+        },
+        "auto_cancel_pending_pipelines": {
+            "type": "string"
+        },
+        "auto_devops_deploy_strategy": {
+            "type": "string"
+        },
+        "auto_devops_enabled": {
+            "type": "boolean"
+        },
+        "autoclose_referenced_issues": {
+            "type": "boolean"
+        },
+        "avatar_url": {
+            "type": "null"
+        },
+        "build_git_strategy": {
+            "type": "string"
+        },
+        "build_timeout": {
+            "type": "integer"
+        },
+        "builds_access_level": {
+            "type": "string"
+        },
+        "can_create_merge_request_in": {
+            "type": "boolean"
+        },
+        "ci_allow_fork_pipelines_to_run_in_parent_project": {
+            "type": "boolean"
+        },
+        "ci_default_git_depth": {
+            "type": "integer"
+        },
+        "ci_delete_pipelines_in_seconds": {
+            "type": "null"
+        },
+        "ci_forward_deployment_enabled": {
+            "type": "boolean"
+        },
+        "ci_forward_deployment_rollback_allowed": {
+            "type": "boolean"
+        },
+        "ci_id_token_sub_claim_components": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "ci_job_token_scope_enabled": {
+            "type": "boolean"
+        },
+        "ci_pipeline_variables_minimum_override_role": {
+            "type": "string"
+        },
+        "ci_push_repository_for_job_token_allowed": {
+            "type": "boolean"
+        },
+        "ci_separated_caches": {
+            "type": "boolean"
+        },
+        "container_expiration_policy": {
+            "type": "object",
+            "properties": {
+                "cadence": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "keep_n": {
+                    "type": "integer"
+                },
+                "name_regex": {
+                    "type": "string"
+                },
+                "name_regex_keep": {
+                    "type": "null"
+                },
+                "next_run_at": {
+                    "type": "string"
+                },
+                "older_than": {
+                    "type": "string"
+                }
+            }
+        },
+        "container_registry_access_level": {
+            "type": "string"
+        },
+        "container_registry_enabled": {
+            "type": "boolean"
+        },
+        "container_registry_image_prefix": {
+            "type": "string"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "creator_id": {
+            "type": "integer"
+        },
+        "default_branch": {
+            "type": "string"
+        },
+        "description_html": {
+            "type": "string"
+        },
+        "emails_enabled": {
+            "type": "boolean"
+        },
+        "empty_repo": {
+            "type": "boolean"
+        },
+        "enforce_auth_checks_on_uploads": {
+            "type": "boolean"
+        },
+        "environments_access_level": {
+            "type": "string"
+        },
+        "external_authorization_classification_label": {
+            "type": "string"
+        },
+        "feature_flags_access_level": {
+            "type": "string"
+        },
+        "forking_access_level": {
+            "type": "string"
+        },
+        "forks_count": {
+            "type": "integer"
+        },
+        "group_runners_enabled": {
+            "type": "boolean"
+        },
+        "http_url_to_repo": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "import_status": {
+            "type": "string"
+        },
+        "infrastructure_access_level": {
+            "type": "string"
+        },
+        "issue_branch_template": {
+            "type": "null"
+        },
+        "issues_access_level": {
+            "type": "string"
+        },
+        "issues_enabled": {
+            "type": "boolean"
+        },
+        "jobs_enabled": {
+            "type": "boolean"
+        },
+        "keep_latest_artifact": {
+            "type": "boolean"
+        },
+        "last_activity_at": {
+            "type": "string"
+        },
+        "lfs_enabled": {
+            "type": "boolean"
+        },
+        "max_artifacts_size": {
+            "type": "null"
+        },
+        "merge_commit_template": {
+            "type": "null"
+        },
+        "merge_method": {
+            "type": "string"
+        },
+        "merge_requests_access_level": {
+            "type": "string"
+        },
+        "merge_requests_enabled": {
+            "type": "boolean"
+        },
+        "model_experiments_access_level": {
+            "type": "string"
+        },
+        "model_registry_access_level": {
+            "type": "string"
+        },
+        "monitor_access_level": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "name_with_namespace": {
+            "type": "string"
+        },
+        "namespace": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string"
+                },
+                "full_path": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "parent_id": {
+                    "type": "null"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "web_url": {
+                    "type": "string"
+                }
+            }
+        },
+        "only_allow_merge_if_all_discussions_are_resolved": {
+            "type": "boolean"
+        },
+        "only_allow_merge_if_pipeline_succeeds": {
+            "type": "boolean"
+        },
+        "open_issues_count": {
+            "type": "integer"
+        },
+        "owner": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "locked": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                },
+                "web_url": {
+                    "type": "string"
+                }
+            }
+        },
+        "packages_enabled": {
+            "type": "boolean"
+        },
+        "pages_access_level": {
+            "type": "string"
+        },
+        "path": {
+            "type": "string"
+        },
+        "path_with_namespace": {
+            "type": "string"
+        },
+        "permissions": {
+            "type": "object",
+            "properties": {
+                "group_access": {
+                    "type": "null"
+                },
+                "project_access": {
+                    "type": "object",
+                    "properties": {
+                        "access_level": {
+                            "type": "integer"
+                        },
+                        "notification_level": {
+                            "type": "integer"
+                        }
+                    }
+                }
+            }
+        },
+        "printing_merge_request_link_enabled": {
+            "type": "boolean"
+        },
+        "public_jobs": {
+            "type": "boolean"
+        },
+        "releases_access_level": {
+            "type": "string"
+        },
+        "remove_source_branch_after_merge": {
+            "type": "boolean"
+        },
+        "repository_access_level": {
+            "type": "string"
+        },
+        "repository_object_format": {
+            "type": "string"
+        },
+        "request_access_enabled": {
+            "type": "boolean"
+        },
+        "requirements_access_level": {
+            "type": "string"
+        },
+        "requirements_enabled": {
+            "type": "boolean"
+        },
+        "resolve_outdated_diff_discussions": {
+            "type": "boolean"
+        },
+        "restrict_user_defined_variables": {
+            "type": "boolean"
+        },
+        "runner_token_expiration_interval": {
+            "type": "null"
+        },
+        "runners_token": {
+            "type": "string"
+        },
+        "security_and_compliance_access_level": {
+            "type": "string"
+        },
+        "security_and_compliance_enabled": {
+            "type": "boolean"
+        },
+        "service_desk_enabled": {
+            "type": "boolean"
+        },
+        "shared_runners_enabled": {
+            "type": "boolean"
+        },
+        "snippets_access_level": {
+            "type": "string"
+        },
+        "snippets_enabled": {
+            "type": "boolean"
+        },
+        "squash_commit_template": {
+            "type": "null"
+        },
+        "squash_option": {
+            "type": "string"
+        },
+        "ssh_url_to_repo": {
+            "type": "string"
+        },
+        "star_count": {
+            "type": "integer"
+        },
+        "suggestion_commit_message": {
+            "type": "null"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "visibility": {
+            "type": "string"
+        },
+        "warn_about_potentially_unwanted_characters": {
+            "type": "boolean"
+        },
+        "web_url": {
+            "type": "string"
+        },
+        "wiki_access_level": {
+            "type": "string"
+        },
+        "wiki_enabled": {
+            "type": "boolean"
+        }
+    },
+    "version": 1
+}

@@ -1,5 +1,5 @@
-import nock from 'nock';
 import type { IHttpRequestMethods } from 'n8n-workflow';
+
 import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
 
 const API_RESPONSE = {
@@ -21,16 +21,6 @@ jest.mock('../../../../V2/GenericFunctions', () => {
 describe('Test SlackV2, channel => append', () => {
 	const workflows = ['nodes/Slack/test/v2/node/channel/archive.workflow.json'];
 	const tests = workflowToTests(workflows);
-
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.unmock('../../../../V2/GenericFunctions');
-	});
-
 	const nodeTypes = setup(tests);
 
 	for (const testData of tests) {

@@ -1,0 +1,69 @@
+{
+    "type": "object",
+    "properties": {
+        "active": {
+            "type": "boolean"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "iana_time_zone": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "locale": {
+            "type": "string"
+        },
+        "locale_id": {
+            "type": "integer"
+        },
+        "moderator": {
+            "type": "boolean"
+        },
+        "name": {
+            "type": "string"
+        },
+        "only_private_comments": {
+            "type": "boolean"
+        },
+        "report_csv": {
+            "type": "boolean"
+        },
+        "restricted_agent": {
+            "type": "boolean"
+        },
+        "role": {
+            "type": "string"
+        },
+        "shared": {
+            "type": "boolean"
+        },
+        "shared_agent": {
+            "type": "boolean"
+        },
+        "suspended": {
+            "type": "boolean"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "time_zone": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
+        },
+        "verified": {
+            "type": "boolean"
+        }
+    },
+    "version": 1
+}

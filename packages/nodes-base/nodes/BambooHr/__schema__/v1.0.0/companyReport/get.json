@@ -1,0 +1,43 @@
+{
+    "type": "object",
+    "properties": {
+        "employees": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "firstName": {
+                        "type": "string"
+                    },
+                    "hireDate": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "lastName": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "fields": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "title": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

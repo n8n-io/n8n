@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 export class ExecutionData implements INodeType {
 	description: INodeTypeDescription = {
@@ -20,8 +20,8 @@ export class ExecutionData implements INodeType {
 			name: 'Execution Data',
 			color: '#29A568',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName:
@@ -81,6 +81,22 @@ export class ExecutionData implements INodeType {
 						],
 					},
 				],
+			},
+		],
+		hints: [
+			{
+				type: 'warning',
+				message: 'Some keys are longer than 50 characters. They will be truncated.',
+				displayCondition: '={{ $parameter.dataToSave.values.some((x) => x.key.length > 50) }}',
+				whenToDisplay: 'beforeExecution',
+				location: 'outputPane',
+			},
+			{
+				type: 'warning',
+				message: 'Some values are longer than 512 characters. They will be truncated.',
+				displayCondition: '={{ $parameter.dataToSave.values.some((x) => x.value.length > 512) }}',
+				whenToDisplay: 'beforeExecution',
+				location: 'outputPane',
 			},
 		],
 	};

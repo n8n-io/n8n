@@ -1,13 +1,11 @@
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
-import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { initializeAgentExecutorWithOptions } from 'langchain/agents';
-import { CombiningOutputParser } from 'langchain/output_parsers';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { isChatInstance, getPromptInputByType, getConnectedTools } from '@utils/helpers';
-import { getOptionalOutputParsers } from '@utils/output_parsers/N8nOutputParser';
+import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import { throwIfToolSchema } from '@utils/schemaParsing';
 import { getTracingConfig } from '@utils/tracing';
 
@@ -18,18 +16,18 @@ export async function conversationalAgentExecute(
 	nodeVersion: number,
 ): Promise<INodeExecutionData[][]> {
 	this.logger.debug('Executing Conversational Agent');
-	const model = await this.getInputConnectionData(NodeConnectionType.AiLanguageModel, 0);
+	const model = await this.getInputConnectionData(NodeConnectionTypes.AiLanguageModel, 0);
 
 	if (!isChatInstance(model)) {
 		throw new NodeOperationError(this.getNode(), 'Conversational Agent requires Chat Model');
 	}
 
-	const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
+	const memory = (await this.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
 		| BaseChatMemory
 		| undefined;
 
 	const tools = await getConnectedTools(this, nodeVersion >= 1.5, true, true);
-	const outputParsers = await getOptionalOutputParsers(this);
+	const outputParser = await getOptionalOutputParser(this);
 
 	await checkForStructuredTools(tools, this.getNode(), 'Conversational Agent');
 
@@ -58,24 +56,15 @@ export async function conversationalAgentExecute(
 
 	const returnData: INodeExecutionData[] = [];
 
-	let outputParser: BaseOutputParser | undefined;
 	let prompt: PromptTemplate | undefined;
-	if (outputParsers.length) {
-		if (outputParsers.length === 1) {
-			outputParser = outputParsers[0];
-		} else {
-			outputParser = new CombiningOutputParser(...outputParsers);
-		}
+	if (outputParser) {
+		const formatInstructions = outputParser.getFormatInstructions();
 
-		if (outputParser) {
-			const formatInstructions = outputParser.getFormatInstructions();
-
-			prompt = new PromptTemplate({
-				template: '{input}\n{formatInstructions}',
-				inputVariables: ['input'],
-				partialVariables: { formatInstructions },
-			});
-		}
+		prompt = new PromptTemplate({
+			template: '{input}\n{formatInstructions}',
+			inputVariables: ['input'],
+			partialVariables: { formatInstructions },
+		});
 	}
 
 	const items = this.getInputData();
@@ -104,7 +93,7 @@ export async function conversationalAgentExecute(
 
 			const response = await agentExecutor
 				.withConfig(getTracingConfig(this))
-				.invoke({ input, outputParsers });
+				.invoke({ input, outputParser });
 
 			if (outputParser) {
 				response.output = await extractParsedOutput(this, outputParser, response.output as string);

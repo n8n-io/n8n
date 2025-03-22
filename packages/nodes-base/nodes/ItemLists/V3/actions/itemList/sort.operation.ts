@@ -1,3 +1,6 @@
+import get from 'lodash/get';
+import isEqual from 'lodash/isEqual';
+import lt from 'lodash/lt';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -6,14 +9,10 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import get from 'lodash/get';
-
-import isEqual from 'lodash/isEqual';
-import lt from 'lodash/lt';
+import { shuffleArray, updateDisplayOptions } from '@utils/utilities';
 
 import { sortByCode } from '../../helpers/utils';
 import { disableDotNotationBoolean } from '../common.descriptions';
-import { shuffleArray, updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{

@@ -1,4 +1,4 @@
-import Container from 'typedi';
+import { Container } from '@n8n/di';
 
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';

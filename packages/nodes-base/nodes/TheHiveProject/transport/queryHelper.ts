@@ -1,8 +1,8 @@
 import type { IExecuteFunctions, IDataObject } from 'n8n-workflow';
 
+import { theHiveApiRequest } from './requestApi';
 import type { QueryScope } from '../helpers/interfaces';
 import { constructFilter } from '../helpers/utils';
-import { theHiveApiRequest } from './requestApi';
 
 export async function theHiveApiQuery(
 	this: IExecuteFunctions,

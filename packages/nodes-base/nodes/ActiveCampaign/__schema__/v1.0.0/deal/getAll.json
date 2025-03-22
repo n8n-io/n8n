@@ -1,0 +1,101 @@
+{
+    "type": "object",
+    "properties": {
+        "activitycount": {
+            "type": "string"
+        },
+        "cdate": {
+            "type": "string"
+        },
+        "currency": {
+            "type": "string"
+        },
+        "description": {
+            "type": "string"
+        },
+        "group": {
+            "type": "string"
+        },
+        "hash": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "isDisabled": {
+            "type": "boolean"
+        },
+        "links": {
+            "type": "object",
+            "properties": {
+                "account": {
+                    "type": "string"
+                },
+                "contact": {
+                    "type": "string"
+                },
+                "contactDeals": {
+                    "type": "string"
+                },
+                "customerAccount": {
+                    "type": "string"
+                },
+                "dealActivities": {
+                    "type": "string"
+                },
+                "dealCustomFieldData": {
+                    "type": "string"
+                },
+                "group": {
+                    "type": "string"
+                },
+                "nextTask": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "organization": {
+                    "type": "string"
+                },
+                "owner": {
+                    "type": "string"
+                },
+                "scoreValues": {
+                    "type": "string"
+                },
+                "stage": {
+                    "type": "string"
+                },
+                "tasks": {
+                    "type": "string"
+                }
+            }
+        },
+        "mdate": {
+            "type": "string"
+        },
+        "nextdealid": {
+            "type": "string"
+        },
+        "owner": {
+            "type": "string"
+        },
+        "percent": {
+            "type": "string"
+        },
+        "stage": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "value": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

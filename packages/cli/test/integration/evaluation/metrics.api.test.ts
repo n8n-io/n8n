@@ -1,8 +1,8 @@
-import { Container } from 'typedi';
+import { Container } from '@n8n/di';
+import type { IWorkflowBase } from 'n8n-workflow';
 
 import type { TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { User } from '@/databases/entities/user';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { TestDefinitionRepository } from '@/databases/repositories/test-definition.repository.ee';
 import { TestMetricRepository } from '@/databases/repositories/test-metric.repository.ee';
 import { createUserShell } from '@test-integration/db/users';
@@ -12,8 +12,8 @@ import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
 
 let authOwnerAgent: SuperAgentTest;
-let workflowUnderTest: WorkflowEntity;
-let otherWorkflow: WorkflowEntity;
+let workflowUnderTest: IWorkflowBase;
+let otherWorkflow: IWorkflowBase;
 let testDefinition: TestDefinition;
 let otherTestDefinition: TestDefinition;
 let ownerShell: User;

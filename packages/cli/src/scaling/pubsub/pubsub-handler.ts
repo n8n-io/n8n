@@ -1,13 +1,13 @@
+import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { ensureError } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
 import type { PubSubEventMap } from '@/events/maps/pub-sub.event-map';
-import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
+import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
 import { License } from '@/license';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -16,7 +16,7 @@ import { assertNever } from '@/utils';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 
 import type { PubSub } from './pubsub.types';
-import { WorkerStatusService } from '../worker-status.service';
+import { WorkerStatusService } from '../worker-status.service.ee';
 
 /**
  * Responsible for handling events emitted from messages received via a pubsub channel.
@@ -59,9 +59,12 @@ export class PubSubHandler {
 					...this.commonHandlers,
 					...this.multiMainHandlers,
 					'response-to-get-worker-status': async (payload) =>
-						this.push.broadcast('sendWorkerStatusMessage', {
-							workerId: payload.senderId,
-							status: payload,
+						this.push.broadcast({
+							type: 'sendWorkerStatusMessage',
+							data: {
+								workerId: payload.senderId,
+								status: payload,
+							},
 						}),
 				});
 
@@ -113,7 +116,7 @@ export class PubSubHandler {
 					shouldPublish: false, // prevent leader from re-publishing message
 				});
 
-				this.push.broadcast('workflowActivated', { workflowId });
+				this.push.broadcast({ type: 'workflowActivated', data: { workflowId } });
 
 				await this.publisher.publishCommand({
 					command: 'display-workflow-activation',
@@ -125,7 +128,10 @@ export class PubSubHandler {
 
 				await this.workflowRepository.update(workflowId, { active: false });
 
-				this.push.broadcast('workflowFailedToActivate', { workflowId, errorMessage: message });
+				this.push.broadcast({
+					type: 'workflowFailedToActivate',
+					data: { workflowId, errorMessage: message },
+				});
 
 				await this.publisher.publishCommand({
 					command: 'display-workflow-activation-error',
@@ -139,7 +145,7 @@ export class PubSubHandler {
 			await this.activeWorkflowManager.removeActivationError(workflowId);
 			await this.activeWorkflowManager.removeWorkflowTriggersAndPollers(workflowId);
 
-			this.push.broadcast('workflowDeactivated', { workflowId });
+			this.push.broadcast({ type: 'workflowDeactivated', data: { workflowId } });
 
 			// instruct followers to show workflow deactivation in UI
 			await this.publisher.publishCommand({
@@ -148,18 +154,18 @@ export class PubSubHandler {
 			});
 		},
 		'display-workflow-activation': async ({ workflowId }) =>
-			this.push.broadcast('workflowActivated', { workflowId }),
+			this.push.broadcast({ type: 'workflowActivated', data: { workflowId } }),
 		'display-workflow-deactivation': async ({ workflowId }) =>
-			this.push.broadcast('workflowDeactivated', { workflowId }),
+			this.push.broadcast({ type: 'workflowDeactivated', data: { workflowId } }),
 		'display-workflow-activation-error': async ({ workflowId, errorMessage }) =>
-			this.push.broadcast('workflowFailedToActivate', { workflowId, errorMessage }),
-		'relay-execution-lifecycle-event': async ({ type, args, pushRef }) => {
-			if (!this.push.getBackend().hasPushRef(pushRef)) return;
+			this.push.broadcast({ type: 'workflowFailedToActivate', data: { workflowId, errorMessage } }),
+		'relay-execution-lifecycle-event': async ({ pushRef, ...pushMsg }) => {
+			if (!this.push.hasPushRef(pushRef)) return;
 
-			this.push.send(type, args, pushRef);
+			this.push.send(pushMsg, pushRef);
 		},
 		'clear-test-webhooks': async ({ webhookKey, workflowEntity, pushRef }) => {
-			if (!this.push.getBackend().hasPushRef(pushRef)) return;
+			if (!this.push.hasPushRef(pushRef)) return;
 
 			this.testWebhooks.clearTimeout(webhookKey);
 

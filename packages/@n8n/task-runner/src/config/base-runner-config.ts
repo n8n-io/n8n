@@ -23,8 +23,13 @@ export class BaseRunnerConfig {
 	@Env('N8N_RUNNERS_MAX_PAYLOAD')
 	maxPayloadSize: number = 1024 * 1024 * 1024;
 
+	/**
+	 * How many concurrent tasks can a runner execute at a time
+	 *
+	 * Kept high for backwards compatibility - n8n v2 will reduce this to `5`
+	 */
 	@Env('N8N_RUNNERS_MAX_CONCURRENCY')
-	maxConcurrency: number = 5;
+	maxConcurrency: number = 10;
 
 	/**
 	 * How long (in seconds) a runner may be idle for before exit. Intended
@@ -37,8 +42,15 @@ export class BaseRunnerConfig {
 	@Env('GENERIC_TIMEZONE')
 	timezone: string = 'America/New_York';
 
+	/**
+	 * How long (in seconds) a task is allowed to take for completion, else the
+	 * task will be aborted. (In internal mode, the runner will also be
+	 * restarted.) Must be greater than 0.
+	 *
+	 * Kept high for backwards compatibility - n8n v2 will reduce this to `60`
+	 */
 	@Env('N8N_RUNNERS_TASK_TIMEOUT')
-	taskTimeout: number = 60;
+	taskTimeout: number = 300; // 5 minutes
 
 	@Nested
 	healthcheckServer!: HealthcheckServerConfig;

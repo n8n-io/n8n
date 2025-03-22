@@ -1,6 +1,9 @@
 import type { INodeProperties } from 'n8n-workflow';
+
 import {
+	addCustomFieldsPreSendAction,
 	addLocationIdPreSendAction,
+	addNotePostReceiveAction,
 	splitTagsPreSendAction,
 	validEmailAndPhonePreSendAction,
 } from '../GenericFunctions';
@@ -30,6 +33,7 @@ export const contactOperations: INodeProperties[] = [
 							validEmailAndPhonePreSendAction,
 							splitTagsPreSendAction,
 							addLocationIdPreSendAction,
+							addCustomFieldsPreSendAction,
 						],
 					},
 					output: {
@@ -40,6 +44,7 @@ export const contactOperations: INodeProperties[] = [
 									property: 'contact',
 								},
 							},
+							addNotePostReceiveAction,
 						],
 					},
 				},
@@ -164,44 +169,27 @@ const customFields: INodeProperties = {
 				{
 					displayName: 'Field Name or ID',
 					name: 'fieldId',
-					type: 'options',
 					required: true,
+					type: 'resourceLocator',
 					default: '',
-					description:
-						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-					typeOptions: {
-						loadOptions: {
-							routing: {
-								request: {
-									url: '/custom-fields',
-									method: 'GET',
-								},
-								output: {
-									postReceive: [
-										{
-											type: 'rootProperty',
-											properties: {
-												property: 'customFields',
-											},
-										},
-										{
-											type: 'setKeyValue',
-											properties: {
-												name: '={{$responseItem.name}}',
-												value: '={{$responseItem.id}}',
-											},
-										},
-										{
-											type: 'sort',
-											properties: {
-												key: 'name',
-											},
-										},
-									],
-								},
+					description: 'Choose from the list, or specify an ID using an expression',
+					modes: [
+						{
+							displayName: 'List',
+							name: 'list',
+							type: 'list',
+							typeOptions: {
+								searchListMethod: 'searchCustomFields',
+								searchable: true,
 							},
 						},
-					},
+						{
+							displayName: 'ID',
+							name: 'id',
+							type: 'string',
+							placeholder: 'Enter Custom Field ID',
+						},
+					],
 				},
 				{
 					displayName: 'Field Value',
@@ -210,15 +198,22 @@ const customFields: INodeProperties = {
 					default: '',
 					routing: {
 						send: {
-							value: '={{$value}}',
-							property: '=customField.{{$parent.fieldId}}',
 							type: 'body',
+							property: 'customFields',
+							value:
+								'={{ $parent.values.map(field => ({ fieldId: { id: field.fieldId.id }, field_value: field.fieldValue })) }}',
 						},
 					},
 				},
 			],
 		},
 	],
+	routing: {
+		send: {
+			type: 'body',
+			property: 'customFields',
+		},
+	},
 };
 
 const createProperties: INodeProperties[] = [
@@ -391,6 +386,12 @@ const createProperties: INodeProperties[] = [
 				},
 			},
 			{
+				displayName: 'Note',
+				name: 'notes',
+				type: 'string',
+				default: '',
+			},
+			{
 				displayName: 'Tags',
 				name: 'tags',
 				type: 'string',
@@ -404,16 +405,29 @@ const createProperties: INodeProperties[] = [
 				},
 			},
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Timezone',
 				name: 'timezone',
-				type: 'options',
+				placeholder: 'Select Timezone',
+				type: 'resourceLocator',
 				default: '',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getTimezones',
-				},
+				description: 'Choose from the list, or specify a timezone using an expression',
+				modes: [
+					{
+						displayName: 'List',
+						name: 'list',
+						type: 'list',
+						typeOptions: {
+							searchListMethod: 'searchTimezones',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: 'Enter Timezone ID',
+					},
+				],
 				routing: {
 					send: {
 						type: 'body',
@@ -607,16 +621,29 @@ const updateProperties: INodeProperties[] = [
 				},
 			},
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Timezone',
 				name: 'timezone',
-				type: 'options',
+				placeholder: 'Select Timezone',
+				type: 'resourceLocator',
 				default: '',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getTimezones',
-				},
+				description: 'Choose from the list, or specify a timezone using an expression',
+				modes: [
+					{
+						displayName: 'List',
+						name: 'list',
+						type: 'list',
+						typeOptions: {
+							searchListMethod: 'searchTimezones',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: 'Enter Timezone ID',
+					},
+				],
 				routing: {
 					send: {
 						type: 'body',
@@ -699,9 +726,8 @@ const getAllProperties: INodeProperties[] = [
 		},
 		typeOptions: {
 			minValue: 1,
-			maxValue: 100,
 		},
-		default: 20,
+		default: 50,
 		routing: {
 			send: {
 				type: 'query',

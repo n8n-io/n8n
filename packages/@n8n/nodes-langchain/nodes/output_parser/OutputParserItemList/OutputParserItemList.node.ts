@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
@@ -15,6 +15,7 @@ export class OutputParserItemList implements INodeType {
 		displayName: 'Item List Output Parser',
 		name: 'outputParserItemList',
 		icon: 'fa:bars',
+		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
 		description: 'Return the results as separate items',
@@ -38,10 +39,10 @@ export class OutputParserItemList implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiOutputParser],
+		outputs: [NodeConnectionTypes.AiOutputParser],
 		outputNames: ['Output Parser'],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
 			{
 				displayName: 'Options',
 				name: 'options',

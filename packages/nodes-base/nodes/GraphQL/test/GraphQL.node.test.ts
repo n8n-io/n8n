@@ -17,12 +17,10 @@ describe('GraphQL Node', () => {
 
 	beforeAll(async () => {
 		await initBinaryDataService();
-		nock.disableNetConnect();
 
 		nock(baseUrl)
 			.matchHeader('accept', 'application/json')
 			.matchHeader('content-type', 'application/json')
-			.matchHeader('user-agent', 'axios/1.7.4')
 			.matchHeader('content-length', '263')
 			.matchHeader('accept-encoding', 'gzip, compress, deflate, br')
 			.post(
@@ -69,10 +67,6 @@ describe('GraphQL Node', () => {
 					},
 				},
 			});
-	});
-
-	afterAll(() => {
-		nock.restore();
 	});
 
 	const nodeTypes = setup(workflowTests);

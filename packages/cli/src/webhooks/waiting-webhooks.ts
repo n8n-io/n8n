@@ -1,4 +1,6 @@
+import { Service } from '@n8n/di';
 import type express from 'express';
+import { Logger } from 'n8n-core';
 import {
 	FORM_NODE_TYPE,
 	type INodes,
@@ -7,13 +9,11 @@ import {
 	WAIT_NODE_TYPE,
 	Workflow,
 } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { IExecutionResponse, IWorkflowDb } from '@/interfaces';
-import { Logger } from '@/logging/logger.service';
+import type { IExecutionResponse } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -121,6 +121,12 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
 
+		/**
+		 * A manual execution resumed by a webhook call needs to be marked as such
+		 * so workers in scaling mode reuse the existing execution data.
+		 */
+		if (execution.mode === 'manual') execution.data.isTestWebhook = true;
+
 		return await this.getWebhookExecutionData({
 			execution,
 			req,
@@ -211,7 +217,7 @@ export class WaitingWebhooks implements IWebhookManager {
 			void WebhookHelpers.executeWebhook(
 				workflow,
 				webhookData,
-				workflowData as IWorkflowDb,
+				workflowData,
 				workflowStartNode,
 				executionMode,
 				runExecutionData.pushRef,

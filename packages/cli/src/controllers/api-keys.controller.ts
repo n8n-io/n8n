@@ -1,9 +1,10 @@
-import { type RequestHandler } from 'express';
+import { CreateApiKeyRequestDto, UpdateApiKeyRequestDto } from '@n8n/api-types';
+import type { RequestHandler } from 'express';
 
-import { Delete, Get, Post, RestController } from '@/decorators';
+import { Body, Delete, Get, Param, Patch, Post, RestController } from '@/decorators';
 import { EventService } from '@/events/event.service';
 import { isApiEnabled } from '@/public-api';
-import { ApiKeysRequest, AuthenticatedRequest } from '@/requests';
+import { AuthenticatedRequest } from '@/requests';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 export const isApiEnabledMiddleware: RequestHandler = (_, res, next) => {
@@ -25,12 +26,24 @@ export class ApiKeysController {
 	 * Create an API Key
 	 */
 	@Post('/', { middlewares: [isApiEnabledMiddleware] })
-	async createAPIKey(req: AuthenticatedRequest) {
-		const newApiKey = await this.publicApiKeyService.createPublicApiKeyForUser(req.user);
+	async createAPIKey(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body { label, expiresAt }: CreateApiKeyRequestDto,
+	) {
+		const newApiKey = await this.publicApiKeyService.createPublicApiKeyForUser(req.user, {
+			label,
+			expiresAt,
+		});
 
 		this.eventService.emit('public-api-key-created', { user: req.user, publicApi: false });
 
-		return newApiKey;
+		return {
+			...newApiKey,
+			apiKey: this.publicApiKeyService.redactApiKey(newApiKey.apiKey),
+			rawApiKey: newApiKey.apiKey,
+			expiresAt,
+		};
 	}
 
 	/**
@@ -46,10 +59,27 @@ export class ApiKeysController {
 	 * Delete an API Key
 	 */
 	@Delete('/:id', { middlewares: [isApiEnabledMiddleware] })
-	async deleteAPIKey(req: ApiKeysRequest.DeleteAPIKey) {
-		await this.publicApiKeyService.deleteApiKeyForUser(req.user, req.params.id);
+	async deleteAPIKey(req: AuthenticatedRequest, _res: Response, @Param('id') apiKeyId: string) {
+		await this.publicApiKeyService.deleteApiKeyForUser(req.user, apiKeyId);
 
 		this.eventService.emit('public-api-key-deleted', { user: req.user, publicApi: false });
+
+		return { success: true };
+	}
+
+	/**
+	 * Patch an API Key
+	 */
+	@Patch('/:id', { middlewares: [isApiEnabledMiddleware] })
+	async updateAPIKey(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('id') apiKeyId: string,
+		@Body { label }: UpdateApiKeyRequestDto,
+	) {
+		await this.publicApiKeyService.updateApiKeyForUser(req.user, apiKeyId, {
+			label,
+		});
 
 		return { success: true };
 	}

@@ -6,13 +6,12 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import type { IncludeMods, SetField, SetNodeOptions } from './helpers/interfaces';
 import { INCLUDE } from './helpers/interfaces';
-
-import * as raw from './raw.mode';
 import * as manual from './manual.mode';
+import * as raw from './raw.mode';
 
 type Mode = 'manual' | 'raw';
 
@@ -27,8 +26,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Edit Fields',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	properties: [
 		{
 			displayName: 'Mode',

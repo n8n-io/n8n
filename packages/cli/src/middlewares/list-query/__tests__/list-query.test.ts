@@ -6,6 +6,8 @@ import { selectListQueryMiddleware } from '@/middlewares/list-query/select';
 import type { ListQuery } from '@/requests';
 import * as ResponseHelper from '@/response-helper';
 
+import { sortByQueryMiddleware } from '../sort-by';
+
 describe('List query middleware', () => {
 	let mockReq: ListQuery.Request;
 	let mockRes: Response;
@@ -171,6 +173,84 @@ describe('List query middleware', () => {
 			paginationListQueryMiddleware(...args);
 
 			expect(sendErrorResponse).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('Query sort by', () => {
+		const validCases: Array<{ name: string; value: ListQuery.Workflow.SortOrder }> = [
+			{
+				name: 'sorting by name asc',
+				value: 'name:asc',
+			},
+			{
+				name: 'sorting by name desc',
+				value: 'name:desc',
+			},
+			{
+				name: 'sorting by createdAt asc',
+				value: 'createdAt:asc',
+			},
+			{
+				name: 'sorting by createdAt desc',
+				value: 'createdAt:desc',
+			},
+			{
+				name: 'sorting by updatedAt asc',
+				value: 'updatedAt:asc',
+			},
+			{
+				name: 'sorting by updatedAt desc',
+				value: 'updatedAt:desc',
+			},
+		];
+
+		const invalidCases: Array<{ name: string; value: string }> = [
+			{
+				name: 'sorting by invalid column',
+				value: 'test:asc',
+			},
+			{
+				name: 'sorting by valid column without order',
+				value: 'name',
+			},
+			{
+				name: 'sorting by valid column with invalid order',
+				value: 'name:test',
+			},
+		];
+
+		test.each(validCases)('should succeed validation when $name', async ({ value }) => {
+			mockReq.query = {
+				sortBy: value,
+			};
+
+			sortByQueryMiddleware(...args);
+
+			expect(mockReq.listQueryOptions).toMatchObject(
+				expect.objectContaining({
+					sortBy: value,
+				}),
+			);
+			expect(nextFn).toBeCalledTimes(1);
+		});
+
+		test.each(invalidCases)('should fail validation when $name', async ({ value }) => {
+			mockReq.query = {
+				sortBy: value as ListQuery.Workflow.SortOrder,
+			};
+
+			sortByQueryMiddleware(...args);
+
+			expect(sendErrorResponse).toHaveBeenCalledTimes(1);
+		});
+
+		test('should not pass sortBy to listQueryOptions if not provided', async () => {
+			mockReq.query = {};
+
+			sortByQueryMiddleware(...args);
+
+			expect(mockReq.listQueryOptions).toBeUndefined();
+			expect(nextFn).toBeCalledTimes(1);
 		});
 	});
 

@@ -4,16 +4,13 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import { smsFields, smsOperations } from './SmsDescription';
-
-import { mmsFields, mmsOperations } from './MmsDescription';
-
 import { callFields, callOperations } from './CallDescription';
-
 import { plivoApiRequest } from './GenericFunctions';
+import { mmsFields, mmsOperations } from './MmsDescription';
+import { smsFields, smsOperations } from './SmsDescription';
 
 export class Plivo implements INodeType {
 	description: INodeTypeDescription = {
@@ -27,8 +24,9 @@ export class Plivo implements INodeType {
 		defaults: {
 			name: 'Plivo',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'plivoApi',

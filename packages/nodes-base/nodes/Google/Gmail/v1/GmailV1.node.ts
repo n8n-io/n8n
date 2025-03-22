@@ -1,18 +1,23 @@
+import isEmpty from 'lodash/isEmpty';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IBinaryKeyData,
 	type IDataObject,
 	type IExecuteFunctions,
 	type IHttpRequestMethods,
-	type ILoadOptionsFunctions,
 	type INodeExecutionData,
-	type INodePropertyOptions,
 	type INodeType,
 	type INodeTypeBaseDescription,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
-import isEmpty from 'lodash/isEmpty';
+import { oldVersionNotice } from '@utils/descriptions';
+
+import { draftFields, draftOperations } from './DraftDescription';
+import { labelFields, labelOperations } from './LabelDescription';
+import { getLabels } from './loadOptions';
+import { messageFields, messageOperations } from './MessageDescription';
+import { messageLabelFields, messageLabelOperations } from './MessageLabelDescription';
 import type { IEmail } from '../../../../utils/sendAndWait/interfaces';
 import {
 	encodeEmail,
@@ -21,16 +26,6 @@ import {
 	googleApiRequestAllItems,
 	parseRawEmail,
 } from '../GenericFunctions';
-
-import { messageFields, messageOperations } from './MessageDescription';
-
-import { messageLabelFields, messageLabelOperations } from './MessageLabelDescription';
-
-import { labelFields, labelOperations } from './LabelDescription';
-
-import { draftFields, draftOperations } from './DraftDescription';
-
-import { oldVersionNotice } from '@utils/descriptions';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Gmail',
@@ -43,8 +38,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Gmail',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{
 			name: 'googleApi',
@@ -145,32 +140,7 @@ export class GmailV1 implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the labels to display them to user so that they can
-			// select them easily
-			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const labels = await googleApiRequestAllItems.call(
-					this,
-					'labels',
-					'GET',
-					'/gmail/v1/users/me/labels',
-				);
-				for (const label of labels) {
-					returnData.push({
-						name: label.name,
-						value: label.id,
-					});
-				}
-				return returnData.sort((a, b) => {
-					if (a.name < b.name) {
-						return -1;
-					}
-					if (a.name > b.name) {
-						return 1;
-					}
-					return 0;
-				});
-			},
+			getLabels,
 		},
 	};
 

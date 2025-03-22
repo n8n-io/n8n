@@ -1,4 +1,5 @@
-import type { Readable } from 'stream';
+import jwt from 'jsonwebtoken';
+import set from 'lodash/set';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -12,14 +13,14 @@ import {
 	jsonParse,
 	BINARY_ENCODING,
 	NodeOperationError,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	WEBHOOK_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	WAIT_NODE_TYPE,
 } from 'n8n-workflow';
-import set from 'lodash/set';
-import jwt from 'jsonwebtoken';
+import type { Readable } from 'stream';
+
 import { formatPrivateKey, generatePairedItemData } from '../../utils/utilities';
 
 export class RespondToWebhook implements INodeType {
@@ -33,8 +34,8 @@ export class RespondToWebhook implements INodeType {
 		defaults: {
 			name: 'Respond to Webhook',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'jwtAuth',
@@ -355,14 +356,12 @@ export class RespondToWebhook implements INodeType {
 				}
 			} else if (respondWith === 'jwt') {
 				try {
-					const { keyType, secret, algorithm, privateKey } = (await this.getCredentials(
-						'jwtAuth',
-					)) as {
+					const { keyType, secret, algorithm, privateKey } = await this.getCredentials<{
 						keyType: 'passphrase' | 'pemKey';
 						privateKey: string;
 						secret: string;
 						algorithm: jwt.Algorithm;
-					};
+					}>('jwtAuth');
 
 					let secretOrPrivateKey;
 

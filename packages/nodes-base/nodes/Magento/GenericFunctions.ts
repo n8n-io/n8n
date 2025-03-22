@@ -11,6 +11,7 @@ import type {
 	IRequestOptions,
 } from 'n8n-workflow';
 import { ApplicationError, NodeApiError } from 'n8n-workflow';
+
 import type { Filter, Address, Search, FilterGroup, ProductAttribute } from './types';
 
 export async function magentoApiRequest(

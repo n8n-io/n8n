@@ -1,31 +1,29 @@
 import type { FrontendSettings, ITelemetrySettings } from '@n8n/api-types';
-import { GlobalConfig, FrontendConfig, SecurityConfig } from '@n8n/config';
+import { GlobalConfig, SecurityConfig } from '@n8n/config';
+import { Container, Service } from '@n8n/di';
 import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
 import uniq from 'lodash/uniq';
-import { InstanceSettings } from 'n8n-core';
+import { InstanceSettings, Logger } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription } from 'n8n-workflow';
 import path from 'path';
-import { Container, Service } from 'typedi';
 
 import config from '@/config';
 import { inE2ETests, LICENSE_FEATURES, N8N_VERSION } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { getVariablesLimit } from '@/environments/variables/environment-helpers';
-import { getLdapLoginLabel } from '@/ldap/helpers.ee';
+import { getLdapLoginLabel } from '@/ldap.ee/helpers.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { Logger } from '@/logging/logger.service';
 import { isApiEnabled } from '@/public-api';
 import type { CommunityPackagesService } from '@/services/community-packages.service';
-import { getSamlLoginLabel } from '@/sso/saml/saml-helpers';
-import { getCurrentAuthenticationMethod } from '@/sso/sso-helpers';
+import { getSamlLoginLabel } from '@/sso.ee/saml/saml-helpers';
+import { getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
 import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
-} from '@/workflows/workflow-history/workflow-history-helper.ee';
+} from '@/workflows/workflow-history.ee/workflow-history-helper.ee';
 
 import { UrlService } from './url.service';
 
@@ -46,7 +44,6 @@ export class FrontendService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly urlService: UrlService,
 		private readonly securityConfig: SecurityConfig,
-		private readonly frontendConfig: FrontendConfig,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
@@ -106,7 +103,7 @@ export class FrontendService {
 			versionCli: N8N_VERSION,
 			concurrency: config.getEnv('executions.concurrency.productionLimit'),
 			authCookie: {
-				secure: config.getEnv('secure_cookie'),
+				secure: this.globalConfig.auth.cookie.secure,
 			},
 			releaseChannel: this.globalConfig.generic.releaseChannel,
 			oauthCallbackUrls: {
@@ -155,7 +152,7 @@ export class FrontendService {
 					enabled: !this.globalConfig.publicApi.swaggerUiDisabled,
 				},
 			},
-			workflowTagsDisabled: config.getEnv('workflowTagsDisabled'),
+			workflowTagsDisabled: this.globalConfig.tags.disabled,
 			logLevel: this.globalConfig.logging.level,
 			hiringBannerEnabled: config.getEnv('hiringBanner.enabled'),
 			aiAssistant: {
@@ -217,6 +214,10 @@ export class FrontendService {
 			askAi: {
 				enabled: false,
 			},
+			aiCredits: {
+				enabled: false,
+				credits: 0,
+			},
 			workflowHistory: {
 				pruneTime: -1,
 				licensePruneTime: -1,
@@ -229,8 +230,11 @@ export class FrontendService {
 			security: {
 				blockFileAccessToN8nFiles: this.securityConfig.blockFileAccessToN8nFiles,
 			},
-			betaFeatures: this.frontendConfig.betaFeatures,
 			easyAIWorkflowOnboarded: false,
+			partialExecution: this.globalConfig.partialExecutions,
+			folders: {
+				enabled: false,
+			},
 		};
 	}
 
@@ -284,6 +288,7 @@ export class FrontendService {
 		const isS3Licensed = this.license.isBinaryDataS3Licensed();
 		const isAiAssistantEnabled = this.license.isAiAssistantEnabled();
 		const isAskAiEnabled = this.license.isAskAiEnabled();
+		const isAiCreditsEnabled = this.license.isAiCreditsEnabled();
 
 		this.settings.license.planName = this.license.getPlanName();
 		this.settings.license.consumerId = this.license.getConsumerId();
@@ -322,7 +327,7 @@ export class FrontendService {
 		}
 
 		if (this.license.isVariablesEnabled()) {
-			this.settings.variables.limit = getVariablesLimit();
+			this.settings.variables.limit = this.license.getVariablesLimit();
 		}
 
 		if (this.license.isWorkflowHistoryLicensed() && config.getEnv('workflowHistory.enabled')) {
@@ -344,6 +349,11 @@ export class FrontendService {
 			this.settings.askAi.enabled = isAskAiEnabled;
 		}
 
+		if (isAiCreditsEnabled) {
+			this.settings.aiCredits.enabled = isAiCreditsEnabled;
+			this.settings.aiCredits.credits = this.license.getAiCredits();
+		}
+
 		this.settings.mfa.enabled = config.get('mfa.enabled');
 
 		this.settings.executionMode = config.getEnv('executions.mode');
@@ -351,6 +361,8 @@ export class FrontendService {
 		this.settings.binaryDataMode = config.getEnv('binaryDataManager.mode');
 
 		this.settings.enterprise.projects.team.limit = this.license.getTeamProjectLimit();
+
+		this.settings.folders.enabled = this.license.isFoldersEnabled();
 
 		return this.settings;
 	}

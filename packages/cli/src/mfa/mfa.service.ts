@@ -1,5 +1,5 @@
+import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
-import { Service } from 'typedi';
 import { v4 as uuid } from 'uuid';
 
 import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';

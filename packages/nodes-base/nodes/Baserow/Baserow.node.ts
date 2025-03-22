@@ -5,7 +5,7 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import {
@@ -15,9 +15,7 @@ import {
 	TableFieldMapper,
 	toOptions,
 } from './GenericFunctions';
-
 import { operationFields } from './OperationDescription';
-
 import type {
 	BaserowCredentials,
 	FieldsUiValues,
@@ -39,8 +37,8 @@ export class Baserow implements INodeType {
 		defaults: {
 			name: 'Baserow',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		usableAsTool: true,
 		credentials: [
 			{

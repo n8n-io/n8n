@@ -1,17 +1,25 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import type { Scope } from '@sentry/node';
+import * as a from 'assert';
+import { mock } from 'jest-mock-extended';
 import { Credentials } from 'n8n-core';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { randomString } from 'n8n-workflow';
-import { Container } from 'typedi';
 
+import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
+import { CredentialsService } from '@/credentials/credentials.service';
 import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import type { ListQuery } from '@/requests';
+import { CredentialsTester } from '@/services/credentials-tester.service';
 
 import {
+	decryptCredentialData,
+	getCredentialById,
 	saveCredential,
 	shareCredentialWithProjects,
 	shareCredentialWithUsers,
@@ -21,6 +29,7 @@ import { createManyUsers, createMember, createOwner } from '../shared/db/users';
 import {
 	randomCredentialPayload as payload,
 	randomCredentialPayload,
+	randomCredentialPayloadWithOauthTokenData,
 	randomName,
 } from '../shared/random';
 import * as testDb from '../shared/test-db';
@@ -87,6 +96,7 @@ describe('GET /credentials', () => {
 			validateMainCredentialData(credential);
 			expect('data' in credential).toBe(false);
 			expect(savedCredentialsIds).toContain(credential.id);
+			expect('isManaged' in credential).toBe(true);
 		});
 	});
 
@@ -223,6 +233,164 @@ describe('GET /credentials', () => {
 				].sort(),
 			);
 		}
+	});
+
+	test('should return data when ?includeData=true', async () => {
+		// ARRANGE
+		const [actor, otherMember] = await createManyUsers(2, {
+			role: 'global:member',
+		});
+
+		const teamProjectViewer = await createTeamProject(undefined);
+		await linkUserToProject(actor, teamProjectViewer, 'project:viewer');
+		const teamProjectEditor = await createTeamProject(undefined);
+		await linkUserToProject(actor, teamProjectEditor, 'project:editor');
+
+		const [
+			// should have data
+			ownedCredential,
+			// should not have
+			sharedCredential,
+			// should not have data
+			teamCredentialAsViewer,
+			// should have data
+			teamCredentialAsEditor,
+		] = await Promise.all([
+			saveCredential(randomCredentialPayload(), { user: actor, role: 'credential:owner' }),
+			saveCredential(randomCredentialPayload(), { user: otherMember, role: 'credential:owner' }),
+			saveCredential(randomCredentialPayload(), {
+				project: teamProjectViewer,
+				role: 'credential:owner',
+			}),
+			saveCredential(randomCredentialPayload(), {
+				project: teamProjectEditor,
+				role: 'credential:owner',
+			}),
+		]);
+		await shareCredentialWithUsers(sharedCredential, [actor]);
+
+		// ACT
+		const response = await testServer
+			.authAgentFor(actor)
+			.get('/credentials')
+			.query({ includeData: true });
+
+		// ASSERT
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(4);
+
+		const creds = response.body.data as Array<Credentials & { scopes: Scope[] }>;
+		const ownedCred = creds.find((c) => c.id === ownedCredential.id)!;
+		const sharedCred = creds.find((c) => c.id === sharedCredential.id)!;
+		const teamCredAsViewer = creds.find((c) => c.id === teamCredentialAsViewer.id)!;
+		const teamCredAsEditor = creds.find((c) => c.id === teamCredentialAsEditor.id)!;
+
+		expect(ownedCred.id).toBe(ownedCredential.id);
+		expect(ownedCred.data).toBeDefined();
+		expect(ownedCred.scopes).toEqual(
+			[
+				'credential:move',
+				'credential:read',
+				'credential:update',
+				'credential:share',
+				'credential:delete',
+			].sort(),
+		);
+
+		expect(sharedCred.id).toBe(sharedCredential.id);
+		expect(sharedCred.data).not.toBeDefined();
+		expect(sharedCred.scopes).toEqual(['credential:read'].sort());
+
+		expect(teamCredAsViewer.id).toBe(teamCredentialAsViewer.id);
+		expect(teamCredAsViewer.data).not.toBeDefined();
+		expect(teamCredAsViewer.scopes).toEqual(['credential:read'].sort());
+
+		expect(teamCredAsEditor.id).toBe(teamCredentialAsEditor.id);
+		expect(teamCredAsEditor.data).toBeDefined();
+		expect(teamCredAsEditor.scopes).toEqual(
+			['credential:read', 'credential:update', 'credential:delete'].sort(),
+		);
+	});
+
+	test('should return data when ?includeData=true for owners', async () => {
+		// ARRANGE
+		const teamProjectViewer = await createTeamProject(undefined);
+
+		const [
+			// should have data
+			ownedCredential,
+			// should have data
+			sharedCredential,
+			// should have data
+			teamCredentialAsViewer,
+		] = await Promise.all([
+			saveCredential(randomCredentialPayload(), { user: owner, role: 'credential:owner' }),
+			saveCredential(randomCredentialPayload(), { user: member, role: 'credential:owner' }),
+			saveCredential(randomCredentialPayloadWithOauthTokenData(), {
+				project: teamProjectViewer,
+				role: 'credential:owner',
+			}),
+		]);
+
+		// ACT
+		const response = await testServer
+			.authAgentFor(owner)
+			.get('/credentials')
+			.query({ includeData: true });
+
+		// ASSERT
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(3);
+
+		const creds = response.body.data as Array<Credentials & { scopes: Scope[] }>;
+		const ownedCred = creds.find((c) => c.id === ownedCredential.id)!;
+		const sharedCred = creds.find((c) => c.id === sharedCredential.id)!;
+		const teamCredAsViewer = creds.find((c) => c.id === teamCredentialAsViewer.id)!;
+
+		expect(ownedCred.id).toBe(ownedCredential.id);
+		expect(ownedCred.data).toBeDefined();
+		expect(ownedCred.scopes).toEqual(
+			[
+				'credential:move',
+				'credential:read',
+				'credential:update',
+				'credential:share',
+				'credential:delete',
+				'credential:create',
+				'credential:list',
+			].sort(),
+		);
+
+		expect(sharedCred.id).toBe(sharedCredential.id);
+		expect(sharedCred.data).toBeDefined();
+		expect(sharedCred.scopes).toEqual(
+			[
+				'credential:move',
+				'credential:read',
+				'credential:update',
+				'credential:share',
+				'credential:delete',
+				'credential:create',
+				'credential:list',
+			].sort(),
+		);
+
+		expect(teamCredAsViewer.id).toBe(teamCredentialAsViewer.id);
+		expect(teamCredAsViewer.data).toBeDefined();
+		expect(
+			(teamCredAsViewer.data as unknown as ICredentialDataDecryptedObject).oauthTokenData,
+		).toBe(true);
+		expect(teamCredAsViewer.scopes).toEqual(
+			[
+				'credential:move',
+				'credential:read',
+				'credential:update',
+				'credential:share',
+				'credential:delete',
+				'credential:create',
+				'credential:list',
+			].sort(),
+		);
 	});
 
 	describe('should return', () => {
@@ -475,25 +643,25 @@ describe('GET /credentials', () => {
 			expect(response.body.data.map((credential) => credential.id)).toContain(memberCredential.id);
 		});
 
-		test('should return all credentials to instance owners when working on their own personal project', async () => {
+		test('should not ignore the project filter when the request is done by an owner and also includes the scopes', async () => {
 			const ownerCredential = await saveCredential(payload(), {
 				user: owner,
 				role: 'credential:owner',
 			});
-			const memberCredential = await saveCredential(payload(), {
-				user: member,
-				role: 'credential:owner',
-			});
+			// should not show up
+			await saveCredential(payload(), { user: member, role: 'credential:owner' });
 
 			const response: GetAllResponse = await testServer
 				.authAgentFor(owner)
 				.get('/credentials')
-				.query(`filter={ "projectId": "${ownerPersonalProject.id}" }&includeScopes=true`)
+				.query({
+					filter: JSON.stringify({ projectId: ownerPersonalProject.id }),
+					includeScopes: true,
+				})
 				.expect(200);
 
-			expect(response.body.data).toHaveLength(2);
-			expect(response.body.data.map((credential) => credential.id)).toContain(ownerCredential.id);
-			expect(response.body.data.map((credential) => credential.id)).toContain(memberCredential.id);
+			expect(response.body.data).toHaveLength(1);
+			expect(response.body.data[0].id).toBe(ownerCredential.id);
 		});
 	});
 
@@ -611,11 +779,12 @@ describe('POST /credentials', () => {
 			].sort(),
 		);
 
-		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
+		const credential = await getCredentialById(id);
+		a.ok(credential);
 
 		expect(credential.name).toBe(payload.name);
 		expect(credential.type).toBe(payload.type);
-		expect(credential.data).not.toBe(payload.data);
+		expect(await decryptCredentialData(credential)).toStrictEqual(payload.data);
 
 		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
 			relations: { project: true, credentials: true },
@@ -1007,6 +1176,39 @@ describe('PATCH /credentials/:id', () => {
 		expect(shellCredential.name).toBe(patchPayload.name); // updated
 	});
 
+	test('should not allow to overwrite oauthTokenData', async () => {
+		// ARRANGE
+		const credential = randomCredentialPayload();
+		credential.data.oauthTokenData = { access_token: 'foo' };
+		const savedCredential = await saveCredential(credential, {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		// ACT
+		const patchPayload = {
+			...credential,
+			data: { accessToken: 'new', oauthTokenData: { access_token: 'bar' } },
+		};
+		await authOwnerAgent.patch(`/credentials/${savedCredential.id}`).send(patchPayload).expect(200);
+
+		// ASSERT
+		const response = await authOwnerAgent
+			.get(`/credentials/${savedCredential.id}`)
+			.query({ includeData: true })
+			.expect(200);
+
+		const { id, data } = response.body.data;
+
+		expect(id).toBe(savedCredential.id);
+		// was overwritten
+		expect(data.accessToken).toBe(patchPayload.data.accessToken);
+		// was not overwritten
+		const dbCredential = await getCredentialById(savedCredential.id);
+		const unencryptedData = Container.get(CredentialsService).decrypt(dbCredential!);
+		expect(unencryptedData.oauthTokenData).toEqual(credential.data.oauthTokenData);
+	});
+
 	test('should fail with invalid inputs', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), {
 			user: owner,
@@ -1034,6 +1236,19 @@ describe('PATCH /credentials/:id', () => {
 			.send(randomCredentialPayload());
 
 		expect(response.statusCode).toBe(403);
+	});
+
+	test('should fail with a 400 is credential is managed', async () => {
+		const { id } = await saveCredential(randomCredentialPayload({ isManaged: true }), {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${id}`)
+			.send(randomCredentialPayload());
+
+		expect(response.statusCode).toBe(400);
 	});
 });
 
@@ -1103,6 +1318,39 @@ describe('GET /credentials/:id', () => {
 		expect(secondResponse.body.data.data).toBeDefined();
 	});
 
+	test('should redact the data when `includeData:true` is passed', async () => {
+		const credentialService = Container.get(CredentialsService);
+		const redactSpy = jest.spyOn(credentialService, 'redact');
+		const savedCredential = await saveCredential(randomCredentialPayload(), {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		const response = await authOwnerAgent
+			.get(`/credentials/${savedCredential.id}`)
+			.query({ includeData: true });
+
+		validateMainCredentialData(response.body.data);
+		expect(response.body.data.data).toBeDefined();
+		expect(redactSpy).toHaveBeenCalled();
+	});
+
+	test('should omit oauth data when `includeData:true` is passed', async () => {
+		const credential = randomCredentialPayloadWithOauthTokenData();
+		const savedCredential = await saveCredential(credential, {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		const response = await authOwnerAgent
+			.get(`/credentials/${savedCredential.id}`)
+			.query({ includeData: true });
+
+		validateMainCredentialData(response.body.data);
+		expect(response.body.data.data).toBeDefined();
+		expect(response.body.data.data.oauthTokenData).toBe(true);
+	});
+
 	test('should retrieve owned cred for member', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), {
 			user: member,
@@ -1170,6 +1418,73 @@ describe('GET /credentials/:id', () => {
 	});
 });
 
+describe('POST /credentials/test', () => {
+	const mockCredentialsTester = mock<CredentialsTester>();
+	Container.set(CredentialsTester, mockCredentialsTester);
+
+	afterEach(() => {
+		mockCredentialsTester.testCredentials.mockClear();
+	});
+
+	test('should test a credential with unredacted data', async () => {
+		mockCredentialsTester.testCredentials.mockResolvedValue({
+			status: 'OK',
+			message: 'Credential tested successfully',
+		});
+		const credential = randomCredentialPayload();
+		const savedCredential = await saveCredential(credential, {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		const response = await authOwnerAgent.post('/credentials/test').send({
+			credentials: {
+				id: savedCredential.id,
+				type: savedCredential.type,
+				data: credential.data,
+			},
+		});
+		expect(response.statusCode).toBe(200);
+		expect(mockCredentialsTester.testCredentials.mock.calls[0][0]).toEqual(owner.id);
+		expect(mockCredentialsTester.testCredentials.mock.calls[0][1]).toBe(savedCredential.type);
+		expect(mockCredentialsTester.testCredentials.mock.calls[0][2]).toEqual({
+			id: savedCredential.id,
+			type: savedCredential.type,
+			data: credential.data,
+		});
+	});
+
+	test('should test a credential with redacted data', async () => {
+		mockCredentialsTester.testCredentials.mockResolvedValue({
+			status: 'OK',
+			message: 'Credential tested successfully',
+		});
+		const credential = randomCredentialPayload();
+		const savedCredential = await saveCredential(credential, {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		const response = await authOwnerAgent.post('/credentials/test').send({
+			credentials: {
+				id: savedCredential.id,
+				type: savedCredential.type,
+				data: {
+					accessToken: CREDENTIAL_BLANKING_VALUE,
+				},
+			},
+		});
+		expect(response.statusCode).toBe(200);
+		expect(mockCredentialsTester.testCredentials.mock.calls[0][0]).toEqual(owner.id);
+		expect(mockCredentialsTester.testCredentials.mock.calls[0][1]).toBe(savedCredential.type);
+		expect(mockCredentialsTester.testCredentials.mock.calls[0][2]).toEqual({
+			id: savedCredential.id,
+			type: savedCredential.type,
+			data: credential.data,
+		});
+	});
+});
+
 const INVALID_PAYLOADS = [
 	{
 		type: randomName(),
@@ -1188,10 +1503,11 @@ const INVALID_PAYLOADS = [
 ];
 
 function validateMainCredentialData(credential: ListQuery.Credentials.WithOwnedByAndSharedWith) {
-	const { name, type, sharedWithProjects, homeProject } = credential;
+	const { name, type, sharedWithProjects, homeProject, isManaged } = credential;
 
 	expect(typeof name).toBe('string');
 	expect(typeof type).toBe('string');
+	expect(typeof isManaged).toBe('boolean');
 
 	if (sharedWithProjects) {
 		expect(Array.isArray(sharedWithProjects)).toBe(true);

@@ -1,15 +1,15 @@
+import { sendAt } from 'cron';
+import moment from 'moment-timezone';
 import type {
 	ITriggerFunctions,
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-import moment from 'moment-timezone';
-import { sendAt } from 'cron';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import type { IRecurrenceRule, Rule } from './SchedulerInterface';
 import { intervalToRecurrence, recurrenceCheck, toCronExpression } from './GenericFunctions';
+import type { IRecurrenceRule, Rule } from './SchedulerInterface';
 
 export class ScheduleTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -28,7 +28,7 @@ export class ScheduleTrigger implements INodeType {
 		},
 
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName:

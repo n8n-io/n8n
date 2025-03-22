@@ -1,4 +1,12 @@
 import type {
+	FindOneAndReplaceOptions,
+	FindOneAndUpdateOptions,
+	UpdateOptions,
+	Sort,
+} from 'mongodb';
+import { ObjectId } from 'mongodb';
+import { ApplicationError, NodeConnectionTypes } from 'n8n-workflow';
+import type {
 	IExecuteFunctions,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -9,17 +17,6 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionType } from 'n8n-workflow';
-
-import type {
-	FindOneAndReplaceOptions,
-	FindOneAndUpdateOptions,
-	UpdateOptions,
-	Sort,
-} from 'mongodb';
-import { ObjectId } from 'mongodb';
-import { generatePairedItemData } from '../../utils/utilities';
-import { nodeProperties } from './MongoDbProperties';
 
 import {
 	buildParameterizedConnString,
@@ -29,8 +26,9 @@ import {
 	stringifyObjectIDs,
 	validateAndResolveMongoCredentials,
 } from './GenericFunctions';
-
 import type { IMongoParametricCredentials } from './mongoDb.types';
+import { nodeProperties } from './MongoDbProperties';
+import { generatePairedItemData } from '../../utils/utilities';
 
 export class MongoDb implements INodeType {
 	description: INodeTypeDescription = {
@@ -43,8 +41,8 @@ export class MongoDb implements INodeType {
 		defaults: {
 			name: 'MongoDB',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		usableAsTool: true,
 		credentials: [
 			{

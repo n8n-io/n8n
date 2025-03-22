@@ -1,9 +1,9 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import * as BullModule from 'bull';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
-import { ApplicationError } from 'n8n-workflow';
-import Container from 'typedi';
+import { ApplicationError, ExecutionCancelledError } from 'n8n-workflow';
 
 import { mockInstance, mockLogger } from '@test/mocking';
 
@@ -202,7 +202,7 @@ describe('ScalingService', () => {
 		});
 
 		describe('if worker', () => {
-			it('should wait for running jobs to finish', async () => {
+			it('should pause queue and wait for running jobs to finish', async () => {
 				// @ts-expect-error readonly property
 				instanceSettings.instanceType = 'worker';
 				await scalingService.setupQueue();
@@ -211,7 +211,7 @@ describe('ScalingService', () => {
 				await scalingService.stop();
 
 				expect(getRunningJobsCountSpy).toHaveBeenCalled();
-				expect(queue.pause).not.toHaveBeenCalled();
+				expect(queue.pause).toHaveBeenCalled();
 				expect(stopQueueRecoverySpy).not.toHaveBeenCalled();
 			});
 		});
@@ -287,6 +287,8 @@ describe('ScalingService', () => {
 			const result = await scalingService.stopJob(job);
 
 			expect(job.progress).toHaveBeenCalledWith({ kind: 'abort-job' });
+			expect(job.discard).toHaveBeenCalled();
+			expect(job.moveToFailed).toHaveBeenCalledWith(new ExecutionCancelledError('123'), true);
 			expect(result).toBe(true);
 		});
 

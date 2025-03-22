@@ -1,13 +1,13 @@
+import set from 'lodash/set';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import set from 'lodash/set';
-
+import type { RedisCredential } from './types';
 import {
 	setupRedisClient,
 	redisConnectionTest,
@@ -15,7 +15,6 @@ import {
 	getValue,
 	setValue,
 } from './utils';
-import type { RedisCredential } from './types';
 
 export class Redis implements INodeType {
 	description: INodeTypeDescription = {
@@ -28,8 +27,8 @@ export class Redis implements INodeType {
 		defaults: {
 			name: 'Redis',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		usableAsTool: true,
 		credentials: [
 			{
