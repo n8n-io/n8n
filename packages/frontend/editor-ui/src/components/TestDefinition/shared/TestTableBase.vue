@@ -1,8 +1,8 @@
 <script setup lang="ts" generic="T extends object">
+import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 import type { TableInstance } from 'element-plus';
 import { ElTable, ElTableColumn } from 'element-plus';
 import { isEqual } from 'lodash-es';
-import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { nextTick, ref, watch } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 /**
@@ -181,11 +181,7 @@ defineSlots<{
 
 .customRow {
 	cursor: pointer;
-	&:hover {
-		& > .customCell {
-			background-color: var(--color-background-light);
-		}
-	}
+	--color-table-row-hover-background: var(--color-background-light);
 }
 
 .customHeaderCell {
@@ -209,6 +205,10 @@ defineSlots<{
 
 .table {
 	border-radius: 12px;
+
+	:global(.el-scrollbar__wrap) {
+		overflow: hidden;
+	}
 
 	:global(.el-table__column-resize-proxy) {
 		background-color: var(--color-primary);
