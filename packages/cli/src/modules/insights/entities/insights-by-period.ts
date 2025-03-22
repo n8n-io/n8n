@@ -1,6 +1,14 @@
-import { BaseEntity, Column, Entity, PrimaryGeneratedColumn } from '@n8n/typeorm';
+import {
+	BaseEntity,
+	Column,
+	Entity,
+	JoinColumn,
+	OneToOne,
+	PrimaryGeneratedColumn,
+} from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { InsightsMetadata } from './insights-metadata';
 import type { PeriodUnits } from './insights-shared';
 import {
 	isValidPeriodNumber,
@@ -19,6 +27,10 @@ export class InsightsByPeriod extends BaseEntity {
 
 	@Column()
 	metaId: number;
+
+	@OneToOne(() => InsightsMetadata)
+	@JoinColumn({ name: 'metaId' })
+	metadata: InsightsMetadata;
 
 	@Column({ name: 'type', type: 'int' })
 	private type_: number;

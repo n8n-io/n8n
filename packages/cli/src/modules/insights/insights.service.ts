@@ -1,4 +1,6 @@
+import type { InsightsSummary } from '@n8n/api-types';
 import { Service } from '@n8n/di';
+import { DateTime } from 'luxon';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import type { ExecutionStatus, IRun, WorkflowExecuteMode } from 'n8n-workflow';
@@ -7,6 +9,11 @@ import { SharedWorkflow } from '@/databases/entities/shared-workflow';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { InsightsMetadata } from '@/modules/insights/entities/insights-metadata';
 import { InsightsRaw } from '@/modules/insights/entities/insights-raw';
+
+import type { TypeUnits } from './entities/insights-shared';
+import { NumberToType } from './entities/insights-shared';
+import type { InsightByWorkflowSortBy } from './repositories/insights-by-period.repository';
+import { InsightsByPeriodRepository } from './repositories/insights-by-period.repository';
 
 const shouldSkipStatus: Record<ExecutionStatus, boolean> = {
 	success: false,
@@ -35,7 +42,10 @@ const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
 
 @Service()
 export class InsightsService {
-	constructor(private readonly sharedWorkflowRepository: SharedWorkflowRepository) {}
+	constructor(
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
+	) {}
 
 	async workflowExecuteAfterHandler(ctx: ExecutionLifecycleHooks, fullRunData: IRun) {
 		if (shouldSkipStatus[fullRunData.status] || shouldSkipMode[fullRunData.mode]) {
@@ -105,6 +115,143 @@ export class InsightsService {
 				event.value = ctx.workflowData.settings.timeSavedPerExecution;
 				await trx.insert(InsightsRaw, event);
 			}
+		});
+	}
+
+	// available
+	async getInsightsSummary(): Promise<InsightsSummary> {
+		const rows = await this.insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates();
+
+		// Initialize data structures for both periods
+		const data = {
+			current: { byType: {} as Record<TypeUnits, number> },
+			previous: { byType: {} as Record<TypeUnits, number> },
+		};
+
+		// Organize data by period and type
+		rows.forEach((row) => {
+			const { period, type, total_value } = row;
+			if (!data[period]) return;
+
+			data[period].byType[NumberToType[type]] = total_value ? Number(total_value) : 0;
+		});
+
+		// Get values with defaults for missing data
+		const getValueByType = (period: 'current' | 'previous', type: TypeUnits) =>
+			data[period]?.byType[type] ?? 0;
+
+		// Calculate metrics
+		const currentSuccesses = getValueByType('current', 'success');
+		const currentFailures = getValueByType('current', 'failure');
+		const previousSuccesses = getValueByType('previous', 'success');
+		const previousFailures = getValueByType('previous', 'failure');
+
+		const currentTotal = currentSuccesses + currentFailures;
+		const previousTotal = previousSuccesses + previousFailures;
+
+		const currentFailureRate =
+			currentTotal > 0 ? Math.round((currentFailures / currentTotal) * 100) / 100 : 0;
+		const previousFailureRate =
+			previousTotal > 0 ? Math.round((previousFailures / previousTotal) * 100) / 100 : 0;
+
+		const currentTotalRuntime = getValueByType('current', 'runtime_ms') ?? 0;
+		const previousTotalRuntime = getValueByType('previous', 'runtime_ms') ?? 0;
+
+		const currentAvgRuntime =
+			currentTotal > 0 ? Math.round((currentTotalRuntime / currentTotal) * 100) / 100 : 0;
+		const previousAvgRuntime =
+			previousTotal > 0 ? Math.round((previousTotalRuntime / previousTotal) * 100) / 100 : 0;
+
+		const currentTimeSaved = getValueByType('current', 'time_saved_min');
+		const previousTimeSaved = getValueByType('previous', 'time_saved_min');
+
+		// Return the formatted result
+		const result: InsightsSummary = {
+			averageRunTime: {
+				value: currentAvgRuntime,
+				unit: 'time',
+				deviation: currentAvgRuntime - previousAvgRuntime,
+			},
+			failed: {
+				value: currentFailures,
+				unit: 'count',
+				deviation: currentFailures - previousFailures,
+			},
+			failureRate: {
+				value: currentFailureRate,
+				unit: 'ratio',
+				deviation: currentFailureRate - previousFailureRate,
+			},
+			timeSaved: {
+				value: currentTimeSaved,
+				unit: 'time',
+				deviation: currentTimeSaved - previousTimeSaved,
+			},
+			total: {
+				value: currentTotal,
+				unit: 'count',
+				deviation: currentTotal - previousTotal,
+			},
+		};
+
+		return result;
+	}
+
+	async getInsightsByWorkflow({
+		nbDays,
+		skip = 0,
+		take = 10,
+		sortBy = 'total:desc',
+	}: {
+		nbDays: number;
+		skip?: number;
+		take?: number;
+		sortBy?: InsightByWorkflowSortBy;
+	}) {
+		const { count, rows } = await this.insightsByPeriodRepository.getInsightsByWorkflow({
+			nbDays,
+			skip,
+			take,
+			sortBy,
+		});
+
+		const data = rows.map((r) => {
+			return {
+				workflowId: r.workflowId,
+				workflowName: r.workflowName,
+				projectId: r.projectId,
+				projectName: r.projectName,
+				total: Number(r.total),
+				failed: Number(r.failed),
+				succeeded: Number(r.succeeded),
+				failureRate: Number(r.failureRate),
+				runTime: Number(r.runTime),
+				averageRunTime: Number(r.averageRunTime),
+				timeSaved: Number(r.timeSaved),
+			};
+		});
+
+		return {
+			count,
+			data,
+		};
+	}
+
+	async getInsightsByTime(nbDays: number) {
+		const rows = await this.insightsByPeriodRepository.getInsightsByTime(nbDays);
+
+		return rows.map((r) => {
+			return {
+				date: DateTime.fromSQL(r.periodStart, { zone: 'utc' }).toISO(),
+				values: {
+					total: Number(r.succeeded) + Number(r.failed),
+					succeeded: Number(r.succeeded),
+					failed: Number(r.failed),
+					failureRate: Number(r.failed) / (Number(r.succeeded) + Number(r.failed)),
+					averageRunTime: Number(r.runTime) / (Number(r.succeeded) + Number(r.failed)),
+					timeSaved: Number(r.timeSaved),
+				},
+			};
 		});
 	}
 }
