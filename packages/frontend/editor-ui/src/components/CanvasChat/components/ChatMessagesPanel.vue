@@ -10,7 +10,7 @@ import ChatInput from '@n8n/chat/components/Input.vue';
 import { computed, ref } from 'vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useToast } from '@/composables/useToast';
-import PanelHeader from '@/components/CanvasChat/components/PanelHeader.vue';
+import PanelHeader from '@/components/CanvasChat/future/components/PanelHeader.vue';
 import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 
 interface Props {
@@ -357,7 +357,7 @@ async function copySessionId() {
 	height: 100%;
 	width: 100%;
 	overflow: auto;
-	padding-top: 1.5em;
+	padding-top: var(--spacing-l);
 
 	&:not(:last-child) {
 		margin-right: 1em;
