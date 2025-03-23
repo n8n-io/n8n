@@ -1,3 +1,4 @@
+<% require "dotenv"; Dotenv.load(".env.deploy") %>
 service: n8n
 
 image: <%= ENV["IMAGE_NAME"] %>
