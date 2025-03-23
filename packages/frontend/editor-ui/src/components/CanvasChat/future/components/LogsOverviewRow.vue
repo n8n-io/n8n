@@ -4,12 +4,12 @@ import { type TreeNode } from '@/components/RunDataAi/utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { computed } from 'vue';
 import { type INodeUi } from '@/Interface';
-import { type ITaskData } from 'n8n-workflow';
-import { N8nIcon, N8nText } from '@n8n/design-system';
+import { ExecutionStatus, type ITaskData } from 'n8n-workflow';
+import { N8nIconButton, N8nText } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { upperFirst } from 'lodash-es';
 
-const props = defineProps<{ data: TreeNode; node: ElTreeNode }>();
+const props = defineProps<{ data: TreeNode; node: ElTreeNode; isSelected: boolean }>();
 
 const workflowsStore = useWorkflowsStore();
 const nodeTypeStore = useNodeTypesStore();
@@ -23,6 +23,16 @@ const runData = computed<ITaskData | undefined>(() =>
 );
 const type = computed(() => (node.value ? nodeTypeStore.getNodeType(node.value.type) : undefined));
 const depth = computed(() => (props.node.level ?? 1) - 1);
+const runOutcomeText = computed(() => {
+	const finalStatuses: ExecutionStatus[] = ['crashed', 'error', 'success'];
+	const status = runData.value?.executionStatus;
+
+	if (!status) {
+		return '';
+	}
+
+	return `${upperFirst(status)}${finalStatuses.includes(status) ? `in ${runData.value.executionTime}ms` : ''}`;
+});
 
 function isLastChild(level: number) {
 	let parent = props.data.parent;
@@ -37,10 +47,14 @@ function isLastChild(level: number) {
 
 	return data === siblings[siblings.length - 1];
 }
+
+function handleClickToggleButton() {
+	// ....
+}
 </script>
 
 <template>
-	<div v-if="node !== undefined" :class="$style.container">
+	<div v-if="node !== undefined && runData !== undefined" :class="$style.container">
 		<template v-for="level in depth" :key="level">
 			<div
 				:class="{
@@ -50,11 +64,11 @@ function isLastChild(level: number) {
 				}"
 			/>
 		</template>
-		<div :class="$style.selectable">
+		<div :class="[$style.selectable, props.isSelected ? $style.selected : '']">
 			<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
 			<N8nText tag="div" :bold="true" size="small" :class="$style.name">{{ node.name }}</N8nText>
 			<N8nText tag="div" color="text-light" size="small" :class="$style.attribute">{{
-				`${upperFirst(runData?.executionStatus)} in ${runData?.executionTime}ms`
+				runOutcomeText
 			}}</N8nText>
 			<N8nText tag="div" color="text-light" size="small" :class="$style.attribute">{{
 				`Started ${new Date(runData?.startTime ?? 0).toLocaleString()}`
@@ -62,13 +76,16 @@ function isLastChild(level: number) {
 			<N8nText tag="div" color="text-light" size="small" :class="$style.attribute">{{
 				`${9999} Tokens`
 			}}</N8nText>
-			<N8nIcon
+			<N8nIconButton
+				type="secondary"
 				size="medium"
 				:icon="props.node.expanded ? 'chevron-down' : 'chevron-up'"
 				:style="{
 					visibility: props.data.children.length === 0 ? 'hidden' : '',
+					color: 'var(--color-text-base)',
 				}"
-				:class="$style.toggleIcon"
+				:class="$style.toggleButton"
+				:click="handleClickToggleButton"
 			/>
 		</div>
 	</div>
@@ -90,6 +107,7 @@ function isLastChild(level: number) {
 	justify-content: stretch;
 	border-radius: var(--border-radius-base);
 
+	&.selected,
 	&:hover {
 		background-color: var(--color-foreground-base);
 	}
@@ -144,10 +162,15 @@ function isLastChild(level: number) {
 	flex-shrink: 1;
 }
 
-.toggleIcon {
+.toggleButton {
 	flex-shrink: 0;
 	border: none;
+	background: transparent;
 	margin-inline-end: var(--spacing-5xs);
 	color: var(--color-text-base);
+
+	&:hover {
+		background: transparent;
+	}
 }
 </style>

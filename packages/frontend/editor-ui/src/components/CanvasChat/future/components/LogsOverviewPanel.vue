@@ -5,7 +5,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { ElTree } from 'element-plus';
 import { createAiData, getTreeNodeData, type TreeNode } from '@/components/RunDataAi/utils';
 import { type INodeUi } from '@/Interface';
@@ -35,10 +35,18 @@ const switchViewOptions = computed<Array<{ label: string; value: string }>>(() =
 	{ label: 'Details', value: 'details' },
 	{ label: 'Overview', value: 'overview' },
 ]);
+const selectedRun = ref<{ node: string; runIndex: number } | undefined>(undefined);
 
 function onClearExecutionData() {
 	workflowsStore.setWorkflowExecutionData(null);
 	nodeHelpers.updateNodesExecutionIssues();
+}
+
+function handleClickNode(clicked: TreeNode) {
+	selectedRun.value =
+		selectedRun.value?.node === clicked.node && selectedRun.value.runIndex === clicked.runIndex
+			? undefined
+			: { node: clicked.node, runIndex: clicked.runIndex };
 }
 </script>
 
@@ -78,17 +86,24 @@ function onClearExecutionData() {
 					:class="$style.tree"
 					:indent="0"
 					:data="executionTree"
-					:expand-on-click-node="true"
+					:expand-on-click-node="false"
 					:default-expand-all="false"
+					@node-click="handleClickNode"
 				>
 					<template #default="{ node, data }">
-						<LogsOverviewRow :data="data" :node="node" />
+						<LogsOverviewRow
+							:data="data"
+							:node="node"
+							:is-selected="
+								data.node === selectedRun?.node && data.runIndex === selectedRun?.runIndex
+							"
+						/>
 					</template>
 				</ElTree>
 				<N8nRadioButtons
 					size="medium"
 					:class="$style.switchViewButtons"
-					:model-value="'overview'"
+					:model-value="selectedRun ? 'details' : 'overview'"
 					:options="switchViewOptions"
 				/>
 			</template>
