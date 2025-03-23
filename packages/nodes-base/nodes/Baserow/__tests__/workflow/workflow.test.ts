@@ -7,7 +7,6 @@ import {
 	getResponse,
 	updateResponse,
 } from './apiResponses';
-
 import {
 	setup,
 	equalityTest,
