@@ -1,0 +1,37 @@
+volumes:
+  postgres-data:
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=n8n
+      - POSTGRES_PASSWORD=password
+
+  n8n:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        N8N_VERSION: "1.83.2"
+        TARGETPLATFORM: linux/amd64
+        N8N_RELEASE_TYPE: stable
+    tty: true
+    stdin_open: true
+    env_file: .env
+    ports:
+      - 5678:5678
+    volumes:
+      - ..:/workspaces:cached
+    environment:
+      N8N_VERSION: "1.83.2"
+      N8N_RELEASE_TYPE: stable
+      
+      DB_POSTGRESDB_HOST: postgres
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_PASSWORD: password
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: false
+      N8N_SECURE_COOKIE: false
