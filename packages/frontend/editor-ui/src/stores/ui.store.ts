@@ -591,7 +591,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const pushBannerToStack = (name: BannerName) => {
 		if (bannerStack.value.includes(name)) return;
-		bannerStack.value.push(name);
 	};
 
 	const clearBannerStack = () => {

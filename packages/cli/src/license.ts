@@ -220,7 +220,7 @@ export class License {
 	}
 
 	isFeatureEnabled(feature: BooleanLicenseFeature) {
-		return this.manager?.hasFeatureEnabled(feature) ?? false;
+		return true;
 	}
 
 	isSharingEnabled() {
@@ -336,7 +336,7 @@ export class License {
 	}
 
 	getFeatureValue<T extends keyof FeatureReturnType>(feature: T): FeatureReturnType[T] {
-		return this.manager?.getFeatureValue(feature) as FeatureReturnType[T];
+		return 9999 as FeatureReturnType[T];
 	}
 
 	getManagementJwt(): string {
@@ -410,7 +410,7 @@ export class License {
 	}
 
 	getPlanName(): string {
-		return this.getFeatureValue('planName') ?? 'Community';
+		return 'Enterprise';
 	}
 
 	getInfo(): string {
