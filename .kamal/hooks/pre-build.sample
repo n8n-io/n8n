@@ -1,0 +1,51 @@
+#!/bin/sh
+
+# A sample pre-build hook
+#
+# Checks:
+# 1. We have a clean checkout
+# 2. A remote is configured
+# 3. The branch has been pushed to the remote
+# 4. The version we are deploying matches the remote
+#
+# These environment variables are available:
+# KAMAL_RECORDED_AT
+# KAMAL_PERFORMER
+# KAMAL_VERSION
+# KAMAL_HOSTS
+# KAMAL_ROLE (if set)
+# KAMAL_DESTINATION (if set)
+
+if [ -n "$(git status --porcelain)" ]; then
+  echo "Git checkout is not clean, aborting..." >&2
+  git status --porcelain >&2
+  exit 1
+fi
+
+first_remote=$(git remote)
+
+if [ -z "$first_remote" ]; then
+  echo "No git remote set, aborting..." >&2
+  exit 1
+fi
+
+current_branch=$(git branch --show-current)
+
+if [ -z "$current_branch" ]; then
+  echo "Not on a git branch, aborting..." >&2
+  exit 1
+fi
+
+remote_head=$(git ls-remote $first_remote --tags $current_branch | cut -f1)
+
+if [ -z "$remote_head" ]; then
+  echo "Branch not pushed to remote, aborting..." >&2
+  exit 1
+fi
+
+if [ "$KAMAL_VERSION" != "$remote_head" ]; then
+  echo "Version ($KAMAL_VERSION) does not match remote HEAD ($remote_head), aborting..." >&2
+  exit 1
+fi
+
+exit 0

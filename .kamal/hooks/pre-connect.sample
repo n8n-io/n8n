@@ -1,0 +1,47 @@
+#!/usr/bin/env ruby
+
+# A sample pre-connect check
+#
+# Warms DNS before connecting to hosts in parallel
+#
+# These environment variables are available:
+# KAMAL_RECORDED_AT
+# KAMAL_PERFORMER
+# KAMAL_VERSION
+# KAMAL_HOSTS
+# KAMAL_ROLE (if set)
+# KAMAL_DESTINATION (if set)
+# KAMAL_RUNTIME
+
+hosts = ENV["KAMAL_HOSTS"].split(",")
+results = nil
+max = 3
+
+elapsed = Benchmark.realtime do
+  results = hosts.map do |host|
+    Thread.new do
+      tries = 1
+
+      begin
+        Socket.getaddrinfo(host, 0, Socket::AF_UNSPEC, Socket::SOCK_STREAM, nil, Socket::AI_CANONNAME)
+      rescue SocketError
+        if tries < max
+          puts "Retrying DNS warmup: #{host}"
+          tries += 1
+          sleep rand
+          retry
+        else
+          puts "DNS warmup failed: #{host}"
+          host
+        end
+      end
+
+      tries
+    end
+  end.map(&:value)
+end
+
+retries = results.sum - hosts.size
+nopes = results.count { |r| r == max }
+
+puts "Prewarmed %d DNS lookups in %.2f sec: %d retries, %d failures" % [ hosts.size, elapsed, retries, nopes ]

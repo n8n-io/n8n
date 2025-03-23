@@ -1,0 +1,109 @@
+#!/usr/bin/env ruby
+
+# A sample pre-deploy hook
+#
+# Checks the Github status of the build, waiting for a pending build to complete for up to 720 seconds.
+#
+# Fails unless the combined status is "success"
+#
+# These environment variables are available:
+# KAMAL_RECORDED_AT
+# KAMAL_PERFORMER
+# KAMAL_VERSION
+# KAMAL_HOSTS
+# KAMAL_COMMAND
+# KAMAL_SUBCOMMAND
+# KAMAL_ROLE (if set)
+# KAMAL_DESTINATION (if set)
+
+# Only check the build status for production deployments
+if ENV["KAMAL_COMMAND"] == "rollback" || ENV["KAMAL_DESTINATION"] != "production"
+  exit 0
+end
+
+require "bundler/inline"
+
+# true = install gems so this is fast on repeat invocations
+gemfile(true, quiet: true) do
+  source "https://rubygems.org"
+
+  gem "octokit"
+  gem "faraday-retry"
+end
+
+MAX_ATTEMPTS = 72
+ATTEMPTS_GAP = 10
+
+def exit_with_error(message)
+  $stderr.puts message
+  exit 1
+end
+
+class GithubStatusChecks
+  attr_reader :remote_url, :git_sha, :github_client, :combined_status
+
+  def initialize
+    @remote_url = `git config --get remote.origin.url`.strip.delete_prefix("https://github.com/")
+    @git_sha = `git rev-parse HEAD`.strip
+    @github_client = Octokit::Client.new(access_token: ENV["GITHUB_TOKEN"])
+    refresh!
+  end
+
+  def refresh!
+    @combined_status = github_client.combined_status(remote_url, git_sha)
+  end
+
+  def state
+    combined_status[:state]
+  end
+
+  def first_status_url
+    first_status = combined_status[:statuses].find { |status| status[:state] == state }
+    first_status && first_status[:target_url]
+  end
+
+  def complete_count
+    combined_status[:statuses].count { |status| status[:state] != "pending"}
+  end
+
+  def total_count
+    combined_status[:statuses].count
+  end
+
+  def current_status
+    if total_count > 0
+      "Completed #{complete_count}/#{total_count} checks, see #{first_status_url} ..."
+    else
+      "Build not started..."
+    end
+  end
+end
+
+
+$stdout.sync = true
+
+puts "Checking build status..."
+attempts = 0
+checks = GithubStatusChecks.new
+
+begin
+  loop do
+    case checks.state
+    when "success"
+      puts "Checks passed, see #{checks.first_status_url}"
+      exit 0
+    when "failure"
+      exit_with_error "Checks failed, see #{checks.first_status_url}"
+    when "pending"
+      attempts += 1
+    end
+
+    exit_with_error "Checks are still pending, gave up after #{MAX_ATTEMPTS * ATTEMPTS_GAP} seconds" if attempts == MAX_ATTEMPTS
+
+    puts checks.current_status
+    sleep(ATTEMPTS_GAP)
+    checks.refresh!
+  end
+rescue Octokit::NotFound
+  exit_with_error "Build status could not be found"
+end

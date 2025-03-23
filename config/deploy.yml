@@ -1,0 +1,61 @@
+service: n8n
+
+image: <%= ENV["IMAGE_NAME"] %>
+
+servers:
+  web:
+    - <%= ENV["WEB_SERVER_HOST"] %>
+
+proxy:
+  ssl: true
+  forward_headers: true
+  host: <%= ENV["PROXY_HOST"] %>
+
+registry:
+  server: <%= ENV["REGISTRY_SERVER"] %>
+  username: <%= ENV["REGISTRY_USERNAME"] %>
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+builder:
+  arch: amd64
+  dockerfile: docker/images/n8n/Dockerfile
+  args:
+    N8N_VERSION: <%= ENV["N8N_VERSION"] %>
+
+env:
+  clear:
+    N8N_HOST: <%= ENV["PROXY_HOST"] %>
+    N8N_EDITOR_BASE_URL: https://<%= ENV["PROXY_HOST"] %>
+    WEBHOOK_URL: https://<%= ENV["PROXY_HOST"] %>
+    N8N_PROTOCOL: <%= ENV["N8N_PROTOCOL"] %>
+    N8N_PORT: <%= ENV["N8N_PORT"] %>
+    NODE_ENV: production
+    GENERIC_TIMEZONE: America/Araguaina
+    TZ: America/Araguaina
+
+    N8N_ENCRYPTION_KEY: <%= ENV["N8N_ENCRYPTION_KEY"] %>
+
+    DB_TYPE: postgresdb
+    DB_POSTGRESDB_DATABASE: <%= ENV["POSTGRES_DATABASE"] %>
+    DB_POSTGRESDB_HOST: <%= ENV["POSTGRES_HOST"] %>
+    DB_POSTGRESDB_PORT: <%= ENV["POSTGRES_PORT"] %>
+    DB_POSTGRESDB_USER: <%= ENV["POSTGRES_USERNAME"] %>
+    DB_POSTGRESDB_PASSWORD: <%= ENV["POSTGRES_PASSWORD"] %>
+    DB_POSTGRESDB_POOL_SIZE: 5
+    DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED: 'true'
+
+    #EXECUTIONS_MODE: queue # enable workers mode (need another instance)
+    QUEUE_BULL_REDIS_HOST: <%= ENV["REDIS_HOST"] %>
+    QUEUE_BULL_REDIS_DB: <%= ENV["REDIS_DB"] %>
+    EXECUTIONS_DATA_SAVE_ON_ERROR: 'all'
+    EXECUTIONS_DATA_SAVE_ON_SUCCESS: 'all'
+
+    N8N_EXTERNAL_STORAGE_S3_ACCESS_KEY: <%= ENV["TYPEBOT_STORAGE_ACCESS_KEY_ID"] %>
+    N8N_EXTERNAL_STORAGE_S3_ACCESS_SECRET: <%= ENV["TYPEBOT_STORAGE_SECRET_ACCESS_KEY"] %>
+    N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME: <%= ENV["TYPEBOT_STORAGE_BUCKET_NAME"] %>
+    N8N_EXTERNAL_STORAGE_S3_HOST: <%= ENV["TYPEBOT_STORAGE_ENDPOINT"] %>
+
+    N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: true
+    N8N_RUNNERS_ENABLED: true
+    OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS: true

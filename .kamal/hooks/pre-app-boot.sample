@@ -1,0 +1,3 @@
+#!/bin/sh
+
+echo "Booting app version $KAMAL_VERSION on $KAMAL_HOSTS..."
