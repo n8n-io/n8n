@@ -11,10 +11,15 @@ import type {
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { getSessionId } from '@utils/helpers';
-import { logWrapper } from '@utils/logWrapper';
+//import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
-import { sessionIdOption, sessionKeyProperty, expressionSessionKeyProperty } from '../descriptions';
+import {
+	sessionIdOption,
+	sessionKeyProperty,
+	expressionSessionKeyProperty,
+	contextWindowLengthProperty,
+} from '../descriptions';
 
 export class MemoryMongoDbChat implements INodeType {
 	description: INodeTypeDescription = {
@@ -72,6 +77,7 @@ export class MemoryMongoDbChat implements INodeType {
 				description:
 					'The database name to store the chat history in. If not provided, the database from credentials will be used.',
 			},
+			contextWindowLengthProperty,
 		],
 	};
 
@@ -135,11 +141,11 @@ export class MemoryMongoDbChat implements INodeType {
 				returnMessages: true,
 				inputKey: 'input',
 				outputKey: 'output',
-				k: this.getNodeParameter('contextWindowLength', itemIndex) as number,
+				k: this.getNodeParameter('contextWindowLength', itemIndex, 5) as number,
 			});
 
 			return {
-				response: logWrapper(memory, this),
+				response: memory,
 			};
 		} catch (error) {
 			throw new NodeOperationError(this.getNode(), `MongoDB connection error: ${error.message}`);
