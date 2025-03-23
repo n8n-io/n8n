@@ -120,7 +120,7 @@ export class Baserow implements INodeType {
 					endpoint,
 					jwtToken,
 				)) as LoadedResource[];
-				return toOptions(databases);
+				return toOptions(databases.filter((database) => database.type === 'database'));
 			},
 
 			async getTableIds(this: ILoadOptionsFunctions) {
