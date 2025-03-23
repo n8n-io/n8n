@@ -1,3 +1,6 @@
+/* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
+import { NodeApiError } from 'n8n-workflow';
+
 import {
 	baserowApiRequest,
 	baserowApiRequestAllItems,
@@ -6,7 +9,6 @@ import {
 	toOptions,
 	TableFieldMapper,
 } from '../GenericFunctions';
-import { NodeApiError } from 'n8n-workflow';
 
 describe('Baserow > GenericFunctions', () => {
 	const mockExecuteFunctions: any = {
