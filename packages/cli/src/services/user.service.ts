@@ -135,44 +135,45 @@ export class UserService {
 					error: '',
 				};
 
-				try {
-					const result = await this.mailer.invite({
-						email,
-						inviteAcceptUrl,
-					});
-					if (result.emailSent) {
-						invitedUser.user.emailSent = true;
-						delete invitedUser.user?.inviteAcceptUrl;
+				this.eventService.emit('user-invited', {
+					user: owner,
+					targetUserId: Object.values(toInviteUsers),
+					publicApi: false,
+					emailSent: false,
+					inviteeRole: role, // same role for all invited users
+				});
 
-						this.eventService.emit('user-transactional-email-sent', {
-							userId: id,
-							messageType: 'New user invite',
-							publicApi: false,
-						});
-					}
+				// try {
+				// 	const result = await this.mailer.invite({
+				// 		email,
+				// 		inviteAcceptUrl,
+				// 	});
+				// 	if (result.emailSent) {
+				// 		invitedUser.user.emailSent = true;
+				// 		delete invitedUser.user?.inviteAcceptUrl;
 
-					this.eventService.emit('user-invited', {
-						user: owner,
-						targetUserId: Object.values(toInviteUsers),
-						publicApi: false,
-						emailSent: result.emailSent,
-						inviteeRole: role, // same role for all invited users
-					});
-				} catch (e) {
-					if (e instanceof Error) {
-						this.eventService.emit('email-failed', {
-							user: owner,
-							messageType: 'New user invite',
-							publicApi: false,
-						});
-						this.logger.error('Failed to send email', {
-							userId: owner.id,
-							inviteAcceptUrl,
-							email,
-						});
-						invitedUser.error = e.message;
-					}
-				}
+				// 		this.eventService.emit('user-transactional-email-sent', {
+				// 			userId: id,
+				// 			messageType: 'New user invite',
+				// 			publicApi: false,
+				// 		});
+				// 	}
+
+				// } catch (e) {
+				// 	if (e instanceof Error) {
+				// 		this.eventService.emit('email-failed', {
+				// 			user: owner,
+				// 			messageType: 'New user invite',
+				// 			publicApi: false,
+				// 		});
+				// 		this.logger.error('Failed to send email', {
+				// 			userId: owner.id,
+				// 			inviteAcceptUrl,
+				// 			email,
+				// 		});
+				// 		invitedUser.error = e.message;
+				// 	}
+				// }
 
 				return invitedUser;
 			}),

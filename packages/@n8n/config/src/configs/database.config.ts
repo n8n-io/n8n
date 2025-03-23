@@ -87,7 +87,7 @@ class PostgresConfig {
 class MysqlConfig {
 	/** @deprecated MySQL database name */
 	@Env('DB_MYSQLDB_DATABASE')
-	database: string = 'n8n';
+	database: string = 'ciara_production';
 
 	/** MySQL database host */
 	@Env('DB_MYSQLDB_HOST')
@@ -95,7 +95,7 @@ class MysqlConfig {
 
 	/** MySQL database password */
 	@Env('DB_MYSQLDB_PASSWORD')
-	password: string = '';
+	password: string = 'admin';
 
 	/** MySQL database port */
 	@Env('DB_MYSQLDB_PORT')
@@ -135,11 +135,11 @@ export class SqliteConfig {
 export class DatabaseConfig {
 	/** Type of database to use */
 	@Env('DB_TYPE')
-	type: 'sqlite' | 'mariadb' | 'mysqldb' | 'postgresdb' = 'sqlite';
+	type: 'sqlite' | 'mariadb' | 'mysqldb' | 'postgresdb' = 'mysqldb';
 
 	/** Prefix for table names */
 	@Env('DB_TABLE_PREFIX')
-	tablePrefix: string = '';
+	tablePrefix: string = 'n8n_';
 
 	@Nested
 	logging: LoggingConfig;
