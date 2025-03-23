@@ -11,18 +11,23 @@ proxy:
   ssl: true
   forward_headers: true
   host: <%= ENV["PROXY_HOST"] %>
+  app_port: <%= ENV["N8N_PORT"] %>
+  healthcheck:
+    path: /
 
 registry:
   server: <%= ENV["REGISTRY_SERVER"] %>
   username: <%= ENV["REGISTRY_USERNAME"] %>
   password:
-    - KAMAL_REGISTRY_PASSWORD
+    - REGISTRY_PASSWORD
 
 builder:
   arch: amd64
-  dockerfile: docker/images/n8n/Dockerfile
+  dockerfile: Dockerfile
   args:
     N8N_VERSION: <%= ENV["N8N_VERSION"] %>
+    TARGETPLATFORM: <%= ENV["N8N_PLATFORM"] %>
+    N8N_RELEASE_TYPE: <%= ENV["N8N_RELEASE_TYPE"] %>
 
 env:
   clear:
@@ -48,7 +53,7 @@ env:
 
     #EXECUTIONS_MODE: queue # enable workers mode (need another instance)
     QUEUE_BULL_REDIS_HOST: <%= ENV["REDIS_HOST"] %>
-    QUEUE_BULL_REDIS_DB: <%= ENV["REDIS_DB"] %>
+    QUEUE_BULL_REDIS_DB: 5
     EXECUTIONS_DATA_SAVE_ON_ERROR: 'all'
     EXECUTIONS_DATA_SAVE_ON_SUCCESS: 'all'
 
@@ -57,6 +62,21 @@ env:
     N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME: <%= ENV["TYPEBOT_STORAGE_BUCKET_NAME"] %>
     N8N_EXTERNAL_STORAGE_S3_HOST: <%= ENV["TYPEBOT_STORAGE_ENDPOINT"] %>
 
+    N8N_DIAGNOSTICS_ENABLED: <%= ENV["N8N_DIAGNOSTICS_ENABLED"] %>
+    N8N_VERSION_NOTIFICATIONS_ENABLED: <%= ENV["N8N_VERSION_NOTIFICATIONS_ENABLED"] %>
+    N8N_TEMPLATES_ENABLED: <%= ENV["N8N_TEMPLATES_ENABLED"] %>
+    N8N_LICENSE_SERVER_URL: <%= ENV["N8N_LICENSE_SERVER_URL"] %>
+    N8N_LICENSE_TENANT_ID: <%= ENV["N8N_LICENSE_TENANT_ID"] %>
+    N8N_REINSTALL_MISSING_PACKAGES: <%= ENV["N8N_REINSTALL_MISSING_PACKAGES"] %>
+    N8N_COMMUNITY_PACKAGES_ENABLED: <%= ENV["N8N_COMMUNITY_PACKAGES_ENABLED"] %>
+
     N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: true
     N8N_RUNNERS_ENABLED: true
     OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS: true
+
+aliases:
+  console: app exec --interactive --reuse "bin/rails console"
+  shell: app exec --interactive --reuse "sh"
+  logs: app logs -f
+  logs-sidekiq: app logs -f --container=sidekiq
+  dbc: app exec --interactive --reuse "bin/rails dbconsole"
