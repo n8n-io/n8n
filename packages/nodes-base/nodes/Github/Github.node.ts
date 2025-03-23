@@ -432,10 +432,17 @@ export class Github implements INodeType {
 						action: 'Disable a workflow',
 					},
 					{
-						name: 'Dispatch Workflow Event',
+						name: 'Dispatch',
 						value: 'dispatch',
 						description: 'Dispatch a workflow event',
 						action: 'Dispatch a workflow event',
+					},
+					{
+						name: 'Dispatch Workflow Event and Wait for Completion',
+						value: 'dispatchAndWait',
+						description:
+							'Send a GitHub Actions workflow event and wait for the workflow to complete before proceeding',
+						action: 'Dispatch a workflow event and wait for completion',
 					},
 					{
 						name: 'Enable',
@@ -643,7 +650,7 @@ export class Github implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['workflow'],
-						operation: ['disable', 'dispatch', 'get', 'getUsage', 'enable'],
+						operation: ['disable', 'dispatch', 'dispatchAndWait', 'get', 'getUsage', 'enable'],
 					},
 				},
 				description: 'The workflow to dispatch',
@@ -684,7 +691,7 @@ export class Github implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['workflow'],
-						operation: ['dispatch'],
+						operation: ['dispatch', 'dispatchAndWait'],
 					},
 				},
 				description: 'The git reference for the workflow dispatch (branch, tag, or commit SHA)',
@@ -697,7 +704,7 @@ export class Github implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['workflow'],
-						operation: ['dispatch'],
+						operation: ['dispatch', 'dispatchAndWait'],
 					},
 				},
 				description: 'JSON object with input parameters for the workflow',
@@ -712,7 +719,7 @@ export class Github implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['workflow'],
-						operation: ['dispatch'],
+						operation: ['dispatchAndWait'],
 					},
 				},
 			},
@@ -724,7 +731,7 @@ export class Github implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['workflow'],
-						operation: ['dispatch'],
+						operation: ['dispatchAndWait'],
 						waitForCompletion: [true],
 					},
 				},
@@ -2145,6 +2152,59 @@ export class Github implements INodeType {
 		const resource = this.getNodeParameter('resource', 0);
 		const fullOperation = `${resource}:${operation}`;
 
+		if (resource === 'workflow' && operation === 'dispatchAndWait') {
+			const owner = this.getNodeParameter('owner', 0, '', { extractValue: true }) as string;
+			const repository = this.getNodeParameter('repository', 0, '', {
+				extractValue: true,
+			}) as string;
+			const workflowIdObj = this.getNodeParameter('workflowId', 0);
+			const workflowId = (workflowIdObj as IDataObject)?.value as string;
+			const ref = this.getNodeParameter('ref', 0, '', { extractValue: true }) as string;
+
+			const inputs = validateJSON(this.getNodeParameter('inputs', 0) as string) as IDataObject;
+			if (!inputs) {
+				throw new NodeOperationError(this.getNode(), 'Inputs: Invalid JSON');
+			}
+
+			const waitForCompletion = this.getNodeParameter('waitForCompletion', 0) as boolean;
+
+			endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}/dispatches`;
+
+			body = {
+				ref,
+				inputs,
+			};
+
+			if (waitForCompletion) {
+				// Generate a webhook URL for the GitHub workflow to call when done
+				const resumeUrl = this.getWorkflowDataProxy(0).$execution.resumeUrl;
+
+				body.inputs = {
+					...inputs,
+					resumeUrl,
+				};
+
+				try {
+					responseData = await githubApiRequest.call(this, 'POST', endpoint, body);
+				} catch (error) {
+					if (error.httpCode === '404' || error.statusCode === 404) {
+						throw new NodeOperationError(
+							this.getNode(),
+							'The workflow to dispatch could not be found. Adjust the "workflow" parameter setting to dispatch the workflow correctly.',
+							{ itemIndex: 0 },
+						);
+					}
+					throw new NodeApiError(this.getNode(), error as JsonObject);
+				}
+
+				await this.putExecutionToWait(WAIT_INDEFINITELY);
+				return [this.getInputData()];
+			}
+
+			await githubApiRequest.call(this, 'POST', endpoint, body);
+			return [this.getInputData()];
+		}
+
 		for (let i = 0; i < items.length; i++) {
 			try {
 				// Reset all values
@@ -2617,36 +2677,6 @@ export class Github implements INodeType {
 							});
 						}
 						body.inputs = inputs;
-
-						const waitForCompletion = this.getNodeParameter('waitForCompletion', i) as boolean;
-
-						if (waitForCompletion) {
-							// Generate a webhook URL for the GitHub workflow to call when done
-							const resumeUrl = this.getWorkflowDataProxy(0).$execution.resumeUrl;
-
-							body.inputs = {
-								...body.inputs,
-								resumeUrl,
-							};
-
-							try {
-								responseData = await githubApiRequest.call(this, requestMethod, endpoint, body);
-							} catch (error) {
-								// Check if the error is a 404 (Not Found)
-								if (error.httpCode === '404' || error.statusCode === 404) {
-									throw new NodeOperationError(
-										this.getNode(),
-										'The workflow to dispatch could not be found. Adjust the "workflow" parameter setting to dispatch the workflow correctly.',
-										{ itemIndex: i },
-									);
-								} else {
-									throw new NodeApiError(this.getNode(), error as JsonObject);
-								}
-							}
-
-							await this.putExecutionToWait(WAIT_INDEFINITELY);
-							return [this.getInputData()];
-						}
 					} else if (operation === 'enable') {
 						// ----------------------------------
 						//         enable
