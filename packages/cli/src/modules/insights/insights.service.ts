@@ -1,6 +1,12 @@
+import type { InsightsSummary } from '@n8n/api-types';
 import { Container, Service } from '@n8n/di';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
-import type { ExecutionStatus, IRun, WorkflowExecuteMode } from 'n8n-workflow';
+import {
+	UnexpectedError,
+	type ExecutionStatus,
+	type IRun,
+	type WorkflowExecuteMode,
+} from 'n8n-workflow';
 
 import { SharedWorkflow } from '@/databases/entities/shared-workflow';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';

@@ -5,10 +5,8 @@ import { z } from 'zod';
 
 import { sql } from '@/utils/sql';
 
-import { sql } from '@/utils/sql';
-
 import { InsightsByPeriod } from '../entities/insights-by-period';
-import type { PeriodUnits } from '../entities/insights-shared';
+import type { PeriodUnit } from '../entities/insights-shared';
 import { PeriodUnitToNumber } from '../entities/insights-shared';
 
 const dbType = Container.get(GlobalConfig).database.type;
@@ -33,7 +31,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		return this.manager.connection.driver.escape(fieldName);
 	}
 
-	private getPeriodFilterExpr(periodUnit: PeriodUnits) {
+	private getPeriodFilterExpr(periodUnit: PeriodUnit) {
 		const daysAgo = periodUnit === 'day' ? 90 : 180;
 		// Database-specific period start expression to filter out data to compact by days matching the periodUnit
 		let periodStartExpr = `date('now', '-${daysAgo} days')`;
@@ -46,7 +44,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		return periodStartExpr;
 	}
 
-	private getPeriodStartExpr(periodUnit: PeriodUnits) {
+	private getPeriodStartExpr(periodUnit: PeriodUnit) {
 		// Database-specific period start expression to truncate timestamp to the periodUnit
 		// SQLite by default
 		let periodStartExpr = `strftime('%Y-%m-%d ${periodUnit === 'hour' ? '%H' : '00'}:00:00.000', periodStart)`;
@@ -62,7 +60,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		return periodStartExpr;
 	}
 
-	getPeriodInsightsBatchQuery(periodUnit: PeriodUnits, compactionBatchSize: number) {
+	getPeriodInsightsBatchQuery(periodUnit: PeriodUnit, compactionBatchSize: number) {
 		// Build the query to gather period insights data for the batch
 		const batchQuery = this.createQueryBuilder()
 			.select(
@@ -77,7 +75,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		return batchQuery;
 	}
 
-	getAggregationQuery(periodUnit: PeriodUnits) {
+	getAggregationQuery(periodUnit: PeriodUnit) {
 		// Get the start period expression depending on the period unit and database type
 		const periodStartExpr = this.getPeriodStartExpr(periodUnit);
 
@@ -104,7 +102,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	}: {
 		sourceBatchQuery: string;
 		sourceTableName?: string;
-		periodUnit: PeriodUnits;
+		periodUnit: PeriodUnit;
 	}): Promise<number> {
 		// Create temp table that only exists in this transaction for rows to compact
 		const getBatchAndStoreInTemporaryTable = sql`

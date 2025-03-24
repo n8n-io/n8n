@@ -18,7 +18,6 @@ async function getWorkflowSharing(workflow: IWorkflowBase) {
 		relations: { project: true },
 	});
 }
-export const { type: dbType } = Container.get(GlobalConfig).database;
 
 export async function createMetadata(workflow: WorkflowEntity) {
 	const insightsMetadataRepository = Container.get(InsightsMetadataRepository);
