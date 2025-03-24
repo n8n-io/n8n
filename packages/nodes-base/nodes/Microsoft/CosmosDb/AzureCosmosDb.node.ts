@@ -1,5 +1,5 @@
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { container, item } from './descriptions';
 import { listSearch } from './methods';
@@ -19,8 +19,8 @@ export class AzureCosmosDb implements INodeType {
 		defaults: {
 			name: 'Azure Cosmos DB',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'microsoftAzureCosmosDbSharedKeyApi',
