@@ -5,6 +5,7 @@ import type {
 	ICredentialType,
 	IHttpRequestOptions,
 	INodeProperties,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { OperationalError } from 'n8n-workflow';
 
@@ -71,7 +72,10 @@ export class MicrosoftAzureCosmosDbSharedKeyApi implements ICredentialType {
 			'Cache-Control': 'no-cache',
 		};
 
-		const url = new URL(requestOptions.baseURL + requestOptions.url);
+		// HttpRequest node uses IRequestOptions.uri
+		const url = new URL(
+			(requestOptions as IRequestOptions).uri ?? requestOptions.baseURL + requestOptions.url,
+		);
 		const pathSegments = url.pathname.split('/').filter(Boolean);
 
 		const foundResource = RESOURCE_TYPES.map((type) => ({
