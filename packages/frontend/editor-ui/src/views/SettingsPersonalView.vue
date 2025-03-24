@@ -345,7 +345,7 @@ onBeforeUnmount(() => {
 						<n8n-option
 							v-for="item in themeOptions"
 							:key="item.name"
-							:label="$t(item.label)"
+							:label="i18n.baseText(item.label)"
 							:value="item.name"
 						>
 						</n8n-option>

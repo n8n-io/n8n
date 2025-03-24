@@ -68,7 +68,7 @@ export class I18nClass {
 
 		let result: string;
 		if (options?.adjustToNumber !== undefined) {
-			result = this.i18n.tc(key, options.adjustToNumber, options?.interpolate ?? {}).toString();
+			result = this.i18n.t(key, options.adjustToNumber, options?.interpolate ?? {}).toString();
 		} else {
 			result = this.i18n.t(key, options?.interpolate ?? {}).toString();
 		}
