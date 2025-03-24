@@ -72,7 +72,7 @@ export function getNodeIconSource(nodeType?: IconNodeType | null): NodeIconSourc
 		}
 	}
 
-	if (nodeType?.name.includes('-preview') && typeof nodeType.iconUrl === 'string') {
+	if (nodeType.name && nodeType.name.includes('-preview') && typeof nodeType.iconUrl === 'string') {
 		return {
 			type: 'file',
 			src: nodeType.iconUrl,
