@@ -71,23 +71,22 @@ export class Postgres implements ICredentialType {
 					value: 'disable',
 				},
 				{
-					name: 'Prefer',
-					value: 'prefer',
-				},
-				{
 					name: 'Require',
 					value: 'require',
 				},
-				{
-					name: 'Verify CA Only',
-					value: 'verify-ca',
-				},
-				{
-					name: 'Verify Full Chain',
-					value: 'verify-ful',
-				},
 			],
 			default: 'disable',
+		},
+		{
+			displayName: 'Server name override for SSL',
+			name: 'servername',
+			type: 'string',
+			displayOptions: {
+				show: {
+					ssl: [true],
+				},
+			},
+			default: '',
 		},
 		{
 			displayName: 'CA Certificate',

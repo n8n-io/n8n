@@ -41,12 +41,11 @@ const getPostgresConfig = (
 		dbConfig.keepAliveInitialDelayMillis = options.delayClosingIdleConnection * 1000;
 	}
 
-	// @ts-expect-error parameters unrecognized by pg-connection-string are preserved
-	dbConfig.sslmode = credentials.ssl || 'disable';
+	dbConfig.ssl = false;
 	if (credentials.ssl && credentials.ssl !== 'disable') {
 		dbConfig.ssl = {};
 
-		const { caCert, clientCert, clientKey, allowUnauthorizedCerts } =
+		const { caCert, clientCert, clientKey, allowUnauthorizedCerts, servername } =
 			credentials as PostgresNodeSSLOptions;
 		if (caCert) {
 			dbConfig.ssl.ca = caCert;
@@ -60,8 +59,9 @@ const getPostgresConfig = (
 		if (allowUnauthorizedCerts === true) {
 			dbConfig.ssl.rejectUnauthorized = false;
 		}
-		if (credentials.ssl === 'verify-ca') {
-			dbConfig.ssl.checkServerIdentity = (_hostname: string, _cert: unknown) => undefined;
+		if (servername) {
+			// @ts-expect-error the ISSLConfig type is an incomplete subset of tls.ConnectOptions
+			dbConfig.ssl.servername = servername;
 		}
 	}
 
