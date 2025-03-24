@@ -467,7 +467,7 @@ describe('NDV', () => {
 			cy.createFixtureWorkflow('Floating_Nodes.json', 'Floating Nodes');
 
 			cy.ifCanvasVersion(
-				() => { },
+				() => {},
 				() => {
 					// Needed in V2 as all nodes remain selected when clicking on a selected node
 					workflowPage.actions.deselectAll();
@@ -521,7 +521,7 @@ describe('NDV', () => {
 		it('should traverse floating nodes with keyboard', () => {
 			cy.createFixtureWorkflow('Floating_Nodes.json', 'Floating Nodes');
 			cy.ifCanvasVersion(
-				() => { },
+				() => {},
 				() => {
 					// Needed in V2 as all nodes remain selected when clicking on a selected node
 					workflowPage.actions.deselectAll();
@@ -622,7 +622,7 @@ describe('NDV', () => {
 			cy.createFixtureWorkflow('Floating_Nodes.json', 'Floating Nodes');
 
 			cy.ifCanvasVersion(
-				() => { },
+				() => {},
 				() => {
 					// Needed in V2 as all nodes remain selected when clicking on a selected node
 					workflowPage.actions.deselectAll();
