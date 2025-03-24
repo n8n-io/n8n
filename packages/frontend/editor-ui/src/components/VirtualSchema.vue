@@ -22,7 +22,8 @@ import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { N8nText } from '@n8n/design-system';
 import {
 	createResultError,
-	NodeConnectionType,
+	type NodeConnectionType,
+	NodeConnectionTypes,
 	type IConnectedNode,
 	type IDataObject,
 } from 'n8n-workflow';
@@ -70,7 +71,7 @@ const props = withDefaults(defineProps<Props>(), {
 	runIndex: 0,
 	outputIndex: 0,
 	totalRuns: 1,
-	connectionType: NodeConnectionType.Main,
+	connectionType: NodeConnectionTypes.Main,
 	search: '',
 	mappingEnabled: false,
 });

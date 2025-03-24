@@ -13,7 +13,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { CanvasNodeDirtiness } from '@/types';
 import { type FrontendSettings } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
-import { NodeConnectionType, type IConnections, type IRunData } from 'n8n-workflow';
+import { NodeConnectionTypes, type IConnections, type IRunData } from 'n8n-workflow';
 import { defineComponent } from 'vue';
 import {
 	createRouter,
@@ -396,8 +396,8 @@ describe(useNodeDirtiness, () => {
 					const from = arr[i - 1].slice(0, 1);
 					const to = arr[i + 1].slice(0, 1);
 					const type = arr[i - 1].includes('🧠')
-						? NodeConnectionType.AiAgent
-						: NodeConnectionType.Main;
+						? NodeConnectionTypes.AiAgent
+						: NodeConnectionTypes.Main;
 					const conns = connections[from]?.[type] ?? [];
 					const conn = conns[0] ?? [];
 

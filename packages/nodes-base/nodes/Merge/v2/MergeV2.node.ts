@@ -7,7 +7,7 @@ import {
 	type INodeTypeBaseDescription,
 	type INodeTypeDescription,
 	type IPairedItemData,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { preparePairedItemDataArray } from '@utils/utilities';
@@ -40,8 +40,8 @@ export class MergeV2 implements INodeType {
 				name: 'Merge',
 			},
 
-			inputs: [NodeConnectionType.Main, NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			inputNames: ['Input 1', 'Input 2'],
 			// If mode is chooseBranch data from both branches is required
 			// to continue, else data from any input suffices

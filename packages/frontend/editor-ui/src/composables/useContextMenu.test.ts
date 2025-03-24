@@ -6,7 +6,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 
 const nodeFactory = (data: Partial<INodeUi> = {}): INodeUi => ({
 	id: faker.string.uuid(),
@@ -97,8 +97,8 @@ describe('useContextMenu', () => {
 		const basicChain = nodeFactory({ type: BASIC_CHAIN_NODE_TYPE });
 		vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(basicChain);
 		vi.spyOn(NodeHelpers, 'getConnectionTypes').mockReturnValue([
-			NodeConnectionType.Main,
-			NodeConnectionType.AiLanguageModel,
+			NodeConnectionTypes.Main,
+			NodeConnectionTypes.AiLanguageModel,
 		]);
 		open(mockEvent, { source: 'node-right-click', nodeId: basicChain.id });
 
