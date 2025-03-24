@@ -36,7 +36,7 @@ const telemetry = useTelemetry();
 const i18n = useI18n();
 
 const { userActivated } = useUsersStore();
-const { popViewStack, updateCurrentViewStack, activeViewStack } = useViewStacks();
+const { popViewStack, updateCurrentViewStack } = useViewStacks();
 const { registerKeyHook } = useKeyboardNavigation();
 const {
 	setAddedNodeActionParameters,
@@ -89,6 +89,8 @@ const search = computed(() => useViewStacks().activeViewStack.search);
 const subcategory = computed(() => useViewStacks().activeViewStack.subcategory);
 
 const rootView = computed(() => useViewStacks().activeViewStack.rootView);
+
+const communityNodeDetails = computed(() => useViewStacks().activeViewStack.communityNodeDetails);
 
 const placeholderTriggerActions = getPlaceholderTriggerActions(subcategory.value || '');
 
@@ -298,7 +300,7 @@ onMounted(() => {
 				</CategorizedItemsRenderer>
 			</template>
 		</OrderSwitcher>
-		<div v-if="containsAPIAction && !activeViewStack.communityNodeDetails" :class="$style.apiHint">
+		<div v-if="containsAPIAction && !communityNodeDetails" :class="$style.apiHint">
 			<span
 				v-n8n-html="
 					i18n.baseText('nodeCreator.actionsList.apiCall', {
@@ -309,8 +311,8 @@ onMounted(() => {
 			/>
 		</div>
 		<CommunityNodeFooter
-			v-if="activeViewStack.communityNodeDetails"
-			:package-name="activeViewStack?.communityNodeDetails?.packageName as string"
+			v-if="communityNodeDetails"
+			:package-name="communityNodeDetails.packageName"
 		/>
 	</div>
 </template>

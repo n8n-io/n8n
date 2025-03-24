@@ -30,28 +30,32 @@ const nodeCreatorStore = useNodeCreatorStore();
 
 const activeViewStack = computed(() => useViewStacks().activeViewStack);
 
+const communityNodeDetails = computed(() => activeViewStack.value.communityNodeDetails);
+
 const viewStacks = computed(() => useViewStacks().viewStacks);
 
 const isActionsMode = computed(() => useViewStacks().activeViewStackMode === 'actions');
+
 const searchPlaceholder = computed(() => {
 	let node = activeViewStack.value.title as string;
-	if (activeViewStack.value.communityNodeDetails) {
-		node = activeViewStack.value.communityNodeDetails.title;
+
+	if (communityNodeDetails.value) {
+		node = communityNodeDetails.value.title;
 	}
-	return isActionsMode.value
-		? i18n.baseText('nodeCreator.actionsCategory.searchActions', {
-				interpolate: { node },
-			})
-		: i18n.baseText('nodeCreator.searchBar.searchNodes');
+
+	if (isActionsMode.value) {
+		return i18n.baseText('nodeCreator.actionsCategory.searchActions', {
+			interpolate: { node },
+		});
+	}
+
+	return i18n.baseText('nodeCreator.searchBar.searchNodes');
 });
 
 const nodeCreatorView = computed(() => useNodeCreatorStore().selectedView);
 
-const isCommunityNodeWithoutActions = computed(() => {
-	return (
-		activeViewStack.value.communityNodeDetails &&
-		!(isActionsMode.value && activeViewStack.value.subcategory)
-	);
+const isCommunityNodeActionsMode = computed(() => {
+	return communityNodeDetails.value && isActionsMode.value && activeViewStack.value.subcategory;
 });
 
 function getDefaultActiveIndex(search: string = ''): number {
@@ -85,10 +89,6 @@ function onSearch(value: string) {
 		}
 	}
 }
-
-const openCommunityNodeDocsPage = (link: string) => {
-	window.open(`https://www.npmjs.com/package/${link}`, '_blank');
-};
 
 function onTransitionEnd() {
 	void setActiveItemIndex(getDefaultActiveIndex());
@@ -183,16 +183,10 @@ function onBackButton() {
 					/>
 					<p v-if="activeViewStack.title" :class="$style.title" v-text="activeViewStack.title" />
 
-					<n8n-link
-						v-if="activeViewStack.communityNodeDetails"
-						theme="text"
-						@click="openCommunityNodeDocsPage(activeViewStack.communityNodeDetails.packageName)"
-						:class="$style.communityDocLink"
-						:title="'Open community node docs'"
-					>
-						<n8n-text size="small" bold style="margin-right: 5px"> Docs </n8n-text>
-						<font-awesome-icon icon="external-link-alt" />
-					</n8n-link>
+					<CommunityNodeDocsLink
+						v-if="communityNodeDetails"
+						:package-name="communityNodeDetails.packageName"
+					/>
 				</div>
 				<p
 					v-if="activeViewStack.subtitle"
@@ -200,6 +194,7 @@ function onBackButton() {
 					v-text="activeViewStack.subtitle"
 				/>
 			</header>
+
 			<SearchBar
 				v-if="activeViewStack.hasSearch"
 				:class="$style.searchBar"
@@ -209,7 +204,9 @@ function onBackButton() {
 				:model-value="activeViewStack.search"
 				@update:model-value="onSearch"
 			/>
-			<CommunityNodeDetails v-if="activeViewStack.communityNodeDetails" />
+
+			<CommunityNodeDetails v-if="communityNodeDetails" />
+
 			<div :class="$style.renderedItems">
 				<n8n-notice
 					v-if="activeViewStack.info && !activeViewStack.search"
@@ -223,9 +220,10 @@ function onBackButton() {
 				<!-- Nodes Mode -->
 				<NodesRenderer v-else :root-view="nodeCreatorView" v-bind="$attrs" />
 			</div>
+
 			<CommunityNodeFooter
-				v-if="isCommunityNodeWithoutActions"
-				:package-name="activeViewStack?.communityNodeDetails?.packageName as string"
+				v-if="!isCommunityNodeActionsMode"
+				:package-name="communityNodeDetails?.packageName as string"
 			/>
 		</aside>
 	</transition>
@@ -353,12 +351,6 @@ function onBackButton() {
 }
 .offsetSubtitle {
 	margin-left: calc(var(--spacing-xl) + var(--spacing-4xs));
-}
-.communityDocLink {
-	display: flex;
-	align-items: center;
-	margin-left: auto;
-	padding-bottom: var(--spacing-5xs);
 }
 </style>
 

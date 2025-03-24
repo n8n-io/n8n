@@ -41,7 +41,7 @@ const ownersEmail = computed(() =>
 );
 
 const onInstallClick = async () => {
-	if (activeViewStack.communityNodeDetails && !communityNodeDetails?.installed) {
+	if (isOwner.value && activeViewStack.communityNodeDetails && !communityNodeDetails?.installed) {
 		const { key, packageName } = activeViewStack.communityNodeDetails;
 
 		try {

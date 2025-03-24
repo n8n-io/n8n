@@ -82,7 +82,7 @@ interface ViewStack {
 	baselineItems?: INodeCreateElement[];
 	searchItems?: SimplifiedNodeType[];
 	forceIncludeNodes?: string[];
-	mode?: 'actions' | 'nodes';
+	mode?: 'actions' | 'nodes' | 'community-node';
 	hideActions?: boolean;
 	baseFilter?: (item: INodeCreateElement) => boolean;
 	itemsMapper?: (item: INodeCreateElement) => INodeCreateElement;
@@ -225,6 +225,22 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		});
 
 		return filteredSections;
+	});
+
+	const additionalSearchItems = computed(() => {
+		const communityItems: INodeCreateElement[] = [];
+		const items: INodeCreateElement[] = [];
+		const { verifiedNodeTypes } = useNodeTypesStore();
+
+		for (const item of globalSearchItemsDiff.value) {
+			if (verifiedNodeTypes.includes(item.key)) {
+				communityItems.push(item);
+			} else {
+				items.push(item);
+			}
+		}
+
+		return { items, communityItems };
 	});
 
 	const itemsBySubcategory = computed(() => subcategorizeItems(nodeCreatorStore.mergedNodes));
@@ -576,7 +592,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 					rootView: activeViewStack.value.rootView,
 					hasSearch: false,
 					items: [item],
-					mode: 'nodes',
+					mode: 'community-node',
 					communityNodeDetails,
 				},
 				options,
@@ -588,7 +604,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		viewStacks,
 		activeViewStack,
 		activeViewStackMode,
-		globalSearchItemsDiff,
+		additionalSearchItems,
 		isAiSubcategoryView,
 		gotoCompatibleConnectionView,
 		resetViewStacks,

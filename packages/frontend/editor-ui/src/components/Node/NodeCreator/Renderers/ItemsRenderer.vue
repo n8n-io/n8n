@@ -12,7 +12,6 @@ import LinkItem from '../ItemTypes/LinkItem.vue';
 import CategorizedItemsRenderer from './CategorizedItemsRenderer.vue';
 
 import { useViewStacks } from '../composables/useViewStacks';
-import { useUsersStore } from '@/stores/users.store';
 
 export interface Props {
 	elements?: INodeCreateElement[];
@@ -40,15 +39,11 @@ const { activeViewStack } = useViewStacks();
 
 const activeItemId = computed(() => useKeyboardNavigation()?.activeItemId);
 
-const communityNodeDetailsNoActions = computed(() => {
-	return activeViewStack.mode === 'nodes' && activeViewStack.communityNodeDetails;
-});
+const communityNode = computed(() => activeViewStack.mode === 'community-node');
 
 const isPreview = computed(() => {
-	return communityNodeDetailsNoActions.value && !activeViewStack.communityNodeDetails?.installed;
+	return communityNode.value && !activeViewStack.communityNodeDetails?.installed;
 });
-
-const isOwner = computed(() => useUsersStore().isInstanceOwner);
 
 // Lazy render large items lists to prevent the browser from freezing
 // when loading many items.
@@ -160,7 +155,7 @@ watch(
 					:class="{
 						clickable: !disabled,
 						[$style.active]: activeItemId === item.uuid,
-						[$style.iteratorItem]: !communityNodeDetailsNoActions,
+						[$style.iteratorItem]: !communityNode,
 						[$style[item.type]]: true,
 						[$style.preview]: isPreview,
 						// Borderless is only applied to views
@@ -172,30 +167,13 @@ watch(
 					@click="wrappedEmit('selected', item)"
 				>
 					<LabelItem v-if="item.type === 'label'" :item="item" />
+
 					<SubcategoryItem v-if="item.type === 'subcategory'" :item="item.properties" />
 
-					<div v-if="isPreview && isOwner" :class="$style.installHint">
-						<n8n-icon color="text-light" icon="info-circle" size="large" />
-						<n8n-text color="text-base" size="medium">
-							Install this node to start using it
-						</n8n-text>
-					</div>
-
-					<div
-						v-else-if="communityNodeDetailsNoActions && !isPreview"
-						:class="$style.addToWorkflow"
-					>
-						<n8n-button
-							size="medium"
-							type="secondary"
-							icon="plus"
-							label="Add to workwlow"
-							outline
-						/>
-					</div>
+					<CommunityNodeItem v-if="communityNode" :is-preview="isPreview" />
 
 					<NodeItem
-						v-if="item.type === 'node' && !communityNodeDetailsNoActions"
+						v-if="item.type === 'node' && !communityNode"
 						:node-type="item.properties"
 						:active="true"
 						:subcategory="item.subcategory"
@@ -316,20 +294,6 @@ watch(
 			content: none;
 		}
 	}
-}
-
-.installHint {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing-s);
-	margin: var(--spacing-xs);
-	padding: var(--spacing-xs);
-	border: var(--border-width-base) solid var(--color-foreground-base);
-	border-radius: 0.25em;
-}
-
-.addToWorkflow {
-	margin-left: var(--spacing-xs);
 }
 
 .preview {

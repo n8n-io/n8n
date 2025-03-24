@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { camelCase } from 'lodash-es';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import type {
 	ActionTypeDescription,
 	INodeCreateElement,
@@ -35,8 +35,6 @@ import { SEND_AND_WAIT_OPERATION, type INodeParameters } from 'n8n-workflow';
 
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-
 export interface Props {
 	rootView: 'trigger' | 'action';
 }
@@ -56,19 +54,14 @@ const { registerKeyHook } = useKeyboardNavigation();
 
 const activeViewStack = computed(() => useViewStacks().activeViewStack);
 
-const communityNodesSearch = ref<INodeCreateElement[]>([]);
+const additionalSearchItems = computed(() => useViewStacks().additionalSearchItems);
 
-const globalSearchItemsDiff = computed(() => {
-	const communityItems: INodeCreateElement[] = [];
-	const items = useViewStacks().globalSearchItemsDiff.filter((item) => {
-		if (useNodeTypesStore().verifiedNodeTypes.includes(item.key)) {
-			communityItems.push(item);
-			return false;
-		}
-		return true;
-	});
-	communityNodesSearch.value = communityItems;
-	return items;
+const isSearchResultEmpty = computed(() => {
+	return (
+		(activeViewStack.value.items || []).length === 0 &&
+		additionalSearchItems.value.items.length + additionalSearchItems.value.communityItems.length ===
+			0
+	);
 });
 
 function getFilteredActions(node: NodeCreateElement) {
@@ -255,7 +248,8 @@ function arrowLeft() {
 function onKeySelect(activeItemId: string) {
 	const mergedItems = flattenCreateElements([
 		...(activeViewStack.value.items ?? []),
-		...(globalSearchItemsDiff.value ?? []),
+		...(additionalSearchItems.value.items ?? []),
+		...(additionalSearchItems.value.communityItems ?? []),
 	]);
 
 	const item = mergedItems.find((i) => i.uuid === activeItemId);
@@ -286,10 +280,7 @@ registerKeyHook('MainViewArrowLeft', {
 			:class="$style.items"
 			@selected="onSelected"
 		>
-			<template
-				v-if="(activeViewStack.items || []).length === 0 && globalSearchItemsDiff.length === 0"
-				#empty
-			>
+			<template v-if="isSearchResultEmpty" #empty>
 				<NoResults
 					:root-view="activeViewStack.rootView"
 					show-icon
@@ -299,18 +290,20 @@ registerKeyHook('MainViewArrowLeft', {
 				/>
 			</template>
 		</ItemsRenderer>
+
 		<!-- Results in other categories -->
 		<CategorizedItemsRenderer
-			v-if="globalSearchItemsDiff.length > 0"
-			:elements="globalSearchItemsDiff"
+			v-if="additionalSearchItems.items.length > 0"
+			:elements="additionalSearchItems.items"
 			:category="i18n.baseText('nodeCreator.categoryNames.otherCategories')"
 			@selected="onSelected"
 		>
 		</CategorizedItemsRenderer>
+
 		<!-- Results in communty nodes -->
 		<CategorizedItemsRenderer
-			v-if="communityNodesSearch.length > 0"
-			:elements="communityNodesSearch"
+			v-if="additionalSearchItems.communityItems.length > 0"
+			:elements="additionalSearchItems.communityItems"
 			category="More from the community"
 			@selected="onSelected"
 			:expanded="true"
