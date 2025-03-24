@@ -16,6 +16,7 @@ import type {
 	PgpConnectionParameters,
 	PostgresNodeCredentials,
 	PostgresNodeOptions,
+	PostgresNodeSSLOptions,
 } from '../v2/helpers/interfaces';
 
 const getPostgresConfig = (
@@ -40,14 +41,25 @@ const getPostgresConfig = (
 		dbConfig.keepAliveInitialDelayMillis = options.delayClosingIdleConnection * 1000;
 	}
 
-	if (credentials.allowUnauthorizedCerts === true) {
-		dbConfig.ssl = {
-			rejectUnauthorized: false,
-		};
-	} else {
-		dbConfig.ssl = !['disable', undefined].includes(credentials.ssl as string | undefined);
-		// @ts-ignore these typings need to be updated
-		dbConfig.sslmode = credentials.ssl || 'disable';
+	// @ts-expect-error parameters unrecognized by pg-connection-string are preserved
+	dbConfig.sslmode = credentials.ssl || 'disable';
+	if (credentials.ssl && credentials.ssl !== 'disable') {
+		dbConfig.ssl = {};
+
+		const { caCert, clientCert, clientKey, allowUnauthorizedCerts } =
+			credentials as PostgresNodeSSLOptions;
+		if (caCert) {
+			dbConfig.ssl.ca = caCert;
+		}
+		if (clientCert) {
+			dbConfig.ssl.cert = clientCert;
+		}
+		if (clientKey) {
+			dbConfig.ssl.key = clientKey;
+		}
+		if (allowUnauthorizedCerts === true) {
+			dbConfig.ssl.rejectUnauthorized = false;
+		}
 	}
 
 	return dbConfig;

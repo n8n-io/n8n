@@ -59,11 +59,22 @@ export type PostgresNodeCredentials = {
 	user: string;
 	password: string;
 	maxConnections: number;
-	allowUnauthorizedCerts?: boolean;
-	ssl?: 'disable' | 'allow' | 'require' | 'verify' | 'verify-full';
 } & (
-	| { sshTunnel: false }
+	| { ssl?: 'disable' }
 	| ({
-			sshTunnel: true;
-	  } & SSHCredentials)
-);
+			ssl: 'allow' | 'prefer' | 'require' | 'verify-ca' | 'verify-full';
+	  } & PostgresNodeSSLOptions)
+) &
+	(
+		| { sshTunnel: false }
+		| ({
+				sshTunnel: true;
+		  } & SSHCredentials)
+	);
+
+export type PostgresNodeSSLOptions = {
+	allowUnauthorizedCerts?: boolean;
+	caCert: string;
+	clientCert: string;
+	clientKey: string;
+};

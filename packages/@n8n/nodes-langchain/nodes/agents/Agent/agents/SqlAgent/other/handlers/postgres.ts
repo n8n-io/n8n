@@ -1,5 +1,8 @@
 import { DataSource } from '@n8n/typeorm';
-import type { PostgresNodeCredentials } from 'n8n-nodes-base/dist/nodes/Postgres/v2/helpers/interfaces';
+import type {
+	PostgresNodeCredentials,
+	PostgresNodeSSLOptions,
+} from 'n8n-nodes-base/dist/nodes/Postgres/v2/helpers/interfaces';
 import { type IExecuteFunctions } from 'n8n-workflow';
 import type { TlsOptions } from 'tls';
 
@@ -7,8 +10,23 @@ export async function getPostgresDataSource(this: IExecuteFunctions): Promise<Da
 	const credentials = await this.getCredentials<PostgresNodeCredentials>('postgres');
 
 	let ssl: TlsOptions | boolean = !['disable', undefined].includes(credentials.ssl);
-	if (credentials.allowUnauthorizedCerts && ssl) {
-		ssl = { rejectUnauthorized: false };
+	if (ssl) {
+		ssl = {};
+
+		const { caCert, clientCert, clientKey, allowUnauthorizedCerts } =
+			credentials as PostgresNodeSSLOptions;
+		if (caCert) {
+			ssl.ca = caCert;
+		}
+		if (clientCert) {
+			ssl.cert = clientCert;
+		}
+		if (clientKey) {
+			ssl.key = clientKey;
+		}
+		if (allowUnauthorizedCerts === true) {
+			ssl.rejectUnauthorized = false;
+		}
 	}
 
 	return new DataSource({
