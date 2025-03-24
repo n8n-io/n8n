@@ -60,6 +60,9 @@ const getPostgresConfig = (
 		if (allowUnauthorizedCerts === true) {
 			dbConfig.ssl.rejectUnauthorized = false;
 		}
+		if (credentials.ssl === 'verify-ca') {
+			dbConfig.ssl.checkServerIdentity = (_hostname: string, _cert: unknown) => undefined;
+		}
 	}
 
 	return dbConfig;

@@ -27,6 +27,10 @@ export async function getPostgresDataSource(this: IExecuteFunctions): Promise<Da
 		if (allowUnauthorizedCerts === true) {
 			ssl.rejectUnauthorized = false;
 		}
+		if (credentials.ssl === 'verify-ca') {
+			// @ts-expect-error this option is available for tls.connect but not on the TLSSocket constructor. typeorm has incorrectly typed as options for the latter.
+			ssl.checkServerIdentity = (_hostname: string, _cert: unknown) => undefined;
+		}
 	}
 
 	return new DataSource({
