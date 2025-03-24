@@ -163,6 +163,12 @@ export class InsightsService {
 		do {
 			numberOfCompactedHourData = await this.compactHourToDay();
 		} while (numberOfCompactedHourData > 0);
+
+		let numberOfCompactedDayData: number;
+		// Compact daily data to weekly aggregates
+		do {
+			numberOfCompactedDayData = await this.compactDayToWeek();
+		} while (numberOfCompactedHourData > 0);
 	}
 
 	// Compacts raw data to hourly aggregates
@@ -193,8 +199,20 @@ export class InsightsService {
 		});
 	}
 
-	// TODO: add return type once rebased on master and InsightsSummary is
-	// available
+	// Compacts daily data to weekly aggregates
+	async compactDayToWeek() {
+		// get hour data query for batching
+		const batchQuery = this.insightsByPeriodRepository.getPeriodInsightsBatchQuery(
+			'day',
+			config.compactionBatchSize,
+		);
+
+		return await this.insightsByPeriodRepository.compactSourceDataIntoInsightPeriod({
+			sourceBatchQuery: batchQuery.getSql(),
+			periodUnit: 'week',
+		});
+	}
+
 	async getInsightsSummary(): Promise<InsightsSummary> {
 		const rows = await this.insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates();
 

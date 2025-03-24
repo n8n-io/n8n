@@ -32,7 +32,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	}
 
 	private getPeriodFilterExpr(periodUnit: PeriodUnit) {
-		const daysAgo = periodUnit === 'day' ? 90 : 180;
+		const daysAgo = periodUnit === 'hour' ? 90 : 180;
 		// Database-specific period start expression to filter out data to compact by days matching the periodUnit
 		let periodStartExpr = `date('now', '-${daysAgo} days')`;
 		if (dbType === 'postgresdb') {
@@ -47,12 +47,15 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	private getPeriodStartExpr(periodUnit: PeriodUnit) {
 		// Database-specific period start expression to truncate timestamp to the periodUnit
 		// SQLite by default
-		let periodStartExpr = `strftime('%Y-%m-%d ${periodUnit === 'hour' ? '%H' : '00'}:00:00.000', periodStart)`;
+		let periodStartExpr =
+			periodUnit === 'week'
+				? "strftime('%Y-%m-%d 00:00:00.000', date(periodStart, 'weekday 0', '-6 days'))"
+				: `strftime('%Y-%m-%d ${periodUnit === 'hour' ? '%H' : '00'}:00:00.000', periodStart)`;
 		if (dbType === 'mysqldb' || dbType === 'mariadb') {
 			periodStartExpr =
-				periodUnit === 'hour'
-					? "DATE_FORMAT(periodStart, '%Y-%m-%d %H:00:00')"
-					: "DATE_FORMAT(periodStart, '%Y-%m-%d 00:00:00')";
+				periodUnit === 'week'
+					? "DATE_FORMAT(DATE_SUB(periodStart, INTERVAL WEEKDAY(periodStart) DAY), '%Y-%m-%d 00:00:00')"
+					: `DATE_FORMAT(periodStart, '%Y-%m-%d ${periodUnit === 'hour' ? '%H' : '00'}:00:00')`;
 		} else if (dbType === 'postgresdb') {
 			periodStartExpr = `DATE_TRUNC('${periodUnit}', ${this.escapeField('periodStart')})`;
 		}
@@ -69,7 +72,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 				),
 			)
 			.where(`${this.escapeField('periodUnit')} = ${PeriodUnitToNumber[periodUnit]}`)
-			.andWhere(`${this.escapeField('periodStart')} < ${this.getPeriodFilterExpr('day')}`)
+			.andWhere(`${this.escapeField('periodStart')} < ${this.getPeriodFilterExpr(periodUnit)}`)
 			.orderBy(this.escapeField('periodStart'), 'ASC')
 			.limit(compactionBatchSize);
 		return batchQuery;
