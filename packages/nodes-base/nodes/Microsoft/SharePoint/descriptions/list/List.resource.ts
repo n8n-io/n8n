@@ -60,6 +60,6 @@ export const description: INodeProperties[] = [
 		default: 'getAll',
 	},
 
-	...get.properties,
-	...getAll.properties,
+	...get.description,
+	...getAll.description,
 ];

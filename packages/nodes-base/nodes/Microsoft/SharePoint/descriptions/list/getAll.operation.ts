@@ -1,6 +1,6 @@
-import type { INodeProperties } from 'n8n-workflow';
+import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
 
-export const properties: INodeProperties[] = [
+const properties: INodeProperties[] = [
 	{
 		displayName: 'Site',
 		name: 'site',
@@ -9,12 +9,6 @@ export const properties: INodeProperties[] = [
 			value: '',
 		},
 		description: 'Select the site to retrieve lists from',
-		displayOptions: {
-			show: {
-				resource: ['list'],
-				operation: ['getAll'],
-			},
-		},
 		modes: [
 			{
 				displayName: 'From List',
@@ -40,12 +34,6 @@ export const properties: INodeProperties[] = [
 		name: 'returnAll',
 		default: false,
 		description: 'Whether to return all results or only up to a given limit',
-		displayOptions: {
-			show: {
-				resource: ['list'],
-				operation: ['getAll'],
-			},
-		},
 		routing: {
 			send: {
 				paginate: '={{ $value }}',
@@ -75,8 +63,6 @@ export const properties: INodeProperties[] = [
 		description: 'Max number of results to return',
 		displayOptions: {
 			show: {
-				resource: ['list'],
-				operation: ['getAll'],
 				returnAll: [false],
 			},
 		},
@@ -97,12 +83,6 @@ export const properties: INodeProperties[] = [
 		displayName: 'Simplify',
 		name: 'simplify',
 		default: true,
-		displayOptions: {
-			show: {
-				resource: ['list'],
-				operation: ['getAll'],
-			},
-		},
 		routing: {
 			send: {
 				property: '$select',
@@ -114,3 +94,12 @@ export const properties: INodeProperties[] = [
 		type: 'boolean',
 	},
 ];
+
+const displayOptions = {
+	show: {
+		resource: ['list'],
+		operation: ['getAll'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);

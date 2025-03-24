@@ -1,14 +1,15 @@
-import type {
-	IExecuteSingleFunctions,
-	IN8nHttpFullResponse,
-	INodeExecutionData,
-	INodeProperties,
+import {
+	updateDisplayOptions,
+	type IExecuteSingleFunctions,
+	type IN8nHttpFullResponse,
+	type INodeExecutionData,
+	type INodeProperties,
 } from 'n8n-workflow';
 
 import { untilSiteSelected } from '../../helpers/utils';
 import { microsoftSharePointApiRequest } from '../../transport';
 
-export const properties: INodeProperties[] = [
+const properties: INodeProperties[] = [
 	{
 		displayName: 'Site',
 		name: 'site',
@@ -17,12 +18,6 @@ export const properties: INodeProperties[] = [
 			value: '',
 		},
 		description: 'Select the site to retrieve folders from',
-		displayOptions: {
-			show: {
-				resource: ['file'],
-				operation: ['update'],
-			},
-		},
 		modes: [
 			{
 				displayName: 'From List',
@@ -52,10 +47,6 @@ export const properties: INodeProperties[] = [
 		},
 		description: 'Select the folder to update the file in',
 		displayOptions: {
-			show: {
-				resource: ['file'],
-				operation: ['update'],
-			},
 			hide: {
 				...untilSiteSelected,
 			},
@@ -89,12 +80,6 @@ export const properties: INodeProperties[] = [
 			value: '',
 		},
 		description: 'Select the file to update',
-		displayOptions: {
-			show: {
-				resource: ['file'],
-				operation: ['update'],
-			},
-		},
 		modes: [
 			{
 				displayName: 'From List',
@@ -120,12 +105,6 @@ export const properties: INodeProperties[] = [
 		name: 'fileName',
 		default: '',
 		description: 'If not specified, the original file name will be used',
-		displayOptions: {
-			show: {
-				resource: ['file'],
-				operation: ['update'],
-			},
-		},
 		placeholder: 'e.g. My New File',
 		routing: {
 			send: {
@@ -141,12 +120,6 @@ export const properties: INodeProperties[] = [
 		name: 'changeFileContent',
 		default: false,
 		description: 'Whether to update the file contents',
-		displayOptions: {
-			show: {
-				resource: ['file'],
-				operation: ['update'],
-			},
-		},
 		placeholder: 'e.g. My New File',
 		required: true,
 		type: 'boolean',
@@ -159,8 +132,6 @@ export const properties: INodeProperties[] = [
 			'Find the name of input field containing the binary data to update the file in the Input panel on the left, in the Binary tab',
 		displayOptions: {
 			show: {
-				resource: ['file'],
-				operation: ['update'],
 				changeFileContent: [true],
 			},
 		},
@@ -196,3 +167,12 @@ export const properties: INodeProperties[] = [
 		type: 'string',
 	},
 ];
+
+const displayOptions = {
+	show: {
+		resource: ['file'],
+		operation: ['update'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);

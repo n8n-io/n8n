@@ -1,8 +1,8 @@
-import type { INodeProperties } from 'n8n-workflow';
+import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
 
 import { untilSiteSelected } from '../../helpers/utils';
 
-export const properties: INodeProperties[] = [
+const properties: INodeProperties[] = [
 	{
 		displayName: 'Site',
 		name: 'site',
@@ -11,12 +11,6 @@ export const properties: INodeProperties[] = [
 			value: '',
 		},
 		description: 'Select the site to retrieve lists from',
-		displayOptions: {
-			show: {
-				resource: ['list'],
-				operation: ['get'],
-			},
-		},
 		modes: [
 			{
 				displayName: 'From List',
@@ -46,10 +40,6 @@ export const properties: INodeProperties[] = [
 		},
 		description: 'Select the list you want to retrieve',
 		displayOptions: {
-			show: {
-				resource: ['list'],
-				operation: ['get'],
-			},
 			hide: {
 				...untilSiteSelected,
 			},
@@ -78,12 +68,6 @@ export const properties: INodeProperties[] = [
 		displayName: 'Simplify',
 		name: 'simplify',
 		default: true,
-		displayOptions: {
-			show: {
-				resource: ['list'],
-				operation: ['get'],
-			},
-		},
 		routing: {
 			send: {
 				property: '$select',
@@ -95,3 +79,12 @@ export const properties: INodeProperties[] = [
 		type: 'boolean',
 	},
 ];
+
+const displayOptions = {
+	show: {
+		resource: ['list'],
+		operation: ['get'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);

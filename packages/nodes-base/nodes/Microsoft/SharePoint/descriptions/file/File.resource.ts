@@ -68,7 +68,7 @@ export const description: INodeProperties[] = [
 		default: 'download',
 	},
 
-	...download.properties,
-	...update.properties,
-	...upload.properties,
+	...download.description,
+	...update.description,
+	...upload.description,
 ];

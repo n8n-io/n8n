@@ -1,8 +1,8 @@
-import type { INodeProperties } from 'n8n-workflow';
+import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
 
 import { untilSiteSelected, uploadFilePreSend } from '../../helpers/utils';
 
-export const properties: INodeProperties[] = [
+const properties: INodeProperties[] = [
 	{
 		displayName: 'Site',
 		name: 'site',
@@ -11,12 +11,6 @@ export const properties: INodeProperties[] = [
 			value: '',
 		},
 		description: 'Select the site to retrieve folders from',
-		displayOptions: {
-			show: {
-				resource: ['file'],
-				operation: ['upload'],
-			},
-		},
 		modes: [
 			{
 				displayName: 'From List',
@@ -46,10 +40,6 @@ export const properties: INodeProperties[] = [
 		},
 		description: 'Select the folder to upload the file to',
 		displayOptions: {
-			show: {
-				resource: ['file'],
-				operation: ['upload'],
-			},
 			hide: {
 				...untilSiteSelected,
 			},
@@ -80,12 +70,6 @@ export const properties: INodeProperties[] = [
 		name: 'fileName',
 		default: '',
 		description: 'The name of the file being uploaded',
-		displayOptions: {
-			show: {
-				resource: ['file'],
-				operation: ['upload'],
-			},
-		},
 		placeholder: 'e.g. My New File',
 		required: true,
 		type: 'string',
@@ -96,12 +80,6 @@ export const properties: INodeProperties[] = [
 		default: '',
 		description:
 			'Find the name of input field containing the binary data to upload the file in the Input panel on the left, in the Binary tab',
-		displayOptions: {
-			show: {
-				resource: ['file'],
-				operation: ['upload'],
-			},
-		},
 		hint: 'The name of the input field containing the binary file data to update the file',
 		placeholder: 'data',
 		required: true,
@@ -113,3 +91,12 @@ export const properties: INodeProperties[] = [
 		type: 'string',
 	},
 ];
+
+const displayOptions = {
+	show: {
+		resource: ['file'],
+		operation: ['upload'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);

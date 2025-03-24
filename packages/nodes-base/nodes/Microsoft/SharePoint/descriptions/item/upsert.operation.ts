@@ -1,8 +1,8 @@
-import type { INodeProperties } from 'n8n-workflow';
+import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
 
 import { itemColumnsPreSend, untilListSelected, untilSiteSelected } from '../../helpers/utils';
 
-export const properties: INodeProperties[] = [
+const properties: INodeProperties[] = [
 	{
 		displayName: 'Site',
 		name: 'site',
@@ -11,12 +11,6 @@ export const properties: INodeProperties[] = [
 			value: '',
 		},
 		description: 'Select the site to retrieve lists from',
-		displayOptions: {
-			show: {
-				resource: ['item'],
-				operation: ['upsert'],
-			},
-		},
 		modes: [
 			{
 				displayName: 'From List',
@@ -46,10 +40,6 @@ export const properties: INodeProperties[] = [
 		},
 		description: 'Select the list you want to create or update an item in',
 		displayOptions: {
-			show: {
-				resource: ['item'],
-				operation: ['upsert'],
-			},
 			hide: {
 				...untilSiteSelected,
 			},
@@ -82,10 +72,6 @@ export const properties: INodeProperties[] = [
 			value: null,
 		},
 		displayOptions: {
-			show: {
-				resource: ['item'],
-				operation: ['upsert'],
-			},
 			hide: {
 				...untilSiteSelected,
 				...untilListSelected,
@@ -114,3 +100,12 @@ export const properties: INodeProperties[] = [
 		},
 	},
 ];
+
+const displayOptions = {
+	show: {
+		resource: ['item'],
+		operation: ['upsert'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);

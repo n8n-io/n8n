@@ -1,8 +1,8 @@
-import type { INodeProperties } from 'n8n-workflow';
+import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
 
 import { itemGetAllFieldsPreSend, untilSiteSelected } from '../../helpers/utils';
 
-export const properties: INodeProperties[] = [
+const properties: INodeProperties[] = [
 	{
 		displayName: 'Site',
 		name: 'site',
@@ -11,12 +11,6 @@ export const properties: INodeProperties[] = [
 			value: '',
 		},
 		description: 'Select the site to retrieve lists from',
-		displayOptions: {
-			show: {
-				resource: ['item'],
-				operation: ['getAll'],
-			},
-		},
 		modes: [
 			{
 				displayName: 'From List',
@@ -46,10 +40,6 @@ export const properties: INodeProperties[] = [
 		},
 		description: 'Select the list you want to search for items in',
 		displayOptions: {
-			show: {
-				resource: ['item'],
-				operation: ['getAll'],
-			},
 			hide: {
 				...untilSiteSelected,
 			},
@@ -80,12 +70,6 @@ export const properties: INodeProperties[] = [
 		default: '',
 		description:
 			'The formula will be evaluated for each record. <a href="https://learn.microsoft.com/en-us/graph/filter-query-parameter">More info</a>.',
-		displayOptions: {
-			show: {
-				resource: ['item'],
-				operation: ['getAll'],
-			},
-		},
 		hint: 'If empty, all the items will be returned',
 		placeholder: "e.g. fields/Title eq 'item1'",
 		routing: {
@@ -102,12 +86,6 @@ export const properties: INodeProperties[] = [
 		name: 'returnAll',
 		default: false,
 		description: 'Whether to return all results or only up to a given limit',
-		displayOptions: {
-			show: {
-				resource: ['item'],
-				operation: ['getAll'],
-			},
-		},
 		routing: {
 			send: {
 				paginate: '={{ $value }}',
@@ -137,8 +115,6 @@ export const properties: INodeProperties[] = [
 		description: 'Max number of results to return',
 		displayOptions: {
 			show: {
-				resource: ['item'],
-				operation: ['getAll'],
 				returnAll: [false],
 			},
 		},
@@ -159,12 +135,6 @@ export const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		default: {},
-		displayOptions: {
-			show: {
-				resource: ['item'],
-				operation: ['getAll'],
-			},
-		},
 		options: [
 			{
 				displayName: 'Fields',
@@ -222,3 +192,12 @@ export const properties: INodeProperties[] = [
 		type: 'collection',
 	},
 ];
+
+const displayOptions = {
+	show: {
+		resource: ['item'],
+		operation: ['getAll'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);

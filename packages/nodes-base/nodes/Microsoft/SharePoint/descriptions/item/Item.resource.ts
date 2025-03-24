@@ -131,10 +131,10 @@ export const description: INodeProperties[] = [
 		default: 'getAll',
 	},
 
-	...create.properties,
-	...del.properties,
-	...get.properties,
-	...getAll.properties,
-	...update.properties,
-	...upsert.properties,
+	...create.description,
+	...del.description,
+	...get.description,
+	...getAll.description,
+	...update.description,
+	...upsert.description,
 ];
