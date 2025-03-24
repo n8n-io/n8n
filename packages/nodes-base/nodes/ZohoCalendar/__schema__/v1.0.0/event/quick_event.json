@@ -1,0 +1,45 @@
+{
+	"type": "object",
+	"properties": {
+		"events": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"uid": {
+						"type": "string"
+					},
+					"estatus": {
+						"type": "string"
+					},
+					"caluid": {
+						"type": "string"
+					},
+					"description": {
+						"type": "string"
+					},
+					"title": {
+						"type": "string"
+					},
+					"dateandtime": {
+						"type": "object",
+						"properties": {
+							"timezone": {
+								"type": "string"
+							},
+							"start": {
+								"type": "string"
+							},
+							"end": {
+								"type": "string"
+							}
+						},
+						"required": ["timezone", "start", "end"]
+					}
+				},
+				"required": ["uid", "estatus", "caluid"]
+			}
+		}
+	},
+	"required": ["events"]
+}

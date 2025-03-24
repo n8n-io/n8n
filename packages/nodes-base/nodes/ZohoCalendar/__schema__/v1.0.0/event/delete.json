@@ -1,0 +1,24 @@
+{
+	"type": "object",
+	"properties": {
+		"events": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"uid": {
+						"type": "string"
+					},
+					"estatus": {
+						"type": "string"
+					},
+					"caluid": {
+						"type": "string"
+					}
+				},
+				"required": ["uid", "estatus", "caluid"]
+			}
+		}
+	},
+	"required": ["events"]
+}

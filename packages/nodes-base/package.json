@@ -399,7 +399,9 @@
       "dist/credentials/ZoomApi.credentials.js",
       "dist/credentials/ZoomOAuth2Api.credentials.js",
       "dist/credentials/ZscalerZiaApi.credentials.js",
-      "dist/credentials/ZulipApi.credentials.js"
+      "dist/credentials/ZulipApi.credentials.js",
+      "dist/credentials/ZohoCalendarOAuth2Api.credentials.js",
+      "dist/credentials/ZohoZeptomailOAuth2Api.credentials.js"
     ],
     "nodes": [
       "dist/nodes/ActionNetwork/ActionNetwork.node.js",
@@ -827,7 +829,10 @@
       "dist/nodes/Transform/RemoveDuplicates/RemoveDuplicates.node.js",
       "dist/nodes/Transform/SplitOut/SplitOut.node.js",
       "dist/nodes/Transform/Sort/Sort.node.js",
-      "dist/nodes/Transform/Summarize/Summarize.node.js"
+      "dist/nodes/Transform/Summarize/Summarize.node.js",
+      "dist/nodes/ZohoCalendar/ZohoCalendar.node.js",
+      "dist/nodes/ZohoCalendar/ZohoCalendarTrigger.node.js",
+      "dist/nodes/ZohoZeptomail/ZohoZeptomail.node.js"
     ]
   },
   "devDependencies": {

@@ -1,0 +1,129 @@
+{
+	"type": "object",
+	"properties": {
+		"events": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"color": {
+						"type": "string"
+					},
+					"description": {
+						"type": "string"
+					},
+					"title": {
+						"type": "string"
+					},
+					"duration": {
+						"type": "string"
+					},
+					"uid": {
+						"type": "string"
+					},
+					"createdby": {
+						"type": "string"
+					},
+					"isApproved": {
+						"type": "boolean"
+					},
+					"viewEventURL": {
+						"type": "string"
+					},
+					"dateandtime": {
+						"type": "object",
+						"properties": {
+							"start": {
+								"type": "string"
+							},
+							"end": {
+								"type": "string"
+							}
+						}
+					},
+					"lastmodifiedtime": {
+						"type": "string"
+					},
+					"isprivate": {
+						"type": "boolean"
+					},
+					"attendees": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"dName": {
+									"type": "string"
+								},
+								"email": {
+									"type": "string"
+								},
+								"attendance": {
+									"type": "integer"
+								},
+								"status": {
+									"type": "staing"
+								}
+							}
+						}
+					},
+					"createdtime_millis": {
+						"type": "string"
+					},
+					"notifyType": {
+						"type": "integer"
+					},
+					"organizer": {
+						"type": "string"
+					},
+					"isallday": {
+						"type": "boolean"
+					},
+					"transparency": {
+						"type": "integer"
+					},
+					"etag": {
+						"type": "string"
+					},
+					"location": {
+						"type": "string"
+					},
+					"modifiedby": {
+						"type": "string"
+					},
+					"caluid": {
+						"type": "string"
+					},
+					"allowForwarding": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"color",
+					"description",
+					"title",
+					"duration",
+					"uid",
+					"createdby",
+					"isApproved",
+					"viewEventURL",
+					"dateandtime",
+					"lastmodifiedtime",
+					"isprivate",
+					"attendees",
+					"createdtime_millis",
+					"notifyType",
+					"organizer",
+					"isallday",
+					"transparency",
+					"etag",
+					"location",
+					"modifiedby",
+					"caluid",
+					"allowForwarding"
+				]
+			}
+		}
+	},
+	"required": ["events"]
+}

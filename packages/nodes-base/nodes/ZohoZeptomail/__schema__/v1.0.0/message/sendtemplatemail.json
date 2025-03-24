@@ -1,0 +1,33 @@
+{
+	"type": "object",
+	"properties": {
+		"data": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"code": {
+						"type": "string"
+					},
+					"message": {
+						"type": "string"
+					},
+					"additional_info": {
+						"type": "array"
+					}
+				},
+				"required": ["code", "message", "additional_info"]
+			}
+		},
+		"message": {
+			"type": "string"
+		},
+		"request_id": {
+			"type": "string"
+		},
+		"object": {
+			"type": "string"
+		}
+	},
+	"required": ["data", "message", "request_id", "object"]
+}
