@@ -470,6 +470,8 @@ export const LOCAL_STORAGE_NDV_INPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_INPUT_PANEL_D
 export const LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_OUTPUT_PANEL_DISPLAY_MODE';
 export const LOCAL_STORAGE_LOGS_2025_SPRING = 'N8N_LOGS_2025_SPRING';
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
+export const COMMUNITY_PLUS_DOCS_URL =
+	'https://docs.n8n.io/hosting/community-edition-features/#registered-community-edition';
 
 export const HIRING_BANNER = `
                                                                     //////
