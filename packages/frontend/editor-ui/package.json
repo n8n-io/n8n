@@ -82,7 +82,7 @@
     "vue-agile": "^2.0.0",
     "vue-chartjs": "^5.2.0",
     "vue-github-button": "^3.1.3",
-    "vue-i18n": "^9.2.2",
+    "vue-i18n": "^11.1.2",
     "vue-json-pretty": "2.2.4",
     "vue-markdown-render": "catalog:frontend",
     "vue-router": "catalog:frontend",
