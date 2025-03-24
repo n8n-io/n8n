@@ -1,0 +1,58 @@
+{
+    "type": "object",
+    "properties": {
+        "billable": {
+            "type": "boolean"
+        },
+        "customFieldValues": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "customFieldId": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "timeEntryId": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "type": "null"
+                    }
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "isLocked": {
+            "type": "boolean"
+        },
+        "kioskId": {
+            "type": "null"
+        },
+        "timeInterval": {
+            "type": "object",
+            "properties": {
+                "start": {
+                    "type": "string"
+                }
+            }
+        },
+        "type": {
+            "type": "string"
+        },
+        "userId": {
+            "type": "string"
+        },
+        "workspaceId": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

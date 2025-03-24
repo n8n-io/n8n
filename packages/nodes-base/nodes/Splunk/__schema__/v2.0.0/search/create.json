@@ -1,299 +1,252 @@
 {
-	"type": "object",
-	"properties": {
-		"name": {
-			"type": "string"
-		},
-		"id": {
-			"type": "string"
-		},
-		"updated": {
-			"type": "string"
-		},
-		"links": {
-			"type": "object",
-			"properties": {
-				"alternate": {
-					"type": "string"
-				},
-				"search.log": {
-					"type": "string"
-				},
-				"events": {
-					"type": "string"
-				},
-				"results": {
-					"type": "string"
-				},
-				"results_preview": {
-					"type": "string"
-				},
-				"timeline": {
-					"type": "string"
-				},
-				"summary": {
-					"type": "string"
-				},
-				"control": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"alternate",
-				"search.log",
-				"events",
-				"results",
-				"results_preview",
-				"timeline",
-				"summary",
-				"control"
-			]
-		},
-		"published": {
-			"type": "string"
-		},
-		"author": {
-			"type": "string"
-		},
-		"acl": {
-			"type": "object",
-			"properties": {
-				"perms": {
-					"type": "object",
-					"properties": {
-						"read": {
-							"type": "array",
-							"items": {
-								"type": "string"
-							}
-						},
-						"write": {
-							"type": "array",
-							"items": {
-								"type": "string"
-							}
-						}
-					},
-					"required": [
-						"read",
-						"write"
-					]
-				},
-				"owner": {
-					"type": "string"
-				},
-				"modifiable": {
-					"type": "boolean"
-				},
-				"sharing": {
-					"type": "string"
-				},
-				"app": {
-					"type": "string"
-				},
-				"can_write": {
-					"type": "boolean"
-				},
-				"ttl": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"perms",
-				"owner",
-				"modifiable",
-				"sharing",
-				"app",
-				"can_write",
-				"ttl"
-			]
-		},
-		"cursorTime": {
-			"type": "string"
-		},
-		"defaultSaveTTL": {
-			"type": "string"
-		},
-		"defaultTTL": {
-			"type": "string"
-		},
-		"delegate": {
-			"type": "string"
-		},
-		"diskUsage": {
-			"type": "integer"
-		},
-		"dispatchState": {
-			"type": "string"
-		},
-		"doneProgress": {
-			"type": "integer"
-		},
-		"earliestTime": {
-			"type": "string"
-		},
-		"isDone": {
-			"type": "boolean"
-		},
-		"isFailed": {
-			"type": "boolean"
-		},
-		"isFinalized": {
-			"type": "boolean"
-		},
-		"isPaused": {
-			"type": "boolean"
-		},
-		"isSaved": {
-			"type": "boolean"
-		},
-		"isSavedSearch": {
-			"type": "boolean"
-		},
-		"isZombie": {
-			"type": "boolean"
-		},
-		"label": {
-			"type": "string"
-		},
-		"pid": {
-			"type": "string"
-		},
-		"sid": {
-			"type": "string"
-		},
-		"statusBuckets": {
-			"type": "integer"
-		},
-		"ttl": {
-			"type": "integer"
-		},
-		"request": {
-			"type": "object",
-			"properties": {
-				"search": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"search"
-			]
-		},
-		"runtime": {
-			"type": "object",
-			"properties": {
-				"auto_cancel": {
-					"type": "string"
-				},
-				"auto_pause": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"auto_cancel",
-				"auto_pause"
-			]
-		},
-		"entryUrl": {
-			"type": "string"
-		},
-		"bundleVersion": {
-			"type": "string"
-		},
-		"isEventsPreviewEnabled": {
-			"type": "boolean"
-		},
-		"isPreviewEnabled": {
-			"type": "boolean"
-		},
-		"numPreviews": {
-			"type": "integer"
-		},
-		"priority": {
-			"type": "integer"
-		},
-		"provenance": {
-			"type": "string"
-		},
-		"resultPreviewCount": {
-			"type": "integer"
-		},
-		"sampleRatio": {
-			"type": "string"
-		},
-		"sampleSeed": {
-			"type": "string"
-		},
-		"search": {
-			"type": "string"
-		},
-		"performance": {
-			"type": "object",
-			"properties": {
-				"startup.configuration": {
-					"type": "object",
-					"properties": {
-						"duration_secs": {
-							"type": "number"
-						},
-						"invocations": {
-							"type": "integer"
-						}
-					},
-					"required": [
-						"duration_secs",
-						"invocations"
-					]
-				},
-				"startup.handoff": {
-					"type": "object",
-					"properties": {
-						"duration_secs": {
-							"type": "number"
-						},
-						"invocations": {
-							"type": "integer"
-						}
-					},
-					"required": [
-						"duration_secs",
-						"invocations"
-					]
-				}
-			}
-		}
-	},
-	"required": [
-		"name",
-		"id",
-		"updated",
-		"links",
-		"published",
-		"author",
-		"acl",
-		"cursorTime",
-		"defaultSaveTTL",
-		"defaultTTL",
-		"delegate",
-		"diskUsage",
-		"dispatchState",
-		"doneProgress",
-		"earliestTime",
-		"isDone",
-		"isFailed",
-		"isFinalized",
-		"isPaused",
-		"isSaved",
-		"isSavedSearch",
-		"isZombie",
-		"label",
-		"sid",
-		"statusBuckets",
-		"ttl",
-		"messages",
-		"request",
-		"runtime",
-		"searchProviders",
-		"entryUrl"
-	]
+    "type": "object",
+    "properties": {
+        "acl": {
+            "type": "object",
+            "properties": {
+                "app": {
+                    "type": "string"
+                },
+                "can_write": {
+                    "type": "boolean"
+                },
+                "modifiable": {
+                    "type": "boolean"
+                },
+                "owner": {
+                    "type": "string"
+                },
+                "perms": {
+                    "type": "object",
+                    "properties": {
+                        "read": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "write": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "sharing": {
+                    "type": "string"
+                },
+                "ttl": {
+                    "type": "string"
+                }
+            }
+        },
+        "author": {
+            "type": "string"
+        },
+        "bundleVersion": {
+            "type": "string"
+        },
+        "cursorTime": {
+            "type": "string"
+        },
+        "defaultSaveTTL": {
+            "type": "string"
+        },
+        "defaultTTL": {
+            "type": "string"
+        },
+        "delegate": {
+            "type": "string"
+        },
+        "diskUsage": {
+            "type": "integer"
+        },
+        "dispatchState": {
+            "type": "string"
+        },
+        "doneProgress": {
+            "type": "integer"
+        },
+        "earliestTime": {
+            "type": "string"
+        },
+        "entryUrl": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "isDone": {
+            "type": "boolean"
+        },
+        "isEventsPreviewEnabled": {
+            "type": "boolean"
+        },
+        "isFailed": {
+            "type": "boolean"
+        },
+        "isFinalized": {
+            "type": "boolean"
+        },
+        "isPaused": {
+            "type": "boolean"
+        },
+        "isPreviewEnabled": {
+            "type": "boolean"
+        },
+        "isSaved": {
+            "type": "boolean"
+        },
+        "isSavedSearch": {
+            "type": "boolean"
+        },
+        "isZombie": {
+            "type": "boolean"
+        },
+        "label": {
+            "type": "string"
+        },
+        "links": {
+            "type": "object",
+            "properties": {
+                "alternate": {
+                    "type": "string"
+                },
+                "control": {
+                    "type": "string"
+                },
+                "events": {
+                    "type": "string"
+                },
+                "results": {
+                    "type": "string"
+                },
+                "results_preview": {
+                    "type": "string"
+                },
+                "search.log": {
+                    "type": "string"
+                },
+                "summary": {
+                    "type": "string"
+                },
+                "timeline": {
+                    "type": "string"
+                }
+            }
+        },
+        "messages": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "help": {
+                        "type": "string"
+                    },
+                    "text": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "name": {
+            "type": "string"
+        },
+        "numPreviews": {
+            "type": "integer"
+        },
+        "performance": {
+            "type": "object",
+            "properties": {
+                "startup.configuration": {
+                    "type": "object",
+                    "properties": {
+                        "duration_secs": {
+                            "type": "number"
+                        },
+                        "invocations": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "startup.handoff": {
+                    "type": "object",
+                    "properties": {
+                        "duration_secs": {
+                            "type": "number"
+                        },
+                        "invocations": {
+                            "type": "integer"
+                        }
+                    }
+                }
+            }
+        },
+        "pid": {
+            "type": "string"
+        },
+        "priority": {
+            "type": "integer"
+        },
+        "provenance": {
+            "type": "string"
+        },
+        "published": {
+            "type": "string"
+        },
+        "request": {
+            "type": "object",
+            "properties": {
+                "search": {
+                    "type": "string"
+                }
+            }
+        },
+        "resultPreviewCount": {
+            "type": "integer"
+        },
+        "runtime": {
+            "type": "object",
+            "properties": {
+                "auto_cancel": {
+                    "type": "string"
+                },
+                "auto_pause": {
+                    "type": "string"
+                }
+            }
+        },
+        "sampleRatio": {
+            "type": "string"
+        },
+        "sampleSeed": {
+            "type": "string"
+        },
+        "search": {
+            "type": "string"
+        },
+        "searchProviders": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "sid": {
+            "type": "string"
+        },
+        "statusBuckets": {
+            "type": "integer"
+        },
+        "ttl": {
+            "type": "integer"
+        },
+        "updated": {
+            "type": "string"
+        }
+    },
+    "version": 1
 }

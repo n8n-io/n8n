@@ -62,6 +62,7 @@ type Changes = {
 	credentials: SourceControlledFile[];
 	workflows: SourceControlledFile[];
 	currentWorkflow?: SourceControlledFile;
+	folders: SourceControlledFile[];
 };
 
 const classifyFilesByType = (files: SourceControlledFile[], currentWorkflowId?: string): Changes =>
@@ -86,6 +87,11 @@ const classifyFilesByType = (files: SourceControlledFile[], currentWorkflowId?: 
 				return acc;
 			}
 
+			if (file.type === SOURCE_CONTROL_FILE_TYPE.folders) {
+				acc.folders.push(file);
+				return acc;
+			}
+
 			if (file.type === SOURCE_CONTROL_FILE_TYPE.workflow && currentWorkflowId === file.id) {
 				acc.currentWorkflow = file;
 			}
@@ -102,7 +108,14 @@ const classifyFilesByType = (files: SourceControlledFile[], currentWorkflowId?: 
 
 			return acc;
 		},
-		{ tags: [], variables: [], credentials: [], workflows: [], currentWorkflow: undefined },
+		{
+			tags: [],
+			variables: [],
+			credentials: [],
+			workflows: [],
+			folders: [],
+			currentWorkflow: undefined,
+		},
 	);
 
 const userNotices = computed(() => {
@@ -131,6 +144,13 @@ const userNotices = computed(() => {
 	if (changes.value.tags.length) {
 		messages.push({
 			title: 'Tags',
+			content: 'at least one new or modified',
+		});
+	}
+
+	if (changes.value.folders.length) {
+		messages.push({
+			title: 'Folders',
 			content: 'at least one new or modified',
 		});
 	}
@@ -220,6 +240,7 @@ const isSubmitDisabled = computed(() => {
 		changes.value.credentials.length +
 		changes.value.tags.length +
 		changes.value.variables.length +
+		changes.value.folders.length +
 		selectedChanges.value.size;
 
 	return toBePushed <= 0;
@@ -309,6 +330,10 @@ const successNotificationMessage = () => {
 		messages.push(i18n.baseText('generic.variable_plural'));
 	}
 
+	if (changes.value.folders.length) {
+		messages.push(i18n.baseText('generic.folders_plural'));
+	}
+
 	if (changes.value.tags.length) {
 		messages.push(i18n.baseText('generic.tag_plural'));
 	}
@@ -323,6 +348,7 @@ async function commitAndPush() {
 	const files = changes.value.tags
 		.concat(changes.value.variables)
 		.concat(changes.value.credentials)
+		.concat(changes.value.folders)
 		.concat(changes.value.workflows.filter((file) => selectedChanges.value.has(file.id)));
 	loadingService.startLoading(i18n.baseText('settings.sourceControl.loading.push'));
 	close();
@@ -481,6 +507,9 @@ watch(refDebounced(search, 500), (term) => {
 											<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.credential">
 												Deleted Credential:
 											</span>
+											<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.folders">
+												Deleted Folders:
+											</span>
 											<strong>{{ file.name || file.id }}</strong>
 										</N8nText>
 										<N8nText v-else tag="div" bold color="text-dark" :class="[$style.listItemName]">
@@ -517,7 +546,7 @@ watch(refDebounced(search, 500), (term) => {
 
 		<template #footer>
 			<N8nNotice v-if="userNotices.length" :compact="false" class="mt-0">
-				<N8nText bold size="medium">Changes to credentials, variables and tags </N8nText>
+				<N8nText bold size="medium">Changes to credentials, variables, tags and folders </N8nText>
 				<br />
 				<template v-for="{ title, content } in userNotices" :key="title">
 					<N8nText bold size="small">{{ title }}</N8nText>

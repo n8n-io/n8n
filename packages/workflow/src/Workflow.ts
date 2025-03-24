@@ -27,8 +27,9 @@ import type {
 	IObservableObject,
 	NodeParameterValueType,
 	INodeOutputConfiguration,
+	NodeConnectionType,
 } from './Interfaces';
-import { NodeConnectionType } from './Interfaces';
+import { NodeConnectionTypes } from './Interfaces';
 import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';
 
@@ -495,7 +496,7 @@ export class Workflow {
 			return currentHighest;
 		}
 
-		if (!this.connectionsByDestinationNode[nodeName].hasOwnProperty(NodeConnectionType.Main)) {
+		if (!this.connectionsByDestinationNode[nodeName].hasOwnProperty(NodeConnectionTypes.Main)) {
 			// Node does not have incoming connections of given type
 			return currentHighest;
 		}
@@ -515,7 +516,8 @@ export class Workflow {
 		let connectionsByIndex: IConnection[] | null;
 		for (
 			let connectionIndex = 0;
-			connectionIndex < this.connectionsByDestinationNode[nodeName][NodeConnectionType.Main].length;
+			connectionIndex <
+			this.connectionsByDestinationNode[nodeName][NodeConnectionTypes.Main].length;
 			connectionIndex++
 		) {
 			if (nodeConnectionIndex !== undefined && nodeConnectionIndex !== connectionIndex) {
@@ -523,7 +525,7 @@ export class Workflow {
 				continue;
 			}
 			connectionsByIndex =
-				this.connectionsByDestinationNode[nodeName][NodeConnectionType.Main][connectionIndex];
+				this.connectionsByDestinationNode[nodeName][NodeConnectionTypes.Main][connectionIndex];
 			// eslint-disable-next-line @typescript-eslint/no-loop-func
 			connectionsByIndex?.forEach((connection) => {
 				if (checkedNodes.includes(connection.node)) {
@@ -564,7 +566,7 @@ export class Workflow {
 	 */
 	getChildNodes(
 		nodeName: string,
-		type: NodeConnectionType | 'ALL' | 'ALL_NON_MAIN' = NodeConnectionType.Main,
+		type: NodeConnectionType | 'ALL' | 'ALL_NON_MAIN' = NodeConnectionTypes.Main,
 		depth = -1,
 	): string[] {
 		return this.getConnectedNodes(this.connectionsBySourceNode, nodeName, type, depth);
@@ -578,7 +580,7 @@ export class Workflow {
 	 */
 	getParentNodes(
 		nodeName: string,
-		type: NodeConnectionType | 'ALL' | 'ALL_NON_MAIN' = NodeConnectionType.Main,
+		type: NodeConnectionType | 'ALL' | 'ALL_NON_MAIN' = NodeConnectionTypes.Main,
 		depth = -1,
 	): string[] {
 		return this.getConnectedNodes(this.connectionsByDestinationNode, nodeName, type, depth);
@@ -594,7 +596,7 @@ export class Workflow {
 	getConnectedNodes(
 		connections: IConnections,
 		nodeName: string,
-		connectionType: NodeConnectionType | 'ALL' | 'ALL_NON_MAIN' = NodeConnectionType.Main,
+		connectionType: NodeConnectionType | 'ALL' | 'ALL_NON_MAIN' = NodeConnectionTypes.Main,
 		depth = -1,
 		checkedNodesIncoming?: string[],
 	): string[] {
@@ -700,7 +702,7 @@ export class Workflow {
 	searchNodesBFS(connections: IConnections, sourceNode: string, maxDepth = -1): IConnectedNode[] {
 		const returnConns: IConnectedNode[] = [];
 
-		const type: NodeConnectionType = NodeConnectionType.Main;
+		const type: NodeConnectionType = NodeConnectionTypes.Main;
 		let queue: IConnectedNode[] = [];
 		queue.push({
 			name: sourceNode,
@@ -762,7 +764,7 @@ export class Workflow {
 			if (
 				!!outputs.find(
 					(output) =>
-						((output as INodeOutputConfiguration)?.type ?? output) !== NodeConnectionType.Main,
+						((output as INodeOutputConfiguration)?.type ?? output) !== NodeConnectionTypes.Main,
 				)
 			) {
 				// Get the first node which is connected to a non-main output
@@ -807,7 +809,7 @@ export class Workflow {
 	getNodeConnectionIndexes(
 		nodeName: string,
 		parentNodeName: string,
-		type: NodeConnectionType = NodeConnectionType.Main,
+		type: NodeConnectionType = NodeConnectionTypes.Main,
 		depth = -1,
 		checkedNodes?: string[],
 	): INodeConnection | undefined {
