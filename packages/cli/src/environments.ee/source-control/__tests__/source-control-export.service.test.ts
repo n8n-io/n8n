@@ -6,6 +6,7 @@ import fsp from 'node:fs/promises';
 
 import type { SharedCredentials } from '@/databases/entities/shared-credentials';
 import type { SharedWorkflow } from '@/databases/entities/shared-workflow';
+import type { FolderRepository } from '@/databases/repositories/folder.repository';
 import type { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import type { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import type { TagRepository } from '@/databases/repositories/tag.repository';
@@ -23,6 +24,7 @@ describe('SourceControlExportService', () => {
 	const tagRepository = mock<TagRepository>();
 	const workflowTagMappingRepository = mock<WorkflowTagMappingRepository>();
 	const variablesService = mock<VariablesService>();
+	const folderRepository = mock<FolderRepository>();
 
 	const service = new SourceControlExportService(
 		mock(),
@@ -32,6 +34,7 @@ describe('SourceControlExportService', () => {
 		sharedWorkflowRepository,
 		workflowRepository,
 		workflowTagMappingRepository,
+		folderRepository,
 		mock<InstanceSettings>({ n8nFolder: '/mock/n8n' }),
 	);
 
@@ -183,6 +186,35 @@ describe('SourceControlExportService', () => {
 
 			// Act
 			const result = await service.exportTagsToWorkFolder();
+
+			// Assert
+			expect(result.count).toBe(0);
+			expect(result.files).toHaveLength(0);
+		});
+	});
+
+	describe('exportFoldersToWorkFolder', () => {
+		it('should export folders to work folder', async () => {
+			// Arrange
+			folderRepository.find.mockResolvedValue([
+				mock({ updatedAt: new Date(), createdAt: new Date() }),
+			]);
+			workflowRepository.find.mockResolvedValue([mock()]);
+
+			// Act
+			const result = await service.exportFoldersToWorkFolder();
+
+			// Assert
+			expect(result.count).toBe(1);
+			expect(result.files).toHaveLength(1);
+		});
+
+		it('should not export empty folders', async () => {
+			// Arrange
+			folderRepository.find.mockResolvedValue([]);
+
+			// Act
+			const result = await service.exportFoldersToWorkFolder();
 
 			// Assert
 			expect(result.count).toBe(0);
