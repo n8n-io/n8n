@@ -50,6 +50,7 @@ import { MarkerType } from '@vue-flow/core';
 import { useNodeHelpers } from './useNodeHelpers';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
+import { getNodeIconSource } from '../utils/nodeIcon';
 
 export function useCanvasMapping({
 	nodes,
@@ -86,6 +87,8 @@ export function useCanvasMapping({
 	}
 
 	function createDefaultNodeRenderType(node: INodeUi): CanvasNodeDefaultRender {
+		const nodeType = nodeTypeDescriptionByNodeId.value[node.id];
+		const icon = getNodeIconSource(nodeType);
 		return {
 			type: CanvasNodeRenderType.Default,
 			options: {
@@ -100,6 +103,7 @@ export function useCanvasMapping({
 				},
 				tooltip: nodeTooltipById.value[node.id],
 				dirtiness: dirtinessByName.value[node.name],
+				icon,
 			},
 		};
 	}

@@ -7,7 +7,7 @@ import type { ExecutionStatus, IRun, WorkflowExecuteMode } from 'n8n-workflow';
 import type { Project } from '@/databases/entities/project';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { IWorkflowDb } from '@/interfaces';
-import type { TypeUnits } from '@/modules/insights/entities/insights-shared';
+import type { TypeUnit } from '@/modules/insights/entities/insights-shared';
 import { InsightsMetadataRepository } from '@/modules/insights/repositories/insights-metadata.repository';
 import { InsightsRawRepository } from '@/modules/insights/repositories/insights-raw.repository';
 import { createTeamProject } from '@test-integration/db/projects';
@@ -38,7 +38,6 @@ async function truncateAll() {
 
 // Initialize DB once for all tests
 beforeAll(async () => {
-	jest.useFakeTimers();
 	await testDb.init();
 });
 
@@ -74,7 +73,7 @@ describe('workflowExecuteAfterHandler', () => {
 		);
 	});
 
-	test.each<{ status: ExecutionStatus; type: TypeUnits }>([
+	test.each<{ status: ExecutionStatus; type: TypeUnit }>([
 		{ status: 'success', type: 'success' },
 		{ status: 'error', type: 'failure' },
 		{ status: 'crashed', type: 'failure' },
@@ -524,20 +523,28 @@ describe('compaction', () => {
 			const accumulatedValues = allCompacted.reduce((acc, event) => acc + event.value, 0);
 			expect(accumulatedValues).toBe(batchSize);
 		});
+	});
 
+	describe('compactionSchedule', () => {
 		test('compaction is running on schedule', async () => {
-			// ARRANGE
-			const insightsService = Container.get(InsightsService);
+			jest.useFakeTimers();
+			try {
+				// ARRANGE
+				const insightsService = Container.get(InsightsService);
+				insightsService.initializeCompaction();
 
-			// spy on the compactInsights method to check if it's called
-			insightsService.compactInsights = jest.fn();
+				// spy on the compactInsights method to check if it's called
+				insightsService.compactInsights = jest.fn();
 
-			// ACT
-			// advance by 1 hour and 1 minute
-			jest.advanceTimersByTime(1000 * 60 * 60);
+				// ACT
+				// advance by 1 hour and 1 minute
+				jest.advanceTimersByTime(1000 * 60 * 61);
 
-			// ASSERT
-			expect(insightsService.compactInsights).toHaveBeenCalledTimes(1);
+				// ASSERT
+				expect(insightsService.compactInsights).toHaveBeenCalledTimes(1);
+			} finally {
+				jest.useRealTimers();
+			}
 		});
 	});
 
@@ -599,6 +606,71 @@ describe('compaction', () => {
 			for (const [index, compacted] of allCompacted.entries()) {
 				expect(compacted.value).toBe(batches[index]);
 			}
+		});
+	});
+});
+
+describe('getInsightsSummary', () => {
+	let insightsService: InsightsService;
+	beforeAll(async () => {
+		insightsService = Container.get(InsightsService);
+	});
+
+	let project: Project;
+	let workflow: IWorkflowDb & WorkflowEntity;
+
+	beforeEach(async () => {
+		await truncateAll();
+
+		project = await createTeamProject();
+		workflow = await createWorkflow({}, project);
+	});
+
+	test('compacted data are summarized correctly', async () => {
+		// ARRANGE
+		// last 7 days
+		await createCompactedInsightsEvent(workflow, {
+			type: 'success',
+			value: 1,
+			periodUnit: 'day',
+			periodStart: DateTime.utc(),
+		});
+		await createCompactedInsightsEvent(workflow, {
+			type: 'success',
+			value: 1,
+			periodUnit: 'day',
+			periodStart: DateTime.utc().minus({ day: 2 }),
+		});
+		await createCompactedInsightsEvent(workflow, {
+			type: 'failure',
+			value: 2,
+			periodUnit: 'day',
+			periodStart: DateTime.utc(),
+		});
+		// last 14 days
+		await createCompactedInsightsEvent(workflow, {
+			type: 'success',
+			value: 1,
+			periodUnit: 'day',
+			periodStart: DateTime.utc().minus({ days: 10 }),
+		});
+		await createCompactedInsightsEvent(workflow, {
+			type: 'runtime_ms',
+			value: 123,
+			periodUnit: 'day',
+			periodStart: DateTime.utc().minus({ days: 10 }),
+		});
+
+		// ACT
+		const summary = await insightsService.getInsightsSummary();
+
+		// ASSERT
+		expect(summary).toEqual({
+			averageRunTime: { deviation: -123, unit: 'time', value: 0 },
+			failed: { deviation: 2, unit: 'count', value: 2 },
+			failureRate: { deviation: 0.5, unit: 'ratio', value: 0.5 },
+			timeSaved: { deviation: 0, unit: 'time', value: 0 },
+			total: { deviation: 3, unit: 'count', value: 4 },
 		});
 	});
 });

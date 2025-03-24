@@ -18,7 +18,6 @@ import {
 } from '@/constants';
 
 import type { BaseTextKey } from '@/plugins/i18n';
-import { useRootStore } from '@/stores/root.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
 import { TriggerView, RegularView, AIView, AINodesView } from '../viewsData';
@@ -29,7 +28,9 @@ import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
 import NoResults from '../Panel/NoResults.vue';
 import { useI18n } from '@/composables/useI18n';
-import { useUIStore } from '@/stores/ui.store';
+
+import { getNodeIconSource } from '@/utils/nodeIcon';
+
 import { useActions } from '../composables/useActions';
 import { SEND_AND_WAIT_OPERATION, type INodeParameters } from 'n8n-workflow';
 
@@ -46,8 +47,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 
 const { mergedNodes, actions, onSubcategorySelected } = useNodeCreatorStore();
-const { pushViewStack, popViewStack, pushCommunityNodeDetailsViewStack, prepareViewStackNodeIcon } =
-	useViewStacks();
+const { pushViewStack, popViewStack, pushCommunityNodeDetailsViewStack } = useViewStacks();
 const { setAddedNodeActionParameters } = useActions();
 
 const { registerKeyHook } = useKeyboardNavigation();
@@ -92,20 +92,16 @@ function onSelected(item: INodeCreateElement) {
 		const infoKey = `nodeCreator.subcategoryInfos.${subcategoryKey}` as BaseTextKey;
 		const info = i18n.baseText(infoKey);
 		const extendedInfo = info !== infoKey ? { info } : {};
+		const nodeIcon = item.properties.icon
+			? ({ type: 'icon', name: item.properties.icon } as const)
+			: undefined;
 
 		pushViewStack({
 			subcategory: item.key,
 			mode: 'nodes',
 			title,
+			nodeIcon,
 			...extendedInfo,
-			...(item.properties.icon
-				? {
-						nodeIcon: {
-							icon: item.properties.icon,
-							iconType: 'icon',
-						},
-					}
-				: {}),
 			...(item.properties.panelClass ? { panelClass: item.properties.panelClass } : {}),
 			rootView: activeViewStack.value.rootView,
 			forceIncludeNodes: item.properties.forceIncludeNodes,
@@ -123,12 +119,7 @@ function onSelected(item: INodeCreateElement) {
 		const nodeActions = getFilteredActions(item);
 
 		if (isCommunityPackageName(item.key) && !activeViewStack.value.communityNodeDetails) {
-			const nodeIcon = prepareViewStackNodeIcon(
-				item,
-				useUIStore().appliedTheme,
-				useRootStore().baseUrl,
-			);
-			pushCommunityNodeDetailsViewStack(item, nodeIcon, nodeActions);
+			pushCommunityNodeDetailsViewStack(item, getNodeIconSource(item.properties), nodeActions);
 			return;
 		}
 
@@ -149,12 +140,6 @@ function onSelected(item: INodeCreateElement) {
 			return;
 		}
 
-		const nodeIcon = prepareViewStackNodeIcon(
-			item,
-			useUIStore().appliedTheme,
-			useRootStore().baseUrl,
-		);
-
 		const transformedActions = nodeActions?.map((a) =>
 			transformNodeType(a, item.properties.displayName, 'action'),
 		);
@@ -162,7 +147,7 @@ function onSelected(item: INodeCreateElement) {
 		pushViewStack({
 			subcategory: item.properties.displayName,
 			title: item.properties.displayName,
-			nodeIcon,
+			nodeIcon: getNodeIconSource(item.properties),
 			rootView: activeViewStack.value.rootView,
 			hasSearch: true,
 			mode: 'actions',

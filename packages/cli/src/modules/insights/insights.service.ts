@@ -1,7 +1,12 @@
+import type { InsightsSummary } from '@n8n/api-types';
 import { Container, Service } from '@n8n/di';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
-import type { ExecutionStatus, IRun, WorkflowExecuteMode } from 'n8n-workflow';
-import { UnexpectedError } from 'n8n-workflow';
+import {
+	UnexpectedError,
+	type ExecutionStatus,
+	type IRun,
+	type WorkflowExecuteMode,
+} from 'n8n-workflow';
 
 import { SharedWorkflow } from '@/databases/entities/shared-workflow';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
@@ -9,6 +14,8 @@ import { OnShutdown } from '@/decorators/on-shutdown';
 import { InsightsMetadata } from '@/modules/insights/entities/insights-metadata';
 import { InsightsRaw } from '@/modules/insights/entities/insights-raw';
 
+import type { TypeUnit } from './entities/insights-shared';
+import { NumberToType } from './entities/insights-shared';
 import { InsightsConfig } from './insights.config';
 import { InsightsByPeriodRepository } from './repositories/insights-by-period.repository';
 import { InsightsRawRepository } from './repositories/insights-raw.repository';
@@ -49,6 +56,13 @@ export class InsightsService {
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
 		private readonly insightsRawRepository: InsightsRawRepository,
 	) {
+		this.initializeCompaction();
+	}
+
+	initializeCompaction() {
+		if (this.compactInsightsTimer !== undefined) {
+			clearInterval(this.compactInsightsTimer);
+		}
 		const intervalMilliseconds = config.compactionIntervalMinutes * 60 * 1000;
 		this.compactInsightsTimer = setInterval(
 			async () => await this.compactInsights(),
@@ -177,5 +191,85 @@ export class InsightsService {
 			sourceBatchQuery: batchQuery.getSql(),
 			periodUnit: 'day',
 		});
+	}
+
+	// TODO: add return type once rebased on master and InsightsSummary is
+	// available
+	async getInsightsSummary(): Promise<InsightsSummary> {
+		const rows = await this.insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates();
+
+		// Initialize data structures for both periods
+		const data = {
+			current: { byType: {} as Record<TypeUnit, number> },
+			previous: { byType: {} as Record<TypeUnit, number> },
+		};
+
+		// Organize data by period and type
+		rows.forEach((row) => {
+			const { period, type, total_value } = row;
+			if (!data[period]) return;
+
+			data[period].byType[NumberToType[type]] = total_value ? Number(total_value) : 0;
+		});
+
+		// Get values with defaults for missing data
+		const getValueByType = (period: 'current' | 'previous', type: TypeUnit) =>
+			data[period]?.byType[type] ?? 0;
+
+		// Calculate metrics
+		const currentSuccesses = getValueByType('current', 'success');
+		const currentFailures = getValueByType('current', 'failure');
+		const previousSuccesses = getValueByType('previous', 'success');
+		const previousFailures = getValueByType('previous', 'failure');
+
+		const currentTotal = currentSuccesses + currentFailures;
+		const previousTotal = previousSuccesses + previousFailures;
+
+		const currentFailureRate =
+			currentTotal > 0 ? Math.round((currentFailures / currentTotal) * 100) / 100 : 0;
+		const previousFailureRate =
+			previousTotal > 0 ? Math.round((previousFailures / previousTotal) * 100) / 100 : 0;
+
+		const currentTotalRuntime = getValueByType('current', 'runtime_ms') ?? 0;
+		const previousTotalRuntime = getValueByType('previous', 'runtime_ms') ?? 0;
+
+		const currentAvgRuntime =
+			currentTotal > 0 ? Math.round((currentTotalRuntime / currentTotal) * 100) / 100 : 0;
+		const previousAvgRuntime =
+			previousTotal > 0 ? Math.round((previousTotalRuntime / previousTotal) * 100) / 100 : 0;
+
+		const currentTimeSaved = getValueByType('current', 'time_saved_min');
+		const previousTimeSaved = getValueByType('previous', 'time_saved_min');
+
+		// Return the formatted result
+		const result: InsightsSummary = {
+			averageRunTime: {
+				value: currentAvgRuntime,
+				unit: 'time',
+				deviation: currentAvgRuntime - previousAvgRuntime,
+			},
+			failed: {
+				value: currentFailures,
+				unit: 'count',
+				deviation: currentFailures - previousFailures,
+			},
+			failureRate: {
+				value: currentFailureRate,
+				unit: 'ratio',
+				deviation: currentFailureRate - previousFailureRate,
+			},
+			timeSaved: {
+				value: currentTimeSaved,
+				unit: 'time',
+				deviation: currentTimeSaved - previousTimeSaved,
+			},
+			total: {
+				value: currentTotal,
+				unit: 'count',
+				deviation: currentTotal - previousTotal,
+			},
+		};
+
+		return result;
 	}
 }
