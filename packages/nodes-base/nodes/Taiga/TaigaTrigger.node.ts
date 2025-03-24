@@ -7,7 +7,7 @@ import {
 	type INodeTypeDescription,
 	type IWebhookFunctions,
 	type IWebhookResponseData,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { getAutomaticSecret, taigaApiRequest } from './GenericFunctions';
@@ -29,7 +29,7 @@ export class TaigaTrigger implements INodeType {
 			name: 'Taiga Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'taigaApi',

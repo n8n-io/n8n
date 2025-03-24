@@ -7,7 +7,7 @@ import {
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { getMetadataFiltersValues } from '@utils/helpers';
@@ -54,11 +54,11 @@ export class VectorStoreSupabaseLoad implements INodeType {
 			{
 				displayName: 'Embedding',
 				maxConnections: 1,
-				type: NodeConnectionType.AiEmbedding,
+				type: NodeConnectionTypes.AiEmbedding,
 				required: true,
 			},
 		],
-		outputs: [NodeConnectionType.AiVectorStore],
+		outputs: [NodeConnectionTypes.AiVectorStore],
 		outputNames: ['Vector Store'],
 		properties: [
 			supabaseTableNameRLC,
@@ -93,7 +93,7 @@ export class VectorStoreSupabaseLoad implements INodeType {
 
 		const credentials = await this.getCredentials('supabaseApi');
 		const embeddings = (await this.getInputConnectionData(
-			NodeConnectionType.AiEmbedding,
+			NodeConnectionTypes.AiEmbedding,
 			0,
 		)) as Embeddings;
 

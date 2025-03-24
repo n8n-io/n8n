@@ -1,7 +1,7 @@
 import { mock } from 'jest-mock-extended';
 import type { DirectoryLoader } from 'n8n-core';
 import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { LoadNodesAndCredentials } from '../load-nodes-and-credentials';
 
@@ -51,8 +51,8 @@ describe('LoadNodesAndCredentials', () => {
 					description: 'A test node',
 					version: 1,
 					defaults: {},
-					inputs: [NodeConnectionType.Main],
-					outputs: [NodeConnectionType.Main],
+					inputs: [NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main],
 					properties: [],
 				},
 			};
@@ -67,7 +67,7 @@ describe('LoadNodesAndCredentials', () => {
 		it('should update inputs and outputs', () => {
 			const result = instance.convertNodeToAiTool(fullNodeWrapper);
 			expect(result.description.inputs).toEqual([]);
-			expect(result.description.outputs).toEqual([NodeConnectionType.AiTool]);
+			expect(result.description.outputs).toEqual([NodeConnectionTypes.AiTool]);
 		});
 
 		it('should remove the usableAsTool property', () => {

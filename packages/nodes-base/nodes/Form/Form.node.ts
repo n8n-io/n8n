@@ -15,7 +15,7 @@ import {
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	tryToParseJsonToFormFields,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { cssVariables } from './cssVariables';
@@ -273,8 +273,8 @@ export class Form extends Node {
 		defaults: {
 			name: 'Form',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		webhooks: [
 			{
 				name: 'default',

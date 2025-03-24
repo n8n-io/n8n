@@ -57,7 +57,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	deepCopy,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	NodeHelpers,
 	SEND_AND_WAIT_OPERATION,
 	Workflow,
@@ -1624,7 +1624,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function checkIfNodeHasChatParent(nodeName: string): boolean {
 		const workflow = getCurrentWorkflow();
-		const parents = workflow.getParentNodes(nodeName, NodeConnectionType.Main);
+		const parents = workflow.getParentNodes(nodeName, NodeConnectionTypes.Main);
 
 		const matchedChatNode = parents.find((parent) => {
 			const parentNodeType = getNodeByName(parent)?.type;
