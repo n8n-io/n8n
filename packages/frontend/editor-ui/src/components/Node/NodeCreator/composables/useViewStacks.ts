@@ -1,5 +1,6 @@
 import type {
 	ActionTypeDescription,
+	AppliedThemeOption,
 	INodeCreateElement,
 	NodeCreateElement,
 	NodeFilterType,
@@ -42,10 +43,12 @@ import { AI_TRANSFORM_NODE_TYPE } from 'n8n-workflow';
 import type { NodeConnectionType, INodeInputFilter, Themed } from 'n8n-workflow';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { getNodeIcon, getNodeIconColor, getNodeIconUrl } from '@/utils/nodeTypesUtils';
 
 type CommunityNodeDetails = {
 	title: string;
 	packageName: string;
+	key: string;
 	description: string;
 	installed: boolean;
 	verified?: boolean;
@@ -494,6 +497,91 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		viewStacks.value = [];
 	}
 
+	function prepareViewStackNodeIcon(
+		item: NodeCreateElement,
+		appliedTheme: AppliedThemeOption,
+		baseUrl: string,
+	) {
+		if (item.key.includes('-preview')) {
+			return {
+				color: undefined,
+				icon: item.properties.iconUrl as string,
+				iconType: 'file',
+			};
+		}
+
+		const iconUrl = getNodeIconUrl(item.properties, appliedTheme);
+		const icon = iconUrl
+			? baseUrl + iconUrl
+			: getNodeIcon(item.properties, appliedTheme)?.split(':')[1];
+
+		const nodeIcon = {
+			color: getNodeIconColor(item.properties),
+			icon,
+			iconType: iconUrl ? 'file' : 'icon',
+		};
+
+		return nodeIcon;
+	}
+
+	function pushCommunityNodeDetailsViewStack(
+		item: NodeCreateElement,
+		nodeIcon: {
+			color: string | undefined;
+			icon: string | undefined;
+			iconType: string;
+		},
+		nodeActions: ActionTypeDescription[] = [],
+		options?: {
+			resetStacks?: boolean;
+		},
+	) {
+		const installed = !item.key.includes('-preview');
+		const packageName = item.key.split('.')[0].replace('-preview', '');
+		const verified = useNodeTypesStore().verifiedNodeTypes.includes(item.key);
+
+		const communityNodeDetails = {
+			title: item.properties.displayName,
+			description: item.properties.description,
+			key: item.key,
+			nodeIcon,
+			installed,
+			packageName,
+			verified,
+		};
+
+		if (nodeActions.length) {
+			const transformedActions = nodeActions?.map((a) =>
+				transformNodeType(a, item.properties.displayName, 'action'),
+			);
+			pushViewStack(
+				{
+					subcategory: item.properties.displayName,
+					title: 'Community node details',
+					rootView: activeViewStack.value.rootView,
+					hasSearch: false,
+					mode: 'actions',
+					items: transformedActions,
+					communityNodeDetails,
+				},
+				options,
+			);
+		} else {
+			pushViewStack(
+				{
+					subcategory: item.properties.displayName,
+					title: 'Community node details',
+					rootView: activeViewStack.value.rootView,
+					hasSearch: false,
+					items: [item],
+					mode: 'nodes',
+					communityNodeDetails,
+				},
+				options,
+			);
+		}
+	}
+
 	return {
 		viewStacks,
 		activeViewStack,
@@ -504,7 +592,9 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		resetViewStacks,
 		updateCurrentViewStack,
 		pushViewStack,
+		pushCommunityNodeDetailsViewStack,
 		popViewStack,
 		getAllNodeCreateElements,
+		prepareViewStackNodeIcon,
 	};
 });

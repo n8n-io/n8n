@@ -6,8 +6,17 @@ import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 import { useToast } from '@/composables/useToast';
 import { i18n } from '@/plugins/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useRootStore } from '@/stores/root.store';
 
-const { activeViewStack, pushViewStack } = useViewStacks();
+const {
+	activeViewStack,
+	pushViewStack,
+	getAllNodeCreateElements,
+	pushCommunityNodeDetailsViewStack,
+	prepareViewStackNodeIcon,
+} = useViewStacks();
 
 const { communityNodeDetails } = activeViewStack;
 
@@ -20,6 +29,7 @@ const downloads = ref<string | null>(null);
 const loading = ref(false);
 
 const communityNodesStore = useCommunityNodesStore();
+const nodeCreatorStore = useNodeCreatorStore();
 const toast = useToast();
 
 const isOwner = computed(() => useUsersStore().isInstanceOwner);
@@ -32,15 +42,39 @@ const ownersEmail = computed(() =>
 
 const onInstallClick = async () => {
 	if (activeViewStack.communityNodeDetails && !communityNodeDetails?.installed) {
+		const { key, packageName } = activeViewStack.communityNodeDetails;
+
 		try {
 			loading.value = true;
-			await communityNodesStore.installPackage(activeViewStack.communityNodeDetails.packageName);
-			loading.value = false;
+			await communityNodesStore.installPackage(packageName);
 
-			const viewStack = { ...activeViewStack };
-			viewStack.communityNodeDetails!.installed = true;
 			await useNodeTypesStore().getNodeTypes();
-			pushViewStack(activeViewStack, { resetStacks: true });
+
+			const installedNodeItem = getAllNodeCreateElements().find(
+				(node) => node.key === key.replace('-preview', ''),
+			);
+
+			if (installedNodeItem) {
+				const nodeActions = nodeCreatorStore.actions?.[installedNodeItem.key] || [];
+				const nodeIcon = prepareViewStackNodeIcon(
+					installedNodeItem,
+					useUIStore().appliedTheme,
+					useRootStore().baseUrl,
+				);
+
+				pushCommunityNodeDetailsViewStack(installedNodeItem, nodeIcon, nodeActions, {
+					resetStacks: true,
+				});
+			} else {
+				const viewStack = { ...activeViewStack };
+				viewStack.communityNodeDetails!.installed = true;
+
+				pushViewStack(activeViewStack, { resetStacks: true });
+			}
+
+			nodeCreatorStore.removeNodeFromMergedNodes(key);
+
+			loading.value = false;
 
 			toast.showMessage({
 				title: i18n.baseText('settings.communityNodes.messages.install.success'),
