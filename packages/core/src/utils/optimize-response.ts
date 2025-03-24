@@ -9,6 +9,7 @@ import {
 	type IDataObject,
 	type ISupplyDataFunctions,
 } from 'n8n-workflow';
+import { hasKey } from 'n8n-workflow/src/utils';
 
 const defaultOptimizer = <T>(response: T) => {
 	if (typeof response === 'string') {
@@ -90,7 +91,7 @@ const htmlOptimizer = (ctx: ISupplyDataFunctions, itemIndex: number, maxLength: 
 };
 
 const textOptimizer = (ctx: ISupplyDataFunctions, itemIndex: number, maxLength: number) => {
-	return (response: string | IDataObject) => {
+	return (response: unknown) => {
 		if (typeof response === 'object') {
 			try {
 				response = JSON.stringify(response, null, 2);
@@ -121,10 +122,10 @@ const textOptimizer = (ctx: ISupplyDataFunctions, itemIndex: number, maxLength: 
 };
 
 const jsonOptimizer = (ctx: ISupplyDataFunctions, itemIndex: number) => {
-	return (response: string): string => {
-		let responseData: IDataObject | IDataObject[] | string = response;
+	return (response: unknown): string => {
+		let responseData = response;
 
-		if (typeof responseData === 'string') {
+		if (typeof response === 'string') {
 			responseData = jsonParse(response);
 		}
 
@@ -141,7 +142,7 @@ const jsonOptimizer = (ctx: ISupplyDataFunctions, itemIndex: number) => {
 
 		if (!Array.isArray(responseData)) {
 			if (dataField) {
-				const data = responseData[dataField] as IDataObject | IDataObject[];
+				const data = get(responseData, dataField) as unknown;
 				if (Array.isArray(data)) {
 					responseData = data;
 				} else {
@@ -152,7 +153,7 @@ const jsonOptimizer = (ctx: ISupplyDataFunctions, itemIndex: number) => {
 			}
 		} else {
 			if (dataField) {
-				responseData = responseData.map((data) => data[dataField]) as IDataObject[];
+				responseData = responseData.map((data) => get(data, dataField) as unknown);
 			}
 		}
 
@@ -199,7 +200,10 @@ const jsonOptimizer = (ctx: ISupplyDataFunctions, itemIndex: number) => {
 	};
 };
 
-export const configureResponseOptimizer = (ctx: ISupplyDataFunctions, itemIndex: number) => {
+export const configureResponseOptimizer = (
+	ctx: ISupplyDataFunctions,
+	itemIndex: number,
+): ((response: unknown) => string) => {
 	const optimizeResponse = ctx.getNodeParameter('optimizeResponse', itemIndex, false) as boolean;
 
 	if (optimizeResponse) {

@@ -51,7 +51,10 @@ export function makeHandleToolInvocation(
 
 			// Process and map the results
 			const mappedResults = result?.[0]?.flatMap((item) => item.json);
-			let response: string | typeof mappedResults = mappedResults;
+			let response: string = optimizeResponse(mappedResults);
+
+			console.log('Mapped Results:', mappedResults);
+			console.log('Mapped Results type:', typeof mappedResults);
 
 			// Warn if any (unusable) binary data was returned
 			if (result?.some((x) => x.some((y) => y.binary))) {
@@ -59,7 +62,7 @@ export function makeHandleToolInvocation(
 					response =
 						'Error: The Tool attempted to return binary data, which is not supported in Agents';
 				} else {
-					console.warn(
+					context.logger.warn(
 						`Response from Tool '${node.name}' included binary data, which is not supported in Agents. The binary data was omitted from the response.`,
 					);
 				}
@@ -69,7 +72,7 @@ export function makeHandleToolInvocation(
 			context.addOutputData(NodeConnectionTypes.AiTool, runIndex, [[{ json: { response } }]]);
 
 			// Return the stringified results
-			return JSON.stringify(response);
+			return optimizeResponse(JSON.stringify(response));
 		} catch (error) {
 			const nodeError = new NodeOperationError(node, error as Error);
 			context.addOutputData(NodeConnectionTypes.AiTool, runIndex, nodeError);
