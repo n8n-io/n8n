@@ -148,7 +148,12 @@ const onDialogOpened = () => {
 };
 
 const openCommunityRegisterModal = () => {
-	uiStore.openModal(COMMUNITY_PLUS_ENROLLMENT_MODAL);
+	uiStore.openModalWithData({
+		name: COMMUNITY_PLUS_ENROLLMENT_MODAL,
+		data: {
+			customHeading: undefined,
+		},
+	});
 };
 </script>
 

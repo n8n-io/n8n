@@ -5,7 +5,7 @@ import { userEvent } from '@testing-library/user-event';
 import { createRouter, createWebHistory } from 'vue-router';
 import { computed, ref } from 'vue';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import CanvasChat from './CanvasChat.vue';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -77,8 +77,8 @@ const mockNodeTypes: INodeTypeDescription[] = [
 		defaults: {
 			name: 'AI Agent',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		version: 0,
 		group: [],
 		description: '',
@@ -96,7 +96,7 @@ const mockConnections = {
 			[
 				{
 					node: 'AI Agent',
-					type: NodeConnectionType.Main,
+					type: NodeConnectionTypes.Main,
 					index: 0,
 				},
 			],

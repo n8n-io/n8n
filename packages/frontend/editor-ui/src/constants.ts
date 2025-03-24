@@ -3,7 +3,8 @@ import type {
 	EnterpriseEditionFeatureValue,
 	NodeCreatorOpenSource,
 } from './Interface';
-import { NodeConnectionType } from 'n8n-workflow';
+import type { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	CanvasInjectionData,
 	CanvasNodeHandleInjectionData,
@@ -301,9 +302,8 @@ export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fB
 
 // Node Connection Types
 export const NODE_CONNECTION_TYPE_ALLOW_MULTIPLE: NodeConnectionType[] = [
-	NodeConnectionType.AiTool,
-
-	NodeConnectionType.Main,
+	NodeConnectionTypes.AiTool,
+	NodeConnectionTypes.Main,
 ];
 
 // General
@@ -430,11 +430,28 @@ export const MODAL_CANCEL = 'cancel';
 export const MODAL_CONFIRM = 'confirm';
 export const MODAL_CLOSE = 'close';
 
-/**
- *	Invalid characters: \/:*?"<>|
- * 	Invalid name: empty or only dots
- */
-export const VALID_FOLDER_NAME_REGEX = /^(?!\.+$)(?!\s+$)[^\\/:*?"<>|]{1,100}$/;
+export const ILLEGAL_FOLDER_CHARACTERS = [
+	'[',
+	']',
+	'^',
+	'\\',
+	'/',
+	':',
+	'*',
+	'?',
+	'"',
+	'<',
+	'>',
+	'|',
+];
+export const FOLDER_NAME_ILLEGAL_CHARACTERS_REGEX = new RegExp(
+	`[${ILLEGAL_FOLDER_CHARACTERS.map((char) => {
+		return char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	}).join('')}]`,
+);
+
+export const FOLDER_NAME_ONLY_DOTS_REGEX = /^\.+$/;
+export const FOLDER_NAME_MAX_LENGTH = 100;
 export const VALID_EMAIL_REGEX =
 	/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 export const VALID_WORKFLOW_IMPORT_URL_REGEX = /^http[s]?:\/\/.*\.json$/i;
@@ -451,7 +468,10 @@ export const LOCAL_STORAGE_EXPERIMENT_OVERRIDES = 'N8N_EXPERIMENT_OVERRIDES';
 export const LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON = 'N8N_HIDE_HIDE_GITHUB_STAR_BUTTON';
 export const LOCAL_STORAGE_NDV_INPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_INPUT_PANEL_DISPLAY_MODE';
 export const LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_OUTPUT_PANEL_DISPLAY_MODE';
+export const LOCAL_STORAGE_LOGS_2025_SPRING = 'N8N_LOGS_2025_SPRING';
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
+export const COMMUNITY_PLUS_DOCS_URL =
+	'https://docs.n8n.io/hosting/community-edition-features/#registered-community-edition';
 
 export const HIRING_BANNER = `
                                                                     //////

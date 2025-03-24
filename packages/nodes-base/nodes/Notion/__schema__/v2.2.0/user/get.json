@@ -1,16 +1,13 @@
 {
     "type": "object",
     "properties": {
-        "object": {
-            "type": "string"
-        },
         "id": {
             "type": "string"
         },
         "name": {
             "type": "string"
         },
-        "type": {
+        "object": {
             "type": "string"
         },
         "person": {
@@ -19,21 +16,14 @@
                 "email": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "email"
-            ]
+            }
         },
         "request_id": {
             "type": "string"
+        },
+        "type": {
+            "type": "string"
         }
     },
-    "required": [
-        "object",
-        "id",
-        "name",
-        "avatar_url",
-        "type",
-        "person"
-    ]
+    "version": 1
 }
