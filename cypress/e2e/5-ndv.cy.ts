@@ -1,5 +1,10 @@
 import { setCredentialValues } from '../composables/modals/credential-modal';
-import { clickCreateNewCredential, setParameterSelectByContent } from '../composables/ndv';
+import {
+	clickCreateNewCredential,
+	clickGetBackToCanvas,
+	setParameterSelectByContent,
+} from '../composables/ndv';
+import { openNode } from '../composables/workflow';
 import {
 	EDIT_FIELDS_SET_NODE_NAME,
 	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
@@ -630,7 +635,7 @@ describe('NDV', () => {
 			);
 
 			// The first merge node has the wires crossed, so `Edit Fields1` is first in the order of connected nodes
-			workflowPage.actions.openNode('Merge');
+			openNode('Merge');
 			getFloatingNodeByPosition('inputMain').should('exist');
 			getFloatingNodeByPosition('inputMain').should('have.length', 2);
 			getFloatingNodeByPosition('inputMain')
@@ -640,10 +645,10 @@ describe('NDV', () => {
 				.last()
 				.should('have.attr', 'data-node-name', 'Edit Fields0');
 
-			ndv.actions.close();
+			clickGetBackToCanvas();
 
 			// The second merge node does not have wires crossed, so `Edit Fields0` is first
-			workflowPage.actions.openNode('Merge1');
+			openNode('Merge1');
 			getFloatingNodeByPosition('inputMain').should('exist');
 			getFloatingNodeByPosition('inputMain').should('have.length', 2);
 			getFloatingNodeByPosition('inputMain')
