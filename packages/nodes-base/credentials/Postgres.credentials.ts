@@ -79,7 +79,7 @@ export class Postgres implements ICredentialType {
 			type: 'string',
 			default: '',
 			description:
-				'Override the server name used to verify the certificate. Use this whent he host is an IP but has a certificate from a recognized CA.',
+				'Override the server name used to verify the certificate. Use this when the host is an IP but has a certificate from a recognized CA.',
 			displayOptions: {
 				show: {
 					ssl: ['require'],
