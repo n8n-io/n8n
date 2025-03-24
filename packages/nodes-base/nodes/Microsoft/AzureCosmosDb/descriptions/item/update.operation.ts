@@ -4,7 +4,7 @@ import type {
 	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
+import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
 import { processJsonInput, untilContainerSelected, untilItemSelected } from '../../helpers/utils';
 
@@ -111,6 +111,17 @@ const properties: INodeProperties[] = [
 					): Promise<IHttpRequestOptions> {
 						const rawCustomProperties = this.getNodeParameter('customProperties') as IDataObject;
 						const customProperties = processJsonInput(rawCustomProperties, 'Item Contents');
+						if (
+							Object.keys(customProperties).length === 0 ||
+							Object.values(customProperties).every(
+								(val) => val === undefined || val === null || val === '',
+							)
+						) {
+							throw new NodeOperationError(this.getNode(), 'Item contents are empty', {
+								description:
+									'Ensure the "Item Contents" field contains at least one valid property.',
+							});
+						}
 						requestOptions.body = {
 							...(requestOptions.body as IDataObject),
 							...customProperties,

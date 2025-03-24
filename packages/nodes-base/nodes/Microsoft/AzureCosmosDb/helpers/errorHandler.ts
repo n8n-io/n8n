@@ -22,7 +22,8 @@ export const ErrorMap = {
 	Item: {
 		NotFound: {
 			message: "The required item doesn't match any existing one",
-			description: "Double-check the value in the parameter 'Item' and try again",
+			description:
+				"Double-check the values in the parameter 'Item' and 'Partition Key'( if the case ) and try again",
 		},
 	},
 };

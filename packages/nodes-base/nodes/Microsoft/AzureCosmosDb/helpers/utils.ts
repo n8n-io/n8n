@@ -106,7 +106,7 @@ export async function validatePartitionKey(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const operation = this.getNodeParameter('operation');
+	const operation = this.getNodeParameter('operation') as string;
 	let customProperties = this.getNodeParameter('customProperties', {}) as IDataObject;
 
 	const partitionKey = await getPartitionKey.call(this);
@@ -122,46 +122,41 @@ export async function validatePartitionKey(
 	}
 
 	let partitionKeyValue: string = '';
+	const needsPartitionKey = ['update', 'delete', 'get'].includes(operation);
 
 	if (operation === 'create') {
-		if (!customProperties.hasOwnProperty(partitionKey) || !customProperties[partitionKey]) {
+		if (!(partitionKey in customProperties) || !customProperties[partitionKey]) {
 			throw new NodeOperationError(this.getNode(), "Partition key not found in 'Item Contents'", {
-				description: `Partition key '${partitionKey}' must be present and have a valid, non-empty value in 'Item Contents'`,
+				description: `Partition key '${partitionKey}' must be present and have a valid, non-empty value in 'Item Contents'.`,
 			});
 		}
 		partitionKeyValue = customProperties[partitionKey] as string;
-	} else if (operation === 'update') {
-		if (partitionKey === 'id') {
-			partitionKeyValue = this.getNodeParameter('item', undefined, {
-				extractValue: true,
-			}) as string;
-		} else {
-			partitionKeyValue = this.getNodeParameter('additionalFields.partitionKey') as string;
-			if (!partitionKeyValue) {
-				throw new NodeOperationError(
-					this.getNode(),
-					`Partition key "${partitionKey}" is required for update`,
-					{
-						description: `Please provide a valid value for partition key '${partitionKey}'`,
-					},
-				);
-			}
-		}
-		(requestOptions.body as IDataObject)[partitionKey] = partitionKeyValue;
-	} else if (operation === 'delete' || operation === 'get') {
-		if (partitionKey === 'id') {
-			partitionKeyValue = this.getNodeParameter('item', undefined, {
-				extractValue: true,
-			}) as string;
-		} else {
-			partitionKeyValue = this.getNodeParameter('additionalFields.partitionKey') as string;
-		}
-	}
+	} else if (needsPartitionKey) {
+		try {
+			partitionKeyValue =
+				partitionKey === 'id'
+					? String(this.getNodeParameter('item', undefined, { extractValue: true }) ?? '')
+					: String(this.getNodeParameter('additionalFields.partitionKey', undefined) ?? '');
 
-	if (!partitionKeyValue) {
-		throw new NodeOperationError(this.getNode(), 'Partition key value is missing or empty', {
-			description: `Provide a value for partition key "${partitionKey}" in "Partition Key" field`,
-		});
+			if (!partitionKeyValue) {
+				throw new NodeOperationError(this.getNode(), 'Partition key is empty', {
+					description: 'Ensure the "Partition Key" field has a valid, non-empty value.',
+				});
+			}
+		} catch (error) {
+			throw new NodeOperationError(this.getNode(), 'Partition key is missing or empty', {
+				description: 'Ensure the "Partition Key" field exists and has a valid, non-empty value.',
+			});
+		}
+
+		if (operation === 'update') {
+			const idValue = String(
+				this.getNodeParameter('item', undefined, { extractValue: true }) ?? '',
+			);
+
+			(requestOptions.body as IDataObject).id = idValue;
+			(requestOptions.body as IDataObject)[partitionKey] = partitionKeyValue;
+		}
 	}
 
 	requestOptions.headers = {
@@ -179,7 +174,6 @@ export function processJsonInput<T>(
 ) {
 	let values;
 	const input = inputName ? `'${inputName}' ` : '';
-
 	if (typeof jsonData === 'string') {
 		try {
 			values = jsonParse(jsonData, { fallbackValue });

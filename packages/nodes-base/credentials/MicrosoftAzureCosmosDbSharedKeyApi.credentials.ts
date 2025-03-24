@@ -12,7 +12,7 @@ import {
 	CURRENT_VERSION,
 	HeaderConstants,
 	RESOURCE_TYPES,
-} from '../nodes/Microsoft/CosmosDb/helpers/constants';
+} from '../nodes/Microsoft/AzureCosmosDb/helpers/constants';
 
 export class MicrosoftAzureCosmosDbSharedKeyApi implements ICredentialType {
 	name = 'microsoftAzureCosmosDbSharedKeyApi';
