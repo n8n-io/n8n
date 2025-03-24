@@ -2909,6 +2909,7 @@
 	"communityPlusModal.input.email.label": "Enter email to receive your license key",
 	"communityPlusModal.button.skip": "Skip",
 	"communityPlusModal.button.confirm": "Send me a free license key",
+	"communityPlusModal.notice": "Included features may change, but once unlocked, you'll keep them forever.",
 	"executeWorkflowTrigger.createNewSubworkflow": "Create a Sub-Workflow in {projectName}",
 	"executeWorkflowTrigger.createNewSubworkflow.noProject": "Create a New Sub-Workflow",
 	"testDefinition.edit.descriptionPlaceholder": "Enter test description",
