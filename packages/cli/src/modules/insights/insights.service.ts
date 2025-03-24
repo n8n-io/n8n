@@ -346,14 +346,18 @@ export class InsightsService {
 		const rows = await this.insightsByPeriodRepository.getInsightsByTime(nbDays);
 
 		return rows.map((r) => {
+			const total = Number(r.succeeded) + Number(r.failed);
 			return {
-				date: DateTime.fromSQL(r.periodStart, { zone: 'utc' }).toISO(),
+				date:
+					r.periodStart instanceof Date
+						? r.periodStart.toISOString()
+						: DateTime.fromSQL(r.periodStart.toString(), { zone: 'utc' }).toISO(),
 				values: {
-					total: Number(r.succeeded) + Number(r.failed),
+					total,
 					succeeded: Number(r.succeeded),
 					failed: Number(r.failed),
-					failureRate: Number(r.failed) / (Number(r.succeeded) + Number(r.failed)),
-					averageRunTime: Number(r.runTime) / (Number(r.succeeded) + Number(r.failed)),
+					failureRate: Number(r.failed) / total,
+					averageRunTime: Number(r.runTime) / total,
 					timeSaved: Number(r.timeSaved),
 				},
 			};

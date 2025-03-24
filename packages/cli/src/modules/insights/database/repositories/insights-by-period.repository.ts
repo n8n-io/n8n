@@ -52,7 +52,7 @@ const aggregatedInsightsByWorkflowParser = z
 
 const aggregatedInsightsByTimeParser = z
 	.object({
-		periodStart: z.string(),
+		periodStart: z.union([z.date(), z.string()]),
 		runTime: z.union([z.number(), z.string()]),
 		succeeded: z.union([z.number(), z.string()]),
 		failed: z.union([z.number(), z.string()]),
@@ -361,9 +361,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		return { count, rows: aggregatedInsightsByWorkflowParser.parse(rawRows) };
 	}
 
-	// TODO: add return type once rebased on master and InsightsByTimeAndType is
-	// available
-	// TODO: add tests
+	// TODO: add more tests
 	async getInsightsByTime(nbDays: number) {
 		const dateSubQuery =
 			dbType === 'sqlite'
