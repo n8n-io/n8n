@@ -27,14 +27,6 @@ const nodesPreview = [
 		defaults: { name: 'ChatWoot' },
 		inputs: ['main'],
 		outputs: ['main'],
-		credentials: [
-			{
-				name: 'chatWootTokenApi',
-				testedBy: 'chatWootTokenTest',
-				required: true,
-				displayOptions: { show: { authentication: ['predefinedCredentialType'] } },
-			},
-		],
 		properties: [
 			{
 				displayName: 'Resource',
@@ -128,7 +120,8 @@ const nodesPreview = [
 				default: 'messages',
 			},
 		],
-		iconUrl: 'icons/n8n-nodes-chatwoot/dist/nodes/ChatWoot/chatwoot.svg',
+		iconUrl:
+			'https://raw.githubusercontent.com/sufficit/n8n-nodes-chatwoot/refs/heads/master/nodes/ChatWoot/chatwoot.svg',
 		name: 'n8n-nodes-preview-chatwoot.chatwoot',
 	},
 	{
@@ -140,7 +133,6 @@ const nodesPreview = [
 		defaults: { name: 'Evolution API' },
 		inputs: ['main'],
 		outputs: ['main'],
-		credentials: [{ name: 'evolutionApi', required: true }],
 		requestDefaults: {
 			baseURL: 'https://doc.evolution-api.com/api-reference',
 			url: '',
@@ -626,13 +618,6 @@ const nodesPreview = [
 				default: 'check-number',
 			},
 		],
-		codex: {
-			categories: ['Development', 'Developer Tools'],
-			resources: {
-				primaryDocumentation: [{ url: 'https://doc.evolution-api.com/api-reference' }],
-				credentialDocumentation: [{ url: 'https://doc.evolution-api.com/api-reference' }],
-			},
-		},
 		iconUrl:
 			'https://raw.githubusercontent.com/oriondesign2015/n8n-nodes-evolution-api/refs/heads/main/nodes/EvolutionApi/evolutionapi.svg',
 		name: 'n8n-nodes-preview-evolution-api.evolutionApi',
@@ -646,9 +631,9 @@ const nodesPreview = [
 		defaults: { name: 'Global Constants' },
 		inputs: ['main'],
 		outputs: ['main'],
-		credentials: [{ name: 'globalConstantsApi', required: true }],
 		properties: [],
-		iconUrl: 'icons/n8n-nodes-globals/dist/nodes/GlobalConstants/globals-icon-60px.png',
+		iconUrl:
+			'https://raw.githubusercontent.com/umanamente/n8n-nodes-globals/master/nodes/GlobalConstants/globals-icon-60px.png',
 		name: 'n8n-nodes-preview-globals.globalConstants',
 	},
 	{
@@ -661,19 +646,6 @@ const nodesPreview = [
 		defaults: { name: 'Kommo API Node' },
 		inputs: ['main'],
 		outputs: ['main'],
-		credentials: [
-			{
-				name: 'kommoOAuth2Api',
-				required: true,
-				displayOptions: { show: { authentication: ['oAuth2'] } },
-			},
-			{
-				name: 'kommoLongLivedApi',
-				required: true,
-				displayOptions: { show: { authentication: ['longLivedToken'] } },
-				testedBy: { request: { method: 'GET', url: 'account' } },
-			},
-		],
 		properties: [
 			{
 				displayName: 'Resource',
@@ -903,28 +875,6 @@ const nodesPreview = [
 			},
 		],
 		iconUrl: 'icons/n8n-nodes-kommo/dist/nodes/Kommo/kommo_logo.svg',
-		__loadOptionsMethods: [
-			'getPipelines',
-			'getStatuses',
-			'getStatusesWithoutUnsorted',
-			'getCatalogs',
-			'getCatalogElements',
-			'getActiveUsers',
-			'getActiveUsersWithRobot',
-			'getLeadCustomFields',
-			'getContactCustomFields',
-			'getCompanyCustomFields',
-			'getCustomerCustomFields',
-			'getCustomerSegmentCustomFields',
-			'getCatalogCustomFields',
-			'getLossReasons',
-			'getTags',
-			'getTaskTypes',
-		],
-		codex: {
-			categories: ['Miscellaneous'],
-			resources: { primaryDocumentation: [{ url: '' }], credentialDocumentation: [{ url: '' }] },
-		},
 		name: 'n8n-nodes-preview-kommo.kommo',
 	},
 	{
@@ -937,7 +887,8 @@ const nodesPreview = [
 		outputs: ['main'],
 		codex: { alias: ['Database', 'SQL', 'Query', 'Table'] },
 		properties: [],
-		iconUrl: 'icons/n8n-nodes-query/dist/nodes/Query/query.svg',
+		iconUrl:
+			'https://raw.githubusercontent.com/atekron/n8n-nodes-query/refs/heads/master/nodes/Query/query.svg',
 		name: 'n8n-nodes-preview-query.query',
 	},
 	{
@@ -976,7 +927,8 @@ const nodesPreview = [
 				primaryDocumentation: [{ url: 'https://github.com/lublak/n8n-nodes-text-manipulation' }],
 			},
 		},
-		iconUrl: 'icons/n8n-nodes-text-manipulation/dist/nodes/TextManipulation/TextManipulation.svg',
+		iconUrl:
+			'https://raw.githubusercontent.com/lublak/n8n-nodes-text-manipulation/refs/heads/main/nodes/TextManipulation/TextManipulation.svg',
 		name: 'n8n-nodes-preview-text-manipulation.textManipulation',
 	},
 	{

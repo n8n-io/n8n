@@ -538,7 +538,9 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	) {
 		const installed = !item.key.includes('-preview');
 		const packageName = item.key.split('.')[0].replace('-preview', '');
-		const verified = useNodeTypesStore().verifiedNodeTypes.includes(item.key);
+		const verified = useNodeTypesStore().verifiedNodeTypes.some((n) =>
+			n.replace('-preview', '').includes(packageName),
+		);
 
 		const communityNodeDetails = {
 			title: item.properties.displayName,

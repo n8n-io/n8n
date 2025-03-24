@@ -78,6 +78,10 @@ const iconSource = computed<NodeIconSource>(() => {
 			};
 		}
 
+		if (nodeType?.name.includes('-preview') && typeof nodeType.iconUrl === 'string') {
+			return { path: nodeType.iconUrl };
+		}
+
 		const iconUrl = getNodeIconUrl(nodeType, uiStore.appliedTheme);
 		if (iconUrl) {
 			return { path: baseUrl + iconUrl };
