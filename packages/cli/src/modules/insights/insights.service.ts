@@ -56,6 +56,13 @@ export class InsightsService {
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
 		private readonly insightsRawRepository: InsightsRawRepository,
 	) {
+		this.initializeCompaction();
+	}
+
+	initializeCompaction() {
+		if (this.compactInsightsTimer !== undefined) {
+			clearInterval(this.compactInsightsTimer);
+		}
 		const intervalMilliseconds = config.compactionIntervalMinutes * 60 * 1000;
 		this.compactInsightsTimer = setInterval(
 			async () => await this.compactInsights(),

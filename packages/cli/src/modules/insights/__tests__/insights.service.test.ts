@@ -38,7 +38,6 @@ async function truncateAll() {
 
 // Initialize DB once for all tests
 beforeAll(async () => {
-	jest.useFakeTimers();
 	await testDb.init();
 });
 
@@ -524,20 +523,28 @@ describe('compaction', () => {
 			const accumulatedValues = allCompacted.reduce((acc, event) => acc + event.value, 0);
 			expect(accumulatedValues).toBe(batchSize);
 		});
+	});
 
+	describe('compactionSchedule', () => {
 		test('compaction is running on schedule', async () => {
-			// ARRANGE
-			const insightsService = Container.get(InsightsService);
+			jest.useFakeTimers();
+			try {
+				// ARRANGE
+				const insightsService = Container.get(InsightsService);
+				insightsService.initializeCompaction();
 
-			// spy on the compactInsights method to check if it's called
-			insightsService.compactInsights = jest.fn();
+				// spy on the compactInsights method to check if it's called
+				insightsService.compactInsights = jest.fn();
 
-			// ACT
-			// advance by 1 hour and 1 minute
-			jest.advanceTimersByTime(1000 * 60 * 60);
+				// ACT
+				// advance by 1 hour and 1 minute
+				jest.advanceTimersByTime(1000 * 60 * 61);
 
-			// ASSERT
-			expect(insightsService.compactInsights).toHaveBeenCalledTimes(1);
+				// ASSERT
+				expect(insightsService.compactInsights).toHaveBeenCalledTimes(1);
+			} finally {
+				jest.useRealTimers();
+			}
 		});
 	});
 
