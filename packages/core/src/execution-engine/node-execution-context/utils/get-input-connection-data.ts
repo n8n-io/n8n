@@ -17,7 +17,7 @@ import type {
 	INode,
 } from 'n8n-workflow';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	NodeOperationError,
 	ExecutionBaseError,
 	ApplicationError,
@@ -33,11 +33,15 @@ export function makeHandleToolInvocation(
 	node: INode,
 	nodeType: INodeType,
 ) {
+	/**
+	 * This keeps track of how many times this specific AI tool node has been invoked.
+	 * It is incremented on every invocation of the tool to keep the output of each invocation separate from each other.
+	 */
 	let toolRunIndex = 0;
 	return async (toolArgs: IDataObject) => {
 		const runIndex = toolRunIndex++;
 		const context = contextFactory(runIndex);
-		context.addInputData(NodeConnectionType.AiTool, [[{ json: toolArgs }]]);
+		context.addInputData(NodeConnectionTypes.AiTool, [[{ json: toolArgs }]]);
 
 		try {
 			// Execute the sub-node with the proxied context
@@ -60,13 +64,13 @@ export function makeHandleToolInvocation(
 			}
 
 			// Add output data to the context
-			context.addOutputData(NodeConnectionType.AiTool, runIndex, [[{ json: { response } }]]);
+			context.addOutputData(NodeConnectionTypes.AiTool, runIndex, [[{ json: { response } }]]);
 
 			// Return the stringified results
 			return JSON.stringify(response);
 		} catch (error) {
 			const nodeError = new NodeOperationError(node, error as Error);
-			context.addOutputData(NodeConnectionType.AiTool, runIndex, nodeError);
+			context.addOutputData(NodeConnectionTypes.AiTool, runIndex, nodeError);
 			return 'Error during node execution: ' + (nodeError.description ?? nodeError.message);
 		}
 	};
@@ -140,11 +144,7 @@ export async function getInputConnectionData(
 			);
 
 		if (!connectedNodeType.supplyData) {
-			if (connectedNodeType.description.outputs.includes(NodeConnectionType.AiTool)) {
-				/**
-				 * This keeps track of how many times this specific AI tool node has been invoked.
-				 * It is incremented on every invocation of the tool to keep the output of each invocation separate from each other.
-				 */
+			if (connectedNodeType.description.outputs.includes(NodeConnectionTypes.AiTool)) {
 				const supplyData = createNodeAsTool({
 					node: connectedNode,
 					nodeType: connectedNodeType,

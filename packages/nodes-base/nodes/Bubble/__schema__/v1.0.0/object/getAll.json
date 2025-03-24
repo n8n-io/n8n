@@ -4,20 +4,15 @@
         "_id": {
             "type": "string"
         },
-        "Modified Date": {
-            "type": "string"
-        },
         "Created By": {
             "type": "string"
         },
         "Created Date": {
             "type": "string"
+        },
+        "Modified Date": {
+            "type": "string"
         }
     },
-    "required": [
-        "_id",
-        "Modified Date",
-        "Created Date"
-    ],
     "version": 1
 }

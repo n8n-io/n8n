@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { N8nTooltip } from '@n8n/design-system';
 import TextWithHighlights from './TextWithHighlights.vue';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
@@ -19,6 +20,8 @@ type Props = {
 	collapsed?: boolean;
 	search?: string;
 	preview?: boolean;
+	locked?: boolean;
+	lockedTooltip?: string;
 };
 
 const props = defineProps<Props>();
@@ -43,18 +46,27 @@ const emit = defineEmits<{
 			:data-nest-level="level"
 			:data-value="expression"
 			:data-node-type="nodeType"
+			:data-target="!locked && 'mappable'"
 			:data-node-name="nodeName"
-			data-target="mappable"
 			class="pill"
 			:class="{
 				'pill--highlight': highlight,
 				'pill--preview': preview,
+				'pill--locked': locked,
 			}"
 			data-test-id="run-data-schema-node-name"
 		>
 			<FontAwesomeIcon class="type-icon" :icon size="sm" />
 			<TextWithHighlights class="title" :content="title" :search="props.search" />
 		</div>
+
+		<N8nTooltip v-if="locked" :disabled="!lockedTooltip" :popper-class="$style.tooltip">
+			<template #content>
+				<span v-n8n-html="lockedTooltip" />
+			</template>
+			<N8nIcon class="locked-icon" icon="lock" size="small" />
+		</N8nTooltip>
+
 		<TextWithHighlights
 			data-test-id="run-data-schema-item-value"
 			class="text"
@@ -140,17 +152,22 @@ const emit = defineEmits<{
 	color: var(--color-primary);
 }
 
-.draggable .pill {
+.draggable .pill:not(.pill--locked) {
 	cursor: grab;
 }
 
-.draggable .pill:hover {
+.draggable .pill:not(.pill--locked):hover {
 	background-color: var(--color-background-light);
 	border-color: var(--color-foreground-base);
 }
 
 .type-icon {
 	color: var(--color-text-light);
+}
+
+.locked-icon {
+	color: var(--color-text-light);
+	margin-left: var(--spacing-2xs);
 }
 
 .title {
@@ -172,5 +189,15 @@ const emit = defineEmits<{
 }
 .collapsed {
 	transform: rotateZ(-90deg);
+}
+
+.tooltip {
+	max-width: 260px;
+}
+</style>
+
+<style lang="css" module>
+.tooltip {
+	max-width: 260px;
 }
 </style>

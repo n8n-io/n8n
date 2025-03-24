@@ -15,9 +15,6 @@
         },
         "StorageClass": {
             "type": "string"
-        },
-        "Type": {
-            "type": "string"
         }
     },
     "version": 1

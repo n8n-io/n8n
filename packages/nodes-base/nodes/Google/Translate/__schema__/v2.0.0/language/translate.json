@@ -1,16 +1,12 @@
 {
     "type": "object",
     "properties": {
-        "translatedText": {
+        "detectedSourceLanguage": {
             "type": "string"
         },
-        "detectedSourceLanguage": {
+        "translatedText": {
             "type": "string"
         }
     },
-    "required": [
-        "translatedText",
-        "detectedSourceLanguage"
-    ],
     "version": 1
 }

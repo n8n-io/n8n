@@ -1,119 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "type": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "workspace_id": {
-            "type": "string"
-        },
-        "external_id": {
-            "type": "null"
-        },
-        "role": {
-            "type": "string"
-        },
-        "email": {
-            "type": "string"
-        },
-        "avatar": {
-            "type": "null"
-        },
-        "owner_id": {
-            "type": "null"
-        },
-        "social_profiles": {
-            "type": "object",
-            "properties": {
-                "type": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "type",
-                "data"
-            ]
-        },
-        "has_hard_bounced": {
-            "type": "boolean"
-        },
-        "marked_email_as_spam": {
-            "type": "boolean"
-        },
-        "unsubscribed_from_emails": {
-            "type": "boolean"
-        },
-        "created_at": {
-            "type": "integer"
-        },
-        "updated_at": {
-            "type": "integer"
-        },
-        "signed_up_at": {
-            "type": "null"
-        },
-        "last_seen_at": {
-            "type": "null"
-        },
-        "last_replied_at": {
-            "type": "null"
-        },
-        "last_contacted_at": {
-            "type": "null"
-        },
-        "last_email_opened_at": {
-            "type": "null"
-        },
-        "last_email_clicked_at": {
-            "type": "null"
-        },
-        "language_override": {
-            "type": "null"
-        },
-        "browser": {
-            "type": "null"
-        },
-        "browser_version": {
-            "type": "null"
-        },
-        "browser_language": {
-            "type": "null"
-        },
-        "os": {
-            "type": "null"
-        },
-        "location": {
-            "type": "object",
-            "properties": {
-                "type": {
-                    "type": "string"
-                },
-                "country": {
-                    "type": "null"
-                },
-                "region": {
-                    "type": "null"
-                },
-                "city": {
-                    "type": "null"
-                },
-                "country_code": {
-                    "type": "null"
-                },
-                "continent_code": {
-                    "type": "null"
-                }
-            },
-            "required": [
-                "type",
-                "country",
-                "region",
-                "city"
-            ]
-        },
         "android_app_name": {
             "type": "null"
         },
@@ -123,14 +10,58 @@
         "android_device": {
             "type": "null"
         },
+        "android_last_seen_at": {
+            "type": "null"
+        },
         "android_os_version": {
             "type": "null"
         },
         "android_sdk_version": {
             "type": "null"
         },
-        "android_last_seen_at": {
+        "avatar": {
             "type": "null"
+        },
+        "browser": {
+            "type": "null"
+        },
+        "browser_language": {
+            "type": "null"
+        },
+        "browser_version": {
+            "type": "null"
+        },
+        "companies": {
+            "type": "object",
+            "properties": {
+                "has_more": {
+                    "type": "boolean"
+                },
+                "total_count": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "created_at": {
+            "type": "integer"
+        },
+        "email": {
+            "type": "string"
+        },
+        "external_id": {
+            "type": "null"
+        },
+        "has_hard_bounced": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
         },
         "ios_app_name": {
             "type": "null"
@@ -141,134 +72,164 @@
         "ios_device": {
             "type": "null"
         },
+        "ios_last_seen_at": {
+            "type": "null"
+        },
         "ios_os_version": {
             "type": "null"
         },
         "ios_sdk_version": {
             "type": "null"
         },
-        "ios_last_seen_at": {
+        "language_override": {
             "type": "null"
         },
-        "tags": {
+        "last_contacted_at": {
+            "type": "null"
+        },
+        "last_email_clicked_at": {
+            "type": "null"
+        },
+        "last_email_opened_at": {
+            "type": "null"
+        },
+        "last_replied_at": {
+            "type": "null"
+        },
+        "last_seen_at": {
+            "type": "null"
+        },
+        "location": {
             "type": "object",
             "properties": {
+                "city": {
+                    "type": "null"
+                },
+                "continent_code": {
+                    "type": "null"
+                },
+                "country": {
+                    "type": "null"
+                },
+                "country_code": {
+                    "type": "null"
+                },
+                "region": {
+                    "type": "null"
+                },
                 "type": {
                     "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                },
-                "total_count": {
-                    "type": "integer"
-                },
-                "has_more": {
-                    "type": "boolean"
                 }
-            },
-            "required": [
-                "type",
-                "data",
-                "url",
-                "total_count",
-                "has_more"
-            ]
+            }
+        },
+        "marked_email_as_spam": {
+            "type": "boolean"
         },
         "notes": {
             "type": "object",
             "properties": {
+                "has_more": {
+                    "type": "boolean"
+                },
+                "total_count": {
+                    "type": "integer"
+                },
                 "type": {
                     "type": "string"
                 },
                 "url": {
                     "type": "string"
-                },
-                "total_count": {
-                    "type": "integer"
-                },
-                "has_more": {
-                    "type": "boolean"
                 }
-            },
-            "required": [
-                "type",
-                "data",
-                "url",
-                "total_count",
-                "has_more"
-            ]
-        },
-        "companies": {
-            "type": "object",
-            "properties": {
-                "type": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                },
-                "total_count": {
-                    "type": "integer"
-                },
-                "has_more": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "type",
-                "data",
-                "url",
-                "total_count",
-                "has_more"
-            ]
-        },
-        "opted_out_subscription_types": {
-            "type": "object",
-            "properties": {
-                "type": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                },
-                "total_count": {
-                    "type": "integer"
-                },
-                "has_more": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "type",
-                "data",
-                "url",
-                "total_count",
-                "has_more"
-            ]
+            }
         },
         "opted_in_subscription_types": {
             "type": "object",
             "properties": {
+                "has_more": {
+                    "type": "boolean"
+                },
+                "total_count": {
+                    "type": "integer"
+                },
                 "type": {
                     "type": "string"
                 },
                 "url": {
                     "type": "string"
+                }
+            }
+        },
+        "opted_out_subscription_types": {
+            "type": "object",
+            "properties": {
+                "has_more": {
+                    "type": "boolean"
                 },
                 "total_count": {
                     "type": "integer"
                 },
+                "type": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "os": {
+            "type": "null"
+        },
+        "owner_id": {
+            "type": "null"
+        },
+        "referrer": {
+            "type": "null"
+        },
+        "role": {
+            "type": "string"
+        },
+        "signed_up_at": {
+            "type": "null"
+        },
+        "sms_consent": {
+            "type": "boolean"
+        },
+        "social_profiles": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "tags": {
+            "type": "object",
+            "properties": {
                 "has_more": {
                     "type": "boolean"
+                },
+                "total_count": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "type",
-                "data",
-                "url",
-                "total_count",
-                "has_more"
-            ]
+            }
+        },
+        "type": {
+            "type": "string"
+        },
+        "unsubscribed_from_emails": {
+            "type": "boolean"
+        },
+        "unsubscribed_from_sms": {
+            "type": "boolean"
+        },
+        "updated_at": {
+            "type": "integer"
         },
         "utm_campaign": {
             "type": "null"
@@ -285,14 +246,8 @@
         "utm_term": {
             "type": "null"
         },
-        "referrer": {
-            "type": "null"
-        },
-        "sms_consent": {
-            "type": "boolean"
-        },
-        "unsubscribed_from_sms": {
-            "type": "boolean"
+        "workspace_id": {
+            "type": "string"
         }
     },
     "version": 1

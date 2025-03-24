@@ -10,28 +10,57 @@
                 "url": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "type",
-                "url"
-            ]
+            }
+        },
+        "CreatedById": {
+            "type": "string"
+        },
+        "CreatedDate": {
+            "type": "string"
+        },
+        "EmailBouncedDate": {
+            "type": "null"
+        },
+        "EmailBouncedReason": {
+            "type": "null"
+        },
+        "GeocodeAccuracy": {
+            "type": "null"
+        },
+        "HasOptedOutOfEmail": {
+            "type": "boolean"
         },
         "Id": {
             "type": "string"
         },
+        "IndividualId": {
+            "type": "null"
+        },
+        "IsConverted": {
+            "type": "boolean"
+        },
         "IsDeleted": {
             "type": "boolean"
         },
-        "MasterRecordId": {
+        "IsPriorityRecord": {
+            "type": "boolean"
+        },
+        "IsUnreadByOwner": {
+            "type": "boolean"
+        },
+        "Jigsaw": {
             "type": "null"
         },
-        "LastName": {
+        "JigsawContactId": {
+            "type": "null"
+        },
+        "LastModifiedById": {
             "type": "string"
         },
-        "Suffix": {
-            "type": "null"
+        "LastModifiedDate": {
+            "type": "string"
         },
-        "Name": {
+        "LastName": {
             "type": "string"
         },
         "Latitude": {
@@ -40,83 +69,23 @@
         "Longitude": {
             "type": "null"
         },
-        "GeocodeAccuracy": {
+        "MasterRecordId": {
             "type": "null"
         },
-        "Address": {
-            "type": "object",
-            "properties": {
-                "geocodeAccuracy": {
-                    "type": "null"
-                },
-                "latitude": {
-                    "type": "null"
-                },
-                "longitude": {
-                    "type": "null"
-                }
-            },
-            "required": [
-                "city",
-                "country",
-                "geocodeAccuracy",
-                "latitude",
-                "longitude",
-                "postalCode",
-                "state",
-                "street"
-            ]
-        },
-        "Status": {
+        "Name": {
             "type": "string"
         },
         "OwnerId": {
             "type": "string"
         },
-        "IsConverted": {
-            "type": "boolean"
-        },
-        "IsUnreadByOwner": {
-            "type": "boolean"
-        },
-        "CreatedDate": {
+        "Status": {
             "type": "string"
         },
-        "CreatedById": {
-            "type": "string"
-        },
-        "LastModifiedDate": {
-            "type": "string"
-        },
-        "LastModifiedById": {
-            "type": "string"
+        "Suffix": {
+            "type": "null"
         },
         "SystemModstamp": {
             "type": "string"
-        },
-        "Jigsaw": {
-            "type": "null"
-        },
-        "JigsawContactId": {
-            "type": "null"
-        },
-        "EmailBouncedReason": {
-            "type": "null"
-        },
-        "EmailBouncedDate": {
-            "type": "null"
-        },
-        "IsPriorityRecord": {
-            "type": "boolean"
-        },
-        "AnnualRevenue": {
-            "type": "null"
-        },
-        "IndividualId": {
-            "type": "null"
-        },
-        "HasOptedOutOfEmail": {
-            "type": "boolean"
         }
     },
     "version": 1

@@ -1,13 +1,13 @@
 {
     "type": "object",
     "properties": {
+        "created": {
+            "type": "boolean"
+        },
         "id": {
             "type": "string"
         },
         "success": {
-            "type": "boolean"
-        },
-        "created": {
             "type": "boolean"
         }
     },

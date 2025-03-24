@@ -1,25 +1,10 @@
 {
     "type": "object",
     "properties": {
-        "timestamp": {
-            "type": "string"
-        },
-        "Readable date": {
-            "type": "string"
-        },
-        "Readable time": {
+        "Day of month": {
             "type": "string"
         },
         "Day of week": {
-            "type": "string"
-        },
-        "Year": {
-            "type": "string"
-        },
-        "Month": {
-            "type": "string"
-        },
-        "Day of month": {
             "type": "string"
         },
         "Hour": {
@@ -28,10 +13,25 @@
         "Minute": {
             "type": "string"
         },
+        "Month": {
+            "type": "string"
+        },
+        "Readable date": {
+            "type": "string"
+        },
+        "Readable time": {
+            "type": "string"
+        },
         "Second": {
             "type": "string"
         },
+        "timestamp": {
+            "type": "string"
+        },
         "Timezone": {
+            "type": "string"
+        },
+        "Year": {
             "type": "string"
         }
     },

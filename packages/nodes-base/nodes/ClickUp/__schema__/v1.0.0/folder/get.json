@@ -1,8 +1,69 @@
 {
     "type": "object",
     "properties": {
+        "archived": {
+            "type": "boolean"
+        },
+        "hidden": {
+            "type": "boolean"
+        },
         "id": {
             "type": "string"
+        },
+        "lists": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "archived": {
+                        "type": "boolean"
+                    },
+                    "content": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "orderindex": {
+                        "type": "integer"
+                    },
+                    "permission_level": {
+                        "type": "string"
+                    },
+                    "statuses": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "color": {
+                                    "type": "string"
+                                },
+                                "id": {
+                                    "type": "string"
+                                },
+                                "orderindex": {
+                                    "type": "integer"
+                                },
+                                "status": {
+                                    "type": "string"
+                                },
+                                "status_group": {
+                                    "type": "string"
+                                },
+                                "type": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "task_count": {
+                        "type": "integer"
+                    }
+                }
+            }
         },
         "name": {
             "type": "string"
@@ -13,158 +74,49 @@
         "override_statuses": {
             "type": "boolean"
         },
-        "hidden": {
-            "type": "boolean"
+        "permission_level": {
+            "type": "string"
         },
         "space": {
             "type": "object",
             "properties": {
+                "access": {
+                    "type": "boolean"
+                },
                 "id": {
                     "type": "string"
                 },
                 "name": {
                     "type": "string"
-                },
-                "access": {
-                    "type": "boolean"
                 }
-            },
-            "required": [
-                "id",
-                "name",
-                "access"
-            ]
-        },
-        "task_count": {
-            "type": "string"
-        },
-        "archived": {
-            "type": "boolean"
+            }
         },
         "statuses": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "id": {
+                    "color": {
                         "type": "string"
                     },
-                    "status": {
+                    "id": {
                         "type": "string"
                     },
                     "orderindex": {
                         "type": "integer"
                     },
-                    "color": {
+                    "status": {
                         "type": "string"
                     },
                     "type": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "id",
-                    "status",
-                    "orderindex",
-                    "color",
-                    "type"
-                ]
+                }
             }
         },
-        "lists": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "orderindex": {
-                        "type": "integer"
-                    },
-                    "content": {
-                        "type": "string"
-                    },
-                    "task_count": {
-                        "type": "integer"
-                    },
-                    "archived": {
-                        "type": "boolean"
-                    },
-                    "statuses": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "id": {
-                                    "type": "string"
-                                },
-                                "status": {
-                                    "type": "string"
-                                },
-                                "orderindex": {
-                                    "type": "integer"
-                                },
-                                "color": {
-                                    "type": "string"
-                                },
-                                "type": {
-                                    "type": "string"
-                                },
-                                "status_group": {
-                                    "type": "string"
-                                }
-                            },
-                            "required": [
-                                "id",
-                                "status",
-                                "orderindex",
-                                "color",
-                                "type",
-                                "status_group"
-                            ]
-                        }
-                    },
-                    "permission_level": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "id",
-                    "name",
-                    "orderindex",
-                    "status",
-                    "priority",
-                    "assignee",
-                    "task_count",
-                    "due_date",
-                    "start_date",
-                    "archived",
-                    "override_statuses",
-                    "statuses",
-                    "permission_level"
-                ]
-            }
-        },
-        "permission_level": {
+        "task_count": {
             "type": "string"
         }
     },
-    "required": [
-        "id",
-        "name",
-        "orderindex",
-        "override_statuses",
-        "hidden",
-        "space",
-        "task_count",
-        "archived",
-        "statuses",
-        "lists",
-        "permission_level"
-    ],
     "version": 1
 }
