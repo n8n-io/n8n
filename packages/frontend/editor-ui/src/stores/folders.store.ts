@@ -1,12 +1,19 @@
 import { defineStore } from 'pinia';
 import { STORES } from '@/constants';
-import type { FolderCreateResponse, FolderShortInfo, FolderTreeResponseItem } from '@/Interface';
+import type {
+	ChangeLocationSearchResult,
+	FolderCreateResponse,
+	FolderShortInfo,
+	FolderTreeResponseItem,
+} from '@/Interface';
 import * as workflowsApi from '@/api/workflows';
 import { useRootStore } from './root.store';
 import { ref } from 'vue';
+import { useI18n } from '@/composables/useI18n';
 
 export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 	const rootStore = useRootStore();
+	const i18n = useI18n();
 
 	const totalWorkflowCount = ref<number>(0);
 
@@ -108,6 +115,128 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		return await workflowsApi.getProjectFolders(rootStore.restApiContext, projectId);
 	}
 
+	async function fetchFoldersAvailableForMove(
+		projectId: string,
+		folderId?: string,
+		filter?: {
+			name?: string;
+		},
+	): Promise<ChangeLocationSearchResult[]> {
+		const folders = await workflowsApi.getProjectFolders(
+			rootStore.restApiContext,
+			projectId,
+			{
+				sortBy: 'updatedAt:desc',
+			},
+			{
+				excludeFolderIdAndDescendants: folderId,
+				name: filter?.name ? filter.name : undefined,
+			},
+		);
+		const forCache: FolderShortInfo[] = folders.map((folder) => ({
+			id: folder.id,
+			name: folder.name,
+			parentFolder: folder.parentFolder?.id,
+		}));
+		cacheFolders(forCache);
+		return folders;
+	}
+
+	async function moveFolder(
+		projectId: string,
+		folderId: string,
+		parentFolderId?: string,
+	): Promise<void> {
+		await workflowsApi.moveFolder(rootStore.restApiContext, projectId, folderId, parentFolderId);
+		// Update the cache after moving the folder
+		delete breadcrumbsCache.value[folderId];
+		if (parentFolderId) {
+			const folder = breadcrumbsCache.value[folderId];
+			if (folder) {
+				folder.parentFolder = parentFolderId;
+			}
+		}
+	}
+
+	async function fetchFolderContent(
+		projectId: string,
+		folderId: string,
+	): Promise<{ totalWorkflows: number; totalSubFolders: number }> {
+		return await workflowsApi.getFolderContent(rootStore.restApiContext, projectId, folderId);
+	}
+
+	/**
+	 * Fetches the breadcrumbs items for a given folder, excluding the specified folderId.
+	 * @param projectId project in which the folder is located
+	 * @param folderId folder to get the breadcrumbs for
+	 * @returns
+	 */
+	async function getHiddenBreadcrumbsItems(
+		project: { id: string; name: string },
+		folderId: string,
+	) {
+		const path = await getFolderPath(project.id, folderId);
+
+		if (path.length === 0) {
+			// Even when path is empty, include the project item
+			return [
+				{
+					id: project.id,
+					label: project.name,
+				},
+				{
+					id: '-1',
+					label: i18n.baseText('folders.breadcrumbs.noTruncated.message'),
+				},
+			];
+		}
+
+		// Process a folder and all its nested children recursively
+		const processFolderWithChildren = (
+			folder: FolderTreeResponseItem,
+		): Array<{ id: string; label: string }> => {
+			const result = [
+				{
+					id: folder.id,
+					label: folder.name,
+				},
+			];
+
+			// Process all children and their descendants
+			if (folder.children?.length) {
+				const childItems = folder.children.flatMap((child) => {
+					// Add this child
+					const childResult = [
+						{
+							id: child.id,
+							label: child.name,
+						},
+					];
+
+					// Add all descendants of this child
+					if (child.children?.length) {
+						childResult.push(...processFolderWithChildren(child).slice(1));
+					}
+
+					return childResult;
+				});
+
+				result.push(...childItems);
+			}
+
+			return result;
+		};
+
+		// Start with the project item, then add all processed folders
+		return [
+			{
+				id: project.id,
+				label: project.name,
+			},
+			...path.flatMap(processFolderWithChildren),
+		];
+	}
+
 	return {
 		fetchTotalWorkflowsAndFoldersCount,
 		breadcrumbsCache,
@@ -120,5 +249,9 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		deleteFoldersFromCache,
 		renameFolder,
 		fetchProjectFolders,
+		fetchFoldersAvailableForMove,
+		moveFolder,
+		fetchFolderContent,
+		getHiddenBreadcrumbsItems,
 	};
 });

@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type { INodeInputConfiguration, INodeTypeDescription } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import * as assistant from './assistant';
 import * as audio from './audio';
@@ -50,25 +50,25 @@ const configureNodeInputs = (
 ) => {
 	if (resource === 'assistant' && operation === 'message') {
 		const inputs: INodeInputConfiguration[] = [
-			{ type: NodeConnectionType.Main },
-			{ type: NodeConnectionType.AiTool, displayName: 'Tools' },
+			{ type: NodeConnectionTypes.Main },
+			{ type: NodeConnectionTypes.AiTool, displayName: 'Tools' },
 		];
 		if (memory !== 'threadId') {
-			inputs.push({ type: NodeConnectionType.AiMemory, displayName: 'Memory', maxConnections: 1 });
+			inputs.push({ type: NodeConnectionTypes.AiMemory, displayName: 'Memory', maxConnections: 1 });
 		}
 		return inputs;
 	}
 	if (resource === 'text' && operation === 'message') {
 		if (hideTools === 'hide') {
-			return [NodeConnectionType.Main];
+			return [NodeConnectionTypes.Main];
 		}
 		return [
-			{ type: NodeConnectionType.Main },
-			{ type: NodeConnectionType.AiTool, displayName: 'Tools' },
+			{ type: NodeConnectionTypes.Main },
+			{ type: NodeConnectionTypes.AiTool, displayName: 'Tools' },
 		];
 	}
 
-	return [NodeConnectionType.Main];
+	return [NodeConnectionTypes.Main];
 };
 
 // eslint-disable-next-line n8n-nodes-base/node-class-description-missing-subtitle
@@ -98,7 +98,7 @@ export const versionDescription: INodeTypeDescription = {
 		},
 	},
 	inputs: `={{(${configureNodeInputs})($parameter.resource, $parameter.operation, $parameter.hideTools, $parameter.memory ?? undefined)}}`,
-	outputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{
 			name: 'openAiApi',

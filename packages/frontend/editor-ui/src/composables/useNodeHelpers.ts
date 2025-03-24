@@ -6,7 +6,7 @@ import {
 	SPLIT_IN_BATCHES_NODE_TYPE,
 } from '@/constants';
 
-import { NodeHelpers, ExpressionEvaluatorProxy, NodeConnectionType } from 'n8n-workflow';
+import { NodeHelpers, ExpressionEvaluatorProxy, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	INodeProperties,
 	INodeCredentialDescription,
@@ -27,6 +27,7 @@ import type {
 	INodeParameters,
 	INodeTypeNameVersion,
 	NodeParameterValue,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import type {
@@ -560,7 +561,7 @@ export function useNodeHelpers() {
 		runIndex = 0,
 		outputIndex = 0,
 		paneType: NodePanelType = 'output',
-		connectionType: NodeConnectionType = NodeConnectionType.Main,
+		connectionType: NodeConnectionType = NodeConnectionTypes.Main,
 	): INodeExecutionData[] {
 		//TODO: check if this needs to be fixed in different place
 		if (
@@ -592,7 +593,7 @@ export function useNodeHelpers() {
 	function getInputData(
 		connectionsData: ITaskDataConnections,
 		outputIndex: number,
-		connectionType: NodeConnectionType = NodeConnectionType.Main,
+		connectionType: NodeConnectionType = NodeConnectionTypes.Main,
 	): INodeExecutionData[] {
 		return connectionsData?.[connectionType]?.[outputIndex] ?? [];
 	}
@@ -602,7 +603,7 @@ export function useNodeHelpers() {
 		node: string | null,
 		runIndex: number,
 		outputIndex: number,
-		connectionType: NodeConnectionType = NodeConnectionType.Main,
+		connectionType: NodeConnectionType = NodeConnectionTypes.Main,
 	): IBinaryKeyData[] {
 		if (node === null) {
 			return [];

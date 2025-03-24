@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { SafetySetting } from '@google/generative-ai';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	NodeError,
 	INodeType,
@@ -52,7 +52,7 @@ export class LmChatGoogleGemini implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiLanguageModel],
+		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
 			{
@@ -65,7 +65,7 @@ export class LmChatGoogleGemini implements INodeType {
 			baseURL: '={{ $credentials.host }}',
 		},
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
 			{
 				displayName: 'Model',
 				name: 'modelName',

@@ -6,7 +6,8 @@ import type { INodeUi } from '@/Interface';
 import { HTTP_REQUEST_NODE_TYPE, IF_NODE_TYPE, MAX_PINNED_DATA_SIZE } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { NodeConnectionType, STICKY_NODE_TYPE, type INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionTypes, STICKY_NODE_TYPE } from 'n8n-workflow';
+import type { NodeConnectionType, INodeTypeDescription } from 'n8n-workflow';
 
 vi.mock('@/composables/useToast', () => ({ useToast: vi.fn(() => ({ showError: vi.fn() })) }));
 vi.mock('@/composables/useI18n', () => ({
@@ -156,7 +157,7 @@ describe('usePinnedData', () => {
 				parameters: {},
 				onError: 'stopWorkflow',
 			} as INodeUi);
-			getNodeType.mockReturnValue(makeNodeType([NodeConnectionType.Main], HTTP_REQUEST_NODE_TYPE));
+			getNodeType.mockReturnValue(makeNodeType([NodeConnectionTypes.Main], HTTP_REQUEST_NODE_TYPE));
 
 			const { canPinNode } = usePinnedData(node);
 
@@ -175,7 +176,7 @@ describe('usePinnedData', () => {
 				parameters: {},
 				onError: 'continueErrorOutput',
 			} as INodeUi);
-			getNodeType.mockReturnValue(makeNodeType([NodeConnectionType.Main], HTTP_REQUEST_NODE_TYPE));
+			getNodeType.mockReturnValue(makeNodeType([NodeConnectionTypes.Main], HTTP_REQUEST_NODE_TYPE));
 
 			const { canPinNode } = usePinnedData(node);
 
@@ -196,7 +197,7 @@ describe('usePinnedData', () => {
 				onError: 'stopWorkflow',
 			} as INodeUi);
 			getNodeType.mockReturnValue(
-				makeNodeType([NodeConnectionType.Main, NodeConnectionType.Main], IF_NODE_TYPE),
+				makeNodeType([NodeConnectionTypes.Main, NodeConnectionTypes.Main], IF_NODE_TYPE),
 			);
 
 			const { canPinNode } = usePinnedData(node);
@@ -227,7 +228,7 @@ describe('usePinnedData', () => {
 				typeVersion: 1,
 				type: HTTP_REQUEST_NODE_TYPE,
 			} as INodeUi);
-			getNodeType.mockReturnValue(makeNodeType([NodeConnectionType.Main], HTTP_REQUEST_NODE_TYPE));
+			getNodeType.mockReturnValue(makeNodeType([NodeConnectionTypes.Main], HTTP_REQUEST_NODE_TYPE));
 
 			const { canPinNode } = usePinnedData(node);
 
