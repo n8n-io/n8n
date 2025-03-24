@@ -1,11 +1,20 @@
 {
     "type": "object",
     "properties": {
-        "owner": {
-            "type": "string"
-        },
         "creation": {
             "type": "string"
+        },
+        "disabled": {
+            "type": "integer"
+        },
+        "docstatus": {
+            "type": "integer"
+        },
+        "doctype": {
+            "type": "string"
+        },
+        "idx": {
+            "type": "integer"
         },
         "modified": {
             "type": "string"
@@ -13,31 +22,12 @@
         "modified_by": {
             "type": "string"
         },
-        "docstatus": {
-            "type": "integer"
-        },
-        "idx": {
-            "type": "integer"
-        },
         "naming_series": {
             "type": "string"
         },
-        "disabled": {
-            "type": "integer"
-        },
-        "doctype": {
+        "owner": {
             "type": "string"
         }
     },
-    "required": [
-        "name",
-        "owner",
-        "creation",
-        "modified",
-        "modified_by",
-        "docstatus",
-        "idx",
-        "doctype"
-    ],
     "version": 1
 }

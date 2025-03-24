@@ -1,33 +1,34 @@
-import { createComponentRenderer } from '@/__tests__/render';
-import VirtualSchema from '@/components/VirtualSchema.vue';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { userEvent } from '@testing-library/user-event';
-import { cleanup, waitFor } from '@testing-library/vue';
-import { setActivePinia } from 'pinia';
 import {
 	createTestNode,
 	defaultNodeDescriptions,
 	mockNodeTypeDescription,
 } from '@/__tests__/mocks';
-import { IF_NODE_TYPE, SET_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { mock } from 'vitest-mock-extended';
+import { createComponentRenderer } from '@/__tests__/render';
+import VirtualSchema from '@/components/VirtualSchema.vue';
+import * as nodeHelpers from '@/composables/useNodeHelpers';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { IF_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, SET_NODE_TYPE } from '@/constants';
 import type { IWorkflowDb } from '@/Interface';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { createTestingPinia } from '@pinia/testing';
+import { fireEvent } from '@testing-library/dom';
+import { userEvent } from '@testing-library/user-event';
+import { cleanup, waitFor } from '@testing-library/vue';
 import {
 	createResultOk,
 	NodeConnectionType,
+	NodeConnectionTypes,
 	type IBinaryData,
 	type INodeExecutionData,
 } from 'n8n-workflow';
-import * as nodeHelpers from '@/composables/useNodeHelpers';
-import { useNDVStore } from '@/stores/ndv.store';
-import { fireEvent } from '@testing-library/dom';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useSchemaPreviewStore } from '../stores/schemaPreview.store';
-import { usePostHog } from '../stores/posthog.store';
-import { useSettingsStore } from '../stores/settings.store';
+import { setActivePinia } from 'pinia';
+import { mock } from 'vitest-mock-extended';
 import { defaultSettings } from '../__tests__/defaults';
-import { createTestingPinia } from '@pinia/testing';
+import { usePostHog } from '../stores/posthog.store';
+import { useSchemaPreviewStore } from '../stores/schemaPreview.store';
+import { useSettingsStore } from '../stores/settings.store';
 
 const mockNode1 = createTestNode({
 	name: 'Manual Trigger',
@@ -112,15 +113,15 @@ async function setupStore() {
 		...defaultNodeDescriptions,
 		mockNodeTypeDescription({
 			name: MANUAL_TRIGGER_NODE_TYPE,
-			outputs: [NodeConnectionType.Main],
+			outputs: [NodeConnectionTypes.Main],
 		}),
 		mockNodeTypeDescription({
 			name: IF_NODE_TYPE,
-			outputs: [NodeConnectionType.Main, NodeConnectionType.Main],
+			outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
 		}),
 		mockNodeTypeDescription({
 			name: 'n8n-nodes-base.notion',
-			outputs: [NodeConnectionType.Main],
+			outputs: [NodeConnectionTypes.Main],
 		}),
 	]);
 	workflowsStore.workflow = workflow as IWorkflowDb;

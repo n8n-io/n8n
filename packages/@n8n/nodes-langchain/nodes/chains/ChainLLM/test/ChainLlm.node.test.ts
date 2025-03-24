@@ -3,7 +3,7 @@
 import { FakeChatModel } from '@langchain/core/utils/testing';
 import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import * as helperModule from '@utils/helpers';
 import * as outputParserModule from '@utils/output_parsers/N8nOutputParser';
@@ -64,7 +64,7 @@ describe('ChainLlm Node', () => {
 			expect(node.description.version).toContain(1.5);
 			expect(node.description.properties).toBeDefined();
 			expect(node.description.inputs).toBeDefined();
-			expect(node.description.outputs).toEqual([NodeConnectionType.Main]);
+			expect(node.description.outputs).toEqual([NodeConnectionTypes.Main]);
 		});
 	});
 

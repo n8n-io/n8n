@@ -13,7 +13,7 @@ import {
 	jsonParse,
 	BINARY_ENCODING,
 	NodeOperationError,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	WEBHOOK_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
@@ -34,8 +34,8 @@ export class RespondToWebhook implements INodeType {
 		defaults: {
 			name: 'Respond to Webhook',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'jwtAuth',

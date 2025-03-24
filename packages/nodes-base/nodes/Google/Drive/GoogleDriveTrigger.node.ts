@@ -8,7 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeApiError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeApiError } from 'n8n-workflow';
 
 import { extractId, googleApiRequest, googleApiRequestAllItems } from './v1/GenericFunctions';
 import { fileSearch, folderSearch } from './v2/methods/listSearch';
@@ -48,7 +48,7 @@ export class GoogleDriveTrigger implements INodeType {
 		],
 		polling: true,
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Credential Type',

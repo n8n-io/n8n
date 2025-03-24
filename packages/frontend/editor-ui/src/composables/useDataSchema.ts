@@ -12,7 +12,7 @@ import {
 	type INodeExecutionData,
 	type INodeTypeDescription,
 	type ITaskDataConnections,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 import { ref } from 'vue';
 
@@ -127,7 +127,7 @@ export function useDataSchema() {
 		outputIndex: number,
 	): INodeExecutionData[] {
 		if (
-			!connectionsData?.hasOwnProperty(NodeConnectionType.Main) ||
+			!connectionsData?.hasOwnProperty(NodeConnectionTypes.Main) ||
 			connectionsData.main === undefined ||
 			outputIndex < 0 ||
 			outputIndex >= connectionsData.main.length ||

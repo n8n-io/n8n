@@ -7,7 +7,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { apiRequest, getImageBySize, getSecretToken } from './GenericFunctions';
 import type { IEvent } from './IEvent';
@@ -26,7 +26,7 @@ export class TelegramTrigger implements INodeType {
 			name: 'Telegram Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'telegramApi',

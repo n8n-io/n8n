@@ -11,7 +11,7 @@ import type {
 	INodeType,
 	INodeTypes,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { ExecuteContext } from '../../execute-context';
 
@@ -67,16 +67,16 @@ describe('getInputConnectionData', () => {
 	});
 
 	describe.each([
-		NodeConnectionType.AiAgent,
-		NodeConnectionType.AiChain,
-		NodeConnectionType.AiDocument,
-		NodeConnectionType.AiEmbedding,
-		NodeConnectionType.AiLanguageModel,
-		NodeConnectionType.AiMemory,
-		NodeConnectionType.AiOutputParser,
-		NodeConnectionType.AiRetriever,
-		NodeConnectionType.AiTextSplitter,
-		NodeConnectionType.AiVectorStore,
+		NodeConnectionTypes.AiAgent,
+		NodeConnectionTypes.AiChain,
+		NodeConnectionTypes.AiDocument,
+		NodeConnectionTypes.AiEmbedding,
+		NodeConnectionTypes.AiLanguageModel,
+		NodeConnectionTypes.AiMemory,
+		NodeConnectionTypes.AiOutputParser,
+		NodeConnectionTypes.AiRetriever,
+		NodeConnectionTypes.AiTextSplitter,
+		NodeConnectionTypes.AiVectorStore,
 	] as const)('%s', (connectionType) => {
 		const response = mock();
 		const node = mock<INode>({
@@ -231,7 +231,7 @@ describe('getInputConnectionData', () => {
 		});
 	});
 
-	describe(NodeConnectionType.AiTool, () => {
+	describe(NodeConnectionTypes.AiTool, () => {
 		const mockTool = mock<Tool>();
 		const toolNode = mock<INode>({
 			name: 'Test Tool',
@@ -252,7 +252,7 @@ describe('getInputConnectionData', () => {
 				.calledWith(toolNode.type, expect.anything())
 				.mockReturnValue(toolNodeType);
 			workflow.getParentNodes
-				.calledWith(agentNode.name, NodeConnectionType.AiTool)
+				.calledWith(agentNode.name, NodeConnectionTypes.AiTool)
 				.mockReturnValue([toolNode.name]);
 			workflow.getNode.calledWith(toolNode.name).mockReturnValue(toolNode);
 			workflow.getNode.calledWith(secondToolNode.name).mockReturnValue(secondToolNode);
@@ -261,13 +261,13 @@ describe('getInputConnectionData', () => {
 		it('should return empty array when no tools are connected and input is not required', async () => {
 			agentNodeType.description.inputs = [
 				{
-					type: NodeConnectionType.AiTool,
+					type: NodeConnectionTypes.AiTool,
 					required: false,
 				},
 			];
 			workflow.getParentNodes.mockReturnValueOnce([]);
 
-			const result = await executeContext.getInputConnectionData(NodeConnectionType.AiTool, 0);
+			const result = await executeContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0);
 			expect(result).toEqual([]);
 			expect(supplyData).not.toHaveBeenCalled();
 		});
@@ -275,14 +275,14 @@ describe('getInputConnectionData', () => {
 		it('should throw when required tool node is not connected', async () => {
 			agentNodeType.description.inputs = [
 				{
-					type: NodeConnectionType.AiTool,
+					type: NodeConnectionTypes.AiTool,
 					required: true,
 				},
 			];
 			workflow.getParentNodes.mockReturnValueOnce([]);
 
 			await expect(
-				executeContext.getInputConnectionData(NodeConnectionType.AiTool, 0),
+				executeContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0),
 			).rejects.toThrow('must be connected and enabled');
 			expect(supplyData).not.toHaveBeenCalled();
 		});
@@ -296,18 +296,18 @@ describe('getInputConnectionData', () => {
 
 			agentNodeType.description.inputs = [
 				{
-					type: NodeConnectionType.AiTool,
+					type: NodeConnectionTypes.AiTool,
 					required: true,
 				},
 			];
 
 			workflow.getParentNodes
-				.calledWith(agentNode.name, NodeConnectionType.AiTool)
+				.calledWith(agentNode.name, NodeConnectionTypes.AiTool)
 				.mockReturnValue([disabledToolNode.name]);
 			workflow.getNode.calledWith(disabledToolNode.name).mockReturnValue(disabledToolNode);
 
 			await expect(
-				executeContext.getInputConnectionData(NodeConnectionType.AiTool, 0),
+				executeContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0),
 			).rejects.toThrow('must be connected and enabled');
 			expect(supplyData).not.toHaveBeenCalled();
 		});
@@ -315,7 +315,7 @@ describe('getInputConnectionData', () => {
 		it('should handle multiple connected tools', async () => {
 			agentNodeType.description.inputs = [
 				{
-					type: NodeConnectionType.AiTool,
+					type: NodeConnectionTypes.AiTool,
 					required: true,
 				},
 			];
@@ -325,10 +325,10 @@ describe('getInputConnectionData', () => {
 				.mockReturnValue(secondToolNodeType);
 
 			workflow.getParentNodes
-				.calledWith(agentNode.name, NodeConnectionType.AiTool)
+				.calledWith(agentNode.name, NodeConnectionTypes.AiTool)
 				.mockReturnValue([toolNode.name, secondToolNode.name]);
 
-			const result = await executeContext.getInputConnectionData(NodeConnectionType.AiTool, 0);
+			const result = await executeContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0);
 			expect(result).toEqual([mockTool, secondMockTool]);
 			expect(supplyData).toHaveBeenCalled();
 			expect(secondToolNodeType.supplyData).toHaveBeenCalled();
@@ -339,13 +339,13 @@ describe('getInputConnectionData', () => {
 
 			agentNodeType.description.inputs = [
 				{
-					type: NodeConnectionType.AiTool,
+					type: NodeConnectionTypes.AiTool,
 					required: true,
 				},
 			];
 
 			await expect(
-				executeContext.getInputConnectionData(NodeConnectionType.AiTool, 0),
+				executeContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0),
 			).rejects.toThrow(`Error in sub-node ${toolNode.name}`);
 			expect(supplyData).toHaveBeenCalled();
 		});
@@ -353,12 +353,12 @@ describe('getInputConnectionData', () => {
 		it('should return the tool when there are no issues', async () => {
 			agentNodeType.description.inputs = [
 				{
-					type: NodeConnectionType.AiTool,
+					type: NodeConnectionTypes.AiTool,
 					required: true,
 				},
 			];
 
-			const result = await executeContext.getInputConnectionData(NodeConnectionType.AiTool, 0);
+			const result = await executeContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0);
 			expect(result).toEqual([mockTool]);
 			expect(supplyData).toHaveBeenCalled();
 		});
