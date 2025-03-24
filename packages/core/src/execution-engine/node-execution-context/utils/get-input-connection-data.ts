@@ -27,6 +27,7 @@ import { createNodeAsTool } from './create-node-as-tool';
 import type { ExecuteContext, WebhookContext } from '../../node-execution-context';
 // eslint-disable-next-line import/no-cycle
 import { SupplyDataContext } from '../../node-execution-context/supply-data-context';
+import { configureResponseOptimizer } from '@/utils/optimize-response';
 
 export function makeHandleToolInvocation(
 	contextFactory: (runIndex: number) => ISupplyDataFunctions,
@@ -41,6 +42,7 @@ export function makeHandleToolInvocation(
 	return async (toolArgs: IDataObject) => {
 		const runIndex = toolRunIndex++;
 		const context = contextFactory(runIndex);
+		const optimizeResponse = configureResponseOptimizer(context, toolRunIndex); // PROBABLY ITEMINDEX INSTEAD? CONFIRM!
 		context.addInputData(NodeConnectionTypes.AiTool, [[{ json: toolArgs }]]);
 
 		try {
