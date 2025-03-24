@@ -202,8 +202,8 @@ describe('ProjectService', () => {
 	});
 
 	describe('deleteUserFromProject', () => {
-		it('should not allow project admin to be removed from the project', async () => {
-			const role = 'project:admin';
+		it('should not allow project owner to be removed from the project', async () => {
+			const role = 'project:personalOwner';
 
 			const user = await createMember();
 			const project = await projectRepository.save(
@@ -215,11 +215,11 @@ describe('ProjectService', () => {
 			await projectService.addUser(project.id, { userId: user.id, role });
 
 			await expect(projectService.deleteUserFromProject(project.id, user.id)).rejects.toThrowError(
-				/^Project admin cannot be removed from the project$/,
+				/^Project owner cannot be removed from the project$/,
 			);
 		});
 
-		it('should remove user from project if not admin', async () => {
+		it('should remove user from project if not owner', async () => {
 			const role = 'project:editor';
 
 			const user = await createMember();

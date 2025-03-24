@@ -319,18 +319,18 @@ export class ProjectService {
 		}
 	}
 
-	private isUserProjectAdmin(project: Project, userId: string) {
+	private isUserProjectOwner(project: Project, userId: string) {
 		return project.projectRelations.some(
-			(pr) => pr.userId === userId && pr.role === 'project:admin',
+			(pr) => pr.userId === userId && pr.role === 'project:personalOwner',
 		);
 	}
 
 	async deleteUserFromProject(projectId: string, userId: string) {
 		const project = await this.getTeamProjectWithRelations(projectId);
 
-		// Prevent project admin from being removed
-		if (this.isUserProjectAdmin(project, userId)) {
-			throw new ForbiddenError('Project admin cannot be removed from the project');
+		// Prevent project owner from being removed
+		if (this.isUserProjectOwner(project, userId)) {
+			throw new ForbiddenError('Project owner cannot be removed from the project');
 		}
 
 		await this.projectRelationRepository.delete({ projectId: project.id, userId });
