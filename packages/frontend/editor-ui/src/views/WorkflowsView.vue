@@ -1218,7 +1218,7 @@ const onCreateWorkflowClick = () => {
 		@sort="onSortUpdated"
 	>
 		<template #header>
-			<ProjectHeader>
+			<ProjectHeader @create-folder="createFolderInCurrent">
 				<InsightsSummary
 					v-if="overview.isOverviewSubPage"
 					:loading="insightsStore.summary.isLoading"
