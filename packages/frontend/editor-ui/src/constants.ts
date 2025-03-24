@@ -3,7 +3,8 @@ import type {
 	EnterpriseEditionFeatureValue,
 	NodeCreatorOpenSource,
 } from './Interface';
-import { NodeConnectionType } from 'n8n-workflow';
+import type { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	CanvasInjectionData,
 	CanvasNodeHandleInjectionData,
@@ -301,9 +302,8 @@ export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fB
 
 // Node Connection Types
 export const NODE_CONNECTION_TYPE_ALLOW_MULTIPLE: NodeConnectionType[] = [
-	NodeConnectionType.AiTool,
-
-	NodeConnectionType.Main,
+	NodeConnectionTypes.AiTool,
+	NodeConnectionTypes.Main,
 ];
 
 // General
@@ -470,6 +470,8 @@ export const LOCAL_STORAGE_NDV_INPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_INPUT_PANEL_D
 export const LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_OUTPUT_PANEL_DISPLAY_MODE';
 export const LOCAL_STORAGE_LOGS_2025_SPRING = 'N8N_LOGS_2025_SPRING';
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
+export const COMMUNITY_PLUS_DOCS_URL =
+	'https://docs.n8n.io/hosting/community-edition-features/#registered-community-edition';
 
 export const HIRING_BANNER = `
                                                                     //////

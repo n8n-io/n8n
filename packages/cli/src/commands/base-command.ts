@@ -33,6 +33,7 @@ import { ExternalHooks } from '@/external-hooks';
 import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { ModulesConfig } from '@/modules/modules.config';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { ShutdownService } from '@/shutdown/shutdown.service';
@@ -57,6 +58,8 @@ export abstract class BaseCommand extends Command {
 
 	protected readonly globalConfig = Container.get(GlobalConfig);
 
+	protected readonly modulesConfig = Container.get(ModulesConfig);
+
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
 	 */
@@ -65,6 +68,13 @@ export abstract class BaseCommand extends Command {
 
 	/** Whether to init community packages (if enabled) */
 	protected needsCommunityPackages = false;
+
+	protected async loadModules() {
+		for (const moduleName of this.modulesConfig.modules) {
+			await import(`../modules/${moduleName}/${moduleName}.module`);
+			this.logger.debug(`Loaded module "${moduleName}"`);
+		}
+	}
 
 	async init(): Promise<void> {
 		this.errorReporter = Container.get(ErrorReporter);

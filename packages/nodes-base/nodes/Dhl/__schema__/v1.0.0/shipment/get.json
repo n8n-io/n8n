@@ -1,10 +1,92 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
+        "destination": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "object",
+                    "properties": {
+                        "countryCode": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
         },
-        "service": {
+        "details": {
+            "type": "object",
+            "properties": {
+                "pieceIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "product": {
+                    "type": "object",
+                    "properties": {
+                        "productName": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "proofOfDeliverySignedAvailable": {
+                    "type": "boolean"
+                },
+                "totalNumberOfPieces": {
+                    "type": "integer"
+                },
+                "weight": {
+                    "type": "object",
+                    "properties": {
+                        "unitText": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "events": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "description": {
+                        "type": "string"
+                    },
+                    "location": {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "object",
+                                "properties": {
+                                    "addressLocality": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "remark": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "statusCode": {
+                        "type": "string"
+                    },
+                    "statusDetailed": {
+                        "type": "string"
+                    },
+                    "timestamp": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "id": {
             "type": "string"
         },
         "origin": {
@@ -18,31 +100,21 @@
                         }
                     }
                 }
-            },
-            "required": [
-                "address"
-            ]
+            }
         },
-        "destination": {
-            "type": "object",
-            "properties": {
-                "address": {
-                    "type": "object",
-                    "properties": {
-                        "countryCode": {
-                            "type": "string"
-                        }
-                    }
-                }
-            },
-            "required": [
-                "address"
-            ]
+        "returnFlag": {
+            "type": "boolean"
+        },
+        "service": {
+            "type": "string"
+        },
+        "serviceUrl": {
+            "type": "string"
         },
         "status": {
             "type": "object",
             "properties": {
-                "timestamp": {
+                "description": {
                     "type": "string"
                 },
                 "location": {
@@ -54,147 +126,27 @@
                                 "addressLocality": {
                                     "type": "string"
                                 }
-                            },
-                            "required": [
-                                "addressLocality"
-                            ]
+                            }
                         }
-                    },
-                    "required": [
-                        "address"
-                    ]
+                    }
                 },
-                "statusCode": {
+                "remark": {
                     "type": "string"
                 },
                 "status": {
                     "type": "string"
                 },
-                "description": {
-                    "type": "string"
-                },
-                "remark": {
+                "statusCode": {
                     "type": "string"
                 },
                 "statusDetailed": {
                     "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "timestamp",
-                "statusCode",
-                "status",
-                "description"
-            ]
-        },
-        "returnFlag": {
-            "type": "boolean"
-        },
-        "details": {
-            "type": "object",
-            "properties": {
-                "product": {
-                    "type": "object",
-                    "properties": {
-                        "productName": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "productName"
-                    ]
-                },
-                "proofOfDeliverySignedAvailable": {
-                    "type": "boolean"
-                },
-                "totalNumberOfPieces": {
-                    "type": "integer"
-                },
-                "pieceIds": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "weight": {
-                    "type": "object",
-                    "properties": {
-                        "unitText": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "value"
-                    ]
-                }
-            },
-            "required": [
-                "product",
-                "proofOfDeliverySignedAvailable"
-            ]
-        },
-        "events": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "timestamp": {
-                        "type": "string"
-                    },
-                    "location": {
-                        "type": "object",
-                        "properties": {
-                            "address": {
-                                "type": "object",
-                                "properties": {
-                                    "addressLocality": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "addressLocality"
-                                ]
-                            }
-                        },
-                        "required": [
-                            "address"
-                        ]
-                    },
-                    "statusCode": {
-                        "type": "string"
-                    },
-                    "status": {
-                        "type": "string"
-                    },
-                    "description": {
-                        "type": "string"
-                    },
-                    "statusDetailed": {
-                        "type": "string"
-                    },
-                    "remark": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "timestamp",
-                    "statusCode",
-                    "status",
-                    "description"
-                ]
             }
-        },
-        "serviceUrl": {
-            "type": "string"
         }
     },
-    "required": [
-        "id",
-        "service",
-        "origin",
-        "destination",
-        "status",
-        "details"
-    ],
     "version": 1
 }

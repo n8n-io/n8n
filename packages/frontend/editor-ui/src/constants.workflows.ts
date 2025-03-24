@@ -1,4 +1,4 @@
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import type { INodeUi, IWorkflowDataCreate } from './Interface';
 
 export const SAMPLE_SUBWORKFLOW_WORKFLOW: IWorkflowDataCreate = {
@@ -26,7 +26,7 @@ export const SAMPLE_SUBWORKFLOW_WORKFLOW: IWorkflowDataCreate = {
 				[
 					{
 						node: 'Replace me with your logic',
-						type: NodeConnectionType.Main,
+						type: NodeConnectionTypes.Main,
 						index: 0,
 					},
 				],
@@ -143,7 +143,7 @@ export const SAMPLE_EVALUATION_WORKFLOW: IWorkflowDataCreate = {
 				[
 					{
 						node: 'Replace me',
-						type: NodeConnectionType.Main,
+						type: NodeConnectionTypes.Main,
 						index: 0,
 					},
 				],
@@ -154,7 +154,7 @@ export const SAMPLE_EVALUATION_WORKFLOW: IWorkflowDataCreate = {
 				[
 					{
 						node: 'Return metric(s)',
-						type: NodeConnectionType.Main,
+						type: NodeConnectionTypes.Main,
 						index: 0,
 					},
 				],

@@ -61,6 +61,12 @@ import { useToast } from '@/composables/useToast';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useFolders } from '@/composables/useFolders';
 import { useUsageStore } from '@/stores/usage.store';
+import { useInsightsStore } from '@/features/insights/insights.store';
+import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
+import { useOverview } from '@/composables/useOverview';
+
+const SEARCH_DEBOUNCE_TIME = 300;
+const FILTERS_DEBOUNCE_TIME = 100;
 
 interface Filters extends BaseFilters {
 	status: string | boolean;
@@ -99,9 +105,11 @@ const uiStore = useUIStore();
 const tagsStore = useTagsStore();
 const foldersStore = useFoldersStore();
 const usageStore = useUsageStore();
+const insightsStore = useInsightsStore();
 
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
+const overview = useOverview();
 
 const loading = ref(false);
 const breadcrumbsLoading = ref(false);
@@ -348,6 +356,13 @@ sourceControlStore.$onAction(({ name, after }) => {
 	after(async () => await initialize());
 });
 
+const onWorkflowDeleted = async () => {
+	await Promise.all([
+		fetchWorkflows(),
+		foldersStore.fetchTotalWorkflowsAndFoldersCount(route.params.projectId as string | undefined),
+	]);
+};
+
 const onFolderDeleted = async (payload: {
 	folderId: string;
 	workflowCount: number;
@@ -356,6 +371,9 @@ const onFolderDeleted = async (payload: {
 	const folderInfo = foldersStore.getCachedFolder(payload.folderId);
 	foldersStore.deleteFoldersFromCache([payload.folderId, folderInfo?.parentFolder ?? '']);
 	// If the deleted folder is the current folder, navigate to the parent folder
+	await foldersStore.fetchTotalWorkflowsAndFoldersCount(
+		route.params.projectId as string | undefined,
+	);
 
 	if (currentFolderId.value === payload.folderId) {
 		void router.push({
@@ -410,6 +428,7 @@ const initialize = async () => {
 		fetchWorkflows(),
 		workflowsStore.fetchActiveWorkflows(),
 		usageStore.getLicenseInfo(),
+		foldersStore.fetchTotalWorkflowsAndFoldersCount(route.params.projectId as string | undefined),
 	]);
 	breadcrumbsLoading.value = false;
 	workflowsAndFolders.value = resourcesPage;
@@ -428,6 +447,7 @@ const fetchWorkflows = async () => {
 	const delayedLoading = debounce(() => {
 		loading.value = true;
 	}, 300);
+
 	const routeProjectId = route.params?.projectId as string | undefined;
 	const homeProjectFilter = filters.value.homeProject || undefined;
 	const parentFolder = (route.params?.folderId as string) || undefined;
@@ -473,8 +493,6 @@ const fetchWorkflows = async () => {
 			breadcrumbsLoading.value = false;
 		}
 
-		await foldersStore.fetchTotalWorkflowsAndFoldersCount(routeProjectId);
-
 		workflowsAndFolders.value = fetchedResources;
 		return fetchedResources;
 	} catch (error) {
@@ -507,14 +525,14 @@ const onSortUpdated = async (sort: string) => {
 const onFiltersUpdated = async () => {
 	currentPage.value = 1;
 	saveFiltersOnQueryString();
-	await callDebounced(fetchWorkflows, { debounceTime: 100, trailing: true });
+	await callDebounced(fetchWorkflows, { debounceTime: FILTERS_DEBOUNCE_TIME, trailing: true });
 };
 
 const onSearchUpdated = async (search: string) => {
 	currentPage.value = 1;
 	saveFiltersOnQueryString();
 	if (search) {
-		await callDebounced(fetchWorkflows, { debounceTime: 100, trailing: true });
+		await callDebounced(fetchWorkflows, { debounceTime: SEARCH_DEBOUNCE_TIME, trailing: true });
 	} else {
 		// No need to debounce when clearing search
 		await fetchWorkflows();
@@ -523,12 +541,12 @@ const onSearchUpdated = async (search: string) => {
 
 const setCurrentPage = async (page: number) => {
 	currentPage.value = page;
-	await callDebounced(fetchWorkflows, { debounceTime: 100, trailing: true });
+	await callDebounced(fetchWorkflows, { debounceTime: FILTERS_DEBOUNCE_TIME, trailing: true });
 };
 
 const setPageSize = async (size: number) => {
 	pageSize.value = size;
-	await callDebounced(fetchWorkflows, { debounceTime: 100, trailing: true });
+	await callDebounced(fetchWorkflows, { debounceTime: FILTERS_DEBOUNCE_TIME, trailing: true });
 };
 
 const onClickTag = async (tagId: string) => {
@@ -1200,7 +1218,13 @@ const onCreateWorkflowClick = () => {
 		@sort="onSortUpdated"
 	>
 		<template #header>
-			<ProjectHeader @create-folder="createFolderInCurrent" />
+			<ProjectHeader @create-folder="createFolderInCurrent">
+				<InsightsSummary
+					v-if="overview.isOverviewSubPage"
+					:loading="insightsStore.summary.isLoading"
+					:summary="insightsStore.summary.state"
+				/>
+			</ProjectHeader>
 		</template>
 		<template v-if="foldersEnabled" #add-button>
 			<N8nTooltip
@@ -1300,7 +1324,7 @@ const onCreateWorkflowClick = () => {
 				:workflow-list-event-bus="workflowListEventBus"
 				:read-only="readOnlyEnv"
 				@click:tag="onClickTag"
-				@workflow:deleted="fetchWorkflows"
+				@workflow:deleted="onWorkflowDeleted"
 				@workflow:moved="fetchWorkflows"
 				@workflow:duplicated="fetchWorkflows"
 				@workflow:active-toggle="onWorkflowActiveToggle"

@@ -55,6 +55,7 @@ const ITEM_TITLES: Record<Exclude<SourceControlledFileType, 'file'>, string> = {
 	[SOURCE_CONTROL_FILE_TYPE.credential]: 'Credentials',
 	[SOURCE_CONTROL_FILE_TYPE.variables]: 'Variables',
 	[SOURCE_CONTROL_FILE_TYPE.tags]: 'Tags',
+	[SOURCE_CONTROL_FILE_TYPE.folders]: 'Folders',
 } as const;
 
 const files = computed<ItemsList>(() =>
@@ -63,6 +64,7 @@ const files = computed<ItemsList>(() =>
 		SOURCE_CONTROL_FILE_TYPE.credential,
 		SOURCE_CONTROL_FILE_TYPE.variables,
 		SOURCE_CONTROL_FILE_TYPE.tags,
+		SOURCE_CONTROL_FILE_TYPE.folders,
 	].reduce<ItemsList>((acc, fileType) => {
 		if (!groupedFilesByType.value[fileType]) {
 			return acc;
