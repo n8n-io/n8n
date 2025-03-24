@@ -139,7 +139,7 @@ const confirm = async () => {
 		</template>
 		<template #footer>
 			<div :class="$style.notice">
-				<N8nText tag="span">
+				<N8nText size="small" tag="span">
 					{{ i18n.baseText('communityPlusModal.notice') }}
 					<a :href="COMMUNITY_PLUS_DOCS_URL" target="_blank">
 						{{ i18n.baseText('generic.moreInfo') }}
