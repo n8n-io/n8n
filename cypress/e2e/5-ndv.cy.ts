@@ -467,7 +467,7 @@ describe('NDV', () => {
 			cy.createFixtureWorkflow('Floating_Nodes.json', 'Floating Nodes');
 
 			cy.ifCanvasVersion(
-				() => {},
+				() => { },
 				() => {
 					// Needed in V2 as all nodes remain selected when clicking on a selected node
 					workflowPage.actions.deselectAll();
@@ -521,7 +521,7 @@ describe('NDV', () => {
 		it('should traverse floating nodes with keyboard', () => {
 			cy.createFixtureWorkflow('Floating_Nodes.json', 'Floating Nodes');
 			cy.ifCanvasVersion(
-				() => {},
+				() => { },
 				() => {
 					// Needed in V2 as all nodes remain selected when clicking on a selected node
 					workflowPage.actions.deselectAll();
@@ -622,7 +622,7 @@ describe('NDV', () => {
 			cy.createFixtureWorkflow('Floating_Nodes.json', 'Floating Nodes');
 
 			cy.ifCanvasVersion(
-				() => {},
+				() => { },
 				() => {
 					// Needed in V2 as all nodes remain selected when clicking on a selected node
 					workflowPage.actions.deselectAll();
@@ -633,8 +633,12 @@ describe('NDV', () => {
 			workflowPage.actions.openNode('Merge');
 			getFloatingNodeByPosition('inputMain').should('exist');
 			getFloatingNodeByPosition('inputMain').should('have.length', 2);
-			getFloatingNodeByPosition('inputMain').first().should('have.attr', 'data-node-name', 'Edit Fields1');
-			getFloatingNodeByPosition('inputMain').last().should('have.attr', 'data-node-name', 'Edit Fields0');
+			getFloatingNodeByPosition('inputMain')
+				.first()
+				.should('have.attr', 'data-node-name', 'Edit Fields1');
+			getFloatingNodeByPosition('inputMain')
+				.last()
+				.should('have.attr', 'data-node-name', 'Edit Fields0');
 
 			ndv.actions.close();
 
@@ -642,8 +646,12 @@ describe('NDV', () => {
 			workflowPage.actions.openNode('Merge1');
 			getFloatingNodeByPosition('inputMain').should('exist');
 			getFloatingNodeByPosition('inputMain').should('have.length', 2);
-			getFloatingNodeByPosition('inputMain').first().should('have.attr', 'data-node-name', 'Edit Fields0');
-			getFloatingNodeByPosition('inputMain').last().should('have.attr', 'data-node-name', 'Edit Fields1');
+			getFloatingNodeByPosition('inputMain')
+				.first()
+				.should('have.attr', 'data-node-name', 'Edit Fields0');
+			getFloatingNodeByPosition('inputMain')
+				.last()
+				.should('have.attr', 'data-node-name', 'Edit Fields1');
 		});
 	});
 
