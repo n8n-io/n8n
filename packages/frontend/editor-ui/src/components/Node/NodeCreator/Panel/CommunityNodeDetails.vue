@@ -7,15 +7,14 @@ import { useToast } from '@/composables/useToast';
 import { i18n } from '@/plugins/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
-import { useUIStore } from '@/stores/ui.store';
-import { useRootStore } from '@/stores/root.store';
+
+import { getNodeIconSource } from '@/utils/nodeIcon';
 
 const {
 	activeViewStack,
 	pushViewStack,
 	getAllNodeCreateElements,
 	pushCommunityNodeDetailsViewStack,
-	prepareViewStackNodeIcon,
 } = useViewStacks();
 
 const { communityNodeDetails } = activeViewStack;
@@ -56,15 +55,15 @@ const onInstallClick = async () => {
 
 			if (installedNodeItem) {
 				const nodeActions = nodeCreatorStore.actions?.[installedNodeItem.key] || [];
-				const nodeIcon = prepareViewStackNodeIcon(
-					installedNodeItem,
-					useUIStore().appliedTheme,
-					useRootStore().baseUrl,
-				);
 
-				pushCommunityNodeDetailsViewStack(installedNodeItem, nodeIcon, nodeActions, {
-					resetStacks: true,
-				});
+				pushCommunityNodeDetailsViewStack(
+					installedNodeItem,
+					getNodeIconSource(installedNodeItem.properties),
+					nodeActions,
+					{
+						resetStacks: true,
+					},
+				);
 			} else {
 				const viewStack = { ...activeViewStack };
 				viewStack.communityNodeDetails!.installed = true;
@@ -137,13 +136,10 @@ onMounted(async () => {
 	<div :class="$style.card">
 		<div :class="$style.header">
 			<div :class="$style.title">
-				<n8n-node-icon
+				<NodeIcon
 					v-if="communityNodeDetails?.nodeIcon"
 					:class="$style.nodeIcon"
-					:type="communityNodeDetails.nodeIcon.iconType || 'unknown'"
-					:src="communityNodeDetails.nodeIcon.icon"
-					:name="communityNodeDetails.nodeIcon.icon"
-					:color="communityNodeDetails.nodeIcon.color"
+					:icon-source="communityNodeDetails.nodeIcon"
 					:circle="false"
 					:show-tooltip="false"
 				/>
