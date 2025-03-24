@@ -18,7 +18,6 @@ import { userEvent } from '@testing-library/user-event';
 import { cleanup, waitFor } from '@testing-library/vue';
 import {
 	createResultOk,
-	NodeConnectionType,
 	NodeConnectionTypes,
 	type IBinaryData,
 	type INodeExecutionData,
