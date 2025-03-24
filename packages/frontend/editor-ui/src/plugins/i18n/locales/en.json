@@ -2375,6 +2375,9 @@
 	"workflowSettings.timeoutAfter": "Timeout After",
 	"workflowSettings.timeoutWorkflow": "Timeout Workflow",
 	"workflowSettings.timezone": "Timezone",
+	"workflowSettings.timeSavedPerExecution": "Estimated time saved",
+	"workflowSettings.timeSavedPerExecution.hint": "Minutes per production execution",
+	"workflowSettings.timeSavedPerExecution.tooltip": "Total time savings are summarised in the Overview page.",
 	"workflowHistory.title": "Version History",
 	"workflowHistory.content.title": "Version",
 	"workflowHistory.content.editedBy": "Edited by",
@@ -3064,5 +3067,13 @@
 	"freeAi.credits.showError.claim.title": "Free AI credits",
 	"freeAi.credits.showError.claim.message": "Enable to claim credits",
 	"freeAi.credits.showWarning.workflow.activation.title": "You're using free OpenAI API credits",
-	"freeAi.credits.showWarning.workflow.activation.description": "To make sure your workflow runs smoothly in the future, replace the free OpenAI API credits with your own API key."
+	"freeAi.credits.showWarning.workflow.activation.description": "To make sure your workflow runs smoothly in the future, replace the free OpenAI API credits with your own API key.",
+	"insights.banner.title": "Production executions for the last {count} days",
+	"insights.banner.timeSaved.tooltip": "No estimate available yet. To see potential time savings, {link} to each workflow from workflow settings.",
+	"insights.banner.timeSaved.tooltip.link.text": "add time estimates",
+	"insights.banner.title.total": "Total",
+	"insights.banner.title.failed": "Failed",
+	"insights.banner.title.failureRate": "Failure rate",
+	"insights.banner.title.timeSaved": "Time saved",
+	"insights.banner.title.averageRunTime": "Avg. run time"
 }

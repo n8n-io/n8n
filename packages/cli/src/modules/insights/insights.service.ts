@@ -1,12 +1,19 @@
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
 import type { ExecutionStatus, IRun, WorkflowExecuteMode } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { SharedWorkflow } from '@/databases/entities/shared-workflow';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { OnShutdown } from '@/decorators/on-shutdown';
 import { InsightsMetadata } from '@/modules/insights/entities/insights-metadata';
 import { InsightsRaw } from '@/modules/insights/entities/insights-raw';
+
+import { InsightsConfig } from './insights.config';
+import { InsightsByPeriodRepository } from './repositories/insights-by-period.repository';
+import { InsightsRawRepository } from './repositories/insights-raw.repository';
+
+const config = Container.get(InsightsConfig);
 
 const shouldSkipStatus: Record<ExecutionStatus, boolean> = {
 	success: false,
@@ -35,7 +42,27 @@ const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
 
 @Service()
 export class InsightsService {
-	constructor(private readonly sharedWorkflowRepository: SharedWorkflowRepository) {}
+	private compactInsightsTimer: NodeJS.Timer | undefined;
+
+	constructor(
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
+		private readonly insightsRawRepository: InsightsRawRepository,
+	) {
+		const intervalMilliseconds = config.compactionIntervalMinutes * 60 * 1000;
+		this.compactInsightsTimer = setInterval(
+			async () => await this.compactInsights(),
+			intervalMilliseconds,
+		);
+	}
+
+	@OnShutdown()
+	shutdown() {
+		if (this.compactInsightsTimer !== undefined) {
+			clearInterval(this.compactInsightsTimer);
+			this.compactInsightsTimer = undefined;
+		}
+	}
 
 	async workflowExecuteAfterHandler(ctx: ExecutionLifecycleHooks, fullRunData: IRun) {
 		if (shouldSkipStatus[fullRunData.status] || shouldSkipMode[fullRunData.mode]) {
@@ -105,6 +132,50 @@ export class InsightsService {
 				event.value = ctx.workflowData.settings.timeSavedPerExecution;
 				await trx.insert(InsightsRaw, event);
 			}
+		});
+	}
+
+	async compactInsights() {
+		let numberOfCompactedRawData: number;
+
+		// Compact raw data to hourly aggregates
+		do {
+			numberOfCompactedRawData = await this.compactRawToHour();
+		} while (numberOfCompactedRawData > 0);
+
+		let numberOfCompactedHourData: number;
+
+		// Compact hourly data to daily aggregates
+		do {
+			numberOfCompactedHourData = await this.compactHourToDay();
+		} while (numberOfCompactedHourData > 0);
+	}
+
+	// Compacts raw data to hourly aggregates
+	async compactRawToHour() {
+		// Build the query to gather raw insights data for the batch
+		const batchQuery = this.insightsRawRepository.getRawInsightsBatchQuery(
+			config.compactionBatchSize,
+		);
+
+		return await this.insightsByPeriodRepository.compactSourceDataIntoInsightPeriod({
+			sourceBatchQuery: batchQuery.getSql(),
+			sourceTableName: this.insightsRawRepository.metadata.tableName,
+			periodUnit: 'hour',
+		});
+	}
+
+	// Compacts hourly data to daily aggregates
+	async compactHourToDay() {
+		// get hour data query for batching
+		const batchQuery = this.insightsByPeriodRepository.getPeriodInsightsBatchQuery(
+			'hour',
+			config.compactionBatchSize,
+		);
+
+		return await this.insightsByPeriodRepository.compactSourceDataIntoInsightPeriod({
+			sourceBatchQuery: batchQuery.getSql(),
+			periodUnit: 'day',
 		});
 	}
 }

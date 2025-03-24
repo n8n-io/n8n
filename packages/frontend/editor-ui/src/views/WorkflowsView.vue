@@ -61,6 +61,9 @@ import { useToast } from '@/composables/useToast';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useFolders } from '@/composables/useFolders';
 import { useUsageStore } from '@/stores/usage.store';
+import { useInsightsStore } from '@/features/insights/insights.store';
+import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
+import { useOverview } from '@/composables/useOverview';
 
 const SEARCH_DEBOUNCE_TIME = 300;
 const FILTERS_DEBOUNCE_TIME = 100;
@@ -102,9 +105,11 @@ const uiStore = useUIStore();
 const tagsStore = useTagsStore();
 const foldersStore = useFoldersStore();
 const usageStore = useUsageStore();
+const insightsStore = useInsightsStore();
 
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
+const overview = useOverview();
 
 const loading = ref(false);
 const breadcrumbsLoading = ref(false);
@@ -1213,7 +1218,13 @@ const onCreateWorkflowClick = () => {
 		@sort="onSortUpdated"
 	>
 		<template #header>
-			<ProjectHeader @create-folder="createFolderInCurrent" />
+			<ProjectHeader>
+				<InsightsSummary
+					v-if="overview.isOverviewSubPage"
+					:loading="insightsStore.summary.isLoading"
+					:summary="insightsStore.summary.state"
+				/>
+			</ProjectHeader>
 		</template>
 		<template v-if="foldersEnabled" #add-button>
 			<N8nTooltip
