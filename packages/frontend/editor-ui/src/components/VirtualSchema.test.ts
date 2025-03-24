@@ -3,7 +3,7 @@ import VirtualSchema from '@/components/VirtualSchema.vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { userEvent } from '@testing-library/user-event';
 import { cleanup, waitFor } from '@testing-library/vue';
-import { createPinia, setActivePinia } from 'pinia';
+import { setActivePinia } from 'pinia';
 import {
 	createTestNode,
 	defaultNodeDescriptions,
@@ -27,6 +27,7 @@ import { useSchemaPreviewStore } from '../stores/schemaPreview.store';
 import { usePostHog } from '../stores/posthog.store';
 import { useSettingsStore } from '../stores/settings.store';
 import { defaultSettings } from '../__tests__/defaults';
+import { createTestingPinia } from '@pinia/testing';
 
 const mockNode1 = createTestNode({
 	name: 'Manual Trigger',
@@ -64,6 +65,14 @@ const aiTool = createTestNode({
 	disabled: false,
 });
 
+const nodeWithCredential = createTestNode({
+	name: 'Notion',
+	type: 'n8n-nodes-base.notion',
+	typeVersion: 1,
+	credentials: { notionApi: { id: 'testId', name: 'testName' } },
+	disabled: false,
+});
+
 const unknownNodeType = createTestNode({
 	name: 'Unknown Node Type',
 	type: 'unknown',
@@ -75,15 +84,23 @@ const defaultNodes = [
 ];
 
 async function setupStore() {
-	const workflow = mock<IWorkflowDb>({
+	const workflow = {
 		id: '123',
 		name: 'Test Workflow',
 		connections: {},
 		active: true,
-		nodes: [mockNode1, mockNode2, disabledNode, ifNode, aiTool, unknownNodeType],
-	});
+		nodes: [
+			mockNode1,
+			mockNode2,
+			disabledNode,
+			ifNode,
+			aiTool,
+			unknownNodeType,
+			nodeWithCredential,
+		],
+	};
 
-	const pinia = createPinia();
+	const pinia = createTestingPinia({ stubActions: false });
 	setActivePinia(pinia);
 
 	const workflowsStore = useWorkflowsStore();
@@ -101,8 +118,12 @@ async function setupStore() {
 			name: IF_NODE_TYPE,
 			outputs: [NodeConnectionType.Main, NodeConnectionType.Main],
 		}),
+		mockNodeTypeDescription({
+			name: 'n8n-nodes-base.notion',
+			outputs: [NodeConnectionType.Main],
+		}),
 	]);
-	workflowsStore.workflow = workflow;
+	workflowsStore.workflow = workflow as IWorkflowDb;
 
 	return pinia;
 }
@@ -488,14 +509,6 @@ describe('VirtualSchema.vue', () => {
 		});
 
 		it('should track data pill drag and drop for schema preview', async () => {
-			useWorkflowsStore().pinData({
-				node: {
-					...mockNode2,
-					credentials: { myCredential: { id: 'myCredential', name: 'myCredential' } },
-				},
-				data: [],
-			});
-
 			const telemetry = useTelemetry();
 			const trackSpy = vi.spyOn(telemetry, 'track');
 			const posthogStore = usePostHog();
@@ -520,7 +533,7 @@ describe('VirtualSchema.vue', () => {
 
 			const { getAllByTestId } = renderComponent({
 				props: {
-					nodes: [{ name: mockNode2.name, indicies: [], depth: 1 }],
+					nodes: [{ name: nodeWithCredential.name, indicies: [], depth: 1 }],
 				},
 			});
 
@@ -645,5 +658,9 @@ describe('VirtualSchema.vue', () => {
 		});
 
 		expect(container).toMatchSnapshot();
+	});
+
+	it('should do something', () => {
+		expect(true).toBe(true);
 	});
 });
