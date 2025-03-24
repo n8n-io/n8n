@@ -1,21 +1,9 @@
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
-import {
-	userOperations,
-	userFields,
-	userPoolOperations,
-	userPoolFields,
-	groupOperations,
-	groupFields,
-} from './descriptions';
-import {
-	searchUserPools,
-	searchGroups,
-	searchUsers,
-	searchGroupsForUser,
-} from './generalFunctions/dataFetching';
-import { presendStringifyBody } from './generalFunctions/presendFunctions';
+import { group, user, userPool } from './descriptions';
+import { presendStringifyBody } from './helpers/utils';
+import { listSearch } from './methods';
 
 export class AwsCognito implements INodeType {
 	description: INodeTypeDescription = {
@@ -80,21 +68,13 @@ export class AwsCognito implements INodeType {
 					},
 				],
 			},
-			...userPoolOperations,
-			...userPoolFields,
-			...userOperations,
-			...userFields,
-			...groupOperations,
-			...groupFields,
+			...group.description,
+			...user.description,
+			...userPool.description,
 		],
 	};
 
 	methods = {
-		listSearch: {
-			searchUserPools,
-			searchGroups,
-			searchUsers,
-			searchGroupsForUser,
-		},
+		listSearch,
 	};
 }

@@ -7,7 +7,7 @@ import {
 	type INodeExecutionData,
 } from 'n8n-workflow';
 
-export async function handleErrorPostReceive(
+export async function handleError(
 	this: IExecuteSingleFunctions,
 	data: INodeExecutionData[],
 	response: IN8nHttpFullResponse,

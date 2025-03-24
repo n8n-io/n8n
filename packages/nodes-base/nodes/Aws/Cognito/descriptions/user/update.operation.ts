@@ -1,0 +1,234 @@
+import {
+	IExecuteSingleFunctions,
+	IHttpRequestOptions,
+	NodeApiError,
+	updateDisplayOptions,
+	type INodeProperties,
+} from 'n8n-workflow';
+import { parseRequestBody } from '../../helpers/utils';
+import { IUserAttributeInput } from '../../helpers/interfaces';
+
+const properties: INodeProperties[] = [
+	{
+		displayName: 'User Pool',
+		name: 'userPoolId',
+		required: true,
+		type: 'resourceLocator',
+		default: {
+			mode: 'list',
+			value: '',
+		},
+		description: 'The user pool where the users are managed',
+		routing: {
+			send: {
+				type: 'body',
+				property: 'UserPoolId',
+			},
+		},
+		modes: [
+			{
+				displayName: 'From list',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchUserPools',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[a-zA-Z0-9-]+_[0-9a-zA-Z]+$',
+							errorMessage: 'The ID must follow the pattern "xx-xx-xx_xxxxxx"',
+						},
+					},
+				],
+				placeholder: 'e.g. eu-central-1_ab12cdefgh',
+			},
+		],
+	},
+	{
+		displayName: 'User',
+		name: 'userName',
+		default: {
+			mode: 'list',
+			value: '',
+		},
+		description: 'Select the user you want to update',
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchUsers',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				hint: 'Enter the user ID',
+				placeholder: 'e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[\\w-]+-[0-9a-zA-Z]+$',
+							errorMessage: 'The ID must follow the pattern "xxxxxx-xxxxxxxxxxx"',
+						},
+					},
+				],
+			},
+		],
+		routing: {
+			send: {
+				type: 'body',
+				property: 'Username',
+			},
+		},
+		required: true,
+		type: 'resourceLocator',
+	},
+	{
+		displayName: 'User Attributes',
+		name: 'userAttributes',
+		type: 'fixedCollection',
+		placeholder: 'Add Attribute',
+		default: {
+			attributes: [],
+		},
+		required: true,
+		description: 'Attributes to update for the user',
+		typeOptions: {
+			multipleValues: true,
+		},
+		routing: {
+			send: {
+				preSend: [
+					async function (
+						this: IExecuteSingleFunctions,
+						requestOptions: IHttpRequestOptions,
+					): Promise<IHttpRequestOptions> {
+						const attributes = this.getNodeParameter(
+							'userAttributes.attributes',
+							[],
+						) as IUserAttributeInput[];
+
+						const body = parseRequestBody(requestOptions.body);
+
+						body.UserAttributes = attributes.map(
+							({ attributeType, standardName, customName, Value }) => {
+								if (!Value || !attributeType || !(standardName || customName)) {
+									throw new NodeApiError(this.getNode(), {
+										message: 'Invalid User Attribute',
+										description: 'Each attribute must have a valid name and value.',
+									});
+								}
+
+								const attributeName =
+									attributeType === 'standard'
+										? standardName
+										: `custom:${customName?.startsWith('custom:') ? customName : customName}`;
+
+								return { Name: attributeName, Value };
+							},
+						);
+
+						requestOptions.body = JSON.stringify(body);
+						return requestOptions;
+					},
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Attributes',
+				name: 'attributes',
+				values: [
+					{
+						displayName: 'Attribute Type',
+						name: 'attributeType',
+						type: 'options',
+						default: 'standard',
+						options: [
+							{
+								name: 'Standard Attribute',
+								value: 'standard',
+							},
+							{
+								name: 'Custom Attribute',
+								value: 'custom',
+							},
+						],
+					},
+					{
+						displayName: 'Standard Attribute',
+						name: 'standardName',
+						type: 'options',
+						default: 'address',
+						options: [
+							{ name: 'Address', value: 'address' },
+							{ name: 'Birthdate', value: 'birthdate' },
+							{ name: 'Email', value: 'email' },
+							{ name: 'Family Name', value: 'family_name' },
+							{ name: 'Gender', value: 'gender' },
+							{ name: 'Given Name', value: 'given_name' },
+							{ name: 'Locale', value: 'locale' },
+							{ name: 'Middle Name', value: 'middle_name' },
+							{ name: 'Name', value: 'name' },
+							{ name: 'Nickname', value: 'nickname' },
+							{ name: 'Phone Number', value: 'phone_number' },
+							{ name: 'Preferred Username', value: 'preferred_username' },
+							{ name: 'Profile Picture', value: 'profilepicture' },
+							{ name: 'Updated At', value: 'updated_at' },
+							{ name: 'User Sub', value: 'sub' },
+							{ name: 'Website', value: 'website' },
+							{ name: 'Zone Info', value: 'zoneinfo' },
+						],
+						displayOptions: {
+							show: {
+								attributeType: ['standard'],
+							},
+						},
+					},
+					{
+						displayName: 'Custom Attribute Name',
+						name: 'customName',
+						type: 'string',
+						default: '',
+						placeholder: 'custom:myAttribute',
+						description: 'The name of the custom attribute (must start with "custom:")',
+						displayOptions: {
+							show: {
+								attributeType: ['custom'],
+							},
+						},
+					},
+					{
+						displayName: 'Value',
+						name: 'Value',
+						type: 'string',
+						default: '',
+						description: 'The value of the attribute',
+					},
+				],
+			},
+		],
+	},
+];
+
+const displayOptions = {
+	show: {
+		resource: ['user'],
+		operation: ['update'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
