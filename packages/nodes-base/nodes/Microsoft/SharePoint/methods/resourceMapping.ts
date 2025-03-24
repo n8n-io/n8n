@@ -37,8 +37,8 @@ function mapType(column: IListColumnType): FieldType | undefined {
 export async function getMappingColumns(
 	this: ILoadOptionsFunctions,
 ): Promise<ResourceMapperFields> {
-	const site = this.getNodeParameter('site.value') as string;
-	const list = this.getNodeParameter('list.value') as string;
+	const site = this.getNodeParameter('site', undefined, { extractValue: true }) as string;
+	const list = this.getNodeParameter('list', undefined, { extractValue: true }) as string;
 	const operation = this.getNodeParameter('operation') as string;
 
 	const response = await microsoftSharePointApiRequest.call(

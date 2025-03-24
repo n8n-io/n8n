@@ -13,7 +13,7 @@ export async function getFolders(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const site = this.getNodeParameter('site.value') as string;
+	const site = this.getNodeParameter('site', undefined, { extractValue: true }) as string;
 
 	let response: any;
 	if (paginationToken) {
@@ -65,8 +65,8 @@ export async function getFiles(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const site = this.getNodeParameter('site.value') as string;
-	const folder = this.getNodeParameter('folder.value') as string;
+	const site = this.getNodeParameter('site', undefined, { extractValue: true }) as string;
+	const folder = this.getNodeParameter('folder', undefined, { extractValue: true }) as string;
 
 	let response: any;
 	if (paginationToken) {
@@ -117,8 +117,8 @@ export async function getItems(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const site = this.getNodeParameter('site.value') as string;
-	const list = this.getNodeParameter('list.value') as string;
+	const site = this.getNodeParameter('site', undefined, { extractValue: true }) as string;
+	const list = this.getNodeParameter('list', undefined, { extractValue: true }) as string;
 
 	let response: any;
 	if (paginationToken) {
@@ -167,7 +167,7 @@ export async function getLists(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const site = this.getNodeParameter('site.value') as string;
+	const site = this.getNodeParameter('site', undefined, { extractValue: true }) as string;
 
 	let response: any;
 	if (paginationToken) {

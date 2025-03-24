@@ -101,8 +101,8 @@ export async function itemColumnsPreSend(
 
 	if (mapperValue.matchingColumns?.length > 0) {
 		if (!mapperValue.matchingColumns.includes('id')) {
-			const site = this.getNodeParameter('site.value') as string;
-			const list = this.getNodeParameter('list.value') as string;
+			const site = this.getNodeParameter('site', undefined, { extractValue: true }) as string;
+			const list = this.getNodeParameter('list', undefined, { extractValue: true }) as string;
 
 			const response = await microsoftSharePointApiRequest.call(
 				this,
