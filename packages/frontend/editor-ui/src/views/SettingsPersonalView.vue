@@ -16,6 +16,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import type { MfaModalEvents } from '@/event-bus/mfa';
 import { promptMfaCodeBus } from '@/event-bus/mfa';
+import type { BaseTextKey } from '@/plugins/i18n';
 
 type UserBasicDetailsForm = {
 	firstName: string;
@@ -36,7 +37,7 @@ const formInputs = ref<null | IFormInputs>(null);
 const formBus = createFormEventBus();
 const readyToSubmit = ref(false);
 const currentSelectedTheme = ref(useUIStore().theme);
-const themeOptions = ref<Array<{ name: ThemeOption; label: string }>>([
+const themeOptions = ref<Array<{ name: ThemeOption; label: BaseTextKey }>>([
 	{
 		name: 'system',
 		label: 'settings.personal.theme.systemDefault',
