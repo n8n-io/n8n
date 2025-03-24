@@ -1,17 +1,16 @@
 import type { InsightsSummary } from '@n8n/api-types';
+import { ListInsightsWorkflowQueryDto } from '@n8n/api-types';
 import type {
 	InsightsByTime,
 	InsightsByWorkflow,
 } from '@n8n/api-types/src/schemas/insights.schema';
 
-import { Get, GlobalScope, RestController } from '@/decorators';
+import { Get, GlobalScope, Query, RestController } from '@/decorators';
 import { paginationListQueryMiddleware } from '@/middlewares/list-query/pagination';
 import { sortByQueryMiddleware } from '@/middlewares/list-query/sort-by';
-import { ListQuery } from '@/requests';
+import { AuthenticatedRequest } from '@/requests';
 
 import { InsightsService } from './insights.service';
-import type { InsightByWorkflowSortBy } from './repositories/insights-by-period.repository';
-import { insightsByWorkflowSortingFields } from './repositories/insights-by-period.repository';
 
 @RestController('/insights')
 export class InsightsController {
@@ -26,23 +25,16 @@ export class InsightsController {
 	// TODO: api test for this
 	@Get('/by-workflow', { middlewares: [paginationListQueryMiddleware, sortByQueryMiddleware] })
 	@GlobalScope('insights:list')
-	async getInsightsByWorkflow(req: ListQuery.Options): Promise<InsightsByWorkflow> {
-		let sortBy: InsightByWorkflowSortBy = 'total:asc'; // Provide a default value
-		if (req.sortBy) {
-			const sortByInfo = req.sortBy.split(':');
-			if (
-				insightsByWorkflowSortingFields.includes(sortByInfo[0]) &&
-				['asc', 'desc'].includes(sortByInfo[1])
-			) {
-				sortBy = req.sortBy as InsightByWorkflowSortBy;
-			}
-		}
-
+	async getInsightsByWorkflow(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Query payload: ListInsightsWorkflowQueryDto,
+	): Promise<InsightsByWorkflow> {
 		return await this.insightsService.getInsightsByWorkflow({
 			nbDays: 14, // TODO: extract into proper constant
-			skip: req.skip,
-			take: req.take,
-			sortBy,
+			skip: payload.skip,
+			take: payload.take,
+			sortBy: payload.sortBy,
 		});
 	}
 
