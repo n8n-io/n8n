@@ -62,7 +62,7 @@ export type PostgresNodeCredentials = {
 } & (
 	| { ssl?: 'disable' }
 	| ({
-			ssl: 'allow' | 'require';
+			ssl: 'require';
 	  } & PostgresNodeSSLOptions)
 ) &
 	(
@@ -74,8 +74,8 @@ export type PostgresNodeCredentials = {
 
 export type PostgresNodeSSLOptions = {
 	allowUnauthorizedCerts?: boolean;
-	servername: string;
-	caCert: string;
-	clientCert: string;
-	clientKey: string;
+	servername?: string;
+	caCert?: string;
+	clientCert?: string;
+	clientKey?: string;
 };

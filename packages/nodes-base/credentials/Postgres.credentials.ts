@@ -63,10 +63,6 @@ export class Postgres implements ICredentialType {
 			},
 			options: [
 				{
-					name: 'Allow',
-					value: 'allow',
-				},
-				{
 					name: 'Disable',
 					value: 'disable',
 				},
