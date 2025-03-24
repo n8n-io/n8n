@@ -49,9 +49,45 @@ export const groupOperations: INodeProperties[] = [
 
 export const groupFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
+	/*                                 group                                      */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Group',
+		name: 'groupId',
+		default: {
+			mode: 'list',
+			value: '',
+		},
+		description: 'Select the group to perform the operation on',
+		displayOptions: {
+			show: {
+				operation: ['delete', 'get', 'update'],
+				resource: ['group'],
+			},
+		},
+		modes: [
+			{
+				displayName: 'From list',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchGroups',
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'GroupId',
+				type: 'string',
+				placeholder: 'e.g. 0123kx3o1habcdf',
+			},
+		],
+		required: true,
+		type: 'resourceLocator',
+	},
+
+	/* -------------------------------------------------------------------------- */
 	/*                                 group:create                               */
 	/* -------------------------------------------------------------------------- */
-
 	{
 		displayName: 'Group Name',
 		name: 'name',
@@ -105,45 +141,13 @@ export const groupFields: INodeProperties[] = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 group:delete                               */
 	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Group',
-		name: 'groupId',
-		default: {
-			mode: 'list',
-			value: '',
-		},
-		description: 'Select the group to perform the operation on',
-		displayOptions: {
-			show: {
-				operation: ['delete', 'get', 'update'],
-				resource: ['group'],
-			},
-		},
-		modes: [
-			{
-				displayName: 'From list',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchGroups',
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'GroupId',
-				type: 'string',
-				placeholder: 'e.g. 0123kx3o1habcdf',
-			},
-		],
-		required: true,
-		type: 'resourceLocator',
-	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 group:getAll                               */
-	/* -------------------------------------------------------------------------- */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
@@ -272,6 +276,7 @@ export const groupFields: INodeProperties[] = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 group:update                               */
 	/* -------------------------------------------------------------------------- */

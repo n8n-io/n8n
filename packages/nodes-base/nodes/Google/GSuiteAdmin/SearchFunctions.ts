@@ -12,7 +12,6 @@ export async function searchUsers(this: ILoadOptionsFunctions): Promise<INodeLis
 		customer: 'my_customer',
 	};
 
-	// Perform the API request to list all users
 	const responseData = await googleApiRequestAllItems.call(
 		this,
 		'users',
@@ -22,15 +21,13 @@ export async function searchUsers(this: ILoadOptionsFunctions): Promise<INodeLis
 		qs,
 	);
 
-	// Handle cases where no users are found
-	if (!responseData || responseData.length === 0) {
+	if (!Array.isArray(responseData) || responseData.length === 0) {
 		return { results: [] };
 	}
 
-	//Map the API response
 	const results: INodeListSearchItems[] = responseData.map(
-		(user: { name?: { fullName?: string }; id?: string }) => ({
-			name: user.name?.fullName,
+		(user: { name?: { fullName?: string }; id: string }) => ({
+			name: user.name?.fullName ?? user.id,
 			value: user.id,
 		}),
 	);
@@ -43,7 +40,6 @@ export async function searchGroups(this: ILoadOptionsFunctions): Promise<INodeLi
 		customer: 'my_customer',
 	};
 
-	// Perform the API request to list all groups
 	const responseData = await googleApiRequestAllItems.call(
 		this,
 		'groups',
@@ -57,7 +53,6 @@ export async function searchGroups(this: ILoadOptionsFunctions): Promise<INodeLi
 		return { results: [] };
 	}
 
-	//Map the API response
 	const results: INodeListSearchItems[] = responseData.map(
 		(group: { name?: string; email?: string; id?: string }) => ({
 			name: group.name || group.email || 'Unnamed Group',
@@ -73,7 +68,6 @@ export async function searchDevices(this: ILoadOptionsFunctions): Promise<INodeL
 		customerId: 'my_customer',
 	};
 
-	// Perform the API request to list all ChromeOS devices
 	const responseData = await googleApiRequest.call(
 		this,
 		'GET',
@@ -82,11 +76,10 @@ export async function searchDevices(this: ILoadOptionsFunctions): Promise<INodeL
 		qs,
 	);
 
-	if (!responseData || !responseData.chromeosdevices || responseData.chromeosdevices.length === 0) {
+	if (!Array.isArray(responseData?.chromeosdevices) || responseData.chromeosdevices.length === 0) {
 		return { results: [] };
 	}
 
-	// Map the API response
 	const results: INodeListSearchItems[] = responseData.chromeosdevices.map(
 		(device: { deviceId?: string; serialNumber?: string }) => ({
 			name: device.serialNumber || 'Unknown Device',

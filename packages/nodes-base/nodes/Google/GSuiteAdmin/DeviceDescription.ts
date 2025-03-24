@@ -43,7 +43,7 @@ export const deviceOperations: INodeProperties[] = [
 
 export const deviceFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
-	/*                               device:get                                   */
+	/*                               device                                       */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Device',
@@ -79,6 +79,11 @@ export const deviceFields: INodeProperties[] = [
 			},
 		],
 	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                               device:get                                   */
+	/* -------------------------------------------------------------------------- */
+
 	/* -------------------------------------------------------------------------- */
 	/*                               device:getAll                                */
 	/* -------------------------------------------------------------------------- */
@@ -145,7 +150,7 @@ export const deviceFields: INodeProperties[] = [
 		type: 'boolean',
 		default: false,
 		description:
-			'Whether include devices from organizational units below your specified organizational unit',
+			'Whether to include devices from organizational units below your specified organizational unit',
 		displayOptions: {
 			show: {
 				operation: ['getAll'],
@@ -259,8 +264,9 @@ export const deviceFields: INodeProperties[] = [
 		],
 		description: 'Define sorting rules for the results',
 	},
+
 	/* -------------------------------------------------------------------------- */
-	/*                               device:update......                          */
+	/*                               device:update                                */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Update Fields',
@@ -291,7 +297,7 @@ export const deviceFields: INodeProperties[] = [
 				name: 'annotatedUser',
 				type: 'string',
 				default: '',
-				description: 'The annotated User of the device',
+				description: 'The annotated user of the device',
 				placeholder: 'e.g. help desk',
 			},
 			{
@@ -299,7 +305,7 @@ export const deviceFields: INodeProperties[] = [
 				name: 'annotatedLocation',
 				type: 'string',
 				default: '',
-				description: 'The annotated Location of the device',
+				description: 'The annotated location of the device',
 				placeholder: 'e.g. Mountain View help desk Chromebook',
 			},
 			{
@@ -307,7 +313,7 @@ export const deviceFields: INodeProperties[] = [
 				name: 'annotatedAssetId',
 				type: 'string',
 				default: '',
-				description: 'The annotated Asset ID of a device',
+				description: 'The annotated asset ID of a device',
 				placeholder: 'e.g. 1234567890',
 			},
 			{
@@ -349,7 +355,7 @@ export const deviceFields: INodeProperties[] = [
 				resource: ['device'],
 			},
 		},
-		default: 'Enable',
+		default: 'reenable',
 		description: 'Set the status of a device',
 	},
 ];

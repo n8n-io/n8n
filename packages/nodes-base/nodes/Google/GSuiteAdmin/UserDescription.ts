@@ -61,7 +61,7 @@ export const userOperations: INodeProperties[] = [
 
 export const userFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
-	/*                                 user:addToGroup                                */
+	/*                                 user                                       */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'User',
@@ -113,6 +113,10 @@ export const userFields: INodeProperties[] = [
 			},
 		],
 	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 user:addToGroup                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Group',
 		name: 'groupId',
@@ -146,6 +150,7 @@ export const userFields: INodeProperties[] = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 user:create                                */
 	/* -------------------------------------------------------------------------- */
@@ -300,8 +305,7 @@ export const userFields: INodeProperties[] = [
 										value: 'home_fax',
 									},
 									{
-										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-										name: 'isdn',
+										name: 'ISDN',
 										value: 'isdn',
 									},
 									{
@@ -333,8 +337,7 @@ export const userFields: INodeProperties[] = [
 										value: 'telex',
 									},
 									{
-										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-										name: 'tty tdd',
+										name: 'TTY TDD',
 										value: 'tty_tdd',
 									},
 									{
@@ -513,14 +516,6 @@ export const userFields: INodeProperties[] = [
 								displayName: 'Field Name or ID',
 								name: 'fieldName',
 								type: 'string',
-								// type: 'options',
-								// typeOptions: {
-								// 	loadOptionsDependsOn: [
-								// 		'additionalFields.test',
-								// 		'additionalFields.customFields.fieldValues[0].schemaName',
-								// 	],
-								// 	loadOptionsMethod: 'getSchemaFields',
-								// },
 								default: '',
 								required: true,
 								description: 'Enter a field name from the selected schema',
@@ -539,6 +534,7 @@ export const userFields: INodeProperties[] = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 user:get                                   */
 	/* -------------------------------------------------------------------------- */
@@ -586,13 +582,34 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		options: [
-			{ name: 'creationTime', value: 'creationTime' },
-			{ name: 'isAdmin', value: 'isAdmin' },
-			{ name: 'Kind', value: 'kind' },
-			{ name: 'lastLoginTime', value: 'lastLoginTime' },
-			{ name: 'Name', value: 'name' },
-			{ name: 'primaryEmail', value: 'primaryEmail' },
-			{ name: 'Suspended', value: 'suspended' },
+			{
+				name: 'creationTime',
+				value: 'creationTime',
+			},
+			{
+				name: 'isAdmin',
+				value: 'isAdmin',
+			},
+			{
+				name: 'Kind',
+				value: 'kind',
+			},
+			{
+				name: 'lastLoginTime',
+				value: 'lastLoginTime',
+			},
+			{
+				name: 'Name',
+				value: 'name',
+			},
+			{
+				name: 'primaryEmail',
+				value: 'primaryEmail',
+			},
+			{
+				name: 'Suspended',
+				value: 'suspended',
+			},
 		],
 		description: 'Fields to include in the response when "Select Included Fields" is chosen',
 	},
@@ -603,7 +620,7 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		options: [
 			{
-				name: 'Don’t Include',
+				name: "Don't Include",
 				value: 'basic',
 				description: 'Do not include any custom fields for the user',
 			},
@@ -646,6 +663,7 @@ export const userFields: INodeProperties[] = [
 		description:
 			'A comma-separated list of schema names. All fields from these schemas are fetched. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 user:getAll                                */
 	/* -------------------------------------------------------------------------- */
@@ -724,13 +742,34 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		options: [
-			{ name: 'creationTime', value: 'creationTime' },
-			{ name: 'isAdmin', value: 'isAdmin' },
-			{ name: 'Kind', value: 'kind' },
-			{ name: 'lastLoginTime', value: 'lastLoginTime' },
-			{ name: 'Name', value: 'name' },
-			{ name: 'primaryEmail', value: 'primaryEmail' },
-			{ name: 'Suspended', value: 'suspended' },
+			{
+				name: 'creationTime',
+				value: 'creationTime',
+			},
+			{
+				name: 'isAdmin',
+				value: 'isAdmin',
+			},
+			{
+				name: 'Kind',
+				value: 'kind',
+			},
+			{
+				name: 'lastLoginTime',
+				value: 'lastLoginTime',
+			},
+			{
+				name: 'Name',
+				value: 'name',
+			},
+			{
+				name: 'primaryEmail',
+				value: 'primaryEmail',
+			},
+			{
+				name: 'Suspended',
+				value: 'suspended',
+			},
 		],
 		description: 'Fields to include in the response when "Select Included Fields" is chosen',
 	},
@@ -747,7 +786,7 @@ export const userFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Don’t Include',
+				name: "Don't Include",
 				value: 'basic',
 				description: 'Do not include any custom fields for the user',
 			},
@@ -1004,7 +1043,7 @@ export const userFields: INodeProperties[] = [
 										value: 'home_fax',
 									},
 									{
-										name: 'Isdn',
+										name: 'ISDN',
 										value: 'isdn',
 									},
 									{
@@ -1036,7 +1075,7 @@ export const userFields: INodeProperties[] = [
 										value: 'telex',
 									},
 									{
-										name: 'Tty Tdd',
+										name: 'TTY TDD',
 										value: 'tty_tdd',
 									},
 									{
@@ -1171,11 +1210,6 @@ export const userFields: INodeProperties[] = [
 						description: 'Whether Assign Inventory Reporting Admin role',
 					},
 					{
-						name: 'Mobile Admin',
-						value: 'mobileAdmin',
-						description: 'Whether Assign Mobile Admin role',
-					},
-					{
 						name: 'Services Admin',
 						value: 'servicesAdmin',
 						description: 'Whether Assign Services Admin role',
@@ -1227,11 +1261,6 @@ export const userFields: INodeProperties[] = [
 								displayName: 'Field Name or ID',
 								name: 'fieldName',
 								type: 'string',
-								// type: 'options',
-								// typeOptions: {
-								// 	loadOptionsMethod: 'getSchemaFields',
-								// 	loadOptionsDependsOn: ['customFields.fieldValues.schema.schemaName'],
-								// },
 								default: '',
 								required: true,
 								description: 'Enter a field name from the selected schema',
