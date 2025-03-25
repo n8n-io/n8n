@@ -63,7 +63,7 @@ withDefaults(defineProps<RadioButtonProps>(), {
 	display: flex;
 	align-items: center;
 	border-radius: var(--border-radius-base);
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight-medium);
 	color: var(--color-text-base);
 	transition: background-color 0.2s ease;
 	cursor: pointer;

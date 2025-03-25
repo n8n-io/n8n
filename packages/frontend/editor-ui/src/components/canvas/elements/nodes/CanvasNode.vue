@@ -17,7 +17,6 @@ import type {
 	CanvasEventBusEvents,
 } from '@/types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
-import NodeIcon from '@/components/NodeIcon.vue';
 import CanvasNodeToolbar from '@/components/canvas/elements/nodes/CanvasNodeToolbar.vue';
 import CanvasNodeRenderer from '@/components/canvas/elements/nodes/CanvasNodeRenderer.vue';
 import CanvasHandleRenderer from '@/components/canvas/elements/handles/CanvasHandleRenderer.vue';
@@ -43,7 +42,6 @@ type Props = NodeProps<CanvasNodeData> & {
 	hovered?: boolean;
 	nearbyHovered?: boolean;
 	nodeTypeDescription: INodeTypeDescription;
-	simulatedNodeTypeDescription?: INodeTypeDescription;
 };
 
 const slots = defineSlots<{
@@ -152,14 +150,6 @@ const mappedOutputs = computed(() => {
 		...nonMainOutputs.value.map(nonMainOutputsMappingFn),
 	].filter((endpoint) => !!endpoint);
 });
-
-/**
- * Node icon
- */
-
-const nodeIconSize = computed(() =>
-	'configuration' in data.value.render.options && data.value.render.options.configuration ? 30 : 40,
-);
 
 /**
  * Endpoints
@@ -385,7 +375,7 @@ onBeforeUnmount(() => {
 		</template>
 
 		<CanvasNodeToolbar
-			v-else-if="nodeTypeDescription"
+			v-else
 			data-test-id="canvas-node-toolbar"
 			:read-only="readOnly"
 			:class="$style.canvasNodeToolbar"
@@ -402,15 +392,7 @@ onBeforeUnmount(() => {
 			@move="onMove"
 			@update="onUpdate"
 			@open:contextmenu="onOpenContextMenuFromNode"
-		>
-			<NodeIcon
-				:node-type="simulatedNodeTypeDescription ?? nodeTypeDescription"
-				:size="nodeIconSize"
-				:shrink="false"
-				:disabled="isDisabled"
-			/>
-			<!-- @TODO :color-default="iconColorDefault"-->
-		</CanvasNodeRenderer>
+		/>
 
 		<CanvasNodeTrigger
 			v-if="

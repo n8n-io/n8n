@@ -11,7 +11,7 @@ import type {
 	INodeTypeDescription,
 	INodeIssues,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeHelpers, Workflow } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers, Workflow } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
@@ -54,8 +54,8 @@ export const mockNodeTypeDescription = ({
 	icon = 'fa:pen',
 	version = 1,
 	credentials = [],
-	inputs = [NodeConnectionType.Main],
-	outputs = [NodeConnectionType.Main],
+	inputs = [NodeConnectionTypes.Main],
+	outputs = [NodeConnectionTypes.Main],
 	codex = undefined,
 	properties = [],
 }: {
@@ -86,6 +86,7 @@ export const mockNodeTypeDescription = ({
 		codex,
 		credentials,
 		documentationUrl: 'https://docs',
+		iconUrl: 'nodes/test-node/icon.svg',
 		webhooks: undefined,
 	});
 

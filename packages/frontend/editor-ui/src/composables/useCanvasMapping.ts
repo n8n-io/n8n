@@ -38,7 +38,7 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	NodeHelpers,
 	SEND_AND_WAIT_OPERATION,
 	WAIT_INDEFINITELY,
@@ -57,6 +57,7 @@ import { MarkerType } from '@vue-flow/core';
 import { useNodeHelpers } from './useNodeHelpers';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
+import { getNodeIconSource } from '../utils/nodeIcon';
 
 export function useCanvasMapping({
 	nodes,
@@ -93,6 +94,13 @@ export function useCanvasMapping({
 	}
 
 	function createDefaultNodeRenderType(node: INodeUi): CanvasNodeDefaultRender {
+		const nodeType = nodeTypeDescriptionByNodeId.value[node.id];
+		const icon = getNodeIconSource(
+			simulatedNodeTypeDescriptionByNodeId.value[node.id]
+				? simulatedNodeTypeDescriptionByNodeId.value[node.id]
+				: nodeType,
+		);
+
 		return {
 			type: CanvasNodeRenderType.Default,
 			options: {
@@ -107,6 +115,7 @@ export function useCanvasMapping({
 				},
 				tooltip: nodeTooltipById.value[node.id],
 				dirtiness: dirtinessByName.value[node.name],
+				icon,
 			},
 		};
 	}
@@ -201,7 +210,7 @@ export function useCanvasMapping({
 		const labelSizes: CanvasNodeDefaultRenderLabelSize[] = ['small', 'medium', 'large'];
 		const labelSizeIndexes = ports.reduce<number[]>(
 			(sizeAcc, input) => {
-				if (input.type === NodeConnectionType.Main) {
+				if (input.type === NodeConnectionTypes.Main) {
 					sizeAcc.push(getLabelSize(input.label ?? ''));
 				}
 
@@ -517,8 +526,8 @@ export function useCanvasMapping({
 		);
 	});
 
-	const simulatedNodeTypesById = computed(() => {
-		return nodes.value.reduce<Record<string, string | undefined>>((acc, node) => {
+	const simulatedNodeTypeDescriptionByNodeId = computed(() => {
+		return nodes.value.reduce<Record<string, INodeTypeDescription | undefined>>((acc, node) => {
 			if ([SIMULATE_NODE_TYPE, SIMULATE_TRIGGER_NODE_TYPE].includes(node.type)) {
 				const icon = node.parameters?.icon as string;
 				const iconValue = workflowObject.value.expression.getSimpleParameterValue(
@@ -529,7 +538,7 @@ export function useCanvasMapping({
 				);
 
 				if (iconValue && typeof iconValue === 'string') {
-					acc[node.id] = iconValue;
+					acc[node.id] = nodeTypesStore.getNodeType(iconValue);
 				}
 			}
 
@@ -548,7 +557,6 @@ export function useCanvasMapping({
 				subtitle: nodeSubtitleById.value[node.id] ?? '',
 				type: node.type,
 				typeVersion: node.typeVersion,
-				simulatedType: simulatedNodeTypesById.value[node.id],
 				disabled: node.disabled,
 				inputs: nodeInputsById.value[node.id] ?? [],
 				outputs: nodeOutputsById.value[node.id] ?? [],
@@ -680,6 +688,7 @@ export function useCanvasMapping({
 	}
 
 	return {
+		simulatedNodeTypeDescriptionByNodeId,
 		additionalNodePropertiesById,
 		nodeExecutionRunDataOutputMapById,
 		nodeIssuesById,

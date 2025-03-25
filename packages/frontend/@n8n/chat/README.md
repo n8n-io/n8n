@@ -2,10 +2,10 @@
 This is an embeddable Chat widget for n8n. It allows the execution of AI-Powered Workflows through a Chat window.
 
 **Windowed Example**
-![n8n Chat Windowed](https://raw.githubusercontent.com/n8n-io/n8n/master/packages/%40n8n/chat/resources/images/windowed.png)
+![n8n Chat Windowed](https://raw.githubusercontent.com/n8n-io/n8n/master/packages/frontend/%40n8n/chat/resources/images/windowed.png)
 
 **Fullscreen Example**
-![n8n Chat Fullscreen](https://raw.githubusercontent.com/n8n-io/n8n/master/packages/%40n8n/chat/resources/images/fullscreen.png)
+![n8n Chat Fullscreen](https://raw.githubusercontent.com/n8n-io/n8n/master/packages/frontend/%40n8n/chat/resources/images/fullscreen.png)
 
 ## Prerequisites
 Create a n8n workflow which you want to execute via chat. The workflow has to be triggered using a **Chat Trigger** node.

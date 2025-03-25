@@ -1,29 +1,62 @@
 {
     "type": "object",
     "properties": {
-        "Owner": {
+        "$approval": {
             "type": "object",
             "properties": {
-                "name": {
-                    "type": "string"
+                "approve": {
+                    "type": "boolean"
                 },
-                "id": {
-                    "type": "string"
+                "delegate": {
+                    "type": "boolean"
                 },
-                "email": {
-                    "type": "string"
+                "reject": {
+                    "type": "boolean"
+                },
+                "resubmit": {
+                    "type": "boolean"
+                },
+                "takeover": {
+                    "type": "boolean"
                 }
-            },
-            "required": [
-                "name",
-                "id",
-                "email"
-            ]
+            }
+        },
+        "$approval_state": {
+            "type": "string"
+        },
+        "$approved": {
+            "type": "boolean"
         },
         "$currency_symbol": {
             "type": "string"
         },
+        "$editable": {
+            "type": "boolean"
+        },
         "$field_states": {
+            "type": "null"
+        },
+        "$in_merge": {
+            "type": "boolean"
+        },
+        "$layout_id": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "$locked_for_me": {
+            "type": "boolean"
+        },
+        "$process_flow": {
+            "type": "boolean"
+        },
+        "$review": {
             "type": "null"
         },
         "$review_process": {
@@ -38,154 +71,65 @@
                 "resubmit": {
                     "type": "boolean"
                 }
-            },
-            "required": [
-                "approve",
-                "reject",
-                "resubmit"
-            ]
-        },
-        "$layout_id": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "name",
-                "id"
-            ]
-        },
-        "Reason_For_Loss__s": {
-            "type": "null"
-        },
-        "Modified_By": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "name",
-                "id",
-                "email"
-            ]
-        },
-        "$review": {
-            "type": "null"
+            }
         },
         "$state": {
             "type": "string"
         },
-        "$process_flow": {
-            "type": "boolean"
-        },
-        "Deal_Name": {
-            "type": "string"
-        },
-        "$locked_for_me": {
-            "type": "boolean"
-        },
         "Account_Name": {
             "type": "object",
             "properties": {
-                "name": {
-                    "type": "string"
-                },
                 "id": {
                     "type": "string"
+                },
+                "name": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "name",
-                "id"
-            ]
-        },
-        "id": {
-            "type": "string"
-        },
-        "$approved": {
-            "type": "boolean"
-        },
-        "$approval": {
-            "type": "object",
-            "properties": {
-                "delegate": {
-                    "type": "boolean"
-                },
-                "takeover": {
-                    "type": "boolean"
-                },
-                "approve": {
-                    "type": "boolean"
-                },
-                "reject": {
-                    "type": "boolean"
-                },
-                "resubmit": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "delegate",
-                "approve",
-                "reject",
-                "resubmit"
-            ]
-        },
-        "Modified_Time": {
-            "type": "string"
-        },
-        "Created_Time": {
-            "type": "string"
-        },
-        "Probability": {
-            "type": "integer"
-        },
-        "$editable": {
-            "type": "boolean"
-        },
-        "$in_merge": {
-            "type": "boolean"
-        },
-        "Locked__s": {
-            "type": "boolean"
+            }
         },
         "Created_By": {
             "type": "object",
             "properties": {
-                "name": {
+                "email": {
                     "type": "string"
                 },
                 "id": {
                     "type": "string"
                 },
-                "email": {
+                "name": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "name",
-                "id",
-                "email"
-            ]
+            }
         },
-        "$approval_state": {
+        "Created_Time": {
             "type": "string"
+        },
+        "Deal_Name": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "Locked__s": {
+            "type": "boolean"
+        },
+        "Modified_Time": {
+            "type": "string"
+        },
+        "Owner": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
         }
     },
-    "required": [
-        "id"
-    ]
+    "version": 1
 }

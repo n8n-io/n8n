@@ -1,16 +1,13 @@
 {
     "type": "object",
     "properties": {
+        "contactId": {
+            "type": "string"
+        },
         "task": {
             "type": "object",
             "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "dueDate": {
+                "businessId": {
                     "type": "string"
                 },
                 "completed": {
@@ -19,28 +16,20 @@
                 "contactId": {
                     "type": "string"
                 },
-                "businessId": {
+                "dueDate": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "title": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "id",
-                "title",
-                "dueDate",
-                "completed",
-                "contactId"
-            ]
+            }
         },
         "traceId": {
             "type": "string"
-        },
-        "contactId": {
-            "type": "string"
         }
     },
-    "required": [
-        "task",
-        "traceId",
-        "contactId"
-    ]
+    "version": 1
 }

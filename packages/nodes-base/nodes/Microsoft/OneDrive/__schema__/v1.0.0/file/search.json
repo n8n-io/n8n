@@ -1,24 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "createdDateTime": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "lastModifiedDateTime": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "size": {
-            "type": "integer"
-        },
-        "webUrl": {
-            "type": "string"
-        },
         "createdBy": {
             "type": "object",
             "properties": {
@@ -31,15 +13,34 @@
                         "email": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "displayName"
-                    ]
+                    }
                 }
-            },
-            "required": [
-                "user"
-            ]
+            }
+        },
+        "createdDateTime": {
+            "type": "string"
+        },
+        "file": {
+            "type": "object",
+            "properties": {
+                "mimeType": {
+                    "type": "string"
+                }
+            }
+        },
+        "fileSystemInfo": {
+            "type": "object",
+            "properties": {
+                "createdDateTime": {
+                    "type": "string"
+                },
+                "lastModifiedDateTime": {
+                    "type": "string"
+                }
+            }
+        },
+        "id": {
+            "type": "string"
         },
         "lastModifiedBy": {
             "type": "object",
@@ -53,15 +54,15 @@
                         "email": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "displayName"
-                    ]
+                    }
                 }
-            },
-            "required": [
-                "user"
-            ]
+            }
+        },
+        "lastModifiedDateTime": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
         },
         "parentReference": {
             "type": "object",
@@ -78,38 +79,14 @@
                 "siteId": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "driveId",
-                "driveType",
-                "id"
-            ]
+            }
         },
-        "file": {
-            "type": "object",
-            "properties": {
-                "mimeType": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "mimeType"
-            ]
+        "size": {
+            "type": "integer"
         },
-        "fileSystemInfo": {
-            "type": "object",
-            "properties": {
-                "createdDateTime": {
-                    "type": "string"
-                },
-                "lastModifiedDateTime": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "createdDateTime",
-                "lastModifiedDateTime"
-            ]
+        "webUrl": {
+            "type": "string"
         }
-    }
+    },
+    "version": 1
 }

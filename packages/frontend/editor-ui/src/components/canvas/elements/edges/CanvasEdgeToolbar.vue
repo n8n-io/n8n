@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import { useI18n } from '@/composables/useI18n';
 import { computed, useCssModule } from 'vue';
-import { NodeConnectionType } from 'n8n-workflow';
+import type { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 const emit = defineEmits<{
 	add: [];
@@ -20,7 +21,7 @@ const classes = computed(() => ({
 	[$style.canvasEdgeToolbar]: true,
 }));
 
-const isAddButtonVisible = computed(() => props.type === NodeConnectionType.Main);
+const isAddButtonVisible = computed(() => props.type === NodeConnectionTypes.Main);
 
 function onAdd() {
 	emit('add');

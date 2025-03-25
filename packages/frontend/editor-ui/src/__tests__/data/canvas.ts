@@ -11,7 +11,8 @@ import type {
 	ExecutionOutputMapData,
 } from '@/types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
-import { NodeConnectionType } from 'n8n-workflow';
+import type { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import type { GraphEdge, GraphNode, ViewportTransform } from '@vue-flow/core';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -172,7 +173,7 @@ export function createCanvasNodeProvide({
 export function createCanvasHandleProvide({
 	label = 'Handle',
 	mode = CanvasConnectionMode.Input,
-	type = NodeConnectionType.Main,
+	type = NodeConnectionTypes.Main,
 	index = 0,
 	runData,
 	isConnected = false,
@@ -190,7 +191,9 @@ export function createCanvasHandleProvide({
 	isReadOnly?: boolean;
 	isRequired?: boolean;
 } = {}) {
-	const maxConnections = [NodeConnectionType.Main, NodeConnectionType.AiTool].includes(type)
+	const maxConnections = (
+		[NodeConnectionTypes.Main, NodeConnectionTypes.AiTool] as NodeConnectionType[]
+	).includes(type)
 		? Infinity
 		: 1;
 	return {
