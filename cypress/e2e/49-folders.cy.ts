@@ -64,7 +64,7 @@ describe('Folders', () => {
 	});
 
 	describe('Create and navigate folders', () => {
-		it.only('should create folder from the project header', () => {
+		it('should create folder from the project header', () => {
 			// 1. In project root
 			getPersonalProjectMenuItem().click();
 			createFolderFromProjectHeader('My Folder');
