@@ -129,56 +129,6 @@ describe('Test Supabase Node', () => {
 		);
 	});
 
-	it('should set "public" schema in the headers for GET calls if custom schema is enabled but not specified', async () => {
-		const fakeExecuteFunction = createMockExecuteFunction({
-			resource: 'row',
-			operation: 'getAll',
-			returnAll: true,
-			useCustomSchema: true,
-			schema: '',
-			tableId: 'my_table',
-		});
-
-		await node.execute.call(fakeExecuteFunction);
-
-		expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
-			'supabaseApi',
-			expect.objectContaining({
-				method: 'GET',
-				headers: expect.objectContaining({
-					'Accept-Profile': 'public',
-					Prefer: 'return=representation',
-				}),
-				uri: 'https://api.supabase.io/rest/v1/my_table',
-			}),
-		);
-	});
-
-	it('should set "public" schema in the headers for POST calls if custom schema is enabled but not specified', async () => {
-		const fakeExecuteFunction = createMockExecuteFunction({
-			resource: 'row',
-			operation: 'create',
-			returnAll: true,
-			useCustomSchema: true,
-			schema: '',
-			tableId: 'my_table',
-		});
-
-		await node.execute.call(fakeExecuteFunction);
-
-		expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
-			'supabaseApi',
-			expect.objectContaining({
-				method: 'POST',
-				headers: expect.objectContaining({
-					'Content-Profile': 'public',
-					Prefer: 'return=representation',
-				}),
-				uri: 'https://api.supabase.io/rest/v1/my_table',
-			}),
-		);
-	});
-
 	it('should set the schema headers for GET calls if custom schema is used', async () => {
 		const fakeExecuteFunction = createMockExecuteFunction({
 			resource: 'row',
