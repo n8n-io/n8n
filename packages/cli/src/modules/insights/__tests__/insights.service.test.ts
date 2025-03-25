@@ -664,12 +664,11 @@ describe('compaction', () => {
 		])('$name', async ({ periodStarts, batches }) => {
 			// ARRANGE
 			const insightsService = Container.get(InsightsService);
-			const insightsRawRepository = Container.get(InsightsRawRepository);
 			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
 
 			const project = await createTeamProject();
 			const workflow = await createWorkflow({}, project);
-			// create before so we can create the raw events in parallel
+
 			await createMetadata(workflow);
 			for (const periodStart of periodStarts) {
 				await createCompactedInsightsEvent(workflow, {
@@ -685,7 +684,10 @@ describe('compaction', () => {
 
 			// ASSERT
 			expect(compactedRows).toBe(periodStarts.length);
-			await expect(insightsRawRepository.count()).resolves.toBe(0);
+			const hourInsights = (await insightsByPeriodRepository.find()).filter(
+				(insight) => insight.periodUnit === 'hour',
+			);
+			expect(hourInsights).toBeEmptyArray();
 			const allCompacted = await insightsByPeriodRepository.find({ order: { periodStart: 1 } });
 			expect(allCompacted).toHaveLength(batches.length);
 			for (const [index, compacted] of allCompacted.entries()) {
@@ -700,7 +702,6 @@ describe('compaction', () => {
 
 			const project = await createTeamProject();
 			const workflow = await createWorkflow({}, project);
-			// create before so we can create the raw events in parallel
 			await createMetadata(workflow);
 			await createCompactedInsightsEvent(workflow, {
 				type: 'success',
