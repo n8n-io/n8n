@@ -1,9 +1,5 @@
-import type { InsightsSummary } from '@n8n/api-types';
 import { ListInsightsWorkflowQueryDto } from '@n8n/api-types';
-import type {
-	InsightsByTime,
-	InsightsByWorkflow,
-} from '@n8n/api-types/src/schemas/insights.schema';
+import type { InsightsSummary, InsightsByTime, InsightsByWorkflow } from '@n8n/api-types';
 
 import { Get, GlobalScope, Query, RestController } from '@/decorators';
 import { paginationListQueryMiddleware } from '@/middlewares/list-query/pagination';
