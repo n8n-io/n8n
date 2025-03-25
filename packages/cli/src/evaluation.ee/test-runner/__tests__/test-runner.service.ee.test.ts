@@ -428,7 +428,6 @@ describe('TestRunnerService', () => {
 		expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
 		expect(testRunRepository.markAsCompleted).toHaveBeenCalledWith('test-run-id', {
 			metric1: 0.75,
-			metric2: 50,
 		});
 
 		expect(testRunRepository.incrementPassed).toHaveBeenCalledTimes(2);

@@ -231,7 +231,10 @@ export class TestRunnerService {
 	/**
 	 * Sync the metrics of the test definition with the evaluation workflow.
 	 */
-	async syncMetrics(testDefinitionId: string, evaluationWorkflow: IWorkflowBase) {
+	async syncMetrics(
+		testDefinitionId: string,
+		evaluationWorkflow: IWorkflowBase,
+	): Promise<Set<string>> {
 		const usedTestMetricNames = await this.getUsedTestMetricNames(evaluationWorkflow);
 		const existingTestMetrics = await this.testMetricRepository.find({
 			where: {
@@ -265,6 +268,8 @@ export class TestRunnerService {
 
 			await this.testMetricRepository.delete(metric.id);
 		});
+
+		return usedTestMetricNames;
 	}
 
 	/**
@@ -330,21 +335,6 @@ export class TestRunnerService {
 		const metricsResult = metricsData.reduce((acc, curr) => ({ ...acc, ...curr }), {}) ?? {};
 
 		return metricsResult;
-	}
-
-	/**
-	 * Get the metrics to collect from the evaluation workflow execution results.
-	 */
-	private async getTestMetricNames(testDefinitionId: string) {
-		const metrics = await this.testMetricRepository.find({
-			where: {
-				testDefinition: {
-					id: testDefinitionId,
-				},
-			},
-		});
-
-		return new Set(metrics.map((metric) => metric.name));
 	}
 
 	/**
@@ -426,10 +416,7 @@ export class TestRunnerService {
 			);
 
 			// Sync the metrics of the test definition with the evaluation workflow
-			await this.syncMetrics(test.id, evaluationWorkflow);
-
-			// Get the metrics to collect from the evaluation workflow
-			const testMetricNames = await this.getTestMetricNames(test.id);
+			const testMetricNames = await this.syncMetrics(test.id, evaluationWorkflow);
 
 			// 2. Run over all the test cases
 			const pastExecutionIds = pastExecutions.map((e) => e.id);
