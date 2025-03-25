@@ -1,5 +1,3 @@
-import type { IHttpRequestOptions } from 'n8n-workflow';
-
 export interface ICosmosDbCredentials {
 	account: string;
 	key: string;

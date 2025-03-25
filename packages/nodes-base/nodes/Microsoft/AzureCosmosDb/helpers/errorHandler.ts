@@ -35,7 +35,6 @@ export async function handleError(
 ): Promise<INodeExecutionData[]> {
 	if (String(response.statusCode).startsWith('4') || String(response.statusCode).startsWith('5')) {
 		const resource = this.getNodeParameter('resource') as string;
-		const operation = this.getNodeParameter('operation') as string;
 		const error = response.body as IErrorResponse;
 		let errorMessage = error.message;
 		let errorDetails: string[] | undefined = undefined;
