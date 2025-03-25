@@ -333,6 +333,10 @@ const canUserRegisterCommunityPlus = computed(
 	() => getResourcePermissions(usersStore.currentUser?.globalScopes).community.register,
 );
 
+const showRegisteredCommunityCTA = computed(
+	() => isSelfHostedDeployment.value && !foldersEnabled.value && canUserRegisterCommunityPlus.value,
+);
+
 /**
  * WATCHERS, STORE SUBSCRIPTIONS AND EVENT BUS HANDLERS
  */
@@ -1044,7 +1048,7 @@ const renameFolder = async (folderId: string) => {
 
 const createFolderInCurrent = async () => {
 	// Show the community plus enrollment modal if the user is self-hosted, and hasn't enabled folders
-	if (isSelfHostedDeployment.value && !foldersEnabled.value && canUserRegisterCommunityPlus.value) {
+	if (showRegisteredCommunityCTA.value) {
 		uiStore.openModalWithData({
 			name: COMMUNITY_PLUS_ENROLLMENT_MODAL,
 			data: { customHeading: i18n.baseText('folders.registeredCommunity.cta.heading') },
@@ -1126,7 +1130,7 @@ const moveWorkflowToFolder = async (payload: {
 	name: string;
 	parentFolderId?: string;
 }) => {
-	if (isSelfHostedDeployment.value && canUserRegisterCommunityPlus.value) {
+	if (showRegisteredCommunityCTA.value) {
 		uiStore.openModalWithData({
 			name: COMMUNITY_PLUS_ENROLLMENT_MODAL,
 			data: { customHeading: i18n.baseText('folders.registeredCommunity.cta.heading') },
