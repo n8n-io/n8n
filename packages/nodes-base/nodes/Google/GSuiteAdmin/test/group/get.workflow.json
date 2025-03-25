@@ -1,0 +1,53 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"resource": "group",
+				"operation": "get",
+				"groupId": {
+					"__rl": true,
+					"value": "52528m922pmp3e4",
+					"mode": "list",
+					"cachedResultName": "new2"
+				}
+			},
+			"type": "n8n-nodes-base.gSuiteAdmin",
+			"typeVersion": 1,
+			"position": [-200, -140],
+			"id": "3afe3ae6-28db-481e-bd18-6d4606f8c4b0",
+			"name": "Get Group",
+			"credentials": {
+				"gSuiteAdminOAuth2Api": {
+					"id": "OXfPMaggXFJ0RLkw",
+					"name": "Google Workspace Admin account"
+				}
+			}
+		}
+	],
+	"connections": {},
+	"pinData": {
+		"Get Group": [
+			{
+				"kind": "admin#directory#group",
+				"id": "52528m922pmp3e4",
+				"etag": "\"6gJ8FoxdqGNyMmMMrlQh-KP52AaaR_AihQSbYaaU/6TkH1J8VWq3gG4DMvrAUFMUM1VU\"",
+				"email": "new3@example.com",
+				"name": "new2",
+				"directMembersCount": "2",
+				"description": "new1",
+				"adminCreated": true,
+				"aliases": ["new2@example.com", "new@example.com", "NewOnes@example.com"],
+				"nonEditableAliases": [
+					"NewOnes@example.com.test-google-a.com",
+					"new@example.com.test-google-a.com",
+					"new2@example.com.test-google-a.com",
+					"new3@example.com.test-google-a.com"
+				]
+			}
+		]
+	},
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "89e65be0357665f2979194b835f6d640a06bafcde3fe7370430baa3de4d0a22d"
+	}
+}
