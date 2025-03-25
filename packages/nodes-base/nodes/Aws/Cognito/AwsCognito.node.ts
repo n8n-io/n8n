@@ -17,16 +17,6 @@ export class AwsCognito implements INodeType {
 		defaults: { name: 'AWS Cognito' },
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
-		hints: [
-			{
-				message: 'Select at least one field to update',
-				displayCondition:
-					'={{($parameter["resource"] === "user" && $parameter["operation"] === "update" && Object.keys($parameter["userAttributes"].attributes).length === 0) || ($parameter["resource"] === "group" && $parameter["operation"] === "update" && Object.keys($parameter["additionalFields"]).length === 0)}}',
-				whenToDisplay: 'always',
-				location: 'outputPane',
-				type: 'warning',
-			},
-		],
 		credentials: [
 			{
 				name: 'aws',

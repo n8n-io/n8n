@@ -8,7 +8,7 @@ import {
 } from 'n8n-workflow';
 
 import type { IUserAttribute, IUserPool } from '../helpers/interfaces';
-import { listUsersInGroup } from '../helpers/utils';
+import { getUsersInGroup } from '../helpers/utils';
 import { makeAwsRequest } from '../transport';
 
 function formatResults(items: IDataObject[], filter?: string): INodeListSearchItems[] {
@@ -40,7 +40,12 @@ export async function searchGroups(
 
 	const groups = responseData.Groups as IDataObject[];
 
-	const formattedResults = formatResults(groups, filter);
+	const groupsMapped = groups.map(({ GroupName, UserPoolId }) => ({
+		id: GroupName,
+		name: GroupName,
+	}));
+
+	const formattedResults = formatResults(groupsMapped, filter);
 
 	return { results: formattedResults, paginationToken: responseData.NextToken };
 }
@@ -67,7 +72,7 @@ export async function searchGroupsForUser(
 		if (!groups || groups.length === 0) return { results: [] };
 
 		const isUserInGroup = async (groupName: string): Promise<boolean> => {
-			const usersInGroup = await listUsersInGroup.call(this, groupName, userPoolId);
+			const usersInGroup = await getUsersInGroup.call(this, groupName, userPoolId);
 			const users =
 				usersInGroup.results && Array.isArray(usersInGroup.results) ? usersInGroup.results : [];
 			return users.some((user) => user.Username === userName);
@@ -118,11 +123,9 @@ export async function searchUsers(
 
 	const userPool = userPoolData.UserPool as IUserPool;
 
-	if (!userPool || !Array.isArray(userPool.UsernameAttributes)) {
-		throw new ApplicationError('Invalid user pool configuration');
-	}
-
-	const usernameAttributes = userPool.UsernameAttributes;
+	const usernameAttributes = Array.isArray(userPool?.UsernameAttributes)
+		? userPool.UsernameAttributes
+		: [];
 
 	const listUsersOpts: IHttpRequestOptions = {
 		url: '',
@@ -177,13 +180,12 @@ export async function searchUserPools(
 
 	const userPools = responseData.UserPools as IDataObject[];
 
-	const userPoolsResults = userPools.map(({ Name, Id }) => ({
+	const userPoolsMapped = userPools.map(({ Name, Id }) => ({
 		id: Id,
-		name: String(Name),
+		name: Name,
 	}));
 
-	return {
-		results: formatResults(userPoolsResults, filter),
-		paginationToken: responseData.NextToken,
-	};
+	const formattedResults = formatResults(userPoolsMapped, filter);
+
+	return { results: formattedResults, paginationToken: responseData.NextToken };
 }

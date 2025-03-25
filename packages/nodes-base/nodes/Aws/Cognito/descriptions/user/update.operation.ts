@@ -1,12 +1,13 @@
 import {
-	IExecuteSingleFunctions,
-	IHttpRequestOptions,
+	type IExecuteSingleFunctions,
+	type IHttpRequestOptions,
 	NodeApiError,
 	updateDisplayOptions,
 	type INodeProperties,
 } from 'n8n-workflow';
+
+import type { IUserAttributeInput } from '../../helpers/interfaces';
 import { parseRequestBody } from '../../helpers/utils';
-import { IUserAttributeInput } from '../../helpers/interfaces';
 
 const properties: INodeProperties[] = [
 	{
@@ -125,7 +126,7 @@ const properties: INodeProperties[] = [
 
 						body.UserAttributes = attributes.map(
 							({ attributeType, standardName, customName, Value }) => {
-								if (!Value || !attributeType || !(standardName || customName)) {
+								if (!Value || !attributeType || !(standardName ?? customName)) {
 									throw new NodeApiError(this.getNode(), {
 										message: 'Invalid User Attribute',
 										description: 'Each attribute must have a valid name and value.',

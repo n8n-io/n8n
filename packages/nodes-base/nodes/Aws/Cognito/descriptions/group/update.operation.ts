@@ -1,10 +1,13 @@
 import {
-	IExecuteSingleFunctions,
-	IHttpRequestOptions,
-	NodeApiError,
+	type IDataObject,
+	type IExecuteSingleFunctions,
+	type IHttpRequestOptions,
 	updateDisplayOptions,
 	type INodeProperties,
+	NodeApiError,
 } from 'n8n-workflow';
+
+import { validateArn } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
@@ -97,7 +100,31 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
+		placeholder: 'Add Option',
+		type: 'collection',
 		default: {},
+		routing: {
+			send: {
+				preSend: [
+					async function (
+						this: IExecuteSingleFunctions,
+						requestOptions: IHttpRequestOptions,
+					): Promise<IHttpRequestOptions> {
+						const additionalFields = this.getNodeParameter('additionalFields', {}) as IDataObject;
+						const arn = additionalFields.arn as string | undefined;
+						const description = additionalFields.description as string | undefined;
+						const precedence = additionalFields.precedence as number | undefined;
+						if (!description && !precedence && !arn) {
+							throw new NodeApiError(this.getNode(), {
+								message: 'At least one field must be provided for update.',
+								description: 'Please provide a value for Description, Precedence, or Role ARN.',
+							});
+						}
+						return requestOptions;
+					},
+				],
+			},
+		},
 		options: [
 			{
 				displayName: 'Description',
@@ -130,39 +157,8 @@ const properties: INodeProperties[] = [
 				validateType: 'number',
 			},
 			{
-				displayName: 'Path',
-				name: 'path',
-				type: 'string',
-				default: '',
-				placeholder: 'e.g. /division_abc/engineering/',
-				description: 'The path to the group, if it is not included, it defaults to a slash (/)',
-				routing: {
-					send: {
-						property: 'Path',
-						type: 'body',
-						preSend: [
-							async function (
-								this: IExecuteSingleFunctions,
-								requestOptions: IHttpRequestOptions,
-							): Promise<IHttpRequestOptions> {
-								const path = this.getNodeParameter('path', '/') as string;
-								const validPathRegex = /^\/[\u0021-\u007E]*\/$/;
-								if (!validPathRegex.test(path) || path.length > 512) {
-									throw new NodeApiError(this.getNode(), {
-										message: 'Invalid Path format',
-										description:
-											'Path must be between 1 and 512 characters, start and end with a forward slash, and contain valid ASCII characters.',
-									});
-								}
-								return requestOptions;
-							},
-						],
-					},
-				},
-			},
-			{
 				displayName: 'Role ARN',
-				name: 'Arn',
+				name: 'arn',
 				default: '',
 				placeholder: 'e.g. arn:aws:iam::123456789012:role/GroupRole',
 				description:
@@ -172,12 +168,11 @@ const properties: INodeProperties[] = [
 					send: {
 						type: 'body',
 						property: 'Arn',
+						preSend: [validateArn],
 					},
 				},
 			},
 		],
-		placeholder: 'Add Option',
-		type: 'collection',
 	},
 ];
 

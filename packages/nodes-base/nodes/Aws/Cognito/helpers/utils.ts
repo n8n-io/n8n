@@ -3,7 +3,6 @@ import {
 	type ILoadOptionsFunctions,
 	jsonParse,
 	NodeApiError,
-	NodeOperationError,
 	type IDataObject,
 	type IExecuteSingleFunctions,
 	type IN8nHttpFullResponse,
@@ -11,17 +10,11 @@ import {
 	ApplicationError,
 } from 'n8n-workflow';
 
-import type {
-	Filters,
-	IListUsersResponse,
-	IUser,
-	IUserAttribute,
-	IUserAttributeInput,
-	IUserPool,
-} from './interfaces';
+import type { IListUsersResponse, IUser, IUserPool } from './interfaces';
 import { makeAwsRequest } from '../transport';
 
-//REFACTORED FUNCTIONS
+const validateEmail = (email: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+const validatePhoneNumber = (phone: string): boolean => /^\+[0-9]\d{1,14}$/.test(phone);
 
 export function parseRequestBody(body: unknown): IDataObject {
 	if (body === null || body === undefined) {
@@ -41,6 +34,19 @@ export function parseRequestBody(body: unknown): IDataObject {
 	}
 
 	throw new ApplicationError('Invalid body type for requestOptions');
+}
+
+export function mapUserAttributes(userAttributes?: IDataObject[]): IDataObject {
+	if (!userAttributes || userAttributes.length === 0) {
+		return {};
+	}
+
+	return userAttributes.reduce<IDataObject>((acc, { Name, Value }) => {
+		if (Name && typeof Name === 'string' && Name.trim()) {
+			acc[Name === 'sub' ? 'Sub' : Name] = Value ?? '';
+		}
+		return acc;
+	}, {});
 }
 
 export async function simplifyData(
@@ -135,8 +141,15 @@ export async function simplifyData(
 	return simplifiedItems;
 }
 
-const validateEmail = (email: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-const validatePhoneNumber = (phone: string): boolean => /^\+[0-9]\d{1,14}$/.test(phone);
+export async function presendStringifyBody(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	if (requestOptions.body) {
+		requestOptions.body = JSON.stringify(requestOptions.body);
+	}
+	return requestOptions;
+}
 
 export async function presendUserFields(
 	this: IExecuteSingleFunctions,
@@ -154,31 +167,27 @@ export async function presendUserFields(
 	})) as { UserPool?: IUserPool };
 
 	const usernameAttributes = UserPool?.UsernameAttributes ?? [];
-
 	const isEmailAuth = usernameAttributes.includes('email');
 	const isPhoneAuth = usernameAttributes.includes('phone_number');
-
 	const isEmailOrPhone = isEmailAuth || isPhoneAuth;
 
 	const getValidatedNewUsername = (): string => {
 		const newUsername = this.getNodeParameter('newUserName') as string;
 
-		return isEmailAuth
-			? validateEmail(newUsername)
-				? newUsername
-				: throwInvalid('email', 'name@gmail.com')
-			: isPhoneAuth
-				? validatePhoneNumber(newUsername)
-					? newUsername
-					: throwInvalid('phone number', '+14155552671')
-				: newUsername;
-	};
+		if (isEmailAuth && !validateEmail(newUsername)) {
+			throw new NodeApiError(this.getNode(), {
+				message: 'Invalid email format',
+				description: 'Please provide a valid email (e.g., name@gmail.com)',
+			});
+		}
+		if (isPhoneAuth && !validatePhoneNumber(newUsername)) {
+			throw new NodeApiError(this.getNode(), {
+				message: 'Invalid phone number format',
+				description: 'Please provide a valid phone number (e.g., +14155552671)',
+			});
+		}
 
-	const throwInvalid = (type: string, example: string): never => {
-		throw new NodeApiError(this.getNode(), {
-			message: `Invalid ${type} format`,
-			description: `Please provide a valid ${type} (e.g., ${example})`,
-		});
+		return newUsername;
 	};
 
 	const getUsernameFromExistingUsers = async (): Promise<string | undefined> => {
@@ -215,9 +224,8 @@ export async function presendUserFields(
 		}),
 	};
 }
-////
 
-export async function listUsersInGroup(
+export async function getUsersInGroup(
 	this: IExecuteSingleFunctions | ILoadOptionsFunctions,
 	groupName: string,
 	userPoolId: string,
@@ -226,7 +234,7 @@ export async function listUsersInGroup(
 		throw new ApplicationError('User Pool ID is required');
 	}
 
-	const opts: IHttpRequestOptions = {
+	const responseData: IDataObject = await makeAwsRequest.call(this, {
 		url: '',
 		method: 'POST',
 		headers: {
@@ -237,53 +245,33 @@ export async function listUsersInGroup(
 			GroupName: groupName,
 			MaxResults: 60,
 		}),
-	};
+	});
+	const users = (responseData.Users as IDataObject[]) || [];
 
-	const responseData: IDataObject = await makeAwsRequest.call(this, opts);
-	const users = responseData.Users as IDataObject[];
-
-	if (!users) {
+	if (!users.length) {
 		return { results: [] };
 	}
 
 	const results = users
-		.map((user) => {
-			const userAttributes = Object.fromEntries(
-				Array.isArray(user.Attributes)
-					? user.Attributes.map(({ Name, Value }) =>
-							Name === 'sub' ? ['Sub', Value] : [Name, Value],
-						)
-					: [],
-			);
-
-			const username = user.Username as string;
+		.map(({ Username, Enabled, UserCreateDate, UserLastModifiedDate, UserStatus, Attributes }) => {
+			const userAttributes = Array.isArray(Attributes)
+				? Object.fromEntries(
+						Attributes.slice(0, 6).map(({ Name, Value }) => [Name === 'sub' ? 'Sub' : Name, Value]),
+					)
+				: {};
 
 			return {
-				Enabled: user.Enabled,
-				...Object.fromEntries(Object.entries(userAttributes).slice(0, 6)),
-				UserCreateDate: user.UserCreateDate,
-				UserLastModifiedDate: user.UserLastModifiedDate,
-				UserStatus: user.UserStatus,
-				Username: username,
+				Enabled,
+				...userAttributes,
+				UserCreateDate,
+				UserLastModifiedDate,
+				UserStatus,
+				Username,
 			};
 		})
 		.sort((a, b) => a.Username.toLowerCase().localeCompare(b.Username.toLowerCase()));
 
 	return { results, paginationToken: responseData.NextToken };
-}
-
-export function mapUserAttributes(userAttributes?: IDataObject[]): IDataObject {
-	if (!userAttributes) {
-		return {};
-	}
-
-	// If the attribute name is 'sub', we map it to 'Sub' in the result
-	return userAttributes.reduce<IDataObject>((acc, { Name, Value }) => {
-		if (typeof Name === 'string' && Name.trim() !== '') {
-			acc[Name === 'sub' ? 'Sub' : Name] = Value ?? '';
-		}
-		return acc;
-	}, {});
 }
 
 export async function processGroupsResponse(
@@ -296,23 +284,22 @@ export async function processGroupsResponse(
 	const body = parseRequestBody(response.body);
 
 	if (!include) {
-		return body.Group ? [{ json: body.Group }] : items;
+		return body?.Group ? [{ json: body.Group as IDataObject }] : items;
 	}
 
 	const processedGroups: IDataObject[] = [];
 
-	if (body.Group) {
-		const group = body.Group;
-		const users = await listUsersInGroup.call(this, group.GroupName, userPoolId);
+	if (body?.Group) {
+		const group = body.Group as IDataObject;
+		const users = await getUsersInGroup.call(this, group.GroupName as string, userPoolId);
 
 		const usersResponse = users.results && Array.isArray(users.results) ? users.results : [];
-
 		return [{ json: { ...group, Users: usersResponse.length ? usersResponse : [] } }];
 	}
 
-	const groups = body.Groups || [];
+	const groups = Array.isArray(body?.Groups) ? body.Groups : [];
 	for (const group of groups) {
-		const usersResponse = await listUsersInGroup.call(this, group.GroupName, userPoolId);
+		const usersResponse = await getUsersInGroup.call(this, group.GroupName as string, userPoolId);
 		processedGroups.push({
 			...group,
 			Users: usersResponse.length ? usersResponse : [],
@@ -322,102 +309,21 @@ export async function processGroupsResponse(
 	return items.map((item) => ({ json: { ...item.json, Groups: processedGroups } }));
 }
 
-export async function presendStringifyBody(
+export async function validateArn(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	if (requestOptions.body) {
-		requestOptions.body = JSON.stringify(requestOptions.body);
-	}
-	return requestOptions;
-}
+	const arn = this.getNodeParameter('additionalFields.arn', '') as string;
+	const arnRegex =
+		/^arn:[-.\w+=/,@]+:[-.\w+=/,@]+:([-.\w+=/,@]*)?:[0-9]+:[-.\w+=/,@]+(:[-.\w+=/,@]+)?(:[-.\w+=/,@]+)?$/;
 
-//
-//TO-BE-DELETED
-export async function presendGroupFields(
-	this: IExecuteSingleFunctions,
-	requestOptions: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
-	const newGroupName = this.getNodeParameter('newGroupName', '') as string;
-
-	const groupNameRegex = /^[\p{L}\p{M}\p{S}\p{N}\p{P}]+$/u;
-	if (!groupNameRegex.test(newGroupName)) {
+	if (!arnRegex.test(arn)) {
 		throw new NodeApiError(this.getNode(), {
-			message: 'Invalid format for Group Name',
-			description: 'Group Name should not contain spaces.',
+			message: 'Invalid ARN format',
+			description:
+				'Please provide a valid AWS ARN (e.g., arn:aws:iam::123456789012:role/GroupRole).',
 		});
 	}
 
 	return requestOptions;
 }
-
-export async function presendFilters(
-	this: IExecuteSingleFunctions,
-	requestOptions: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
-	const filters = this.getNodeParameter('filters', {}) as Filters;
-
-	const filter = filters.filter;
-
-	if (!filter?.value) return requestOptions;
-
-	const { attribute: filterAttribute, value: filterValue } = filter;
-
-	const body = parseRequestBody(requestOptions.body);
-
-	const filterString = filterAttribute ? `"${filterAttribute}"^="${filterValue}"` : '';
-
-	return {
-		...requestOptions,
-		body: JSON.stringify({ ...body, Filter: filterString }),
-	};
-}
-
-export async function presendAdditionalFields(
-	this: IExecuteSingleFunctions,
-	requestOptions: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
-	const additionalFields = this.getNodeParameter('additionalFields', {}) as IDataObject;
-
-	if (Object.keys(additionalFields).length === 0) {
-		throw new NodeApiError(this.getNode(), {
-			message: 'No group field provided',
-			description: 'Select at least one additional field to update.',
-		});
-	}
-
-	return requestOptions;
-}
-
-export async function presendAttributes(
-	this: IExecuteSingleFunctions,
-	requestOptions: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
-	const attributes = this.getNodeParameter(
-		'userAttributes.attributes',
-		[],
-	) as IUserAttributeInput[];
-
-	const body = parseRequestBody(requestOptions.body);
-
-	body.UserAttributes = attributes.map(({ attributeType, standardName, customName, Value }) => {
-		if (!Value || !attributeType || !(standardName || customName)) {
-			throw new NodeApiError(this.getNode(), {
-				message: 'Invalid User Attribute',
-				description: 'Each attribute must have a valid name and value.',
-			});
-		}
-
-		const attributeName =
-			attributeType === 'standard'
-				? standardName
-				: `custom:${customName?.startsWith('custom:') ? customName : customName}`;
-
-		return { Name: attributeName, Value };
-	});
-
-	requestOptions.body = JSON.stringify(body);
-	return requestOptions;
-}
-
-//

@@ -8,7 +8,7 @@ import * as getAll from './getAll.operation';
 import * as removeFromGroup from './removeFromGroup.operation';
 import * as update from './update.operation';
 import { handleError } from '../../helpers/errorHandler';
-import { presendAttributes, presendUserFields, simplifyData } from '../../helpers/utils';
+import { presendUserFields, simplifyData } from '../../helpers/utils';
 
 export const description: INodeProperties[] = [
 	{

@@ -6,6 +6,8 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 
+import { validateArn } from '../../helpers/utils';
+
 const properties: INodeProperties[] = [
 	{
 		displayName: 'User Pool',
@@ -117,39 +119,8 @@ const properties: INodeProperties[] = [
 				validateType: 'number',
 			},
 			{
-				displayName: 'Path',
-				name: 'path',
-				type: 'string',
-				default: '',
-				placeholder: 'e.g. /division_abc/engineering/',
-				description: 'The path to the group, if it is not included, it defaults to a slash (/)',
-				routing: {
-					send: {
-						property: 'Path',
-						type: 'body',
-						preSend: [
-							async function (
-								this: IExecuteSingleFunctions,
-								requestOptions: IHttpRequestOptions,
-							): Promise<IHttpRequestOptions> {
-								const path = this.getNodeParameter('path', '/') as string;
-								const validPathRegex = /^\/[\u0021-\u007E]*\/$/;
-								if (!validPathRegex.test(path) || path.length > 512) {
-									throw new NodeApiError(this.getNode(), {
-										message: 'Invalid Path format',
-										description:
-											'Path must be between 1 and 512 characters, start and end with a forward slash, and contain valid ASCII characters.',
-									});
-								}
-								return requestOptions;
-							},
-						],
-					},
-				},
-			},
-			{
 				displayName: 'Role ARN',
-				name: 'Arn',
+				name: 'arn',
 				default: '',
 				placeholder: 'e.g. arn:aws:iam::123456789012:role/GroupRole',
 				description: 'The role ARN for the group, used for setting claims in tokens',
@@ -158,6 +129,7 @@ const properties: INodeProperties[] = [
 					send: {
 						type: 'body',
 						property: 'Arn',
+						preSend: [validateArn],
 					},
 				},
 			},
