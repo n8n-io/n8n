@@ -17,7 +17,3 @@ export interface IContainer {
 		paths: string[];
 	};
 }
-
-export interface IHttpRequestOptionsExtended extends IHttpRequestOptions {
-	uri?: string;
-}
