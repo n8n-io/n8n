@@ -1,3 +1,14 @@
+## [1.85.1](https://github.com/n8n-io/n8n/compare/n8n@1.85.0...n8n@1.85.1) (2025-03-25)
+
+
+### Bug Fixes
+
+* **API:** Fix import config import ([#14137](https://github.com/n8n-io/n8n/issues/14137)) ([b8adb63](https://github.com/n8n-io/n8n/commit/b8adb63fb804f20388f2beeb95a95e6cb3c03bab))
+* Correct connections in SentimentAnalysis and TextClassifier ([#14155](https://github.com/n8n-io/n8n/issues/14155)) ([b100f27](https://github.com/n8n-io/n8n/commit/b100f27358238c8f3e22038ba4c485a88e01856c))
+* **OpenAI Node:** Show correct inputs for AI node ([#14142](https://github.com/n8n-io/n8n/issues/14142)) ([2444169](https://github.com/n8n-io/n8n/commit/2444169001dd409dfb3d99d7ad23185981520dd6))
+
+
+
 # [1.85.0](https://github.com/n8n-io/n8n/compare/n8n@1.84.0...n8n@1.85.0) (2025-03-24)
 
 
