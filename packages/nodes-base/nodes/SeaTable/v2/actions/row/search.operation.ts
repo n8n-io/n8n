@@ -96,7 +96,7 @@ export async function execute(
 	const searchColumn = this.getNodeParameter('searchColumn', index) as string;
 	const searchTerm = this.getNodeParameter('searchTerm', index) as string | number;
 	let searchTermString = String(searchTerm);
-	const options = this.getNodeParameter('options', index);
+	const options = this.getNodeParameter('options', index) as IDataObject;
 
 	// get collaborators
 	const collaborators = await getBaseCollaborators.call(this);

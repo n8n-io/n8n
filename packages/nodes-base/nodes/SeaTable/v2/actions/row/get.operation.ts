@@ -57,7 +57,7 @@ export async function execute(
 	// get parameters
 	const tableName = this.getNodeParameter('tableName', index) as string;
 	const rowId = this.getNodeParameter('rowId', index) as string;
-	const options = this.getNodeParameter('options', index);
+	const options = this.getNodeParameter('options', index) as IDataObject;
 
 	// get collaborators
 	const collaborators = await getBaseCollaborators.call(this);
