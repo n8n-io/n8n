@@ -362,8 +362,7 @@ export class FrontendService {
 
 		this.settings.enterprise.projects.team.limit = this.license.getTeamProjectLimit();
 
-		this.settings.folders.enabled =
-			config.get('folders.enabled') || this.license.isFoldersEnabled();
+		this.settings.folders.enabled = this.license.isFoldersEnabled();
 
 		return this.settings;
 	}

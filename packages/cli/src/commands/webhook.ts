@@ -79,6 +79,8 @@ export class Webhook extends BaseCommand {
 		this.logger.debug('External hooks init complete');
 		await this.initExternalSecrets();
 		this.logger.debug('External secrets init complete');
+
+		await this.loadModules();
 	}
 
 	async run() {

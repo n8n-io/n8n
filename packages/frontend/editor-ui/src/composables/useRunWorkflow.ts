@@ -18,7 +18,7 @@ import type {
 	IWorkflowBase,
 } from 'n8n-workflow';
 
-import { NodeConnectionType, TelemetryHelpers } from 'n8n-workflow';
+import { NodeConnectionTypes, TelemetryHelpers } from 'n8n-workflow';
 
 import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
@@ -114,7 +114,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			if (options.destinationNode !== undefined) {
 				directParentNodes = workflow.getParentNodes(
 					options.destinationNode,
-					NodeConnectionType.Main,
+					NodeConnectionTypes.Main,
 					-1,
 				);
 			}
@@ -151,7 +151,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				startNodeNames.push(options.destinationNode);
 			} else if (options.triggerNode && options.nodeData) {
 				startNodeNames.push(
-					...workflow.getChildNodes(options.triggerNode, NodeConnectionType.Main, 1),
+					...workflow.getChildNodes(options.triggerNode, NodeConnectionTypes.Main, 1),
 				);
 				newRunData = { [options.triggerNode]: [options.nodeData] };
 				executedNode = options.triggerNode;
@@ -222,14 +222,14 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				// Find for each start node the source data
 				let sourceData = get(runData, [name, 0, 'source', 0], null);
 				if (sourceData === null) {
-					const parentNodes = workflow.getParentNodes(name, NodeConnectionType.Main, 1);
+					const parentNodes = workflow.getParentNodes(name, NodeConnectionTypes.Main, 1);
 					const executeData = workflowHelpers.executeData(
 						parentNodes,
 						name,
-						NodeConnectionType.Main,
+						NodeConnectionTypes.Main,
 						0,
 					);
-					sourceData = get(executeData, ['source', NodeConnectionType.Main, 0], null);
+					sourceData = get(executeData, ['source', NodeConnectionTypes.Main, 0], null);
 				}
 				return {
 					name,
@@ -373,7 +373,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			for (const directParentNode of directParentNodes) {
 				// Go over the parents of that node so that we can get a start
 				// node for each of the branches
-				const parentNodes = workflow.getParentNodes(directParentNode, NodeConnectionType.Main);
+				const parentNodes = workflow.getParentNodes(directParentNode, NodeConnectionTypes.Main);
 
 				// Add also the enabled direct parent to be checked
 				if (workflow.nodes[directParentNode].disabled) continue;

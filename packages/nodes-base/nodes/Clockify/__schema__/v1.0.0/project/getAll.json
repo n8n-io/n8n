@@ -1,69 +1,17 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "hourlyRate": {
-            "type": "object",
-            "properties": {
-                "amount": {
-                    "type": "integer"
-                },
-                "currency": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "amount",
-                "currency"
-            ]
-        },
-        "clientId": {
-            "type": "string"
-        },
-        "workspaceId": {
-            "type": "string"
+        "archived": {
+            "type": "boolean"
         },
         "billable": {
             "type": "boolean"
         },
-        "memberships": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "userId": {
-                        "type": "string"
-                    },
-                    "hourlyRate": {
-                        "type": "null"
-                    },
-                    "costRate": {
-                        "type": "null"
-                    },
-                    "targetId": {
-                        "type": "string"
-                    },
-                    "membershipType": {
-                        "type": "string"
-                    },
-                    "membershipStatus": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "userId",
-                    "hourlyRate",
-                    "costRate",
-                    "targetId",
-                    "membershipType",
-                    "membershipStatus"
-                ]
-            }
+        "clientId": {
+            "type": "string"
+        },
+        "clientName": {
+            "type": "string"
         },
         "color": {
             "type": "string"
@@ -77,78 +25,86 @@
                 "type": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "estimate",
-                "type"
-            ]
+            }
         },
-        "archived": {
-            "type": "boolean"
+        "estimateReset": {
+            "type": "null"
         },
-        "clientName": {
+        "hourlyRate": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "integer"
+                },
+                "currency": {
+                    "type": "string"
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "memberships": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "costRate": {
+                        "type": "null"
+                    },
+                    "hourlyRate": {
+                        "type": "null"
+                    },
+                    "membershipStatus": {
+                        "type": "string"
+                    },
+                    "membershipType": {
+                        "type": "string"
+                    },
+                    "targetId": {
+                        "type": "string"
+                    },
+                    "userId": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "name": {
             "type": "string"
         },
         "note": {
             "type": "string"
         },
-        "timeEstimate": {
-            "type": "object",
-            "properties": {
-                "estimate": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "resetOption": {
-                    "type": "null"
-                },
-                "active": {
-                    "type": "boolean"
-                },
-                "includeNonBillable": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "estimate",
-                "type",
-                "resetOption",
-                "active",
-                "includeNonBillable"
-            ]
-        },
-        "estimateReset": {
-            "type": "null"
+        "public": {
+            "type": "boolean"
         },
         "template": {
             "type": "boolean"
         },
-        "public": {
-            "type": "boolean"
+        "timeEstimate": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "estimate": {
+                    "type": "string"
+                },
+                "includeNonBillable": {
+                    "type": "boolean"
+                },
+                "resetOption": {
+                    "type": "null"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "workspaceId": {
+            "type": "string"
         }
     },
-    "required": [
-        "id",
-        "name",
-        "hourlyRate",
-        "clientId",
-        "workspaceId",
-        "billable",
-        "memberships",
-        "color",
-        "estimate",
-        "archived",
-        "duration",
-        "clientName",
-        "note",
-        "costRate",
-        "timeEstimate",
-        "budgetEstimate",
-        "estimateReset",
-        "template",
-        "public"
-    ],
     "version": 1
 }

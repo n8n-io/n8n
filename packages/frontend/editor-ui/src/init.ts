@@ -9,6 +9,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useVersionsStore } from '@/stores/versions.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useRolesStore } from './stores/roles.store';
+import { useInsightsStore } from '@/features/insights/insights.store';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
 import SourceControlInitializationErrorMessage from '@/components/SourceControlInitializationErrorMessage.vue';
@@ -66,6 +67,7 @@ export async function initializeAuthenticatedFeatures(
 	const cloudPlanStore = useCloudPlanStore();
 	const projectsStore = useProjectsStore();
 	const rolesStore = useRolesStore();
+	const insightsStore = useInsightsStore();
 
 	if (sourceControlStore.isEnterpriseSourceControlEnabled) {
 		try {
@@ -103,6 +105,7 @@ export async function initializeAuthenticatedFeatures(
 		projectsStore.getPersonalProject(),
 		projectsStore.getProjectsCount(),
 		rolesStore.fetchRoles(),
+		insightsStore.summary.execute(),
 	]);
 
 	authenticatedFeaturesInitialized = true;

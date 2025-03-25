@@ -1,33 +1,56 @@
 {
     "type": "object",
     "properties": {
+        "finish_reason": {
+            "type": "string"
+        },
         "index": {
             "type": "integer"
+        },
+        "logprobs": {
+            "type": "null"
         },
         "message": {
             "type": "object",
             "properties": {
-                "role": {
-                    "type": "string"
+                "annotations": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "type": {
+                                "type": "string"
+                            },
+                            "url_citation": {
+                                "type": "object",
+                                "properties": {
+                                    "end_index": {
+                                        "type": "integer"
+                                    },
+                                    "start_index": {
+                                        "type": "integer"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "url": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
                 },
                 "content": {
                     "type": "string"
                 },
                 "refusal": {
                     "type": "null"
+                },
+                "role": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "role",
-                "content",
-                "refusal"
-            ]
-        },
-        "logprobs": {
-            "type": "null"
-        },
-        "finish_reason": {
-            "type": "string"
+            }
         }
     },
     "version": 1

@@ -11,7 +11,8 @@ import type {
 import type { IExecutionResponse, INodeUi } from '@/Interface';
 import type { ComputedRef, Ref } from 'vue';
 import type { EventBus } from '@n8n/utils/event-bus';
-import { CanvasLayoutSource } from '@/composables/useCanvasLayout';
+import type { CanvasLayoutSource } from '@/composables/useCanvasLayout';
+import type { NodeIconSource } from '../utils/nodeIcon';
 
 export const enum CanvasConnectionMode {
 	Input = 'inputs',
@@ -72,6 +73,7 @@ export type CanvasNodeDefaultRender = {
 		};
 		tooltip?: string;
 		dirtiness?: CanvasNodeDirtinessType;
+		icon?: NodeIconSource;
 	}>;
 };
 

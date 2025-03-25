@@ -6,7 +6,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { activityFields, activityOperations } from './ActivityDescription';
 import { stravaApiRequest, stravaApiRequestAllItems } from './GenericFunctions';
@@ -24,8 +24,8 @@ export class Strava implements INodeType {
 			name: 'Strava',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'stravaOAuth2Api',

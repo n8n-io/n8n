@@ -1,20 +1,14 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "class_5_min": {
-            "type": "string"
-        },
-        "score": {
-            "type": "integer"
-        },
         "active_calories": {
             "type": "integer"
         },
         "average_met_minutes": {
             "type": "number"
+        },
+        "class_5_min": {
+            "type": "string"
         },
         "contributors": {
             "type": "object",
@@ -37,15 +31,10 @@
                 "training_volume": {
                     "type": "integer"
                 }
-            },
-            "required": [
-                "meet_daily_targets",
-                "move_every_hour",
-                "recovery_time",
-                "stay_active",
-                "training_frequency",
-                "training_volume"
-            ]
+            }
+        },
+        "day": {
+            "type": "string"
         },
         "equivalent_walking_distance": {
             "type": "integer"
@@ -55,6 +44,9 @@
         },
         "high_activity_time": {
             "type": "integer"
+        },
+        "id": {
+            "type": "string"
         },
         "inactivity_alerts": {
             "type": "integer"
@@ -86,12 +78,7 @@
                 "timestamp": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "interval",
-                "items",
-                "timestamp"
-            ]
+            }
         },
         "meters_to_target": {
             "type": "integer"
@@ -100,6 +87,9 @@
             "type": "integer"
         },
         "resting_time": {
+            "type": "integer"
+        },
+        "score": {
             "type": "integer"
         },
         "sedentary_met_minutes": {
@@ -117,43 +107,12 @@
         "target_meters": {
             "type": "integer"
         },
-        "total_calories": {
-            "type": "integer"
-        },
-        "day": {
-            "type": "string"
-        },
         "timestamp": {
             "type": "string"
+        },
+        "total_calories": {
+            "type": "integer"
         }
     },
-    "required": [
-        "id",
-        "class_5_min",
-        "score",
-        "active_calories",
-        "average_met_minutes",
-        "contributors",
-        "equivalent_walking_distance",
-        "high_activity_met_minutes",
-        "high_activity_time",
-        "inactivity_alerts",
-        "low_activity_met_minutes",
-        "low_activity_time",
-        "medium_activity_met_minutes",
-        "medium_activity_time",
-        "met",
-        "meters_to_target",
-        "non_wear_time",
-        "resting_time",
-        "sedentary_met_minutes",
-        "sedentary_time",
-        "steps",
-        "target_calories",
-        "target_meters",
-        "total_calories",
-        "day",
-        "timestamp"
-    ],
     "version": 1
 }

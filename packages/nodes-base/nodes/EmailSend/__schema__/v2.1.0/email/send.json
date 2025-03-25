@@ -13,18 +13,6 @@
                 "type": "string"
             }
         },
-        "envelopeTime": {
-            "type": "integer"
-        },
-        "messageTime": {
-            "type": "integer"
-        },
-        "messageSize": {
-            "type": "integer"
-        },
-        "response": {
-            "type": "string"
-        },
         "envelope": {
             "type": "object",
             "properties": {
@@ -37,13 +25,21 @@
                         "type": "string"
                     }
                 }
-            },
-            "required": [
-                "from",
-                "to"
-            ]
+            }
+        },
+        "envelopeTime": {
+            "type": "integer"
         },
         "messageId": {
+            "type": "string"
+        },
+        "messageSize": {
+            "type": "integer"
+        },
+        "messageTime": {
+            "type": "integer"
+        },
+        "response": {
             "type": "string"
         }
     },
