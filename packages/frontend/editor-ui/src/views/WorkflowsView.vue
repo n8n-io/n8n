@@ -1231,13 +1231,13 @@ const onCreateWorkflowClick = () => {
 				/>
 			</ProjectHeader>
 		</template>
-		<template v-if="foldersEnabled" #add-button>
+		<template v-if="foldersEnabled || showRegisteredCommunityCTA" #add-button>
 			<N8nTooltip
 				placement="top"
 				:disabled="!(isOverviewPage || (!readOnlyEnv && hasPermissionToCreateFolders))"
 			>
 				<template #content>
-					<span v-if="isOverviewPage">
+					<span v-if="isOverviewPage && !showRegisteredCommunityCTA">
 						<span v-if="teamProjectsEnabled">
 							{{ i18n.baseText('folders.add.overview.withProjects.message') }}
 						</span>
@@ -1245,7 +1245,7 @@ const onCreateWorkflowClick = () => {
 							{{ i18n.baseText('folders.add.overview.community.message') }}
 						</span>
 					</span>
-					<span v-else-if="!readOnlyEnv && hasPermissionToCreateFolders">
+					<span v-else>
 						{{
 							currentParentName
 								? i18n.baseText('folders.add.to.parent.message', {
@@ -1261,7 +1261,7 @@ const onCreateWorkflowClick = () => {
 					type="tertiary"
 					data-test-id="add-folder-button"
 					:class="$style['add-folder-button']"
-					:disabled="readOnlyEnv || !hasPermissionToCreateFolders"
+					:disabled="!showRegisteredCommunityCTA && (readOnlyEnv || !hasPermissionToCreateFolders)"
 					@click="createFolderInCurrent"
 				/>
 			</N8nTooltip>

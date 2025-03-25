@@ -61,7 +61,10 @@ const showSettings = computed(
 const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
 
 const showFolders = computed(() => {
-	return settingsStore.isFoldersFeatureEnabled && route.name !== VIEWS.WORKFLOWS;
+	return (
+		settingsStore.isFoldersFeatureEnabled &&
+		[VIEWS.PROJECTS_WORKFLOWS, VIEWS.PROJECTS_FOLDERS].includes(route.name as VIEWS)
+	);
 });
 
 const ACTION_TYPES = {
