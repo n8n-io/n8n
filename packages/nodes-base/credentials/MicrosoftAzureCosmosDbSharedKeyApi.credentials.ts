@@ -5,6 +5,7 @@ import type {
 	ICredentialType,
 	IHttpRequestOptions,
 	INodeProperties,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { OperationalError } from 'n8n-workflow';
 

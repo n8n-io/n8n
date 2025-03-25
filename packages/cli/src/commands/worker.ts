@@ -117,6 +117,8 @@ export class Worker extends BaseCommand {
 			const taskRunnerModule = Container.get(TaskRunnerModule);
 			await taskRunnerModule.start();
 		}
+
+		await this.loadModules();
 	}
 
 	async initEventBus() {

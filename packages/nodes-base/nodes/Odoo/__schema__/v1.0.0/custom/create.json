@@ -4,5 +4,6 @@
         "id": {
             "type": "integer"
         }
-    }
+    },
+    "version": 1
 }

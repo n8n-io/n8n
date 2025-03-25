@@ -26,7 +26,7 @@ import type {
 	IVersionedNodeType,
 	INodeProperties,
 } from 'n8n-workflow';
-import { deepCopy, NodeConnectionType, UnexpectedError, UserError } from 'n8n-workflow';
+import { deepCopy, NodeConnectionTypes, UnexpectedError, UserError } from 'n8n-workflow';
 import path from 'path';
 import picocolors from 'picocolors';
 
@@ -312,10 +312,16 @@ export class LoadNodesAndCredentials {
 	 */
 	createAiTools() {
 		const usableNodes: Array<INodeTypeBaseDescription | INodeTypeDescription> =
-			this.types.nodes.filter((nodetype) => nodetype.usableAsTool === true);
+			this.types.nodes.filter((nodeType) => nodeType.usableAsTool);
 
 		for (const usableNode of usableNodes) {
-			const description = deepCopy(usableNode);
+			const description =
+				typeof usableNode.usableAsTool === 'object'
+					? ({
+							...deepCopy(usableNode),
+							...usableNode.usableAsTool?.replacements,
+						} as INodeTypeBaseDescription)
+					: deepCopy(usableNode);
 			const wrapped = this.convertNodeToAiTool({ description }).description;
 
 			this.types.nodes.push(wrapped);
@@ -443,7 +449,7 @@ export class LoadNodesAndCredentials {
 		if (isFullDescription(item.description)) {
 			item.description.name += 'Tool';
 			item.description.inputs = [];
-			item.description.outputs = [NodeConnectionType.AiTool];
+			item.description.outputs = [NodeConnectionTypes.AiTool];
 			item.description.displayName += ' Tool';
 			delete item.description.usableAsTool;
 
@@ -505,7 +511,7 @@ export class LoadNodesAndCredentials {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Tools'],
-				Tools: ['Other Tools'],
+				Tools: item.description.codex?.subcategories?.Tools ?? ['Other Tools'],
 			},
 			resources,
 		};

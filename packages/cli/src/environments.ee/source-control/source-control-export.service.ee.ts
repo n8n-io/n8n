@@ -1,11 +1,14 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import { Service } from '@n8n/di';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { In } from '@n8n/typeorm';
 import { rmSync } from 'fs';
 import { Credentials, InstanceSettings, Logger } from 'n8n-core';
 import { UnexpectedError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { writeFile as fsWriteFile, rm as fsRm } from 'node:fs/promises';
 import path from 'path';
 
+import { FolderRepository } from '@/databases/repositories/folder.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';
@@ -22,6 +25,7 @@ import {
 } from './constants';
 import {
 	getCredentialExportPath,
+	getFoldersPath,
 	getVariablesPath,
 	getWorkflowExportPath,
 	sourceControlFoldersExistCheck,
@@ -49,6 +53,7 @@ export class SourceControlExportService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowTagMappingRepository: WorkflowTagMappingRepository,
+		private readonly folderRepository: FolderRepository,
 		instanceSettings: InstanceSettings,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
@@ -100,6 +105,7 @@ export class SourceControlExportService {
 					triggerCount: e.triggerCount,
 					versionId: e.versionId,
 					owner: owners[e.id],
+					parentFolderId: e.parentFolder?.id ?? null,
 				};
 				this.logger.debug(`Writing workflow ${e.id} to ${fileName}`);
 				return await fsWriteFile(fileName, JSON.stringify(sanitizedWorkflow, null, 2));
@@ -112,7 +118,10 @@ export class SourceControlExportService {
 			sourceControlFoldersExistCheck([this.workflowExportFolder]);
 			const workflowIds = candidates.map((e) => e.id);
 			const sharedWorkflows = await this.sharedWorkflowRepository.findByWorkflowIds(workflowIds);
-			const workflows = await this.workflowRepository.findByIds(workflowIds);
+			const workflows = await this.workflowRepository.find({
+				where: { id: In(workflowIds) },
+				relations: ['parentFolder'],
+			});
 
 			// determine owner of each workflow to be exported
 			const owners: Record<string, ResourceOwner> = {};
@@ -198,6 +207,66 @@ export class SourceControlExportService {
 			throw new UnexpectedError('Failed to export variables to work folder', {
 				cause: error,
 			});
+		}
+	}
+
+	async exportFoldersToWorkFolder(): Promise<ExportResult> {
+		try {
+			sourceControlFoldersExistCheck([this.gitFolder]);
+			const folders = await this.folderRepository.find({
+				relations: ['parentFolder', 'homeProject'],
+				select: {
+					id: true,
+					name: true,
+					createdAt: true,
+					updatedAt: true,
+					parentFolder: {
+						id: true,
+					},
+					homeProject: {
+						id: true,
+					},
+				},
+			});
+
+			if (folders.length === 0) {
+				return {
+					count: 0,
+					folder: this.gitFolder,
+					files: [],
+				};
+			}
+
+			const fileName = getFoldersPath(this.gitFolder);
+			await fsWriteFile(
+				fileName,
+				JSON.stringify(
+					{
+						folders: folders.map((f) => ({
+							id: f.id,
+							name: f.name,
+							parentFolderId: f.parentFolder?.id ?? null,
+							homeProjectId: f.homeProject.id,
+							createdAt: f.createdAt.toISOString(),
+							updatedAt: f.updatedAt.toISOString(),
+						})),
+					},
+					null,
+					2,
+				),
+			);
+			return {
+				count: folders.length,
+				folder: this.gitFolder,
+				files: [
+					{
+						id: '',
+						name: fileName,
+					},
+				],
+			};
+		} catch (error) {
+			throw new UnexpectedError('Failed to export folders to work folder', { cause: error });
 		}
 	}
 
