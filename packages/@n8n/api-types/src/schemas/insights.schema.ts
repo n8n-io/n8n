@@ -74,6 +74,8 @@ export const insightsByTimeDataSchemas = {
 	values: z
 		.object({
 			total: z.number(),
+			succeeded: z.number(),
+			failed: z.number(),
 			failureRate: z.number(),
 			averageRunTime: z.number(),
 			timeSaved: z.number(),
