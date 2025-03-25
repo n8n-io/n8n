@@ -1,6 +1,6 @@
 import { createTestNode, createTestWorkflowObject } from '@/__tests__/mocks';
 import { createAiData, getTreeNodeData } from '@/components/RunDataAi/utils';
-import { type ITaskData, NodeConnectionType } from 'n8n-workflow';
+import { type ITaskData, NodeConnectionTypes } from 'n8n-workflow';
 
 describe(getTreeNodeData, () => {
 	function createTaskData(partialData: Partial<ITaskData>): ITaskData {
@@ -22,9 +22,9 @@ describe(getTreeNodeData, () => {
 				createTestNode({ name: 'C' }),
 			],
 			connections: {
-				B: { ai_tool: [[{ node: 'A', type: NodeConnectionType.AiTool, index: 0 }]] },
+				B: { ai_tool: [[{ node: 'A', type: NodeConnectionTypes.AiTool, index: 0 }]] },
 				C: {
-					ai_languageModel: [[{ node: 'B', type: NodeConnectionType.AiLanguageModel, index: 0 }]],
+					ai_languageModel: [[{ node: 'B', type: NodeConnectionTypes.AiLanguageModel, index: 0 }]],
 				},
 			},
 		});

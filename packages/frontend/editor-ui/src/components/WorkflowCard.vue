@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import {
 	DUPLICATE_MODAL_KEY,
 	MODAL_CONFIRM,
@@ -20,12 +20,15 @@ import TimeAgo from '@/components/TimeAgo.vue';
 import { useProjectsStore } from '@/stores/projects.store';
 import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
 import { useI18n } from '@/composables/useI18n';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { ResourceType } from '@/utils/projects.utils';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { WorkflowResource } from './layouts/ResourcesListLayout.vue';
 import type { IUser } from 'n8n-workflow';
+import { type ProjectIcon as CardProjectIcon, ProjectTypes } from '@/types/projects.types';
+import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import { useFoldersStore } from '@/stores/folders.store';
 
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -33,6 +36,7 @@ const WORKFLOW_LIST_ITEM_ACTIONS = {
 	DUPLICATE: 'duplicate',
 	DELETE: 'delete',
 	MOVE: 'move',
+	MOVE_TO_FOLDER: 'moveToFolder',
 };
 
 const props = withDefaults(
@@ -52,12 +56,14 @@ const emit = defineEmits<{
 	'click:tag': [tagId: string, e: PointerEvent];
 	'workflow:deleted': [];
 	'workflow:active-toggle': [value: { id: string; active: boolean }];
+	'action:move-to-folder': [value: { id: string; name: string; parentFolderId?: string }];
 }>();
 
 const toast = useToast();
 const message = useMessage();
 const locale = useI18n();
 const router = useRouter();
+const route = useRoute();
 const telemetry = useTelemetry();
 
 const settingsStore = useSettingsStore();
@@ -65,10 +71,56 @@ const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
+const foldersStore = useFoldersStore();
+
+const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {}));
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.workflow').toLowerCase());
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const workflowPermissions = computed(() => getResourcePermissions(props.data.scopes).workflow);
+const isOverviewPage = computed(() => route.name === VIEWS.WORKFLOWS);
+
+const showFolders = computed(() => {
+	return settingsStore.isFoldersFeatureEnabled && route.name !== VIEWS.WORKFLOWS;
+});
+
+const projectIcon = computed<CardProjectIcon>(() => {
+	const defaultIcon: CardProjectIcon = { type: 'icon', value: 'layer-group' };
+	if (props.data.homeProject?.type === ProjectTypes.Personal) {
+		return { type: 'icon', value: 'user' };
+	} else if (props.data.homeProject?.type === ProjectTypes.Team) {
+		return props.data.homeProject.icon ?? defaultIcon;
+	}
+	return defaultIcon;
+});
+
+const projectName = computed(() => {
+	if (props.data.homeProject?.type === ProjectTypes.Personal) {
+		return locale.baseText('projects.menu.personal');
+	}
+	return props.data.homeProject?.name;
+});
+
+const cardBreadcrumbs = computed<PathItem[]>(() => {
+	if (props.data.parentFolder) {
+		return [
+			{
+				id: props.data.parentFolder.id,
+				name: props.data.parentFolder.name,
+				label: props.data.parentFolder.name,
+				href: router.resolve({
+					name: VIEWS.PROJECTS_FOLDERS,
+					params: {
+						projectId: props.data.homeProject?.id,
+						folderId: props.data.parentFolder.id,
+					},
+				}).href,
+			},
+		];
+	}
+	return [];
+});
+
 const actions = computed(() => {
 	const items = [
 		{
@@ -85,6 +137,13 @@ const actions = computed(() => {
 		items.push({
 			label: locale.baseText('workflows.item.duplicate'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.DUPLICATE,
+		});
+	}
+
+	if (workflowPermissions.value.update && !props.readOnly && showFolders.value) {
+		items.push({
+			label: locale.baseText('folders.actions.moveToFolder'),
+			value: WORKFLOW_LIST_ITEM_ACTIONS.MOVE_TO_FOLDER,
 		});
 	}
 
@@ -175,6 +234,13 @@ async function onAction(action: string) {
 		case WORKFLOW_LIST_ITEM_ACTIONS.MOVE:
 			moveResource();
 			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.MOVE_TO_FOLDER:
+			emit('action:move-to-folder', {
+				id: props.data.id,
+				name: props.data.name,
+				parentFolderId: props.data.parentFolder?.id,
+			});
+			break;
 	}
 }
 
@@ -214,6 +280,17 @@ async function deleteWorkflow() {
 	emit('workflow:deleted');
 }
 
+const fetchHiddenBreadCrumbsItems = async () => {
+	if (!props.data.homeProject?.id || !projectName.value || !props.data.parentFolder) {
+		hiddenBreadcrumbsItemsAsync.value = Promise.resolve([]);
+	} else {
+		hiddenBreadcrumbsItemsAsync.value = foldersStore.getHiddenBreadcrumbsItems(
+			{ id: props.data.homeProject.id, name: projectName.value },
+			props.data.parentFolder.id,
+		);
+	}
+};
+
 function moveResource() {
 	uiStore.openModalWithData({
 		name: PROJECT_MOVE_RESOURCE_MODAL,
@@ -229,17 +306,23 @@ function moveResource() {
 const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
 	emit('workflow:active-toggle', value);
 };
+
+const onBreadcrumbItemClick = async (item: PathItem) => {
+	if (item.href) {
+		await router.push(item.href);
+	}
+};
 </script>
 
 <template>
 	<n8n-card :class="$style.cardLink" data-test-id="workflow-card" @click="onClick">
 		<template #header>
-			<n8n-heading tag="h2" bold :class="$style.cardHeading" data-test-id="workflow-card-name">
+			<n8n-text tag="h2" bold :class="$style.cardHeading" data-test-id="workflow-card-name">
 				{{ data.name }}
 				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
 					{{ locale.baseText('workflows.item.readonly') }}
 				</N8nBadge>
-			</n8n-heading>
+			</n8n-text>
 		</template>
 		<div :class="$style.cardDescription">
 			<n8n-text color="text-light" size="small">
@@ -267,7 +350,33 @@ const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
+				<div v-if="isOverviewPage" :class="$style.breadcrumbs">
+					<n8n-breadcrumbs
+						:items="cardBreadcrumbs"
+						:hidden-items="hiddenBreadcrumbsItemsAsync"
+						:path-truncated="true"
+						:show-border="true"
+						:highlight-last-item="false"
+						hidden-items-trigger="hover"
+						theme="small"
+						data-test-id="workflow-card-breadcrumbs"
+						@tooltip-opened="fetchHiddenBreadCrumbsItems"
+						@item-selected="onBreadcrumbItemClick"
+					>
+						<template v-if="data.homeProject" #prepend>
+							<div :class="$style['home-project']">
+								<n8n-link :to="`/projects/${data.homeProject.id}`">
+									<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" />
+									<n8n-text size="small" :compact="true" :bold="true" color="text-base">{{
+										projectName
+									}}</n8n-text>
+								</n8n-link>
+							</div>
+						</template>
+					</n8n-breadcrumbs>
+				</div>
 				<ProjectCardBadge
+					v-else
 					:class="$style.cardBadge"
 					:resource="data"
 					:resource-type="ResourceType.Workflow"

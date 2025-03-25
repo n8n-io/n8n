@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import type { UserAction } from '@n8n/design-system';
 import { N8nButton, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@/composables/useI18n';
-import { type ProjectIcon, ProjectTypes } from '@/types/projects.types';
+import { ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
 import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { getResourcePermissions } from '@/permissions';
@@ -23,16 +23,6 @@ const settingsStore = useSettingsStore();
 const emit = defineEmits<{
 	createFolder: [];
 }>();
-
-const headerIcon = computed((): ProjectIcon => {
-	if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
-		return { type: 'icon', value: 'user' };
-	} else if (projectsStore.currentProject?.name) {
-		return projectsStore.currentProject.icon ?? { type: 'icon', value: 'layer-group' };
-	} else {
-		return { type: 'icon', value: 'home' };
-	}
-});
 
 const projectName = computed(() => {
 	if (!projectsStore.currentProject) {
@@ -56,8 +46,10 @@ const showSettings = computed(
 );
 
 const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
-const isFoldersFeatureEnabled = computed(() => settingsStore.settings.folders.enabled);
-const isProjectPage = computed(() => route.name === VIEWS.PROJECTS_WORKFLOWS);
+
+const showFolders = computed(() => {
+	return settingsStore.isFoldersFeatureEnabled && route.name !== VIEWS.WORKFLOWS;
+});
 
 const ACTION_TYPES = {
 	WORKFLOW: 'workflow',
@@ -85,7 +77,7 @@ const menu = computed(() => {
 				!getResourcePermissions(homeProject.value?.scopes).credential.create,
 		},
 	];
-	if (isFoldersFeatureEnabled.value && isProjectPage.value) {
+	if (showFolders.value) {
 		items.push({
 			value: ACTION_TYPES.FOLDER,
 			label: i18n.baseText('projects.header.create.folder'),
@@ -134,7 +126,6 @@ const onSelect = (action: string) => {
 	<div>
 		<div :class="$style.projectHeader">
 			<div :class="$style.projectDetails">
-				<ProjectIcon :icon="headerIcon" :border-less="true" size="medium" />
 				<div :class="$style.headerActions">
 					<N8nHeading bold tag="h2" size="xlarge">{{ projectName }}</N8nHeading>
 					<N8nText color="text-light">
@@ -166,6 +157,7 @@ const onSelect = (action: string) => {
 				</N8nTooltip>
 			</div>
 		</div>
+		<slot></slot>
 		<div :class="$style.actions">
 			<ProjectTabs :show-settings="showSettings" />
 		</div>
@@ -188,7 +180,7 @@ const onSelect = (action: string) => {
 }
 
 .actions {
-	padding: var(--spacing-2xs) 0 var(--spacing-l);
+	padding: var(--spacing-2xs) 0 var(--spacing-xs);
 }
 
 @include mixins.breakpoint('xs-only') {

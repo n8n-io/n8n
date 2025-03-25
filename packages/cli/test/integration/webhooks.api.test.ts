@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
 import type { IWorkflowBase } from 'n8n-workflow';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type IWebhookFunctions,
@@ -189,7 +189,7 @@ describe('Webhook API', () => {
 			description: '',
 			defaults: {},
 			inputs: [],
-			outputs: [NodeConnectionType.Main],
+			outputs: [NodeConnectionTypes.Main],
 			webhooks: [
 				{
 					name: 'default',
