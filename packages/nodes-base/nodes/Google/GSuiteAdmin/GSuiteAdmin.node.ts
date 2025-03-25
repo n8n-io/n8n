@@ -416,7 +416,7 @@ export class GSuiteAdmin implements INodeType {
 						const groupId = this.getNodeParameter('groupId', i, undefined, {
 							extractValue: true,
 						}) as string;
-						const userId = this.getNodeParameter('userId', i, {
+						const userId = this.getNodeParameter('userId', i, undefined, {
 							extractValue: true,
 						}) as string;
 
