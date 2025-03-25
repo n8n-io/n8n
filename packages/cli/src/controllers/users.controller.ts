@@ -1,6 +1,4 @@
 import { RoleChangeRequestDto, SettingsUpdateRequestDto } from '@n8n/api-types';
-import { getOwnerOnlyApiKeyScopes } from '@n8n/permissions';
-import { In } from '@n8n/typeorm';
 import { Response } from 'express';
 import { Logger } from 'n8n-core';
 
@@ -9,7 +7,6 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { AuthIdentity } from '@/databases/entities/auth-identity';
 import { Project } from '@/databases/entities/project';
 import { User } from '@/databases/entities/user';
-import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';

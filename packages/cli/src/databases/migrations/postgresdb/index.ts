@@ -83,7 +83,7 @@ import { AddErrorColumnsToTestRuns1737715421462 } from '../common/1737715421462-
 import { CreateFolderTable1738709609940 } from '../common/1738709609940-CreateFolderTable';
 import { CreateAnalyticsTables1739549398681 } from '../common/1739549398681-CreateAnalyticsTables';
 import { RenameAnalyticsToInsights1741167584277 } from '../common/1741167584277-RenameAnalyticsToInsights';
-import { AddScopesColumnToApiKeys1739549399792 } from '../common/1739549399792-AddScopesColumnToApiKeys';
+import { AddScopesColumnToApiKeys1742918400000 } from '../common/1742918400000-AddScopesColumnToApiKeys';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -169,5 +169,5 @@ export const postgresMigrations: Migration[] = [
 	CreateAnalyticsTables1739549398681,
 	UpdateParentFolderIdColumn1740445074052,
 	RenameAnalyticsToInsights1741167584277,
-	AddScopesColumnToApiKeys1739549399792,
+	AddScopesColumnToApiKeys1742918400000,
 ];

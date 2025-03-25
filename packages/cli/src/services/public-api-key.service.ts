@@ -1,12 +1,8 @@
 import type { UnixTimestamp, UpdateApiKeyRequestDto } from '@n8n/api-types';
 import type { CreateApiKeyRequestDto } from '@n8n/api-types/src/dto/api-keys/create-api-key-request.dto';
 import { Service } from '@n8n/di';
-import type { GlobalRole } from '@n8n/permissions';
-import {
-	getApiKeyScopesForRole,
-	getOwnerOnlyApiKeyScopes,
-	type ApiKeyScope,
-} from '@n8n/permissions';
+import { getApiKeyScopesForRole, getOwnerOnlyApiKeyScopes } from '@n8n/permissions';
+import type { GlobalRole, ApiKeyScope } from '@n8n/permissions';
 import { TokenExpiredError } from 'jsonwebtoken';
 import type { OpenAPIV3 } from 'openapi-types';
 
@@ -18,8 +14,6 @@ import { EventService } from '@/events/event.service';
 import type { AuthenticatedRequest } from '@/requests';
 
 import { JwtService } from './jwt.service';
-import { ApplicationError } from 'n8n-workflow';
-import { In } from '@n8n/typeorm';
 
 const API_KEY_AUDIENCE = 'public-api';
 const API_KEY_ISSUER = 'n8n';
@@ -169,7 +163,6 @@ export class PublicApiKeyService {
 
 	apiKeyHasValidScopesForRole = (role: GlobalRole, apiKeyScopes: ApiKeyScope[]) => {
 		const scopesForRole = getApiKeyScopesForRole(role);
-		// maybe reverse this?
 		return apiKeyScopes.every((scope) => scopesForRole.includes(scope));
 		// return scopesForRole.every((scope) => apiKeyScopes.includes(scope));
 	};

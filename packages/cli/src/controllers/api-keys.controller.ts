@@ -3,13 +3,11 @@ import { getApiKeyScopesForRole } from '@n8n/permissions';
 import type { RequestHandler } from 'express';
 
 import { Body, Delete, Get, Param, Patch, Post, RestController } from '@/decorators';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import { isApiEnabled } from '@/public-api';
 import { AuthenticatedRequest } from '@/requests';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
-import { BadRequest } from 'express-openapi-validator/dist/openapi.validator';
-import { HttpError } from 'express-openapi-validator/dist/framework/types';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 export const isApiEnabledMiddleware: RequestHandler = (_, res, next) => {
 	if (isApiEnabled()) {

@@ -5,7 +5,7 @@ import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 
 type ApiKeyWithRole = { id: string; role: GlobalRole };
 
-export class AddScopesColumnToApiKeys1739549399792 implements ReversibleMigration {
+export class AddScopesColumnToApiKeys1742918400000 implements ReversibleMigration {
 	async up({ runQuery, escape, schemaBuilder: { addColumns, column } }: MigrationContext) {
 		await addColumns('user_api_keys', [column('scopes').json]);
 
