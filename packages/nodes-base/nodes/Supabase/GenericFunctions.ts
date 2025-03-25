@@ -30,9 +30,6 @@ export async function supabaseApiRequest(
 
 	if (this.getNodeParameter('useCustomSchema', false)) {
 		let schema = this.getNodeParameter('schema', 'public');
-		if (schema === '') {
-			schema = 'public';
-		}
 		if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) {
 			headers['Content-Profile'] = schema;
 		} else if (['GET', 'HEAD'].includes(method)) {
@@ -58,6 +55,9 @@ export async function supabaseApiRequest(
 		}
 		return await this.helpers.requestWithAuthentication.call(this, 'supabaseApi', options);
 	} catch (error) {
+		if (error.description) {
+			error.message = `${error.message}: ${error.description}`;
+		}
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
