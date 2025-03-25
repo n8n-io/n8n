@@ -29,7 +29,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
 	isReadOnly: false,
-	defaultType: 'string',
+	defaultType: undefined,
 	disableType: false,
 });
 
@@ -89,7 +89,7 @@ function addAssignment(): void {
 		id: crypto.randomUUID(),
 		name: '',
 		value: '',
-		type: props.defaultType,
+		type: props.defaultType ?? 'string',
 	});
 }
 
@@ -98,7 +98,7 @@ function dropAssignment(expression: string): void {
 		id: crypto.randomUUID(),
 		name: propertyNameFromExpression(expression),
 		value: `=${expression}`,
-		type: typeFromExpression(expression),
+		type: props.defaultType ?? typeFromExpression(expression),
 	});
 }
 
