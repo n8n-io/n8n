@@ -1,10 +1,7 @@
 <script lang="ts" setup>
 import ContextMenu from '@/components/ContextMenu/ContextMenu.vue';
-import {
-	type CanvasLayoutEvent,
-	type CanvasLayoutSource,
-	useCanvasLayout,
-} from '@/composables/useCanvasLayout';
+import type { CanvasLayoutEvent, CanvasLayoutSource } from '@/composables/useCanvasLayout';
+import { useCanvasLayout } from '@/composables/useCanvasLayout';
 import { useCanvasNodeHover } from '@/composables/useCanvasNodeHover';
 import { useCanvasTraversal } from '@/composables/useCanvasTraversal';
 import { type ContextMenuAction, useContextMenu } from '@/composables/useContextMenu';
@@ -142,6 +139,7 @@ const {
 	onNodesInitialized,
 	findNode,
 	viewport,
+	nodesSelectionActive,
 	onEdgeMouseLeave,
 	onEdgeMouseEnter,
 	onEdgeMouseMove,
@@ -358,6 +356,12 @@ function onNodeClick({ event, node }: NodeMouseEvent) {
 
 function onSelectionDragStop(event: NodeDragEvent) {
 	onUpdateNodesPosition(event.nodes.map(({ id, position }) => ({ id, position })));
+}
+
+function onSelectionEnd() {
+	if (selectedNodes.value.length === 1) {
+		nodesSelectionActive.value = false;
+	}
 }
 
 function onSetNodeActivated(id: string) {
@@ -799,6 +803,7 @@ provide(CanvasKey, {
 		@node-drag-stop="onNodeDragStop"
 		@node-click="onNodeClick"
 		@selection-drag-stop="onSelectionDragStop"
+		@selection-end="onSelectionEnd"
 		@selection-context-menu="onOpenSelectionContextMenu"
 		@dragover="onDragOver"
 		@drop="onDrop"
