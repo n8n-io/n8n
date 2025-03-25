@@ -41,7 +41,8 @@ describe('Test GoogleChat, message => sendAndWait', () => {
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my subject');
 		mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('http://localhost/waiting-webhook');
 		mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('nodeID');
-		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // approvalOptions
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // options
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('approval');
 
 		// configureWaitTillDate

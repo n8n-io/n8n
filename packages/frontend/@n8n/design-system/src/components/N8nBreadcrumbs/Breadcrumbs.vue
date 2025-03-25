@@ -19,6 +19,7 @@ type Props = {
 	loadingSkeletonRows?: number;
 	separator?: string;
 	highlightLastItem?: boolean;
+	hiddenItemsTrigger?: 'hover' | 'click';
 	// Setting this to true will show the ellipsis even if there are no hidden items
 	pathTruncated?: boolean;
 };
@@ -40,6 +41,7 @@ const props = withDefaults(defineProps<Props>(), {
 	separator: '/',
 	highlightLastItem: true,
 	isPathTruncated: false,
+	hiddenItemsTrigger: 'click',
 });
 
 const loadedHiddenItems = ref<PathItem[]>([]);
@@ -137,7 +139,7 @@ const handleTooltipClose = () => {
 	>
 		<slot name="prepend"></slot>
 		<ul :class="$style.list">
-			<li v-if="$slots.prepend && items.length" :class="$style.separator" aria-hidden="true">
+			<li v-if="$slots.prepend && items.length" :class="$style.separator">
 				{{ separator }}
 			</li>
 			<li
@@ -153,10 +155,12 @@ const handleTooltipClose = () => {
 						:loading-row-count="loadingSkeletonRows"
 						:disabled="dropdownDisabled"
 						:class="$style['action-toggle']"
+						:popper-class="$style['hidden-items-menu-popper']"
 						theme="dark"
 						placement="bottom"
 						size="small"
 						icon-orientation="horizontal"
+						data-test-id="hidden-items-menu"
 						@visible-change="onHiddenMenuVisibleChange"
 						@action="emitItemSelected"
 					>
@@ -168,7 +172,8 @@ const handleTooltipClose = () => {
 					v-else
 					:popper-class="$style.tooltip"
 					:disabled="dropdownDisabled"
-					trigger="click"
+					:trigger="hiddenItemsTrigger"
+					placement="bottom"
 					@before-show="handleTooltipShow"
 					@hide="handleTooltipClose"
 				>
@@ -183,7 +188,7 @@ const handleTooltipClose = () => {
 							/>
 						</div>
 						<div v-else :class="$style.tooltipContent">
-							<div>
+							<div data-test-id="hidden-items-tooltip">
 								<n8n-text>{{ loadedHiddenItems.map((item) => item.label).join(' / ') }}</n8n-text>
 							</div>
 						</div>
@@ -191,20 +196,23 @@ const handleTooltipClose = () => {
 					<span :class="$style['tooltip-ellipsis']">...</span>
 				</n8n-tooltip>
 			</li>
-			<li v-if="showEllipsis" :class="$style.separator" aria-hidden="true">{{ separator }}</li>
+			<li v-if="showEllipsis" :class="$style.separator">{{ separator }}</li>
 			<template v-for="(item, index) in items" :key="item.id">
 				<li
 					:class="{
 						[$style.item]: true,
 						[$style.current]: props.highlightLastItem && index === items.length - 1,
 					}"
-					data-test-id="breadcrumbs-item"
+					:title="item.label"
+					:data-test-id="
+						index === items.length - 1 ? 'breadcrumbs-item-current' : 'breadcrumbs-item'
+					"
 					@click.prevent="emitItemSelected(item.id)"
 				>
 					<n8n-link v-if="item.href" :href="item.href" theme="text">{{ item.label }}</n8n-link>
 					<n8n-text v-else>{{ item.label }}</n8n-text>
 				</li>
-				<li v-if="index !== items.length - 1" :class="$style.separator" aria-hidden="true">
+				<li v-if="index !== items.length - 1" :class="$style.separator">
 					{{ separator }}
 				</li>
 			</template>
@@ -232,6 +240,14 @@ const handleTooltipClose = () => {
 .list {
 	display: flex;
 	list-style: none;
+	align-items: center;
+}
+
+.item * {
+	display: block;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .item.current span {
@@ -268,6 +284,21 @@ const handleTooltipClose = () => {
 	color: var(--color-text-base);
 }
 
+.hidden-items-menu-popper {
+	& > div ul {
+		max-height: 250px;
+		overflow: auto;
+	}
+
+	li {
+		max-width: var(--spacing-5xl);
+		display: block;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+}
+
 .tooltip-loading {
 	min-width: var(--spacing-3xl);
 	width: 100%;
@@ -285,6 +316,7 @@ const handleTooltipClose = () => {
 
 .tooltip {
 	padding: var(--spacing-xs) var(--spacing-2xs);
+	text-align: center;
 	& > div {
 		color: var(--color-text-lighter);
 		span {
@@ -315,11 +347,16 @@ const handleTooltipClose = () => {
 		gap: var(--spacing-5xs);
 	}
 
+	.item {
+		max-width: var(--spacing-3xl);
+	}
+
 	.item,
 	.item * {
 		color: var(--color-text-base);
 		font-size: var(--font-size-2xs);
-		font-weight: 600;
+		font-weight: var(--font-weight-bold);
+		line-height: var(--font-line-heigh-xsmall);
 	}
 
 	.item a:hover * {
@@ -327,7 +364,7 @@ const handleTooltipClose = () => {
 	}
 
 	.separator {
-		font-size: var(--font-size-m);
+		font-size: var(--font-size-s);
 		color: var(--color-text-base);
 	}
 }
@@ -341,7 +378,11 @@ const handleTooltipClose = () => {
 	.item,
 	.item * {
 		color: var(--color-text-base);
-		font-size: var(--font-size-m);
+		font-size: var(--font-size-s);
+	}
+
+	.item {
+		max-width: var(--spacing-5xl);
 	}
 
 	.item a:hover * {

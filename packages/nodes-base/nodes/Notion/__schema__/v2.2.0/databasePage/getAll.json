@@ -7,12 +7,12 @@
         "name": {
             "type": "string"
         },
+        "property_name": {
+            "type": "string"
+        },
         "url": {
             "type": "string"
         }
     },
-    "required": [
-        "id",
-        "url"
-    ]
+    "version": 1
 }

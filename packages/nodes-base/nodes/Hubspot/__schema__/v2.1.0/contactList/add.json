@@ -1,19 +1,7 @@
 {
     "type": "object",
     "properties": {
-        "updated": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
-        },
         "discarded": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
-        },
-        "invalidVids": {
             "type": "array",
             "items": {
                 "type": "integer"
@@ -24,12 +12,19 @@
             "items": {
                 "type": "string"
             }
+        },
+        "invalidVids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "updated": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
         }
     },
-    "required": [
-        "updated",
-        "discarded",
-        "invalidVids",
-        "invalidEmails"
-    ]
+    "version": 1
 }

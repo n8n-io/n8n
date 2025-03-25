@@ -32,6 +32,7 @@ import { ExternalHooks } from '@/external-hooks';
 import type { PublicUser } from '@/interfaces';
 import { listQueryMiddleware } from '@/middlewares';
 import { AuthenticatedRequest, ListQuery, UserRequest } from '@/requests';
+import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 import { UserService } from '@/services/user.service';
@@ -52,6 +53,7 @@ export class UsersController {
 		private readonly credentialsService: CredentialsService,
 		private readonly projectService: ProjectService,
 		private readonly eventService: EventService,
+		private readonly folderService: FolderService,
 		private readonly publicApiKeyService: PublicApiKeyService,
 	) {}
 
@@ -192,9 +194,9 @@ export class UsersController {
 		let transfereeId;
 
 		if (transferId) {
-			const transfereePersonalProject = await this.projectRepository.findOneBy({ id: transferId });
+			const transfereeProject = await this.projectRepository.findOneBy({ id: transferId });
 
-			if (!transfereePersonalProject) {
+			if (!transfereeProject) {
 				throw new NotFoundError(
 					'Request to delete a user failed because the transferee project was not found in DB',
 				);
@@ -202,8 +204,7 @@ export class UsersController {
 
 			const transferee = await this.userRepository.findOneByOrFail({
 				projectRelations: {
-					projectId: transfereePersonalProject.id,
-					role: 'project:personalOwner',
+					projectId: transfereeProject.id,
 				},
 			});
 
@@ -212,19 +213,23 @@ export class UsersController {
 			await this.userService.getManager().transaction(async (trx) => {
 				await this.workflowService.transferAll(
 					personalProjectToDelete.id,
-					transfereePersonalProject.id,
+					transfereeProject.id,
 					trx,
 				);
 				await this.credentialsService.transferAll(
 					personalProjectToDelete.id,
-					transfereePersonalProject.id,
+					transfereeProject.id,
+					trx,
+				);
+
+				await this.folderService.transferAllFoldersToProject(
+					personalProjectToDelete.id,
+					transfereeProject.id,
 					trx,
 				);
 			});
 
-			await this.projectService.clearCredentialCanUseExternalSecretsCache(
-				transfereePersonalProject.id,
-			);
+			await this.projectService.clearCredentialCanUseExternalSecretsCache(transfereeProject.id);
 		}
 
 		const [ownedSharedWorkflows, ownedSharedCredentials] = await Promise.all([

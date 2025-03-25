@@ -1,7 +1,7 @@
 import { generateOffsets, getGenericHints, getNewNodePosition } from './nodeViewUtils';
 import type { INode, INodeTypeDescription, INodeExecutionData, Workflow } from 'n8n-workflow';
 import type { INodeUi, XYPosition } from '@/Interface';
-import { NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { mock, type MockProxy } from 'vitest-mock-extended';
@@ -19,7 +19,7 @@ describe('getGenericHints', () => {
 
 	beforeEach(() => {
 		mockWorkflowNode = mock<INode>();
-		mockNode = mock<INodeUi>();
+		mockNode = mock<INodeUi>({ type: 'test' });
 		mockNodeType = mock<INodeTypeDescription>();
 		mockNodeOutputData = [];
 		mockWorkflow = mock<Workflow>();
@@ -134,6 +134,54 @@ describe('getGenericHints', () => {
 			{
 				message: "No nodes connected to the 'loop' output of this node",
 				whenToDisplay: 'beforeExecution',
+				location: 'outputPane',
+			},
+		]);
+	});
+
+	it('should return an hint for tool nodes without AI expressions', () => {
+		mockNode.type = 'custom-tool-node';
+		hasNodeRun = true;
+		mockWorkflowNode.parameters = { param1: 'staticValue' };
+
+		const hints = getGenericHints({
+			workflowNode: mockWorkflowNode,
+			node: mockNode,
+			nodeType: mockNodeType,
+			nodeOutputData: mockNodeOutputData,
+			hasMultipleInputItems,
+			workflow: mockWorkflow,
+			hasNodeRun,
+		});
+
+		expect(hints).toEqual([
+			{
+				message:
+					'No parameters are set up to be filled by AI. Click on the ✨ button next to a parameter to allow AI to set its value.',
+				location: 'outputPane',
+				whenToDisplay: 'afterExecution',
+			},
+		]);
+	});
+
+	it('should return a hint for sendAndWait operation with multiple input items', () => {
+		hasMultipleInputItems = true;
+		mockWorkflowNode.parameters.operation = SEND_AND_WAIT_OPERATION;
+		mockWorkflow.getNode.mockReturnValue({ executeOnce: false } as unknown as INode);
+
+		const hints = getGenericHints({
+			workflowNode: mockWorkflowNode,
+			node: mockNode,
+			nodeType: mockNodeType,
+			nodeOutputData: mockNodeOutputData,
+			hasMultipleInputItems,
+			workflow: mockWorkflow,
+			hasNodeRun,
+		});
+
+		expect(hints).toEqual([
+			{
+				message: 'This action will run only once, for the first input item',
 				location: 'outputPane',
 			},
 		]);

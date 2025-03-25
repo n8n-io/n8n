@@ -57,10 +57,11 @@ import type {
 } from 'n8n-workflow';
 import {
 	deepCopy,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	NodeHelpers,
 	SEND_AND_WAIT_OPERATION,
 	Workflow,
+	TelemetryHelpers,
 } from 'n8n-workflow';
 import { findLast, pick, isEqual } from 'lodash-es';
 
@@ -82,7 +83,6 @@ import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectSharingData } from '@/types/projects.types';
 import type { PushPayload } from '@n8n/api-types';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { TelemetryHelpers } from 'n8n-workflow';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';
 import { useSettingsStore } from './settings.store';
@@ -116,6 +116,8 @@ const createEmptyWorkflow = (): IWorkflowDb => ({
 let cachedWorkflowKey: string | null = '';
 let cachedWorkflow: Workflow | null = null;
 
+type ChatPanelState = 'closed' | 'attached' | 'floating';
+
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const uiStore = useUIStore();
 	const telemetry = useTelemetry();
@@ -145,8 +147,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const isInDebugMode = ref(false);
 	const chatMessages = ref<string[]>([]);
 	const chatPartialExecutionDestinationNode = ref<string | null>(null);
-	const isChatPanelOpen = ref(false);
-	const isLogsPanelOpen = ref(false);
+	const chatPanelState = ref<ChatPanelState>('closed');
 
 	const { executingNode, addExecutingNode, removeExecutingNode, clearNodeExecutionQueue } =
 		useExecutingNode();
@@ -1117,6 +1118,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				nodeHelpers.assignNodeId(node);
 			}
 
+			if (node.extendsCredential) {
+				node.type = getCredentialOnlyNodeTypeName(node.extendsCredential);
+			}
+
 			if (!nodeMetadata.value[node.name]) {
 				nodeMetadata.value[node.name] = { pristine: true };
 			}
@@ -1190,10 +1195,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			return;
 		}
 
-		if (nodeData.extendsCredential) {
-			nodeData.type = getCredentialOnlyNodeTypeName(nodeData.extendsCredential);
-		}
-
 		workflow.value.nodes.push(nodeData);
 		// Init node metadata
 		if (!nodeMetadata.value[nodeData.name]) {
@@ -1206,8 +1207,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		nodeMetadata.value = remainingNodeMetadata;
 
 		// If chat trigger node is removed, close chat
-		if (node.type === CHAT_TRIGGER_NODE_TYPE) {
-			setPanelOpen('chat', false);
+		if (node.type === CHAT_TRIGGER_NODE_TYPE && !settingsStore.isNewLogsEnabled) {
+			setPanelState('closed');
 		}
 
 		if (workflow.value.pinData && workflow.value.pinData.hasOwnProperty(node.name)) {
@@ -1623,7 +1624,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function checkIfNodeHasChatParent(nodeName: string): boolean {
 		const workflow = getCurrentWorkflow();
-		const parents = workflow.getParentNodes(nodeName, NodeConnectionType.Main);
+		const parents = workflow.getParentNodes(nodeName, NodeConnectionTypes.Main);
 
 		const matchedChatNode = parents.find((parent) => {
 			const parentNodeType = getNodeByName(parent)?.type;
@@ -1669,12 +1670,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	// End Canvas V2 Functions
 	//
 
-	function setPanelOpen(panel: 'chat' | 'logs', isOpen: boolean) {
-		if (panel === 'chat') {
-			isChatPanelOpen.value = isOpen;
-		}
-		// Logs panel open/close is tied to the chat panel open/close
-		isLogsPanelOpen.value = isOpen;
+	function setPanelState(state: ChatPanelState) {
+		chatPanelState.value = state;
 	}
 
 	function markExecutionAsStopped() {
@@ -1736,9 +1733,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getAllLoadedFinishedExecutions,
 		getWorkflowExecution,
 		getPastChatMessages,
-		isChatPanelOpen: computed(() => isChatPanelOpen.value),
-		isLogsPanelOpen: computed(() => isLogsPanelOpen.value),
-		setPanelOpen,
+		chatPanelState: computed(() => chatPanelState.value),
+		setPanelState,
 		outgoingConnectionsByNodeName,
 		incomingConnectionsByNodeName,
 		nodeHasOutputConnection,
