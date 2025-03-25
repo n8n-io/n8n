@@ -20,8 +20,8 @@ import {
 	createCompactedInsightsEvent,
 	createRawInsightsEvents,
 } from '../database/entities/__tests__/db-utils';
-import { InsightsService } from '../insights.service';
 import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
+import { InsightsService } from '../insights.service';
 
 async function truncateAll() {
 	const insightsRawRepository = Container.get(InsightsRawRepository);

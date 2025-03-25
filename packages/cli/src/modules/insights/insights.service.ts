@@ -16,9 +16,9 @@ import { InsightsRaw } from '@/modules/insights/database/entities/insights-raw';
 
 import type { TypeUnit } from './database/entities/insights-shared';
 import { NumberToType } from './database/entities/insights-shared';
-import { InsightsConfig } from './insights.config';
 import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
 import { InsightsRawRepository } from './database/repositories/insights-raw.repository';
+import { InsightsConfig } from './insights.config';
 
 const config = Container.get(InsightsConfig);
 
