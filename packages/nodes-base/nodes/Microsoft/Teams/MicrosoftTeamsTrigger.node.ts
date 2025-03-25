@@ -8,8 +8,8 @@ import {
 	type IDataObject,
 	type ILoadOptionsFunctions,
 	type JsonObject,
-	NodeConnectionType,
 	NodeApiError,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { createSubscription, getResourcePath } from './MicrosoftTeamsTriggerHelpers.node';
@@ -36,7 +36,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 			},
 		],
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		webhooks: [
 			{
 				name: 'default',
