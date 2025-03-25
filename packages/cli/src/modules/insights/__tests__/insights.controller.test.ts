@@ -3,9 +3,9 @@ import { Container } from '@n8n/di';
 import { mockInstance } from '@test/mocking';
 import * as testDb from '@test-integration/test-db';
 
-import { TypeToNumber } from '../entities/insights-shared';
+import { TypeToNumber } from '../database/entities/insights-shared';
+import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
 import { InsightsController } from '../insights.controller';
-import { InsightsByPeriodRepository } from '../repositories/insights-by-period.repository';
 
 // Initialize DB once for all tests
 beforeAll(async () => {
