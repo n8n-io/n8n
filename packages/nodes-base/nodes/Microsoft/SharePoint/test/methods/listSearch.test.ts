@@ -1,8 +1,8 @@
 /* eslint-disable n8n-local-rules/no-plain-errors */
 /* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
-import { FAKE_CREDENTIALS_DATA } from '@test/nodes/FakeCredentialsMap';
 import type { ILoadOptionsFunctions, INodeParameterResourceLocator } from 'n8n-workflow';
 
+import { FAKE_CREDENTIALS_DATA } from '@test/nodes/FakeCredentialsMap';
 import { MicrosoftSharePoint } from '../../MicrosoftSharePoint.node';
 
 describe('Microsoft SharePoint Node', () => {

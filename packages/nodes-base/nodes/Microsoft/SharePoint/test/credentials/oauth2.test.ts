@@ -1,10 +1,11 @@
-import { CredentialsHelper, equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	IHttpRequestOptions,
 } from 'n8n-workflow';
 import nock from 'nock';
+
+import { CredentialsHelper, equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
 
 describe('Microsoft SharePoint Node', () => {
 	const workflows = ['nodes/Microsoft/SharePoint/test/credentials/oauth2.workflow.json'];
