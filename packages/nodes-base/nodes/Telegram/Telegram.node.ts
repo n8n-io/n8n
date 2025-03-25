@@ -227,7 +227,7 @@ export class Telegram implements INodeType {
 						name: 'Edit Message Text',
 						value: 'editMessageText',
 						description: 'Edit a text message',
-						action: 'Edit a test message',
+						action: 'Edit a text message',
 					},
 					{
 						name: 'Pin Chat Message',
