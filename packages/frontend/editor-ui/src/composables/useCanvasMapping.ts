@@ -527,7 +527,7 @@ export function useCanvasMapping({
 	});
 
 	const simulatedNodeTypeDescriptionByNodeId = computed(() => {
-		return nodes.value.reduce<Record<string, INodeTypeDescription | undefined>>((acc, node) => {
+		return nodes.value.reduce<Record<string, INodeTypeDescription | null>>((acc, node) => {
 			if ([SIMULATE_NODE_TYPE, SIMULATE_TRIGGER_NODE_TYPE].includes(node.type)) {
 				const icon = node.parameters?.icon as string;
 				const iconValue = workflowObject.value.expression.getSimpleParameterValue(

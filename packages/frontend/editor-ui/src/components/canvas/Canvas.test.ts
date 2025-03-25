@@ -285,7 +285,6 @@ describe('Canvas', () => {
 					data: {
 						type: SIMULATE_NODE_TYPE,
 						typeVersion: 1,
-						simulatedType: SET_NODE_TYPE,
 					},
 				}),
 			];
