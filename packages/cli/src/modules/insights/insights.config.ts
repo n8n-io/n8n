@@ -1,4 +1,4 @@
-import { Config, Env } from '@n8n/config/src/decorators';
+import { Config, Env } from '@n8n/config';
 
 @Config
 export class InsightsConfig {

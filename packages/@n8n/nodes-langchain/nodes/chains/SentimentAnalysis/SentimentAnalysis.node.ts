@@ -24,7 +24,7 @@ const configuredOutputs = (parameters: INodeParameters, defaultCategories: strin
 	const categories = (options?.categories as string) ?? defaultCategories;
 	const categoriesArray = categories.split(',').map((cat) => cat.trim());
 
-	const ret = categoriesArray.map((cat) => ({ type: NodeConnectionTypes.Main, displayName: cat }));
+	const ret = categoriesArray.map((cat) => ({ type: 'main', displayName: cat }));
 	return ret;
 };
 
