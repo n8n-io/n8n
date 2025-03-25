@@ -146,7 +146,7 @@ const properties: INodeProperties[] = [
 						items: INodeExecutionData[],
 						_response: IN8nHttpFullResponse,
 					): Promise<INodeExecutionData[]> {
-						for (const _item of items) {
+						for (const item of items) {
 							const site = this.getNodeParameter('site', undefined, {
 								extractValue: true,
 							}) as string;
@@ -156,12 +156,13 @@ const properties: INodeProperties[] = [
 							const binaryProperty = this.getNodeParameter('fileContents') as string;
 							this.helpers.assertBinaryData(binaryProperty);
 							const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(binaryProperty);
-							await microsoftSharePointApiRequest.call(
+							const response = await microsoftSharePointApiRequest.call(
 								this,
 								'PUT',
 								`/sites/${site}/drive/items/${file}/content`,
 								binaryDataBuffer,
 							);
+							item.json = response;
 						}
 						return items;
 					},
