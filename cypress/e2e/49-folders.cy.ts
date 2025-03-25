@@ -64,13 +64,17 @@ describe('Folders', () => {
 	});
 
 	describe('Create and navigate folders', () => {
-		it('should create folder from the project header', () => {
+		it.only('should create folder from the project header', () => {
+			// 1. In project root
 			getPersonalProjectMenuItem().click();
 			createFolderFromProjectHeader('My Folder');
 			getFolderCards().should('have.length.greaterThan', 0);
 			// Clicking on the success toast should navigate to the folder
 			successToast().find('a').click();
 			getCurrentBreadcrumb().should('contain.text', 'My Folder');
+			// 2. In a folder
+			createFolderFromListHeaderButton('My Folder 2');
+			getFolderCard('My Folder 2').should('exist');
 		});
 
 		it('should not allow illegal folder names', () => {
