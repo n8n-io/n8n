@@ -61,7 +61,7 @@ const showSettings = computed(
 const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
 
 const showFolders = computed(() => {
-	return settingsStore.isFoldersFeatureEnabled && route.name !== VIEWS.WORKFLOWS;
+	return settingsStore.isFoldersFeatureEnabled && route.name == VIEWS.PROJECTS_WORKFLOWS;
 });
 
 const ACTION_TYPES = {

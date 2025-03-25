@@ -32,6 +32,7 @@ import {
 	getPersonalProjectMenuItem,
 	getProjectEmptyState,
 	getProjectMenuItem,
+	getProjectTab,
 	getVisibleListBreadcrumbs,
 	getWorkflowCard,
 	getWorkflowCardBreadcrumbs,
@@ -217,6 +218,10 @@ describe('Folders', () => {
 			cy.getByTestId('action-folder').should('exist');
 			createFolderFromProjectHeader('Personal Folder');
 			getFolderCards().should('exist');
+			// Create folder option should not be available on credentials tab
+			getProjectTab('ProjectsCredentials').click();
+			getAddResourceDropdown().click();
+			cy.getByTestId('action-folder').should('not.exist');
 		});
 	});
 
