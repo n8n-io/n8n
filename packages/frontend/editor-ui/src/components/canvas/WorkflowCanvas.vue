@@ -9,7 +9,6 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { CanvasConnection, CanvasEventBusEvents, CanvasNode } from '@/types';
 import { useVueFlow } from '@vue-flow/core';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { debounce } from 'lodash-es';
 
 defineOptions({
@@ -36,8 +35,6 @@ const props = withDefaults(
 );
 
 const $style = useCssModule();
-
-const nodeTypesStore = useNodeTypesStore();
 
 const { onNodesInitialized } = useVueFlow({ id: props.id });
 
