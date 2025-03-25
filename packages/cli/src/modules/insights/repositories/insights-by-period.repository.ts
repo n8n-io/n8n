@@ -1,14 +1,25 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
+import { z } from 'zod';
 
 import { sql } from '@/utils/sql';
 
 import { InsightsByPeriod } from '../entities/insights-by-period';
-import type { PeriodUnits } from '../entities/insights-shared';
+import type { PeriodUnit } from '../entities/insights-shared';
 import { PeriodUnitToNumber } from '../entities/insights-shared';
 
 const dbType = Container.get(GlobalConfig).database.type;
+
+const summaryParser = z
+	.object({
+		period: z.enum(['previous', 'current']),
+		type: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]),
+
+		// depending on db engine, sum(value) can be a number or a string - because of big numbers
+		total_value: z.union([z.number(), z.string()]),
+	})
+	.array();
 
 @Service()
 export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
@@ -20,7 +31,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		return this.manager.connection.driver.escape(fieldName);
 	}
 
-	private getPeriodFilterExpr(periodUnit: PeriodUnits) {
+	private getPeriodFilterExpr(periodUnit: PeriodUnit) {
 		const daysAgo = periodUnit === 'day' ? 90 : 180;
 		// Database-specific period start expression to filter out data to compact by days matching the periodUnit
 		let periodStartExpr = `date('now', '-${daysAgo} days')`;
@@ -33,7 +44,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		return periodStartExpr;
 	}
 
-	private getPeriodStartExpr(periodUnit: PeriodUnits) {
+	private getPeriodStartExpr(periodUnit: PeriodUnit) {
 		// Database-specific period start expression to truncate timestamp to the periodUnit
 		// SQLite by default
 		let periodStartExpr = `strftime('%Y-%m-%d ${periodUnit === 'hour' ? '%H' : '00'}:00:00.000', periodStart)`;
@@ -49,7 +60,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		return periodStartExpr;
 	}
 
-	getPeriodInsightsBatchQuery(periodUnit: PeriodUnits, compactionBatchSize: number) {
+	getPeriodInsightsBatchQuery(periodUnit: PeriodUnit, compactionBatchSize: number) {
 		// Build the query to gather period insights data for the batch
 		const batchQuery = this.createQueryBuilder()
 			.select(
@@ -64,7 +75,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		return batchQuery;
 	}
 
-	getAggregationQuery(periodUnit: PeriodUnits) {
+	getAggregationQuery(periodUnit: PeriodUnit) {
 		// Get the start period expression depending on the period unit and database type
 		const periodStartExpr = this.getPeriodStartExpr(periodUnit);
 
@@ -91,7 +102,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	}: {
 		sourceBatchQuery: string;
 		sourceTableName?: string;
-		periodUnit: PeriodUnits;
+		periodUnit: PeriodUnit;
 	}): Promise<number> {
 		// Create temp table that only exists in this transaction for rows to compact
 		const getBatchAndStoreInTemporaryTable = sql`
@@ -160,5 +171,61 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		});
 
 		return result;
+	}
+
+	async getPreviousAndCurrentPeriodTypeAggregates(): Promise<
+		Array<{
+			period: 'previous' | 'current';
+			type: 0 | 1 | 2 | 3;
+			total_value: string | number;
+		}>
+	> {
+		const cte =
+			dbType === 'sqlite'
+				? sql`
+						SELECT
+							datetime('now', '-7 days') AS current_start,
+							datetime('now') AS current_end,
+							datetime('now', '-14 days') AS previous_start
+					`
+				: dbType === 'postgresdb'
+					? sql`
+								SELECT
+								(CURRENT_DATE - INTERVAL '7 days')::timestamptz AS current_start,
+								CURRENT_DATE::timestamptz AS current_end,
+								(CURRENT_DATE - INTERVAL '14 days')::timestamptz AS previous_start
+							`
+					: sql`
+								SELECT
+									DATE_SUB(CURDATE(), INTERVAL 7 DAY) AS current_start,
+									CURDATE() AS current_end,
+									DATE_SUB(CURDATE(), INTERVAL 14 DAY) AS previous_start
+							`;
+
+		const rawRows = await this.createQueryBuilder('insights')
+			.addCommonTableExpression(cte, 'date_ranges')
+			.select(
+				sql`
+						CASE
+							WHEN insights.periodStart >= date_ranges.current_start AND insights.periodStart <= date_ranges.current_end
+							THEN 'current'
+							ELSE 'previous'
+						END
+					`,
+				'period',
+			)
+			.addSelect('insights.type', 'type')
+			.addSelect('SUM(value)', 'total_value')
+			// Use a cross join with the CTE
+			.innerJoin('date_ranges', 'date_ranges', '1=1')
+			// Filter to only include data from the last 14 days
+			.where('insights.periodStart >= date_ranges.previous_start')
+			.andWhere('insights.periodStart <= date_ranges.current_end')
+			// Group by both period and type
+			.groupBy('period')
+			.addGroupBy('insights.type')
+			.getRawMany();
+
+		return summaryParser.parse(rawRows);
 	}
 }

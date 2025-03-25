@@ -1,4 +1,3 @@
-import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { DateTime } from 'luxon';
 import type { IWorkflowBase } from 'n8n-workflow';
@@ -19,7 +18,6 @@ async function getWorkflowSharing(workflow: IWorkflowBase) {
 		relations: { project: true },
 	});
 }
-export const { type: dbType } = Container.get(GlobalConfig).database;
 
 export async function createMetadata(workflow: WorkflowEntity) {
 	const insightsMetadataRepository = Container.get(InsightsMetadataRepository);
