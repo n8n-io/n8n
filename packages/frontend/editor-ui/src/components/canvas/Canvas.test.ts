@@ -8,7 +8,7 @@ import { createCanvasConnection, createCanvasNodeElement } from '@/__tests__/dat
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useVueFlow } from '@vue-flow/core';
-import { SET_NODE_TYPE, SIMULATE_NODE_TYPE } from '@/constants';
+import { SIMULATE_NODE_TYPE } from '@/constants';
 
 const matchMedia = global.window.matchMedia;
 // @ts-expect-error Initialize window object
