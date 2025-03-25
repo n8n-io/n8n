@@ -1,44 +1,60 @@
 {
     "type": "object",
     "properties": {
-        "Taxable": {
+        "Active": {
             "type": "boolean"
         },
-        "Job": {
-            "type": "boolean"
+        "BillAddr": {
+            "type": "object",
+            "properties": {
+                "City": {
+                    "type": "string"
+                },
+                "CountrySubDivisionCode": {
+                    "type": "string"
+                },
+                "Id": {
+                    "type": "string"
+                },
+                "Line1": {
+                    "type": "string"
+                },
+                "PostalCode": {
+                    "type": "string"
+                }
+            }
         },
         "BillWithParent": {
             "type": "boolean"
         },
+        "CompanyName": {
+            "type": "string"
+        },
         "CurrencyRef": {
             "type": "object",
             "properties": {
-                "value": {
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
+                },
+                "value": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "value",
-                "name"
-            ]
+            }
         },
-        "PreferredDeliveryMethod": {
+        "DisplayName": {
             "type": "string"
         },
         "domain": {
             "type": "string"
         },
-        "sparse": {
-            "type": "boolean"
+        "FullyQualifiedName": {
+            "type": "string"
         },
         "Id": {
             "type": "string"
         },
-        "SyncToken": {
-            "type": "string"
+        "Job": {
+            "type": "boolean"
         },
         "MetaData": {
             "type": "object",
@@ -49,34 +65,10 @@
                 "LastUpdatedTime": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "CreateTime",
-                "LastUpdatedTime"
-            ]
+            }
         },
-        "FullyQualifiedName": {
+        "PreferredDeliveryMethod": {
             "type": "string"
-        },
-        "DisplayName": {
-            "type": "string"
-        },
-        "PrintOnCheckName": {
-            "type": "string"
-        },
-        "Active": {
-            "type": "boolean"
-        },
-        "PrimaryPhone": {
-            "type": "object",
-            "properties": {
-                "FreeFormNumber": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "FreeFormNumber"
-            ]
         },
         "PrimaryEmailAddr": {
             "type": "object",
@@ -84,59 +76,47 @@
                 "Address": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "Address"
-            ]
+            }
         },
-        "BillAddr": {
+        "PrimaryPhone": {
             "type": "object",
             "properties": {
-                "Id": {
-                    "type": "string"
-                },
-                "Line1": {
-                    "type": "string"
-                },
-                "City": {
-                    "type": "string"
-                },
-                "CountrySubDivisionCode": {
-                    "type": "string"
-                },
-                "PostalCode": {
+                "FreeFormNumber": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "Id"
-            ]
+            }
+        },
+        "PrintOnCheckName": {
+            "type": "string"
         },
         "ShipAddr": {
             "type": "object",
             "properties": {
-                "Id": {
-                    "type": "string"
-                },
-                "Line1": {
-                    "type": "string"
-                },
                 "City": {
                     "type": "string"
                 },
                 "CountrySubDivisionCode": {
                     "type": "string"
                 },
+                "Id": {
+                    "type": "string"
+                },
+                "Line1": {
+                    "type": "string"
+                },
                 "PostalCode": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "Id"
-            ]
+            }
         },
-        "CompanyName": {
+        "sparse": {
+            "type": "boolean"
+        },
+        "SyncToken": {
             "type": "string"
+        },
+        "Taxable": {
+            "type": "boolean"
         }
     },
     "version": 1

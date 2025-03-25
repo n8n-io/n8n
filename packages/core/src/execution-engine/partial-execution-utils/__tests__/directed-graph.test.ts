@@ -10,7 +10,7 @@
 // PD denotes that the node has pinned data
 
 import type { INode } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { createNodeData, defaultWorkflowParameter } from './helpers';
 import { DirectedGraph } from '../directed-graph';
@@ -327,7 +327,7 @@ describe('DirectedGraph', () => {
 			expect(newConnections[0]).toEqual({
 				from: node0,
 				outputIndex: 0,
-				type: NodeConnectionType.Main,
+				type: NodeConnectionTypes.Main,
 				inputIndex: 0,
 				to: node2,
 			});
@@ -372,7 +372,7 @@ describe('DirectedGraph', () => {
 			expect(newConnections[0]).toEqual({
 				from: node0,
 				outputIndex: 1,
-				type: NodeConnectionType.Main,
+				type: NodeConnectionTypes.Main,
 				inputIndex: 4,
 				to: node2,
 			});

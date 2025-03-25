@@ -1,12 +1,12 @@
 {
-	"node": "n8n-nodes-base.evaluationMetric",
+	"node": "n8n-nodes-base.evaluationMetrics",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Evaluation", "Core Nodes"],
 	"resources": {
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.evaluationmetric/"
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.evaluationmetrics/"
 			}
 		]
 	},

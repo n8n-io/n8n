@@ -4,20 +4,15 @@
         "id": {
             "type": "integer"
         },
-        "name": {
-            "type": "string"
-        },
         "is_vip": {
             "type": "boolean"
+        },
+        "name": {
+            "type": "string"
         },
         "notes": {
             "type": "string"
         }
     },
-    "required": [
-        "id",
-        "name",
-        "is_vip"
-    ],
     "version": 1
 }

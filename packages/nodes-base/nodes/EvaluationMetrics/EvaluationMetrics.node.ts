@@ -6,7 +6,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { composeReturnItem, validateEntry } from '../Set/v2/helpers/utils';
 
@@ -23,8 +23,8 @@ export class EvaluationMetrics implements INodeType {
 			name: 'Evaluation Metrics',
 			color: '#29A568',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName:
@@ -69,10 +69,20 @@ export class EvaluationMetrics implements INodeType {
 			};
 			const newData = Object.fromEntries(
 				(dataToSave?.assignments ?? []).map((assignment) => {
+					const assignmentValue =
+						typeof assignment.value === 'number' ? assignment.value : Number(assignment.value);
+
+					if (isNaN(assignmentValue)) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`Invalid numeric value: "${assignment.value}". Please provide a valid number.`,
+						);
+					}
+
 					const { name, value } = validateEntry(
 						assignment.name,
 						assignment.type as FieldType,
-						assignment.value,
+						assignmentValue,
 						this.getNode(),
 						i,
 						false,
