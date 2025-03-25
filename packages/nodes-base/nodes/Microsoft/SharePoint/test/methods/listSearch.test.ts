@@ -286,7 +286,7 @@ describe('Microsoft SharePoint Node', () => {
 				],
 			};
 			const mockRequestWithAuthentication = jest.fn().mockReturnValue(mockResponse);
-			const mockGetNodeParameter = jest.fn((parameterName, _fallbackValue, _options) => {
+			const mockGetNodeParameter = jest.fn((_parameterName, _fallbackValue, _options) => {
 				throw new Error('Unknown parameter');
 			});
 			const mockGetCredentials = jest.fn(async (type: string, _itemIndex?: number) => {
