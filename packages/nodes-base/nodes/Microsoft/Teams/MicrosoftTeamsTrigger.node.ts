@@ -98,7 +98,8 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
 				required: true,
-				description: 'Select the team from the list, by URL, or by ID',
+				description:
+					'Select the team from the list, by URL, or by ID (the ID is the "groupId" parameter in the URL you get from "Get a link to the team")',
 				modes: [
 					{
 						displayName: 'From List',
@@ -108,6 +109,16 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						typeOptions: {
 							searchListMethod: 'getTeams',
 							searchable: true,
+						},
+					},
+					{
+						displayName: 'By URL',
+						name: 'url',
+						type: 'string',
+						placeholder: 'e.g., https://teams.microsoft.com/l/team/19%3A...',
+						extractValue: {
+							type: 'regex',
+							regex: /https:\/\/.+\.microsoft\.com\/.+\/team\/([^\/]+)/,
 						},
 					},
 					{
@@ -143,7 +154,8 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
 				required: true,
-				description: 'Select the channel from the list, by URL, or by ID',
+				description:
+					'Select the channel from the list or by ID (the ID is the "threadId" in the URL)',
 				modes: [
 					{
 						displayName: 'From List',
@@ -188,7 +200,8 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
 				required: true,
-				description: 'Select the chat from the list, by URL, or by ID',
+				description:
+					'Select the chat from the list or by ID (find the chat ID after "conversations/" in the URL)',
 				modes: [
 					{
 						displayName: 'From List',
