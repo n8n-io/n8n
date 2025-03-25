@@ -8,7 +8,8 @@
 		"baseUrl": "src",
 		"paths": {
 			"@/*": ["./*"],
-			"@test/*": ["../test/*"]
+			"@test/*": ["../test/*"],
+			"n8n-nodes-base/*": ["../../nodes-base/dist/*"]
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		"emitDecoratorMetadata": true,

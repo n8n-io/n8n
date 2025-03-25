@@ -18,7 +18,8 @@
 		"nodes/**/*.ts",
 		"test/**/*.ts",
 		"utils/**/*.ts",
-		"types/**/*.ts"
+		"types/**/*.ts",
+		"tsup.config.ts"
 	],
 	"references": [
 		{ "path": "../@n8n/imap/tsconfig.build.json" },

@@ -1,0 +1,24 @@
+diff --git a/package.json b/package.json
+index 04e65bbd2fb535742333a1574f46b513126c99a7..5839faae94f25d5707ca2a26e5c932a925291225 100644
+--- a/package.json
++++ b/package.json
+@@ -556,6 +556,7 @@
+     "vectorstores"
+   ],
+   "exports": {
++    "./dist/*": { "types": "./dist/*.d.ts" },
+     "./load": {
+       "types": {
+         "import": "./load.d.ts",
+diff --git a/schema/document.cjs b/schema/document.cjs
+deleted file mode 100644
+index 18746fea69bdc22290c631c8534656d2490f9634..0000000000000000000000000000000000000000
+diff --git a/schema/document.d.cts b/schema/document.d.cts
+deleted file mode 100644
+index d9c69889bdff03b3ecedc7c10283447d36a34f26..0000000000000000000000000000000000000000
+diff --git a/schema/document.d.ts b/schema/document.d.ts
+deleted file mode 100644
+index d9c69889bdff03b3ecedc7c10283447d36a34f26..0000000000000000000000000000000000000000
+diff --git a/schema/document.js b/schema/document.js
+deleted file mode 100644
+index d9c69889bdff03b3ecedc7c10283447d36a34f26..0000000000000000000000000000000000000000

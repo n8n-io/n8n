@@ -1,9 +1,9 @@
 import type { CallbackManagerForToolRun } from '@langchain/core/callbacks/manager';
 import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
 import { isArray, isObject } from 'lodash';
-import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
-import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
-import { getCurrentWorkflowInputData } from 'n8n-nodes-base/dist/utils/workflowInputsResourceMapping/GenericFunctions';
+import type { SetField, SetNodeOptions } from 'n8n-nodes-base/nodes/Set/v2/helpers/interfaces';
+import * as manual from 'n8n-nodes-base/nodes/Set/v2/manual.mode';
+import { getCurrentWorkflowInputData } from 'n8n-nodes-base/utils/workflowInputsResourceMapping/GenericFunctions';
 import type {
 	ExecuteWorkflowData,
 	ExecutionError,

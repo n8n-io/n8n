@@ -9,7 +9,8 @@
 		"nodes/**/*.ts",
 		"nodes/**/*.json",
 		"credentials/translations/**/*.json",
-		"types/**/*.ts"
+		"types/**/*.ts",
+		"utils/**/*.ts"
 	],
-	"exclude": ["nodes/**/*.test.ts", "credentials/**/*.test.ts", "test/**"]
+	"exclude": ["nodes/**/*.test.ts", "credentials/**/*.test.ts", "utils/**/*.test.ts", "test/**"]
 }
