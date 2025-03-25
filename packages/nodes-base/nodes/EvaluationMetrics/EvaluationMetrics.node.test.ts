@@ -1,5 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import type { INodeTypes, IExecuteFunctions, AssignmentCollectionValue } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { EvaluationMetrics } from './EvaluationMetrics.node';
 
@@ -62,6 +63,49 @@ describe('EvaluationMetrics Node', () => {
 			expect(result).toHaveLength(1);
 			expect(result[0]).toHaveLength(1);
 			expect(result[0][0].json).toEqual({});
+		});
+
+		it('should convert string values to numbers', async () => {
+			const mockExecuteWithStringValues = getMockExecuteFunction([
+				{
+					id: '1',
+					name: 'Accuracy',
+					value: '0.95',
+					type: 'number',
+				},
+				{
+					id: '2',
+					name: 'Latency',
+					value: '100',
+					type: 'number',
+				},
+			]);
+
+			const result = await evaluationMetricsNode.execute.call(mockExecuteWithStringValues);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toHaveLength(1);
+
+			const outputItem = result[0][0].json;
+			expect(outputItem).toEqual({
+				Accuracy: 0.95,
+				Latency: 100,
+			});
+		});
+
+		it('should throw error for non-numeric string values', async () => {
+			const mockExecuteWithInvalidValue = getMockExecuteFunction([
+				{
+					id: '1',
+					name: 'Accuracy',
+					value: 'not-a-number',
+					type: 'number',
+				},
+			]);
+
+			await expect(evaluationMetricsNode.execute.call(mockExecuteWithInvalidValue)).rejects.toThrow(
+				NodeOperationError,
+			);
 		});
 	});
 });
