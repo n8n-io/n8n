@@ -8,16 +8,18 @@ import type {
 import type { IListColumnType } from '../helpers/interfaces';
 import { microsoftSharePointApiRequest } from '../transport';
 
-const unsupportedFields = ['thumbnail'];
+const unsupportedFields = ['geoLocation', 'location', 'term', 'url'];
 const fieldTypeMapping: Partial<Record<FieldType, string[]>> = {
+	// eslint-disable-next-line id-denylist
 	string: ['text', 'user', 'lookup'],
 	// unknownFutureValue: rating
+	// eslint-disable-next-line id-denylist
 	number: ['number', 'currency', 'unknownFutureValue'],
+	// eslint-disable-next-line id-denylist
 	boolean: ['boolean'],
 	dateTime: ['dateTime'],
-	object: ['location', 'geoLocation', 'term'],
+	object: ['thumbnail'],
 	options: ['choice'],
-	url: ['url'],
 };
 
 function mapType(column: IListColumnType): FieldType | undefined {
