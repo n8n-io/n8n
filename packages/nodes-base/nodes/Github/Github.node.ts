@@ -33,7 +33,7 @@ export class Github implements INodeType {
 		name: 'github',
 		icon: { light: 'file:github.svg', dark: 'file:github.dark.svg' },
 		group: ['input'],
-		version: 1,
+		version: [1, 1.1],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume GitHub API',
 		defaults: {
@@ -658,6 +658,21 @@ export class Github implements INodeType {
 			{
 				displayName: 'Ref',
 				name: 'ref',
+				type: 'string',
+				default: 'main',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['workflow'],
+						operation: ['dispatch', 'dispatchAndWait'],
+						'@version': [{ _cnd: { lte: 1 } }],
+					},
+				},
+				description: 'The git reference for the workflow dispatch (branch, tag, or commit SHA)',
+			},
+			{
+				displayName: 'Ref',
+				name: 'ref',
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
 				required: true,
@@ -692,6 +707,7 @@ export class Github implements INodeType {
 					show: {
 						resource: ['workflow'],
 						operation: ['dispatch', 'dispatchAndWait'],
+						'@version': [{ _cnd: { gte: 1.1 } }],
 					},
 				},
 				description: 'The git reference for the workflow dispatch (branch, tag, or commit SHA)',
