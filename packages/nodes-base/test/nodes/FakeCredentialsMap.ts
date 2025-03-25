@@ -78,7 +78,7 @@ BQIDAQAB
 	},
 	azureStorageSharedKeyApi: {
 		account: 'devstoreaccount1',
-		key: 'Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==',
+		key: 'KEY',
 		baseUrl: 'https://myaccount.blob.core.windows.net',
 	},
 	gongApi: {
