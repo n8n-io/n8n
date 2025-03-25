@@ -7,9 +7,9 @@ import type { ExecutionStatus, IRun, WorkflowExecuteMode } from 'n8n-workflow';
 import type { Project } from '@/databases/entities/project';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { IWorkflowDb } from '@/interfaces';
-import type { TypeUnit } from '@/modules/insights/entities/insights-shared';
-import { InsightsMetadataRepository } from '@/modules/insights/repositories/insights-metadata.repository';
-import { InsightsRawRepository } from '@/modules/insights/repositories/insights-raw.repository';
+import type { TypeUnit } from '@/modules/insights/database/entities/insights-shared';
+import { InsightsMetadataRepository } from '@/modules/insights/database/repositories/insights-metadata.repository';
+import { InsightsRawRepository } from '@/modules/insights/database/repositories/insights-raw.repository';
 import { createTeamProject } from '@test-integration/db/projects';
 import { createWorkflow } from '@test-integration/db/workflows';
 import * as testDb from '@test-integration/test-db';
@@ -19,9 +19,9 @@ import {
 	createRawInsightsEvent,
 	createCompactedInsightsEvent,
 	createRawInsightsEvents,
-} from '../entities/__tests__/db-utils';
+} from '../database/entities/__tests__/db-utils';
+import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
 import { InsightsService } from '../insights.service';
-import { InsightsByPeriodRepository } from '../repositories/insights-by-period.repository';
 
 async function truncateAll() {
 	const insightsRawRepository = Container.get(InsightsRawRepository);
