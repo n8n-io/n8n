@@ -1,7 +1,7 @@
-import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
+import { equalityTest, setup, workflowToTests } from '../../../../../test/nodes/Helpers';
 
 describe('Azure Cosmos DB', () => {
-	const workflows = ['nodes/Microsoft/CosmosDb/test/container/create.workflow.json'];
+	const workflows = ['nodes/Microsoft/AzureCosmosDb/test/container/create.workflow.json'];
 	const workflowTests = workflowToTests(workflows);
 
 	describe('should create container', () => {

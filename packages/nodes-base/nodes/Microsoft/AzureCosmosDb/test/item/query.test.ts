@@ -1,8 +1,8 @@
 /* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
-import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
+import { equalityTest, setup, workflowToTests } from '../../../../../test/nodes/Helpers';
 
 describe('Azure Cosmos DB', () => {
-	const workflows = ['nodes/Microsoft/CosmosDb/test/item/query.workflow.json'];
+	const workflows = ['nodes/Microsoft/AzureCosmosDb/test/item/query.workflow.json'];
 	const workflowTests = workflowToTests(workflows);
 
 	describe('should query items', () => {
