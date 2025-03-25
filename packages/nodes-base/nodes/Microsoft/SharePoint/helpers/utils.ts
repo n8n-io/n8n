@@ -99,7 +99,7 @@ export async function itemColumnsPreSend(
 	const mapperValue = this.getNodeParameter('columns') as ResourceMapperValue;
 	const operation = this.getNodeParameter('operation') as string;
 
-	if (mapperValue.matchingColumns?.length > 0) {
+	if (['upsert', 'update'].includes(operation) && mapperValue.matchingColumns?.length > 0) {
 		if (!mapperValue.matchingColumns.includes('id')) {
 			const site = this.getNodeParameter('site', undefined, { extractValue: true }) as string;
 			const list = this.getNodeParameter('list', undefined, { extractValue: true }) as string;
@@ -113,6 +113,9 @@ export async function itemColumnsPreSend(
 					$filter: mapperValue.matchingColumns
 						.map((x) => `fields/${x} eq '${mapperValue.value![x]}'`)
 						.join(' and'),
+				},
+				{
+					Prefer: 'HonorNonIndexedQueriesWarningMayFailRandomly',
 				},
 			);
 			if (response.value?.length === 1) {
@@ -130,7 +133,7 @@ export async function itemColumnsPreSend(
 				delete mapperValue.value!.id;
 				requestOptions.method = 'PATCH';
 			}
-		} else {
+		} else if (operation === 'update') {
 			if (mapperValue.matchingColumns.includes('id')) {
 				requestOptions.url += '/' + mapperValue.value!.id;
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
