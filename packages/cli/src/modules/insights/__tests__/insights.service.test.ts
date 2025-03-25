@@ -579,7 +579,6 @@ describe('compaction', () => {
 		])('$name', async ({ periodStarts, batches }) => {
 			// ARRANGE
 			const insightsService = Container.get(InsightsService);
-			const insightsRawRepository = Container.get(InsightsRawRepository);
 			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
 
 			const project = await createTeamProject();

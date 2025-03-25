@@ -32,7 +32,9 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	}
 
 	private getPeriodFilterExpr(periodUnit: PeriodUnit) {
+		// filter out data older than 90 days for hourly insights and 180 days for daily
 		const daysAgo = periodUnit === 'hour' ? 90 : 180;
+
 		// Database-specific period start expression to filter out data to compact by days matching the periodUnit
 		let periodStartExpr = `date('now', '-${daysAgo} days')`;
 		if (dbType === 'postgresdb') {
@@ -101,7 +103,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	async compactSourceDataIntoInsightPeriod({
 		sourceBatchQuery, // Query to get batch source data. Must return those fields: 'id', 'metaId', 'type', 'periodStart', 'value'
 		sourceTableName = this.metadata.tableName, // Repository references for table operations
-		periodUnit,
+		periodUnit, // the new period unit to compact the data into
 	}: {
 		sourceBatchQuery: string;
 		sourceTableName?: string;

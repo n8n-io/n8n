@@ -168,7 +168,7 @@ export class InsightsService {
 		// Compact daily data to weekly aggregates
 		do {
 			numberOfCompactedDayData = await this.compactDayToWeek();
-		} while (numberOfCompactedHourData > 0);
+		} while (numberOfCompactedDayData > 0);
 	}
 
 	// Compacts raw data to hourly aggregates
