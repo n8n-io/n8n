@@ -8,7 +8,7 @@ import {
 } from '@/constants';
 import type { INodeCreateElement } from '@/Interface';
 import { parseCanvasConnectionHandleString } from '@/utils/canvasUtils';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { CanvasConnectionMode } from '@/types';
 
 const workflow_id = 'workflow-id';
@@ -333,7 +333,7 @@ describe('useNodeCreatorStore', () => {
 
 		it('sets nodeCreatorView to AI_UNCATEGORIZED_CATEGORY when connection type is not Main', async () => {
 			mockedParseCanvasConnectionHandleString.mockReturnValue({
-				type: NodeConnectionType.AiLanguageModel, // any value that is not NodeConnectionType.Main
+				type: NodeConnectionTypes.AiLanguageModel, // any value that is not NodeConnectionTypes.Main
 				index: 0,
 				mode: CanvasConnectionMode.Input,
 			});
@@ -354,7 +354,7 @@ describe('useNodeCreatorStore', () => {
 
 		it('uses the provided nodeCreatorView when connection type is Main', async () => {
 			mockedParseCanvasConnectionHandleString.mockReturnValue({
-				type: NodeConnectionType.Main,
+				type: NodeConnectionTypes.Main,
 				index: 0,
 				mode: CanvasConnectionMode.Input,
 			});

@@ -1,4 +1,4 @@
-import { NodeConnectionType, type INode, type IPinData, type IRunData } from 'n8n-workflow';
+import { NodeConnectionTypes, type INode, type IPinData, type IRunData } from 'n8n-workflow';
 
 import type { DirectedGraph } from './directed-graph';
 import { getIncomingData, getIncomingDataFromAnyRun } from './get-incoming-data';
@@ -82,7 +82,7 @@ function findStartNodesRecursive(
 			current.name,
 			// last run
 			-1,
-			NodeConnectionType.Main,
+			NodeConnectionTypes.Main,
 			0,
 		);
 

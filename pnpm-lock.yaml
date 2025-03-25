@@ -521,7 +521,7 @@ importers:
         version: 0.3.2(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0))(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 0.3.24
-        version: 0.3.24(6476879575b309260030c283813e748d)
+        version: 0.3.24(1725dd003b6ba0539bce135b7f30abed)
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
@@ -537,6 +537,9 @@ importers:
       '@langchain/mistralai':
         specifier: 0.2.0
         version: 0.2.0(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))
+      '@langchain/mongodb':
+        specifier: ^0.1.0
+        version: 0.1.0(@aws-sdk/credential-providers@3.666.0(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0)))(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.3)
       '@langchain/ollama':
         specifier: 0.1.4
         version: 0.1.4(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))
@@ -563,7 +566,7 @@ importers:
         version: link:../json-schema-to-zod
       '@n8n/typeorm':
         specifier: 0.3.20-12
-        version: 0.3.20-12(@sentry/node@8.52.1)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.12)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.8.2))
+        version: 0.3.20-12(@sentry/node@8.52.1)(ioredis@5.3.2)(mongodb@6.11.0(@aws-sdk/credential-providers@3.666.0(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0)))(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.3))(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.12)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.8.2))
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -621,6 +624,9 @@ importers:
       mime-types:
         specifier: 2.1.35
         version: 2.1.35
+      mongodb:
+        specifier: 6.11.0
+        version: 6.11.0(@aws-sdk/credential-providers@3.666.0(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0)))(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.3)
       n8n-nodes-base:
         specifier: workspace:*
         version: link:../../nodes-base
@@ -1043,8 +1049,8 @@ importers:
         specifier: 4.0.3
         version: 4.0.3
       samlify:
-        specifier: 2.8.9
-        version: 2.8.9
+        specifier: 2.9.0
+        version: 2.9.0
       semver:
         specifier: ^7.5.4
         version: 7.6.0
@@ -1574,9 +1580,6 @@ importers:
       '@dagrejs/dagre':
         specifier: ^1.1.4
         version: 1.1.4
-      '@fontsource/open-sans':
-        specifier: ^4.5.0
-        version: 4.5.12
       '@fortawesome/fontawesome-svg-core':
         specifier: '*'
         version: 1.2.36
@@ -3546,9 +3549,6 @@ packages:
   '@floating-ui/dom@1.4.5':
     resolution: {integrity: sha512-96KnRWkRnuBSSFbj0sFGwwOUd8EkiecINVl0O9wiZlZ64EkpyAOG3Xc2vKKNJmru0Z7RqWNymA+6b8OZqjgyyw==}
 
-  '@fontsource/open-sans@4.5.12':
-    resolution: {integrity: sha512-WKCexsVbOECJUSOgG7GnrUxe+3ds4Sa1yhsTjSnszI+0TaJvMZnDnn5YDKwA/KwLbkZqCaV3nvMTH97jJuxWNA==}
-
   '@fortawesome/fontawesome-common-types@0.2.36':
     resolution: {integrity: sha512-a/7BiSgobHAgBWeN7N0w+lAhInrGxksn13uK7231n2m8EDPE3BMCl9NZLTGrj9ZXfCmC6LM0QLqXidIizVQ6yg==}
     engines: {node: '>=6'}
@@ -4377,6 +4377,12 @@ packages:
     engines: {node: '>=18'}
     peerDependencies:
       '@langchain/core': '>=0.3.7 <0.4.0'
+
+  '@langchain/mongodb@0.1.0':
+    resolution: {integrity: sha512-5yO6aNMkdtxlJBjR8LFuvgDgnM/sbAhYe5AkN8VznPkpEoI6Pq4zjvl8gB3YTVpzdrp38HT5Z40VEwNEDHpwIw==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@langchain/core': '>=0.2.21 <0.4.0'
 
   '@langchain/ollama@0.1.4':
     resolution: {integrity: sha512-olHPViUurGcmOI3IbhIGK/EJ7QxDlZru4j98V269PiEFTIVlciRULltgI/t3voHYTdvB8R+HV8pMo/Y3UVzvzA==}
@@ -6529,10 +6535,9 @@ packages:
     peerDependencies:
       typescript: ^5.8.2
 
-  '@xmldom/xmldom@0.8.6':
-    resolution: {integrity: sha512-uRjjusqpoqfmRkTaNuLJ2VohVr67Q5YwDATW3VU7PfzTj6IRaihGrYI7zckGZjxQPBIp63nfvJbM+Yu5ICh0Bg==}
+  '@xmldom/xmldom@0.8.10':
+    resolution: {integrity: sha512-2WALfTl4xo2SkGCYRt6rDTFfk9R1czmBvUQy12gK2KuRKIpWEhcbbzy8EZXtz/jkRqHX8bFEc6FC1HjX4TUWYw==}
     engines: {node: '>=10.0.0'}
-    deprecated: this version has critical issues, please update to the latest version
 
   abab@2.0.6:
     resolution: {integrity: sha512-j2afSsaIENvHZN2B8GOpF566vZ5WVk5opAiMTvWgaQT8DkbOqsTfvNAvHoRGU2zzP8cPoqys+xHTRDWW8L+/BA==}
@@ -7043,6 +7048,7 @@ packages:
   bson@6.10.0:
     resolution: {integrity: sha512-ROchNosXMJD2cbQGm84KoP7vOGPO6/bOAW0veMMbzhXLqoZptcaYRVLitwvuhwhjjpU1qP4YZRWLhgETdgqUQw==}
     engines: {node: '>=16.20.1'}
+    deprecated: a critical bug affecting only useBigInt64=true deserialization usage is fixed in bson@6.10.3
 
   buffer-crc32@0.2.13:
     resolution: {integrity: sha512-VO9Ht/+p3SN7SKWqcrgEzjGbRSJYTx+Q1pTQC0wrWqHx0vpJraQ6GtHx8tvcg1rlK1byhU5gccxgOgj7B0TDkQ==}
@@ -12041,8 +12047,8 @@ packages:
   safer-buffer@2.1.2:
     resolution: {integrity: sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg==}
 
-  samlify@2.8.9:
-    resolution: {integrity: sha512-+HHxkBweHwWEEiFWelGhTTX2Zv/7Tjh6xbZPYUURe7JWp1N9cO2jUOiSb13gTzCEXtffye+Ld7M/f2gCU5+B2Q==}
+  samlify@2.9.0:
+    resolution: {integrity: sha512-3aRjBzAOMwgjSzLXZK0Q+D3uX9gL0IopWGwQq98lKqqwbrt4mimDpcch2shZ7GkpUlez5jgKuAAZC7DCW2rPnA==}
 
   sanitize-html@2.12.1:
     resolution: {integrity: sha512-Plh+JAn0UVDpBRP/xEjsk+xDCoOvMBwQUf/K+/cBAVuTbtX8bj2VB7S1sL1dssVpykqp0/KPSesHrqXtokVBpA==}
@@ -13363,6 +13369,9 @@ packages:
   vue-component-type-helpers@2.2.8:
     resolution: {integrity: sha512-4bjIsC284coDO9om4HPA62M7wfsTvcmZyzdfR0aUlFXqq4tXxM1APyXpNVxPC8QazKw9OhmZNHBVDA6ODaZsrA==}
 
+  vue-component-type-helpers@3.0.0-alpha.2:
+    resolution: {integrity: sha512-dv9YzsuJFLnpRNxKU0exwIlCIA/v+rXrgCsEtaENsFJLPFMw1Sr4IRctilwfjnjCzoJGgGACHRZfxo6ZwlH2fQ==}
+
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
     engines: {node: '>=12'}
@@ -13641,9 +13650,12 @@ packages:
     engines: {node: '>=0.8'}
     hasBin: true
 
-  xml-crypto@3.0.1:
-    resolution: {integrity: sha512-7XrwB3ujd95KCO6+u9fidb8ajvRJvIfGNWD0XLJoTWlBKz+tFpUzEYxsN+Il/6/gHtEs1RgRh2RH+TzhcWBZUw==}
-    engines: {node: '>=0.4.0'}
+  xml-crypto@3.2.1:
+    resolution: {integrity: sha512-0GUNbPtQt+PLMsC5HoZRONX+K6NBJEqpXe/lsvrFj0EqfpGPpVfJKGE7a5jCg8s2+Wkrf/2U1G41kIH+zC9eyQ==}
+    engines: {node: '>=4.0.0'}
+
+  xml-escape@1.1.0:
+    resolution: {integrity: sha512-B/T4sDK8Z6aUh/qNr7mjKAwwncIljFuUP+DO/D5hloYFj+90O88z8Wf7oSucZTHxBAsC1/CTP4rtx/x1Uf72Mg==}
 
   xml-name-validator@4.0.0:
     resolution: {integrity: sha512-ICP2e+jsHvAj2E2lIHxa5tjXRlKDJo4IdvPvCXbXQGdzSfmSpNVyIKMvoZHjDY9DP0zV17iI85o90vRFXNccRw==}
@@ -13851,7 +13863,7 @@ snapshots:
 
   '@authenio/xml-encryption@2.0.2':
     dependencies:
-      '@xmldom/xmldom': 0.8.6
+      '@xmldom/xmldom': 0.8.10
       escape-html: 1.0.3
       xpath: 0.0.32
 
@@ -15945,8 +15957,6 @@ snapshots:
     dependencies:
       '@floating-ui/core': 1.3.1
 
-  '@fontsource/open-sans@4.5.12': {}
-
   '@fortawesome/fontawesome-common-types@0.2.36': {}
 
   '@fortawesome/fontawesome-common-types@6.2.0': {}
@@ -16499,7 +16509,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@0.3.24(6476879575b309260030c283813e748d)':
+  '@langchain/community@0.3.24(1725dd003b6ba0539bce135b7f30abed)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.49.1)(deepmerge@4.3.1)(dotenv@16.4.5)(encoding@0.1.13)(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))(zod@3.24.1)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -16553,6 +16563,7 @@ snapshots:
       jsonwebtoken: 9.0.2
       lodash: 4.17.21
       mammoth: 1.7.2
+      mongodb: 6.11.0(@aws-sdk/credential-providers@3.666.0(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0)))(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.3)
       mysql2: 3.11.0
       pdf-parse: 1.1.1
       pg: 8.12.0
@@ -16646,6 +16657,19 @@ snapshots:
       uuid: 10.0.0
       zod: 3.24.1
       zod-to-json-schema: 3.23.3(zod@3.24.1)
+
+  '@langchain/mongodb@0.1.0(@aws-sdk/credential-providers@3.666.0(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0)))(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.3)':
+    dependencies:
+      '@langchain/core': 0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
+      mongodb: 6.11.0(@aws-sdk/credential-providers@3.666.0(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0)))(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.3)
+    transitivePeerDependencies:
+      - '@aws-sdk/credential-providers'
+      - '@mongodb-js/zstd'
+      - gcp-metadata
+      - kerberos
+      - mongodb-client-encryption
+      - snappy
+      - socks
 
   '@langchain/ollama@0.1.4(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))':
     dependencies:
@@ -16843,7 +16867,7 @@ snapshots:
       esprima-next: 5.8.4
       recast: 0.22.0
 
-  '@n8n/typeorm@0.3.20-12(@sentry/node@8.52.1)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.12)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.8.2))':
+  '@n8n/typeorm@0.3.20-12(@sentry/node@8.52.1)(ioredis@5.3.2)(mongodb@6.11.0(@aws-sdk/credential-providers@3.666.0(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0)))(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.3))(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.12)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.8.2))':
     dependencies:
       '@n8n/p-retry': 6.2.0-2
       '@sqltools/formatter': 1.2.5
@@ -16865,6 +16889,7 @@ snapshots:
     optionalDependencies:
       '@sentry/node': 8.52.1
       ioredis: 5.3.2
+      mongodb: 6.11.0(@aws-sdk/credential-providers@3.666.0(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0)))(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.3)
       mssql: 10.0.2
       mysql2: 3.11.0
       pg: 8.12.0
@@ -18398,7 +18423,7 @@ snapshots:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.5.13(typescript@5.8.2)
-      vue-component-type-helpers: 2.2.8
+      vue-component-type-helpers: 3.0.0-alpha.2
 
   '@supabase/auth-js@2.65.0':
     dependencies:
@@ -19500,7 +19525,7 @@ snapshots:
     dependencies:
       typescript: 5.8.2
 
-  '@xmldom/xmldom@0.8.6': {}
+  '@xmldom/xmldom@0.8.10': {}
 
   abab@2.0.6: {}
 
@@ -21537,7 +21562,7 @@ snapshots:
 
   eslint-import-resolver-node@0.3.9:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       is-core-module: 2.13.1
       resolve: 1.22.8
     transitivePeerDependencies:
@@ -21562,7 +21587,7 @@ snapshots:
 
   eslint-module-utils@2.8.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0):
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     optionalDependencies:
       '@typescript-eslint/parser': 7.2.0(eslint@8.57.0)(typescript@5.8.2)
       eslint: 8.57.0
@@ -21582,7 +21607,7 @@ snapshots:
       array.prototype.findlastindex: 1.2.3
       array.prototype.flat: 1.3.2
       array.prototype.flatmap: 1.3.2
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       doctrine: 2.1.0
       eslint: 8.57.0
       eslint-import-resolver-node: 0.3.9
@@ -22360,7 +22385,7 @@ snapshots:
       array-parallel: 0.1.3
       array-series: 0.1.5
       cross-spawn: 4.0.2
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -24038,7 +24063,7 @@ snapshots:
 
   mammoth@1.7.2:
     dependencies:
-      '@xmldom/xmldom': 0.8.6
+      '@xmldom/xmldom': 0.8.10
       argparse: 1.0.10
       base64-js: 1.5.1
       bluebird: 3.4.7
@@ -25232,7 +25257,7 @@ snapshots:
 
   pdf-parse@1.1.1:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       node-ensure: 0.0.0
     transitivePeerDependencies:
       - supports-color
@@ -26087,7 +26112,7 @@ snapshots:
 
   rhea@1.0.24:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -26189,17 +26214,18 @@ snapshots:
 
   safer-buffer@2.1.2: {}
 
-  samlify@2.8.9:
+  samlify@2.9.0:
     dependencies:
       '@authenio/xml-encryption': 2.0.2
-      '@xmldom/xmldom': 0.8.6
+      '@xmldom/xmldom': 0.8.10
       camelcase: 6.3.0
       node-forge: 1.3.1
       node-rsa: 1.1.1
       pako: 1.0.11
       uuid: 8.3.2
       xml: 1.0.1
-      xml-crypto: 3.0.1
+      xml-crypto: 3.2.1
+      xml-escape: 1.1.0
       xpath: 0.0.32
 
   sanitize-html@2.12.1:
@@ -27710,6 +27736,8 @@ snapshots:
 
   vue-component-type-helpers@2.2.8: {}
 
+  vue-component-type-helpers@3.0.0-alpha.2: {}
+
   vue-demi@0.14.10(vue@3.5.13(typescript@5.8.2)):
     dependencies:
       vue: 3.5.13(typescript@5.8.2)
@@ -28030,10 +28058,12 @@ snapshots:
 
   xlsx@https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz: {}
 
-  xml-crypto@3.0.1:
+  xml-crypto@3.2.1:
     dependencies:
-      '@xmldom/xmldom': 0.8.6
+      '@xmldom/xmldom': 0.8.10
       xpath: 0.0.32
+
+  xml-escape@1.1.0: {}
 
   xml-name-validator@4.0.0: {}
 

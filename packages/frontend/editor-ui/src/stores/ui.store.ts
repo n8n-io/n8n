@@ -38,6 +38,7 @@ import {
 	COMMUNITY_PLUS_ENROLLMENT_MODAL,
 	API_KEY_CREATE_OR_EDIT_MODAL_KEY,
 	DELETE_FOLDER_MODAL_KEY,
+	MOVE_FOLDER_MODAL_KEY,
 } from '@/constants';
 import type {
 	INodeUi,
@@ -123,7 +124,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				SETUP_CREDENTIALS_MODAL_KEY,
 				PROJECT_MOVE_RESOURCE_MODAL,
 				NEW_ASSISTANT_SESSION_MODAL,
-				COMMUNITY_PLUS_ENROLLMENT_MODAL,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
 		[DELETE_USER_MODAL_KEY]: {
@@ -162,10 +162,24 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			open: false,
 			activeId: null,
 			data: {
+				workflowListEventBus: undefined,
 				content: {
 					workflowCount: 0,
 					subFolderCount: 0,
 				},
+			},
+		},
+		[MOVE_FOLDER_MODAL_KEY]: {
+			open: false,
+			activeId: null,
+			data: {
+				workflowListEventBus: undefined,
+			},
+		},
+		[COMMUNITY_PLUS_ENROLLMENT_MODAL]: {
+			open: false,
+			data: {
+				customHeading: undefined,
 			},
 		},
 	});
@@ -498,6 +512,17 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		openModalWithData({ name: DELETE_FOLDER_MODAL_KEY, data: { workflowListEventBus, content } });
 	};
 
+	const openMoveToFolderModal = (
+		resourceType: 'folder' | 'workflow',
+		resource: { id: string; name: string; parentFolderId?: string },
+		workflowListEventBus: EventBus,
+	) => {
+		openModalWithData({
+			name: MOVE_FOLDER_MODAL_KEY,
+			data: { resourceType, resource, workflowListEventBus },
+		});
+	};
+
 	const addActiveAction = (action: string) => {
 		if (!activeActions.value.includes(action)) {
 			activeActions.value.push(action);
@@ -670,6 +695,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		resetLastInteractedWith,
 		setProcessingExecutionResults,
 		openDeleteFolderModal,
+		openMoveToFolderModal,
 	};
 });
 

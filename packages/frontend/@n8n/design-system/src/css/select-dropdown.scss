@@ -28,7 +28,7 @@
 				font-family: 'element-icons';
 				content: '\e6da';
 				font-size: 12px;
-				font-weight: bold;
+				font-weight: var(--font-weight-bold);
 				-webkit-font-smoothing: antialiased;
 				-moz-osx-font-smoothing: grayscale;
 			}

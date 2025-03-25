@@ -35,16 +35,25 @@ export function getMappedExpression({
 	distanceFromActive: number;
 	path: Array<string | number> | string;
 }) {
-	const root =
-		distanceFromActive === 1
-			? '$json'
-			: generatePath(`$('${escapeMappingString(nodeName)}')`, ['item', 'json']);
+	const root = getNodeParentExpression({ nodeName, distanceFromActive });
 
 	if (typeof path === 'string') {
 		return `{{ ${root}${path} }}`;
 	}
 
 	return `{{ ${generatePath(root, path)} }}`;
+}
+
+export function getNodeParentExpression({
+	nodeName,
+	distanceFromActive,
+}: {
+	nodeName: string;
+	distanceFromActive: number;
+}) {
+	return distanceFromActive === 1
+		? '$json'
+		: generatePath(`$('${escapeMappingString(nodeName)}')`, ['item', 'json']);
 }
 
 const unquote = (str: string) => {

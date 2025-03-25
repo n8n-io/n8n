@@ -9,7 +9,7 @@ import type {
 	// For future pull request
 	//NodeApiError,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 // For future pull request
 //import { agentFields, agentOperations } from './AgentDescription';
@@ -23,10 +23,6 @@ import {
 	freshdeskApiRequestAllItems,
 	// validateJSON,
 } from './GenericFunctions';
-
-// For future pull request
-//import { summaryFields, summaryOperations } from './SummaryDescription';
-//import type { IUpdateSummaryBody } from './SummaryInterface';
 
 const Statuses = {
 	Open: 2,
@@ -57,6 +53,10 @@ const Sources = {
 } as const;
 
 type Source = (typeof Sources)[keyof typeof Sources];
+
+// For future pull request
+//import { summaryFields, summaryOperations } from './SummaryDescription';
+//import type { IUpdateSummaryBody } from './SummaryInterface';
 
 interface ICreateTicketBody {
 	name?: string;
@@ -98,8 +98,8 @@ export class Freshdesk implements INodeType {
 			name: 'Freshdesk',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'freshdeskApi',
