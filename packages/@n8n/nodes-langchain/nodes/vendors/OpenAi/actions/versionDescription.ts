@@ -50,25 +50,22 @@ const configureNodeInputs = (
 ) => {
 	if (resource === 'assistant' && operation === 'message') {
 		const inputs: INodeInputConfiguration[] = [
-			{ type: NodeConnectionTypes.Main },
-			{ type: NodeConnectionTypes.AiTool, displayName: 'Tools' },
+			{ type: 'main' },
+			{ type: 'ai_tool', displayName: 'Tools' },
 		];
 		if (memory !== 'threadId') {
-			inputs.push({ type: NodeConnectionTypes.AiMemory, displayName: 'Memory', maxConnections: 1 });
+			inputs.push({ type: 'ai_memory', displayName: 'Memory', maxConnections: 1 });
 		}
 		return inputs;
 	}
 	if (resource === 'text' && operation === 'message') {
 		if (hideTools === 'hide') {
-			return [NodeConnectionTypes.Main];
+			return ['main'];
 		}
-		return [
-			{ type: NodeConnectionTypes.Main },
-			{ type: NodeConnectionTypes.AiTool, displayName: 'Tools' },
-		];
+		return [{ type: 'main' }, { type: 'ai_tool', displayName: 'Tools' }];
 	}
 
-	return [NodeConnectionTypes.Main];
+	return ['main'];
 };
 
 // eslint-disable-next-line n8n-nodes-base/node-class-description-missing-subtitle
