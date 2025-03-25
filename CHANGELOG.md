@@ -1,3 +1,12 @@
+## [1.85.2](https://github.com/n8n-io/n8n/compare/n8n@1.85.1...n8n@1.85.2) (2025-03-25)
+
+
+### Bug Fixes
+
+* **editor:** Check for when to show the community+ modal for the folder's feature ([#14146](https://github.com/n8n-io/n8n/issues/14146)) ([39ac856](https://github.com/n8n-io/n8n/commit/39ac856924183de4d14cd4d4c5dc594b62a0036a))
+
+
+
 ## [1.85.1](https://github.com/n8n-io/n8n/compare/n8n@1.85.0...n8n@1.85.1) (2025-03-25)
 
 
