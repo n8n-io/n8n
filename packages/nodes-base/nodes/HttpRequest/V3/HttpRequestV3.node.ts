@@ -1056,7 +1056,7 @@ export class HttpRequestV3 implements INodeType {
 		) {
 			this.addExecutionHints({
 				message:
-					'To split the contents of "data" into separate items for easier processing, set the "Field to Split Out" option or use an additional "Split Out Items" node.',
+					'To split the contents of "data" into separate items for easier processing, set the "Field to Split Out" option or use an additional "Split Out" node.',
 				location: 'outputPane',
 			});
 		}
