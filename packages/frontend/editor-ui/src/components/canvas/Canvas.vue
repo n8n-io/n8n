@@ -139,6 +139,7 @@ const {
 	onNodesInitialized,
 	findNode,
 	viewport,
+	nodesSelectionActive,
 	onEdgeMouseLeave,
 	onEdgeMouseEnter,
 	onEdgeMouseMove,
@@ -355,6 +356,12 @@ function onNodeClick({ event, node }: NodeMouseEvent) {
 
 function onSelectionDragStop(event: NodeDragEvent) {
 	onUpdateNodesPosition(event.nodes.map(({ id, position }) => ({ id, position })));
+}
+
+function onSelectionEnd() {
+	if (selectedNodes.value.length === 1) {
+		nodesSelectionActive.value = false;
+	}
 }
 
 function onSetNodeActivated(id: string) {
@@ -796,6 +803,7 @@ provide(CanvasKey, {
 		@node-drag-stop="onNodeDragStop"
 		@node-click="onNodeClick"
 		@selection-drag-stop="onSelectionDragStop"
+		@selection-end="onSelectionEnd"
 		@selection-context-menu="onOpenSelectionContextMenu"
 		@dragover="onDragOver"
 		@drop="onDrop"
