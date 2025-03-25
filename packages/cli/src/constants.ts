@@ -95,6 +95,8 @@ export const LICENSE_FEATURES = {
 	COMMUNITY_NODES_CUSTOM_REGISTRY: 'feat:communityNodes:customRegistry',
 	AI_CREDITS: 'feat:aiCredits',
 	FOLDERS: 'feat:folders',
+	INSIGHTS_OVERVIEW: 'feat:insights:overview',
+	INSIGHTS_DETAILS: 'feat:insights:details',
 } as const;
 
 export const LICENSE_QUOTAS = {
@@ -104,6 +106,10 @@ export const LICENSE_QUOTAS = {
 	WORKFLOW_HISTORY_PRUNE_LIMIT: 'quota:workflowHistoryPrune',
 	TEAM_PROJECT_LIMIT: 'quota:maxTeamProjects',
 	AI_CREDITS: 'quota:aiCredits',
+	INSIGHTS_RANGE: 'quota:insights:range',
+	INSIGHTS_GRANULARITY: 'quota:insights:granularity',
+	INSIGHTS_RETENTION_MAX_AGE: 'quota:insights:retention:maxAge',
+	INSIGHTS_RETENTION_PRUNE_INTERVAL: 'quota:insights:retention:pruneInterval',
 } as const;
 export const UNLIMITED_LICENSE_QUOTA = -1;
 
