@@ -1,7 +1,7 @@
-import { ApplicationError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
-export class InvalidSamlMetadataError extends ApplicationError {
+export class InvalidSamlMetadataError extends UserError {
 	constructor() {
-		super('Invalid SAML metadata', { level: 'warning' });
+		super('Invalid SAML metadata');
 	}
 }

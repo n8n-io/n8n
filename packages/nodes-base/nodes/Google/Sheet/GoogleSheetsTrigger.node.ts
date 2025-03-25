@@ -5,7 +5,7 @@ import type {
 	INodeTypeDescription,
 	IPollFunctions,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import {
 	arrayOfArraysToJson,
@@ -34,7 +34,7 @@ export class GoogleSheetsTrigger implements INodeType {
 			name: 'Google Sheets Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'googleSheetsTriggerOAuth2Api',
@@ -120,6 +120,9 @@ export class GoogleSheetsTrigger implements INodeType {
 				default: { mode: 'list', value: '' },
 				// default: '', //empty string set to progresivly reveal fields
 				required: true,
+				typeOptions: {
+					loadOptionsDependsOn: ['documentId.value'],
+				},
 				modes: [
 					{
 						displayName: 'From List',
@@ -529,6 +532,11 @@ export class GoogleSheetsTrigger implements INodeType {
 					(options.valueRender as ValueRenderOption) || 'UNFORMATTED_VALUE',
 					(options.dateTimeRenderOption as string) || 'FORMATTED_STRING',
 				);
+
+				if (Array.isArray(sheetData) && sheetData.length !== 0) {
+					const zeroBasedKeyRow = keyRow - 1;
+					sheetData.splice(zeroBasedKeyRow, 1); // Remove key row
+				}
 
 				if (this.getMode() === 'manual') {
 					if (Array.isArray(sheetData)) {

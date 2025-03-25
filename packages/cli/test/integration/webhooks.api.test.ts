@@ -1,13 +1,13 @@
 import { readFileSync } from 'fs';
+import type { IWorkflowBase } from 'n8n-workflow';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type IWebhookFunctions,
 } from 'n8n-workflow';
 import { agent as testAgent } from 'supertest';
 
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExternalHooks } from '@/external-hooks';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
@@ -189,7 +189,7 @@ describe('Webhook API', () => {
 			description: '',
 			defaults: {},
 			inputs: [],
-			outputs: [NodeConnectionType.Main],
+			outputs: [NodeConnectionTypes.Main],
 			webhooks: [
 				{
 					name: 'default',
@@ -230,7 +230,7 @@ describe('Webhook API', () => {
 		node: WebhookTestingNode,
 		path = 'abcd',
 		httpMethod = 'POST',
-	): Partial<WorkflowEntity> => ({
+	): Partial<IWorkflowBase> => ({
 		active: true,
 		nodes: [
 			{

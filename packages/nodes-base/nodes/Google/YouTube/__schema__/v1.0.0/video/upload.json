@@ -1,0 +1,9 @@
+{
+    "type": "object",
+    "properties": {
+        "uploadId": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

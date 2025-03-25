@@ -35,6 +35,8 @@ export class LocalLoadOptionsContext implements ILocalLoadOptionsFunctions {
 
 		if (selectedWorkflowNode) {
 			const selectedSingleNodeWorkflow = new Workflow({
+				id: dbWorkflow.id,
+				name: dbWorkflow.name,
 				nodes: [selectedWorkflowNode],
 				connections: {},
 				active: false,

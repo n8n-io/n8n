@@ -31,12 +31,9 @@ import type { AuthProviderType } from '@/databases/entities/auth-identity';
 import type { SharedCredentials } from '@/databases/entities/shared-credentials';
 import type { TagEntity } from '@/databases/entities/tag-entity';
 import type { AssignableRole, GlobalRole, User } from '@/databases/entities/user';
-import type { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import type { SettingsRepository } from '@/databases/repositories/settings.repository';
-import type { UserRepository } from '@/databases/repositories/user.repository';
-import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
+import type { Folder } from './databases/entities/folder';
 import type { ExternalHooks } from './external-hooks';
 import type { WorkflowWithSharingsAndCredentials } from './workflows/workflows.types';
 
@@ -94,15 +91,22 @@ export type IAnnotationTagWithCountDb = IAnnotationTagDb & UsageCount;
 
 // Almost identical to editor-ui.Interfaces.ts
 export interface IWorkflowDb extends IWorkflowBase {
+	triggerCount: number;
 	tags?: TagEntity[];
-}
-
-export interface IWorkflowToImport extends IWorkflowBase {
-	tags: ITagToImport[];
+	parentFolder?: Folder | null;
 }
 
 export interface IWorkflowResponse extends IWorkflowBase {
 	id: string;
+}
+
+export interface IWorkflowToImport
+	extends Omit<IWorkflowBase, 'staticData' | 'pinData' | 'createdAt' | 'updatedAt'> {
+	owner: {
+		type: 'personal';
+		personalEmail: string;
+	};
+	parentFolderId: string | null;
 }
 
 // ----------------------------------
@@ -218,46 +222,6 @@ export interface IExecutingWorkflowData {
 	responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>;
 	workflowExecution?: PCancelable<IRun>;
 	status: ExecutionStatus;
-}
-
-export interface IExternalHooks {
-	credentials?: {
-		create?: Array<{
-			(this: IExternalHooksFunctions, credentialsData: ICredentialsEncrypted): Promise<void>;
-		}>;
-		delete?: Array<{ (this: IExternalHooksFunctions, credentialId: string): Promise<void> }>;
-		update?: Array<{
-			(this: IExternalHooksFunctions, credentialsData: ICredentialsDb): Promise<void>;
-		}>;
-	};
-	workflow?: {
-		activate?: Array<{ (this: IExternalHooksFunctions, workflowData: IWorkflowDb): Promise<void> }>;
-		create?: Array<{ (this: IExternalHooksFunctions, workflowData: IWorkflowBase): Promise<void> }>;
-		delete?: Array<{ (this: IExternalHooksFunctions, workflowId: string): Promise<void> }>;
-		execute?: Array<{
-			(
-				this: IExternalHooksFunctions,
-				workflowData: IWorkflowDb,
-				mode: WorkflowExecuteMode,
-			): Promise<void>;
-		}>;
-		update?: Array<{ (this: IExternalHooksFunctions, workflowData: IWorkflowDb): Promise<void> }>;
-	};
-}
-
-export interface IExternalHooksFileData {
-	[key: string]: {
-		[key: string]: Array<(...args: any[]) => Promise<void>>;
-	};
-}
-
-export interface IExternalHooksFunctions {
-	dbCollections: {
-		User: UserRepository;
-		Settings: SettingsRepository;
-		Credentials: CredentialsRepository;
-		Workflow: WorkflowRepository;
-	};
 }
 
 export interface IPersonalizationSurveyAnswers {

@@ -559,7 +559,7 @@ describe('Node Creator', () => {
 		addNodeToCanvas('Question and Answer Chain', true);
 		addRetrieverNodeToParent('Vector Store Retriever', 'Question and Answer Chain');
 		cy.realPress('Escape');
-		addVectorStoreNodeToParent('In-Memory Vector Store', 'Vector Store Retriever');
+		addVectorStoreNodeToParent('Simple Vector Store', 'Vector Store Retriever');
 		cy.realPress('Escape');
 		WorkflowPage.getters.canvasNodes().should('have.length', 4);
 	});
@@ -569,6 +569,15 @@ describe('Node Creator', () => {
 		addNodeToCanvas(AGENT_NODE_NAME, true, true);
 		clickGetBackToCanvas();
 
-		addVectorStoreToolToParent('In-Memory Vector Store', AGENT_NODE_NAME);
+		addVectorStoreToolToParent('Simple Vector Store', AGENT_NODE_NAME);
+	});
+
+	it('should insert node to canvas with sendAndWait operation selected', () => {
+		nodeCreatorFeature.getters.canvasAddButton().click();
+		WorkflowPage.actions.addNodeToCanvas('Manual', false);
+		nodeCreatorFeature.actions.openNodeCreator();
+		cy.contains('Human in the loop').click();
+		nodeCreatorFeature.getters.getCreatorItem('Slack').click();
+		cy.contains('Send and Wait for Response').should('exist');
 	});
 });

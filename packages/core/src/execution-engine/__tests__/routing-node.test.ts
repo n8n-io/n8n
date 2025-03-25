@@ -744,14 +744,17 @@ describe('RoutingNode', () => {
 					nodeTypes,
 				});
 
-				const routingNode = new RoutingNode(
+				const executeFunctions = mock<executionContexts.ExecuteContext>();
+				Object.assign(executeFunctions, {
+					runIndex,
+					additionalData,
 					workflow,
 					node,
-					connectionInputData,
-					runExecutionData ?? null,
-					additionalData,
 					mode,
-				);
+					connectionInputData,
+					runExecutionData,
+				});
+				const routingNode = new RoutingNode(executeFunctions, nodeType);
 
 				const executeSingleFunctions = getExecuteSingleFunctions(
 					workflow,
@@ -1947,15 +1950,6 @@ describe('RoutingNode', () => {
 					nodeTypes,
 				});
 
-				const routingNode = new RoutingNode(
-					workflow,
-					node,
-					connectionInputData,
-					runExecutionData ?? null,
-					additionalData,
-					mode,
-				);
-
 				const executeData = {
 					data: {},
 					node,
@@ -1963,6 +1957,18 @@ describe('RoutingNode', () => {
 				} as IExecuteData;
 
 				const executeFunctions = mock<executionContexts.ExecuteContext>();
+				Object.assign(executeFunctions, {
+					executeData,
+					inputData,
+					runIndex,
+					additionalData,
+					workflow,
+					node,
+					mode,
+					connectionInputData,
+					runExecutionData,
+				});
+
 				const executeSingleFunctions = getExecuteSingleFunctions(
 					workflow,
 					runExecutionData,
@@ -1971,7 +1977,6 @@ describe('RoutingNode', () => {
 					itemIndex,
 				);
 
-				jest.spyOn(executionContexts, 'ExecuteContext').mockReturnValue(executeFunctions);
 				jest
 					.spyOn(executionContexts, 'ExecuteSingleContext')
 					.mockReturnValue(executeSingleFunctions);
@@ -2004,7 +2009,8 @@ describe('RoutingNode', () => {
 						? testData.input.node.parameters[parameterName]
 						: (getNodeParameter(parameterName) ?? {});
 
-				const result = await routingNode.runNode(inputData, runIndex, nodeType, executeData);
+				const routingNode = new RoutingNode(executeFunctions, nodeType);
+				const result = await routingNode.runNode();
 
 				if (testData.input.specialTestOptions?.sleepCalls) {
 					expect(spy.mock.calls).toEqual(testData.input.specialTestOptions?.sleepCalls);

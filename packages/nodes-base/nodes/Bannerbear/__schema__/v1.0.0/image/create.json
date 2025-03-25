@@ -1,0 +1,62 @@
+{
+    "type": "object",
+    "properties": {
+        "created_at": {
+            "type": "string"
+        },
+        "height": {
+            "type": "integer"
+        },
+        "modifications": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "pdf_url": {
+            "type": "null"
+        },
+        "pdf_url_compressed": {
+            "type": "null"
+        },
+        "render_pdf": {
+            "type": "boolean"
+        },
+        "self": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "template": {
+            "type": "string"
+        },
+        "template_name": {
+            "type": "string"
+        },
+        "template_version": {
+            "type": "null"
+        },
+        "transparent": {
+            "type": "boolean"
+        },
+        "uid": {
+            "type": "string"
+        },
+        "webhook_response_code": {
+            "type": "null"
+        },
+        "webhook_url": {
+            "type": "null"
+        },
+        "width": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

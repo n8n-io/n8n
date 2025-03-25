@@ -1,0 +1,38 @@
+{
+    "type": "object",
+    "properties": {
+        "_id": {
+            "type": "string"
+        },
+        "_index": {
+            "type": "string"
+        },
+        "_primary_term": {
+            "type": "integer"
+        },
+        "_seq_no": {
+            "type": "integer"
+        },
+        "_shards": {
+            "type": "object",
+            "properties": {
+                "failed": {
+                    "type": "integer"
+                },
+                "successful": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "_version": {
+            "type": "integer"
+        },
+        "result": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

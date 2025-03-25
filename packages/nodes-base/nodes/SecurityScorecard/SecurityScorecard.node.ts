@@ -6,7 +6,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { companyFields, companyOperations } from './descriptions/CompanyDescription';
 import { industryFields, industryOperations } from './descriptions/IndustryDescription';
@@ -31,8 +31,9 @@ export class SecurityScorecard implements INodeType {
 		defaults: {
 			name: 'SecurityScorecard',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'securityScorecardApi',

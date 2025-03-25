@@ -1,6 +1,6 @@
 import moment from 'moment-timezone';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IDataObject,
 	type IExecuteFunctions,
 	type IHttpRequestMethods,
@@ -29,8 +29,9 @@ export class SendGrid implements INodeType {
 		defaults: {
 			name: 'SendGrid',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'sendGridApi',

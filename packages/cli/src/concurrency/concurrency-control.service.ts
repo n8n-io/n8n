@@ -8,7 +8,6 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit.error';
 import { UnknownExecutionModeError } from '@/errors/unknown-execution-mode.error';
 import { EventService } from '@/events/event.service';
-import type { IExecutingWorkflowData } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
 
 import { ConcurrencyQueue } from './concurrency-queue';
@@ -140,7 +139,7 @@ export class ConcurrencyControlService {
 	 * enqueued executions that have response promises, as these cannot
 	 * be re-run via `Start.runEnqueuedExecutions` during startup.
 	 */
-	async removeAll(activeExecutions: { [executionId: string]: IExecutingWorkflowData }) {
+	async removeAll(executionIdsToCancel: string[]) {
 		if (!this.isEnabled) return;
 
 		this.queues.forEach((queue) => {
@@ -151,15 +150,13 @@ export class ConcurrencyControlService {
 			}
 		});
 
-		const executionIds = Object.entries(activeExecutions)
-			.filter(([_, execution]) => execution.status === 'new' && execution.responsePromise)
-			.map(([executionId, _]) => executionId);
+		if (executionIdsToCancel.length === 0) return;
 
-		if (executionIds.length === 0) return;
+		await this.executionRepository.cancelMany(executionIdsToCancel);
 
-		await this.executionRepository.cancelMany(executionIds);
-
-		this.logger.info('Canceled enqueued executions with response promises', { executionIds });
+		this.logger.info('Canceled enqueued executions with response promises', {
+			executionIds: executionIdsToCancel,
+		});
 	}
 
 	disable() {

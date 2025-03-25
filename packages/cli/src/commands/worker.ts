@@ -49,7 +49,7 @@ export class Worker extends BaseCommand {
 		this.logger.info('Stopping worker...');
 
 		try {
-			await this.externalHooks?.run('n8n.stop', []);
+			await this.externalHooks?.run('n8n.stop');
 		} catch (error) {
 			await this.exitWithCrash('Error shutting down worker', error);
 		}
@@ -117,6 +117,8 @@ export class Worker extends BaseCommand {
 			const taskRunnerModule = Container.get(TaskRunnerModule);
 			await taskRunnerModule.start();
 		}
+
+		await this.loadModules();
 	}
 
 	async initEventBus() {

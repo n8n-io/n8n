@@ -14,3 +14,11 @@ export const CONFIG_FILES = 'N8N_CONFIG_FILES';
 export const BINARY_DATA_STORAGE_PATH = 'N8N_BINARY_DATA_STORAGE_PATH';
 export const UM_EMAIL_TEMPLATES_INVITE = 'N8N_UM_EMAIL_TEMPLATES_INVITE';
 export const UM_EMAIL_TEMPLATES_PWRESET = 'N8N_UM_EMAIL_TEMPLATES_PWRESET';
+
+export const CREDENTIAL_ERRORS = {
+	NO_DATA: 'No data is set on this credentials.',
+	DECRYPTION_FAILED:
+		'Credentials could not be decrypted. The likely reason is that a different "encryptionKey" was used to encrypt the data.',
+	INVALID_JSON: 'Decrypted credentials data is not valid JSON.',
+	INVALID_DATA: 'Credentials data is not in a valid format.',
+};

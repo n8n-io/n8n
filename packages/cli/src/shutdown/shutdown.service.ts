@@ -1,7 +1,7 @@
 import { Container, Service } from '@n8n/di';
 import { type Class, ErrorReporter } from 'n8n-core';
 import { Logger } from 'n8n-core';
-import { ApplicationError, assert } from 'n8n-workflow';
+import { assert, UnexpectedError, UserError } from 'n8n-workflow';
 
 import { LOWEST_SHUTDOWN_PRIORITY, HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
 
@@ -14,10 +14,9 @@ export interface ShutdownHandler {
 }
 
 /** Error reported when a listener fails to shutdown gracefully */
-export class ComponentShutdownError extends ApplicationError {
+export class ComponentShutdownError extends UnexpectedError {
 	constructor(componentName: string, cause: Error) {
 		super('Failed to shutdown gracefully', {
-			level: 'error',
 			cause,
 			extra: { component: componentName },
 		});
@@ -39,7 +38,7 @@ export class ShutdownService {
 	/** Registers given listener to be notified when the application is shutting down */
 	register(priority: number, handler: ShutdownHandler) {
 		if (priority < LOWEST_SHUTDOWN_PRIORITY || priority > HIGHEST_SHUTDOWN_PRIORITY) {
-			throw new ApplicationError(
+			throw new UserError(
 				`Invalid shutdown priority. Please set it between ${LOWEST_SHUTDOWN_PRIORITY} and ${HIGHEST_SHUTDOWN_PRIORITY}.`,
 				{ extra: { priority } },
 			);
@@ -57,14 +56,14 @@ export class ShutdownService {
 
 		for (const { serviceClass, methodName } of handlers) {
 			if (!Container.has(serviceClass)) {
-				throw new ApplicationError(
+				throw new UserError(
 					`Component "${serviceClass.name}" is not registered with the DI container. Any component using @OnShutdown() must be decorated with @Service()`,
 				);
 			}
 
 			const service = Container.get(serviceClass);
 			if (!service[methodName]) {
-				throw new ApplicationError(
+				throw new UserError(
 					`Component "${serviceClass.name}" does not have a "${methodName}" method`,
 				);
 			}
@@ -74,7 +73,7 @@ export class ShutdownService {
 	/** Signals all registered listeners that the application is shutting down */
 	shutdown() {
 		if (this.shutdownPromise) {
-			throw new ApplicationError('App is already shutting down');
+			throw new UnexpectedError('App is already shutting down');
 		}
 
 		this.shutdownPromise = this.startShutdown();
@@ -83,7 +82,7 @@ export class ShutdownService {
 	/** Returns a promise that resolves when all the registered listeners have shut down */
 	async waitForShutdown(): Promise<void> {
 		if (!this.shutdownPromise) {
-			throw new ApplicationError('App is not shutting down');
+			throw new UnexpectedError('App is not shutting down');
 		}
 
 		await this.shutdownPromise;

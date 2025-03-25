@@ -6,6 +6,7 @@ import type {
 	INodePropertyCollection,
 	INodePropertyOptions,
 	INodeType,
+	ResourceMapperTypeOptions,
 } from 'n8n-workflow';
 import {
 	ExpressionError,
@@ -20,9 +21,11 @@ const validateResourceMapperValue = (
 	parameterName: string,
 	paramValues: { [key: string]: unknown },
 	node: INode,
-	skipRequiredCheck = false,
+	resourceMapperTypeOptions?: ResourceMapperTypeOptions,
 ): ExtendedValidationResult => {
 	const result: ExtendedValidationResult = { valid: true, newValue: paramValues };
+	const skipRequiredCheck = resourceMapperTypeOptions?.mode !== 'add';
+	const enableTypeValidationOptions = Boolean(resourceMapperTypeOptions?.showTypeConversionOptions);
 	const paramNameParts = parameterName.split('.');
 	if (paramNameParts.length !== 2) {
 		return result;
@@ -56,8 +59,8 @@ const validateResourceMapperValue = (
 		if (schemaEntry?.type) {
 			const validationResult = validateFieldType(key, resolvedValue, schemaEntry.type, {
 				valueOptions: schemaEntry.options,
-				strict: !resourceMapperField.attemptToConvertTypes,
-				parseStrings: !!resourceMapperField.convertFieldsToString,
+				strict: enableTypeValidationOptions && !resourceMapperField.attemptToConvertTypes,
+				parseStrings: enableTypeValidationOptions && resourceMapperField.convertFieldsToString,
 			});
 
 			if (!validationResult.valid) {
@@ -185,7 +188,7 @@ export const validateValueAgainstSchema = (
 			parameterName,
 			parameterValue as { [key: string]: unknown },
 			node,
-			propertyDescription.typeOptions?.resourceMapper?.mode !== 'add',
+			propertyDescription.typeOptions?.resourceMapper,
 		);
 	} else if (['fixedCollection', 'collection'].includes(propertyDescription.type)) {
 		validationResult = validateCollection(

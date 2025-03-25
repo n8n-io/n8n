@@ -8,7 +8,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type IWebhookResponseData,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { pipedriveApiRequest } from './GenericFunctions';
@@ -42,7 +42,7 @@ export class PipedriveTrigger implements INodeType {
 			name: 'Pipedrive Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'pipedriveApi',

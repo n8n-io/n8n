@@ -15,7 +15,7 @@ export class SigninPage extends BasePage {
 
 	getters = {
 		form: () => cy.getByTestId('auth-form'),
-		email: () => cy.getByTestId('email'),
+		email: () => cy.getByTestId('emailOrLdapLoginId'),
 		password: () => cy.getByTestId('password'),
 		submit: () => cy.get('button'),
 	};

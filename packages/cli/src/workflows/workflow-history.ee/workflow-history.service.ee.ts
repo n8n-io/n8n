@@ -1,9 +1,9 @@
 import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
+import type { IWorkflowBase } from 'n8n-workflow';
 import { ensureError } from 'n8n-workflow';
 
 import type { User } from '@/databases/entities/user';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { WorkflowHistory } from '@/databases/entities/workflow-history';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
@@ -66,7 +66,7 @@ export class WorkflowHistoryService {
 		return hist;
 	}
 
-	async saveVersion(user: User, workflow: WorkflowEntity, workflowId: string) {
+	async saveVersion(user: User, workflow: IWorkflowBase, workflowId: string) {
 		// On some update scenarios, `nodes` and `connections` are missing, such as when
 		// changing workflow settings or renaming. In these cases, we don't want to save
 		// a new version

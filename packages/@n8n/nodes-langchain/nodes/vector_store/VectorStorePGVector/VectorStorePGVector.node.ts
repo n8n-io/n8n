@@ -11,7 +11,7 @@ import type pg from 'pg';
 
 import { metadataFilterField } from '@utils/sharedFields';
 
-import { createVectorStoreNode } from '../shared/createVectorStoreNode';
+import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
 
 type CollectionOptions = {
 	useCollection?: boolean;
