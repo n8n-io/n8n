@@ -16,6 +16,7 @@ import {
 } from '@/components/RunDataAi/utils';
 import { type INodeUi } from '@/Interface';
 import { upperFirst } from 'lodash-es';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 const { node, isOpen } = defineProps<{ isOpen: boolean; node: INodeUi | null }>();
 
@@ -24,6 +25,7 @@ const emit = defineEmits<{ clickHeader: [] }>();
 defineSlots<{ actions: {} }>();
 
 const locale = useI18n();
+const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
 const nodeHelpers = useNodeHelpers();
 const isClearExecutionButtonVisible = useClearExecutionButtonVisible();
@@ -77,10 +79,18 @@ function onClearExecutionData() {
 }
 
 function handleClickNode(clicked: TreeNode) {
-	selectedRun.value =
-		selectedRun.value?.node === clicked.node && selectedRun.value.runIndex === clicked.runIndex
-			? undefined
-			: { node: clicked.node, runIndex: clicked.runIndex };
+	if (selectedRun.value?.node === clicked.node && selectedRun.value.runIndex === clicked.runIndex) {
+		selectedRun.value = undefined;
+		return;
+	}
+
+	selectedRun.value = { node: clicked.node, runIndex: clicked.runIndex };
+	telemetry.track('User selected node in log view', {
+		node_type: workflowsStore.nodesByName[clicked.node].type,
+		node_id: workflowsStore.nodesByName[clicked.node].id,
+		execution_id: workflowsStore.workflowExecutionData?.id,
+		workflow_id: workflow.value.id,
+	});
 }
 </script>
 
