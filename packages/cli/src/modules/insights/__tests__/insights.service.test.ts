@@ -600,7 +600,10 @@ describe('compaction', () => {
 
 			// ASSERT
 			expect(compactedRows).toBe(periodStarts.length);
-			await expect(insightsRawRepository.count()).resolves.toBe(0);
+			const hourInsights = (await insightsByPeriodRepository.find()).filter(
+				(insight) => insight.periodUnit !== 'day',
+			);
+			expect(hourInsights).toBeEmptyArray();
 			const allCompacted = await insightsByPeriodRepository.find({ order: { periodStart: 1 } });
 			expect(allCompacted).toHaveLength(batches.length);
 			for (const [index, compacted] of allCompacted.entries()) {
@@ -684,10 +687,10 @@ describe('compaction', () => {
 
 			// ASSERT
 			expect(compactedRows).toBe(periodStarts.length);
-			const hourInsights = (await insightsByPeriodRepository.find()).filter(
-				(insight) => insight.periodUnit === 'hour',
+			const hourAndDayInsights = (await insightsByPeriodRepository.find()).filter(
+				(insight) => insight.periodUnit !== 'week',
 			);
-			expect(hourInsights).toBeEmptyArray();
+			expect(hourAndDayInsights).toBeEmptyArray();
 			const allCompacted = await insightsByPeriodRepository.find({ order: { periodStart: 1 } });
 			expect(allCompacted).toHaveLength(batches.length);
 			for (const [index, compacted] of allCompacted.entries()) {
