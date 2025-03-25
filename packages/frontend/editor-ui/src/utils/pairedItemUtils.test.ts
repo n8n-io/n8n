@@ -5,6 +5,7 @@ import {
 	getPairedItemsMapping,
 	MAX_ITEM_COUNT_FOR_PAIRING,
 } from './pairedItemUtils';
+import { type ITaskData } from 'n8n-workflow';
 
 const MOCK_EXECUTION: Partial<IExecutionResponse> = {
 	data: {
@@ -393,6 +394,42 @@ describe('pairedItemUtils', () => {
 				json: {},
 				pairedItem: { item: 0 },
 			});
+
+			expect(getPairedItemsMapping(mockExecution)).toEqual({});
+		});
+
+		it('should abort mapping and return empty object if execution has too many pairs', () => {
+			const nodeCount = 10;
+			const runCount = 3;
+			const itemCountPerRun = 3;
+			const pairedItemCount = 3;
+			const mockExecution: Partial<IExecutionResponse> = {
+				data: {
+					resultData: {
+						runData: Object.fromEntries(
+							Array.from({ length: nodeCount }).map<[string, ITaskData[]]>((_, j) => [
+								`node_${j}`,
+								Array.from({ length: runCount }).map(() => ({
+									startTime: 1706027170005,
+									executionTime: 0,
+									source: j === 0 ? [] : [{ previousNode: `node_${j - 1}` }],
+									executionStatus: 'success',
+									data: {
+										main: [
+											Array.from({ length: itemCountPerRun }).map(() => ({
+												json: {},
+												pairedItem: Array.from({ length: pairedItemCount }).map((__, i) => ({
+													item: i,
+												})),
+											})),
+										],
+									},
+								})),
+							]),
+						),
+					},
+				},
+			};
 
 			expect(getPairedItemsMapping(mockExecution)).toEqual({});
 		});

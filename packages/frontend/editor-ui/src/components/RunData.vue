@@ -1,22 +1,26 @@
 <script setup lang="ts">
 import { useStorage } from '@/composables/useStorage';
 import { saveAs } from 'file-saver';
-import {
-	type IBinaryData,
-	type IConnectedNode,
-	type IDataObject,
-	type INodeExecutionData,
-	type INodeOutputConfiguration,
-	type IRunData,
-	type IRunExecutionData,
-	type ITaskMetadata,
-	type NodeError,
-	type NodeHint,
-	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
-	type Workflow,
-	parseErrorMetadata,
+import type {
+	IBinaryData,
+	IConnectedNode,
+	IDataObject,
+	INodeExecutionData,
+	INodeOutputConfiguration,
+	IRunData,
+	IRunExecutionData,
+	ITaskMetadata,
+	NodeError,
+	NodeHint,
+	Workflow,
+	NodeConnectionType,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
+import {
+	parseErrorMetadata,
+	NodeConnectionTypes,
+	NodeHelpers,
+	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
+} from 'n8n-workflow';
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
 
 import type {
@@ -164,7 +168,7 @@ const emit = defineEmits<{
 	];
 }>();
 
-const connectionType = ref<NodeConnectionType>(NodeConnectionType.Main);
+const connectionType = ref<NodeConnectionType>(NodeConnectionTypes.Main);
 const dataSize = ref(0);
 const showData = ref(false);
 const userEnabledShowData = ref(false);
@@ -528,8 +532,7 @@ const showPinButton = computed(() => {
 
 const pinButtonDisabled = computed(
 	() =>
-		pinnedData.hasData.value ||
-		!rawInputData.value.length ||
+		(!rawInputData.value.length && !pinnedData.hasData.value) ||
 		!!binaryData.value?.length ||
 		isReadOnlyRoute.value ||
 		readOnlyEnv.value,
@@ -575,7 +578,10 @@ const isSchemaPreviewEnabled = computed(
 		!(nodeType.value?.codex?.categories ?? []).some(
 			(category) => category === CORE_NODES_CATEGORY,
 		) &&
-		posthogStore.isFeatureEnabled(SCHEMA_PREVIEW_EXPERIMENT),
+		posthogStore.isVariantEnabled(
+			SCHEMA_PREVIEW_EXPERIMENT.name,
+			SCHEMA_PREVIEW_EXPERIMENT.variant,
+		),
 );
 
 const hasPreviewSchema = asyncComputed(async () => {
@@ -1080,7 +1086,7 @@ function getRunLabel(option: number) {
 function getRawInputData(
 	runIndex: number,
 	outputIndex: number,
-	connectionType: NodeConnectionType = NodeConnectionType.Main,
+	connectionType: NodeConnectionType = NodeConnectionTypes.Main,
 ): INodeExecutionData[] {
 	let inputData: INodeExecutionData[] = [];
 
@@ -1128,7 +1134,7 @@ function getFilteredData(data: INodeExecutionData[]): INodeExecutionData[] {
 function getDataCount(
 	runIndex: number,
 	outputIndex: number,
-	connectionType: NodeConnectionType = NodeConnectionType.Main,
+	connectionType: NodeConnectionType = NodeConnectionTypes.Main,
 ) {
 	if (!node.value) {
 		return 0;
@@ -1163,7 +1169,7 @@ function init() {
 		const outputs = getResolvedNodeOutputs();
 		outputTypes = NodeHelpers.getConnectionTypes(outputs);
 	}
-	connectionType.value = outputTypes.length === 0 ? NodeConnectionType.Main : outputTypes[0];
+	connectionType.value = outputTypes.length === 0 ? NodeConnectionTypes.Main : outputTypes[0];
 	if (binaryData.value.length > 0) {
 		ndvStore.setPanelDisplayMode({
 			pane: props.paneType,
@@ -1172,7 +1178,7 @@ function init() {
 	} else if (displayMode.value === 'binary') {
 		ndvStore.setPanelDisplayMode({
 			pane: props.paneType,
-			mode: 'table',
+			mode: 'schema',
 		});
 	}
 }
@@ -1828,6 +1834,7 @@ defineExpose({ enterEditMode });
 					:mapping-enabled="mappingEnabled"
 					:distance-from-active="distanceFromActive"
 					:run-index="runIndex"
+					:output-index="currentOutputIndex"
 					:total-runs="maxRunIndex"
 					:search="search"
 				/>
@@ -2322,7 +2329,7 @@ defineExpose({ enterEditMode });
 	color: black;
 	border-radius: var(--border-radius-base);
 	padding: 0 1px;
-	font-weight: normal;
+	font-weight: var(--font-weight-regular);
 	font-style: normal;
 }
 </style>

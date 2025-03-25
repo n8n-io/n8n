@@ -13,7 +13,7 @@ import {
 	mockNodeTypeDescription,
 } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { SET_NODE_TYPE } from '@/constants';
 
 vi.mock('vue-router', () => {
@@ -53,8 +53,8 @@ describe('NodesPinning', () => {
 	const nodeTypesStore = mockedStore(useNodeTypesStore);
 	const nodeTypeDescription = mockNodeTypeDescription({
 		name: SET_NODE_TYPE,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 	});
 	nodeTypesStore.nodeTypes = {
 		node: { 1: nodeTypeDescription },
@@ -94,21 +94,18 @@ describe('NodesPinning', () => {
 		expect(container.querySelector('[data-node-name="Node 2"]')).toBeInTheDocument();
 	});
 
-	it('should update node classes when pinning/unpinning nodes', async () => {
-		const { container } = renderComponent();
+	it('should update UI when pinning/unpinning nodes', async () => {
+		const { container, getAllByTestId } = renderComponent();
 
 		await waitFor(() => {
 			expect(container.querySelector('[data-node-name="Node 1"]')).toBeInTheDocument();
 		});
 
-		await waitFor(() => {
-			expect(container.querySelector('[data-node-name="Node 1"]')).toHaveClass(
-				'canvasNode pinnedNode',
-			);
-			expect(container.querySelector('[data-node-name="Node 2"]')).toHaveClass(
-				'canvasNode notPinnedNode',
-			);
-		});
+		const buttons = getAllByTestId('node-pin-button');
+		expect(buttons.length).toBe(2);
+
+		expect(buttons[0]).toHaveTextContent('Unpin');
+		expect(buttons[1]).toHaveTextContent('Pin');
 	});
 
 	it('should emit update:modelValue when pinning nodes', async () => {

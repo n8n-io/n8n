@@ -28,6 +28,7 @@ import {
 } from '@/constants';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+
 import {
 	getMainAuthField,
 	getNodeAuthFields,
@@ -114,6 +115,11 @@ const filteredParameters = computedWithControl(
 		if (activeNode && activeNode.type === FORM_TRIGGER_NODE_TYPE) {
 			return updateFormTriggerParameters(parameters, activeNode.name);
 		}
+
+		if (activeNode && activeNode.type === FORM_NODE_TYPE) {
+			return updateFormParameters(parameters, activeNode.name);
+		}
+
 		if (
 			activeNode &&
 			activeNode.type === WAIT_NODE_TYPE &&
@@ -263,6 +269,19 @@ function updateWaitParameters(parameters: INodeProperties[], nodeName: string) {
 		}
 		return waitNodeParameters;
 	}
+
+	return parameters;
+}
+
+function updateFormParameters(parameters: INodeProperties[], nodeName: string) {
+	const workflow = workflowHelpers.getCurrentWorkflow();
+	const parentNodes = workflow.getParentNodes(nodeName);
+
+	const formTriggerName = parentNodes.find(
+		(node) => workflow.nodes[node].type === FORM_TRIGGER_NODE_TYPE,
+	);
+
+	if (formTriggerName) return parameters.filter((parameter) => parameter.name !== 'triggerNotice');
 
 	return parameters;
 }
@@ -646,6 +665,8 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 				:path="getPath(parameter.name)"
 				:node="node"
 				:is-read-only="isReadOnly"
+				:default-type="parameter.typeOptions?.assignment?.defaultType"
+				:disable-type="parameter.typeOptions?.assignment?.disableType"
 				@value-changed="valueChanged"
 			/>
 			<div v-else-if="credentialsParameterIndex !== index" class="parameter-item">

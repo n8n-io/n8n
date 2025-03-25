@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type { IRunData, Workflow } from 'n8n-workflow';
-import { jsonParse, NodeHelpers, NodeConnectionType } from 'n8n-workflow';
+import type { IRunData, Workflow, NodeConnectionType } from 'n8n-workflow';
+import { jsonParse, NodeHelpers, NodeConnectionTypes } from 'n8n-workflow';
 import type { IUpdateInformation, TargetItem } from '@/Interface';
 
 import NodeSettings from '@/components/NodeSettings.vue';
@@ -160,16 +160,16 @@ const inputNodeName = computed<string | undefined>(() => {
 			: [];
 
 	const nonMainOutputs = nodeOutputs.filter((output) => {
-		if (typeof output === 'string') return output !== NodeConnectionType.Main;
+		if (typeof output === 'string') return output !== NodeConnectionTypes.Main;
 
-		return output.type !== NodeConnectionType.Main;
+		return output.type !== NodeConnectionTypes.Main;
 	});
 
 	const isSubNode = nonMainOutputs.length > 0;
 
 	if (isSubNode && activeNode.value) {
 		// For sub-nodes, we need to get their connected output node to determine the input
-		// because sub-nodes use specialized outputs (e.g. NodeConnectionType.AiTool)
+		// because sub-nodes use specialized outputs (e.g. NodeConnectionTypes.AiTool)
 		// instead of the standard Main output type
 		const connectedOutputNode = props.workflowObject.getChildNodes(
 			activeNode.value.name,
@@ -275,7 +275,7 @@ const maxInputRun = computed(() => {
 
 	const runData: IRunData | null = workflowRunData.value;
 
-	if (outputs.some((output) => output !== NodeConnectionType.Main)) {
+	if (outputs.some((output) => output !== NodeConnectionTypes.Main)) {
 		node = activeNode.value;
 	}
 
@@ -352,13 +352,17 @@ const setIsTooltipVisible = ({ isTooltipVisible }: DataPinningDiscoveryEvent) =>
 
 const onKeyDown = (e: KeyboardEvent) => {
 	if (e.key === 's' && deviceSupport.isCtrlKeyPressed(e)) {
-		e.stopPropagation();
-		e.preventDefault();
-
-		if (props.readOnly) return;
-
-		emit('saveKeyboardShortcut', e);
+		onSaveWorkflow(e);
 	}
+};
+
+const onSaveWorkflow = (e: KeyboardEvent) => {
+	e.stopPropagation();
+	e.preventDefault();
+
+	if (props.readOnly) return;
+
+	emit('saveKeyboardShortcut', e);
 };
 
 const onInputItemHover = (e: { itemIndex: number; outputIndex: number } | null) => {
@@ -409,7 +413,7 @@ const onFeatureRequestClick = () => {
 			node_type: activeNode.value.type,
 			workflow_id: workflowsStore.workflowId,
 			push_ref: pushRef.value,
-			pane: NodeConnectionType.Main,
+			pane: NodeConnectionTypes.Main,
 			type: 'i-wish-this-node-would',
 		});
 	}
@@ -597,11 +601,25 @@ const onSearch = (search: string) => {
 	isPairedItemHoveringEnabled.value = !search;
 };
 
+const registerKeyboardListener = () => {
+	document.addEventListener('keydown', onKeyDown, true);
+};
+
+const unregisterKeyboardListener = () => {
+	document.removeEventListener('keydown', onKeyDown, true);
+};
+
 //watchers
 
 watch(
 	activeNode,
 	(node, oldNode) => {
+		if (node && !oldNode) {
+			registerKeyboardListener();
+		} else if (!node) {
+			unregisterKeyboardListener();
+		}
+
 		if (node && node.name !== oldNode?.name && !isActiveStickyNode.value) {
 			runInputIndex.value = -1;
 			runOutputIndex.value = -1;
@@ -655,6 +673,7 @@ watch(
 	},
 	{ immediate: true },
 );
+
 watch(maxOutputRun, () => {
 	runOutputIndex.value = -1;
 });
@@ -681,11 +700,13 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	dataPinningEventBus.off('data-pinning-discovery', setIsTooltipVisible);
+	unregisterKeyboardListener();
 });
 </script>
 
 <template>
 	<el-dialog
+		id="ndv"
 		:model-value="(!!activeNode || renaming) && !isActiveStickyNode"
 		:before-close="close"
 		:show-close="false"
@@ -719,8 +740,8 @@ onBeforeUnmount(() => {
 			v-if="activeNode"
 			ref="container"
 			class="data-display"
+			data-test-id="ndv-modal"
 			tabindex="0"
-			@keydown.capture="onKeyDown"
 		>
 			<div :class="$style.modalBackground" @click="close"></div>
 			<NDVDraggablePanels
@@ -836,7 +857,7 @@ onBeforeUnmount(() => {
 }
 
 .data-display-wrapper {
-	height: calc(100% - var(--spacing-l)) !important;
+	height: 100%;
 	margin-top: var(--spacing-xl) !important;
 	margin-bottom: var(--spacing-xl) !important;
 	width: 100%;

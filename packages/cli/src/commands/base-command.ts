@@ -14,7 +14,13 @@ import { ensureError, sleep, UserError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
 import config from '@/config';
-import { LICENSE_FEATURES, inDevelopment, inTest } from '@/constants';
+import {
+	LICENSE_FEATURES,
+	N8N_VERSION,
+	N8N_RELEASE_DATE,
+	inDevelopment,
+	inTest,
+} from '@/constants';
 import * as CrashJournal from '@/crash-journal';
 import * as Db from '@/db';
 import { getDataDeduplicationService } from '@/deduplication';
@@ -27,6 +33,7 @@ import { ExternalHooks } from '@/external-hooks';
 import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { ModulesConfig } from '@/modules/modules.config';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { ShutdownService } from '@/shutdown/shutdown.service';
@@ -51,6 +58,8 @@ export abstract class BaseCommand extends Command {
 
 	protected readonly globalConfig = Container.get(GlobalConfig);
 
+	protected readonly modulesConfig = Container.get(ModulesConfig);
+
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
 	 */
@@ -60,18 +69,24 @@ export abstract class BaseCommand extends Command {
 	/** Whether to init community packages (if enabled) */
 	protected needsCommunityPackages = false;
 
+	protected async loadModules() {
+		for (const moduleName of this.modulesConfig.modules) {
+			await import(`../modules/${moduleName}/${moduleName}.module`);
+			this.logger.debug(`Loaded module "${moduleName}"`);
+		}
+	}
+
 	async init(): Promise<void> {
 		this.errorReporter = Container.get(ErrorReporter);
 
-		const { releaseDate } = this.globalConfig.generic;
-		const { backendDsn, n8nVersion, environment, deploymentName } = this.globalConfig.sentry;
+		const { backendDsn, environment, deploymentName } = this.globalConfig.sentry;
 		await this.errorReporter.init({
 			serverType: this.instanceSettings.instanceType,
 			dsn: backendDsn,
 			environment,
-			release: n8nVersion,
+			release: `n8n@${N8N_VERSION}`,
 			serverName: deploymentName,
-			releaseDate,
+			releaseDate: N8N_RELEASE_DATE,
 		});
 		initExpressionEvaluator();
 
@@ -235,6 +250,7 @@ export abstract class BaseCommand extends Command {
 	}
 
 	async finally(error: Error | undefined) {
+		if (error?.message) this.logger.error(error.message);
 		if (inTest || this.id === 'start') return;
 		if (Db.connectionState.connected) {
 			await sleep(100); // give any in-flight query some time to finish

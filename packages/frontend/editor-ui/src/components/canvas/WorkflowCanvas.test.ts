@@ -14,6 +14,18 @@ import {
 	defaultNodeDescriptions,
 } from '@/__tests__/mocks';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import * as lodash from 'lodash-es';
+
+vi.mock('lodash-es', async () => {
+	const actual = await vi.importActual('lodash-es');
+	return {
+		...actual,
+		debounce: vi.fn((fn) => {
+			// Return a function that immediately calls the provided function
+			return (...args: unknown[]) => fn(...args);
+		}),
+	};
+});
 
 const renderComponent = createComponentRenderer(WorkflowCanvas, {
 	props: {
@@ -142,5 +154,53 @@ describe('WorkflowCanvas', () => {
 
 		expect(container.querySelector(`[data-id="${nodes[0].id}"]`)).toBeInTheDocument();
 		expect(container.querySelector(`[data-id="${fallbackNodes[0].id}"]`)).not.toBeInTheDocument();
+	});
+
+	describe('debouncing behavior', () => {
+		beforeEach(() => {
+			vi.clearAllMocks();
+		});
+
+		it('should initialize debounced watchers on component mount', async () => {
+			renderComponent();
+
+			expect(lodash.debounce).toHaveBeenCalledTimes(3);
+		});
+
+		it('should configure debouncing with no delay when not executing', async () => {
+			renderComponent({
+				props: {
+					executing: false,
+				},
+			});
+
+			expect(lodash.debounce).toHaveBeenCalledTimes(3);
+
+			// Find calls related to our specific debouncing logic
+			const calls = vi.mocked(lodash.debounce).mock.calls;
+			const nonExecutingCalls = calls.filter((call) => call[1] === 0 && call[2]?.maxWait === 0);
+
+			expect(nonExecutingCalls.length).toBeGreaterThanOrEqual(2);
+			expect(nonExecutingCalls[0][1]).toBe(0);
+			expect(nonExecutingCalls[0][2]).toEqual({ maxWait: 0 });
+		});
+
+		it('should configure debouncing with delay when executing', async () => {
+			renderComponent({
+				props: {
+					executing: true,
+				},
+			});
+
+			expect(lodash.debounce).toHaveBeenCalledTimes(3);
+
+			// Find calls related to our specific debouncing logic
+			const calls = vi.mocked(lodash.debounce).mock.calls;
+			const executingCalls = calls.filter((call) => call[1] === 200 && call[2]?.maxWait === 50);
+
+			expect(executingCalls.length).toBeGreaterThanOrEqual(2);
+			expect(executingCalls[0][1]).toBe(200);
+			expect(executingCalls[0][2]).toEqual({ maxWait: 50 });
+		});
 	});
 });

@@ -53,6 +53,12 @@ export const SentryPlugin: Plugin = {
 			dsn,
 			release,
 			environment,
+			integrations: [
+				Sentry.rewriteFramesIntegration({
+					prefix: '',
+					root: window.location.origin + '/',
+				}),
+			],
 			beforeSend,
 		});
 

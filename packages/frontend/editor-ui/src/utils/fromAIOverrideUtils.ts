@@ -1,11 +1,12 @@
 import {
 	extractFromAICalls,
 	FROM_AI_AUTO_GENERATED_MARKER,
-	type INodeTypeDescription,
 	type NodeParameterValueType,
 	type NodePropertyTypes,
 } from 'n8n-workflow';
 import { i18n } from '@/plugins/i18n';
+import type { INodeUi } from '@/Interface';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 export type OverrideContext = {
 	parameter: {
@@ -44,7 +45,8 @@ function sanitizeFromAiParameterName(s: string) {
 	return s;
 }
 
-const NODE_DENYLIST = ['toolCode', 'toolHttpRequest'];
+// nodeName | [nodeName, highestUnsupportedVersion]
+const NODE_DENYLIST = ['toolCode', 'toolHttpRequest', ['toolWorkflow', 1.2]] as const;
 
 const PATH_DENYLIST = [
 	'parameters.name',
@@ -159,16 +161,26 @@ export function parseOverrides(
 	return null;
 }
 
+function isDeniedNode(nodeDenyData: string | readonly [string, number], node: INodeUi) {
+	if (typeof nodeDenyData === 'string') {
+		return node.type.endsWith(nodeDenyData);
+	} else {
+		const [name, version] = nodeDenyData;
+		return node.type.endsWith(name) && node.typeVersion <= version;
+	}
+}
+
 export function canBeContentOverride(
 	props: Pick<OverrideContext, 'path' | 'parameter'>,
-	nodeType: INodeTypeDescription | null,
+	node: INodeUi,
 ) {
-	if (NODE_DENYLIST.some((x) => nodeType?.name?.endsWith(x) ?? false)) return false;
+	if (NODE_DENYLIST.some((x) => isDeniedNode(x, node))) return false;
 
 	if (PATH_DENYLIST.includes(props.path)) return false;
 
 	if (PROP_TYPE_DENYLIST.includes(props.parameter.type)) return false;
 
+	const nodeType = useNodeTypesStore().getNodeType(node.type, node?.typeVersion);
 	const codex = nodeType?.codex;
 	if (
 		!codex?.categories?.includes('AI') ||
@@ -182,11 +194,11 @@ export function canBeContentOverride(
 
 export function makeOverrideValue(
 	context: OverrideContext,
-	nodeType: INodeTypeDescription | null | undefined,
+	node: INodeUi | null | undefined,
 ): FromAIOverride | null {
-	if (!nodeType) return null;
+	if (!node) return null;
 
-	if (canBeContentOverride(context, nodeType)) {
+	if (canBeContentOverride(context, node)) {
 		const fromAiOverride: FromAIOverride = {
 			type: 'fromAI',
 			extraProps: fromAIExtraProps,

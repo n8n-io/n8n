@@ -320,7 +320,7 @@ export async function execute(
 			const valueToMatchOn =
 				nodeVersion < 4
 					? (this.getNodeParameter('valueToMatchOn', i, '') as string)
-					: (this.getNodeParameter(`columns.value[${columnsToMatchOn[0]}]`, i, '') as string);
+					: (this.getNodeParameter(`columns.value["${columnsToMatchOn[0]}"]`, i, '') as string);
 
 			if (valueToMatchOn === '') {
 				throw new NodeOperationError(

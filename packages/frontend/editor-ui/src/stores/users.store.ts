@@ -1,4 +1,5 @@
 import type {
+	LoginRequestDto,
 	PasswordUpdateRequestDto,
 	SettingsUpdateRequestDto,
 	UserUpdateRequestDto,
@@ -181,12 +182,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		};
 	};
 
-	const loginWithCreds = async (params: {
-		email: string;
-		password: string;
-		mfaCode?: string;
-		mfaRecoveryCode?: string;
-	}) => {
+	const loginWithCreds = async (params: LoginRequestDto) => {
 		const user = await usersApi.login(rootStore.restApiContext, params);
 		if (!user) {
 			return;

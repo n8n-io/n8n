@@ -1,35 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "title": {
-            "type": "string"
-        },
-        "tags": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "description": {
-            "type": "string"
-        },
-        "settings": {
-            "type": "object",
-            "properties": {
-                "syncAlerts": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "syncAlerts"
-            ]
-        },
-        "owner": {
-            "type": "string"
-        },
-        "category": {
-            "type": "null"
-        },
         "assignees": {
             "type": "array",
             "items": {
@@ -38,40 +9,28 @@
                     "uid": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "uid"
-                ]
+                }
             }
+        },
+        "category": {
+            "type": "null"
         },
         "connector": {
             "type": "object",
             "properties": {
+                "fields": {
+                    "type": "null"
+                },
                 "id": {
+                    "type": "string"
+                },
+                "name": {
                     "type": "string"
                 },
                 "type": {
                     "type": "string"
-                },
-                "fields": {
-                    "type": "null"
-                },
-                "name": {
-                    "type": "string"
                 }
-            },
-            "required": [
-                "id",
-                "type",
-                "fields",
-                "name"
-            ]
-        },
-        "severity": {
-            "type": "string"
-        },
-        "status": {
-            "type": "string"
+            }
         },
         "created_at": {
             "type": "string"
@@ -79,19 +38,16 @@
         "created_by": {
             "type": "object",
             "properties": {
-                "username": {
-                    "type": "string"
-                },
                 "profile_uid": {
                     "type": "string"
+                },
+                "username": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "username",
-                "full_name",
-                "email",
-                "profile_uid"
-            ]
+            }
+        },
+        "description": {
+            "type": "string"
         },
         "external_service": {
             "type": "null"
@@ -99,40 +55,41 @@
         "id": {
             "type": "string"
         },
-        "version": {
+        "owner": {
             "type": "string"
+        },
+        "settings": {
+            "type": "object",
+            "properties": {
+                "syncAlerts": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "severity": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "title": {
+            "type": "string"
+        },
+        "totalAlerts": {
+            "type": "integer"
         },
         "totalComment": {
             "type": "integer"
         },
-        "totalAlerts": {
-            "type": "integer"
+        "version": {
+            "type": "string"
         }
     },
-    "required": [
-        "title",
-        "tags",
-        "description",
-        "settings",
-        "owner",
-        "category",
-        "assignees",
-        "customFields",
-        "connector",
-        "severity",
-        "status",
-        "duration",
-        "closed_at",
-        "closed_by",
-        "created_at",
-        "created_by",
-        "updated_at",
-        "updated_by",
-        "external_service",
-        "id",
-        "version",
-        "totalComment",
-        "totalAlerts",
-        "comments"
-    ]
+    "version": 1
 }

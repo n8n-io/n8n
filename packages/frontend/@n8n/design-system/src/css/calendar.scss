@@ -29,7 +29,7 @@
 	thead th {
 		padding: 12px 0;
 		color: var(--color-text-dark);
-		font-weight: normal;
+		font-weight: var(--font-weight-regular);
 	}
 
 	&:not(.is-range) {

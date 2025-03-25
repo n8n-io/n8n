@@ -40,6 +40,10 @@ const router = createRouter({
 	],
 });
 
+vi.mock('@/api/usage', () => ({
+	getLicense: vi.fn(),
+}));
+
 let pinia: ReturnType<typeof createTestingPinia>;
 let foldersStore: ReturnType<typeof mockedStore<typeof useFoldersStore>>;
 let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
@@ -177,7 +181,7 @@ describe('WorkflowsView', () => {
 			);
 		});
 
-		it('should set status filter based on query parameters', async () => {
+		it('should set active status filter based on query parameters', async () => {
 			await router.replace({ query: { status: 'true' } });
 
 			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
@@ -192,6 +196,26 @@ describe('WorkflowsView', () => {
 				expect.any(String),
 				expect.objectContaining({
 					active: true,
+				}),
+				expect.any(Boolean),
+			);
+		});
+
+		it('should set deactivated status filter based on query parameters', async () => {
+			await router.replace({ query: { status: 'false' } });
+
+			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
+
+			renderComponent({ pinia });
+			await waitAllPromises();
+
+			expect(workflowsStore.fetchWorkflowsPage).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.any(Number),
+				expect.any(Number),
+				expect.any(String),
+				expect.objectContaining({
+					active: false,
 				}),
 				expect.any(Boolean),
 			);
@@ -275,6 +299,7 @@ describe('Folders', () => {
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
 		active: true,
+		versionId: '1',
 		homeProject: {
 			id: '1',
 			name: 'Project 1',
@@ -291,6 +316,7 @@ describe('Folders', () => {
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
 		workflowCount: 1,
+		subFolderCount: 0,
 		homeProject: {
 			id: '1',
 			name: 'Project 1',

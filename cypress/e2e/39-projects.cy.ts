@@ -1,7 +1,9 @@
+import { createResource } from '../composables/create';
 import { setCredentialValues } from '../composables/modals/credential-modal';
 import { clickCreateNewCredential, selectResourceLocatorItem } from '../composables/ndv';
 import * as projects from '../composables/projects';
 import {
+	EDIT_FIELDS_SET_NODE_NAME,
 	INSTANCE_ADMIN,
 	INSTANCE_MEMBERS,
 	INSTANCE_OWNER,
@@ -27,23 +29,6 @@ const ndv = new NDV();
 const mainSidebar = new MainSidebar();
 
 describe('Projects', { disableAutoLogin: true }, () => {
-	before(() => {
-		cy.resetDatabase();
-		cy.enableFeature('sharing');
-		cy.enableFeature('advancedPermissions');
-		cy.enableFeature('projectRole:admin');
-		cy.enableFeature('projectRole:editor');
-		cy.changeQuota('maxTeamProjects', -1);
-	});
-
-	it('should not show project add button and projects to a member if not invited to any project', () => {
-		cy.signinAsMember(1);
-		cy.visit(workflowsPage.url);
-
-		cy.getByTestId('add-project-menu-item').should('not.exist');
-		projects.getMenuItems().should('not.exist');
-	});
-
 	describe('when starting from scratch', () => {
 		beforeEach(() => {
 			cy.resetDatabase();
@@ -52,6 +37,14 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			cy.enableFeature('projectRole:admin');
 			cy.enableFeature('projectRole:editor');
 			cy.changeQuota('maxTeamProjects', -1);
+		});
+
+		it('should not show project add button and projects to a member if not invited to any project', () => {
+			cy.signinAsMember(1);
+			cy.visit(workflowsPage.url);
+
+			cy.getByTestId('add-project-menu-item').should('not.exist');
+			projects.getMenuItems().should('not.exist');
 		});
 
 		it('should filter credentials by project ID when creating new workflow or hard reloading an opened workflow', () => {
@@ -220,9 +213,194 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.should('contain.text', 'Notion account personal project');
 		});
 
-		it('should move resources between projects', () => {
+		it('should allow changing an inaccessible credential when the workflow was moved to a team project', () => {
 			cy.intercept('GET', /\/rest\/(workflows|credentials).*/).as('getResources');
 
+			cy.signinAsOwner();
+			cy.visit(workflowsPage.url);
+
+			// Create a credential in the Home project
+			projects.getProjectTabCredentials().should('be.visible').click();
+			credentialsPage.getters.emptyListCreateCredentialButton().click();
+			projects.createCredential('Credential in Home project');
+
+			// Create a workflow in the Home project
+			projects.getHomeButton().click();
+			workflowsPage.getters.workflowCards().should('not.have.length');
+			workflowsPage.getters.newWorkflowButtonCard().click();
+
+			workflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+			workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
+			ndv.getters.backToCanvas().click();
+			workflowPage.actions.saveWorkflowOnButtonClick();
+
+			// Create a project and add a user to it
+			projects.createProject('Project 1');
+			projects.addProjectMember(INSTANCE_MEMBERS[0].email);
+
+			clearNotifications();
+			projects.getProjectSettingsSaveButton().click();
+
+			// Move the workflow from Home to Project 1
+			projects.getHomeButton().click();
+			workflowsPage.getters.workflowCards().should('have.length', 1);
+			workflowsPage.getters.workflowCards().filter(':contains("Personal")').should('exist');
+			workflowsPage.getters.workflowCardActions('My workflow').click();
+			workflowsPage.getters.workflowMoveButton().click();
+
+			projects
+				.getResourceMoveModal()
+				.should('be.visible')
+				.contains('button', 'Move workflow')
+				.should('be.disabled');
+			projects.getProjectMoveSelect().click();
+			getVisibleSelect().find('li').should('have.length', 4);
+			getVisibleSelect().find('li').filter(':contains("Project 1")').click();
+			projects.getResourceMoveModal().contains('button', 'Move workflow').click();
+
+			clearNotifications();
+			cy.wait('@getResources');
+
+			workflowsPage.getters
+				.workflowCards()
+				.should('have.length', 1)
+				.filter(':contains("Personal")')
+				.should('not.exist');
+
+			//Log out with instance owner and log in with the member user
+			mainSidebar.actions.openUserMenu();
+			cy.getByTestId('user-menu-item-logout').click();
+
+			cy.get('input[name="emailOrLdapLoginId"]').type(INSTANCE_MEMBERS[0].email);
+			cy.get('input[name="password"]').type(INSTANCE_MEMBERS[0].password);
+			cy.getByTestId('form-submit-button').click();
+
+			// Open the moved workflow
+			workflowsPage.getters.workflowCards().should('have.length', 1);
+			workflowsPage.getters.workflowCards().first().findChildByTestId('card-content').click();
+
+			// Check if the credential can be changed
+			workflowPage.getters.canvasNodeByName(NOTION_NODE_NAME).should('be.visible').dblclick();
+			ndv.getters.credentialInput().find('input').should('be.enabled');
+		});
+
+		it('should create sub-workflow and credential in the sub-workflow in the same project', () => {
+			cy.signinAsOwner();
+			cy.visit(workflowsPage.url);
+
+			projects.createProject('Dev');
+			projects.getProjectTabWorkflows().click();
+			workflowsPage.getters.newWorkflowButtonCard().click();
+			workflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+			workflowPage.actions.saveWorkflowOnButtonClick();
+			workflowPage.actions.addNodeToCanvas('Execute Workflow', true, true);
+
+			cy.window().then((win) => {
+				cy.stub(win, 'open').callsFake((url) => {
+					cy.visit(url);
+				});
+			});
+
+			selectResourceLocatorItem('workflowId', 0, 'Create a');
+
+			cy.get('body').type('{esc}');
+			workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
+			clickCreateNewCredential();
+			setCredentialValues({
+				apiKey: 'abc123',
+			});
+			ndv.actions.close();
+			workflowPage.actions.saveWorkflowOnButtonClick();
+
+			projects.getMenuItems().last().click();
+			workflowsPage.getters.workflowCards().should('have.length', 2);
+
+			projects.getProjectTabCredentials().click();
+			credentialsPage.getters.credentialCards().should('have.length', 1);
+		});
+
+		it('should create credential from workflow in the correct project after editor page refresh', () => {
+			cy.signinAsOwner();
+			cy.visit(workflowsPage.url);
+
+			projects.createProject('Dev');
+			projects.getProjectTabWorkflows().click();
+			workflowsPage.getters.newWorkflowButtonCard().click();
+			workflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+			workflowPage.actions.saveWorkflowOnButtonClick();
+
+			cy.reload();
+
+			workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
+			clickCreateNewCredential();
+			setCredentialValues({
+				apiKey: 'abc123',
+			});
+			ndv.actions.close();
+			workflowPage.actions.saveWorkflowOnButtonClick();
+
+			projects.getMenuItems().last().click();
+			projects.getProjectTabCredentials().click();
+			credentialsPage.getters.credentialCards().should('have.length', 1);
+		});
+
+		it('should set and update project icon', () => {
+			const DEFAULT_ICON = 'fa-layer-group';
+			const NEW_PROJECT_NAME = 'Test Project';
+
+			cy.signinAsAdmin();
+			cy.visit(workflowsPage.url);
+			projects.createProject(NEW_PROJECT_NAME);
+			// New project should have default icon
+			projects.getIconPickerButton().find('svg').should('have.class', DEFAULT_ICON);
+			// Choose another icon
+			projects.getIconPickerButton().click();
+			projects.getIconPickerTab('Emojis').click();
+			projects.getIconPickerEmojis().first().click();
+			// Project should be updated with new icon
+			successToast().contains('Project icon updated successfully');
+			projects.getIconPickerButton().should('contain', '😀');
+			projects.getMenuItems().contains(NEW_PROJECT_NAME).should('contain', '😀');
+		});
+
+		it('should be able to create a workflow when in the workflow editor', () => {
+			cy.signinAsOwner();
+			workflowPage.actions.visit();
+			workflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+			workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
+			workflowPage.actions.saveWorkflowOnButtonClick();
+
+			cy.url().then((url) => {
+				createResource('workflow', 'Personal');
+				cy.get('body').click();
+				workflowPage.getters.canvasNodes().should('not.have.length');
+				cy.go('back');
+
+				cy.url().should('eq', url);
+				workflowPage.getters.canvasNodes().should('have.length', 2);
+
+				createResource('workflow', 'Personal');
+				cy.url().then((url) => {
+					const urlObj = new URL(url);
+					expect(urlObj.pathname).to.include('/workflow/new');
+					workflowPage.getters.canvasNodes().should('not.have.length');
+				});
+			});
+		});
+	});
+
+	describe('when moving resources between projects', () => {
+		before(() => {
+			cy.resetDatabase();
+			cy.enableFeature('sharing');
+			cy.enableFeature('advancedPermissions');
+			cy.enableFeature('projectRole:admin');
+			cy.enableFeature('projectRole:editor');
+			cy.changeQuota('maxTeamProjects', -1);
+		});
+
+		it('should create a workflow and a credential in the Home project', () => {
+			cy.intercept('GET', /\/rest\/(workflows|credentials).*/).as('getResources');
 			cy.signinAsOwner();
 			cy.visit(workflowsPage.url);
 
@@ -265,8 +443,13 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowsPage.getters.newWorkflowButtonCard().click();
 			projects.createWorkflow('Test_workflow_1.json', 'Workflow in Project 2');
 			clearNotifications();
+		});
 
-			cy.log('Move the workflow Personal from Home to Project 1');
+		it('should move the workflow to expected projects', () => {
+			cy.intercept('GET', /\/rest\/(workflows|credentials).*/).as('getResources');
+			cy.signinAsOwner();
+			cy.visit(workflowsPage.url);
+
 			projects.getHomeButton().click();
 			workflowsPage.getters.workflowCards().should('have.length', 3);
 			workflowsPage.getters.workflowCards().filter(':contains("Personal")').should('exist');
@@ -331,7 +514,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowsPage.getters.workflowCards().should('have.length', 3);
 			workflowsPage.getters
 				.workflowCards()
-				.filter(':has(.n8n-badge:contains("Project"))')
+				.filter(':has([data-test-id="workflow-card-breadcrumbs"]:contains("Project"))')
 				.should('have.length', 2);
 			workflowsPage.getters.workflowCardActions('Workflow in Home project').click();
 			workflowsPage.getters.workflowMoveButton().click();
@@ -354,8 +537,13 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.workflowCards()
 				.filter(':contains("Personal")')
 				.should('have.length', 1);
+		});
 
-			cy.log('Move the credential from Project 1 to Project 2');
+		it('should move the credential to expected projects', () => {
+			cy.intercept('GET', /\/rest\/(workflows|credentials).*/).as('getResources');
+			cy.signinAsOwner();
+			cy.visit(workflowsPage.url);
+
 			projects.getMenuItems().first().click();
 			projects.getProjectTabCredentials().click();
 			credentialsPage.getters.credentialCards().should('have.length', 1);
@@ -447,155 +635,5 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.filter(':contains("Credential in Project 1")')
 				.should('have.length', 1);
 		});
-
-		it('should allow to change inaccessible credential when the workflow was moved to a team project', () => {
-			cy.intercept('GET', /\/rest\/(workflows|credentials).*/).as('getResources');
-
-			cy.signinAsOwner();
-			cy.visit(workflowsPage.url);
-
-			// Create a credential in the Home project
-			projects.getProjectTabCredentials().should('be.visible').click();
-			credentialsPage.getters.emptyListCreateCredentialButton().click();
-			projects.createCredential('Credential in Home project');
-
-			// Create a workflow in the Home project
-			projects.getHomeButton().click();
-			workflowsPage.getters.workflowCards().should('not.have.length');
-			workflowsPage.getters.newWorkflowButtonCard().click();
-
-			workflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
-			workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
-			ndv.getters.backToCanvas().click();
-			workflowPage.actions.saveWorkflowOnButtonClick();
-
-			// Create a project and add a user to it
-			projects.createProject('Project 1');
-			projects.addProjectMember(INSTANCE_MEMBERS[0].email);
-
-			clearNotifications();
-			projects.getProjectSettingsSaveButton().click();
-
-			// Move the workflow from Home to Project 1
-			projects.getHomeButton().click();
-			workflowsPage.getters.workflowCards().should('have.length', 1);
-			workflowsPage.getters.workflowCards().filter(':contains("Personal")').should('exist');
-			workflowsPage.getters.workflowCardActions('My workflow').click();
-			workflowsPage.getters.workflowMoveButton().click();
-
-			projects
-				.getResourceMoveModal()
-				.should('be.visible')
-				.contains('button', 'Move workflow')
-				.should('be.disabled');
-			projects.getProjectMoveSelect().click();
-			getVisibleSelect().find('li').should('have.length', 4);
-			getVisibleSelect().find('li').filter(':contains("Project 1")').click();
-			projects.getResourceMoveModal().contains('button', 'Move workflow').click();
-
-			clearNotifications();
-			cy.wait('@getResources');
-
-			workflowsPage.getters
-				.workflowCards()
-				.should('have.length', 1)
-				.filter(':contains("Personal")')
-				.should('not.exist');
-
-			//Log out with instance owner and log in with the member user
-			mainSidebar.actions.openUserMenu();
-			cy.getByTestId('user-menu-item-logout').click();
-
-			cy.get('input[name="email"]').type(INSTANCE_MEMBERS[0].email);
-			cy.get('input[name="password"]').type(INSTANCE_MEMBERS[0].password);
-			cy.getByTestId('form-submit-button').click();
-
-			// Open the moved workflow
-			workflowsPage.getters.workflowCards().should('have.length', 1);
-			workflowsPage.getters.workflowCards().first().findChildByTestId('card-content').click();
-
-			// Check if the credential can be changed
-			workflowPage.getters.canvasNodeByName(NOTION_NODE_NAME).should('be.visible').dblclick();
-			ndv.getters.credentialInput().find('input').should('be.enabled');
-		});
-
-		it('should create sub-workflow and credential in the sub-workflow in the same project', () => {
-			cy.signinAsOwner();
-			cy.visit(workflowsPage.url);
-
-			projects.createProject('Dev');
-			projects.getProjectTabWorkflows().click();
-			workflowsPage.getters.newWorkflowButtonCard().click();
-			workflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
-			workflowPage.actions.saveWorkflowOnButtonClick();
-			workflowPage.actions.addNodeToCanvas('Execute Workflow', true, true);
-
-			cy.window().then((win) => {
-				cy.stub(win, 'open').callsFake((url) => {
-					cy.visit(url);
-				});
-			});
-
-			selectResourceLocatorItem('workflowId', 0, 'Create a');
-
-			cy.get('body').type('{esc}');
-			workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
-			clickCreateNewCredential();
-			setCredentialValues({
-				apiKey: 'abc123',
-			});
-			ndv.actions.close();
-			workflowPage.actions.saveWorkflowOnButtonClick();
-
-			projects.getMenuItems().last().click();
-			workflowsPage.getters.workflowCards().should('have.length', 2);
-
-			projects.getProjectTabCredentials().click();
-			credentialsPage.getters.credentialCards().should('have.length', 1);
-		});
-
-		it('should create credential from workflow in the correct project after editor page refresh', () => {
-			cy.signinAsOwner();
-			cy.visit(workflowsPage.url);
-
-			projects.createProject('Dev');
-			projects.getProjectTabWorkflows().click();
-			workflowsPage.getters.newWorkflowButtonCard().click();
-			workflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
-			workflowPage.actions.saveWorkflowOnButtonClick();
-
-			cy.reload();
-
-			workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
-			clickCreateNewCredential();
-			setCredentialValues({
-				apiKey: 'abc123',
-			});
-			ndv.actions.close();
-			workflowPage.actions.saveWorkflowOnButtonClick();
-
-			projects.getMenuItems().last().click();
-			projects.getProjectTabCredentials().click();
-			credentialsPage.getters.credentialCards().should('have.length', 1);
-		});
-	});
-
-	it('should set and update project icon', () => {
-		const DEFAULT_ICON = 'fa-layer-group';
-		const NEW_PROJECT_NAME = 'Test Project';
-
-		cy.signinAsAdmin();
-		cy.visit(workflowsPage.url);
-		projects.createProject(NEW_PROJECT_NAME);
-		// New project should have default icon
-		projects.getIconPickerButton().find('svg').should('have.class', DEFAULT_ICON);
-		// Choose another icon
-		projects.getIconPickerButton().click();
-		projects.getIconPickerTab('Emojis').click();
-		projects.getIconPickerEmojis().first().click();
-		// Project should be updated with new icon
-		successToast().contains('Project icon updated successfully');
-		projects.getIconPickerButton().should('contain', '😀');
-		projects.getMenuItems().contains(NEW_PROJECT_NAME).should('contain', '😀');
 	});
 });

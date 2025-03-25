@@ -131,11 +131,18 @@ export class License {
 	}
 
 	async onFeatureChange(_features: TFeatures): Promise<void> {
+		const { isMultiMain, isLeader } = this.instanceSettings;
+
+		if (Object.keys(_features).length === 0) {
+			this.logger.error('Empty license features recieved', { isMultiMain, isLeader });
+			return;
+		}
+
 		this.logger.debug('License feature change detected', _features);
 
 		this.checkIsLicensedForMultiMain(_features);
 
-		if (this.instanceSettings.isMultiMain && !this.instanceSettings.isLeader) {
+		if (isMultiMain && !isLeader) {
 			this.logger
 				.scoped(['scaling', 'multi-main-setup', 'license'])
 				.debug('Instance is not leader, skipping sending of "reload-license" command...');
@@ -293,6 +300,10 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY);
 	}
 
+	isFoldersEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.FOLDERS);
+	}
+
 	getCurrentEntitlements() {
 		return this.manager?.getCurrentEntitlements() ?? [];
 	}
@@ -335,10 +346,6 @@ export class License {
 	// Helper functions for computed data
 	getUsersLimit() {
 		return this.getFeatureValue(LICENSE_QUOTAS.USERS_LIMIT) ?? UNLIMITED_LICENSE_QUOTA;
-	}
-
-	getApiKeysPerUserLimit() {
-		return this.getFeatureValue(LICENSE_QUOTAS.API_KEYS_PER_USER_LIMIT) ?? 1;
 	}
 
 	getTriggerLimit() {

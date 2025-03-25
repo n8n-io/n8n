@@ -5,7 +5,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "event_id"
-    ]
+    "version": 1
 }

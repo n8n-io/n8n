@@ -37,14 +37,19 @@ const visible = computed(() =>
 				{{ locale.baseText('node.discovery.pinData.ndv') }}
 			</div>
 			<div v-else>
-				<strong>{{ locale.baseText('ndv.pinData.pin.title') }}</strong>
-				<N8nText size="small" tag="p">
-					{{ locale.baseText('ndv.pinData.pin.description') }}
+				<div v-if="pinnedData.hasData.value">
+					<strong>{{ locale.baseText('ndv.pinData.unpin.title') }}</strong>
+				</div>
+				<div v-else>
+					<strong>{{ locale.baseText('ndv.pinData.pin.title') }}</strong>
+					<N8nText size="small" tag="p">
+						{{ locale.baseText('ndv.pinData.pin.description') }}
 
-					<N8nLink :to="props.dataPinningDocsUrl" size="small">
-						{{ locale.baseText('ndv.pinData.pin.link') }}
-					</N8nLink>
-				</N8nText>
+						<N8nLink :to="props.dataPinningDocsUrl" size="small">
+							{{ locale.baseText('ndv.pinData.pin.link') }}
+						</N8nLink>
+					</N8nText>
+				</div>
 			</div>
 		</template>
 		<N8nIconButton

@@ -3,7 +3,7 @@ import type {
 	IDataObject,
 	IHttpRequestOptions,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import nock from 'nock';
 
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
@@ -92,7 +92,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Gong gongApi',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -103,7 +103,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Gong gongOAuth2Api',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -241,7 +241,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Gong',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -332,7 +332,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Gong',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -449,7 +449,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Gong',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -586,7 +586,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Gong',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -667,7 +667,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Gong',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -743,7 +743,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Gong',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -845,7 +845,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Gong',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -920,7 +920,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Gong',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -1014,7 +1014,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Gong',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],

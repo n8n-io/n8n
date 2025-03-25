@@ -187,6 +187,66 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			expect(result.subExecutionId).toBe('test-execution');
 		});
 
+		it('should successfully execute workflow and return first item of many', async () => {
+			const workflowInfo = { id: 'test-workflow' };
+			const items: INodeExecutionData[] = [];
+			const workflowProxyMock = {
+				$execution: { id: 'exec-id' },
+				$workflow: { id: 'workflow-id' },
+			} as unknown as IWorkflowDataProxyData;
+
+			const TEST_RESPONSE_1 = { msg: 'test response 1' };
+			const TEST_RESPONSE_2 = { msg: 'test response 2' };
+
+			const mockResponse: ExecuteWorkflowData = {
+				data: [[{ json: TEST_RESPONSE_1 }, { json: TEST_RESPONSE_2 }]],
+				executionId: 'test-execution',
+			};
+
+			jest.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockResponse);
+
+			const result = await service['executeSubWorkflow'](
+				context,
+				workflowInfo,
+				items,
+				workflowProxyMock,
+			);
+
+			expect(result.response).toBe(TEST_RESPONSE_1);
+			expect(result.subExecutionId).toBe('test-execution');
+		});
+
+		it('should successfully execute workflow and return all items', async () => {
+			const serviceWithReturnAllItems = new WorkflowToolService(context, { returnAllItems: true });
+			const workflowInfo = { id: 'test-workflow' };
+			const items: INodeExecutionData[] = [];
+			const workflowProxyMock = {
+				$execution: { id: 'exec-id' },
+				$workflow: { id: 'workflow-id' },
+			} as unknown as IWorkflowDataProxyData;
+
+			const TEST_RESPONSE_1 = { msg: 'test response 1' };
+			const TEST_RESPONSE_2 = { msg: 'test response 2' };
+
+			const mockResponse: ExecuteWorkflowData = {
+				data: [[{ json: TEST_RESPONSE_1 }, { json: TEST_RESPONSE_2 }]],
+				executionId: 'test-execution',
+			};
+
+			jest.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockResponse);
+
+			const result = await serviceWithReturnAllItems['executeSubWorkflow'](
+				context,
+				workflowInfo,
+				items,
+				workflowProxyMock,
+				undefined,
+			);
+
+			expect(result.response).toEqual([{ json: TEST_RESPONSE_1 }, { json: TEST_RESPONSE_2 }]);
+			expect(result.subExecutionId).toBe('test-execution');
+		});
+
 		it('should throw error when workflow execution fails', async () => {
 			jest.spyOn(context, 'executeWorkflow').mockRejectedValueOnce(new Error('Execution failed'));
 

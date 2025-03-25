@@ -9,12 +9,51 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useApiKeysStore } from '@/stores/apiKeys.store';
 import { DateTime } from 'luxon';
+import { useRootStore } from '@/stores/root.store';
 
 setActivePinia(createTestingPinia());
 
 const settingsStore = mockedStore(useSettingsStore);
 const cloudStore = mockedStore(useCloudPlanStore);
 const apiKeysStore = mockedStore(useApiKeysStore);
+const rootStore = mockedStore(useRootStore);
+
+const assertHintsAreShown = ({ isSwaggerUIEnabled }: { isSwaggerUIEnabled: boolean }) => {
+	const apiDocsLink = screen.getByTestId('api-docs-link');
+	expect(apiDocsLink).toBeInTheDocument();
+	expect(apiDocsLink).toHaveAttribute('href', 'https://docs.n8n.io/api');
+	expect(apiDocsLink).toHaveAttribute('target', '_blank');
+
+	const webhookDocsLink = screen.getByTestId('webhook-docs-link');
+	expect(webhookDocsLink).toBeInTheDocument();
+	expect(webhookDocsLink).toHaveAttribute(
+		'href',
+		'https://docs.n8n.io/integrations/core-nodes/n8n-nodes-base.webhook/',
+	);
+	expect(webhookDocsLink).toHaveAttribute('target', '_blank');
+
+	expect(
+		screen.getByText('Use your API Key to control n8n programmatically using the', {
+			exact: false,
+		}),
+	).toBeInTheDocument();
+
+	expect(
+		screen.getByText('. But if you only want to trigger workflows, consider using the', {
+			exact: false,
+		}),
+	).toBeInTheDocument();
+
+	expect(screen.getByText('instead.', { exact: false })).toBeInTheDocument();
+
+	if (isSwaggerUIEnabled) {
+		expect(screen.getByText('Try it out using the')).toBeInTheDocument();
+		expect(screen.getByText('API Playground')).toBeInTheDocument();
+	} else {
+		expect(screen.getByText('You can find more details in')).toBeInTheDocument();
+		expect(screen.getByText('the API documentation')).toBeInTheDocument();
+	}
+};
 
 describe('SettingsApiView', () => {
 	beforeEach(() => {
@@ -50,11 +89,15 @@ describe('SettingsApiView', () => {
 		expect(screen.getByText('n8n API')).toBeInTheDocument();
 	});
 
-	it('if user public api enabled and there are API Keys in account, they should be rendered', async () => {
+	it('if user public api enabled, swagger enabled, and there are API Keys in account, they should be rendered', async () => {
 		const dateInTheFuture = DateTime.now().plus({ days: 1 });
 		const dateInThePast = DateTime.now().minus({ days: 1 });
 
+		rootStore.baseUrl = 'http://localhost:5678';
+		settingsStore.publicApiPath = '/api';
+		settingsStore.publicApiLatestVersion = 1;
 		settingsStore.isPublicApiEnabled = true;
+		settingsStore.isSwaggerUIEnabled = true;
 		cloudStore.userIsTrialing = false;
 		apiKeysStore.apiKeys = [
 			{
@@ -98,6 +141,64 @@ describe('SettingsApiView', () => {
 		expect(screen.getByText('This API key has expired')).toBeInTheDocument();
 		expect(screen.getByText('****Wtcr')).toBeInTheDocument();
 		expect(screen.getByText('test-key-3')).toBeInTheDocument();
+
+		assertHintsAreShown({ isSwaggerUIEnabled: true });
+	});
+
+	it('if user public api enabled, swagger disabled and there are API Keys in account, they should be rendered', async () => {
+		const dateInTheFuture = DateTime.now().plus({ days: 1 });
+		const dateInThePast = DateTime.now().minus({ days: 1 });
+
+		rootStore.baseUrl = 'http://localhost:5678';
+		settingsStore.publicApiPath = '/api';
+		settingsStore.publicApiLatestVersion = 1;
+		settingsStore.isPublicApiEnabled = true;
+		settingsStore.isSwaggerUIEnabled = false;
+		cloudStore.userIsTrialing = false;
+		apiKeysStore.apiKeys = [
+			{
+				id: '1',
+				label: 'test-key-1',
+				createdAt: new Date().toString(),
+				updatedAt: new Date().toString(),
+				apiKey: '****Atcr',
+				expiresAt: null,
+			},
+			{
+				id: '2',
+				label: 'test-key-2',
+				createdAt: new Date().toString(),
+				updatedAt: new Date().toString(),
+				apiKey: '****Bdcr',
+				expiresAt: dateInTheFuture.toSeconds(),
+			},
+			{
+				id: '3',
+				label: 'test-key-3',
+				createdAt: new Date().toString(),
+				updatedAt: new Date().toString(),
+				apiKey: '****Wtcr',
+				expiresAt: dateInThePast.toSeconds(),
+			},
+		];
+
+		renderComponent(SettingsApiView);
+
+		expect(screen.getByText('Never expires')).toBeInTheDocument();
+		expect(screen.getByText('****Atcr')).toBeInTheDocument();
+		expect(screen.getByText('test-key-1')).toBeInTheDocument();
+
+		expect(
+			screen.getByText(`Expires on ${dateInTheFuture.toFormat('ccc, MMM d yyyy')}`),
+		).toBeInTheDocument();
+		expect(screen.getByText('****Bdcr')).toBeInTheDocument();
+		expect(screen.getByText('test-key-2')).toBeInTheDocument();
+
+		expect(screen.getByText('This API key has expired')).toBeInTheDocument();
+		expect(screen.getByText('****Wtcr')).toBeInTheDocument();
+		expect(screen.getByText('test-key-3')).toBeInTheDocument();
+
+		assertHintsAreShown({ isSwaggerUIEnabled: false });
 	});
 
 	it('should show delete warning when trying to delete an API key', async () => {
