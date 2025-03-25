@@ -52,7 +52,7 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 </script>
 
 <template>
-	<div v-if="summary.length" :class="$style.insights">
+	<div :class="$style.insights">
 		<N8nHeading bold tag="h3" size="small" color="text-light" class="mb-xs">{{
 			i18n.baseText('insights.banner.title', { interpolate: { count: 7 } })
 		}}</N8nHeading>
@@ -114,7 +114,6 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 		border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 		border-radius: 6px;
 		list-style: none;
-		background-color: var(--color-background-xlight);
 		overflow-x: auto;
 
 		li {
@@ -123,7 +122,6 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 			align-items: stretch;
 			flex: 1 0;
 			border-left: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
-			padding: 0 var(--spacing-xl) 0 var(--spacing-l);
 
 			&:first-child {
 				border-left: 0;
@@ -136,7 +134,7 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 			width: 100%;
 			height: 100%;
 			padding: var(--spacing-m) var(--spacing-l);
-			border-bottom: 4px solid transparent;
+			border-bottom: 3px solid transparent;
 
 			&:hover {
 				background-color: var(--color-background-xlight);
@@ -146,9 +144,7 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 			&.activeTab {
 				background-color: var(--color-background-xlight);
 				border-color: var(--color-primary);
-				transition:
-					background-color,
-					border-color 0.3s ease-in-out;
+				transition: background-color 0.3s ease-in-out;
 			}
 
 			strong {
@@ -241,6 +237,7 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 
 .loading {
 	display: flex;
+	height: 91px;
 	align-self: stretch;
 	align-items: stretch;
 

@@ -285,9 +285,6 @@ export const generateBarChartOptions = (): ChartOptions<'bar'> => {
 			axis: 'x',
 			intersect: false,
 		},
-		layout: {
-			padding: 20,
-		},
 		datasets: {
 			bar: {
 				maxBarThickness: 32,

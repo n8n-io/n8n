@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, ref, watch } from 'vue';
 import { Line, Bar } from 'vue-chartjs';
 import { Filler, type ChartOptions, type ChartData } from 'chart.js';
 import { useCssVar, useAsyncState } from '@vueuse/core';
@@ -16,6 +16,22 @@ import {
 import { useInsightsStore } from '@/features/insights/insights.store';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useI18n } from '@/composables/useI18n';
+
+const InsightsPaywall = defineAsyncComponent(
+	async () => await import('@/features/insights/components/InsightsPaywall.vue'),
+);
+const InsightsChartTotal = defineAsyncComponent(
+	async () => await import('@/features/insights/components/charts/InsightsChartTotal.vue'),
+);
+const InsightsChartFailed = defineAsyncComponent(
+	async () => await import('@/features/insights/components/charts/InsightsChartFailed.vue'),
+);
+const InsightsChartFailureRate = defineAsyncComponent(
+	async () => await import('@/features/insights/components/charts/InsightsChartFailureRate.vue'),
+);
+const InsightsChartTimeSaved = defineAsyncComponent(
+	async () => await import('@/features/insights/components/charts/InsightsChartTimeSaved.vue'),
+);
 
 const props = defineProps<{
 	insightType: InsightsSummaryType;
@@ -61,7 +77,14 @@ const insightsStore = useInsightsStore();
 
 watch(
 	() => filters.value.time_span,
-	async () => await insightsStore.summary.execute(),
+	() => {
+		void insightsStore.summary.execute();
+		void insightsStore.charts.execute();
+		void insightsStore.table.execute();
+	},
+	{
+		immediate: true,
+	},
 );
 
 const {
@@ -186,19 +209,19 @@ const columns = ref([
 		label: 'Failure rate',
 	},
 	{
-		id: 'runTime',
-		path: 'runTime',
-		label: 'Avg. run time',
-	},
-	{
 		id: 'timeSaved',
 		path: 'timeSaved',
 		label: 'Time saved',
 	},
 	{
-		id: 'updated',
-		path: 'updated',
-		label: 'Updated',
+		id: 'runTime',
+		path: 'runTime',
+		label: 'Avg. run time',
+	},
+	{
+		id: 'project',
+		path: 'project',
+		label: 'Project name',
 	},
 ]);
 const rows = ref(
@@ -244,55 +267,27 @@ const rows = ref(
 				:class="$style.insightsBanner"
 			/>
 			<div :class="$style.insightsContent">
-				<div style="height: 292px">
+				<div :class="$style.insightsChartWrapper">
 					<template v-if="isLoadingCounts"> loading </template>
 					<template v-else>
 						<template v-if="insightType === 'total'">
-							<Bar :data="barChartData" :options="barChartOptions" :plugins="[LegendPlugin]" />
+							<InsightsChartTotal :data="insightsStore.charts.state" />
 						</template>
 						<template v-if="insightType === 'failed'">
-							<Bar :data="barChartData" :options="barChartOptions" :plugins="[LegendPlugin]" />
+							<InsightsChartFailed :data="insightsStore.charts.state" />
 						</template>
 						<template v-if="insightType === 'failureRate'">
-							<Bar :data="barChartData" :options="barChartOptions" :plugins="[LegendPlugin]" />
+							<InsightsChartFailureRate :data="insightsStore.charts.state" />
 						</template>
 						<template v-if="insightType === 'timeSaved'">
-							<Line
-								:data="lineChartData"
-								:options="lineChartOptions"
-								:plugins="[Filler, LegendPlugin]"
-							/>
+							<InsightsChartTimeSaved :data="insightsStore.charts.state" />
 						</template>
 						<template v-if="insightType === 'averageRunTime'">
-							<div :class="$style.callout">
-								<N8nIcon icon="lock" size="size"></N8nIcon>
-								<N8nText bold tag="h3" size="large"
-									>Upgrade to Pro or Enterprise to see full data</N8nText
-								>
-								<N8nText
-									>Gain access to detailed execution data with one year data retention.
-									<N8nLink to="/">Learn more</N8nLink>
-								</N8nText>
-								<N8nButton type="primary" size="large">Upgrade</N8nButton>
-							</div>
-							<!-- <N8nActionBox
-								emoji="👋"
-								:heading="'asdasda'"
-								:description="'asdasda'"
-								:button-text="'asdasda'"
-								button-type="secondary"
-							>
-							</N8nActionBox> -->
-							<!-- <Line
-								:data="lineChartData"
-								:options="lineChartOptions"
-								class="line-chart"
-								:plugins="[Filler, LegendPlugin]"
-							/> -->
+							<InsightsPaywall />
 						</template>
 					</template>
 				</div>
-				<div>
+				<div :class="$style.insightsTableWrapper">
 					<N8nHeading bold tag="h3" size="medium" class="mb-s">Workflow insights</N8nHeading>
 					<N8nDatatable
 						:columns
@@ -325,7 +320,7 @@ const rows = ref(
 }
 
 .insightsContent {
-	padding: var(--spacing-2xl) var(--spacing-2xl) var(--spacing-l);
+	padding: var(--spacing-l) 0;
 	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 	border-top: 0;
 	border-bottom-left-radius: 6px;
@@ -333,19 +328,16 @@ const rows = ref(
 	background: var(--color-background-xlight);
 }
 
-.strike {
-	text-decoration: line-through;
+.insightsChartWrapper {
+	height: 292px;
+	padding: 0 var(--spacing-l);
 }
 
-.callout {
-	display: flex;
-	flex-direction: column;
-	height: 100%;
-	align-items: center;
-	max-width: 360px;
-	margin: 0 auto;
-	text-align: center;
-	gap: 10px;
-	justify-content: center;
+.insightsTableWrapper {
+	padding: var(--spacing-l) var(--spacing-l) 0;
+}
+
+.strike {
+	text-decoration: line-through;
 }
 </style>
