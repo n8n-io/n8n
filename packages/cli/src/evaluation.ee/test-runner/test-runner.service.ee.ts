@@ -15,6 +15,7 @@ import assert from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
+import { EVALUATION_METRICS_NODE } from '@/constants';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import type { MockedNodeItem, TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { TestRun } from '@/databases/entities/test-run.ee';
@@ -37,7 +38,6 @@ import {
 	formatTestCaseExecutionInputData,
 	getPastExecutionTriggerNode,
 } from './utils.ee';
-import { EVALUATION_METRICS_NODE } from '@/constants';
 
 export interface TestRunMetadata {
 	testRunId: string;
@@ -326,7 +326,7 @@ export class TestRunnerService {
 		const metricsRunData = metricsNodes.flatMap(
 			(node) => execution.data.resultData.runData[node.name],
 		);
-		const metricsData = metricsRunData.map((data) => data.data?.main?.[0]?.[0]?.json);
+		const metricsData = metricsRunData.reverse().map((data) => data.data?.main?.[0]?.[0]?.json);
 		const metricsResult = metricsData.reduce((acc, curr) => ({ ...acc, ...curr }), {}) ?? {};
 
 		return metricsResult;
