@@ -1,10 +1,7 @@
 <script lang="ts" setup>
 import ContextMenu from '@/components/ContextMenu/ContextMenu.vue';
-import {
-	type CanvasLayoutEvent,
-	type CanvasLayoutSource,
-	useCanvasLayout,
-} from '@/composables/useCanvasLayout';
+import type { CanvasLayoutEvent, CanvasLayoutSource } from '@/composables/useCanvasLayout';
+import { useCanvasLayout } from '@/composables/useCanvasLayout';
 import { useCanvasNodeHover } from '@/composables/useCanvasNodeHover';
 import { useCanvasTraversal } from '@/composables/useCanvasTraversal';
 import { type ContextMenuAction, useContextMenu } from '@/composables/useContextMenu';
