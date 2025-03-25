@@ -9,7 +9,7 @@ import { useAnnotationTagsStore } from '@/stores/tags.store';
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
-import type { TestMetricRecord, TestRunRecord } from '@/api/testDefinition.ee';
+import type { TestRunRecord } from '@/api/testDefinition.ee';
 import InlineNameEdit from '@/components/InlineNameEdit.vue';
 import ConfigSection from '@/components/TestDefinition/EditDefinition/sections/ConfigSection.vue';
 import RunsSection from '@/components/TestDefinition/EditDefinition/sections/RunsSection.vue';
@@ -44,17 +44,8 @@ watch(visibility, async () => {
 	testDefinitionStore.updateRunFieldIssues(props.testId);
 });
 
-const {
-	state,
-	isSaving,
-	cancelEditing,
-	loadTestData,
-	updateTest,
-	startEditing,
-	saveChanges,
-	deleteMetric,
-	updateMetrics,
-} = useTestDefinitionForm();
+const { state, isSaving, cancelEditing, loadTestData, updateTest, startEditing, saveChanges } =
+	useTestDefinitionForm();
 
 const isLoading = computed(() => tagsStore.isLoading);
 const tagsById = computed(() => tagsStore.tagsById);
@@ -79,20 +70,9 @@ const handleUpdateTest = async () => {
 };
 
 const handleUpdateTestDebounced = debounce(handleUpdateTest, { debounceTime: 400, trailing: true });
-const handleUpdateMetricsDebounced = debounce(
-	async (testId: string) => {
-		await updateMetrics(testId);
-		testDefinitionStore.updateRunFieldIssues(testId);
-	},
-	{ debounceTime: 400, trailing: true },
-);
 
 function getFieldIssues(key: string) {
 	return fieldsIssues.value.filter((issue) => issue.field === key);
-}
-
-async function onDeleteMetric(deletedMetric: TestMetricRecord) {
-	await deleteMetric(deletedMetric.id, props.testId);
 }
 
 async function openPinningModal() {
@@ -253,7 +233,6 @@ function onEvaluationWorkflowCreated(workflowId: string) {
 					v-if="showConfig"
 					v-model:tags="state.tags"
 					v-model:evaluationWorkflow="state.evaluationWorkflow"
-					v-model:metrics="state.metrics"
 					v-model:mockedNodes="state.mockedNodes"
 					:class="$style.config"
 					:cancel-editing="cancelEditing"
@@ -266,11 +245,9 @@ function onEvaluationWorkflowCreated(workflowId: string) {
 					:example-pinned-data="examplePinnedData"
 					:sample-workflow-name="workflowName"
 					@rename-tag="renameTag"
-					@update:metrics="() => handleUpdateMetricsDebounced(testId)"
 					@update:evaluation-workflow="handleUpdateTestDebounced"
 					@update:mocked-nodes="handleUpdateTestDebounced"
 					@open-pinning-modal="openPinningModal"
-					@delete-metric="onDeleteMetric"
 					@open-executions-view-for-tag="openExecutionsViewForTag"
 					@evaluation-workflow-created="onEvaluationWorkflowCreated($event)"
 				/>
