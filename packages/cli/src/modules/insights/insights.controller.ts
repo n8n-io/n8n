@@ -14,6 +14,8 @@ import { InsightsService } from './insights.service';
 
 @RestController('/insights')
 export class InsightsController {
+	private readonly nbDaysFilteredInsights = 14;
+
 	constructor(private readonly insightsService: InsightsService) {}
 
 	@Get('/summary')
@@ -22,7 +24,6 @@ export class InsightsController {
 		return await this.insightsService.getInsightsSummary();
 	}
 
-	// TODO: api test for this
 	@Get('/by-workflow', { middlewares: [paginationListQueryMiddleware, sortByQueryMiddleware] })
 	@GlobalScope('insights:list')
 	async getInsightsByWorkflow(
@@ -31,7 +32,7 @@ export class InsightsController {
 		@Query payload: ListInsightsWorkflowQueryDto,
 	): Promise<InsightsByWorkflow> {
 		return await this.insightsService.getInsightsByWorkflow({
-			nbDays: 14, // TODO: extract into proper constant
+			nbDays: this.nbDaysFilteredInsights,
 			skip: payload.skip,
 			take: payload.take,
 			sortBy: payload.sortBy,
@@ -41,6 +42,6 @@ export class InsightsController {
 	@Get('/by-time')
 	@GlobalScope('insights:list')
 	async getInsightsByTime(): Promise<InsightsByTime[]> {
-		return await this.insightsService.getInsightsByTime(14);
+		return await this.insightsService.getInsightsByTime(this.nbDaysFilteredInsights);
 	}
 }
