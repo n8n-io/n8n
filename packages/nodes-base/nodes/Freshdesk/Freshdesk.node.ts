@@ -6,11 +6,13 @@ import type {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
+	// For future pull request
+	//NodeApiError,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import { agentFields, agentOperations } from './AgentDescription';
+// For future pull request
+//import { agentFields, agentOperations } from './AgentDescription';
 import { contactFields, contactOperations } from './ContactDescription';
 import type { ICreateContactBody } from './ContactInterface';
 import { conversationFields, conversationOperations } from './ConversationDescription';
@@ -21,8 +23,10 @@ import {
 	freshdeskApiRequestAllItems,
 	// validateJSON,
 } from './GenericFunctions';
-import { summaryFields, summaryOperations } from './SummaryDescription';
-import type { IUpdateSummaryBody } from './SummaryInterface';
+
+// For future pull request
+//import { summaryFields, summaryOperations } from './SummaryDescription';
+//import type { IUpdateSummaryBody } from './SummaryInterface';
 
 const enum Status {
 	Open = 2,
@@ -116,6 +120,8 @@ export class Freshdesk implements INodeType {
 						name: 'Conversation',
 						value: 'conversation',
 					},
+					// For future pull request
+					/*
 					{
 						name: 'Summary',
 						value: 'summary',
@@ -123,7 +129,7 @@ export class Freshdesk implements INodeType {
 					{
 						name: 'Agent',
 						value: 'agent',
-					},
+					}, */
 				],
 				default: 'ticket',
 			},
@@ -1034,12 +1040,15 @@ export class Freshdesk implements INodeType {
 			// CONVERSATIONS
 			...conversationOperations,
 			...conversationFields,
+
+			// For future pull request
+			/*
 			// SUMMARY
 			...summaryOperations,
 			...summaryFields,
 			// AGENTS
 			...agentOperations,
-			...agentFields,
+			...agentFields,  */
 		],
 	};
 
@@ -1498,7 +1507,9 @@ export class Freshdesk implements INodeType {
 							`/conversations/${conversationId}`,
 						);
 					}
-				} else if (resource === 'summary') {
+				}
+				// For future pull request
+				/* else if (resource === 'summary') {
 					if (operation === 'get') {
 						const ticketId = this.getNodeParameter('ticketId', i) as string;
 						// Check if there is a summary
@@ -1536,7 +1547,7 @@ export class Freshdesk implements INodeType {
 					if (operation === 'getCurrent') {
 						responseData = await freshdeskApiRequest.call(this, 'GET', '/agents/me');
 					}
-				}
+				} */
 
 				if (!Array.isArray(responseData) && responseData === undefined) {
 					responseData = {
