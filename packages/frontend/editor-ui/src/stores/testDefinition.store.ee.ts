@@ -21,7 +21,6 @@ export const useTestDefinitionStore = defineStore(
 		const testDefinitionsById = ref<Record<string, TestDefinitionRecord>>({});
 		const loading = ref(false);
 		const fetchedAll = ref(false);
-		const metricsById = ref<Record<string, testDefinitionsApi.TestMetricRecord>>({});
 		const testRunsById = ref<Record<string, TestRunRecord>>({});
 		const testCaseExecutionsById = ref<Record<string, TestCaseExecutionRecord>>({});
 		const pollingTimeouts = ref<Record<string, NodeJS.Timeout>>({});
@@ -60,19 +59,6 @@ export const useTestDefinitionStore = defineStore(
 		const isLoading = computed(() => loading.value);
 
 		const hasTestDefinitions = computed(() => Object.keys(testDefinitionsById.value).length > 0);
-
-		const metricsByTestId = computed(() => {
-			return Object.values(metricsById.value).reduce(
-				(acc: Record<string, testDefinitionsApi.TestMetricRecord[]>, metric) => {
-					if (!acc[metric.testDefinitionId]) {
-						acc[metric.testDefinitionId] = [];
-					}
-					acc[metric.testDefinitionId].push(metric);
-					return acc;
-				},
-				{},
-			);
-		});
 
 		const testRunsByTestId = computed(() => {
 			return Object.values(testRunsById.value).reduce(
@@ -157,11 +143,6 @@ export const useTestDefinitionStore = defineStore(
 			}
 		};
 
-		const fetchMetricsForAllTests = async () => {
-			const testDefinitions = Object.values(testDefinitionsById.value);
-			await Promise.all(testDefinitions.map(async (testDef) => await fetchMetrics(testDef.id)));
-		};
-
 		const fetchTestDefinition = async (id: string) => {
 			const testDefinition = await testDefinitionsApi.getTestDefinition(
 				rootStore.restApiContext,
@@ -221,7 +202,6 @@ export const useTestDefinitionStore = defineStore(
 				await Promise.all([
 					tagsStore.fetchAll({ force: true, withUsageCount: true }),
 					fetchRunsForAllTests(),
-					fetchMetricsForAllTests(),
 				]);
 				return retrievedDefinitions;
 			} finally {
@@ -287,48 +267,6 @@ export const useTestDefinitionStore = defineStore(
 			}
 
 			return result.success;
-		};
-
-		const fetchMetrics = async (testId: string) => {
-			loading.value = true;
-			try {
-				const metrics = await testDefinitionsApi.getTestMetrics(rootStore.restApiContext, testId);
-				metrics.forEach((metric) => {
-					metricsById.value[metric.id] = { ...metric, testDefinitionId: testId };
-				});
-				return metrics.map((metric) => ({ ...metric, testDefinitionId: testId }));
-			} finally {
-				loading.value = false;
-			}
-		};
-
-		const createMetric = async (params: {
-			name: string;
-			testDefinitionId: string;
-		}): Promise<testDefinitionsApi.TestMetricRecord> => {
-			const metric = await testDefinitionsApi.createTestMetric(rootStore.restApiContext, params);
-			metricsById.value[metric.id] = { ...metric, testDefinitionId: params.testDefinitionId };
-			return metric;
-		};
-
-		const updateMetric = async (
-			params: testDefinitionsApi.TestMetricRecord,
-		): Promise<testDefinitionsApi.TestMetricRecord> => {
-			const metric = await testDefinitionsApi.updateTestMetric(rootStore.restApiContext, params);
-			metricsById.value[metric.id] = { ...metric, testDefinitionId: params.testDefinitionId };
-
-			updateRunFieldIssues(params.testDefinitionId);
-			return metric;
-		};
-
-		const deleteMetric = async (
-			params: testDefinitionsApi.DeleteTestMetricParams,
-		): Promise<void> => {
-			await testDefinitionsApi.deleteTestMetric(rootStore.restApiContext, params);
-			const { [params.id]: deleted, ...rest } = metricsById.value;
-			metricsById.value = rest;
-
-			updateRunFieldIssues(params.testDefinitionId);
 		};
 
 		// Test Runs Methods
@@ -436,14 +374,6 @@ export const useTestDefinitionStore = defineStore(
 				});
 			}
 
-			const metrics = metricsByTestId.value[testId] || [];
-			if (metrics.filter((metric) => metric.name).length === 0) {
-				issues.push({
-					field: 'metrics',
-					message: locale.baseText('testDefinition.configError.noMetrics'),
-				});
-			}
-
 			fieldsIssues.value = {
 				...fieldsIssues.value,
 				[testId]: issues,
@@ -464,8 +394,6 @@ export const useTestDefinitionStore = defineStore(
 			isLoading,
 			hasTestDefinitions,
 			isFeatureEnabled,
-			metricsById,
-			metricsByTestId,
 			testRunsByTestId,
 			lastRunByTestId,
 
@@ -480,10 +408,6 @@ export const useTestDefinitionStore = defineStore(
 			deleteById,
 			upsertTestDefinitions,
 			deleteTestDefinition,
-			fetchMetrics,
-			createMetric,
-			updateMetric,
-			deleteMetric,
 			fetchTestRuns,
 			getTestRun,
 			startTestRun,
