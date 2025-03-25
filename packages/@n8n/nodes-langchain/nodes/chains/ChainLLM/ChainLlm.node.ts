@@ -67,6 +67,7 @@ export class ChainLlm implements INodeType {
 		this.logger.debug('Executing Basic LLM Chain');
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
+		const promises = [];
 
 		// Process each input item
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
@@ -107,21 +108,18 @@ export class ChainLlm implements INodeType {
 				) as MessageTemplate[];
 
 				// Execute the chain
-				const responses = await executeChain({
-					context: this,
-					itemIndex,
-					query: prompt,
-					llm,
-					outputParser,
-					messages,
-				});
+				promises.push(
+					executeChain({
+						context: this,
+						itemIndex,
+						query: prompt,
+						llm,
+						outputParser,
+						messages,
+					}),
+				);
 
 				// Process each response and add to return data
-				responses.forEach((response) => {
-					returnData.push({
-						json: formatResponse(response),
-					});
-				});
 			} catch (error) {
 				// Handle OpenAI specific rate limit errors
 				if (error instanceof NodeApiError && isOpenAiError(error.cause)) {
@@ -144,6 +142,11 @@ export class ChainLlm implements INodeType {
 			}
 		}
 
+		(await Promise.allSettled(promises)).forEach((response) => {
+			returnData.push({
+				json: formatResponse(response),
+			});
+		});
 		return [returnData];
 	}
 }
