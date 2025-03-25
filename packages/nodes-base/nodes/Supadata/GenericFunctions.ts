@@ -5,9 +5,9 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
+	INode,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
-import { NodeOperationError, type INode } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 /**
  * Make an API request to Supadata
