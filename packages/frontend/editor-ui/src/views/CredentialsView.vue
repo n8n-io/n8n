@@ -32,6 +32,9 @@ import { N8nCheckbox } from '@n8n/design-system';
 import { pickBy } from 'lodash-es';
 import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
 import { isCredentialsResource } from '@/utils/typeGuards';
+import { useInsightsStore } from '@/features/insights/insights.store';
+import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
+import { useOverview } from '@/composables/useOverview';
 
 const props = defineProps<{
 	credentialId?: string;
@@ -44,12 +47,14 @@ const sourceControlStore = useSourceControlStore();
 const externalSecretsStore = useExternalSecretsStore();
 const projectsStore = useProjectsStore();
 const usersStore = useUsersStore();
+const insightsStore = useInsightsStore();
 
 const documentTitle = useDocumentTitle();
 const route = useRoute();
 const router = useRouter();
 const telemetry = useTelemetry();
 const i18n = useI18n();
+const overview = useOverview();
 
 type Filters = BaseFilters & { type?: string[]; setupNeeded?: boolean };
 const updateFilter = (state: Filters) => {
@@ -235,7 +240,13 @@ onMounted(() => {
 		@update:search="onSearchUpdated"
 	>
 		<template #header>
-			<ProjectHeader />
+			<ProjectHeader>
+				<InsightsSummary
+					v-if="overview.isOverviewSubPage"
+					:loading="insightsStore.summary.isLoading"
+					:summary="insightsStore.summary.state"
+				/>
+			</ProjectHeader>
 		</template>
 		<template #default="{ data }">
 			<CredentialCard

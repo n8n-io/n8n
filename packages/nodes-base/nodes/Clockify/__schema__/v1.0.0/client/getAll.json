@@ -1,6 +1,15 @@
 {
     "type": "object",
     "properties": {
+        "archived": {
+            "type": "boolean"
+        },
+        "currencyCode": {
+            "type": "string"
+        },
+        "currencyId": {
+            "type": "string"
+        },
         "id": {
             "type": "string"
         },
@@ -9,27 +18,7 @@
         },
         "workspaceId": {
             "type": "string"
-        },
-        "archived": {
-            "type": "boolean"
-        },
-        "currencyId": {
-            "type": "string"
-        },
-        "currencyCode": {
-            "type": "string"
         }
     },
-    "required": [
-        "id",
-        "name",
-        "email",
-        "workspaceId",
-        "archived",
-        "address",
-        "note",
-        "currencyId",
-        "currencyCode"
-    ],
     "version": 1
 }

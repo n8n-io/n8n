@@ -8,16 +8,16 @@ import { SCHEMA_PREVIEW_DOCS_URL } from '@/constants';
 
 const props = defineProps<{
 	title: string;
-	info?: string;
 	collapsable: boolean;
 	collapsed: boolean;
-	nodeType: INodeTypeDescription;
 	itemCount: number | null;
+	info?: string;
+	nodeType?: INodeTypeDescription;
 	preview?: boolean;
 }>();
 
 const i18n = useI18n();
-const isTrigger = computed(() => props.nodeType.group.includes('trigger'));
+const isTrigger = computed(() => Boolean(props.nodeType?.group.includes('trigger')));
 const emit = defineEmits<{
 	'click:toggle': [];
 }>();
@@ -31,6 +31,7 @@ const emit = defineEmits<{
 			</div>
 
 			<NodeIcon
+				v-if="nodeType"
 				class="icon"
 				:class="{ ['icon-trigger']: isTrigger }"
 				:node-type="nodeType"
@@ -51,7 +52,6 @@ const emit = defineEmits<{
 		<div
 			v-if="preview && !collapsed"
 			class="notice"
-			theme="warning"
 			data-test-id="schema-preview-warning"
 			@click.stop
 		>
