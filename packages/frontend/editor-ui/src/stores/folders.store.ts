@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { STORES } from '@/constants';
+import { COMMUNITY_PLUS_ENROLLMENT_MODAL, STORES } from '@/constants';
 import type {
 	ChangeLocationSearchResult,
 	FolderCreateResponse,
@@ -8,12 +8,21 @@ import type {
 } from '@/Interface';
 import * as workflowsApi from '@/api/workflows';
 import { useRootStore } from './root.store';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from '@/composables/useI18n';
+import { getResourcePermissions } from '@/permissions';
+import { useRoute } from 'vue-router';
+import { useUsersStore } from './users.store';
+import { useUsageStore } from './usage.store';
+import { useUIStore } from './ui.store';
 
 export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 	const rootStore = useRootStore();
 	const i18n = useI18n();
+	const route = useRoute();
+	const uiStore = useUIStore();
+	const usersStore = useUsersStore();
+	const usageStore = useUsageStore();
 
 	const totalWorkflowCount = ref<number>(0);
 
@@ -21,6 +30,20 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 	 * Cache visited folders so we can build breadcrumbs paths without fetching them from the server
 	 */
 	const breadcrumbsCache = ref<Record<string, FolderShortInfo>>({});
+
+	const currentFolderId = ref<string | null>(null);
+
+	const currentFolder = computed(() => {
+		return currentFolderId.value ? breadcrumbsCache.value[currentFolderId.value] : null;
+	});
+
+	watch(
+		() => route.params?.folderId,
+		async (newVal) => {
+			currentFolderId.value = newVal as string;
+			await fetchWorkflows();
+		},
+	);
 
 	const cacheFolders = (folders: FolderShortInfo[]) => {
 		folders.forEach((folder) => {
@@ -236,6 +259,30 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 			...path.flatMap(processFolderWithChildren),
 		];
 	}
+
+	const isCommunity = computed(() => usageStore.planName.toLowerCase() === 'community');
+	const canUserRegisterCommunityPlus = computed(
+		() => getResourcePermissions(usersStore.currentUser?.globalScopes).community.register,
+	);
+
+	const createFolderInCurrent = async () => {
+		// Show the community plus enrollment modal if the user is in a community plan
+		if (isCommunity.value && canUserRegisterCommunityPlus.value) {
+			uiStore.openModalWithData({
+				name: COMMUNITY_PLUS_ENROLLMENT_MODAL,
+				data: { customHeading: i18n.baseText('folders.registeredCommunity.cta.heading') },
+			});
+			return;
+		}
+		if (!route.params.projectId) return;
+		const currentParent = currentFolder.value?.name || projectName.value;
+		if (!currentParent) return;
+		await createFolder({
+			id: (route.params.folderId as string) ?? '-1',
+			name: currentParent,
+			type: currentFolder.value ? 'folder' : 'project',
+		});
+	};
 
 	return {
 		fetchTotalWorkflowsAndFoldersCount,
