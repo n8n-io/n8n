@@ -26,7 +26,6 @@ export class Supadata implements INodeType {
 		defaults: {
 			name: 'Supadata',
 		},
-		// usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
 		credentials: [
@@ -45,17 +44,14 @@ export class Supadata implements INodeType {
 				type: 'options',
 				noDataExpression: true,
 				options: [
-					{ name: 'Web Scrape', value: 'webScrape' },
-					{ name: 'YouTube Channel', value: 'youtubeChannel' },
-					{ name: 'YouTube Channel Video', value: 'youtubeChannelVideo' },
-					{ name: 'YouTube Transcript', value: 'youtubeTranscript' },
-					{ name: 'YouTube Video', value: 'youtubeVideo' },
+					{ name: 'YouTube', value: 'youtube' },
+					{ name: 'Web', value: 'webScrape' },
 				],
-				default: 'youtubeVideo',
+				default: 'youtube',
 			},
 
 			// --------------------------------------------------------------------------------------------------------
-			//         YouTube Video Operations
+			//         YouTube Operations
 			// --------------------------------------------------------------------------------------------------------
 			{
 				displayName: 'Operation',
@@ -64,7 +60,7 @@ export class Supadata implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: ['youtubeVideo'],
+						resource: ['youtube'],
 					},
 				},
 				options: [
@@ -72,89 +68,31 @@ export class Supadata implements INodeType {
 						name: 'Get Video',
 						value: 'getVideo',
 						description: 'Get details of a YouTube video',
-						action: 'Get YouTube video details',
+						action: 'Get video details',
 					},
-				],
-				default: 'getVideo',
-			},
-			{
-				displayName: 'Input Type',
-				name: 'inputType',
-				type: 'options',
-				options: [
-					{
-						name: 'Video ID',
-						value: 'videoId',
-					},
-					{
-						name: 'Video URL',
-						value: 'videoUrl',
-					},
-				],
-				default: 'videoId',
-				displayOptions: {
-					show: {
-						resource: ['youtubeVideo'],
-						operation: ['getVideo'],
-					},
-				},
-			},
-			{
-				displayName: 'Video ID',
-				name: 'videoId',
-				type: 'string',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						resource: ['youtubeVideo'],
-						operation: ['getVideo'],
-						inputType: ['videoId'],
-					},
-				},
-				placeholder: 'dQw4w9WgXcQ',
-				description: 'The ID of the YouTube video',
-			},
-			{
-				displayName: 'Video URL',
-				name: 'videoUrl',
-				type: 'string',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						resource: ['youtubeVideo'],
-						operation: ['getVideo'],
-						inputType: ['videoUrl'],
-					},
-				},
-				placeholder: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-				description: 'The URL of the YouTube video',
-			},
-
-			// --------------------------------------------------------------------------------------------------------
-			//         YouTube Transcript Operations
-			// --------------------------------------------------------------------------------------------------------
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				noDataExpression: true,
-				displayOptions: {
-					show: {
-						resource: ['youtubeTranscript'],
-					},
-				},
-				options: [
 					{
 						name: 'Get Transcript',
 						value: 'getTranscript',
 						description: 'Get the transcript of a YouTube video',
-						action: 'Get YouTube video transcript',
+						action: 'Get video transcript',
+					},
+					{
+						name: 'Get Channel',
+						value: 'getChannel',
+						description: 'Get details of a YouTube channel',
+						action: 'Get channel details',
+					},
+					{
+						name: 'Get Channel Videos',
+						value: 'getChannelVideos',
+						description: 'Get videos of a YouTube channel',
+						action: 'Get channel videos',
 					},
 				],
-				default: 'getTranscript',
+				default: 'getVideo',
 			},
+
+			// YouTube Video Fields
 			{
 				displayName: 'Input Type',
 				name: 'inputType',
@@ -172,8 +110,8 @@ export class Supadata implements INodeType {
 				default: 'videoId',
 				displayOptions: {
 					show: {
-						resource: ['youtubeTranscript'],
-						operation: ['getTranscript'],
+						resource: ['youtube'],
+						operation: ['getVideo', 'getTranscript'],
 					},
 				},
 			},
@@ -185,8 +123,8 @@ export class Supadata implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						resource: ['youtubeTranscript'],
-						operation: ['getTranscript'],
+						resource: ['youtube'],
+						operation: ['getVideo', 'getTranscript'],
 						inputType: ['videoId'],
 					},
 				},
@@ -201,8 +139,8 @@ export class Supadata implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						resource: ['youtubeTranscript'],
-						operation: ['getTranscript'],
+						resource: ['youtube'],
+						operation: ['getVideo', 'getTranscript'],
 						inputType: ['videoUrl'],
 					},
 				},
@@ -216,36 +154,14 @@ export class Supadata implements INodeType {
 				default: false,
 				displayOptions: {
 					show: {
-						resource: ['youtubeTranscript'],
+						resource: ['youtube'],
 						operation: ['getTranscript'],
 					},
 				},
 				description: 'Whether to return the transcript as plain text',
 			},
 
-			// --------------------------------------------------------------------------------------------------------
-			//         YouTube Channel Operations
-			// --------------------------------------------------------------------------------------------------------
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				noDataExpression: true,
-				displayOptions: {
-					show: {
-						resource: ['youtubeChannel'],
-					},
-				},
-				options: [
-					{
-						name: 'Get Channel',
-						value: 'getChannel',
-						description: 'Get details of a YouTube channel',
-						action: 'Get YouTube channel details',
-					},
-				],
-				default: 'getChannel',
-			},
+			// YouTube Channel Fields
 			{
 				displayName: 'Input Type',
 				name: 'inputType',
@@ -263,7 +179,7 @@ export class Supadata implements INodeType {
 				default: 'channelId',
 				displayOptions: {
 					show: {
-						resource: ['youtubeChannel'],
+						resource: ['youtube'],
 						operation: ['getChannel'],
 					},
 				},
@@ -276,7 +192,7 @@ export class Supadata implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						resource: ['youtubeChannel'],
+						resource: ['youtube'],
 						operation: ['getChannel'],
 						inputType: ['channelId'],
 					},
@@ -292,37 +208,13 @@ export class Supadata implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						resource: ['youtubeChannel'],
+						resource: ['youtube'],
 						operation: ['getChannel'],
 						inputType: ['channelUrl'],
 					},
 				},
 				placeholder: 'https://www.youtube.com/channel/UC_x5XG1OV2P6uZZ5FSM9Ttw',
 				description: 'The URL of the YouTube channel',
-			},
-
-			// --------------------------------------------------------------------------------------------------------
-			//         YouTube Channel Videos Operations
-			// --------------------------------------------------------------------------------------------------------
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				noDataExpression: true,
-				displayOptions: {
-					show: {
-						resource: ['youtubeChannelVideo'],
-					},
-				},
-				options: [
-					{
-						name: 'Get Channel Videos',
-						value: 'getChannelVideos',
-						description: 'Get videos of a YouTube channel',
-						action: 'Get YouTube channel videos',
-					},
-				],
-				default: 'getChannelVideos',
 			},
 			{
 				displayName: 'Channel ID',
@@ -332,7 +224,7 @@ export class Supadata implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						resource: ['youtubeChannelVideo'],
+						resource: ['youtube'],
 						operation: ['getChannelVideos'],
 					},
 				},
@@ -346,7 +238,7 @@ export class Supadata implements INodeType {
 				default: false,
 				displayOptions: {
 					show: {
-						resource: ['youtubeChannelVideo'],
+						resource: ['youtube'],
 						operation: ['getChannelVideos'],
 					},
 				},
@@ -359,7 +251,7 @@ export class Supadata implements INodeType {
 				default: 50,
 				displayOptions: {
 					show: {
-						resource: ['youtubeChannelVideo'],
+						resource: ['youtube'],
 						operation: ['getChannelVideos'],
 						returnAll: [false],
 					},
@@ -418,12 +310,11 @@ export class Supadata implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 			try {
-				const resource = this.getNodeParameter('resource', i);
-				const operation = this.getNodeParameter('operation', i);
+				const resource = this.getNodeParameter('resource', i) as string;
+				const operation = this.getNodeParameter('operation', i) as string;
 				let responseData;
 
-				if (resource === 'youtubeVideo') {
-					// Get YouTube Video
+				if (resource === 'youtube') {
 					if (operation === 'getVideo') {
 						const inputType = this.getNodeParameter('inputType', i) as string;
 						const videoIdentifier =
@@ -441,10 +332,7 @@ export class Supadata implements INodeType {
 							{},
 							{ id: videoIdentifier },
 						);
-					}
-				} else if (resource === 'youtubeTranscript') {
-					// Get YouTube Transcript
-					if (operation === 'getTranscript') {
+					} else if (operation === 'getTranscript') {
 						const inputType = this.getNodeParameter('inputType', i) as string;
 						const videoIdentifier =
 							inputType === 'videoId'
@@ -462,10 +350,7 @@ export class Supadata implements INodeType {
 							{},
 							{ id: videoIdentifier, text },
 						);
-					}
-				} else if (resource === 'youtubeChannel') {
-					// Get YouTube Channel
-					if (operation === 'getChannel') {
+					} else if (operation === 'getChannel') {
 						const inputType = this.getNodeParameter('inputType', i) as string;
 						const channelIdentifier =
 							inputType === 'channelId'
@@ -482,16 +367,13 @@ export class Supadata implements INodeType {
 							{},
 							{ id: channelIdentifier },
 						);
-					}
-				} else if (resource === 'youtubeChannelVideo') {
-					// Get YouTube Channel Videos
-					if (operation === 'getChannelVideos') {
+					} else if (operation === 'getChannelVideos') {
 						const channelId = this.getNodeParameter('channelId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						const qs: IDataObject = { id: channelId };
 
 						if (!returnAll) {
-							qs.limit = this.getNodeParameter('limit', i);
+							qs.limit = this.getNodeParameter('limit', i) as number;
 						}
 
 						responseData = await supadataApiRequest.call(
@@ -504,7 +386,6 @@ export class Supadata implements INodeType {
 						responseData = responseData.videoIds;
 					}
 				} else if (resource === 'webScrape') {
-					// Scrape URL
 					if (operation === 'scrapeUrl') {
 						const url = this.getNodeParameter('url', i) as string;
 						responseData = await supadataApiRequest.call(
@@ -517,7 +398,6 @@ export class Supadata implements INodeType {
 					}
 				}
 
-				// Prepare output
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
