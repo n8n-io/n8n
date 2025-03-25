@@ -12,7 +12,6 @@ import { N8nButton, N8nHeading, N8nSpinner, N8nText, N8nTooltip } from '@n8n/des
 import { useVueFlow } from '@vue-flow/core';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import type { INodeTypeDescription } from 'n8n-workflow';
 
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -46,22 +45,6 @@ const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping(
 	nodes,
 	connections,
 	workflowObject,
-});
-
-const nodeTypeDescriptions = computed(() => {
-	return nodes.value.reduce<Record<string, INodeTypeDescription>>((acc, node) => {
-		const key = `${node.type}@${node.typeVersion}`;
-		if (acc[key]) {
-			return acc;
-		}
-
-		const nodeTypeDescription = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-		if (nodeTypeDescription) {
-			acc[key] = nodeTypeDescription;
-		}
-
-		return acc;
-	}, {});
 });
 
 async function loadData() {
@@ -165,7 +148,6 @@ onMounted(loadData);
 			:loading="isLoading"
 			:nodes="mappedNodes"
 			:connections="mappedConnections"
-			:node-type-descriptions="nodeTypeDescriptions"
 			:show-bug-reporting-button="false"
 			:read-only="true"
 		>

@@ -688,7 +688,6 @@ export function useCanvasMapping({
 	}
 
 	return {
-		simulatedNodeTypeDescriptionByNodeId,
 		additionalNodePropertiesById,
 		nodeExecutionRunDataOutputMapById,
 		nodeIssuesById,
