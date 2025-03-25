@@ -11,14 +11,14 @@ import {
 import { SharedWorkflow } from '@/databases/entities/shared-workflow';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { OnShutdown } from '@/decorators/on-shutdown';
-import { InsightsMetadata } from '@/modules/insights/entities/insights-metadata';
-import { InsightsRaw } from '@/modules/insights/entities/insights-raw';
+import { InsightsMetadata } from '@/modules/insights/database/entities/insights-metadata';
+import { InsightsRaw } from '@/modules/insights/database/entities/insights-raw';
 
-import type { TypeUnit } from './entities/insights-shared';
-import { NumberToType } from './entities/insights-shared';
+import type { TypeUnit } from './database/entities/insights-shared';
+import { NumberToType } from './database/entities/insights-shared';
+import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
+import { InsightsRawRepository } from './database/repositories/insights-raw.repository';
 import { InsightsConfig } from './insights.config';
-import { InsightsByPeriodRepository } from './repositories/insights-by-period.repository';
-import { InsightsRawRepository } from './repositories/insights-raw.repository';
 
 const config = Container.get(InsightsConfig);
 
