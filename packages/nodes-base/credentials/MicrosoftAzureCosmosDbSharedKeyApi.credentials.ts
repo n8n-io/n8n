@@ -13,6 +13,7 @@ import {
 	HeaderConstants,
 	RESOURCE_TYPES,
 } from '../nodes/Microsoft/AzureCosmosDb/helpers/constants';
+import type { IHttpRequestOptionsExtended } from '../nodes/Microsoft/AzureCosmosDb/helpers/interfaces';
 
 export class MicrosoftAzureCosmosDbSharedKeyApi implements ICredentialType {
 	name = 'microsoftAzureCosmosDbSharedKeyApi';
@@ -71,7 +72,29 @@ export class MicrosoftAzureCosmosDbSharedKeyApi implements ICredentialType {
 			'Cache-Control': 'no-cache',
 		};
 
-		const url = new URL(requestOptions.baseURL + requestOptions.url);
+		let url;
+		const request = requestOptions as IHttpRequestOptionsExtended;
+		// Custom node usage
+		if (request.url) {
+			try {
+				url = new URL(request.baseURL + request.url);
+			} catch (error) {
+				throw new OperationalError(`Invalid URL: ${request.baseURL + request.url}`);
+			}
+		}
+		// HTTP Request nodes usage
+		else if (request.uri) {
+			try {
+				url = new URL(request.uri);
+			} catch (error) {
+				throw new OperationalError(`Invalid URI: ${request.uri}`);
+			}
+		}
+
+		if (!url) {
+			throw new OperationalError('No valid URL found in request options.');
+		}
+
 		const pathSegments = url.pathname.split('/').filter(Boolean);
 
 		const foundResource = RESOURCE_TYPES.map((type) => ({

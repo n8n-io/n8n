@@ -1,3 +1,5 @@
+import type { IHttpRequestOptions } from 'n8n-workflow';
+
 export interface ICosmosDbCredentials {
 	account: string;
 	key: string;
@@ -14,4 +16,8 @@ export interface IContainer {
 	partitionKey: {
 		paths: string[];
 	};
+}
+
+export interface IHttpRequestOptionsExtended extends IHttpRequestOptions {
+	uri?: string;
 }
