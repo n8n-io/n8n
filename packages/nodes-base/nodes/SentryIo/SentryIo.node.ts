@@ -6,7 +6,7 @@ import {
 	type INodePropertyOptions,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { eventFields, eventOperations } from './EventDescription';
@@ -31,8 +31,8 @@ export class SentryIo implements INodeType {
 			name: 'Sentry.io',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'sentryIoOAuth2Api',

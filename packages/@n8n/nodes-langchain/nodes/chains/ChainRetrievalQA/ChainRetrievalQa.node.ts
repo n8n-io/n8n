@@ -8,7 +8,7 @@ import {
 import type { BaseRetriever } from '@langchain/core/retrievers';
 import { createStuffDocumentsChain } from 'langchain/chains/combine_documents';
 import { createRetrievalChain } from 'langchain/chains/retrieval';
-import { NodeConnectionType, NodeOperationError, parseErrorMetadata } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, parseErrorMetadata } from 'n8n-workflow';
 import {
 	type INodeProperties,
 	type IExecuteFunctions,
@@ -70,21 +70,21 @@ export class ChainRetrievalQa implements INodeType {
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [
-			NodeConnectionType.Main,
+			NodeConnectionTypes.Main,
 			{
 				displayName: 'Model',
 				maxConnections: 1,
-				type: NodeConnectionType.AiLanguageModel,
+				type: NodeConnectionTypes.AiLanguageModel,
 				required: true,
 			},
 			{
 				displayName: 'Retriever',
 				maxConnections: 1,
-				type: NodeConnectionType.AiRetriever,
+				type: NodeConnectionTypes.AiRetriever,
 				required: true,
 			},
 		],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [],
 		properties: [
 			getTemplateNoticeField(1960),
@@ -192,12 +192,12 @@ export class ChainRetrievalQa implements INodeType {
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				const model = (await this.getInputConnectionData(
-					NodeConnectionType.AiLanguageModel,
+					NodeConnectionTypes.AiLanguageModel,
 					0,
 				)) as BaseLanguageModel;
 
 				const retriever = (await this.getInputConnectionData(
-					NodeConnectionType.AiRetriever,
+					NodeConnectionTypes.AiRetriever,
 					0,
 				)) as BaseRetriever;
 

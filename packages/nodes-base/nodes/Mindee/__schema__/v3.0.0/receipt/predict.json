@@ -1,0 +1,36 @@
+{
+    "type": "object",
+    "properties": {
+        "category": {
+            "type": "string"
+        },
+        "currency": {
+            "type": "string"
+        },
+        "date": {
+            "type": "string"
+        },
+        "document_type": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "number_of_pages": {
+            "type": "integer"
+        },
+        "subcategory": {
+            "type": "string"
+        },
+        "supplier": {
+            "type": "string"
+        },
+        "time": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

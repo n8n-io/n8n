@@ -7,7 +7,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionType, randomString } from 'n8n-workflow';
+import { NodeConnectionTypes, randomString } from 'n8n-workflow';
 
 import { helpscoutApiRequest, helpscoutApiRequestAllItems } from './GenericFunctions';
 
@@ -23,7 +23,7 @@ export class HelpScoutTrigger implements INodeType {
 			name: 'HelpScout Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'helpScoutOAuth2Api',
