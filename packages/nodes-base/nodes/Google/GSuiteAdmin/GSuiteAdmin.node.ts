@@ -369,9 +369,26 @@ export class GSuiteAdmin implements INodeType {
 							qs.maxResults = this.getNodeParameter('limit', i);
 						}
 
-						responseData = await googleApiRequest.call(this, 'GET', '/directory/v1/groups', {}, qs);
-
-						responseData = responseData.groups || [];
+						if (returnAll) {
+							responseData = await googleApiRequestAllItems.call(
+								this,
+								'groups',
+								'GET',
+								'/directory/v1/groups',
+								{},
+								qs,
+							);
+						} else {
+							qs.maxResults = this.getNodeParameter('limit', i);
+							responseData = await googleApiRequest.call(
+								this,
+								'GET',
+								'/directory/v1/groups',
+								{},
+								qs,
+							);
+							responseData = responseData.groups || [];
+						}
 					}
 
 					//https://developers.google.com/admin-sdk/directory/v1/reference/groups/update
