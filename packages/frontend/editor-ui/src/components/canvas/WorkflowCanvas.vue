@@ -51,39 +51,10 @@ const nodes = computed(() => {
 });
 const connections = computed(() => props.workflow.connections);
 
-const {
-	nodes: mappedNodes,
-	connections: mappedConnections,
-	simulatedNodeTypeDescriptionByNodeId,
-} = useCanvasMapping({
+const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping({
 	nodes,
 	connections,
 	workflowObject,
-});
-
-const nodeTypeDescriptions = computed(() => {
-	return mappedNodes.value.reduce<Record<string, INodeTypeDescription>>((acc, node) => {
-		if (!node.data) {
-			return acc;
-		}
-
-		if (simulatedNodeTypeDescriptionByNodeId.value[node.id]) {
-			acc[simulatedNodeTypeDescriptionByNodeId.value[node.id].name] =
-				simulatedNodeTypeDescriptionByNodeId.value[node.id];
-		}
-
-		const key = `${node.data.type}@${node.data.typeVersion}`;
-		if (acc[key]) {
-			return acc;
-		}
-
-		const nodeTypeDescription = nodeTypesStore.getNodeType(node.data.type, node.data.typeVersion);
-		if (nodeTypeDescription) {
-			acc[key] = nodeTypeDescription;
-		}
-
-		return acc;
-	}, {});
 });
 
 const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636
@@ -154,7 +125,6 @@ function setupDebouncedWatchers() {
 				:id="id"
 				:nodes="nodesDebounced"
 				:connections="connectionsDebounced"
-				:node-type-descriptions="nodeTypeDescriptions"
 				:event-bus="eventBus"
 				:read-only="readOnly"
 				v-bind="$attrs"

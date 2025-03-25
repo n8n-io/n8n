@@ -46,7 +46,6 @@ import {
 	watch,
 } from 'vue';
 import CanvasBackground from './elements/background/CanvasBackground.vue';
-import type { INodeTypeDescription } from 'n8n-workflow';
 import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
@@ -100,7 +99,6 @@ const props = withDefaults(
 		id?: string;
 		nodes: CanvasNode[];
 		connections: CanvasConnection[];
-		nodeTypeDescriptions?: Record<string, INodeTypeDescription>;
 		controlsPosition?: PanelPosition;
 		eventBus?: EventBus<CanvasEventBusEvents>;
 		readOnly?: boolean;
@@ -112,7 +110,6 @@ const props = withDefaults(
 		id: 'canvas',
 		nodes: () => [],
 		connections: () => [],
-		nodeTypeDescriptions: () => ({}),
 		controlsPosition: PanelPosition.BottomLeft,
 		eventBus: () => createEventBus(),
 		readOnly: false,
@@ -811,9 +808,6 @@ provide(CanvasKey, {
 					:event-bus="eventBus"
 					:hovered="nodesHoveredById[nodeProps.id]"
 					:nearby-hovered="nodeProps.id === hoveredTriggerNode.id.value"
-					:node-type-description="
-						nodeTypeDescriptions[`${nodeProps.data.type}@${nodeProps.data.typeVersion}`]
-					"
 					@delete="onDeleteNode"
 					@run="onRunNode"
 					@select="onSelectNode"

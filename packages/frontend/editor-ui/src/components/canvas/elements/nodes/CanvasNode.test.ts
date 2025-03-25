@@ -5,7 +5,6 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { fireEvent } from '@testing-library/vue';
 import { createCanvasNodeData, createCanvasNodeProps, createCanvasProvide } from '@/__tests__/data';
 import { CanvasNodeRenderType } from '@/types';
-import { mockNodeTypeDescription } from '@/__tests__/mocks';
 
 vi.mock('@/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
@@ -22,9 +21,6 @@ beforeEach(() => {
 	setActivePinia(pinia);
 
 	renderComponent = createComponentRenderer(CanvasNode, {
-		props: {
-			nodeTypeDescription: mockNodeTypeDescription(),
-		},
 		pinia,
 		global: {
 			provide: {

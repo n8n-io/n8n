@@ -8,7 +8,6 @@ import { createCanvasConnection, createCanvasNodeElement } from '@/__tests__/dat
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useVueFlow } from '@vue-flow/core';
-import { defaultNodeTypes, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { SET_NODE_TYPE, SIMULATE_NODE_TYPE } from '@/constants';
 
 const matchMedia = global.window.matchMedia;
@@ -291,15 +290,9 @@ describe('Canvas', () => {
 				}),
 			];
 
-			const nodeTypeDescriptions = {
-				[SET_NODE_TYPE]: mockNodeTypeDescription({ name: SET_NODE_TYPE, icon: 'fa:pen' }),
-				[`${SIMULATE_NODE_TYPE}@1`]: defaultNodeTypes[SIMULATE_NODE_TYPE].type.description,
-			};
-
 			const { container } = renderComponent({
 				props: {
 					nodes,
-					nodeTypeDescriptions,
 				},
 			});
 
