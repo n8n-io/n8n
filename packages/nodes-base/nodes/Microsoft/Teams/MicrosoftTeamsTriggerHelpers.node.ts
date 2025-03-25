@@ -7,16 +7,15 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { getTeams, getChannels } from './v2/methods/listSearch';
 import { microsoftApiRequest } from './v2/transport';
 
 export const fetchAllTeams = async function (
 	this: ILoadOptionsFunctions,
 ): Promise<Array<{ id: string; displayName: string }>> {
-	const teams = await getTeams.call(this);
-	return teams.results.map((team) => ({
-		id: team.value as string,
-		displayName: team.name,
+	const { value: teams } = await microsoftApiRequest.call(this, 'GET', '/v1.0/me/joinedTeams');
+	return teams.map((team: IDataObject) => ({
+		id: team.id as string,
+		displayName: team.displayName as string,
 	}));
 };
 
@@ -24,17 +23,28 @@ export const fetchAllChannels = async function (
 	this: ILoadOptionsFunctions,
 	teamId: string,
 ): Promise<Array<{ id: string; displayName: string }>> {
-	this.getCurrentNodeParameter = () => teamId;
-
-	const channels = await getChannels.call(this);
-
-	return channels.results.map((channel) => ({
-		id: channel.value as string,
-		displayName: channel.name,
+	const { value: channels } = await microsoftApiRequest.call(
+		this,
+		'GET',
+		`/v1.0/teams/${teamId}/channels`,
+	);
+	return channels.map((channel: IDataObject) => ({
+		id: channel.id as string,
+		displayName: channel.displayName as string,
 	}));
 };
 
-// Create a subscription
+export const fetchAllChats = async function (
+	this: ILoadOptionsFunctions,
+): Promise<Array<{ id: string; displayName: string; url?: string }>> {
+	const { value: chats } = await microsoftApiRequest.call(this, 'GET', '/v1.0/chats');
+	return chats.map((chat: IDataObject) => ({
+		id: chat.id as string,
+		displayName: (chat.topic || chat.id) as string,
+		url: chat.webUrl as string,
+	}));
+};
+
 export const createSubscription = async function (
 	this: IHookFunctions | IExecuteFunctions,
 	webhookUrl: string,
@@ -80,9 +90,10 @@ export const getResourcePath = async function (
 			}) as boolean;
 			if (watchAllChats) return '/me/chats/getAllMessages';
 
-			const chatId = this.getNodeParameter('chatId', 0, { extractValue: true }) as string;
+			let chatId = this.getNodeParameter('chatId', 0, { extractValue: true }) as string;
 			if (!chatId) throw new NodeApiError(this.getNode(), { message: 'Chat ID is required' });
 
+			chatId = decodeURIComponent(chatId);
 			return `/chats/${chatId}/messages`;
 		}
 
@@ -140,9 +151,10 @@ export const getResourcePath = async function (
 				return channels.map((channel) => `/teams/${teamId}/channels/${channel.id}/messages`);
 			}
 
-			// If watching a specific channel in a specific team
-			const channelId = this.getNodeParameter('channelId', 0, { extractValue: true }) as string;
+			let channelId = this.getNodeParameter('channelId', 0, { extractValue: true }) as string;
 			if (!channelId) throw new NodeApiError(this.getNode(), { message: 'Channel ID is required' });
+
+			channelId = decodeURIComponent(channelId);
 
 			return `/teams/${teamId}/channels/${channelId}/messages`;
 		}
@@ -166,7 +178,7 @@ export const getResourcePath = async function (
 		default: {
 			throw new NodeApiError(this.getNode(), {
 				message: `Invalid event: ${event}`,
-				description: `The selected event "${event}" is not recognized.`,
+				description: `The selected event \"${event}\" is not recognized.`,
 			});
 		}
 	}

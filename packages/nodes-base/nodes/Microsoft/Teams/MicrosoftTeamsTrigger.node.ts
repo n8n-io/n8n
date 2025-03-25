@@ -115,10 +115,11 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						displayName: 'By URL',
 						name: 'url',
 						type: 'string',
-						placeholder: 'e.g., https://teams.microsoft.com/l/team/19%3A...',
+						placeholder:
+							'e.g., https://teams.microsoft.com/l/team/19%3A...groupId=your-team-id&tenantId=...',
 						extractValue: {
 							type: 'regex',
-							regex: /https:\/\/.+\.microsoft\.com\/.+\/team\/([^\/]+)/,
+							regex: /groupId=([0-9a-fA-F-]{36})/,
 						},
 					},
 					{
@@ -155,7 +156,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				default: { mode: 'list', value: '' },
 				required: true,
 				description:
-					'Select the channel from the list or by ID (the ID is the "threadId" in the URL)',
+					'Select the channel from the list, by URL, or by ID (the ID is the "threadId" in the URL)',
 				modes: [
 					{
 						displayName: 'From List',
@@ -165,6 +166,16 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						typeOptions: {
 							searchListMethod: 'getChannels',
 							searchable: true,
+						},
+					},
+					{
+						displayName: 'By URL',
+						name: 'url',
+						type: 'string',
+						placeholder: 'e.g., https://teams.microsoft.com/l/channel/19%3A...@thread.tacv2/...',
+						extractValue: {
+							type: 'regex',
+							regex: /channel\/([^\/?]+)/,
 						},
 					},
 					{
@@ -201,7 +212,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				default: { mode: 'list', value: '' },
 				required: true,
 				description:
-					'Select the chat from the list or by ID (find the chat ID after "conversations/" in the URL)',
+					'Select the chat from the list, by ID, or by URL (find the chat ID after "conversations/" in the URL)',
 				modes: [
 					{
 						displayName: 'From List',
@@ -218,6 +229,16 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						name: 'id',
 						type: 'string',
 						placeholder: '19:7e2f1174-e8ee-4859-b8b1-a8d1cc63d276@unq.gbl.spaces',
+					},
+					{
+						displayName: 'By URL',
+						name: 'url',
+						type: 'string',
+						placeholder: 'https://teams.microsoft.com/_#/conversations/CHAT_ID',
+						extractValue: {
+							type: 'regex',
+							regex: 'l/chat/([^/]+)',
+						},
 					},
 				],
 				displayOptions: {
