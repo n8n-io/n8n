@@ -1,5 +1,6 @@
-import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
 import nock from 'nock';
+
+import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
 
 describe('Azure Cosmos DB', () => {
 	const workflows = ['nodes/Microsoft/CosmosDb/test/item/delete.workflow.json'];
