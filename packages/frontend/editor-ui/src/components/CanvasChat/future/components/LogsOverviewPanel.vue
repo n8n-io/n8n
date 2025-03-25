@@ -7,8 +7,15 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
 import { computed, ref } from 'vue';
 import { ElTree } from 'element-plus';
-import { createAiData, getTreeNodeData, type TreeNode } from '@/components/RunDataAi/utils';
+import {
+	createAiData,
+	getSubtreeTotalConsumedTokens,
+	getTotalConsumedTokens,
+	getTreeNodeData,
+	type TreeNode,
+} from '@/components/RunDataAi/utils';
 import { type INodeUi } from '@/Interface';
+import { upperFirst } from 'lodash-es';
 
 const { node, isOpen } = defineProps<{ isOpen: boolean; node: INodeUi | null }>();
 
@@ -35,6 +42,33 @@ const switchViewOptions = computed<Array<{ label: string; value: string }>>(() =
 	{ label: 'Details', value: 'details' },
 	{ label: 'Overview', value: 'overview' },
 ]);
+const executionStatusText = computed(() => {
+	const execution = workflowsStore.workflowExecutionData;
+
+	if (!execution) {
+		return undefined;
+	}
+
+	if (execution.startedAt && execution.stoppedAt) {
+		return locale.baseText('logs.overview.body.summaryText', {
+			interpolate: {
+				status: upperFirst(execution.status),
+				time: +execution.stoppedAt - +execution.startedAt,
+			},
+		});
+	}
+
+	return upperFirst(execution.status);
+});
+const consumedTokensText = computed(() =>
+	locale.baseText('logs.overview.body.tokens', {
+		interpolate: {
+			count: getTotalConsumedTokens(...executionTree.value.map(getSubtreeTotalConsumedTokens))
+				.totalTokens,
+		},
+	}),
+);
+
 const selectedRun = ref<{ node: string; runIndex: number } | undefined>(undefined);
 
 function onClearExecutionData() {
@@ -78,9 +112,11 @@ function handleClickNode(clicked: TreeNode) {
 				{{ locale.baseText('logs.overview.body.empty.message') }}
 			</N8nText>
 			<template v-else>
-				<div :class="$style.summary">
-					<N8nText size="small" color="text-base">Error in 9.99ms</N8nText>
-					<N8nText size="small" color="text-base">9999 Tokens</N8nText>
+				<div v-if="executionStatusText !== undefined" :class="$style.summary">
+					<N8nText size="small" color="text-base">{{ executionStatusText }}</N8nText>
+					<N8nText v-if="consumedTokensText !== undefined" size="small" color="text-base">{{
+						consumedTokensText
+					}}</N8nText>
 				</div>
 				<ElTree
 					:class="$style.tree"

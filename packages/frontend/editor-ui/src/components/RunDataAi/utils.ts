@@ -1,5 +1,7 @@
 import { type IAiDataContent } from '@/Interface';
+import { type LlmTokenUsageData } from '@/types/executions';
 import {
+	type INodeExecutionData,
 	type ITaskData,
 	type ITaskDataConnections,
 	type NodeConnectionType,
@@ -20,6 +22,7 @@ export interface TreeNode {
 	depth: number;
 	startTime: number;
 	runIndex: number;
+	consumedTokens: LlmTokenUsageData;
 }
 
 function createNode(
@@ -37,6 +40,7 @@ function createNode(
 		startTime: r?.data?.metadata?.startTime ?? 0,
 		runIndex: r?.runIndex ?? 0,
 		children,
+		consumedTokens: getConsumedTokens(r?.data),
 	};
 }
 
@@ -88,7 +92,7 @@ function getTreeNodeDataRec(
 	treeNode.children = children;
 
 	if (resultData.length) {
-		return resultData.map((r) => createNode(treeNode, nodeName, currentDepth, r, children));
+		return resultData.map((r) => createNode(parent, nodeName, currentDepth, r, children));
 	}
 
 	return [treeNode];
@@ -164,4 +168,49 @@ export function getReferencedData(
 	}
 
 	return returnData;
+}
+
+const emptyTokenUsageData: LlmTokenUsageData = {
+	completionTokens: 0,
+	promptTokens: 0,
+	totalTokens: 0,
+};
+
+function addTokenUsageData(one: LlmTokenUsageData, another: LlmTokenUsageData): LlmTokenUsageData {
+	return {
+		completionTokens: one.completionTokens + another.completionTokens,
+		promptTokens: one.promptTokens + another.promptTokens,
+		totalTokens: one.totalTokens + another.totalTokens,
+	};
+}
+
+export function getConsumedTokens(outputRun: IAiDataContent | undefined): LlmTokenUsageData {
+	if (!outputRun?.data) {
+		return emptyTokenUsageData;
+	}
+
+	const tokenUsage = outputRun.data.reduce<LlmTokenUsageData>(
+		(acc: LlmTokenUsageData, curr: INodeExecutionData) => {
+			const tokenUsageData = (curr.json?.tokenUsage ??
+				curr.json?.tokenUsageEstimate) as LlmTokenUsageData;
+
+			if (!tokenUsageData) return acc;
+
+			return addTokenUsageData(acc, tokenUsageData);
+		},
+		emptyTokenUsageData,
+	);
+
+	return tokenUsage;
+}
+
+export function getTotalConsumedTokens(...usage: LlmTokenUsageData[]): LlmTokenUsageData {
+	return usage.reduce(addTokenUsageData, emptyTokenUsageData);
+}
+
+export function getSubtreeTotalConsumedTokens(treeNode: TreeNode): LlmTokenUsageData {
+	return getTotalConsumedTokens(
+		treeNode.consumedTokens,
+		...treeNode.children.map(getSubtreeTotalConsumedTokens),
+	);
 }

@@ -2,17 +2,13 @@
 import type { IAiData, IAiDataContent } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type {
-	INodeExecutionData,
-	INodeTypeDescription,
-	NodeConnectionType,
-	NodeError,
-} from 'n8n-workflow';
+import type { INodeTypeDescription, NodeConnectionType, NodeError } from 'n8n-workflow';
 import { computed } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import AiRunContentBlock from './AiRunContentBlock.vue';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import { useI18n } from '@/composables/useI18n';
+import { getConsumedTokens } from '@/components/RunDataAi/utils';
 
 interface RunMeta {
 	startTimeMs: number;
@@ -36,37 +32,10 @@ const workflowsStore = useWorkflowsStore();
 const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl } = useExecutionHelpers();
 const i18n = useI18n();
 
-type TokenUsageData = {
-	completionTokens: number;
-	promptTokens: number;
-	totalTokens: number;
-};
-
 const consumedTokensSum = computed(() => {
 	// eslint-disable-next-line @typescript-eslint/no-use-before-define
-	const tokenUsage = outputRun.value?.data?.reduce(
-		(acc: TokenUsageData, curr: INodeExecutionData) => {
-			const tokenUsageData = (curr.json?.tokenUsage ??
-				curr.json?.tokenUsageEstimate) as TokenUsageData;
-
-			if (!tokenUsageData) return acc;
-
-			return {
-				completionTokens: acc.completionTokens + tokenUsageData.completionTokens,
-				promptTokens: acc.promptTokens + tokenUsageData.promptTokens,
-				totalTokens: acc.totalTokens + tokenUsageData.totalTokens,
-			};
-		},
-		{
-			completionTokens: 0,
-			promptTokens: 0,
-			totalTokens: 0,
-		},
-	);
-
-	return tokenUsage;
+	return getConsumedTokens(outputRun.value);
 });
-
 const usingTokensEstimates = computed(() => {
 	return outputRun.value?.data?.some((d) => d.json?.tokenUsageEstimate);
 });

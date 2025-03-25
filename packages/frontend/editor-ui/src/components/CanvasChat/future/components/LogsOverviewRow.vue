@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import { type TreeNode as ElTreeNode } from 'element-plus';
-import { type TreeNode } from '@/components/RunDataAi/utils';
+import { getSubtreeTotalConsumedTokens, type TreeNode } from '@/components/RunDataAi/utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { computed } from 'vue';
 import { type INodeUi } from '@/Interface';
-import { ExecutionStatus, type ITaskData } from 'n8n-workflow';
+import { type ExecutionStatus, type ITaskData } from 'n8n-workflow';
 import { N8nIconButton, N8nText } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { upperFirst } from 'lodash-es';
+import { useI18n } from '@/composables/useI18n';
 
 const props = defineProps<{ data: TreeNode; node: ElTreeNode; isSelected: boolean }>();
 
+const locale = useI18n();
 const workflowsStore = useWorkflowsStore();
 const nodeTypeStore = useNodeTypesStore();
 const node = computed<INodeUi | undefined>(() => workflowsStore.nodesByName[props.data.node]);
@@ -31,8 +33,32 @@ const runOutcomeText = computed(() => {
 		return '';
 	}
 
-	return `${upperFirst(status)}${finalStatuses.includes(status) ? `in ${runData.value.executionTime}ms` : ''}`;
+	const statusText = upperFirst(status);
+
+	return finalStatuses.includes(status)
+		? locale.baseText('logs.overview.body.summaryText', {
+				interpolate: {
+					status: statusText,
+					time: runData.value.executionTime,
+				},
+			})
+		: statusText;
 });
+const startedText = computed(() =>
+	locale.baseText('logs.overview.body.started', {
+		interpolate: {
+			time: new Date(runData.value?.startTime ?? 0).toLocaleString(),
+		},
+	}),
+);
+
+const subtreeConsumedTokensText = computed(() =>
+	locale.baseText('logs.overview.body.tokens', {
+		interpolate: {
+			count: getSubtreeTotalConsumedTokens(props.data).totalTokens,
+		},
+	}),
+);
 
 function isLastChild(level: number) {
 	let parent = props.data.parent;
@@ -49,7 +75,7 @@ function isLastChild(level: number) {
 }
 
 function handleClickToggleButton() {
-	// ....
+	props.node.expanded = !props.node.expanded;
 }
 </script>
 
@@ -71,10 +97,10 @@ function handleClickToggleButton() {
 				runOutcomeText
 			}}</N8nText>
 			<N8nText tag="div" color="text-light" size="small" :class="$style.attribute">{{
-				`Started ${new Date(runData?.startTime ?? 0).toLocaleString()}`
+				startedText
 			}}</N8nText>
 			<N8nText tag="div" color="text-light" size="small" :class="$style.attribute">{{
-				`${9999} Tokens`
+				subtreeConsumedTokensText
 			}}</N8nText>
 			<N8nIconButton
 				type="secondary"
@@ -85,7 +111,7 @@ function handleClickToggleButton() {
 					color: 'var(--color-text-base)',
 				}"
 				:class="$style.toggleButton"
-				:click="handleClickToggleButton"
+				@click.stop="handleClickToggleButton"
 			/>
 		</div>
 	</div>
