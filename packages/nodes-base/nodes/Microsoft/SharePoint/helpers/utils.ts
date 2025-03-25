@@ -199,7 +199,7 @@ export async function handleErrorPostReceive(
 						});
 					} else {
 						throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-							message: 'The values are invalid',
+							message: error.message,
 							description: "Double-check the value(s) in 'Values to Send' and try again",
 						});
 					}
@@ -210,14 +210,14 @@ export async function handleErrorPostReceive(
 			} else if (operation === 'update') {
 				if (error.code === 'invalidRequest') {
 					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-						message: 'The values are invalid',
-						description: "Double-check the value(s) in 'Values to Send' and try again",
+						message: error.message,
+						description: "Double-check the value(s) in 'Values to Update' and try again",
 					});
 				}
 			} else if (operation === 'upsert') {
 				if (error.code === 'invalidRequest') {
 					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-						message: 'The values are invalid',
+						message: error.message,
 						description: "Double-check the value(s) in 'Values to Send' and try again",
 					});
 				}
