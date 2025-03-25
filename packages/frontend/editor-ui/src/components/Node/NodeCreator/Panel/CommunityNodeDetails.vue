@@ -7,6 +7,7 @@ import { useToast } from '@/composables/useToast';
 import { i18n } from '@/plugins/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
 
 import { getNodeIconSource } from '@/utils/nodeIcon';
 
@@ -48,6 +49,8 @@ const onInstallClick = async () => {
 			await communityNodesStore.installPackage(packageName);
 
 			await useNodeTypesStore().getNodeTypes();
+
+			await useCredentialsStore().fetchCredentialTypes(true);
 
 			const installedNodeItem = getAllNodeCreateElements().find(
 				(node) => node.key === key.replace('-preview', ''),

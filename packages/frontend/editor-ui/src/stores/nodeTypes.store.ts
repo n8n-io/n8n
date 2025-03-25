@@ -264,14 +264,30 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		return nodesInformation;
 	};
 
-	const getFullNodesProperties = async (nodesToBeFetched: INodeTypeNameVersion[]) => {
+	const getFullNodesProperties = async (
+		nodesToBeFetched: INodeTypeNameVersion[],
+		replaceNodeTypes = true,
+	) => {
 		const credentialsStore = useCredentialsStore();
 		await credentialsStore.fetchCredentialTypes(true);
-		await getNodesInformation(nodesToBeFetched);
+		if (replaceNodeTypes) {
+			await getNodesInformation(nodesToBeFetched);
+		}
 	};
 
 	const getNodeTypes = async () => {
-		const nodeTypes = await nodeTypesApi.getNodeTypes(rootStore.baseUrl);
+		let nodeTypes = await nodeTypesApi.getNodeTypes(rootStore.baseUrl);
+		let attemps = 5;
+
+		while (typeof nodeTypes !== 'object' && attemps > 0) {
+			nodeTypes = await nodeTypesApi.getNodeTypes(rootStore.baseUrl);
+			attemps--;
+		}
+
+		if (typeof nodeTypes !== 'object') {
+			throw new Error('Could not fetch node types');
+		}
+
 		let communityTypes = (await nodeTypesApi.getCommunityNodeTypes()) ?? [];
 
 		const communityNodesStore = useCommunityNodesStore();
