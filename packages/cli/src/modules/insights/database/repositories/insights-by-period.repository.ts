@@ -1,5 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
+import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource, Repository } from '@n8n/typeorm';
 import { z } from 'zod';
 
@@ -31,10 +32,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		return this.manager.connection.driver.escape(fieldName);
 	}
 
-	private getPeriodFilterExpr(periodUnit: PeriodUnit) {
-		// filter out data older than 90 days for hourly insights and 180 days for daily
-		const daysAgo = periodUnit === 'hour' ? 90 : 180;
-
+	private getPeriodFilterExpr(daysAgo = 0) {
 		// Database-specific period start expression to filter out data to compact by days matching the periodUnit
 		let periodStartExpr = `date('now', '-${daysAgo} days')`;
 		if (dbType === 'postgresdb') {
@@ -46,26 +44,30 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		return periodStartExpr;
 	}
 
-	private getPeriodStartExpr(periodUnit: PeriodUnit) {
+	private getPeriodStartExpr(periodUnitToCompactInto: PeriodUnit) {
 		// Database-specific period start expression to truncate timestamp to the periodUnit
 		// SQLite by default
 		let periodStartExpr =
-			periodUnit === 'week'
+			periodUnitToCompactInto === 'week'
 				? "strftime('%Y-%m-%d 00:00:00.000', date(periodStart, 'weekday 0', '-6 days'))"
-				: `strftime('%Y-%m-%d ${periodUnit === 'hour' ? '%H' : '00'}:00:00.000', periodStart)`;
+				: `strftime('%Y-%m-%d ${periodUnitToCompactInto === 'hour' ? '%H' : '00'}:00:00.000', periodStart)`;
 		if (dbType === 'mysqldb' || dbType === 'mariadb') {
 			periodStartExpr =
-				periodUnit === 'week'
+				periodUnitToCompactInto === 'week'
 					? "DATE_FORMAT(DATE_SUB(periodStart, INTERVAL WEEKDAY(periodStart) DAY), '%Y-%m-%d 00:00:00')"
-					: `DATE_FORMAT(periodStart, '%Y-%m-%d ${periodUnit === 'hour' ? '%H' : '00'}:00:00')`;
+					: `DATE_FORMAT(periodStart, '%Y-%m-%d ${periodUnitToCompactInto === 'hour' ? '%H' : '00'}:00:00')`;
 		} else if (dbType === 'postgresdb') {
-			periodStartExpr = `DATE_TRUNC('${periodUnit}', ${this.escapeField('periodStart')})`;
+			periodStartExpr = `DATE_TRUNC('${periodUnitToCompactInto}', ${this.escapeField('periodStart')})`;
 		}
 
 		return periodStartExpr;
 	}
 
-	getPeriodInsightsBatchQuery(periodUnit: PeriodUnit, compactionBatchSize: number) {
+	getPeriodInsightsBatchQuery({
+		periodUnitToCompactFrom,
+		compactionBatchSize,
+		nbDaysAgo,
+	}: { periodUnitToCompactFrom: PeriodUnit; compactionBatchSize: number; nbDaysAgo: number }) {
 		// Build the query to gather period insights data for the batch
 		const batchQuery = this.createQueryBuilder()
 			.select(
@@ -73,11 +75,18 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 					this.escapeField(fieldName),
 				),
 			)
-			.where(`${this.escapeField('periodUnit')} = ${PeriodUnitToNumber[periodUnit]}`)
-			.andWhere(`${this.escapeField('periodStart')} < ${this.getPeriodFilterExpr(periodUnit)}`)
+			.where(`${this.escapeField('periodUnit')} = ${PeriodUnitToNumber[periodUnitToCompactFrom]}`)
+			.andWhere(`${this.escapeField('periodStart')} < ${this.getPeriodFilterExpr(nbDaysAgo)}`)
 			.orderBy(this.escapeField('periodStart'), 'ASC')
 			.limit(compactionBatchSize);
-		return batchQuery;
+
+		return batchQuery as SelectQueryBuilder<{
+			id: number;
+			metaId: number;
+			type: string;
+			value: number;
+			periodStart: Date;
+		}>;
 	}
 
 	getAggregationQuery(periodUnit: PeriodUnit) {
@@ -100,19 +109,31 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		return aggregationQuery;
 	}
 
+	/**
+	 * Compacts source data into the target period unit
+	 * @param sourceBatchQuery Query builder to get batch source data. Must return those fields: 'id', 'metaId', 'type', 'periodStart', 'value'
+	 * @param sourceTableName The source table name to get source data from
+	 * @param periodUnitToCompactInto the new period unit to compact the data into
+	 */
 	async compactSourceDataIntoInsightPeriod({
-		sourceBatchQuery, // Query to get batch source data. Must return those fields: 'id', 'metaId', 'type', 'periodStart', 'value'
-		sourceTableName = this.metadata.tableName, // Repository references for table operations
-		periodUnit, // the new period unit to compact the data into
+		sourceBatchQuery,
+		sourceTableName = this.metadata.tableName,
+		periodUnitToCompactInto,
 	}: {
-		sourceBatchQuery: string;
+		sourceBatchQuery: SelectQueryBuilder<{
+			id: number;
+			metaId: number;
+			type: string;
+			value: number;
+			periodStart: Date;
+		}>;
 		sourceTableName?: string;
-		periodUnit: PeriodUnit;
+		periodUnitToCompactInto: PeriodUnit;
 	}): Promise<number> {
 		// Create temp table that only exists in this transaction for rows to compact
 		const getBatchAndStoreInTemporaryTable = sql`
 			CREATE TEMPORARY TABLE rows_to_compact AS
-			${sourceBatchQuery};
+			${sourceBatchQuery.getSql()};
 		`;
 
 		const countBatch = sql`
@@ -125,7 +146,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		const targetColumnNamesWithValue = `${targetColumnNamesStr}, value`;
 
 		// Function to get the aggregation query
-		const aggregationQuery = this.getAggregationQuery(periodUnit);
+		const aggregationQuery = this.getAggregationQuery(periodUnitToCompactInto);
 
 		// Insert or update aggregated data
 		const insertQueryBase = sql`

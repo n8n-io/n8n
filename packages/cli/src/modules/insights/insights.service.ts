@@ -49,6 +49,10 @@ const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
 
 @Service()
 export class InsightsService {
+	private readonly maxAgeInDaysForHourlyData = 90;
+
+	private readonly maxAgeInDaysForDailyData = 180;
+
 	private compactInsightsTimer: NodeJS.Timer | undefined;
 
 	constructor(
@@ -179,37 +183,39 @@ export class InsightsService {
 		);
 
 		return await this.insightsByPeriodRepository.compactSourceDataIntoInsightPeriod({
-			sourceBatchQuery: batchQuery.getSql(),
+			sourceBatchQuery: batchQuery,
 			sourceTableName: this.insightsRawRepository.metadata.tableName,
-			periodUnit: 'hour',
+			periodUnitToCompactInto: 'hour',
 		});
 	}
 
 	// Compacts hourly data to daily aggregates
 	async compactHourToDay() {
 		// get hour data query for batching
-		const batchQuery = this.insightsByPeriodRepository.getPeriodInsightsBatchQuery(
-			'hour',
-			config.compactionBatchSize,
-		);
+		const batchQuery = this.insightsByPeriodRepository.getPeriodInsightsBatchQuery({
+			periodUnitToCompactFrom: 'hour',
+			compactionBatchSize: config.compactionBatchSize,
+			nbDaysAgo: this.maxAgeInDaysForHourlyData,
+		});
 
 		return await this.insightsByPeriodRepository.compactSourceDataIntoInsightPeriod({
-			sourceBatchQuery: batchQuery.getSql(),
-			periodUnit: 'day',
+			sourceBatchQuery: batchQuery,
+			periodUnitToCompactInto: 'day',
 		});
 	}
 
 	// Compacts daily data to weekly aggregates
 	async compactDayToWeek() {
-		// get hour data query for batching
-		const batchQuery = this.insightsByPeriodRepository.getPeriodInsightsBatchQuery(
-			'day',
-			config.compactionBatchSize,
-		);
+		// get daily data query for batching
+		const batchQuery = this.insightsByPeriodRepository.getPeriodInsightsBatchQuery({
+			periodUnitToCompactFrom: 'day',
+			compactionBatchSize: config.compactionBatchSize,
+			nbDaysAgo: this.maxAgeInDaysForDailyData,
+		});
 
 		return await this.insightsByPeriodRepository.compactSourceDataIntoInsightPeriod({
-			sourceBatchQuery: batchQuery.getSql(),
-			periodUnit: 'week',
+			sourceBatchQuery: batchQuery,
+			periodUnitToCompactInto: 'week',
 		});
 	}
 
