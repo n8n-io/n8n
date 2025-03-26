@@ -177,6 +177,7 @@ export class InstanceSettings {
 	 * settings file with an auto-generated encryption key.
 	 */
 	private loadOrCreate(): Settings {
+		const { N8N_ENCRYPTION_KEY } = process.env;
 		if (existsSync(this.settingsFile)) {
 			const content = readFileSync(this.settingsFile, 'utf8');
 			this.ensureSettingsFilePermissions();
@@ -189,7 +190,7 @@ export class InstanceSettings {
 
 			const { encryptionKey, tunnelSubdomain } = settings;
 
-			if (process.env.N8N_ENCRYPTION_KEY && encryptionKey !== process.env.N8N_ENCRYPTION_KEY) {
+			if (N8N_ENCRYPTION_KEY && encryptionKey && encryptionKey !== N8N_ENCRYPTION_KEY) {
 				throw new ApplicationError(
 					`Mismatching encryption keys. The encryption key in the settings file ${this.settingsFile} does not match the N8N_ENCRYPTION_KEY env var. Please make sure both keys match. More information: https://docs.n8n.io/hosting/environment-variables/configuration-methods/#encryption-key`,
 				);
@@ -200,20 +201,22 @@ export class InstanceSettings {
 
 		mkdirSync(this.n8nFolder, { recursive: true });
 
-		const encryptionKey = process.env.N8N_ENCRYPTION_KEY ?? randomBytes(24).toString('base64');
+		if (!N8N_ENCRYPTION_KEY) {
+			if (!inTest) {
+				this.logger.info(
+					`No encryption key found - Auto-generated and saved to: ${this.settingsFile}`,
+				);
+			}
 
-		const settings: Settings = { encryptionKey };
-
-		this.save(settings);
-
-		if (!inTest && !process.env.N8N_ENCRYPTION_KEY) {
-			this.logger.info(
-				`No encryption key found - Auto-generated and saved to: ${this.settingsFile}`,
-			);
+			const encryptionKey = randomBytes(24).toString('base64');
+			const settings: Settings = { encryptionKey };
+			this.save({ encryptionKey });
+			this.ensureSettingsFilePermissions();
+			return settings;
 		}
-		this.ensureSettingsFilePermissions();
 
-		return settings;
+		this.save({} as Settings);
+		return { encryptionKey: N8N_ENCRYPTION_KEY };
 	}
 
 	private generateInstanceId() {
