@@ -34,7 +34,7 @@ export class ChainLlm implements INodeType {
 		icon: 'fa:link',
 		iconColor: 'black',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
 		description: 'A simple chain to prompt a large language model',
 		defaults: {
 			name: 'Basic LLM Chain',
@@ -119,7 +119,7 @@ export class ChainLlm implements INodeType {
 				// Process each response and add to return data
 				responses.forEach((response) => {
 					returnData.push({
-						json: formatResponse(response),
+						json: formatResponse(response, this.getNode().typeVersion),
 					});
 				});
 			} catch (error) {
