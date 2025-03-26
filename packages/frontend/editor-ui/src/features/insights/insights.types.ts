@@ -7,7 +7,7 @@ export type InsightsSummaryDisplay = Array<
 		[K in keyof InsightsDisplayUnits]: {
 			id: K;
 			value: number;
-			deviation: number;
+			deviation: number | null;
 			unit: InsightsDisplayUnits[K];
 		};
 	}[keyof InsightsDisplayUnits]
