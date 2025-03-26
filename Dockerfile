@@ -10,6 +10,7 @@ USER node
 RUN npm install -g axios
 RUN npm install -g openai
 RUN npm install -g node-fetch
+RUN npm install -g firebase-admin
 
 
 # Switch back to the node user to ensure container starts correctly
