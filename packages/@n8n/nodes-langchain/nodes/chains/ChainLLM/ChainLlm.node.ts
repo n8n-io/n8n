@@ -116,10 +116,13 @@ export class ChainLlm implements INodeType {
 					messages,
 				});
 
+				// If the node version is 1.6(and LLM is using `response_format: json_object`) or higher or an output parser is configured,
+				//  we unwrap the response and return the object directly as JSON
+				const shouldUnwrapObjects = this.getNode().typeVersion >= 1.6 || !!outputParser;
 				// Process each response and add to return data
 				responses.forEach((response) => {
 					returnData.push({
-						json: formatResponse(response, this.getNode().typeVersion),
+						json: formatResponse(response, shouldUnwrapObjects),
 					});
 				});
 			} catch (error) {
