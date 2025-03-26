@@ -397,7 +397,7 @@ describe('makeHandleToolInvocation', () => {
 		const result = await handleToolInvocation(toolArgs);
 
 		expect(result).toBe(JSON.stringify([{ result: 'success' }]));
-		expect(mockContext.addOutputData).toHaveBeenCalledWith(NodeConnectionType.AiTool, 0, [
+		expect(mockContext.addOutputData).toHaveBeenCalledWith(NodeConnectionTypes.AiTool, 0, [
 			[{ json: { response: [{ result: 'success' }] } }],
 		]);
 	});
@@ -419,7 +419,7 @@ describe('makeHandleToolInvocation', () => {
 		expect(result).toBe(
 			'"Error: The Tool attempted to return binary data, which is not supported in Agents"',
 		);
-		expect(mockContext.addOutputData).toHaveBeenCalledWith(NodeConnectionType.AiTool, 0, [
+		expect(mockContext.addOutputData).toHaveBeenCalledWith(NodeConnectionTypes.AiTool, 0, [
 			[
 				{
 					json: {
@@ -446,7 +446,7 @@ describe('makeHandleToolInvocation', () => {
 		const result = await handleToolInvocation(toolArgs);
 
 		expect(result).toBe('[{"a":3}]');
-		expect(mockContext.addOutputData).toHaveBeenCalledWith(NodeConnectionType.AiTool, 0, [
+		expect(mockContext.addOutputData).toHaveBeenCalledWith(NodeConnectionTypes.AiTool, 0, [
 			[
 				{
 					json: {
@@ -473,7 +473,7 @@ describe('makeHandleToolInvocation', () => {
 
 		expect(result).toBe('Error during node execution: Execution failed');
 		expect(mockContext.addOutputData).toHaveBeenCalledWith(
-			NodeConnectionType.AiTool,
+			NodeConnectionTypes.AiTool,
 			0,
 			expect.any(NodeOperationError),
 		);
