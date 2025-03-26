@@ -63,9 +63,6 @@ export const generateLineChartOptions = (): ChartOptions<'line'> => {
 			axis: 'x',
 			intersect: false,
 		},
-		layout: {
-			padding: 20,
-		},
 		scales: {
 			x: {
 				grid: {
