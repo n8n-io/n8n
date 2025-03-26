@@ -1572,7 +1572,7 @@ defineExpose({ enterEditMode });
 				{{
 					i18n.baseText('ndv.search.items', {
 						adjustToNumber: unfilteredDataCount,
-						interpolate: { matched: dataCount, total: unfilteredDataCount },
+						interpolate: { matched: dataCount, count: unfilteredDataCount },
 					})
 				}}
 			</N8nText>

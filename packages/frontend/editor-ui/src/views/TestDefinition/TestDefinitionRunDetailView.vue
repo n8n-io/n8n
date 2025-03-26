@@ -103,9 +103,10 @@ const testRunErrorDictionary: Partial<Record<TestRunErrorCode, BaseTextKey>> = {
 	EVALUATION_WORKFLOW_NOT_FOUND: 'testDefinition.listRuns.error.evaluationWorkflowNotFound',
 } as const;
 
-const getErrorBaseKey = (errorCode?: string) =>
+const getErrorBaseKey = (errorCode?: string): string =>
 	testCaseErrorDictionary[errorCode as TestCaseExecutionErrorCodes] ??
-	testRunErrorDictionary[errorCode as TestRunErrorCode];
+	testRunErrorDictionary[errorCode as TestRunErrorCode] ??
+	'';
 
 const getErrorTooltipLinkRoute = (row: TestCaseExecutionRecord) => {
 	if (row.errorCode === TEST_CASE_EXECUTION_ERROR_CODE.FAILED_TO_EXECUTE_EVALUATION_WORKFLOW) {
