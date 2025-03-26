@@ -3,7 +3,7 @@ import { formatResponse } from '../methods/responseFormatter';
 describe('responseFormatter', () => {
 	describe('formatResponse', () => {
 		it('should format string responses', () => {
-			const result = formatResponse('Test response');
+			const result = formatResponse('Test response', 1.6);
 			expect(result).toEqual({
 				text: 'Test response',
 			});
