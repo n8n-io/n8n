@@ -79,7 +79,7 @@ export const generateLineChartOptions = (): ChartOptions<'line'> => {
 			},
 			y: {
 				grid: {
-					color: colorTextLight.value,
+					color: colorForeGroundBase.value,
 				},
 				stacked: true,
 				border: {
@@ -114,7 +114,6 @@ export const generateBarChartOptions = (): ChartOptions<'bar'> => {
 					boxHeight: 8,
 					borderRadius: 2,
 					useBorderRadius: true,
-					// padding: 0,
 				},
 			},
 			tooltip: {
@@ -129,7 +128,7 @@ export const generateBarChartOptions = (): ChartOptions<'bar'> => {
 				borderColor: colorForeGroundBase.value,
 				itemSort(a /*, b, data */) {
 					// Keep success label on top
-					return a.dataset.label === 'Success' ? -1 : 1;
+					return a.dataset.label === 'Succeeded' ? -1 : 1;
 				},
 				callbacks: {
 					label(context) {
@@ -174,7 +173,7 @@ export const generateBarChartOptions = (): ChartOptions<'bar'> => {
 			},
 			y: {
 				grid: {
-					color: colorTextLight.value,
+					color: colorForeGroundBase.value,
 				},
 				stacked: true,
 				border: {

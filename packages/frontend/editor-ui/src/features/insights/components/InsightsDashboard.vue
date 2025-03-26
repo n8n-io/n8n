@@ -126,7 +126,7 @@ watch(
 					<div :class="$style.insightsChartWrapper">
 						<template v-if="insightsStore.charts.isLoading"> loading </template>
 						<component
-							:is="chartComponents[insightType]"
+							:is="chartComponents[props.insightType]"
 							v-else
 							:data="insightsStore.charts.state"
 						/>
