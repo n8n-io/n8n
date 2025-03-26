@@ -19,9 +19,8 @@ export async function nextCloudApiRequest(
 	headers?: IDataObject,
 	encoding?: null | undefined,
 	query?: IDataObject,
+	webDavEndpoint: boolean = true,
 ) {
-	const resource = this.getNodeParameter('resource', 0);
-	const operation = this.getNodeParameter('operation', 0);
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
 	let credentials;
@@ -47,11 +46,7 @@ export async function nextCloudApiRequest(
 
 	options.uri = `${credentials.webDavUrl}/${encodeURI(endpoint)}`;
 
-	if (resource === 'user' && operation === 'create') {
-		options.uri = options.uri.replace('/remote.php/webdav', '');
-	}
-
-	if (resource === 'file' && operation === 'share') {
+	if (!webDavEndpoint) {
 		options.uri = options.uri.replace('/remote.php/webdav', '');
 	}
 
