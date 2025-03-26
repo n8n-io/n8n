@@ -8,8 +8,4 @@ export default defineConfig({
 	clean: true,
 	dts: false,
 	bundle: false,
-	cjsInterop: true,
-	sourcemap: false,
-	splitting: false,
-	minify: false,
 });

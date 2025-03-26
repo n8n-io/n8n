@@ -1,5 +1,5 @@
 import { mock } from 'jest-mock-extended';
-import type { PostgresNodeCredentials } from 'n8n-nodes-base/dist/nodes/Postgres/v2/helpers/interfaces';
+import type { PostgresNodeCredentials } from 'n8n-nodes-base/nodes/Postgres/v2/helpers/interfaces';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { getPostgresDataSource } from './postgres';
