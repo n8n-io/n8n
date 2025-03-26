@@ -3,8 +3,8 @@ import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
 import type { JSONSchema7 } from 'json-schema';
 import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
 import { PythonSandbox } from 'n8n-nodes-base/dist/nodes/Code/PythonSandbox';
-import type { Sandbox } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
+import type { Sandbox } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import type {
 	INodeType,
 	INodeTypeDescription,
