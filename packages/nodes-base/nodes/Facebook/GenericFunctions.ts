@@ -164,6 +164,10 @@ export function getFields(object: string) {
 				description: "Describes changes to a page's Name profile field.",
 			},
 			{
+				value: 'messages',
+				description: "Webhooks for page's messages",
+			},
+			{
 				value: 'page_about_story',
 			},
 			{
