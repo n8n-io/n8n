@@ -1,0 +1,17 @@
+version: '3'
+
+services:
+  n8n:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5678:5678"
+    environment:
+      - NODE_FUNCTION_ALLOW_EXTERNAL=axios,openai,node-fetch,firebase-admin
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+volumes:
+  n8n_data:
+    driver: local

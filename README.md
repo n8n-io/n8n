@@ -70,3 +70,78 @@ Want to shape the future of automation? Check out our [job posts](https://n8n.io
 **Short answer:** It means "nodemation" and is pronounced as n-eight-n.
 
 **Long answer:** "I get that question quite often (more often than I expected) so I decided it is probably best to answer it here. While looking for a good name for the project with a free domain I realized very quickly that all the good ones I could think of were already taken. So, in the end, I chose nodemation. 'node-' in the sense that it uses a Node-View and that it uses Node.js and '-mation' for 'automation' which is what the project is supposed to help with. However, I did not like how long the name was and I could not imagine writing something that long every time in the CLI. That is when I then ended up on 'n8n'." - **Jan Oberhauser, Founder and CEO, n8n.io**
+
+# Using Firebase Admin with n8n
+
+This repository includes a Dockerfile and docker-compose.yml to help you run n8n with firebase-admin module support.
+
+## Quick Start
+
+1. Build and start the container using docker-compose:
+
+```bash
+docker-compose up -d
+```
+
+2. Access n8n at http://localhost:5678
+
+3. When creating a Function node, you can now use the firebase-admin module:
+
+```javascript
+// Import firebase-admin
+const admin = require('firebase-admin');
+
+// Initialize if not already initialized
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert({
+      // Replace with your Firebase service account details
+      projectId: 'your-project-id',
+      clientEmail: 'your-service-account-email',
+      // The private key must be properly formatted with newlines
+      privateKey: 'your-private-key'
+    })
+  });
+}
+
+// Your Firebase code here
+// For example:
+const db = admin.firestore();
+// ... more code
+
+// Return data
+return items;
+```
+
+## How It Works
+
+The Dockerfile:
+
+1. Sets the `NODE_FUNCTION_ALLOW_EXTERNAL` environment variable to allow n8n to access external modules
+2. Installs firebase-admin globally for the node user
+3. Also installs firebase-admin locally in n8n's node_modules directory where n8n can find it
+
+## Troubleshooting
+
+If you still see the error `Cannot find module 'firebase-admin'`, try these steps:
+
+1. Make sure the container has completely rebuilt:
+   ```bash
+   docker-compose down
+   docker-compose build --no-cache
+   docker-compose up -d
+   ```
+
+2. Verify the environment variable is set correctly:
+   ```bash
+   docker-compose exec n8n env | grep NODE_FUNCTION
+   ```
+   You should see `NODE_FUNCTION_ALLOW_EXTERNAL=axios,openai,node-fetch,firebase-admin`
+
+3. Check if firebase-admin is installed in the container:
+   ```bash
+   docker-compose exec n8n npm list -g firebase-admin
+   docker-compose exec n8n npm list firebase-admin
+   ```
+
+4. Try using a JSON file for Firebase authentication instead of direct credential parameters.
