@@ -17,6 +17,7 @@ interface Props {
 	modelValue: AssignmentValue;
 	issues: string[];
 	hideType?: boolean;
+	disableType?: boolean;
 	isReadOnly?: boolean;
 	index?: number;
 }
@@ -163,7 +164,7 @@ const onBlur = (): void => {
 					<TypeSelect
 						:class="$style.select"
 						:model-value="assignment.type ?? 'string'"
-						:is-read-only="isReadOnly"
+						:is-read-only="disableType || isReadOnly"
 						@update:model-value="onAssignmentTypeChange"
 					>
 					</TypeSelect>

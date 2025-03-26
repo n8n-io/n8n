@@ -4,7 +4,7 @@ import * as testDb from '@test-integration/test-db';
 
 import { InsightsRawRepository } from '../../repositories/insights-raw.repository';
 import { InsightsByPeriod } from '../insights-by-period';
-import type { PeriodUnits, TypeUnits } from '../insights-shared';
+import type { PeriodUnit, TypeUnit } from '../insights-shared';
 
 let insightsRawRepository: InsightsRawRepository;
 
@@ -22,7 +22,7 @@ afterAll(async () => {
 });
 
 describe('Insights By Period', () => {
-	test.each(['time_saved_min', 'runtime_ms', 'failure', 'success'] satisfies TypeUnits[])(
+	test.each(['time_saved_min', 'runtime_ms', 'failure', 'success'] satisfies TypeUnit[])(
 		'`%s` can be serialized and deserialized correctly',
 		(typeUnit) => {
 			// ARRANGE
@@ -35,7 +35,7 @@ describe('Insights By Period', () => {
 			expect(insightByPeriod.type).toBe(typeUnit);
 		},
 	);
-	test.each(['hour', 'day', 'week'] satisfies PeriodUnits[])(
+	test.each(['hour', 'day', 'week'] satisfies PeriodUnit[])(
 		'`%s` can be serialized and deserialized correctly',
 		(periodUnit) => {
 			// ARRANGE

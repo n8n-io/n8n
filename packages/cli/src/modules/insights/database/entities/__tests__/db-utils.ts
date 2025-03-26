@@ -1,4 +1,3 @@
-import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { DateTime } from 'luxon';
 import type { IWorkflowBase } from 'n8n-workflow';
@@ -6,12 +5,12 @@ import type { IWorkflowBase } from 'n8n-workflow';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 
-import { InsightsMetadata } from '../../entities/insights-metadata';
-import { InsightsRaw } from '../../entities/insights-raw';
 import { InsightsByPeriodRepository } from '../../repositories/insights-by-period.repository';
 import { InsightsMetadataRepository } from '../../repositories/insights-metadata.repository';
 import { InsightsRawRepository } from '../../repositories/insights-raw.repository';
 import { InsightsByPeriod } from '../insights-by-period';
+import { InsightsMetadata } from '../insights-metadata';
+import { InsightsRaw } from '../insights-raw';
 
 async function getWorkflowSharing(workflow: IWorkflowBase) {
 	return await Container.get(SharedWorkflowRepository).find({
@@ -19,7 +18,6 @@ async function getWorkflowSharing(workflow: IWorkflowBase) {
 		relations: { project: true },
 	});
 }
-export const { type: dbType } = Container.get(GlobalConfig).database;
 
 export async function createMetadata(workflow: WorkflowEntity) {
 	const insightsMetadataRepository = Container.get(InsightsMetadataRepository);
