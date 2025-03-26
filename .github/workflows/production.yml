@@ -1,0 +1,45 @@
+# Production k8s cluster deployment workflow
+name: Prod cluster Deployment
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  bake-build:
+    uses: g2crowd/gh-actions/.github/workflows/gitops-bake-build.yml@main
+    with:
+      environment: prod
+      branch: ${{ github.head_ref || github.ref_name }}
+      bakefile: docker-bake.hcl
+      runs-on: ubicloud-standard-4-arm
+    secrets: inherit
+  extract-image-name:
+    needs: [bake-build]
+    runs-on: ubuntu-latest
+    outputs:
+      image_name: ${{ steps.extract.outputs.image_name }}
+    steps:
+      - id: extract
+        run: |
+          IMAGE_NAME=$(echo '${{ needs.bake-build.outputs.metadata }}' | jq -r '.default["image.name"]')
+          echo "image_name=${IMAGE_NAME}" >> $GITHUB_OUTPUT
+  # commit-to-gitops:
+  #   needs: [bake-build, extract-image-name]
+  #   uses: g2crowd/gh-actions/.github/workflows/gitops-deploy.yml@main
+  #   secrets: inherit
+  #   with:
+  #     image_tag: ${{ needs.extract-image-name.outputs.image_name }}
+  #     app_repo_branch: ${{ github.head_ref || github.ref_name }}
+  #     path_to_kustomization: kustomize/Marketplace/n8n/environments/production/kustomization.yaml
+  #     path_to_rollout: kustomize/Marketplace/n8n/environments/production/kustomization.yaml
+  #     image_yq_matcher: .images[0].newName
