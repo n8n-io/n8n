@@ -36,7 +36,7 @@ describe('ApiKeysController', () => {
 
 			const req = mock<AuthenticatedRequest>({ user: mock<User>({ id: '123' }) });
 
-			publicApiKeyService.apiKeyHasValidScopesForRole.mockResolvedValue(true);
+			publicApiKeyService.apiKeyHasValidScopesForRole.mockReturnValue(true);
 
 			publicApiKeyService.createPublicApiKeyForUser.mockResolvedValue(apiKeyData);
 
