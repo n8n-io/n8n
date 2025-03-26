@@ -1352,6 +1352,8 @@ export type FilterTypeOptions = {
 
 export type AssignmentTypeOptions = Partial<{
 	hideType?: boolean; // visible by default
+	defaultType?: FieldType | 'string';
+	disableType?: boolean; // visible by default
 }>;
 
 export type DisplayCondition =

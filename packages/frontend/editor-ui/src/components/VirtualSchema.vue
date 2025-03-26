@@ -105,21 +105,11 @@ const toggleNodeAndScrollTop = (id: string) => {
 const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) => {
 	const pinData = workflowsStore.pinDataByNodeName(connectedNode.name);
 	const connectedOutputIndexes = connectedNode.indicies.length > 0 ? connectedNode.indicies : [0];
-	const data =
-		pinData ??
-		connectedOutputIndexes
-			.map((outputIndex) =>
-				executionDataToJson(
-					getNodeInputData(
-						fullNode,
-						props.runIndex,
-						outputIndex,
-						props.paneType,
-						props.connectionType,
-					),
-				),
-			)
-			.flat();
+	const nodeData = connectedOutputIndexes.map((outputIndex) =>
+		getNodeInputData(fullNode, props.runIndex, outputIndex, props.paneType, props.connectionType),
+	);
+	const hasBinary = nodeData.flat().some((data) => !isEmpty(data.binary));
+	const data = pinData ?? nodeData.map(executionDataToJson).flat();
 
 	let schema = getSchemaForExecutionData(data);
 	let preview = false;
@@ -137,6 +127,7 @@ const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) =
 		connectedOutputIndexes,
 		itemsCount: data.length,
 		preview,
+		hasBinary,
 	};
 };
 
@@ -251,7 +242,7 @@ const nodesSchemas = asyncComputed<SchemaNode[]>(async () => {
 		const nodeType = nodeTypesStore.getNodeType(fullNode.type, fullNode.typeVersion);
 		if (!nodeType) continue;
 
-		const { schema, connectedOutputIndexes, itemsCount, preview } = await getNodeSchema(
+		const { schema, connectedOutputIndexes, itemsCount, preview, hasBinary } = await getNodeSchema(
 			fullNode,
 			node,
 		);
@@ -268,6 +259,7 @@ const nodesSchemas = asyncComputed<SchemaNode[]>(async () => {
 			nodeType,
 			schema: filteredSchema,
 			preview,
+			hasBinary,
 		});
 	}
 

@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.83.0",
+  "version": "1.84.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -504,6 +504,7 @@
       "dist/nodes/ExecuteWorkflow/ExecuteWorkflow/ExecuteWorkflow.node.js",
       "dist/nodes/ExecuteWorkflow/ExecuteWorkflowTrigger/ExecuteWorkflowTrigger.node.js",
       "dist/nodes/ExecutionData/ExecutionData.node.js",
+      "dist/nodes/EvaluationMetrics/EvaluationMetrics.node.js",
       "dist/nodes/Facebook/FacebookGraphApi.node.js",
       "dist/nodes/Facebook/FacebookTrigger.node.js",
       "dist/nodes/FacebookLeadAds/FacebookLeadAdsTrigger.node.js",
