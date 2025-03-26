@@ -309,8 +309,8 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			dbType === 'sqlite'
 				? `datetime('now', '-${nbDays} days')`
 				: dbType === 'postgresdb'
-					? `CURRENT_DATE - INTERVAL '${nbDays} days'`
-					: `DATE_SUB(CURDATE(), INTERVAL ${nbDays} DAY)`;
+					? `NOW() - INTERVAL '${nbDays} days'`
+					: `DATE_SUB(NOW(), INTERVAL ${nbDays} DAY)`;
 
 		const [sortField, sortOrder] = this.parseSortingParams(sortBy);
 		const sumOfExecutions = sql`SUM(CASE WHEN insights.type IN (${TypeToNumber.success.toString()}, ${TypeToNumber.failure.toString()}) THEN value ELSE 0 END)`;

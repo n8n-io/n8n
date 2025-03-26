@@ -320,21 +320,19 @@ export class InsightsService {
 			sortBy,
 		});
 
-		const data = rows.map((r) => {
-			return {
-				workflowId: r.workflowId,
-				workflowName: r.workflowName,
-				projectId: r.projectId,
-				projectName: r.projectName,
-				total: Number(r.total),
-				failed: Number(r.failed),
-				succeeded: Number(r.succeeded),
-				failureRate: Number(r.failureRate),
-				runTime: Number(r.runTime),
-				averageRunTime: Number(r.averageRunTime),
-				timeSaved: Number(r.timeSaved),
-			};
-		});
+		const data = rows.map((r) => ({
+			workflowId: r.workflowId,
+			workflowName: r.workflowName,
+			projectId: r.projectId,
+			projectName: r.projectName,
+			total: Number(r.total),
+			failed: Number(r.failed),
+			succeeded: Number(r.succeeded),
+			failureRate: Number(r.failureRate),
+			runTime: Number(r.runTime),
+			averageRunTime: Number(r.averageRunTime),
+			timeSaved: Number(r.timeSaved),
+		}));
 
 		return {
 			count,
