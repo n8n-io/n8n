@@ -432,7 +432,12 @@ describe('makeHandleToolInvocation', () => {
 	});
 
 	it('should continue if json and binary data exist', async () => {
-		const mockContext = mock<IExecuteFunctions>();
+		const warnFn = jest.fn();
+		const mockContext = mock<IExecuteFunctions>({
+			logger: {
+				warn: warnFn,
+			},
+		});
 		contextFactory.mockReturnValue(mockContext);
 
 		const mockResult = [[{ json: { a: 3 }, binary: { file: 'data' } }]];
@@ -455,6 +460,7 @@ describe('makeHandleToolInvocation', () => {
 				},
 			],
 		]);
+		expect(warnFn).toHaveBeenCalled();
 	});
 
 	it('should handle execution errors and return an error message', async () => {
