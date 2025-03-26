@@ -32,13 +32,13 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		return this.manager.connection.driver.escape(fieldName);
 	}
 
-	private getPeriodFilterExpr(daysAgo = 0) {
+	private getPeriodFilterExpr(maxAgeInDays = 0) {
 		// Database-specific period start expression to filter out data to compact by days matching the periodUnit
-		let periodStartExpr = `date('now', '-${daysAgo} days')`;
+		let periodStartExpr = `date('now', '-${maxAgeInDays} days')`;
 		if (dbType === 'postgresdb') {
-			periodStartExpr = `CURRENT_DATE - INTERVAL '${daysAgo} day'`;
+			periodStartExpr = `CURRENT_DATE - INTERVAL '${maxAgeInDays} day'`;
 		} else if (dbType === 'mysqldb' || dbType === 'mariadb') {
-			periodStartExpr = `DATE_SUB(CURRENT_DATE, INTERVAL ${daysAgo} DAY)`;
+			periodStartExpr = `DATE_SUB(CURRENT_DATE, INTERVAL ${maxAgeInDays} DAY)`;
 		}
 
 		return periodStartExpr;
@@ -66,8 +66,8 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	getPeriodInsightsBatchQuery({
 		periodUnitToCompactFrom,
 		compactionBatchSize,
-		nbDaysAgo,
-	}: { periodUnitToCompactFrom: PeriodUnit; compactionBatchSize: number; nbDaysAgo: number }) {
+		maxAgeInDays,
+	}: { periodUnitToCompactFrom: PeriodUnit; compactionBatchSize: number; maxAgeInDays: number }) {
 		// Build the query to gather period insights data for the batch
 		const batchQuery = this.createQueryBuilder()
 			.select(
@@ -76,7 +76,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 				),
 			)
 			.where(`${this.escapeField('periodUnit')} = ${PeriodUnitToNumber[periodUnitToCompactFrom]}`)
-			.andWhere(`${this.escapeField('periodStart')} < ${this.getPeriodFilterExpr(nbDaysAgo)}`)
+			.andWhere(`${this.escapeField('periodStart')} < ${this.getPeriodFilterExpr(maxAgeInDays)}`)
 			.orderBy(this.escapeField('periodStart'), 'ASC')
 			.limit(compactionBatchSize);
 
@@ -111,15 +111,15 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 
 	/**
 	 * Compacts source data into the target period unit
-	 * @param sourceBatchQuery Query builder to get batch source data. Must return those fields: 'id', 'metaId', 'type', 'periodStart', 'value'
-	 * @param sourceTableName The source table name to get source data from
-	 * @param periodUnitToCompactInto the new period unit to compact the data into
 	 */
 	async compactSourceDataIntoInsightPeriod({
 		sourceBatchQuery,
 		sourceTableName = this.metadata.tableName,
 		periodUnitToCompactInto,
 	}: {
+		/**
+		 * Query builder to get batch source data. Must return these fields: 'id', 'metaId', 'type', 'periodStart', 'value'.
+		 */
 		sourceBatchQuery: SelectQueryBuilder<{
 			id: number;
 			metaId: number;
@@ -127,7 +127,15 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			value: number;
 			periodStart: Date;
 		}>;
+
+		/**
+		 * The source table name to get source data from.
+		 */
 		sourceTableName?: string;
+
+		/**
+		 * The new period unit to compact the data into.
+		 */
 		periodUnitToCompactInto: PeriodUnit;
 	}): Promise<number> {
 		// Create temp table that only exists in this transaction for rows to compact

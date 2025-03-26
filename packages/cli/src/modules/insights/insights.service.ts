@@ -195,7 +195,7 @@ export class InsightsService {
 		const batchQuery = this.insightsByPeriodRepository.getPeriodInsightsBatchQuery({
 			periodUnitToCompactFrom: 'hour',
 			compactionBatchSize: config.compactionBatchSize,
-			nbDaysAgo: this.maxAgeInDaysForHourlyData,
+			maxAgeInDays: this.maxAgeInDaysForHourlyData,
 		});
 
 		return await this.insightsByPeriodRepository.compactSourceDataIntoInsightPeriod({
@@ -210,7 +210,7 @@ export class InsightsService {
 		const batchQuery = this.insightsByPeriodRepository.getPeriodInsightsBatchQuery({
 			periodUnitToCompactFrom: 'day',
 			compactionBatchSize: config.compactionBatchSize,
-			nbDaysAgo: this.maxAgeInDaysForDailyData,
+			maxAgeInDays: this.maxAgeInDaysForDailyData,
 		});
 
 		return await this.insightsByPeriodRepository.compactSourceDataIntoInsightPeriod({
