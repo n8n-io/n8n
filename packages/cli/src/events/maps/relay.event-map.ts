@@ -8,10 +8,11 @@ import type {
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
 import type { AuthProviderType } from '@/databases/entities/auth-identity';
-import type { GlobalRole, User } from '@/databases/entities/user';
+import type { User } from '@/databases/entities/user';
 import type { IWorkflowDb } from '@/interfaces';
 
 import type { AiEventMap } from './ai.event-map';
+import { GlobalRole } from '@n8n/permissions';
 
 export type UserLike = {
 	id: string;

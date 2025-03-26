@@ -52,7 +52,7 @@ export const projectScope = (scopes: Scope | Scope[], resource: ProjectScopeReso
 
 export const apiKeyScope =
 	(endpointScope: ApiKeyScope) => async (req: Request, res: Response, next: NextFunction) => {
-		const apiKey = req.headers['X-N8N-API-KEY'] as string;
+		const apiKey = req.headers['x-n8n-api-key'] as string;
 
 		const valid = await Container.get(PublicApiKeyService).apiKeyHasValidScopes(
 			apiKey,
@@ -61,6 +61,7 @@ export const apiKeyScope =
 
 		if (!valid) {
 			res.status(403).json({ message: 'Forbidden' });
+			return;
 		}
 		next();
 	};

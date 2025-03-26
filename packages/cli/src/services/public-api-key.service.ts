@@ -44,7 +44,7 @@ export class PublicApiKeyService {
 				userId: user.id,
 				apiKey,
 				label,
-				scopes: scopes as ApiKeyScope[],
+				scopes,
 			}),
 		);
 
@@ -90,9 +90,6 @@ export class PublicApiKeyService {
 
 	/**
 	 * Redacts an API key by replacing a portion of it with asterisks.
-	 *
-	 * The function keeps the last `REDACT_API_KEY_REVEAL_COUNT` characters of the API key visible
-	 * and replaces the rest with asterisks, up to a maximum length defined by `REDACT_API_KEY_MAX_LENGTH`.
 	 *
 	 * @example
 	 * ```typescript
@@ -173,6 +170,7 @@ export class PublicApiKeyService {
 			select: ['scopes'],
 		});
 		if (!apiKeyData) return false;
+
 		return apiKeyData.scopes.includes(endpointScope);
 	};
 

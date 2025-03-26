@@ -39,19 +39,22 @@ export const API_KEY_RESOURCES = {
 	workflowTags: ['update', 'list'] as const,
 } as const;
 
-const API_KEY_COMMON_RESOURCES = [
+type ApiKeyResourceKey = keyof typeof API_KEY_RESOURCES;
+
+const API_KEY_COMMON_RESOURCES: ApiKeyResourceKey[] = [
 	'tag',
+	'workflowTags',
 	'workflow',
-	'variables',
-	'project',
 	'execution',
 	'credential',
 ];
 
-export const API_KEY_OWNER_RESOURCES = [
+export const API_KEY_OWNER_RESOURCES: ApiKeyResourceKey[] = [
 	'user',
 	'sourceControl',
 	'securityAudit',
+	'project',
+	'variable',
 	...API_KEY_COMMON_RESOURCES,
 ] as const;
 

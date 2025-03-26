@@ -1,4 +1,4 @@
-import { hasScope, type ScopeOptions, type Scope } from '@n8n/permissions';
+import { hasScope, type ScopeOptions, type Scope, GlobalRole } from '@n8n/permissions';
 import {
 	AfterLoad,
 	AfterUpdate,
@@ -29,9 +29,6 @@ import type { ProjectRelation } from './project-relation';
 import type { SharedCredentials } from './shared-credentials';
 import type { SharedWorkflow } from './shared-workflow';
 import { objectRetriever, lowerCaser } from '../utils/transformers';
-
-export type GlobalRole = 'global:owner' | 'global:admin' | 'global:member';
-export type AssignableRole = Exclude<GlobalRole, 'global:owner'>;
 
 const STATIC_SCOPE_MAP: Record<GlobalRole, Scope[]> = {
 	'global:owner': GLOBAL_OWNER_SCOPES,

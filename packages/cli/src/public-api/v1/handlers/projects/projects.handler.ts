@@ -7,12 +7,7 @@ import { ProjectRepository } from '@/databases/repositories/project.repository';
 import type { PaginatedRequest } from '@/public-api/types';
 import type { AuthenticatedRequest } from '@/requests';
 
-import {
-	apiKeyScope,
-	globalScope,
-	isLicensed,
-	validCursor,
-} from '../../shared/middlewares/global.middleware';
+import { apiKeyScope, isLicensed, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 
 type GetAll = PaginatedRequest;
@@ -75,7 +70,7 @@ export = {
 	],
 	getProjects: [
 		isLicensed('feat:projectRole:admin'),
-		globalScope('project:list'),
+		// globalScope('project:list'),
 		apiKeyScope('project:list'),
 		validCursor,
 		async (req: GetAll, res: Response) => {

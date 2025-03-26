@@ -6,7 +6,8 @@ import type { ListQuery } from '@/requests';
 
 import { Project } from '../entities/project';
 import { ProjectRelation } from '../entities/project-relation';
-import { type GlobalRole, User } from '../entities/user';
+import { User } from '../entities/user';
+import { GlobalRole } from '@n8n/permissions';
 
 @Service()
 export class UserRepository extends Repository<User> {

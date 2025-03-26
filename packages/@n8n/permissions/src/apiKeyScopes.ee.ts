@@ -4,10 +4,7 @@ import {
 	API_KEY_OWNER_RESOURCES,
 	API_KEY_RESOURCES,
 } from './constants.ee';
-import type { ApiKeyScope } from './types.ee';
-
-// remove the duplication of this type in the user.entity
-export type GlobalRole = 'global:owner' | 'global:admin' | 'global:member';
+import type { ApiKeyScope, GlobalRole } from './types.ee';
 
 const generateScopesFromResources = (
 	resources: typeof API_KEY_MEMBER_RESOURCES | typeof API_KEY_OWNER_RESOURCES,
@@ -37,7 +34,13 @@ export const getApiKeyScopesForRole = (role: GlobalRole) => {
 		roleResources = API_KEY_ADMIN_RESOURCES;
 	}
 
-	return Array.from(generateScopesFromResources(roleResources));
+	const scopes = generateScopesFromResources(roleResources);
+
+	if (role === 'global:member') {
+		scopes.delete('tag:delete');
+	}
+
+	return Array.from(scopes);
 };
 
 export const getAllApiKeyScopes = () => {

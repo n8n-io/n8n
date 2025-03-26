@@ -1,6 +1,6 @@
 import type { ProjectRole } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { combineScopes, type Resource, type Scope } from '@n8n/permissions';
+import { combineScopes, GlobalRole, type Resource, type Scope } from '@n8n/permissions';
 import { UnexpectedError } from 'n8n-workflow';
 
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
@@ -10,7 +10,7 @@ import type {
 	SharedCredentials,
 } from '@/databases/entities/shared-credentials';
 import type { SharedWorkflow, WorkflowSharingRole } from '@/databases/entities/shared-workflow';
-import type { GlobalRole, User } from '@/databases/entities/user';
+import type { User } from '@/databases/entities/user';
 import { License } from '@/license';
 import {
 	GLOBAL_ADMIN_SCOPES,

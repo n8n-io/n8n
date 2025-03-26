@@ -46,3 +46,6 @@ type AllApiKeyScopesObject = {
 
 export type ApiKeyScope<K extends PublicApiKeyResources = PublicApiKeyResources> =
 	AllApiKeyScopesObject[K];
+
+export type GlobalRole = 'global:owner' | 'global:admin' | 'global:member';
+export type AssignableRole = Exclude<GlobalRole, 'global:owner'>;
