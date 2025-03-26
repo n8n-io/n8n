@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, watch } from 'vue';
 import { useRoute, useRouter, type LocationQuery } from 'vue-router';
 import type { InsightsSummaryType } from '@n8n/api-types';
 import { useInsightsStore } from '@/features/insights/insights.store';
@@ -24,6 +24,9 @@ const InsightsChartTimeSaved = defineAsyncComponent(
 const InsightsChartAverageRuntime = defineAsyncComponent(
 	async () => await import('@/features/insights/components/charts/InsightsChartAverageRuntime.vue'),
 );
+const InsightsTableWorkflows = defineAsyncComponent(
+	async () => await import('@/features/insights/components/tables/InsightsTableWorkflows.vue'),
+);
 
 const props = defineProps<{
 	insightType: InsightsSummaryType;
@@ -32,6 +35,8 @@ const props = defineProps<{
 const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
+
+const insightsStore = useInsightsStore();
 
 const chartComponents = computed(() => ({
 	total: InsightsChartTotal,
@@ -73,7 +78,6 @@ const timeOptions = [
 		value: '365',
 	},
 ];
-const insightsStore = useInsightsStore();
 
 watch(
 	() => filters.value.time_span,
@@ -85,57 +89,6 @@ watch(
 	{
 		immediate: true,
 	},
-);
-
-const currentPage = ref();
-const columns = ref([
-	{
-		id: 'name',
-		path: 'name',
-		label: 'Name',
-	},
-	{
-		id: 'executions',
-		path: 'executions',
-		label: 'Executions',
-	},
-	{
-		id: 'failures',
-		path: 'failures',
-		label: 'Failures',
-	},
-	{
-		id: 'failuresRate',
-		path: 'failuresRate',
-		label: 'Failure rate',
-	},
-	{
-		id: 'timeSaved',
-		path: 'timeSaved',
-		label: 'Time saved',
-	},
-	{
-		id: 'runTime',
-		path: 'runTime',
-		label: 'Avg. run time',
-	},
-	{
-		id: 'project',
-		path: 'project',
-		label: 'Project name',
-	},
-]);
-const rows = ref(
-	Array.from(Array(100).keys()).map((index) => ({
-		id: crypto.randomUUID(),
-		name: 'My workflow',
-		executions: 1458,
-		failures: 2,
-		failuresRate: '0.3%',
-		runTime: '8s',
-		timeSaved: index % 2 ? 'Set estimate' : '62h',
-		updated: '24.02.2024',
-	})),
 );
 </script>
 
@@ -179,13 +132,7 @@ const rows = ref(
 						/>
 					</div>
 					<div :class="$style.insightsTableWrapper">
-						<N8nHeading bold tag="h3" size="medium" class="mb-s">Workflow insights</N8nHeading>
-						<N8nDatatable
-							:columns
-							:rows
-							:current-page="currentPage"
-							@update:current-page="($event: number) => (currentPage = $event)"
-						/>
+						<InsightsTableWorkflows />
 					</div>
 				</div>
 			</div>
@@ -227,9 +174,5 @@ const rows = ref(
 
 .insightsTableWrapper {
 	padding: var(--spacing-l) var(--spacing-l) 0;
-}
-
-.strike {
-	text-decoration: line-through;
 }
 </style>
