@@ -14,11 +14,9 @@ jest.mock('../../v2/transport', () => ({
 
 describe('Microsoft Teams Trigger Node', () => {
 	let mockWebhookFunctions: any;
-	let mockHookFunctions: any;
 
 	beforeEach(() => {
 		mockWebhookFunctions = mock();
-		mockHookFunctions = mock();
 		jest.clearAllMocks();
 	});
 
