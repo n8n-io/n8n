@@ -9,5 +9,6 @@ ENV PATH=$PATH:/home/node/.npm-global/bin
 USER node
 RUN npm install -g axios
 
-# Switch back to the default user if needed (optional)
-USER root
+# Switch back to the node user to ensure container starts correctly
+# The n8n image is designed to run as the 'node' user
+USER node
