@@ -8,6 +8,8 @@ ENV PATH=$PATH:/home/node/.npm-global/bin
 # Switch to the node user before installing packages
 USER node
 RUN npm install -g axios
+RUN npm install -g openai
+
 
 # Switch back to the node user to ensure container starts correctly
 # The n8n image is designed to run as the 'node' user
