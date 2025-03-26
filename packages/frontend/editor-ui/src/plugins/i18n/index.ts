@@ -69,8 +69,7 @@ export class I18nClass {
 		const interpolate = { ...options?.interpolate };
 		let result: string;
 		if (options?.adjustToNumber !== undefined) {
-			const { count, ...named } = interpolate;
-			result = this.i18n.t(key, options.adjustToNumber, { count, named }).toString();
+			result = this.i18n.t(key, interpolate, options.adjustToNumber).toString();
 		} else {
 			result = this.i18n.t(key, interpolate).toString();
 		}
