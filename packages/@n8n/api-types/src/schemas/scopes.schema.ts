@@ -6,6 +6,7 @@ const allApiKeyScopes = getAllApiKeyScopes();
 
 export const scopesSchema = z
 	.array(z.string())
+	.min(1)
 	.refine((scopes: string[]): scopes is ApiKeyScope[] =>
 		scopes.every((scope) => allApiKeyScopes.includes(scope as ApiKeyScope)),
 	);

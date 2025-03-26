@@ -30,21 +30,25 @@ describe('CreateApiKeyRequestDto', () => {
 			{
 				name: 'expiresAt in the past',
 				expiresAt: Date.now() / 1000 - 1000,
+				scopes: ['user:create'],
 				expectedErrorPath: ['expiresAt'],
 			},
 			{
 				name: 'expiresAt with string',
 				expiresAt: 'invalid',
+				scopes: ['user:create'],
 				expectedErrorPath: ['expiresAt'],
 			},
 			{
 				name: 'expiresAt with []',
 				expiresAt: [],
+				scopes: ['user:create'],
 				expectedErrorPath: ['expiresAt'],
 			},
 			{
 				name: 'expiresAt with {}',
 				expiresAt: {},
+				scopes: ['user:create'],
 				expectedErrorPath: ['expiresAt'],
 			},
 			{
