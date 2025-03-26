@@ -1,150 +1,208 @@
 import { mock } from 'jest-mock-extended';
-import { NodeApiError } from 'n8n-workflow';
 
-import {
-	fetchAllTeams,
-	fetchAllChannels,
-	createSubscription,
-	getResourcePath,
-} from '../../MicrosoftTeamsTriggerHelpers.node';
-import { microsoftApiRequest } from '../../v2/transport';
+import { MicrosoftTeamsTrigger } from '../../MicrosoftTeamsTrigger.node';
+import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../v2/transport';
 
 jest.mock('../../v2/transport', () => ({
 	microsoftApiRequest: {
 		call: jest.fn(),
 	},
+	microsoftApiRequestAllItems: {
+		call: jest.fn(),
+	},
 }));
 
-describe('Microsoft Teams Utility Functions', () => {
-	let mockLoadOptionsFunctions: any;
+describe('Microsoft Teams Trigger Node', () => {
+	let mockWebhookFunctions: any;
 	let mockHookFunctions: any;
 
 	beforeEach(() => {
-		mockLoadOptionsFunctions = mock();
+		mockWebhookFunctions = mock();
 		mockHookFunctions = mock();
 		jest.clearAllMocks();
 	});
 
-	describe('fetchAllTeams', () => {
-		it('should fetch all teams and map them correctly', async () => {
-			(microsoftApiRequest.call as jest.Mock).mockResolvedValue({
-				value: [
-					{ id: 'team1', displayName: 'Team 1' },
-					{ id: 'team2', displayName: 'Team 2' },
-				],
+	describe('webhookMethods', () => {
+		describe('checkExists', () => {
+			it('should return true if the subscription exists', async () => {
+				(microsoftApiRequestAllItems.call as jest.Mock).mockResolvedValue([
+					{ id: 'sub1', notificationUrl: 'https://webhook.url' },
+				]);
+
+				mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
+
+				mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({
+					node: {},
+				});
+
+				const result = await new MicrosoftTeamsTrigger().webhookMethods.default.checkExists.call(
+					mockWebhookFunctions,
+				);
+				expect(result).toBe(true);
+				expect(microsoftApiRequestAllItems.call).toHaveBeenCalledWith(
+					mockWebhookFunctions,
+					'value',
+					'GET',
+					'/v1.0/subscriptions',
+				);
 			});
 
-			const result = await fetchAllTeams.call(mockLoadOptionsFunctions);
+			it('should return false if the subscription does not exist', async () => {
+				(microsoftApiRequestAllItems.call as jest.Mock).mockResolvedValue([]);
 
-			expect(result).toEqual([
-				{ id: 'team1', displayName: 'Team 1' },
-				{ id: 'team2', displayName: 'Team 2' },
+				mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
+
+				mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({
+					node: {},
+				});
+
+				const result = await new MicrosoftTeamsTrigger().webhookMethods.default.checkExists.call(
+					mockWebhookFunctions,
+				);
+				expect(result).toBe(false);
+			});
+
+			it('should throw an error if the API request fails', async () => {
+				(microsoftApiRequestAllItems.call as jest.Mock).mockRejectedValue(
+					new Error('API request failed'),
+				);
+
+				mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
+
+				await expect(
+					new MicrosoftTeamsTrigger().webhookMethods.default.checkExists.call(mockWebhookFunctions),
+				).rejects.toThrow('API request failed');
+			});
+		});
+
+		describe('create', () => {
+			it('should create a subscription successfully', async () => {
+				(microsoftApiRequest.call as jest.Mock).mockResolvedValue({ id: 'subscription123' });
+
+				mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
+				mockWebhookFunctions.getNodeParameter.mockReturnValue('newChat');
+
+				(microsoftApiRequest.call as jest.Mock).mockResolvedValue({
+					value: [{ id: 'team1', displayName: 'Team 1' }],
+				});
+
+				const result = await new MicrosoftTeamsTrigger().webhookMethods.default.create.call(
+					mockWebhookFunctions,
+				);
+
+				expect(result).toBe(true);
+				expect(microsoftApiRequest.call).toHaveBeenCalledWith(
+					mockWebhookFunctions,
+					'POST',
+					'/v1.0/subscriptions',
+					expect.objectContaining({
+						changeType: 'created',
+						notificationUrl: 'https://webhook.url',
+						resource: '/me/chats',
+						expirationDateTime: expect.any(String),
+						latestSupportedTlsVersion: 'v1_2',
+						lifecycleNotificationUrl: 'https://webhook.url',
+					}),
+				);
+			});
+
+			it('should throw an error if the URL is invalid', async () => {
+				mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('invalid-url');
+				await expect(
+					new MicrosoftTeamsTrigger().webhookMethods.default.create.call(mockWebhookFunctions),
+				).rejects.toThrow('Invalid Notification URL');
+			});
+		});
+
+		describe('delete', () => {
+			it('should delete a subscription successfully', async () => {
+				(microsoftApiRequestAllItems.call as jest.Mock).mockResolvedValue([
+					{ id: 'subscription123', notificationUrl: 'https://webhook.url' },
+				]);
+
+				(microsoftApiRequest.call as jest.Mock).mockResolvedValue({});
+
+				mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
+
+				const result = await new MicrosoftTeamsTrigger().webhookMethods.default.delete.call(
+					mockWebhookFunctions,
+				);
+				expect(result).toBe(true);
+				expect(microsoftApiRequest.call).toHaveBeenCalledWith(
+					mockWebhookFunctions,
+					'DELETE',
+					'/v1.0/subscriptions/subscription123',
+				);
+			});
+
+			it('should return false if no subscription matches', async () => {
+				(microsoftApiRequestAllItems.call as jest.Mock).mockResolvedValue([]);
+				mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
+				const result = await new MicrosoftTeamsTrigger().webhookMethods.default.delete.call(
+					mockWebhookFunctions,
+				);
+				expect(result).toBe(false);
+			});
+
+			it('should throw an error if the API request fails', async () => {
+				(microsoftApiRequestAllItems.call as jest.Mock).mockResolvedValue([
+					{ id: 'subscription123', notificationUrl: 'https://webhook.url' },
+				]);
+				(microsoftApiRequest.call as jest.Mock).mockRejectedValue(new Error('API request failed'));
+				mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
+
+				await expect(
+					new MicrosoftTeamsTrigger().webhookMethods.default.delete.call(mockWebhookFunctions),
+				).rejects.toThrow('API request failed');
+			});
+		});
+	});
+
+	describe('webhook', () => {
+		it('should handle Microsoft Graph validation request correctly', async () => {
+			const mockRequest = {
+				query: {
+					validationToken: 'validation-token',
+				},
+			};
+			const mockResponse = {
+				status: jest.fn().mockReturnThis(),
+				send: jest.fn(),
+			};
+
+			mockWebhookFunctions.getRequestObject.mockReturnValue(mockRequest);
+			mockWebhookFunctions.getResponseObject.mockReturnValue(mockResponse);
+
+			const result = await new MicrosoftTeamsTrigger().webhook.call(mockWebhookFunctions);
+			expect(mockResponse.status).toHaveBeenCalledWith(200);
+			expect(mockResponse.send).toHaveBeenCalledWith('validation-token');
+			expect(result.noWebhookResponse).toBe(true);
+		});
+
+		it('should process incoming event notifications', async () => {
+			const mockRequest = {
+				body: {
+					value: [{ resourceData: { message: 'test message' } }],
+				},
+				query: {},
+			};
+			const mockResponse = {
+				status: jest.fn().mockReturnThis(),
+				send: jest.fn(),
+			};
+
+			mockWebhookFunctions.getRequestObject.mockReturnValue(mockRequest);
+			mockWebhookFunctions.getResponseObject.mockReturnValue(mockResponse);
+
+			const result = await new MicrosoftTeamsTrigger().webhook.call(mockWebhookFunctions);
+
+			expect(result.workflowData).toEqual([
+				[
+					{
+						json: { message: 'test message' },
+					},
+				],
 			]);
-			expect(microsoftApiRequest.call).toHaveBeenCalledWith(
-				mockLoadOptionsFunctions,
-				'GET',
-				'/v1.0/me/joinedTeams',
-			);
-		});
-
-		it('should throw an error if getTeams fails', async () => {
-			(microsoftApiRequest.call as jest.Mock).mockRejectedValue(new Error('Failed to fetch teams'));
-
-			await expect(fetchAllTeams.call(mockLoadOptionsFunctions)).rejects.toThrow(
-				'Failed to fetch teams',
-			);
-		});
-	});
-
-	describe('fetchAllChannels', () => {
-		it('should fetch all channels for a team and map them correctly', async () => {
-			(microsoftApiRequest.call as jest.Mock).mockResolvedValue({
-				value: [
-					{ id: 'channel1', displayName: 'Channel 1' },
-					{ id: 'channel2', displayName: 'Channel 2' },
-				],
-			});
-
-			const result = await fetchAllChannels.call(mockLoadOptionsFunctions, 'team1');
-
-			expect(result).toEqual([
-				{ id: 'channel1', displayName: 'Channel 1' },
-				{ id: 'channel2', displayName: 'Channel 2' },
-			]);
-			expect(microsoftApiRequest.call).toHaveBeenCalledWith(
-				mockLoadOptionsFunctions,
-				'GET',
-				'/v1.0/teams/team1/channels',
-			);
-		});
-
-		it('should throw an error if getChannels fails', async () => {
-			(microsoftApiRequest.call as jest.Mock).mockRejectedValue(
-				new Error('Failed to fetch channels'),
-			);
-
-			await expect(fetchAllChannels.call(mockLoadOptionsFunctions, 'team1')).rejects.toThrow(
-				'Failed to fetch channels',
-			);
-		});
-	});
-
-	describe('createSubscription', () => {
-		it('should create a subscription and return the subscription ID', async () => {
-			(microsoftApiRequest.call as jest.Mock).mockResolvedValue({ id: 'subscription123' });
-
-			const result = await createSubscription.call(
-				mockHookFunctions,
-				'https://webhook.url',
-				'/resource/path',
-			);
-
-			expect(result).toBe('subscription123');
-			expect(microsoftApiRequest.call).toHaveBeenCalledWith(
-				mockHookFunctions,
-				'POST',
-				'/v1.0/subscriptions',
-				expect.objectContaining({
-					changeType: 'created',
-					notificationUrl: 'https://webhook.url',
-					resource: '/resource/path',
-					expirationDateTime: expect.any(String),
-					latestSupportedTlsVersion: 'v1_2',
-					lifecycleNotificationUrl: 'https://webhook.url',
-				}),
-			);
-		});
-
-		it('should throw a NodeApiError if the API request fails', async () => {
-			const error = new Error('API request failed');
-			(microsoftApiRequest.call as jest.Mock).mockRejectedValue(error);
-
-			await expect(
-				createSubscription.call(mockHookFunctions, 'https://webhook.url', '/resource/path'),
-			).rejects.toThrow(NodeApiError);
-		});
-	});
-
-	describe('getResourcePath', () => {
-		it('should return the correct resource path for newChannel event with watchAllTeams', async () => {
-			(microsoftApiRequest.call as jest.Mock).mockResolvedValue({
-				value: [
-					{ id: 'team1', displayName: 'Team 1' },
-					{ id: 'team2', displayName: 'Team 2' },
-				],
-			});
-
-			mockHookFunctions.getNodeParameter.mockReturnValueOnce(true);
-
-			const result = await getResourcePath.call(mockHookFunctions, 'newChannel');
-
-			expect(result).toEqual(['/teams/team1/channels', '/teams/team2/channels']);
-		});
-
-		it('should throw an error for an invalid event', async () => {
-			await expect(getResourcePath.call(mockHookFunctions, 'invalidEvent')).rejects.toThrow(
-				'Invalid event: invalidEvent',
-			);
 		});
 	});
 });
