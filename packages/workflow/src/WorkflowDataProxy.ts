@@ -25,7 +25,7 @@ import {
 	type NodeParameterValueType,
 	type WorkflowExecuteMode,
 	type ProxyInput,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from './Interfaces';
 import * as NodeHelpers from './NodeHelpers';
 import { deepCopy } from './utils';
@@ -351,7 +351,7 @@ export class WorkflowDataProxy {
 				const nodeConnection = that.workflow.getNodeConnectionIndexes(
 					that.contextNodeName,
 					nodeName,
-					NodeConnectionType.Main,
+					NodeConnectionTypes.Main,
 				);
 
 				if (nodeConnection === undefined) {
@@ -970,7 +970,7 @@ export class WorkflowDataProxy {
 			const inputData =
 				that.runExecutionData?.resultData.runData[that.activeNodeName]?.[runIndex].inputOverride;
 			const placeholdersDataInputData =
-				inputData?.[NodeConnectionType.AiTool]?.[0]?.[itemIndex].json;
+				inputData?.[NodeConnectionTypes.AiTool]?.[0]?.[itemIndex].json;
 
 			if (Boolean(!placeholdersDataInputData)) {
 				throw new ExpressionError('No execution data available', {

@@ -232,6 +232,7 @@ describe('Form Node', () => {
 						message: 'Test Message',
 						redirectUrl: '',
 						title: 'Test Title',
+						responseBinary: encodeURIComponent(JSON.stringify('')),
 						responseText: '',
 					},
 				},
@@ -246,6 +247,7 @@ describe('Form Node', () => {
 						redirectUrl: '',
 						title: 'Test Title',
 						responseText: '<div>hey</div>',
+						responseBinary: encodeURIComponent(JSON.stringify('')),
 					},
 				},
 				{
@@ -257,6 +259,7 @@ describe('Form Node', () => {
 						formTitle: 'test',
 						message: 'Test Message',
 						redirectUrl: '',
+						responseBinary: encodeURIComponent(JSON.stringify('')),
 						title: 'Test Title',
 						responseText: 'my text over here',
 					},
@@ -434,6 +437,7 @@ describe('Form Node', () => {
 				redirectUrl: 'https://n8n.io',
 				responseText: '',
 				title: 'Test Title',
+				responseBinary: encodeURIComponent(JSON.stringify('')),
 			});
 		});
 	});

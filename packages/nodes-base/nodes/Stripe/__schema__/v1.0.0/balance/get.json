@@ -1,9 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "object": {
-            "type": "string"
-        },
         "available": {
             "type": "array",
             "items": {
@@ -21,21 +18,16 @@
                             "card": {
                                 "type": "integer"
                             }
-                        },
-                        "required": [
-                            "card"
-                        ]
+                        }
                     }
-                },
-                "required": [
-                    "amount",
-                    "currency",
-                    "source_types"
-                ]
+                }
             }
         },
         "livemode": {
             "type": "boolean"
+        },
+        "object": {
+            "type": "string"
         },
         "pending": {
             "type": "array",
@@ -54,18 +46,11 @@
                             "card": {
                                 "type": "integer"
                             }
-                        },
-                        "required": [
-                            "card"
-                        ]
+                        }
                     }
-                },
-                "required": [
-                    "amount",
-                    "currency",
-                    "source_types"
-                ]
+                }
             }
         }
-    }
+    },
+    "version": 1
 }

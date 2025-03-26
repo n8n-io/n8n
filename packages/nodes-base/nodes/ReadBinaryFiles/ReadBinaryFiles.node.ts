@@ -1,6 +1,6 @@
 import glob from 'fast-glob';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
@@ -22,8 +22,8 @@ export class ReadBinaryFiles implements INodeType {
 			name: 'Read Binary Files',
 			color: '#44AA44',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'File Selector',
