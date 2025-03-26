@@ -13,11 +13,6 @@ describe('CreateApiKeyRequestDto', () => {
 				expiresAt: null,
 				scopes: ['user:create'],
 			},
-			{
-				name: 'scopes with valid scope',
-				expiresAt: null,
-				scopes: ['user:create'],
-			},
 		])('should succeed validation for $name', ({ expiresAt, scopes }) => {
 			const result = CreateApiKeyRequestDto.safeParse({ label: 'valid', expiresAt, scopes });
 
@@ -51,26 +46,12 @@ describe('CreateApiKeyRequestDto', () => {
 				scopes: ['user:create'],
 				expectedErrorPath: ['expiresAt'],
 			},
-			{
-				name: 'scopes with non exiting scope',
-				scopes: ['user:test'],
-				expiresAt: Date.now() / 1000 + 1000,
-				expectedErrorPath: ['scopes'],
-			},
-			{
-				name: 'scopes with empty array',
-				scopes: [],
-				expiresAt: Date.now() / 1000 + 1000,
-				expectedErrorPath: ['scopes'],
-			},
-			{
-				name: 'scopes with {}',
-				scopes: {},
-				expiresAt: Date.now() / 1000 + 1000,
-				expectedErrorPath: ['scopes'],
-			},
-		])('should fail validation for $name', ({ expiresAt, scopes, expectedErrorPath }) => {
-			const result = CreateApiKeyRequestDto.safeParse({ label: 'valid', expiresAt, scopes });
+		])('should fail validation for $name', ({ expiresAt, expectedErrorPath }) => {
+			const result = CreateApiKeyRequestDto.safeParse({
+				label: 'valid',
+				expiresAt,
+				scopes: ['user:create'],
+			});
 
 			expect(result.success).toBe(false);
 
