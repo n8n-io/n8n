@@ -9,6 +9,7 @@ ENV PATH=$PATH:/home/node/.npm-global/bin
 USER node
 RUN npm install -g axios
 RUN npm install -g openai
+RUN npm install -g node-fetch
 
 
 # Switch back to the node user to ensure container starts correctly
