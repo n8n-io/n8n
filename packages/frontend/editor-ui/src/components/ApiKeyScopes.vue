@@ -2,6 +2,8 @@
 import { ref, computed, watch } from 'vue';
 import { ElSelect, ElOption, ElOptionGroup } from 'element-plus';
 import { capitalCase } from 'change-case';
+import { useI18n } from '@/composables/useI18n';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 // Define props
 const props = defineProps({
@@ -13,11 +15,18 @@ const props = defineProps({
 		type: Array,
 		default: () => [],
 	},
+	enabled: {
+		type: Boolean,
+		default: false,
+	},
 });
 
 // Define emits
 const emit = defineEmits(['update:modelValue']);
 const selectedScopes = ref(props.modelValue);
+
+const i18n = useI18n();
+const { goToUpgrade } = usePageRedirectionHelper();
 
 // Create reactive state
 
@@ -63,6 +72,10 @@ watch(checkAll, (newValue) => {
 		selectedScopes.value = [];
 	}
 });
+
+function goToUpgradeApiKeyScopes() {
+	void goToUpgrade('api-key-scopes', 'upgrade-api-key-scopes');
+}
 </script>
 
 <template>
@@ -84,6 +97,7 @@ watch(checkAll, (newValue) => {
 				<template #header>
 					<el-checkbox
 						v-model="checkAll"
+						:disabled="!enabled"
 						:class="$style['scopes-checkbox']"
 						:indeterminate="indeterminate"
 					>
@@ -92,7 +106,7 @@ watch(checkAll, (newValue) => {
 				</template>
 
 				<template v-for="(actions, resource) in groupedScopes" :key="resource">
-					<ElOptionGroup :label="capitalCase(resource).toUpperCase()">
+					<ElOptionGroup :disabled="!enabled" :label="capitalCase(resource).toUpperCase()">
 						<ElOption
 							v-for="action in actions"
 							:key="`${resource}:${action}`"
@@ -103,6 +117,15 @@ watch(checkAll, (newValue) => {
 				</template>
 			</ElSelect>
 		</N8nInputLabel>
+		<N8nNotice v-if="!enabled">
+			<i18n-t keypath="settings.api.scopes.upgrade">
+				<template #link>
+					<n8n-link size="small" @click="goToUpgradeApiKeyScopes">
+						{{ i18n.baseText('settings.api.scopes.upgrade.link') }}
+					</n8n-link>
+				</template>
+			</i18n-t>
+		</N8nNotice>
 	</div>
 </template>
 

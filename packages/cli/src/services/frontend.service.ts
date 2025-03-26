@@ -26,6 +26,7 @@ import {
 } from '@/workflows/workflow-history.ee/workflow-history-helper.ee';
 
 import { UrlService } from './url.service';
+import { apiKeyScope } from '@/public-api/v1/shared/middlewares/global.middleware';
 
 @Service()
 export class FrontendService {
@@ -188,6 +189,7 @@ export class FrontendService {
 				workflowHistory: false,
 				workerView: false,
 				advancedPermissions: false,
+				apiKeyScopes: false,
 				projects: {
 					team: {
 						limit: 0,
@@ -310,6 +312,7 @@ export class FrontendService {
 				this.license.isWorkflowHistoryLicensed() && config.getEnv('workflowHistory.enabled'),
 			workerView: this.license.isWorkerViewLicensed(),
 			advancedPermissions: this.license.isAdvancedPermissionsLicensed(),
+			apiKeyScopes: this.license.isApiKeyScopesEnabled(),
 		});
 
 		if (this.license.isLdapEnabled()) {

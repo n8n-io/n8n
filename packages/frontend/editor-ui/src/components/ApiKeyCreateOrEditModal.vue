@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import Modal from '@/components/Modal.vue';
-import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '@/constants';
+import { API_KEY_CREATE_OR_EDIT_MODAL_KEY, EnterpriseEditionFeature } from '@/constants';
 import { computed, onMounted, ref } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -15,6 +15,7 @@ import { DateTime } from 'luxon';
 import type { ApiKey, ApiKeyWithRawValue, CreateApiKeyRequestDto } from '@n8n/api-types';
 import ApiKeyScopes from '@/components/ApiKeyScopes.vue';
 import type { ApiKeyScope } from '@n8n/permissions';
+import { useSettingsStore } from '@/stores/settings.store';
 
 const EXPIRATION_OPTIONS = {
 	'7_DAYS': 7,
@@ -43,6 +44,12 @@ const customExpirationDate = ref('');
 const showExpirationDateSelector = ref(false);
 const apiKeyCreationDate = ref('');
 const selectedScopes = ref<ApiKeyScope[]>([]);
+
+const settingsStore = useSettingsStore();
+
+const apiKeyScopesEnabled = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.ApiKeyScopes],
+);
 
 const calculateExpirationDate = (daysFromNow: number) => {
 	const date = DateTime.now()
@@ -93,7 +100,7 @@ const allFormFieldsAreSet = computed(() => {
 
 	return (
 		label.value &&
-		selectedScopes.value.length &&
+		(!apiKeyScopesEnabled.value ? true : selectedScopes.value.length) &&
 		(props.mode === 'edit' ? true : isExpirationDateSet)
 	);
 });
@@ -112,6 +119,10 @@ onMounted(() => {
 		label.value = apiKey.label ?? '';
 		apiKeyCreationDate.value = getApiKeyCreationTime(apiKey);
 		selectedScopes.value = apiKey.scopes;
+	}
+
+	if (props.mode === 'new' && !apiKeyScopesEnabled.value) {
+		selectedScopes.value = availableScopes;
 	}
 });
 
@@ -273,6 +284,7 @@ async function handleEnterKey(event: KeyboardEvent) {
 								v-model="expirationDaysFromNow"
 								size="large"
 								filterable
+								readonly
 								data-test-id="expiration-select"
 								@update:model-value="onSelect"
 							>
@@ -307,6 +319,7 @@ async function handleEnterKey(event: KeyboardEvent) {
 					<ApiKeyScopes
 						v-model="selectedScopes"
 						:available-scopes="availableScopes"
+						:enabled="apiKeyScopesEnabled"
 						@update:model-value="onScopeSelectionChanged"
 					/>
 				</div>

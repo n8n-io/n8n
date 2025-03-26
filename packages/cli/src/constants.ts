@@ -95,6 +95,7 @@ export const LICENSE_FEATURES = {
 	COMMUNITY_NODES_CUSTOM_REGISTRY: 'feat:communityNodes:customRegistry',
 	AI_CREDITS: 'feat:aiCredits',
 	FOLDERS: 'feat:folders',
+	API_KEY_SCOPES: 'feat:apiKeyScopes',
 } as const;
 
 export const LICENSE_QUOTAS = {

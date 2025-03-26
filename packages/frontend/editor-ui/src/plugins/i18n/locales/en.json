@@ -1882,6 +1882,8 @@
 	"settings.users.userRoleUpdated.message": "{user} has been successfully updated to a {role}",
 	"settings.users.userRoleUpdatedError": "Unable to updated role",
 	"settings.api": "API",
+	"settings.api.scopes.upgrade": "{link} to unlock the ability to modify API key scopes",
+	"settings.api.scopes.upgrade.link": "Upgrade",
 	"settings.n8napi": "n8n API",
 	"settings.log-streaming": "Log Streaming",
 	"settings.log-streaming.heading": "Log Streaming",
