@@ -518,10 +518,12 @@ export interface PaginationOptions {
 
 export type IN8nHttpResponse = IDataObject | Buffer | GenericValue | GenericValue[] | null;
 
+type ResponseHeaders = Record<string, string>;
+
 export interface IN8nHttpFullResponse {
 	body: IN8nHttpResponse | Readable;
 	__bodyResolved?: boolean;
-	headers: IDataObject;
+	headers: ResponseHeaders;
 	statusCode: number;
 	statusMessage?: string;
 }
