@@ -83,13 +83,13 @@ jobs:
 
       - name: Cache build artifacts
         id: cache-build-artifacts
-        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        uses: useblacksmith/cache@c5fe29eb0efdf1cf4186b9f7fcbbcbc0cf025662 # v5
         with:
           path: |
             /home/runner/.cache/Cypress
             /github/home/.pnpm-store
             ./packages/**/dist
-          key: ${{ github.sha }}:build-artifacts
+          key: ${{ github.sha }}-base:build
 
       - name: Install dependencies
         if: steps.cache-build-artifacts.outputs.cache-hit != 'true'
@@ -111,7 +111,7 @@ jobs:
 
 
   testing:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2204
     needs: ['prepare', 'install']
     strategy:
       fail-fast: false
@@ -134,13 +134,13 @@ jobs:
 
       - name: Restore cached pnpm modules
         id: cache-build-artifacts
-        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        uses: useblacksmith/cache@c5fe29eb0efdf1cf4186b9f7fcbbcbc0cf025662 # v5
         with:
           path: |
             /home/runner/.cache/Cypress
             /github/home/.pnpm-store
             ./packages/**/dist
-          key: ${{ github.sha }}:build-artifacts
+          key: ${{ github.sha }}-base:build
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
