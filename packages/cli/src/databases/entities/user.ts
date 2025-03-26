@@ -1,4 +1,4 @@
-import { hasScope, type ScopeOptions, type Scope, GlobalRole } from '@n8n/permissions';
+import { hasScope, type ScopeOptions, type Scope, type GlobalRole } from '@n8n/permissions';
 import {
 	AfterLoad,
 	AfterUpdate,
@@ -81,7 +81,7 @@ export class User extends WithTimestamps implements IUser {
 	})
 	settings: IUserSettings | null;
 
-	@Column()
+	@Column({ type: String })
 	role: GlobalRole;
 
 	@OneToMany('AuthIdentity', 'user')
