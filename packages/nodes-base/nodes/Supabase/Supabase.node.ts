@@ -132,6 +132,7 @@ export class Supabase implements INodeType {
 
 			if (operation === 'create') {
 				const records: IDataObject[] = [];
+				const returnDataParam = this.getNodeParameter('returnData', 0, true) as boolean;
 
 				for (let i = 0; i < length; i++) {
 					const record: IDataObject = {};
@@ -159,12 +160,17 @@ export class Supabase implements INodeType {
 				const endpoint = `/${tableId}`;
 
 				try {
-					const createdRows: IDataObject[] = await supabaseApiRequest.call(
+					const response = await supabaseApiRequest.call(
 						this,
 						'POST',
 						endpoint,
 						records,
+						{},
+						undefined,
+						{},
+						returnDataParam,
 					);
+					const createdRows = returnDataParam ? (response as IDataObject[]) : [];
 					createdRows.forEach((row, i) => {
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(row),
@@ -172,6 +178,13 @@ export class Supabase implements INodeType {
 						);
 						returnData.push(...executionData);
 					});
+					if (!returnDataParam) {
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ success: true, message: 'Row inserted' }),
+							{ itemData: mapPairedItemsFrom(records) },
+						);
+						returnData.push(...executionData);
+					}
 				} catch (error) {
 					if (this.continueOnFail()) {
 						const executionData = this.helpers.constructExecutionMetaData(
