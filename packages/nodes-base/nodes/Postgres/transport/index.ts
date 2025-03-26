@@ -17,6 +17,7 @@ import type {
 	PostgresNodeCredentials,
 	PostgresNodeOptions,
 	PostgresNodeSSLOptions,
+	PgpSSLConfig,
 } from '../v2/helpers/interfaces';
 
 const getPostgresConfig = (
@@ -41,27 +42,31 @@ const getPostgresConfig = (
 		dbConfig.keepAliveInitialDelayMillis = options.delayClosingIdleConnection * 1000;
 	}
 
-	dbConfig.ssl = false;
-	if (credentials.ssl && credentials.ssl !== 'disable') {
-		dbConfig.ssl = {};
+	dbConfig.ssl = !['disable', undefined].includes(credentials.ssl);
+	if (dbConfig.ssl) {
+		const sslOpts: PgpSSLConfig = {};
 
 		const { caCert, clientCert, clientKey, allowUnauthorizedCerts, servername } =
 			credentials as PostgresNodeSSLOptions;
 		if (caCert) {
-			dbConfig.ssl.ca = caCert;
+			sslOpts.ca = caCert;
 		}
 		if (clientCert) {
-			dbConfig.ssl.cert = clientCert;
+			sslOpts.cert = clientCert;
 		}
 		if (clientKey) {
-			dbConfig.ssl.key = clientKey;
+			sslOpts.key = clientKey;
 		}
 		if (allowUnauthorizedCerts === true) {
-			dbConfig.ssl.rejectUnauthorized = false;
+			sslOpts.rejectUnauthorized = false;
 		}
 		if (servername) {
 			// @ts-expect-error the ISSLConfig type is an incomplete subset of tls.ConnectOptions
-			dbConfig.ssl.servername = servername;
+			sslOpts.servername = servername;
+		}
+
+		if (Object.keys(sslOpts).length > 0) {
+			dbConfig.ssl = sslOpts;
 		}
 	}
 

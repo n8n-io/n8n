@@ -11,24 +11,28 @@ export async function getPostgresDataSource(this: IExecuteFunctions): Promise<Da
 
 	let ssl: ConnectionOptions | boolean = !['disable', undefined].includes(credentials.ssl);
 	if (ssl) {
-		ssl = {};
+		const sslOpts: ConnectionOptions = {};
 
 		const { caCert, clientCert, clientKey, allowUnauthorizedCerts, servername } =
 			credentials as PostgresNodeSSLOptions;
 		if (caCert) {
-			ssl.ca = caCert;
+			sslOpts.ca = caCert;
 		}
 		if (clientCert) {
-			ssl.cert = clientCert;
+			sslOpts.cert = clientCert;
 		}
 		if (clientKey) {
-			ssl.key = clientKey;
+			sslOpts.key = clientKey;
 		}
 		if (allowUnauthorizedCerts === true) {
-			ssl.rejectUnauthorized = false;
+			sslOpts.rejectUnauthorized = false;
 		}
 		if (servername) {
-			ssl.servername = servername;
+			sslOpts.servername = servername;
+		}
+
+		if (Object.keys(sslOpts).length > 0) {
+			ssl = sslOpts;
 		}
 	}
 
