@@ -132,7 +132,7 @@ watch(
 						/>
 					</div>
 					<div :class="$style.insightsTableWrapper">
-						<InsightsTableWorkflows />
+						<InsightsTableWorkflows :data="insightsStore.table.state" />
 					</div>
 				</div>
 			</div>

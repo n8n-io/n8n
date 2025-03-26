@@ -1,26 +1,31 @@
 <script lang="ts" setup="">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
+import type { InsightsByWorkflow } from '@n8n/api-types';
+
+const props = defineProps<{
+	data: InsightsByWorkflow;
+}>();
 
 const currentPage = ref();
 const columns = ref([
 	{
-		id: 'name',
-		path: 'name',
+		id: 'workflowName',
+		path: 'workflowName',
 		label: 'Name',
 	},
 	{
-		id: 'executions',
-		path: 'executions',
+		id: 'total',
+		path: 'total',
 		label: 'Executions',
 	},
 	{
-		id: 'failures',
-		path: 'failures',
+		id: 'failed',
+		path: 'failed',
 		label: 'Failures',
 	},
 	{
-		id: 'failuresRate',
-		path: 'failuresRate',
+		id: 'failureRate',
+		path: 'failureRate',
 		label: 'Failure rate',
 	},
 	{
@@ -29,28 +34,17 @@ const columns = ref([
 		label: 'Time saved',
 	},
 	{
-		id: 'runTime',
-		path: 'runTime',
-		label: 'Avg. run time',
+		id: 'averageRunTime',
+		path: 'averageRunTime',
+		label: 'Run time',
 	},
 	{
-		id: 'project',
-		path: 'project',
+		id: 'projectName',
+		path: 'projectName',
 		label: 'Project name',
 	},
 ]);
-const rows = ref(
-	Array.from(Array(100).keys()).map((index) => ({
-		id: crypto.randomUUID(),
-		name: 'My workflow',
-		executions: 1458,
-		failures: 2,
-		failuresRate: '0.3%',
-		runTime: '8s',
-		timeSaved: index % 2 ? 'Set estimate' : '62h',
-		updated: '24.02.2024',
-	})),
-);
+const rows = computed(() => props.data.data);
 </script>
 
 <template>
