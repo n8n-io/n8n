@@ -1,5 +1,6 @@
 import { Container } from '@n8n/di';
-import { getApiKeyScopesForRole, GlobalRole } from '@n8n/permissions';
+import type { GlobalRole } from '@n8n/permissions';
+import { getApiKeyScopesForRole } from '@n8n/permissions';
 import { hash } from 'bcryptjs';
 
 import { AuthIdentity } from '@/databases/entities/auth-identity';

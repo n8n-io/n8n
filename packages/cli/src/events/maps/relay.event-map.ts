@@ -1,4 +1,5 @@
 import type { AuthenticationMethod, ProjectRelation } from '@n8n/api-types';
+import type { GlobalRole } from '@n8n/permissions';
 import type {
 	IPersonalizationSurveyAnswersV4,
 	IRun,
@@ -12,7 +13,6 @@ import type { User } from '@/databases/entities/user';
 import type { IWorkflowDb } from '@/interfaces';
 
 import type { AiEventMap } from './ai.event-map';
-import { GlobalRole } from '@n8n/permissions';
 
 export type UserLike = {
 	id: string;

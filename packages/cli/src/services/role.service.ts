@@ -1,6 +1,7 @@
 import type { ProjectRole } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { combineScopes, GlobalRole, type Resource, type Scope } from '@n8n/permissions';
+import { combineScopes } from '@n8n/permissions';
+import type { GlobalRole, Resource, Scope } from '@n8n/permissions';
 import { UnexpectedError } from 'n8n-workflow';
 
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
