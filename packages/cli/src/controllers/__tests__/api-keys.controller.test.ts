@@ -31,9 +31,12 @@ describe('ApiKeysController', () => {
 				label: 'My API Key',
 				apiKey: 'apiKey123',
 				createdAt: new Date(),
+				scopes: ['user:create'],
 			} as ApiKey;
 
 			const req = mock<AuthenticatedRequest>({ user: mock<User>({ id: '123' }) });
+
+			publicApiKeyService.apiKeyHasValidScopesForRole.mockResolvedValue(true);
 
 			publicApiKeyService.createPublicApiKeyForUser.mockResolvedValue(apiKeyData);
 
@@ -54,6 +57,7 @@ describe('ApiKeysController', () => {
 					apiKey: '***123',
 					createdAt: expect.any(Date),
 					rawApiKey: 'apiKey123',
+					scopes: ['user:create'],
 				}),
 			);
 			expect(eventService.emit).toHaveBeenCalledWith(

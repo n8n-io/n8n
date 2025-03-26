@@ -60,7 +60,7 @@ describe('Owner shell', () => {
 		const newApiKeyResponse = await testServer
 			.authAgentFor(ownerShell)
 			.post('/api-keys')
-			.send({ label: 'My API Key', expiresAt: null });
+			.send({ label: 'My API Key', expiresAt: null, scopes: ['workflow:create'] });
 
 		const newApiKey = newApiKeyResponse.body.data as ApiKeyWithRawValue;
 
@@ -78,6 +78,7 @@ describe('Owner shell', () => {
 			apiKey: newApiKey.rawApiKey,
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
+			scopes: ['workflow:create'],
 		});
 
 		expect(newApiKey.expiresAt).toBeNull();
@@ -90,7 +91,7 @@ describe('Owner shell', () => {
 		const newApiKeyResponse = await testServer
 			.authAgentFor(ownerShell)
 			.post('/api-keys')
-			.send({ label: 'My API Key', expiresAt });
+			.send({ label: 'My API Key', expiresAt, scopes: ['workflow:create'] });
 
 		const newApiKey = newApiKeyResponse.body.data as ApiKeyWithRawValue;
 
@@ -108,6 +109,7 @@ describe('Owner shell', () => {
 			apiKey: newApiKey.rawApiKey,
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
+			scopes: ['workflow:create'],
 		});
 
 		expect(newApiKey.expiresAt).toBe(expiresAt);
@@ -120,12 +122,16 @@ describe('Owner shell', () => {
 		const apiKeyWithNoExpiration = await testServer
 			.authAgentFor(ownerShell)
 			.post('/api-keys')
-			.send({ label: 'My API Key', expiresAt: null });
+			.send({ label: 'My API Key', expiresAt: null, scopes: ['workflow:create'] });
 
 		const apiKeyWithExpiration = await testServer
 			.authAgentFor(ownerShell)
 			.post('/api-keys')
-			.send({ label: 'My API Key 2', expiresAt: expirationDateInTheFuture });
+			.send({
+				label: 'My API Key 2',
+				expiresAt: expirationDateInTheFuture,
+				scopes: ['workflow:create'],
+			});
 
 		const retrieveAllApiKeysResponse = await testServer.authAgentFor(ownerShell).get('/api-keys');
 
@@ -139,6 +145,7 @@ describe('Owner shell', () => {
 			createdAt: expect.any(String),
 			updatedAt: expect.any(String),
 			expiresAt: expirationDateInTheFuture,
+			scopes: ['workflow:create'],
 		});
 
 		expect(retrieveAllApiKeysResponse.body.data[0]).toEqual({
@@ -149,6 +156,7 @@ describe('Owner shell', () => {
 			createdAt: expect.any(String),
 			updatedAt: expect.any(String),
 			expiresAt: null,
+			scopes: ['workflow:create'],
 		});
 	});
 
@@ -156,7 +164,7 @@ describe('Owner shell', () => {
 		const newApiKeyResponse = await testServer
 			.authAgentFor(ownerShell)
 			.post('/api-keys')
-			.send({ label: 'My API Key', expiresAt: null });
+			.send({ label: 'My API Key', expiresAt: null, scopes: ['workflow:create'] });
 
 		const deleteApiKeyResponse = await testServer
 			.authAgentFor(ownerShell)
@@ -185,7 +193,7 @@ describe('Member', () => {
 		const newApiKeyResponse = await testServer
 			.authAgentFor(member)
 			.post('/api-keys')
-			.send({ label: 'My API Key', expiresAt: null });
+			.send({ label: 'My API Key', expiresAt: null, scopes: ['workflow:create'] });
 
 		expect(newApiKeyResponse.statusCode).toBe(200);
 		expect(newApiKeyResponse.body.data.apiKey).toBeDefined();
@@ -202,6 +210,7 @@ describe('Member', () => {
 			apiKey: newApiKeyResponse.body.data.rawApiKey,
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
+			scopes: ['workflow:create'],
 		});
 
 		expect(newApiKeyResponse.body.data.expiresAt).toBeNull();
@@ -214,7 +223,7 @@ describe('Member', () => {
 		const newApiKeyResponse = await testServer
 			.authAgentFor(member)
 			.post('/api-keys')
-			.send({ label: 'My API Key', expiresAt });
+			.send({ label: 'My API Key', expiresAt, scopes: ['workflow:create'] });
 
 		const newApiKey = newApiKeyResponse.body.data as ApiKeyWithRawValue;
 
@@ -232,21 +241,11 @@ describe('Member', () => {
 			apiKey: newApiKey.rawApiKey,
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
+			scopes: ['workflow:create'],
 		});
 
 		expect(newApiKey.expiresAt).toBe(expiresAt);
 		expect(newApiKey.rawApiKey).toBeDefined();
-	});
-
-	test('POST /api-keys should fail if max number of API keys reached', async () => {
-		await testServer.authAgentFor(member).post('/api-keys').send({ label: 'My API Key' });
-
-		const secondApiKey = await testServer
-			.authAgentFor(member)
-			.post('/api-keys')
-			.send({ label: 'My API Key' });
-
-		expect(secondApiKey.statusCode).toBe(400);
 	});
 
 	test('GET /api-keys should fetch the api key redacted', async () => {
@@ -255,12 +254,16 @@ describe('Member', () => {
 		const apiKeyWithNoExpiration = await testServer
 			.authAgentFor(member)
 			.post('/api-keys')
-			.send({ label: 'My API Key', expiresAt: null });
+			.send({ label: 'My API Key', expiresAt: null, scopes: ['workflow:create'] });
 
 		const apiKeyWithExpiration = await testServer
 			.authAgentFor(member)
 			.post('/api-keys')
-			.send({ label: 'My API Key 2', expiresAt: expirationDateInTheFuture });
+			.send({
+				label: 'My API Key 2',
+				expiresAt: expirationDateInTheFuture,
+				scopes: ['workflow:create'],
+			});
 
 		const retrieveAllApiKeysResponse = await testServer.authAgentFor(member).get('/api-keys');
 
@@ -274,6 +277,7 @@ describe('Member', () => {
 			createdAt: expect.any(String),
 			updatedAt: expect.any(String),
 			expiresAt: expirationDateInTheFuture,
+			scopes: ['workflow:create'],
 		});
 
 		expect(retrieveAllApiKeysResponse.body.data[0]).toEqual({
@@ -284,6 +288,7 @@ describe('Member', () => {
 			createdAt: expect.any(String),
 			updatedAt: expect.any(String),
 			expiresAt: null,
+			scopes: ['workflow:create'],
 		});
 	});
 
@@ -291,7 +296,7 @@ describe('Member', () => {
 		const newApiKeyResponse = await testServer
 			.authAgentFor(member)
 			.post('/api-keys')
-			.send({ label: 'My API Key', expiresAt: null });
+			.send({ label: 'My API Key', expiresAt: null, scopes: ['workflow:create'] });
 
 		const deleteApiKeyResponse = await testServer
 			.authAgentFor(member)

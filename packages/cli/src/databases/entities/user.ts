@@ -1,4 +1,4 @@
-import { hasScope, type ScopeOptions, type Scope, type GlobalRole } from '@n8n/permissions';
+import { hasScope, type ScopeOptions, type Scope, GlobalRole } from '@n8n/permissions';
 import {
 	AfterLoad,
 	AfterUpdate,

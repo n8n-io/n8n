@@ -144,25 +144,25 @@ export class PublicApiKeyService {
 		};
 	}
 
-	private generateApiKey = (user: User, expiresAt: UnixTimestamp) => {
+	private generateApiKey(user: User, expiresAt: UnixTimestamp) {
 		const nowInSeconds = Math.floor(Date.now() / 1000);
 
 		return this.jwtService.sign(
 			{ sub: user.id, iss: API_KEY_ISSUER, aud: API_KEY_AUDIENCE },
 			{ ...(expiresAt && { expiresIn: expiresAt - nowInSeconds }) },
 		);
-	};
+	}
 
 	private getApiKeyExpiration = (apiKey: string) => {
 		const decoded = this.jwtService.decode(apiKey);
 		return decoded?.exp ?? null;
 	};
 
-	apiKeyHasValidScopesForRole = (role: GlobalRole, apiKeyScopes: ApiKeyScope[]) => {
+	apiKeyHasValidScopesForRole(role: GlobalRole, apiKeyScopes: ApiKeyScope[]) {
 		const scopesForRole = getApiKeyScopesForRole(role);
 		return apiKeyScopes.every((scope) => scopesForRole.includes(scope));
 		// return scopesForRole.every((scope) => apiKeyScopes.includes(scope));
-	};
+	}
 
 	apiKeyHasValidScopes = async (apiKey: string, endpointScope: ApiKeyScope) => {
 		const apiKeyData = await this.apiKeyRepository.findOne({
@@ -174,7 +174,7 @@ export class PublicApiKeyService {
 		return apiKeyData.scopes.includes(endpointScope);
 	};
 
-	removeOwnerOnlyScopesFromApiKeys = async (user: User) => {
+	async removeOwnerOnlyScopesFromApiKeys(user: User) {
 		const ownerOnlyScopes = getOwnerOnlyApiKeyScopes();
 
 		const userApiKeys = await this.apiKeyRepository.find({
@@ -193,5 +193,5 @@ export class PublicApiKeyService {
 					}),
 			),
 		);
-	};
+	}
 }
