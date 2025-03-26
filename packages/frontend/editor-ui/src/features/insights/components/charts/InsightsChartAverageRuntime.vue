@@ -8,7 +8,7 @@ import {
 	generateLineChartOptions,
 } from '@/features/insights/chartjs.utils';
 import { useI18n } from '@/composables/useI18n';
-import { transformInsightsTimeSaved } from '@/features/insights/insights.utils';
+import { transformInsightsAverageRunTime } from '@/features/insights/insights.utils';
 import type { ScriptableContext } from 'chart.js';
 
 const props = defineProps<{
@@ -22,34 +22,20 @@ const chartOptions = ref(generateLineChartOptions());
 const chartData = computed(() => {
 	const labels: string[] = [];
 	const data: number[] = [];
-	const cumulativeData: number[] = [];
 
-	let cumulativeTimeSaved = 0;
 	for (const entry of props.data) {
 		labels.push(entry.date);
 
-		const timeSaved = transformInsightsTimeSaved(entry.values.timeSaved);
+		const value = transformInsightsAverageRunTime(entry.values.averageRunTime);
 
-		data.push(timeSaved);
-
-		cumulativeTimeSaved += timeSaved;
-		cumulativeData.push(cumulativeTimeSaved);
+		data.push(value);
 	}
 
 	return {
 		labels,
 		datasets: [
 			{
-				label: i18n.baseText('insights.banner.title.timeSavedDailyAverage'),
-				data: cumulativeData,
-				fill: true,
-				backgroundColor: 'rgba(255, 255, 255, 0.5)',
-				borderColor: 'rgba(116, 116, 116, 1)',
-				borderDash: [5, 5],
-				pointStyle: false,
-			},
-			{
-				label: i18n.baseText('insights.banner.title.timeSaved'),
+				label: i18n.baseText('insights.banner.title.averageRunTime'),
 				data,
 				cubicInterpolationMode: 'monotone' as const,
 				fill: true,
