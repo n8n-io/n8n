@@ -212,6 +212,11 @@ export function getNewFolderNameInput() {
 export function getNewFolderModalErrorMessage() {
 	return cy.get('.el-message-box__errormsg').filter(':visible');
 }
+
+export function getProjectTab(tabId: string) {
+	return cy.getByTestId('project-tabs').find(`#${tabId}`);
+}
+
 /**
  * Actions
  */

@@ -76,7 +76,7 @@ const connectedNodes = computed<
 		).reverse(),
 		[FloatingNodePosition.left]: getINodesFromNames(
 			workflow.getParentNodes(rootName, NodeConnectionTypes.Main, 1),
-		),
+		).reverse(),
 	};
 });
 
