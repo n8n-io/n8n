@@ -1,3 +1,12 @@
+## [1.84.2](https://github.com/n8n-io/n8n/compare/n8n@1.84.1...n8n@1.84.2) (2025-03-26)
+
+
+### Bug Fixes
+
+* **Basic LLM Chain Node:** Prevent incorrect wrapping of output ([#14183](https://github.com/n8n-io/n8n/issues/14183)) ([ac695ab](https://github.com/n8n-io/n8n/commit/ac695abfd68af2820e27745d60cc46db20832afc))
+
+
+
 ## [1.84.1](https://github.com/n8n-io/n8n/compare/n8n@1.84.0...n8n@1.84.1) (2025-03-18)
 
 
