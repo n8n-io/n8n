@@ -18,8 +18,8 @@ export class TelegramTrigger implements INodeType {
 		name: 'telegramTrigger',
 		icon: 'file:telegram.svg',
 		group: ['trigger'],
-		version: [1, 1.1],
-		defaultVersion: 1.1,
+		version: [1, 1.1, 1.2],
+		defaultVersion: 1.2,
 		subtitle: '=Updates: {{$parameter["updates"].join(", ")}}',
 		description: 'Starts the workflow on a Telegram update',
 		defaults: {
@@ -167,6 +167,32 @@ export class TelegramTrigger implements INodeType {
 						],
 						default: 'large',
 						description: 'The size of the image to be downloaded',
+					},
+					{
+						displayName: 'Restrict to Chat IDs',
+						name: 'chatIds',
+						type: 'string',
+						default: '',
+						description:
+							'The chat IDs to restrict the trigger to. Multiple can be defined separated by comma.',
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.1 } }],
+							},
+						},
+					},
+					{
+						displayName: 'Restrict to User IDs',
+						name: 'userIds',
+						type: 'string',
+						default: '',
+						description:
+							'The user IDs to restrict the trigger to. Multiple can be defined separated by comma.',
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.1 } }],
+							},
+						},
 					},
 				],
 			},
@@ -330,6 +356,24 @@ export class TelegramTrigger implements INodeType {
 						],
 					],
 				};
+			}
+		}
+
+		if (nodeVersion >= 1.2) {
+			if (additionalFields.chatIds) {
+				const chatIds = additionalFields.chatIds as string;
+				const splitIds = chatIds.split(',').map((chatId) => chatId.trim());
+				if (!splitIds.includes(String(bodyData.message?.chat?.id))) {
+					return {};
+				}
+			}
+
+			if (additionalFields.userIds) {
+				const userIds = additionalFields.userIds as string;
+				const splitIds = userIds.split(',').map((userId) => userId.trim());
+				if (!splitIds.includes(String(bodyData.message?.from?.id))) {
+					return {};
+				}
 			}
 		}
 
