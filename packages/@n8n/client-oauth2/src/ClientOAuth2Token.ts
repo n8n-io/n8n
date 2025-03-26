@@ -86,6 +86,14 @@ export class ClientOAuth2Token {
 		if (options.authentication === 'body') {
 			body.client_id = clientId;
 			body.client_secret = clientSecret;
+			if (options.accessTokenUri &&
+						((options.accessTokenUri.includes('tiktokapis.com') || options.accessTokenUri.includes('tiktok.com')) &&
+						 (options.accessTokenUri.includes('oauth') || options.accessTokenUri.includes('auth')))
+			) {
+							// For TikTok endpoints, use client_key and client_secret
+							body.client_key = clientId;
+							body.client_secret = clientSecret;
+			}
 		} else {
 			headers.Authorization = auth(clientId, clientSecret);
 		}
