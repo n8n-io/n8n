@@ -916,19 +916,20 @@ describe('getInsightsByWorkflow', () => {
 		expect(byWorkflow.data).toHaveLength(2);
 
 		// expect first workflow to be workflow 2, because it has a bigger total (default sorting)
-		expect(byWorkflow.data[0]).toEqual({
+		expect(byWorkflow.data[0]).toMatchObject({
 			workflowId: workflow2.id,
 			workflowName: workflow2.name,
 			projectId: project.id,
 			projectName: project.name,
 			total: 6,
-			failureRate: 2 / 6,
 			failed: 2,
 			runTime: 123,
 			succeeded: 4,
 			timeSaved: 0,
 			averageRunTime: 123 / 6,
 		});
+		// Expect rates to be close to js rate because db engines have different precision
+		expect(byWorkflow.data[0].failureRate).toBeCloseTo(2 / 6);
 
 		expect(byWorkflow.data[1]).toEqual({
 			workflowId: workflow1.id,

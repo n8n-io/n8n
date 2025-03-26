@@ -313,7 +313,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 					: `DATE_SUB(CURDATE(), INTERVAL ${nbDays} DAY)`;
 
 		const [sortField, sortOrder] = this.parseSortingParams(sortBy);
-		const sumOfExecutions = sql`CAST(SUM(CASE WHEN insights.type IN (${TypeToNumber.success.toString()}, ${TypeToNumber.failure.toString()}) THEN value ELSE 0 END) as FLOAT)`;
+		const sumOfExecutions = sql`SUM(CASE WHEN insights.type IN (${TypeToNumber.success.toString()}, ${TypeToNumber.failure.toString()}) THEN value ELSE 0 END)`;
 
 		const rawRowsQuery = this.createQueryBuilder('insights')
 			.select([
@@ -326,13 +326,13 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 				`SUM(CASE WHEN insights.type IN (${TypeToNumber.success}, ${TypeToNumber.failure}) THEN value ELSE 0 END) AS "total"`,
 				sql`CASE
 								WHEN ${sumOfExecutions} = 0 THEN 0
-								ELSE SUM(CASE WHEN insights.type = ${TypeToNumber.failure.toString()} THEN value ELSE 0 END) / ${sumOfExecutions}
+								ELSE 1.0 * SUM(CASE WHEN insights.type = ${TypeToNumber.failure.toString()} THEN value ELSE 0 END) / ${sumOfExecutions}
 							END AS "failureRate"`,
 				`SUM(CASE WHEN insights.type = ${TypeToNumber.runtime_ms} THEN value ELSE 0 END) AS "runTime"`,
 				`SUM(CASE WHEN insights.type = ${TypeToNumber.time_saved_min} THEN value ELSE 0 END) AS "timeSaved"`,
 				sql`CASE
 								WHEN ${sumOfExecutions} = 0	THEN 0
-								ELSE SUM(CASE WHEN insights.type = ${TypeToNumber.runtime_ms.toString()} THEN value ELSE 0 END) / ${sumOfExecutions}
+								ELSE 1.0 * SUM(CASE WHEN insights.type = ${TypeToNumber.runtime_ms.toString()} THEN value ELSE 0 END) / ${sumOfExecutions}
 							END AS "averageRunTime"`,
 			])
 			.innerJoin('insights.metadata', 'metadata')
