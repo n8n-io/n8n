@@ -3,12 +3,10 @@ import type { IDataObject } from 'n8n-workflow';
 /**
  * Formats the response from the LLM chain into a consistent structure
  */
-export function formatResponse(response: unknown): IDataObject {
+export function formatResponse(response: unknown, version: number): IDataObject {
 	if (typeof response === 'string') {
 		return {
-			response: {
-				text: response.trim(),
-			},
+			text: response.trim(),
 		};
 	}
 
@@ -19,7 +17,13 @@ export function formatResponse(response: unknown): IDataObject {
 	}
 
 	if (response instanceof Object) {
-		return response as IDataObject;
+		if (version >= 1.6) {
+			return response as IDataObject;
+		}
+
+		return {
+			text: JSON.stringify(response),
+		};
 	}
 
 	return {
