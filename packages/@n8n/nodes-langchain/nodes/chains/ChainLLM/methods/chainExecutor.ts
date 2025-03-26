@@ -15,7 +15,12 @@ import type { ChainExecutionParams } from './types';
 export function isModelWithResponseFormat(
 	llm: BaseLanguageModel,
 ): llm is BaseLanguageModel & { modelKwargs: { response_format: { type: string } } } {
-	return 'modelKwargs' in llm && !!llm.modelKwargs && typeof llm.modelKwargs === 'object';
+	return (
+		'modelKwargs' in llm &&
+		!!llm.modelKwargs &&
+		typeof llm.modelKwargs === 'object' &&
+		'response_format' in llm.modelKwargs
+	);
 }
 
 /**
