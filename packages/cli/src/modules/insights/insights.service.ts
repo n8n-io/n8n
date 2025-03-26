@@ -49,6 +49,10 @@ const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
 
 @Service()
 export class InsightsService {
+	private readonly maxAgeInDaysForHourlyData = 90;
+
+	private readonly maxAgeInDaysForDailyData = 180;
+
 	private compactInsightsTimer: NodeJS.Timer | undefined;
 
 	constructor(
@@ -163,6 +167,12 @@ export class InsightsService {
 		do {
 			numberOfCompactedHourData = await this.compactHourToDay();
 		} while (numberOfCompactedHourData > 0);
+
+		let numberOfCompactedDayData: number;
+		// Compact daily data to weekly aggregates
+		do {
+			numberOfCompactedDayData = await this.compactDayToWeek();
+		} while (numberOfCompactedDayData > 0);
 	}
 
 	// Compacts raw data to hourly aggregates
@@ -173,28 +183,42 @@ export class InsightsService {
 		);
 
 		return await this.insightsByPeriodRepository.compactSourceDataIntoInsightPeriod({
-			sourceBatchQuery: batchQuery.getSql(),
+			sourceBatchQuery: batchQuery,
 			sourceTableName: this.insightsRawRepository.metadata.tableName,
-			periodUnit: 'hour',
+			periodUnitToCompactInto: 'hour',
 		});
 	}
 
 	// Compacts hourly data to daily aggregates
 	async compactHourToDay() {
 		// get hour data query for batching
-		const batchQuery = this.insightsByPeriodRepository.getPeriodInsightsBatchQuery(
-			'hour',
-			config.compactionBatchSize,
-		);
+		const batchQuery = this.insightsByPeriodRepository.getPeriodInsightsBatchQuery({
+			periodUnitToCompactFrom: 'hour',
+			compactionBatchSize: config.compactionBatchSize,
+			maxAgeInDays: this.maxAgeInDaysForHourlyData,
+		});
 
 		return await this.insightsByPeriodRepository.compactSourceDataIntoInsightPeriod({
-			sourceBatchQuery: batchQuery.getSql(),
-			periodUnit: 'day',
+			sourceBatchQuery: batchQuery,
+			periodUnitToCompactInto: 'day',
 		});
 	}
 
-	// TODO: add return type once rebased on master and InsightsSummary is
-	// available
+	// Compacts daily data to weekly aggregates
+	async compactDayToWeek() {
+		// get daily data query for batching
+		const batchQuery = this.insightsByPeriodRepository.getPeriodInsightsBatchQuery({
+			periodUnitToCompactFrom: 'day',
+			compactionBatchSize: config.compactionBatchSize,
+			maxAgeInDays: this.maxAgeInDaysForDailyData,
+		});
+
+		return await this.insightsByPeriodRepository.compactSourceDataIntoInsightPeriod({
+			sourceBatchQuery: batchQuery,
+			periodUnitToCompactInto: 'week',
+		});
+	}
+
 	async getInsightsSummary(): Promise<InsightsSummary> {
 		const rows = await this.insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates();
 
@@ -241,32 +265,36 @@ export class InsightsService {
 		const currentTimeSaved = getValueByType('current', 'time_saved_min');
 		const previousTimeSaved = getValueByType('previous', 'time_saved_min');
 
+		// If the previous period has no executions, we discard deviation
+		const getDeviation = (current: number, previous: number) =>
+			previousTotal === 0 ? null : current - previous;
+
 		// Return the formatted result
 		const result: InsightsSummary = {
 			averageRunTime: {
 				value: currentAvgRuntime,
 				unit: 'time',
-				deviation: currentAvgRuntime - previousAvgRuntime,
+				deviation: getDeviation(currentAvgRuntime, previousAvgRuntime),
 			},
 			failed: {
 				value: currentFailures,
 				unit: 'count',
-				deviation: currentFailures - previousFailures,
+				deviation: getDeviation(currentFailures, previousFailures),
 			},
 			failureRate: {
 				value: currentFailureRate,
 				unit: 'ratio',
-				deviation: currentFailureRate - previousFailureRate,
+				deviation: getDeviation(currentFailureRate, previousFailureRate),
 			},
 			timeSaved: {
 				value: currentTimeSaved,
 				unit: 'time',
-				deviation: currentTimeSaved - previousTimeSaved,
+				deviation: getDeviation(currentTimeSaved, previousTimeSaved),
 			},
 			total: {
 				value: currentTotal,
 				unit: 'count',
-				deviation: currentTotal - previousTotal,
+				deviation: getDeviation(currentTotal, previousTotal),
 			},
 		};
 

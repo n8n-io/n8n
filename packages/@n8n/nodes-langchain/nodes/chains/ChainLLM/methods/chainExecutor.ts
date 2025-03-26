@@ -1,5 +1,6 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import { StringOutputParser } from '@langchain/core/output_parsers';
+import type { BaseLLMOutputParser } from '@langchain/core/output_parsers';
+import { JsonOutputParser, StringOutputParser } from '@langchain/core/output_parsers';
 import type { ChatPromptTemplate, PromptTemplate } from '@langchain/core/prompts';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
@@ -7,6 +8,46 @@ import { getTracingConfig } from '@utils/tracing';
 
 import { createPromptTemplate } from './promptUtils';
 import type { ChainExecutionParams } from './types';
+
+/**
+ * Type guard to check if the LLM has a modelKwargs property(OpenAI)
+ */
+export function isModelWithResponseFormat(
+	llm: BaseLanguageModel,
+): llm is BaseLanguageModel & { modelKwargs: { response_format: { type: string } } } {
+	return (
+		'modelKwargs' in llm &&
+		!!llm.modelKwargs &&
+		typeof llm.modelKwargs === 'object' &&
+		'response_format' in llm.modelKwargs
+	);
+}
+
+/**
+ * Type guard to check if the LLM has a format property(Ollama)
+ */
+export function isModelWithFormat(
+	llm: BaseLanguageModel,
+): llm is BaseLanguageModel & { format: string } {
+	return 'format' in llm && typeof llm.format !== 'undefined';
+}
+
+/**
+ * Determines if an LLM is configured to output JSON and returns the appropriate output parser
+ */
+export function getOutputParserForLLM(
+	llm: BaseLanguageModel,
+): BaseLLMOutputParser<string | Record<string, unknown>> {
+	if (isModelWithResponseFormat(llm) && llm.modelKwargs?.response_format?.type === 'json_object') {
+		return new JsonOutputParser();
+	}
+
+	if (isModelWithFormat(llm) && llm.format === 'json') {
+		return new JsonOutputParser();
+	}
+
+	return new StringOutputParser();
+}
 
 /**
  * Creates a simple chain for LLMs without output parsers
@@ -21,11 +62,10 @@ async function executeSimpleChain({
 	llm: BaseLanguageModel;
 	query: string;
 	prompt: ChatPromptTemplate | PromptTemplate;
-}): Promise<string[]> {
-	const chain = prompt
-		.pipe(llm)
-		.pipe(new StringOutputParser())
-		.withConfig(getTracingConfig(context));
+}) {
+	const outputParser = getOutputParserForLLM(llm);
+
+	const chain = prompt.pipe(llm).pipe(outputParser).withConfig(getTracingConfig(context));
 
 	// Execute the chain
 	const response = await chain.invoke({
