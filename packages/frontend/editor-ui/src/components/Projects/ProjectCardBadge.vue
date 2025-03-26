@@ -172,6 +172,20 @@ const cardBreadcrumbs = computed<PathItem[]>(() => {
 	return [];
 });
 
+const homeProjectLink = computed(() => {
+	if (
+		!isWorkflowResource(props.resource) ||
+		hideBreadcrumbsFor.includes(projectState.value) ||
+		!props.resource.homeProject
+	) {
+		return null;
+	}
+	return router.resolve({
+		name: VIEWS.PROJECTS_WORKFLOWS,
+		params: { projectId: props.resource.homeProject.id },
+	}).href;
+});
+
 const onBreadcrumbItemClick = async (item: PathItem) => {
 	if (item.href) {
 		await router.push(item.href);
@@ -199,13 +213,25 @@ const fetchHiddenBreadCrumbsItems = async () => {
 		<N8nTooltip :disabled="!badgeTooltip || numberOfMembersInHomeTeamProject !== 0" placement="top">
 			<div
 				v-if="badgeText"
-				:class="[$style.projectBadge]"
+				:class="$style['project-badge']"
 				theme="tertiary"
 				bold
 				data-test-id="card-badge"
 			>
-				<ProjectIcon :icon="badgeIcon" :border-less="true" size="mini" />
-				<span v-n8n-truncate:20 :class="$style['badge-text']">{{ badgeText }}</span>
+				<n8n-link
+					v-if="homeProjectLink"
+					:to="homeProjectLink"
+					:class="$style['home-project']"
+					theme="text"
+					size="small"
+				>
+					<ProjectIcon :icon="badgeIcon" :border-less="true" size="mini" />
+					<span v-n8n-truncate:20 :class="$style['badge-text']">{{ badgeText }}</span>
+				</n8n-link>
+				<div v-else :class="$style['home-project']">
+					<ProjectIcon :icon="badgeIcon" :border-less="true" size="mini" />
+					<span v-n8n-truncate:20 :class="$style['badge-text']">{{ badgeText }}</span>
+				</div>
 			</div>
 			<template #content>
 				{{ badgeTooltip }}
@@ -230,7 +256,7 @@ const fetchHiddenBreadCrumbsItems = async () => {
 		<N8nTooltip :disabled="!badgeTooltip || numberOfMembersInHomeTeamProject === 0" placement="top">
 			<div
 				v-if="numberOfMembersInHomeTeamProject"
-				:class="[$style.countBadge]"
+				:class="$style['count-badge']"
 				theme="tertiary"
 				bold
 			>
@@ -251,24 +277,26 @@ const fetchHiddenBreadCrumbsItems = async () => {
 	border-radius: var(--border-radius-base);
 }
 
-.projectBadge {
+.home-project,
+.home-project :global(.n8n-text) {
 	display: flex;
-	gap: var(--spacing-4xs);
 	align-items: center;
+	gap: var(--spacing-4xs);
+	color: var(--color-text-dark);
 }
 
-.projectBadge,
-.countBadge {
+.project-badge,
+.count-badge {
 	font-size: var(--font-size-2xs);
 	padding: var(--spacing-4xs) var(--spacing-3xs);
 }
 
-.countBadge {
+.count-badge {
 	border-left: var(--border-base);
 }
 
 .with-breadcrumbs {
-	.projectBadge {
+	.project-badge {
 		padding-right: 0;
 	}
 	:global(.n8n-breadcrumbs) {
