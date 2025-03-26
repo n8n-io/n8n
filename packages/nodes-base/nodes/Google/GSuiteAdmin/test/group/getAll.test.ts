@@ -1,112 +1,90 @@
-import type { INodeTypes } from 'n8n-workflow';
+import nock from 'nock';
 
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
-import { getResultNodeData, setup, workflowToTests } from '@test/nodes/Helpers';
-import type { WorkflowTestData } from '@test/nodes/types';
+import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
 
-import * as transport from '../../GenericFunctions';
-
-const googleApiRequestSpy = jest.spyOn(transport, 'googleApiRequestAllItems');
-
-googleApiRequestSpy.mockImplementation(
-	async (_propertyName: string, method: string, endpoint: string) => {
-		if (method === 'GET' && endpoint === '/directory/v1/groups') {
-			return [
-				{
-					kind: 'admin#directory#group',
-					id: '01302m922pmp3e4',
-					etag: '"6888FoxdqGNyNxXYrlQh-KP52AygR_AaaaSbYcusikU/ylsF-zssssssi_N647777sSGHETw"',
-					email: 'new3@example.com',
-					name: 'new2',
-					directMembersCount: '2',
-					description: 'new1',
-					adminCreated: true,
-					aliases: ['new2@example.com', 'new@example.com', 'NewOnes@example.com'],
-					nonEditableAliases: [
-						'NewOnes@example.com.test-google-a.com',
-						'new@example.com.test-google-a.com',
-						'new2@example.com.test-google-a.com',
-						'new3@example.com.test-google-a.com',
-					],
-				},
-				{
-					kind: 'admin#directory#group',
-					id: '01x0gk37352528',
-					etag: '"7hJ8FoxdqGNaaaaaaaaa-KP52AygR_AihQSbYcusikU/wcHUUl5DBsuBkBI15tT1EPJpiGy00"',
-					email: 'newoness@example.com',
-					name: 'NewOness',
-					directMembersCount: '1',
-					description: 'test',
-					adminCreated: true,
-					nonEditableAliases: ['NewOness@example.com.test-google-a.com'],
-				},
-			];
-		}
-	},
-);
-
-describe('Google Workspace Admin - Get Many Groups', () => {
+describe('Google GSuiteAdmin Node', () => {
 	const workflows = ['nodes/Google/GSuiteAdmin/test/group/getAll.workflow.json'];
-	const tests = workflowToTests(workflows);
-	const nodeTypes = setup(tests);
+	const workflowTests = workflowToTests(workflows);
 
-	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {
-		const { result } = await executeWorkflow(testData, types);
-		const resultNodeData = getResultNodeData(result, testData);
+	describe('should get many groups', () => {
+		const nodeTypes = setup(workflowTests);
 
-		const expectedOutput = [
-			{
-				json: {
-					kind: 'admin#directory#group',
-					id: '01302m922pmp3e4',
-					etag: '"6888FoxdqGNyNxXYrlQh-KP52AygR_AaaaSbYcusikU/ylsF-zssssssi_N647777sSGHETw"',
-					email: 'new3@example.com',
-					name: 'new2',
-					directMembersCount: '2',
-					description: 'new1',
-					adminCreated: true,
-					aliases: ['new2@example.com', 'new@example.com', 'NewOnes@example.com'],
-					nonEditableAliases: [
-						'NewOnes@example.com.test-google-a.com',
-						'new@example.com.test-google-a.com',
-						'new2@example.com.test-google-a.com',
-						'new3@example.com.test-google-a.com',
+		for (const workflow of workflowTests) {
+			workflow.nock = {
+				baseUrl: 'https://www.googleapis.com/admin',
+				mocks: [
+					{
+						method: 'get',
+						path: '/directory/v1/groups',
+						statusCode: 200,
+						responseBody: {
+							kind: 'admin#directory#groups',
+							etag: '"test_etag"',
+							groups: [
+								{
+									kind: 'admin#directory#group',
+									id: '01x0gk373c9z46j',
+									etag: '"example"',
+									email: 'newoness@example.com',
+									name: 'NewOness',
+									directMembersCount: '1',
+									description: 'test',
+									adminCreated: true,
+									nonEditableAliases: ['NewOness@example.com.test-google-a.com'],
+								},
+								{
+									kind: 'admin#directory#group',
+									id: '01tuee742txc3k4',
+									etag: '"example"',
+									email: 'newonesss@example.com',
+									name: 'NewOne3',
+									directMembersCount: '0',
+									description: 'test',
+									adminCreated: true,
+									nonEditableAliases: ['NewOnesss@example.com.test-google-a.com'],
+								},
+							],
+						},
+					},
+				],
+			};
+
+			nock('https://www.googleapis.com/admin')
+				.get('/directory/v1/groups')
+				.query({
+					customer: 'my_customer',
+					maxResults: '100',
+				})
+				.reply(200, {
+					kind: 'admin#directory#groups',
+					etag: '"test_etag"',
+					groups: [
+						{
+							kind: 'admin#directory#group',
+							id: '01x0gk373c9z46j',
+							etag: '"example"',
+							email: 'newoness@example.com',
+							name: 'NewOness',
+							directMembersCount: '1',
+							description: 'test',
+							adminCreated: true,
+							nonEditableAliases: ['NewOness@example.com.test-google-a.com'],
+						},
+						{
+							kind: 'admin#directory#group',
+							id: '01tuee742txc3k4',
+							etag: '"example"',
+							email: 'newonesss@example.com',
+							name: 'NewOne3',
+							directMembersCount: '0',
+							description: 'test',
+							adminCreated: true,
+							nonEditableAliases: ['NewOnesss@example.com.test-google-a.com'],
+						},
 					],
-				},
-			},
-			{
-				json: {
-					kind: 'admin#directory#group',
-					id: '01x0gk37352528',
-					etag: '"7hJ8FoxdqGNaaaaaaaaa-KP52AygR_AihQSbYcusikU/wcHUUl5DBsuBkBI15tT1EPJpiGy00"',
-					email: 'newoness@example.com',
-					name: 'NewOness',
-					directMembersCount: '1',
-					description: 'test',
-					adminCreated: true,
-					nonEditableAliases: ['NewOness@example.com.test-google-a.com'],
-				},
-			},
-		];
+				});
 
-		resultNodeData.forEach(({ resultData }) => {
-			const flattenedResultData = resultData.flat();
-			expect(flattenedResultData).toEqual(expectedOutput);
-		});
-
-		expect(googleApiRequestSpy).toHaveBeenCalledTimes(1);
-		expect(googleApiRequestSpy).toHaveBeenCalledWith(
-			'groups',
-			'GET',
-			'/directory/v1/groups',
-			{},
-			{ customer: 'my_customer' },
-		);
-
-		expect(result.finished).toEqual(true);
-	};
-
-	for (const testData of tests) {
-		test(testData.description, async () => await testNode(testData, nodeTypes));
-	}
+			test(workflow.description, async () => await equalityTest(workflow, nodeTypes));
+		}
+	});
 });

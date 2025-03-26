@@ -1,44 +1,26 @@
-import type { INodeTypes } from 'n8n-workflow';
+import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
 
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
-import { getResultNodeData, setup, workflowToTests } from '@test/nodes/Helpers';
-import type { WorkflowTestData } from '@test/nodes/types';
-
-import * as transport from '../../GenericFunctions';
-
-const googleApiRequestSpy = jest.spyOn(transport, 'googleApiRequest');
-
-googleApiRequestSpy.mockImplementation(async (method: string, resource: string) => {
-	if (method === 'DELETE' && resource === '/directory/v1/groups/02233352528s1jz') {
-		return {};
-	}
-});
-
-describe('Google Workspace Admin - Delete Group', () => {
+describe('Google GSuiteAdmin Node', () => {
 	const workflows = ['nodes/Google/GSuiteAdmin/test/group/delete.workflow.json'];
-	const tests = workflowToTests(workflows);
-	const nodeTypes = setup(tests);
+	const workflowTests = workflowToTests(workflows);
 
-	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {
-		const { result } = await executeWorkflow(testData, types);
-		const resultNodeData = getResultNodeData(result, testData);
+	describe('should delete group', () => {
+		const nodeTypes = setup(workflowTests);
 
-		const expectedOutput = [{ json: { success: true } }];
+		for (const workflow of workflowTests) {
+			workflow.nock = {
+				baseUrl: 'https://www.googleapis.com/admin',
+				mocks: [
+					{
+						method: 'delete',
+						path: '/directory/v1/groups/01302m922pmp3e4',
+						statusCode: 204,
+						responseBody: '',
+					},
+				],
+			};
 
-		resultNodeData.forEach(({ resultData }) => {
-			expect(resultData).toEqual([expectedOutput]);
-		});
-
-		expect(googleApiRequestSpy).toHaveBeenCalledTimes(1);
-		expect(googleApiRequestSpy).toHaveBeenCalledWith(
-			'DELETE',
-			'/directory/v1/groups/02233352528s1jz',
-			{},
-		);
-		expect(result.finished).toEqual(true);
-	};
-
-	for (const testData of tests) {
-		test(testData.description, async () => await testNode(testData, nodeTypes));
-	}
+			test(workflow.description, async () => await equalityTest(workflow, nodeTypes));
+		}
+	});
 });

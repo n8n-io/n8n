@@ -1,119 +1,85 @@
-import type { INodeTypes } from 'n8n-workflow';
+import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
 
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
-import { getResultNodeData, setup, workflowToTests } from '@test/nodes/Helpers';
-import type { WorkflowTestData } from '@test/nodes/types';
-
-import * as transport from '../../GenericFunctions';
-
-const googleApiRequestSpy = jest.spyOn(transport, 'googleApiRequest');
-
-googleApiRequestSpy.mockImplementation(async (method: string, resource: string) => {
-	if (method === 'PUT' && resource === '/directory/v1/users/109459372679230452528') {
-		return {
-			kind: 'admin#directory#user',
-			id: '109459372679230452528',
-			etag: '"sssPvLCfb9kD8ZWWJ2SmiAAGttWx4uxgdgOjgAg0/AvS6MdzbMMMOMBMu0pnCUFh_RRR"',
-			primaryEmail: 'one@example.com',
-			name: {
-				givenName: 'test',
-				familyName: 'new',
-			},
-			isAdmin: true,
-			isDelegatedAdmin: false,
-			creationTime: '2024-09-06T11:48:38.000Z',
-			suspended: false,
-			archived: true,
-			phones: [
-				{
-					type: 'assistant',
-					value: '123',
-					primary: true,
-				},
-			],
-			emails: [
-				{
-					type: 'home',
-					address: 'newone@example.com',
-				},
-			],
-		};
-	}
-});
-
-describe('Google Workspace Admin - Update User', () => {
+describe('Google GSuiteAdmin Node', () => {
 	const workflows = ['nodes/Google/GSuiteAdmin/test/user/update.workflow.json'];
-	const tests = workflowToTests(workflows);
-	const nodeTypes = setup(tests);
+	const workflowTests = workflowToTests(workflows);
 
-	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {
-		const { result } = await executeWorkflow(testData, types);
-		const resultNodeData = getResultNodeData(result, testData);
+	describe('should update user', () => {
+		const nodeTypes = setup(workflowTests);
 
-		const expectedOutput = [
-			{
-				json: {
-					kind: 'admin#directory#user',
-					id: '109459372679230452528',
-					etag: '"sssPvLCfb9kD8ZWWJ2SmiAAGttWx4uxgdgOjgAg0/AvS6MdzbMMMOMBMu0pnCUFh_RRR"',
-					primaryEmail: 'one@example.com',
-					name: {
-						givenName: 'test',
-						familyName: 'new',
-					},
-					isAdmin: true,
-					isDelegatedAdmin: false,
-					creationTime: '2024-09-06T11:48:38.000Z',
-					suspended: false,
-					archived: true,
-					phones: [
-						{
-							type: 'assistant',
-							value: '123',
-							primary: true,
-						},
-					],
-					emails: [
-						{
-							type: 'home',
-							address: 'newone@example.com',
-						},
-					],
-				},
-			},
-		];
-
-		resultNodeData.forEach(({ resultData }) => {
-			expect(resultData).toEqual([expectedOutput]);
-		});
-
-		expect(googleApiRequestSpy).toHaveBeenCalledTimes(1);
-		expect(googleApiRequestSpy).toHaveBeenCalledWith(
-			'PUT',
-			'/directory/v1/users/109459372679230452528',
-			expect.objectContaining({
-				name: { givenName: 'test', familyName: 'new' },
-				primaryEmail: 'one@example.com',
-				phones: [
+		for (const workflow of workflowTests) {
+			workflow.nock = {
+				baseUrl: 'https://www.googleapis.com/admin',
+				mocks: [
 					{
-						type: 'assistant',
-						value: '123',
-						primary: true,
+						method: 'put',
+						path: '/directory/v1/users/101071249467630629404',
+						statusCode: 200,
+						requestBody: {
+							name: {
+								givenName: 'test',
+								familyName: 'new',
+							},
+							primaryEmail: 'one@example.com',
+							phones: [
+								{
+									type: 'assistant',
+									value: '123',
+									primary: true,
+								},
+							],
+							emails: [
+								{
+									address: 'newone@example.com',
+									type: 'home',
+								},
+							],
+						},
+						responseBody: {
+							kind: 'admin#directory#user',
+							id: '101071249467630629404',
+							etag: '"example"',
+							primaryEmail: 'one@example.com',
+							name: {
+								givenName: 'test',
+								familyName: 'new',
+							},
+							isAdmin: false,
+							isDelegatedAdmin: false,
+							lastLoginTime: '1970-01-01T00:00:00.000Z',
+							creationTime: '2025-03-26T21:28:53.000Z',
+							agreedToTerms: false,
+							suspended: false,
+							archived: false,
+							changePasswordAtNextLogin: false,
+							ipWhitelisted: false,
+							emails: [
+								{
+									address: 'newone@example.com',
+									type: 'home',
+								},
+							],
+							phones: [
+								{
+									value: '123',
+									primary: true,
+									type: 'assistant',
+								},
+							],
+							aliases: ['new22@example.com'],
+							nonEditableAliases: ['new22@example.com.test-google-a.com'],
+							customerId: 'C0442hnz1',
+							orgUnitPath: '/',
+							isMailboxSetup: false,
+							includeInGlobalAddressList: true,
+							thumbnailPhotoUrl: '//example',
+							thumbnailPhotoEtag: '"example"',
+							recoveryEmail: '',
+						},
 					},
 				],
-				emails: [
-					{
-						type: 'home',
-						address: 'newone@example.com',
-					},
-				],
-			}),
-			expect.any(Object),
-		);
-		expect(result.finished).toEqual(true);
-	};
-
-	for (const testData of tests) {
-		test(testData.description, async () => await testNode(testData, nodeTypes));
-	}
+			};
+			test(workflow.description, async () => await equalityTest(workflow, nodeTypes));
+		}
+	});
 });

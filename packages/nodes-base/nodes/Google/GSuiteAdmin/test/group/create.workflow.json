@@ -3,7 +3,8 @@
 		{
 			"parameters": {
 				"resource": "group",
-				"email": "New@example.com",
+				"name": "Test",
+				"email": "NewOnes22@example.com",
 				"additionalFields": {
 					"description": "test"
 				}
@@ -12,20 +13,28 @@
 			"typeVersion": 1,
 			"position": [-540, 620],
 			"id": "12a513a4-e367-4ed1-a08c-be8fefc2d5a6",
-			"name": "Create Group1"
+			"name": "Create Group",
+			"credentials": {
+				"gSuiteAdminOAuth2Api": {
+					"id": "OXfPMaggXFJ0RLkw",
+					"name": "Google Workspace Admin account"
+				}
+			}
 		}
 	],
 	"connections": {},
 	"pinData": {
-		"Create Group1": [
+		"Create Group": [
 			{
-				"kind": "admin#directory#group",
-				"id": "01tuee742txc3k4",
-				"etag": "\"Cff-ppPVZc7PJf2fWsHJTl4444MdGbO8iFIk3L4uBwQ/ifaP-fffffb1DYLTXXgQ5XB_77777\"",
-				"email": "New@example.com",
-				"name": "NewOne3",
-				"description": "test",
-				"adminCreated": true
+				"json": {
+					"kind": "admin#directory#group",
+					"id": "03mzq4wv15cepg2",
+					"etag": "\"example\"",
+					"email": "NewOnes22@example.com",
+					"name": "Test",
+					"description": "test",
+					"adminCreated": true
+				}
 			}
 		]
 	},

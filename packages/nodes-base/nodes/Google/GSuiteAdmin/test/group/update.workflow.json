@@ -33,18 +33,20 @@
 	"pinData": {
 		"Update Group": [
 			{
-				"kind": "admin#directory#group",
-				"id": "01302m922p525286",
-				"etag": "\"DfV-pPPVZc7PJf2fSsHJTl4434ddGbO8iFIk3L4uBsQ/j-sWTPmbX5555RNjrFdaXXXk\"",
-				"email": "new3@example.com",
-				"name": "new2",
-				"description": "new1",
-				"adminCreated": true,
-				"aliases": ["new@example.com", "NewOnes@example.com", "new2@example.com"],
-				"nonEditableAliases": [
-					"NewOnes@example.com.test-google-a.com",
-					"new@example.com.test-google-a.com"
-				]
+				"json": {
+					"kind": "admin#directory#group",
+					"id": "01302m922p525286",
+					"etag": "\"example\"",
+					"email": "new3@example.com",
+					"name": "new2",
+					"description": "new1",
+					"adminCreated": true,
+					"aliases": ["new@example.com", "NewOnes@example.com", "new2@example.com"],
+					"nonEditableAliases": [
+						"NewOnes@example.com.test-google-a.com",
+						"new@example.com.test-google-a.com"
+					]
+				}
 			}
 		]
 	},

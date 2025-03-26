@@ -31,8 +31,10 @@
 	"pinData": {
 		"Get Many Device": [
 			{
-				"kind": "admin#directory#chromeosdevices",
-				"etag": "\"6gJ8FoxdqGNyNxXYrlQh-KP52AygR_AihQSbYcusikU/oMWMqbsluP5m2PCo8Y7WmWeHGP4\""
+				"json": {
+					"kind": "admin#directory#chromeosdevices",
+					"etag": "\"example\""
+				}
 			}
 		]
 	},

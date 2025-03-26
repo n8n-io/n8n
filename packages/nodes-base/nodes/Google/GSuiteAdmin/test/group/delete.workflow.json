@@ -6,23 +6,29 @@
 				"operation": "delete",
 				"groupId": {
 					"__rl": true,
-					"value": "02233352528s1jz",
+					"value": "01302m922pmp3e4",
 					"mode": "list",
-					"cachedResultName": "NewOne"
+					"cachedResultName": "new2"
 				}
 			},
 			"type": "n8n-nodes-base.gSuiteAdmin",
 			"typeVersion": 1,
 			"position": [-540, 1000],
 			"id": "42ac4bfd-470a-4d0f-aa9d-f16774d81a84",
-			"name": "Delete Group"
+			"name": "Delete Group",
+			"credentials": {
+				"gSuiteAdminOAuth2Api": {
+					"id": "OXfPMaggXFJ0RLkw",
+					"name": "Google Workspace Admin account"
+				}
+			}
 		}
 	],
 	"connections": {},
 	"pinData": {
 		"Delete Group": [
 			{
-				"success": true
+				"json": { "success": true }
 			}
 		]
 	},

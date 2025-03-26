@@ -5,34 +5,42 @@
 				"operation": "get",
 				"userId": {
 					"__rl": true,
-					"value": "112507770188715252528",
+					"value": "112507770188715252026",
 					"mode": "list",
-					"cachedResultName": "New One User"
+					"cachedResultName": "NewOne22 User22"
 				}
 			},
 			"type": "n8n-nodes-base.gSuiteAdmin",
 			"typeVersion": 1,
 			"position": [-800, 620],
 			"id": "51a77914-4298-4aab-96a0-d75f3f813fc7",
-			"name": "Get User"
+			"name": "Get User",
+			"credentials": {
+				"gSuiteAdminOAuth2Api": {
+					"id": "OXfPMaggXFJ0RLkw",
+					"name": "Google Workspace Admin account"
+				}
+			}
 		}
 	],
 	"connections": {},
 	"pinData": {
 		"Get User": [
 			{
-				"kind": "admin#directory#user",
-				"id": "112507770188715252528",
-				"primaryEmail": "new22@example.com",
-				"name": {
-					"givenName": "New One",
-					"familyName": "User",
-					"fullName": "New One User"
-				},
-				"isAdmin": false,
-				"lastLoginTime": "1970-01-01T00:00:00.000Z",
-				"creationTime": "2024-12-20T20:48:53.000Z",
-				"suspended": true
+				"json": {
+					"kind": "admin#directory#user",
+					"id": "112507770188715252026",
+					"primaryEmail": "new@example.com",
+					"name": {
+						"givenName": "New One",
+						"familyName": "User",
+						"fullName": "New One User"
+					},
+					"isAdmin": false,
+					"lastLoginTime": "1970-01-01T00:00:00.000Z",
+					"creationTime": "2024-12-20T20:48:53.000Z",
+					"suspended": true
+				}
 			}
 		]
 	},

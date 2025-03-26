@@ -33,7 +33,7 @@
 	"pinData": {
 		"Add To Group": [
 			{
-				"added": true
+				"json": { "added": true }
 			}
 		]
 	},

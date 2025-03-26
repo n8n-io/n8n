@@ -5,9 +5,9 @@
 				"operation": "update",
 				"userId": {
 					"__rl": true,
-					"value": "109459372679230452528",
+					"value": "101071249467630629404",
 					"mode": "list",
-					"cachedResultName": "Goo Goo"
+					"cachedResultName": "NewOne22 User22"
 				},
 				"updateFields": {
 					"archived": true,
@@ -37,55 +37,60 @@
 			"typeVersion": 1,
 			"position": [-800, 1000],
 			"id": "0a7b02a4-5ffa-4c0b-a385-732368376e88",
-			"name": "Update User"
+			"name": "Update User1",
+			"credentials": {
+				"gSuiteAdminOAuth2Api": {
+					"id": "OXfPMaggXFJ0RLkw",
+					"name": "Google Workspace Admin account"
+				}
+			}
 		}
 	],
 	"connections": {},
 	"pinData": {
-		"Update User": [
+		"Update User1": [
 			{
-				"kind": "admin#directory#user",
-				"id": "109459372679230452528",
-				"etag": "\"sssPvLCfb9kD8ZWWJ2SmiAAGttWx4uxgdgOjgAg0/AvS6MdzbMMMOMBMu0pnCUFh_RRR\"",
-				"primaryEmail": "test@example.com",
-				"name": {
-					"givenName": "test",
-					"familyName": "new"
-				},
-				"isAdmin": true,
-				"isDelegatedAdmin": false,
-				"lastLoginTime": "2024-12-19T08:39:56.000Z",
-				"creationTime": "2024-09-06T11:48:38.000Z",
-				"agreedToTerms": true,
-				"suspended": false,
-				"archived": false,
-				"changePasswordAtNextLogin": false,
-				"ipWhitelisted": false,
-				"emails": [
-					{
-						"address": "newone@example.com",
-						"type": "home"
-					}
-				],
-				"phones": [
-					{
-						"value": "123",
-						"primary": true,
-						"type": "assistant"
-					}
-				],
-				"aliases": ["admin-google@example.com"],
-				"nonEditableAliases": [
-					"admin-google@example.com.test-google-a.com",
-					"test@example.com.test-google-a.com"
-				],
-				"customerId": "C0442hnz1",
-				"orgUnitPath": "/",
-				"isMailboxSetup": false,
-				"includeInGlobalAddressList": true,
-				"thumbnailPhotoUrl": "//lh3.googleusercontent.com/a/SSSSSSSSSSSSSSSS-aaaaaaaaaaaabbbbbbbbbbbbbbbbbbbbbbbbbb=mo",
-				"thumbnailPhotoEtag": "\"vv5PvKCfb9kD8ZfWJ2Smlmmmmmmx4uxgdiOjzAg0/Hhw72dayW4xtsDDDDDDDBmfnzb\"",
-				"recoveryEmail": "endymion@ewe.net"
+				"json": {
+					"kind": "admin#directory#user",
+					"id": "101071249467630629404",
+					"etag": "\"example\"",
+					"primaryEmail": "one@example.com",
+					"name": {
+						"givenName": "test",
+						"familyName": "new"
+					},
+					"isAdmin": false,
+					"isDelegatedAdmin": false,
+					"lastLoginTime": "1970-01-01T00:00:00.000Z",
+					"creationTime": "2025-03-26T21:28:53.000Z",
+					"agreedToTerms": false,
+					"suspended": false,
+					"archived": false,
+					"changePasswordAtNextLogin": false,
+					"ipWhitelisted": false,
+					"emails": [
+						{
+							"address": "newone@example.com",
+							"type": "home"
+						}
+					],
+					"phones": [
+						{
+							"value": "123",
+							"primary": true,
+							"type": "assistant"
+						}
+					],
+					"aliases": ["new22@example.com"],
+					"nonEditableAliases": ["new22@example.com.test-google-a.com"],
+					"customerId": "C0442hnz1",
+					"orgUnitPath": "/",
+					"isMailboxSetup": false,
+					"includeInGlobalAddressList": true,
+					"thumbnailPhotoUrl": "//example",
+					"thumbnailPhotoEtag": "\"example\"",
+					"recoveryEmail": ""
+				}
 			}
 		]
 	},

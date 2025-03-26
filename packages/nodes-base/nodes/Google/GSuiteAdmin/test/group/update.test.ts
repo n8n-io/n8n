@@ -1,78 +1,39 @@
-import type { INodeTypes } from 'n8n-workflow';
+import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
 
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
-import { getResultNodeData, setup, workflowToTests } from '@test/nodes/Helpers';
-import type { WorkflowTestData } from '@test/nodes/types';
-
-import * as transport from '../../GenericFunctions';
-
-const googleApiRequestSpy = jest.spyOn(transport, 'googleApiRequest');
-
-googleApiRequestSpy.mockImplementation(async (method: string, resource: string) => {
-	if (method === 'PUT' && resource === '/directory/v1/groups/01302m922p525286') {
-		return {
-			kind: 'admin#directory#group',
-			id: '01302m922p525286',
-			etag: '"DfV-pPPVZc7PJf2fSsHJTl4434ddGbO8iFIk3L4uBsQ/j-sWTPmbX5555RNjrFdaXXXk"',
-			email: 'new3@example.com',
-			name: 'new2',
-			description: 'new1',
-			adminCreated: true,
-			aliases: ['new@example.com', 'NewOnes@example.com', 'new2@example.com'],
-			nonEditableAliases: [
-				'NewOnes@example.com.test-google-a.com',
-				'new@example.com.test-google-a.com',
-			],
-		};
-	}
-});
-
-describe('Google Workspace Admin - Update Group', () => {
+describe('Google GSuiteAdmin Node', () => {
 	const workflows = ['nodes/Google/GSuiteAdmin/test/group/update.workflow.json'];
-	const tests = workflowToTests(workflows);
-	const nodeTypes = setup(tests);
+	const workflowTests = workflowToTests(workflows);
 
-	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {
-		const { result } = await executeWorkflow(testData, types);
-		const resultNodeData = getResultNodeData(result, testData);
+	describe('should update group', () => {
+		const nodeTypes = setup(workflowTests);
 
-		const expectedOutput = [
-			{
-				json: {
-					kind: 'admin#directory#group',
-					id: '01302m922p525286',
-					etag: '"DfV-pPPVZc7PJf2fSsHJTl4434ddGbO8iFIk3L4uBsQ/j-sWTPmbX5555RNjrFdaXXXk"',
-					email: 'new3@example.com',
-					name: 'new2',
-					description: 'new1',
-					adminCreated: true,
-					aliases: ['new@example.com', 'NewOnes@example.com', 'new2@example.com'],
-					nonEditableAliases: [
-						'NewOnes@example.com.test-google-a.com',
-						'new@example.com.test-google-a.com',
-					],
-				},
-			},
-		];
+		for (const workflow of workflowTests) {
+			workflow.nock = {
+				baseUrl: 'https://www.googleapis.com/admin',
+				mocks: [
+					{
+						method: 'put',
+						path: '/directory/v1/groups/01302m922p525286',
+						statusCode: 200,
+						responseBody: {
+							kind: 'admin#directory#group',
+							id: '01302m922p525286',
+							etag: '"example"',
+							email: 'new3@example.com',
+							name: 'new2',
+							description: 'new1',
+							adminCreated: true,
+							aliases: ['new@example.com', 'NewOnes@example.com', 'new2@example.com'],
+							nonEditableAliases: [
+								'NewOnes@example.com.test-google-a.com',
+								'new@example.com.test-google-a.com',
+							],
+						},
+					},
+				],
+			};
 
-		resultNodeData.forEach(({ resultData }) => {
-			expect(resultData).toEqual([expectedOutput]);
-		});
-
-		expect(googleApiRequestSpy).toHaveBeenCalledTimes(1);
-		expect(googleApiRequestSpy).toHaveBeenCalledWith(
-			'PUT',
-			'/directory/v1/groups/01302m922p525286',
-			expect.objectContaining({
-				email: 'new3@example.com',
-				name: 'new2',
-				description: 'new1',
-			}),
-		);
-		expect(result.finished).toEqual(true);
-	};
-
-	for (const testData of tests) {
-		test(testData.description, async () => await testNode(testData, nodeTypes));
-	}
+			test(workflow.description, async () => await equalityTest(workflow, nodeTypes));
+		}
+	});
 });

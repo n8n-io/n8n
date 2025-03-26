@@ -1,66 +1,41 @@
-import type { INodeTypes } from 'n8n-workflow';
+import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
 
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
-import { getResultNodeData, setup, workflowToTests } from '@test/nodes/Helpers';
-import type { WorkflowTestData } from '@test/nodes/types';
-
-import * as transport from '../../GenericFunctions';
-
-const googleApiRequestSpy = jest.spyOn(transport, 'googleApiRequest');
-
-googleApiRequestSpy.mockImplementation(async (method: string, endpoint: string) => {
-	if (method === 'GET' && endpoint.includes('/directory/v1/users/')) {
-		return {
-			primaryEmail: 'newoneuser@example.com',
-		};
-	}
-
-	if (method === 'POST' && endpoint.includes('/directory/v1/groups/')) {
-		return { added: true };
-	}
-
-	return {};
-});
-
-describe('Google Workspace Admin - Add User to Group', () => {
+describe('Google GSuiteAdmin Node', () => {
 	const workflows = ['nodes/Google/GSuiteAdmin/test/user/addToGroup.workflow.json'];
-	const tests = workflowToTests(workflows);
-	const nodeTypes = setup(tests);
+	const workflowTests = workflowToTests(workflows);
 
-	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {
-		const { result } = await executeWorkflow(testData, types);
-		const resultNodeData = getResultNodeData(result, testData);
+	describe('should add user to group', () => {
+		const nodeTypes = setup(workflowTests);
 
-		const expectedOutput = [
-			{
-				json: {
-					added: true,
-				},
-			},
-		];
+		for (const workflow of workflowTests) {
+			workflow.nock = {
+				baseUrl: 'https://www.googleapis.com/admin',
+				mocks: [
+					{
+						method: 'get',
+						path: '/directory/v1/users/114393134535981252528',
+						statusCode: 200,
+						responseBody: {
+							primaryEmail: 'newone@example.com',
+						},
+					},
+					{
+						method: 'post',
+						path: '/directory/v1/groups/01302m922pmp3e4/members',
+						statusCode: 200,
+						requestBody: {
+							email: 'newone@example.com',
+							role: 'MEMBER',
+						},
+						responseBody: {
+							kind: 'admin#directory#member',
+							status: 'ACTIVE',
+						},
+					},
+				],
+			};
 
-		resultNodeData.forEach(({ resultData }) => {
-			expect(resultData).toEqual([expectedOutput]);
-		});
-
-		expect(googleApiRequestSpy).toHaveBeenCalledTimes(2);
-		expect(googleApiRequestSpy).toHaveBeenCalledWith(
-			'GET',
-			'/directory/v1/users/114393134535981252528',
-		);
-		expect(googleApiRequestSpy).toHaveBeenCalledWith(
-			'POST',
-			'/directory/v1/groups/01302m922pmp3e4/members',
-			expect.objectContaining({
-				email: 'newoneuser@example.com',
-				role: 'MEMBER',
-			}),
-		);
-
-		expect(result.finished).toEqual(true);
-	};
-
-	for (const testData of tests) {
-		test(testData.description, async () => await testNode(testData, nodeTypes));
-	}
+			test(workflow.description, async () => await equalityTest(workflow, nodeTypes));
+		}
+	});
 });

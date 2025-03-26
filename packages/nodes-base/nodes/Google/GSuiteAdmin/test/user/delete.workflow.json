@@ -5,23 +5,31 @@
 				"operation": "delete",
 				"userId": {
 					"__rl": true,
-					"value": "101817116922964852528",
+					"value": "114393134535981252212",
 					"mode": "list",
-					"cachedResultName": "NewOne User"
+					"cachedResultName": "NewOne22 User22"
 				}
 			},
 			"type": "n8n-nodes-base.gSuiteAdmin",
 			"typeVersion": 1,
 			"position": [-800, 820],
 			"id": "b6469cb3-1798-4be3-99a2-47d603e467d6",
-			"name": "Delete User"
+			"name": "Delete User",
+			"credentials": {
+				"gSuiteAdminOAuth2Api": {
+					"id": "OXfPMaggXFJ0RLkw",
+					"name": "Google Workspace Admin account"
+				}
+			}
 		}
 	],
 	"connections": {},
 	"pinData": {
 		"Delete User": [
 			{
-				"deleted": true
+				"json": {
+					"deleted": true
+				}
 			}
 		]
 	},

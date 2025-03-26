@@ -26,20 +26,22 @@
 	"pinData": {
 		"Create User": [
 			{
-				"kind": "admin#directory#user",
-				"id": "112507770188715525288",
-				"etag": "\"vj4PppCfb9kD888SS3SnlhIiBAGttWx4xxxxiOjzAg0/KbHNNPdlcsbJEOg5pn__iQss8dQ\"",
-				"primaryEmail": "new@example.com",
-				"name": {
-					"givenName": "NewOne",
-					"familyName": "User"
-				},
-				"isAdmin": false,
-				"isDelegatedAdmin": false,
-				"creationTime": "2024-12-20T20:48:53.000Z",
-				"customerId": "C4444hnz2",
-				"orgUnitPath": "/",
-				"isMailboxSetup": false
+				"json": {
+					"kind": "admin#directory#user",
+					"id": "112507770188715525288",
+					"etag": "\"example\"",
+					"primaryEmail": "new@example.com",
+					"name": {
+						"givenName": "NewOne",
+						"familyName": "User"
+					},
+					"isAdmin": false,
+					"isDelegatedAdmin": false,
+					"creationTime": "2024-12-20T20:48:53.000Z",
+					"customerId": "C4444hnz2",
+					"orgUnitPath": "/",
+					"isMailboxSetup": false
+				}
 			}
 		]
 	},

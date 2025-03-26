@@ -9,39 +9,49 @@
 			"typeVersion": 1,
 			"position": [-800, 280],
 			"id": "6450c571-b45f-4aaf-ac9e-0377bbd6bd81",
-			"name": "Get Many"
+			"name": "Get Many",
+			"credentials": {
+				"gSuiteAdminOAuth2Api": {
+					"id": "OXfPMaggXFJ0RLkw",
+					"name": "Google Workspace Admin account"
+				}
+			}
 		}
 	],
 	"connections": {},
 	"pinData": {
 		"Get Many": [
 			{
-				"kind": "admin#directory#user",
-				"id": "112507770188715252055",
-				"primaryEmail": "new@example.com",
-				"name": {
-					"givenName": "New",
-					"familyName": "User",
-					"fullName": "New User"
-				},
-				"isAdmin": false,
-				"lastLoginTime": "1970-01-01T00:00:00.000Z",
-				"creationTime": "2024-12-20T20:48:53.000Z",
-				"suspended": true
+				"json": {
+					"kind": "admin#directory#user",
+					"id": "112507770188715252055",
+					"primaryEmail": "new@example.com",
+					"name": {
+						"givenName": "New",
+						"familyName": "User",
+						"fullName": "New User"
+					},
+					"isAdmin": false,
+					"lastLoginTime": "1970-01-01T00:00:00.000Z",
+					"creationTime": "2024-12-20T20:48:53.000Z",
+					"suspended": true
+				}
 			},
 			{
-				"kind": "admin#directory#user",
-				"id": "222459372679230452528",
-				"primaryEmail": "test33@example.com",
-				"name": {
-					"givenName": "New",
-					"familyName": "Test",
-					"fullName": "New Test"
-				},
-				"isAdmin": true,
-				"lastLoginTime": "2024-12-19T08:39:56.000Z",
-				"creationTime": "2024-09-06T11:48:38.000Z",
-				"suspended": false
+				"json": {
+					"kind": "admin#directory#user",
+					"id": "222459372679230452528",
+					"primaryEmail": "test33@example.com",
+					"name": {
+						"givenName": "New",
+						"familyName": "Test",
+						"fullName": "New Test"
+					},
+					"isAdmin": true,
+					"lastLoginTime": "2024-12-19T08:39:56.000Z",
+					"creationTime": "2024-09-06T11:48:38.000Z",
+					"suspended": false
+				}
 			}
 		]
 	},

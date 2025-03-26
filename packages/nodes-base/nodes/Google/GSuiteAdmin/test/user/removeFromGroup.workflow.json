@@ -33,7 +33,7 @@
 	"pinData": {
 		"Remove From Group": [
 			{
-				"removed": true
+				"json": { "removed": true }
 			}
 		]
 	},

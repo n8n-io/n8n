@@ -1,46 +1,55 @@
-import type { INodeTypes } from 'n8n-workflow';
+import nock from 'nock';
 
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
-import { getResultNodeData, setup, workflowToTests } from '@test/nodes/Helpers';
-import type { WorkflowTestData } from '@test/nodes/types';
+import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
 
-import * as transport from '../../GenericFunctions';
-
-const googleApiRequestSpy = jest.spyOn(transport, 'googleApiRequest');
-
-googleApiRequestSpy.mockImplementation(async (method: string, resource: string) => {
-	if (method === 'GET' && resource === '/directory/v1/users/112507770188715252528') {
-		return {
-			kind: 'admin#directory#user',
-			id: '112507770188715252528',
-			primaryEmail: 'new@example.com',
-			name: {
-				givenName: 'New One',
-				familyName: 'User',
-				fullName: 'New One User',
-			},
-			isAdmin: false,
-			lastLoginTime: '1970-01-01T00:00:00.000Z',
-			creationTime: '2024-12-20T20:48:53.000Z',
-			suspended: true,
-		};
-	}
-});
-
-describe('Google Workspace Admin - Get User', () => {
+describe('Google GSuiteAdmin Node', () => {
 	const workflows = ['nodes/Google/GSuiteAdmin/test/user/get.workflow.json'];
-	const tests = workflowToTests(workflows);
-	const nodeTypes = setup(tests);
+	const workflowTests = workflowToTests(workflows);
 
-	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {
-		const { result } = await executeWorkflow(testData, types);
-		const resultNodeData = getResultNodeData(result, testData);
+	describe('should get user', () => {
+		const nodeTypes = setup(workflowTests);
 
-		const expectedOutput = [
-			{
-				json: {
+		for (const workflow of workflowTests) {
+			workflow.nock = {
+				baseUrl: 'https://www.googleapis.com/admin',
+				mocks: [
+					{
+						method: 'get',
+						path: '/directory/v1/users/112507770188715252026',
+						statusCode: 200,
+						requestBody: {},
+						responseBody: {
+							kind: 'admin#directory#user',
+							id: '112507770188715252026',
+							primaryEmail: 'new@example.com',
+							name: {
+								givenName: 'New One',
+								familyName: 'User',
+								fullName: 'New One User',
+							},
+							isAdmin: false,
+							lastLoginTime: '1970-01-01T00:00:00.000Z',
+							creationTime: '2024-12-20T20:48:53.000Z',
+							suspended: true,
+							emails: [
+								{
+									address: 'new@example.com',
+									primary: true,
+								},
+							],
+						},
+					},
+				],
+			};
+
+			nock('https://www.googleapis.com/admin')
+				.get('/directory/v1/users/112507770188715252026')
+				.query({
+					projection: 'basic',
+				})
+				.reply(200, {
 					kind: 'admin#directory#user',
-					id: '112507770188715252528',
+					id: '112507770188715252026',
 					primaryEmail: 'new@example.com',
 					name: {
 						givenName: 'New One',
@@ -51,25 +60,15 @@ describe('Google Workspace Admin - Get User', () => {
 					lastLoginTime: '1970-01-01T00:00:00.000Z',
 					creationTime: '2024-12-20T20:48:53.000Z',
 					suspended: true,
-				},
-			},
-		];
+					emails: [
+						{
+							address: 'new@example.com',
+							primary: true,
+						},
+					],
+				});
 
-		resultNodeData.forEach(({ resultData }) => {
-			expect(resultData).toEqual([expectedOutput]);
-		});
-
-		expect(googleApiRequestSpy).toHaveBeenCalledTimes(1);
-		expect(googleApiRequestSpy).toHaveBeenCalledWith(
-			'GET',
-			'/directory/v1/users/112507770188715252528',
-			{},
-			{ projection: 'basic' },
-		);
-		expect(result.finished).toEqual(true);
-	};
-
-	for (const testData of tests) {
-		test(testData.description, async () => await testNode(testData, nodeTypes));
-	}
+			test(workflow.description, async () => await equalityTest(workflow, nodeTypes));
+		}
+	});
 });
