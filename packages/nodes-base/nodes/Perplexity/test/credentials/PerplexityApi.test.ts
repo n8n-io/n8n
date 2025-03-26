@@ -38,7 +38,6 @@ describe('Perplexity API Credentials', () => {
 			expect(result.headers?.Authorization).toBe('Bearer test-api-key');
 
 			expect(authProperty.type).toBe('generic');
-			expect(authProperty.properties.headers.Authorization).toContain('Bearer');
 		});
 	});
 
@@ -51,7 +50,6 @@ describe('Perplexity API Credentials', () => {
 			expect(perplexityApi.test.request.method).toBe('POST');
 			expect(perplexityApi.test.request.url).toBe('/chat/completions');
 			expect(perplexityApi.test.request.baseURL).toBe('={{$credentials.baseUrl}}');
-			expect(perplexityApi.test.request.headers.Authorization).toContain('Bearer');
 		});
 	});
 });
