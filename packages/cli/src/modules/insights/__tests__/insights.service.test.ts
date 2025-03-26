@@ -579,7 +579,6 @@ describe('compaction', () => {
 		])('$name', async ({ periodStarts, batches }) => {
 			// ARRANGE
 			const insightsService = Container.get(InsightsService);
-			const insightsRawRepository = Container.get(InsightsRawRepository);
 			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
 
 			const project = await createTeamProject();
@@ -600,12 +599,124 @@ describe('compaction', () => {
 
 			// ASSERT
 			expect(compactedRows).toBe(periodStarts.length);
-			await expect(insightsRawRepository.count()).resolves.toBe(0);
+			const hourInsights = (await insightsByPeriodRepository.find()).filter(
+				(insight) => insight.periodUnit !== 'day',
+			);
+			expect(hourInsights).toBeEmptyArray();
 			const allCompacted = await insightsByPeriodRepository.find({ order: { periodStart: 1 } });
 			expect(allCompacted).toHaveLength(batches.length);
 			for (const [index, compacted] of allCompacted.entries()) {
 				expect(compacted.value).toBe(batches[index]);
 			}
+		});
+
+		test('recent insight periods should not be compacted', async () => {
+			// ARRANGE
+			const insightsService = Container.get(InsightsService);
+
+			const project = await createTeamProject();
+			const workflow = await createWorkflow({}, project);
+			// create before so we can create the raw events in parallel
+			await createMetadata(workflow);
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 1,
+				periodUnit: 'hour',
+				periodStart: DateTime.utc().minus({ day: 79 }).startOf('hour'),
+			});
+
+			// ACT
+			const compactedRows = await insightsService.compactHourToDay();
+
+			// ASSERT
+			expect(compactedRows).toBe(0);
+		});
+	});
+
+	describe('compactDayToWeek', () => {
+		type TestData = {
+			name: string;
+			periodStarts: DateTime[];
+			batches: number[];
+		};
+
+		test.each<TestData>([
+			{
+				name: 'compact into 2 rows',
+				periodStarts: [
+					// 2000-01-03 is a Monday
+					DateTime.utc(2000, 1, 3, 0, 0),
+					DateTime.utc(2000, 1, 5, 23, 59),
+					DateTime.utc(2000, 1, 11, 1, 0),
+				],
+				batches: [2, 1],
+			},
+			{
+				name: 'compact into 3 rows',
+				periodStarts: [
+					// 2000-01-03 is a Monday
+					DateTime.utc(2000, 1, 3, 0, 0),
+					DateTime.utc(2000, 1, 4, 23, 59),
+					DateTime.utc(2000, 1, 11, 0, 0),
+					DateTime.utc(2000, 1, 12, 23, 59),
+					DateTime.utc(2000, 1, 18, 23, 59),
+				],
+				batches: [2, 2, 1],
+			},
+		])('$name', async ({ periodStarts, batches }) => {
+			// ARRANGE
+			const insightsService = Container.get(InsightsService);
+			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+
+			const project = await createTeamProject();
+			const workflow = await createWorkflow({}, project);
+
+			await createMetadata(workflow);
+			for (const periodStart of periodStarts) {
+				await createCompactedInsightsEvent(workflow, {
+					type: 'success',
+					value: 1,
+					periodUnit: 'day',
+					periodStart,
+				});
+			}
+
+			// ACT
+			const compactedRows = await insightsService.compactDayToWeek();
+
+			// ASSERT
+			expect(compactedRows).toBe(periodStarts.length);
+			const hourAndDayInsights = (await insightsByPeriodRepository.find()).filter(
+				(insight) => insight.periodUnit !== 'week',
+			);
+			expect(hourAndDayInsights).toBeEmptyArray();
+			const allCompacted = await insightsByPeriodRepository.find({ order: { periodStart: 1 } });
+			expect(allCompacted).toHaveLength(batches.length);
+			for (const [index, compacted] of allCompacted.entries()) {
+				expect(compacted.periodStart.getDay()).toBe(1);
+				expect(compacted.value).toBe(batches[index]);
+			}
+		});
+
+		test('recent insight periods should not be compacted', async () => {
+			// ARRANGE
+			const insightsService = Container.get(InsightsService);
+
+			const project = await createTeamProject();
+			const workflow = await createWorkflow({}, project);
+			await createMetadata(workflow);
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 1,
+				periodUnit: 'day',
+				periodStart: DateTime.utc().minus({ day: 179 }).startOf('day'),
+			});
+
+			// ACT
+			const compactedRows = await insightsService.compactDayToWeek();
+
+			// ASSERT
+			expect(compactedRows).toBe(0);
 		});
 	});
 });
