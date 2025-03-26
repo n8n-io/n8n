@@ -34,6 +34,27 @@ import { BinaryDataService } from '@/binary-data/binary-data.service';
 
 import { NodeExecutionContext } from './node-execution-context';
 
+/**
+ * Base class for execution contexts that handle regular node execution.
+ * Extends NodeExecutionContext with execution-specific functionality.
+ *
+ * ### Responsibilities
+ *
+ * - Managing binary data through BinaryDataService
+ * - Providing wait/resume functionality for async operations
+ * - Accessing input data for node execution
+ * - Supporting sub-workflow execution
+ * - Handling execution cancellation
+ *
+ * ### Context Hierarchy
+ *
+ * This class serves as the base for:
+ * - ExecuteContext: Used for regular node execution
+ * - ExecuteSingleContext: Used for single-item node execution
+ *
+ * Both derived contexts add specialized functionality for different
+ * execution scenarios while sharing common base execution capabilities.
+ */
 export class BaseExecuteContext extends NodeExecutionContext {
 	protected readonly binaryDataService = Container.get(BinaryDataService);
 

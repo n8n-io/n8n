@@ -17,6 +17,38 @@ import assert from 'node:assert';
 
 import type { IGetExecuteTriggerFunctions } from './interfaces';
 
+/**
+ * Service responsible for running trigger and polling nodes in workflows.
+ * These nodes are the entry points that start workflow executions based on
+ * external events or scheduled polling.
+ *
+ * ### Responsibilities
+ *
+ * - Running trigger nodes and setting up their event listeners
+ * - Executing polling functions at scheduled intervals
+ * - Handling webhook responses and triggering workflows
+ * - Managing the transition from trigger/poll events to workflow execution
+ *
+ * ### Trigger/Poll Flow
+ *
+ * ```mermaid
+ * flowchart TD
+ *     A[Workflow Activated] --> B{Node Type}
+ *     B -->|Trigger| C[runTrigger()]
+ *     B -->|Poll| D[runPoll()]
+ *     C --> E[Node sets up listeners]
+ *     D --> F[Node polls at interval]
+ *     E --> G[Event received]
+ *     F --> H[Data found]
+ *     G --> I[Trigger workflow execution]
+ *     H --> I
+ * ```
+ *
+ * ## Related Components
+ *
+ * - {@link ActiveWorkflows}: Manages which workflows have active triggers/pollers
+ * - {@link WorkflowExecute}: Executes workflows when triggers/polls provide data
+ */
 @Service()
 export class TriggersAndPollers {
 	/**

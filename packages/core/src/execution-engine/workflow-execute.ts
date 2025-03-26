@@ -72,6 +72,45 @@ import {
 import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
 
+/**
+ * The central engine responsible for executing workflows in n8n. This class handles:
+ *
+ * - Full workflow execution
+ * - Partial workflow execution (executing only parts of a workflow)
+ * - Node execution and inter-node data passing
+ * - Error handling and workflow retries
+ * - Execution cancellation
+ *
+ * ### Execution Architecture
+ *
+ * ```mermaid
+ * flowchart TD
+ *     A[workflow.run()] --> B[Initialize Execution Stack]
+ *     B --> C[Process Next Node from Stack]
+ *     C --> D[Prepare Input Data w/ PairedItems]
+ *     D --> E[Execute Node via runNode()]
+ *     E --> F[Process Node Output]
+ *     F --> G[Add Connected Nodes to Stack]
+ *     G --> H{Stack Empty?}
+ *     H -->|No| C
+ *     H -->|Yes| I[Finalize Execution]
+ * ```
+ *
+ * ### Partial Execution Mode
+ *
+ * Optimizes performance by executing only the necessary parts of a workflow.
+ * The system:
+ * 1. Creates a directed graph representation of the workflow
+ * 2. Identifies only the nodes that need to be re-executed
+ * 3. Handles cycles and complex data dependencies
+ * 4. Re-uses results from previously executed nodes when possible
+ *
+ * ### Data Passing
+ *
+ * Data flows between nodes using the "pairedItem" concept, which tracks which
+ * output items correspond to which input items, maintaining data lineage through
+ * the workflow execution.
+ */
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
 
