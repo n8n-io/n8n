@@ -265,32 +265,36 @@ export class InsightsService {
 		const currentTimeSaved = getValueByType('current', 'time_saved_min');
 		const previousTimeSaved = getValueByType('previous', 'time_saved_min');
 
+		// If the previous period has no executions, we discard deviation
+		const getDeviation = (current: number, previous: number) =>
+			previousTotal === 0 ? null : current - previous;
+
 		// Return the formatted result
 		const result: InsightsSummary = {
 			averageRunTime: {
 				value: currentAvgRuntime,
 				unit: 'time',
-				deviation: currentAvgRuntime - previousAvgRuntime,
+				deviation: getDeviation(currentAvgRuntime, previousAvgRuntime),
 			},
 			failed: {
 				value: currentFailures,
 				unit: 'count',
-				deviation: currentFailures - previousFailures,
+				deviation: getDeviation(currentFailures, previousFailures),
 			},
 			failureRate: {
 				value: currentFailureRate,
 				unit: 'ratio',
-				deviation: currentFailureRate - previousFailureRate,
+				deviation: getDeviation(currentFailureRate, previousFailureRate),
 			},
 			timeSaved: {
 				value: currentTimeSaved,
 				unit: 'time',
-				deviation: currentTimeSaved - previousTimeSaved,
+				deviation: getDeviation(currentTimeSaved, previousTimeSaved),
 			},
 			total: {
 				value: currentTotal,
 				unit: 'count',
-				deviation: currentTotal - previousTotal,
+				deviation: getDeviation(currentTotal, previousTotal),
 			},
 		};
 

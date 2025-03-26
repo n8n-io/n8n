@@ -784,4 +784,21 @@ describe('getInsightsSummary', () => {
 			total: { deviation: 3, unit: 'count', value: 4 },
 		});
 	});
+
+	test('no data for previous period should return null deviation', async () => {
+		// ARRANGE
+		// last 7 days
+		await createCompactedInsightsEvent(workflow, {
+			type: 'success',
+			value: 1,
+			periodUnit: 'day',
+			periodStart: DateTime.utc(),
+		});
+
+		// ACT
+		const summary = await insightsService.getInsightsSummary();
+
+		// ASSERT
+		expect(Object.values(summary).map((v) => v.deviation)).toEqual([null, null, null, null, null]);
+	});
 });

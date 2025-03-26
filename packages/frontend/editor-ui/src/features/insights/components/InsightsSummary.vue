@@ -76,7 +76,7 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 						<em
 							>{{ smartDecimal(value) }} <i>{{ unit }}</i></em
 						>
-						<small :class="getImpactStyle(id, deviation)">
+						<small v-if="deviation !== null" :class="getImpactStyle(id, deviation)">
 							<N8nIcon
 								:class="[$style.icon, getImpactStyle(id, deviation)]"
 								:icon="deviation === 0 ? 'caret-right' : deviation > 0 ? 'caret-up' : 'caret-down'"
