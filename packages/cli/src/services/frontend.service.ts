@@ -26,7 +26,6 @@ import {
 } from '@/workflows/workflow-history.ee/workflow-history-helper.ee';
 
 import { UrlService } from './url.service';
-import { apiKeyScope } from '@/public-api/v1/shared/middlewares/global.middleware';
 
 @Service()
 export class FrontendService {
