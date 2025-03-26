@@ -57,7 +57,7 @@ export function makeHandleToolInvocation(
 					response =
 						'Error: The Tool attempted to return binary data, which is not supported in Agents';
 				} else {
-					console.warn(
+					context.logger.warn(
 						`Response from Tool '${node.name}' included binary data, which is not supported in Agents. The binary data was omitted from the response.`,
 					);
 				}
