@@ -9,7 +9,7 @@ import {
 	type INodePropertyOptions,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { cameraProxyFields, cameraProxyOperations } from './CameraProxyDescription';
@@ -39,8 +39,8 @@ export class HomeAssistant implements INodeType {
 			name: 'Home Assistant',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'homeAssistantApi',

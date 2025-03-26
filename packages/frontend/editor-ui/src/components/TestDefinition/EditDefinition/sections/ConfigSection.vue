@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import type { TestMetricRecord } from '@/api/testDefinition.ee';
 import BlockArrow from '@/components/TestDefinition/EditDefinition/BlockArrow.vue';
 import EvaluationStep from '@/components/TestDefinition/EditDefinition/EvaluationStep.vue';
-import MetricsInput from '@/components/TestDefinition/EditDefinition/MetricsInput.vue';
 import NodesPinning from '@/components/TestDefinition/EditDefinition/NodesPinning.vue';
 import WorkflowSelector from '@/components/TestDefinition/EditDefinition/WorkflowSelector.vue';
 import type { EditableFormState, EvaluationFormState } from '@/components/TestDefinition/types';
@@ -27,7 +25,6 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{
 	openPinningModal: [];
-	deleteMetric: [metric: TestMetricRecord];
 	openExecutionsViewForTag: [];
 	renameTag: [tag: string];
 	evaluationWorkflowCreated: [workflowId: string];
@@ -64,7 +61,6 @@ const evaluationWorkflow = defineModel<EvaluationFormState['evaluationWorkflow']
 	'evaluationWorkflow',
 	{ required: true },
 );
-const metrics = defineModel<EvaluationFormState['metrics']>('metrics', { required: true });
 const mockedNodes = defineModel<EvaluationFormState['mockedNodes']>('mockedNodes', {
 	required: true,
 });
@@ -174,25 +170,6 @@ function openExecutionsView() {
 						:class="{ 'has-issues': getFieldIssues('evaluationWorkflow').length > 0 }"
 						:sample-workflow-name="sampleWorkflowName"
 						@workflow-created="$emit('evaluationWorkflowCreated', $event)"
-					/>
-				</template>
-			</EvaluationStep>
-
-			<BlockArrow class="mt-5xs mb-5xs" />
-			<!-- Metrics -->
-			<EvaluationStep
-				:title="locale.baseText('testDefinition.edit.step.metrics')"
-				:issues="getFieldIssues('metrics')"
-				:description="locale.baseText('testDefinition.edit.step.metrics.description')"
-				:tooltip="locale.baseText('testDefinition.edit.step.metrics.tooltip')"
-				:external-tooltip="!hasRuns"
-			>
-				<template #cardContent>
-					<MetricsInput
-						v-model="metrics"
-						:class="{ 'has-issues': getFieldIssues('metrics').length > 0 }"
-						class="mt-xs"
-						@delete-metric="(metric) => emit('deleteMetric', metric)"
 					/>
 				</template>
 			</EvaluationStep>

@@ -1,12 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "object": {
-            "type": "string"
-        },
         "amount": {
             "type": "integer"
         },
@@ -40,8 +34,14 @@
         "failure_balance_transaction": {
             "type": "null"
         },
+        "id": {
+            "type": "string"
+        },
         "livemode": {
             "type": "boolean"
+        },
+        "object": {
+            "type": "string"
         },
         "on_behalf_of": {
             "type": "null"
@@ -64,14 +64,7 @@
                 "type": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "network_status",
-                "reason",
-                "risk_level",
-                "seller_message",
-                "type"
-            ]
+            }
         },
         "paid": {
             "type": "boolean"
@@ -100,10 +93,7 @@
                                 "status": {
                                     "type": "string"
                                 }
-                            },
-                            "required": [
-                                "status"
-                            ]
+                            }
                         },
                         "fingerprint": {
                             "type": "string"
@@ -117,10 +107,7 @@
                                 "status": {
                                     "type": "string"
                                 }
-                            },
-                            "required": [
-                                "status"
-                            ]
+                            }
                         },
                         "installments": {
                             "type": "null"
@@ -137,10 +124,7 @@
                                 "status": {
                                     "type": "string"
                                 }
-                            },
-                            "required": [
-                                "status"
-                            ]
+                            }
                         },
                         "network": {
                             "type": "string"
@@ -151,10 +135,7 @@
                                 "used": {
                                     "type": "boolean"
                                 }
-                            },
-                            "required": [
-                                "used"
-                            ]
+                            }
                         },
                         "overcapture": {
                             "type": "object",
@@ -165,45 +146,17 @@
                                 "status": {
                                     "type": "string"
                                 }
-                            },
-                            "required": [
-                                "maximum_amount_capturable",
-                                "status"
-                            ]
+                            }
                         },
                         "regulated_status": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "amount_authorized",
-                        "authorization_code",
-                        "brand",
-                        "checks",
-                        "country",
-                        "exp_month",
-                        "exp_year",
-                        "extended_authorization",
-                        "funding",
-                        "incremental_authorization",
-                        "installments",
-                        "last4",
-                        "mandate",
-                        "multicapture",
-                        "network",
-                        "network_token",
-                        "overcapture",
-                        "three_d_secure",
-                        "wallet"
-                    ]
+                    }
                 },
                 "type": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "type"
-            ]
+            }
         },
         "refunded": {
             "type": "boolean"
@@ -211,11 +164,11 @@
         "refunds": {
             "type": "object",
             "properties": {
-                "object": {
-                    "type": "string"
-                },
                 "has_more": {
                     "type": "boolean"
+                },
+                "object": {
+                    "type": "string"
                 },
                 "total_count": {
                     "type": "integer"
@@ -223,14 +176,7 @@
                 "url": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "object",
-                "data",
-                "has_more",
-                "total_count",
-                "url"
-            ]
+            }
         },
         "review": {
             "type": "null"
@@ -248,53 +194,5 @@
             "type": "null"
         }
     },
-    "required": [
-        "id",
-        "object",
-        "amount",
-        "amount_captured",
-        "amount_refunded",
-        "application",
-        "application_fee",
-        "application_fee_amount",
-        "balance_transaction",
-        "billing_details",
-        "calculated_statement_descriptor",
-        "captured",
-        "created",
-        "currency",
-        "customer",
-        "description",
-        "destination",
-        "dispute",
-        "disputed",
-        "failure_balance_transaction",
-        "failure_code",
-        "failure_message",
-        "fraud_details",
-        "invoice",
-        "livemode",
-        "metadata",
-        "on_behalf_of",
-        "order",
-        "outcome",
-        "paid",
-        "payment_intent",
-        "payment_method",
-        "payment_method_details",
-        "receipt_email",
-        "receipt_number",
-        "receipt_url",
-        "refunded",
-        "review",
-        "shipping",
-        "source",
-        "source_transfer",
-        "statement_descriptor",
-        "statement_descriptor_suffix",
-        "status",
-        "transfer_data",
-        "transfer_group"
-    ],
     "version": 1
 }

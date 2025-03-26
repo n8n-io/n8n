@@ -4,11 +4,26 @@
         "active": {
             "type": "boolean"
         },
+        "created_at": {
+            "type": "string"
+        },
+        "facebook_id": {
+            "type": "null"
+        },
+        "first_name": {
+            "type": "string"
+        },
         "id": {
             "type": "integer"
         },
+        "last_name": {
+            "type": "string"
+        },
         "name": {
             "type": "string"
+        },
+        "org_contact_id": {
+            "type": "integer"
         },
         "time_zone": {
             "type": "string"
@@ -16,49 +31,12 @@
         "twitter_id": {
             "type": "null"
         },
-        "facebook_id": {
-            "type": "null"
-        },
-        "created_at": {
-            "type": "string"
-        },
         "updated_at": {
-            "type": "string"
-        },
-        "first_name": {
-            "type": "string"
-        },
-        "last_name": {
             "type": "string"
         },
         "visitor_id": {
             "type": "string"
-        },
-        "org_contact_id": {
-            "type": "integer"
         }
     },
-    "required": [
-        "active",
-        "address",
-        "description",
-        "email",
-        "id",
-        "job_title",
-        "language",
-        "mobile",
-        "name",
-        "phone",
-        "time_zone",
-        "twitter_id",
-        "custom_fields",
-        "facebook_id",
-        "created_at",
-        "updated_at",
-        "csat_rating",
-        "preferred_source",
-        "company_id",
-        "unique_external_id"
-    ],
     "version": 1
 }

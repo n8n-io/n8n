@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "1.84.0",
+  "version": "1.85.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -37,6 +37,7 @@
       "dist/credentials/QdrantApi.credentials.js",
       "dist/credentials/SerpApi.credentials.js",
       "dist/credentials/WolframAlphaApi.credentials.js",
+      "dist/credentials/XAiApi.credentials.js",
       "dist/credentials/XataApi.credentials.js",
       "dist/credentials/ZepApi.credentials.js"
     ],
@@ -73,6 +74,7 @@
       "dist/nodes/llms/LmChatMistralCloud/LmChatMistralCloud.node.js",
       "dist/nodes/llms/LMChatOllama/LmChatOllama.node.js",
       "dist/nodes/llms/LmChatOpenRouter/LmChatOpenRouter.node.js",
+      "dist/nodes/llms/LmChatXAiGrok/LmChatXAiGrok.node.js",
       "dist/nodes/llms/LMChatOpenAi/LmChatOpenAi.node.js",
       "dist/nodes/llms/LMOpenAi/LmOpenAi.node.js",
       "dist/nodes/llms/LMCohere/LmCohere.node.js",
