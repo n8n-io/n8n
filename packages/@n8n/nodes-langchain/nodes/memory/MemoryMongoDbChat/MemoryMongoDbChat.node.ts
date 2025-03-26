@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { MongoDBChatMessageHistory } from '@langchain/mongodb';
 import { BufferWindowMemory } from 'langchain/memory';
 import { MongoClient } from 'mongodb';
