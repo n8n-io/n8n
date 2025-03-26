@@ -50,7 +50,7 @@
 		},
 		{
 			"parameters": {
-				"assignments": {
+				"metrics": {
 					"assignments": [
 						{
 							"id": "3b65d55a-158f-40c6-9853-a1c44b7ba1e5",
@@ -70,13 +70,13 @@
 			},
 			"id": "0c7a1ee8-0cf0-4d7f-99a3-186bbcd8815a",
 			"name": "Success",
-			"type": "n8n-nodes-base.set",
-			"typeVersion": 3.4,
+			"type": "n8n-nodes-base.evaluationMetrics",
+			"typeVersion": 1,
 			"position": [980, 220]
 		},
 		{
 			"parameters": {
-				"assignments": {
+				"metrics": {
 					"assignments": [
 						{
 							"id": "6cc8b402-4a30-4873-b825-963a1f1b8b82",
@@ -90,8 +90,8 @@
 			},
 			"id": "50d3f84a-d99f-4e04-bdbd-3e8c2668e708",
 			"name": "Fail",
-			"type": "n8n-nodes-base.set",
-			"typeVersion": 3.4,
+			"type": "n8n-nodes-base.evaluationMetrics",
+			"typeVersion": 1,
 			"position": [980, 420]
 		}
 	],

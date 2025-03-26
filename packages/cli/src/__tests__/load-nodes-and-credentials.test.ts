@@ -275,4 +275,123 @@ describe('LoadNodesAndCredentials', () => {
 			expect(result).toEqual('/nodes-base/dist/nodes/Test/__schema__/v1.0.0.json');
 		});
 	});
+
+	describe('createAiTools', () => {
+		let instance: LoadNodesAndCredentials;
+
+		beforeEach(() => {
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock());
+			instance.types.nodes = [
+				{
+					name: 'testNode',
+					displayName: 'Test Node',
+					group: ['input'],
+					description: 'A test node',
+					usableAsTool: true,
+					properties: [], // need properties to test this
+				},
+			] as unknown as INodeTypeDescription[];
+			// private field
+			// eslint-disable-next-line @typescript-eslint/dot-notation
+			instance['known'].nodes.testNode = { className: 'TestNode', sourcePath: '/path/to/testNode' };
+			// eslint-disable-next-line @typescript-eslint/dot-notation
+			instance['known'].credentials['testCredential'] = {
+				className: 'TestCredential',
+				sourcePath: '/path/to/testCredential',
+				supportedNodes: ['testNode'],
+			};
+		});
+
+		it('should create AI tools for nodes marked as usableAsTool', () => {
+			instance.createAiTools();
+
+			expect(instance.types.nodes).toHaveLength(2); // Original node + AI tool
+			expect(instance.types.nodes[1]).toEqual({
+				codex: {
+					categories: ['AI'],
+					resources: {},
+					subcategories: { AI: ['Tools'], Tools: ['Other Tools'] },
+				},
+				description: 'A test node',
+				name: 'testNodeTool',
+				displayName: 'Test Node Tool',
+				group: ['input'],
+				inputs: [],
+				outputs: ['ai_tool'],
+				properties: [
+					{
+						default: 'A test node',
+						description:
+							'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
+						displayName: 'Description',
+						name: 'toolDescription',
+						placeholder: 'e.g. A test node',
+						required: true,
+						type: 'string',
+						typeOptions: {
+							rows: 2,
+						},
+					},
+				],
+			});
+		});
+
+		it('should duplicate supportedNodes for AI tools', () => {
+			instance.createAiTools();
+
+			expect(instance.types.nodes).toHaveLength(2);
+			// accesses private property
+			// eslint-disable-next-line @typescript-eslint/dot-notation
+			expect(instance['known'].credentials.testCredential.supportedNodes).toEqual([
+				'testNode',
+				'testNodeTool',
+			]);
+		});
+
+		it('should not modify nodes without usableAsTool property', () => {
+			instance.types.nodes[0].usableAsTool = undefined;
+			instance.createAiTools();
+
+			expect(instance.types.nodes).toHaveLength(1); // No AI tool created
+			expect(instance.types.nodes[0].name).toBe('testNode');
+		});
+
+		it('should handle nodes with usableAsTool as an object with replacements', () => {
+			instance.types.nodes[0].usableAsTool = {
+				replacements: {
+					displayName: 'Custom Tool Name',
+				},
+			};
+			instance.createAiTools();
+			expect(instance.types.nodes[1]).toEqual({
+				name: 'testNodeTool',
+				displayName: 'Custom Tool Name Tool',
+				group: ['input'],
+				inputs: [],
+				outputs: ['ai_tool'],
+				description: 'A test node',
+				properties: [
+					{
+						displayName: 'Description',
+						name: 'toolDescription',
+						type: 'string',
+						default: 'A test node',
+						required: true,
+						typeOptions: { rows: 2 },
+						description:
+							'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
+						placeholder: 'e.g. A test node',
+					},
+				],
+				codex: {
+					categories: ['AI'],
+					subcategories: {
+						AI: ['Tools'],
+						Tools: ['Other Tools'],
+					},
+					resources: {},
+				},
+			});
+		});
+	});
 });

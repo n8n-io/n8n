@@ -23,6 +23,7 @@ import {
 	MANUAL_TRIGGER_NODE_TYPE,
 	NO_OP_NODE_TYPE,
 	SET_NODE_TYPE,
+	SIMULATE_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/constants';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
@@ -50,6 +51,7 @@ export const mockNode = ({
 
 export const mockNodeTypeDescription = ({
 	name = SET_NODE_TYPE,
+	icon = 'fa:pen',
 	version = 1,
 	credentials = [],
 	inputs = [NodeConnectionTypes.Main],
@@ -58,6 +60,7 @@ export const mockNodeTypeDescription = ({
 	properties = [],
 }: {
 	name?: INodeTypeDescription['name'];
+	icon?: INodeTypeDescription['icon'];
 	version?: INodeTypeDescription['version'];
 	credentials?: INodeTypeDescription['credentials'];
 	inputs?: INodeTypeDescription['inputs'];
@@ -67,6 +70,7 @@ export const mockNodeTypeDescription = ({
 } = {}) =>
 	mock<INodeTypeDescription>({
 		name,
+		icon,
 		displayName: name,
 		description: '',
 		version,
@@ -102,6 +106,7 @@ export const mockNodes = [
 	mockNode({ name: 'Chat Trigger', type: CHAT_TRIGGER_NODE_TYPE }),
 	mockNode({ name: 'Agent', type: AGENT_NODE_TYPE }),
 	mockNode({ name: 'Sticky', type: STICKY_NODE_TYPE }),
+	mockNode({ name: 'Simulate', type: SIMULATE_NODE_TYPE }),
 	mockNode({ name: CanvasNodeRenderType.AddNodes, type: CanvasNodeRenderType.AddNodes }),
 	mockNode({ name: 'End', type: NO_OP_NODE_TYPE }),
 ];
