@@ -135,6 +135,7 @@ const handleTooltipClose = () => {
 			[$style.container]: true,
 			[$style.border]: props.showBorder,
 			[$style[props.theme]]: true,
+			'n8n-breadcrumbs': true,
 		}"
 	>
 		<slot name="prepend"></slot>
@@ -353,9 +354,8 @@ const handleTooltipClose = () => {
 
 	.item,
 	.item * {
-		color: var(--color-text-base);
+		color: var(--color-text-dark);
 		font-size: var(--font-size-2xs);
-		font-weight: var(--font-weight-bold);
 		line-height: var(--font-line-heigh-xsmall);
 	}
 
