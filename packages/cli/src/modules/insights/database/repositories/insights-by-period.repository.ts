@@ -341,7 +341,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			.addGroupBy('metadata.workflowName')
 			.addGroupBy('metadata.projectId')
 			.addGroupBy('metadata.projectName')
-			.orderBy(`"${sortField}"`, sortOrder);
+			.orderBy(this.escapeField(sortField), sortOrder);
 
 		const count = (await rawRowsQuery.getRawMany()).length;
 		const rawRows = await rawRowsQuery.offset(skip).limit(take).getRawMany();
@@ -349,7 +349,6 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		return { count, rows: aggregatedInsightsByWorkflowParser.parse(rawRows) };
 	}
 
-	// TODO: add more tests
 	async getInsightsByTime(nbDays: number) {
 		const dateSubQuery =
 			dbType === 'sqlite'
