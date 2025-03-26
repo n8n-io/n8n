@@ -21,18 +21,21 @@ import {
 	NodeOperationError,
 	ExecutionBaseError,
 	ApplicationError,
+	isObjectEmpty,
 } from 'n8n-workflow';
+
+import { configureResponseOptimizer } from '@/utils/optimize-response';
 
 import { createNodeAsTool } from './create-node-as-tool';
 import type { ExecuteContext, WebhookContext } from '../../node-execution-context';
 // eslint-disable-next-line import/no-cycle
 import { SupplyDataContext } from '../../node-execution-context/supply-data-context';
-import { configureResponseOptimizer } from '@/utils/optimize-response';
 
 export function makeHandleToolInvocation(
 	contextFactory: (runIndex: number) => ISupplyDataFunctions,
 	node: INode,
 	nodeType: INodeType,
+	itemIndex: number,
 ) {
 	/**
 	 * This keeps track of how many times this specific AI tool node has been invoked.
@@ -42,7 +45,7 @@ export function makeHandleToolInvocation(
 	return async (toolArgs: IDataObject) => {
 		const runIndex = toolRunIndex++;
 		const context = contextFactory(runIndex);
-		const optimizeResponse = configureResponseOptimizer(context, toolRunIndex); // PROBABLY ITEMINDEX INSTEAD? CONFIRM!
+		const optimizeResponse = configureResponseOptimizer(context, itemIndex);
 		context.addInputData(NodeConnectionTypes.AiTool, [[{ json: toolArgs }]]);
 
 		try {
@@ -50,15 +53,18 @@ export function makeHandleToolInvocation(
 			const result = await nodeType.execute?.call(context as unknown as IExecuteFunctions);
 
 			// Process and map the results
-			const mappedResults = result?.[0]?.flatMap((item) => item.json);
-			let response: string = optimizeResponse(mappedResults);
+			const mappedResults = result?.[0]?.flatMap((item) => optimizeResponse(item.json));
+			let response: string | typeof mappedResults = mappedResults;
 
 			console.log('Mapped Results:', mappedResults);
 			console.log('Mapped Results type:', typeof mappedResults);
 
 			// Warn if any (unusable) binary data was returned
 			if (result?.some((x) => x.some((y) => y.binary))) {
-				if (!mappedResults || mappedResults.flatMap((x) => Object.keys(x ?? {})).length === 0) {
+				if (
+					!mappedResults ||
+					mappedResults.every((x) => typeof x === 'object' && isObjectEmpty(x))
+				) {
 					response =
 						'Error: The Tool attempted to return binary data, which is not supported in Agents';
 				} else {
@@ -157,6 +163,7 @@ export async function getInputConnectionData(
 						(i) => contextFactory(i, {}),
 						connectedNode,
 						connectedNodeType,
+						itemIndex,
 					),
 				});
 				nodes.push(supplyData);
