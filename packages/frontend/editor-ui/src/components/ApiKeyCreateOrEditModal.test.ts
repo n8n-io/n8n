@@ -7,7 +7,8 @@ import { fireEvent } from '@testing-library/vue';
 
 import { useApiKeysStore } from '@/stores/apiKeys.store';
 import { DateTime } from 'luxon';
-import type { ApiKeyWithRawValue } from '@n8n/api-types';
+import type { ApiKeyWithRawValue, FrontendSettings } from '@n8n/api-types';
+import { useSettingsStore } from '@/stores/settings.store';
 
 const renderComponent = createComponentRenderer(ApiKeyEditModal, {
 	pinia: createTestingPinia({
@@ -33,6 +34,11 @@ const testApiKey: ApiKeyWithRawValue = {
 };
 
 const apiKeysStore = mockedStore(useApiKeysStore);
+const settingsStore = mockedStore(useSettingsStore);
+
+settingsStore.settings.enterprise = {
+	apiKeyScopes: false,
+} as unknown as FrontendSettings['enterprise'];
 
 describe('ApiKeyCreateOrEditModal', () => {
 	beforeEach(() => {
@@ -220,6 +226,9 @@ describe('ApiKeyCreateOrEditModal', () => {
 
 		await fireEvent.click(editButton);
 
-		expect(apiKeysStore.updateApiKey).toHaveBeenCalledWith('123', { label: 'updated api key' });
+		expect(apiKeysStore.updateApiKey).toHaveBeenCalledWith('123', {
+			label: 'updated api key',
+			scopes: ['user:create'],
+		});
 	});
 });
