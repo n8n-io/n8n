@@ -59,6 +59,8 @@ const properties: INodeProperties[] = [
 		placeholder: 'e.g. MyNewGroup',
 		description: 'The name of the new group to create',
 		required: true,
+		type: 'string',
+		validateType: 'string',
 		routing: {
 			send: {
 				property: 'GroupName',
@@ -81,8 +83,6 @@ const properties: INodeProperties[] = [
 				],
 			},
 		},
-		type: 'string',
-		validateType: 'string',
 	},
 	{
 		displayName: 'Additional Fields',

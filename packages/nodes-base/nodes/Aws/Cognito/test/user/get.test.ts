@@ -25,7 +25,6 @@ makeAwsRequestSpy.mockImplementation(async (opts: IHttpRequestOptions): Promise<
 });
 
 describe('Test AWS Cognito - Get User', () => {
-	// Use the workflow data directly from the JSON
 	const workflows = ['nodes/Aws/Cognito/test/user/get.workflow.json'];
 	const tests = workflowToTests(workflows);
 
@@ -44,12 +43,10 @@ describe('Test AWS Cognito - Get User', () => {
 		const { result } = await executeWorkflow(testData, types);
 		const resultNodeData = getResultNodeData(result, testData);
 
-		// Check that the returned data matches the expected output for the AWS Cognito node
 		resultNodeData.forEach(({ nodeName, resultData }) => {
 			expect(resultData).toEqual(testData.output.nodeData[nodeName]);
 		});
 
-		// Verify that the makeAwsRequestSpy is called once
 		expect(makeAwsRequestSpy).toHaveBeenCalledTimes(1);
 		expect(makeAwsRequestSpy).toHaveBeenCalledWith(
 			expect.any(Object),
@@ -62,11 +59,9 @@ describe('Test AWS Cognito - Get User', () => {
 			}),
 		);
 
-		// Ensure the workflow finishes successfully
 		expect(result.finished).toEqual(true);
 	};
 
-	// Iterate over the tests and run them
 	for (const testData of tests) {
 		test(testData.description, async () => await testNode(testData, nodeTypes));
 	}

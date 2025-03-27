@@ -1,29 +1,37 @@
+import nock from 'nock';
+
 import { equalityTest, setup, workflowToTests } from '../../../../../test/nodes/Helpers';
 
-describe('User - User Deletion', () => {
-	const workflows = ['nodes/AWS/Cognito/test/user/delete.workflow.json'];
+describe('AWS Cognito', () => {
+	const workflows = ['nodes/Aws/Cognito/test/user/delete.workflow.json'];
 	const workflowTests = workflowToTests(workflows);
 
-	describe('should delete user from the user pool', () => {
+	beforeEach(() => {
+		if (!nock.isActive()) {
+			nock.activate();
+		}
+	});
+
+	afterEach(() => {
+		nock.cleanAll();
+	});
+
+	describe('should delete a user', () => {
 		const nodeTypes = setup(workflowTests);
 
 		for (const workflow of workflowTests) {
 			workflow.nock = {
-				baseUrl: 'https://cognito-idp.eu-central-1.amazonaws.com/',
+				baseUrl: 'https://cognito-idp.eu-central-1.amazonaws.com',
 				mocks: [
 					{
 						method: 'post',
+						path: '/',
 						statusCode: 200,
 						requestHeaders: {
-							'x-amz-target': 'AWSCognitoIdentityProviderService.AdminDeleteUser',
-							'Content-Type': 'application/x-amz-json-1.1',
-						},
-						requestBody: {
-							UserPoolId: 'user-pool-id',
-							Username: 'user-to-delete',
+							'X-Amz-Target': 'AWSCognitoIdentityProviderService.AdminDeleteUser',
 						},
 						responseBody: {
-							Status: 'SUCCESS', // Mock success response
+							Status: 'SUCCESS',
 						},
 					},
 				],

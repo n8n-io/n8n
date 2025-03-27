@@ -10,7 +10,7 @@ import {
 	ApplicationError,
 } from 'n8n-workflow';
 
-import type { IListUsersResponse, IUser, IUserPool } from './interfaces';
+import type { IListUsersResponse, IUser, IUserAttribute, IUserPool } from './interfaces';
 import { makeAwsRequest } from '../transport';
 
 const validateEmail = (email: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -36,13 +36,13 @@ export function parseRequestBody(body: unknown): IDataObject {
 	throw new ApplicationError('Invalid body type for requestOptions');
 }
 
-export function mapUserAttributes(userAttributes?: IDataObject[]): IDataObject {
+export function mapUserAttributes(userAttributes?: IUserAttribute[]): Record<string, string> {
 	if (!userAttributes || userAttributes.length === 0) {
 		return {};
 	}
 
-	return userAttributes.reduce<IDataObject>((acc, { Name, Value }) => {
-		if (Name && typeof Name === 'string' && Name.trim()) {
+	return userAttributes.reduce<Record<string, string>>((acc, { Name, Value }) => {
+		if (Name && Name.trim()) {
 			acc[Name === 'sub' ? 'Sub' : Name] = Value ?? '';
 		}
 		return acc;
@@ -215,7 +215,6 @@ export async function presendUserFields(
 		operation === 'create' ? getValidatedNewUsername() : await getUsernameFromExistingUsers();
 
 	const body = parseRequestBody(requestOptions.body);
-
 	return {
 		...requestOptions,
 		body: JSON.stringify({
@@ -246,7 +245,7 @@ export async function getUsersInGroup(
 			MaxResults: 60,
 		}),
 	});
-	const users = (responseData.Users as IDataObject[]) || [];
+	const users = responseData.Users as IDataObject[];
 
 	if (!users.length) {
 		return { results: [] };

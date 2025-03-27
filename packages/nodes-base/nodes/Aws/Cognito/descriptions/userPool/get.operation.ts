@@ -7,7 +7,7 @@ const properties: INodeProperties[] = [
 		required: true,
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
-		description: 'The ID of the user pool',
+		description: 'Select the user pool to retrieve',
 		routing: {
 			send: {
 				type: 'body',

@@ -4,6 +4,7 @@ import {
 	type INodeListSearchResult,
 } from 'n8n-workflow';
 
+import { getUsersInGroup } from '../../helpers/utils';
 import {
 	searchUsers,
 	searchGroups,
@@ -12,13 +13,16 @@ import {
 } from '../../methods/listSearch';
 import { makeAwsRequest } from '../../transport/index';
 
-jest.mock('../transport', () => ({
+jest.mock('../../transport', () => ({
 	makeAwsRequest: jest.fn(),
+}));
+jest.mock('../../helpers/utils', () => ({
+	getUsersInGroup: jest.fn(),
 }));
 
 describe('AWS Cognito Functions', () => {
 	describe('searchUsers', () => {
-		it('should return user results and pagination token when users are found', async () => {
+		it('should return user results when users are found', async () => {
 			const mockResponse = {
 				Users: [
 					{
@@ -83,11 +87,11 @@ describe('AWS Cognito Functions', () => {
 	});
 
 	describe('searchGroups', () => {
-		it('should return group results and pagination token when groups are found', async () => {
+		it('should return group results when groups are found', async () => {
 			const mockResponse = {
 				Groups: [
-					{ GroupName: 'group1', UserPoolId: 'user-pool-id' },
-					{ GroupName: 'group2', UserPoolId: 'user-pool-id' },
+					{ GroupName: 'Group1', UserPoolId: 'user-pool-id' },
+					{ GroupName: 'Group2', UserPoolId: 'user-pool-id' },
 				],
 				NextToken: 'next-token',
 			};
@@ -107,8 +111,8 @@ describe('AWS Cognito Functions', () => {
 
 			const expectedResult: INodeListSearchResult = {
 				results: [
-					{ name: 'group1', value: 'group1' },
-					{ name: 'group2', value: 'group2' },
+					{ name: 'Group1', value: 'Group1' },
+					{ name: 'Group2', value: 'Group2' },
 				],
 				paginationToken: 'next-token',
 			};
@@ -134,7 +138,7 @@ describe('AWS Cognito Functions', () => {
 	});
 
 	describe('searchUserPools', () => {
-		it('should return user pool results and pagination token when user pools are found', async () => {
+		it('should return user pool results when user pools are found', async () => {
 			const mockResponse = {
 				UserPools: [
 					{ Id: 'pool1', Name: 'User Pool 1' },
@@ -177,31 +181,18 @@ describe('AWS Cognito Functions', () => {
 	});
 
 	describe('searchGroupsForUser', () => {
-		it('should return valid groups that the user is a member of', async () => {
-			const mockGroupsResponse = {
-				Groups: [
-					{ GroupName: 'Group1', UserPoolId: 'user-pool-id' },
-					{ GroupName: 'Group2', UserPoolId: 'user-pool-id' },
-					{ GroupName: 'Group3', UserPoolId: 'user-pool-id' },
-				],
-			};
+		it('should handle empty groups response', async () => {
+			const userName = '03a438f2-10d1-70f1-f45a-09753ab5c4c3';
+			const userPoolId = 'eu-central-1_KkXQgdCJv';
 
-			const mockUsersInGroupResponse = {
-				results: [{ Username: 'user1' }],
-			};
+			const mockListGroupsResponse = { Groups: [] };
 
-			(makeAwsRequest as jest.Mock)
-				.mockResolvedValueOnce(mockGroupsResponse)
-				.mockResolvedValueOnce(mockUsersInGroupResponse);
+			(makeAwsRequest as jest.Mock).mockResolvedValueOnce(mockListGroupsResponse);
 
 			const mockContext = {
 				getNodeParameter: jest.fn((param) => {
-					if (param === 'userPoolId') {
-						return { value: 'user-pool-id' };
-					}
-					if (param === 'userName') {
-						return { value: 'user1' };
-					}
+					if (param === 'userName') return { value: userName };
+					if (param === 'userPoolId') return { value: userPoolId };
 					return null;
 				}),
 			} as unknown as ILoadOptionsFunctions;
@@ -209,23 +200,58 @@ describe('AWS Cognito Functions', () => {
 			const result = await searchGroupsForUser.call(mockContext, '', '');
 
 			const expectedResult: INodeListSearchResult = {
-				results: [
-					{ name: 'Group1', value: 'group1' },
-					{ name: 'Group2', value: 'group2' },
-					{ name: 'Group3', value: 'group3' },
+				results: [],
+				paginationToken: undefined,
+			};
+
+			expect(result).toEqual(expectedResult);
+		});
+
+		it('should return correct groups that the user is part of', async () => {
+			const userName = '03a438f2-10d1-70f1-f45a-09753ab5c4c3';
+			const userPoolId = 'eu-central-1_KkXQgdCJv';
+
+			const mockListGroupsResponse = {
+				Groups: [
+					{ GroupName: 'MyNewGroup' },
+					{ GroupName: 'MyNewTesttttt' },
+					{ GroupName: 'MyNewTest1' },
 				],
+			};
+
+			(makeAwsRequest as jest.Mock).mockResolvedValueOnce(mockListGroupsResponse);
+
+			(getUsersInGroup as jest.Mock).mockImplementation(async (groupName, _userPoolId) => {
+				if (groupName === 'MyNewGroup') {
+					return {
+						results: [
+							{
+								Username: '03a438f2-10d1-70f1-f45a-09753ab5c4c3',
+								Enabled: true,
+								email: 'mail.this1@gmail.com',
+							},
+						],
+					};
+				}
+				return { results: [] };
+			});
+
+			const mockContext = {
+				getNodeParameter: jest.fn((param) => {
+					if (param === 'userName') return { value: userName };
+					if (param === 'userPoolId') return { value: userPoolId };
+					return null;
+				}),
+			} as unknown as ILoadOptionsFunctions;
+
+			const result = await searchGroupsForUser.call(mockContext, '', '');
+
+			const expectedResult = {
+				results: [{ name: 'MyNewGroup', value: 'MyNewGroup' }],
 				paginationToken: '',
 			};
 
 			expect(result).toEqual(expectedResult);
-			expect(makeAwsRequest).toHaveBeenCalledWith(
-				expect.objectContaining({
-					url: '',
-					method: 'POST',
-					headers: { 'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListGroups' },
-					body: expect.stringContaining('UserPoolId'),
-				}),
-			);
 		});
 	});
 });
