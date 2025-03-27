@@ -1,3 +1,13 @@
+export const enum ProjectState {
+	SharedPersonal = 'shared-personal',
+	SharedOwned = 'shared-owned',
+	Owned = 'owned',
+	Personal = 'personal',
+	Team = 'team',
+	SharedTeam = 'shared-team',
+	Unknown = 'unknown',
+}
+
 // Splits a project name into first name, last name, and email when it is in the format "First Last <email@domain.com>"
 export const splitName = (
 	projectName = '',

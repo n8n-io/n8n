@@ -9,7 +9,6 @@ import { useUIStore } from '@/stores/ui.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import TimeAgo from '@/components/TimeAgo.vue';
 import { useProjectsStore } from '@/stores/projects.store';
-import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
 import { useI18n } from '@/composables/useI18n';
 import { ResourceType } from '@/utils/projects.utils';
 import type { CredentialsResource } from './layouts/ResourcesListLayout.vue';
@@ -157,12 +156,13 @@ function moveResource() {
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
-				<ProjectCardBadge
-					:class="$style.cardBadge"
+				<CardInfoBadge
+					class="$style.cardBadge"
 					:resource="data"
 					:resource-type="ResourceType.Credential"
 					:resource-type-label="resourceTypeLabel"
 					:personal-project="projectsStore.personalProject"
+					:hide-breadcrumbs="true"
 				/>
 				<n8n-action-toggle
 					data-test-id="credential-card-actions"
