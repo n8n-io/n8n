@@ -123,13 +123,14 @@ export class InsightsService {
 				);
 			}
 
+			const events: InsightsRaw[] = [];
 			// success or failure event
 			{
 				const event = new InsightsRaw();
 				event.metaId = metadata.metaId;
 				event.type = status;
 				event.value = 1;
-				await trx.insert(InsightsRaw, event);
+				events.push(event);
 			}
 
 			// run time event
@@ -139,7 +140,7 @@ export class InsightsService {
 				event.metaId = metadata.metaId;
 				event.type = 'runtime_ms';
 				event.value = value;
-				await trx.insert(InsightsRaw, event);
+				events.push(event);
 			}
 
 			// time saved event
@@ -148,8 +149,10 @@ export class InsightsService {
 				event.metaId = metadata.metaId;
 				event.type = 'time_saved_min';
 				event.value = ctx.workflowData.settings.timeSavedPerExecution;
-				await trx.insert(InsightsRaw, event);
+				events.push(event);
 			}
+
+			await trx.insert(InsightsRaw, events);
 		});
 	}
 
