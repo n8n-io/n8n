@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { Bar } from 'vue-chartjs';
 import { useCssVar } from '@vueuse/core';
 import dateformat from 'dateformat';
