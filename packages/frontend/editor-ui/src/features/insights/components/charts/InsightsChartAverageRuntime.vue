@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { Line } from 'vue-chartjs';
-import { Filler } from 'chart.js';
+import { type ChartData, Filler } from 'chart.js';
 import dateformat from 'dateformat';
 import type { InsightsByTime, InsightsSummaryType } from '@n8n/api-types';
 import {
@@ -36,7 +36,7 @@ const chartOptions = computed(() =>
 	}),
 );
 
-const chartData = computed(() => {
+const chartData = computed<ChartData>(() => {
 	const labels: string[] = [];
 	const data: number[] = [];
 

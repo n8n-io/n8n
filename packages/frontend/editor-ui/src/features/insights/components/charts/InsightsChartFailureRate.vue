@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
+import type { ChartData } from 'chart.js';
 import { Bar } from 'vue-chartjs';
 import { useCssVar } from '@vueuse/core';
 import dateformat from 'dateformat';
@@ -18,7 +19,7 @@ const props = defineProps<{
 const i18n = useI18n();
 
 const colorPrimary = useCssVar('--color-primary', document.body);
-const chartOptions = computed(() =>
+const chartOptions = computed<ChartData>(() =>
 	generateBarChartOptions({
 		plugins: {
 			tooltip: {
