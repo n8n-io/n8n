@@ -9,6 +9,21 @@ import { getTracingConfig } from '@utils/tracing';
 import { createPromptTemplate } from './promptUtils';
 import type { ChainExecutionParams } from './types';
 
+export class NaiveJsonOutputParser<
+	T extends Record<string, any> = Record<string, any>,
+> extends JsonOutputParser<T> {
+	async parse(text: string): Promise<T> {
+		// First try direct JSON parsing
+		try {
+			const directParsed = JSON.parse(text);
+			return directParsed as T;
+		} catch (e) {
+			// If fails, fall back to JsonOutputParser parser
+			return await super.parse(text);
+		}
+	}
+}
+
 /**
  * Type guard to check if the LLM has a modelKwargs property(OpenAI)
  */
@@ -39,11 +54,11 @@ export function getOutputParserForLLM(
 	llm: BaseLanguageModel,
 ): BaseLLMOutputParser<string | Record<string, unknown>> {
 	if (isModelWithResponseFormat(llm) && llm.modelKwargs?.response_format?.type === 'json_object') {
-		return new JsonOutputParser();
+		return new NaiveJsonOutputParser();
 	}
 
 	if (isModelWithFormat(llm) && llm.format === 'json') {
-		return new JsonOutputParser();
+		return new NaiveJsonOutputParser();
 	}
 
 	return new StringOutputParser();
