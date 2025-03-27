@@ -234,4 +234,9 @@ BQIDAQAB
 			'user-read-playback-state playlist-read-collaborative user-modify-playback-state playlist-modify-public user-read-currently-playing playlist-read-private user-read-recently-played playlist-modify-private user-library-read user-follow-read',
 		server: 'https://api.spotify.com/',
 	},
+	baserowApi: {
+		host: 'https://api.baserow.io',
+		username: 'nathan@n8n.io',
+		password: 'fake-password',
+	},
 } as const;

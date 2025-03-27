@@ -375,7 +375,7 @@ const goToUpgrade = () => {
 								{{
 									i18n.baseText('executionsList.selectAll', {
 										adjustToNumber: total,
-										interpolate: { executionNum: `${total}` },
+										interpolate: { count: `${total}` },
 									})
 								}}
 							</th>

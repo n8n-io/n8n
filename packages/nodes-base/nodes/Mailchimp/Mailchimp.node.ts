@@ -17,13 +17,15 @@ import {
 	validateJSON,
 } from './GenericFunctions';
 
-const enum Status {
-	subscribe = 'subscribe',
-	unsubscribed = 'unsubscribe',
-	cleaned = 'cleaned',
-	pending = 'pending',
-	transactional = 'transactional',
-}
+const Statuses = {
+	subscribe: 'subscribe',
+	unsubscribed: 'unsubscribe',
+	cleaned: 'cleaned',
+	pending: 'pending',
+	transactional: 'transactional',
+} as const;
+
+type Status = (typeof Statuses)[keyof typeof Statuses];
 
 interface ILocation {
 	latitude?: number;
