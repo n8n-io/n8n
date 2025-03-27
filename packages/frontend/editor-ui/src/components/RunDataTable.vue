@@ -655,7 +655,7 @@ watch(focusedMappableInput, (curr) => {
 	position: absolute;
 	top: 0;
 	left: 0;
-	padding-left: var(--spacing-s);
+	padding-left: var(--ndv-spacing);
 	right: 0;
 	overflow-y: auto;
 	line-height: 1.5;

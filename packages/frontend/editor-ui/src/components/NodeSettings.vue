@@ -23,7 +23,12 @@ import type {
 	IUpdateInformation,
 } from '@/Interface';
 
-import { COMMUNITY_NODES_INSTALLATION_DOCS_URL, CUSTOM_NODES_DOCS_URL } from '@/constants';
+import {
+	BASE_NODE_SURVEY_URL,
+	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
+	CUSTOM_NODES_DOCS_URL,
+	NDV_UI_OVERHAUL_EXPERIMENT,
+} from '@/constants';
 
 import NodeTitle from '@/components/NodeTitle.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
@@ -31,6 +36,7 @@ import NodeCredentials from '@/components/NodeCredentials.vue';
 import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import NDVSubConnections from '@/components/NDVSubConnections.vue';
+import NodeSettingsHeader from '@/components/NodeSettingsHeader.vue';
 import { get, set, unset } from 'lodash-es';
 
 import NodeExecuteButton from './NodeExecuteButton.vue';
@@ -50,6 +56,7 @@ import { importCurlEventBus, ndvEventBus } from '@/event-bus';
 import { ProjectTypes } from '@/types/projects.types';
 import { updateDynamicConnections } from '@/utils/nodeSettingsUtils';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
+import { usePostHog } from '@/stores/posthog.store';
 
 const props = withDefaults(
 	defineProps<{
@@ -87,6 +94,7 @@ const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const credentialsStore = useCredentialsStore();
 const historyStore = useHistoryStore();
+const posthogStore = usePostHog();
 
 const telemetry = useTelemetry();
 const nodeHelpers = useNodeHelpers();
@@ -221,6 +229,20 @@ const credentialOwnerName = computed(() => {
 		: undefined;
 
 	return credentialsStore.getCredentialOwnerName(credential);
+});
+
+const isNDVV2 = computed(() =>
+	posthogStore.isVariantEnabled(
+		NDV_UI_OVERHAUL_EXPERIMENT.name,
+		NDV_UI_OVERHAUL_EXPERIMENT.variant,
+	),
+);
+
+const featureRequestUrl = computed(() => {
+	if (!props.nodeType) {
+		return '';
+	}
+	return `${BASE_NODE_SURVEY_URL}${props.nodeType.name}`;
 });
 
 const setValue = (name: string, value: NodeParameterValue) => {
@@ -915,6 +937,18 @@ const onTabSelect = (tab: 'params' | 'settings') => {
 	openPanel.value = tab;
 };
 
+const onFeatureRequestClick = () => {
+	if (node.value) {
+		telemetry.track('User clicked ndv link', {
+			node_type: node.value.type,
+			workflow_id: workflowsStore.workflowId,
+			push_ref: props.pushRef,
+			pane: NodeConnectionTypes.Main,
+			type: 'i-wish-this-node-would',
+		});
+	}
+};
+
 watch(node, () => {
 	setNodeValues();
 });
@@ -944,7 +978,7 @@ onBeforeUnmount(() => {
 		}"
 		@keydown.stop
 	>
-		<div :class="$style.header">
+		<div v-if="!isNDVV2" :class="$style.header">
 			<div class="header-side-menu">
 				<NodeTitle
 					v-if="node"
@@ -977,6 +1011,21 @@ onBeforeUnmount(() => {
 				@update:model-value="onTabSelect"
 			/>
 		</div>
+		<NodeSettingsHeader
+			v-else-if="node"
+			:selected-tab="openPanel"
+			:node-name="node.name"
+			:node-type="nodeType"
+			:execute-button-tooltip="executeButtonTooltip"
+			:hide-execute="!isExecutable || blockUI || !node || !nodeValid"
+			:disable-execute="outputPanelEditMode.enabled && !isTriggerNode"
+			:hide-tabs="!nodeValid"
+			:push-ref="pushRef"
+			@execute="onNodeExecute"
+			@stop-execution="onStopExecution"
+			@value-changed="valueChanged"
+			@tab-changed="onTabSelect"
+		/>
 		<div v-if="node && !nodeValid" class="node-is-not-valid">
 			<p :class="$style.warningIcon">
 				<font-awesome-icon icon="exclamation-triangle" />
@@ -1107,6 +1156,12 @@ onBeforeUnmount(() => {
 					<span>({{ nodeVersionTag }})</span>
 				</div>
 			</div>
+			<div :class="$style.featureRequest" v-if="featureRequestUrl">
+				<a target="_blank" @click="onFeatureRequestClick">
+					<N8nIcon icon="lightbulb" />
+					{{ i18n.baseText('ndv.featureRequest') }}
+				</a>
+			</div>
 		</div>
 		<NDVSubConnections
 			v-if="node"
@@ -1132,6 +1187,22 @@ onBeforeUnmount(() => {
 .descriptionContainer {
 	display: flex;
 	flex-direction: column;
+}
+
+.featureRequest {
+	margin-top: auto;
+	align-self: center;
+
+	a {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--spacing-4xs);
+		margin-top: var(--spacing-xl);
+
+		font-size: var(--font-size-3xs);
+		font-weight: var(--font-weight-bold);
+		color: var(--color-text-light);
+	}
 }
 </style>
 
@@ -1171,6 +1242,8 @@ onBeforeUnmount(() => {
 	}
 
 	.node-parameters-wrapper {
+		display: flex;
+		flex-direction: column;
 		overflow-y: auto;
 		padding: 0 var(--spacing-m) var(--spacing-l) var(--spacing-m);
 		flex-grow: 1;
