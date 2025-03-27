@@ -9,6 +9,7 @@ import { N8nIconButton, N8nText } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { upperFirst } from 'lodash-es';
 import { useI18n } from '@/composables/useI18n';
+import ConsumedTokenCountText from '@/components/CanvasChat/future/components/ConsumedTokenCountText.vue';
 
 const props = defineProps<{
 	data: TreeNode;
@@ -101,7 +102,7 @@ function handleClickToggleButton() {
 				startedAtText
 			}}</N8nText>
 			<div v-if="subtreeConsumedTokens !== undefined" :class="$style.consumedTokens">
-				<ConsumedTokenCount
+				<ConsumedTokenCountText
 					v-if="subtreeConsumedTokens.totalTokens > 0 && !props.node.expanded"
 					:consumed-tokens="subtreeConsumedTokens"
 				/>

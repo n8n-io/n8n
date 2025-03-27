@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { formatTokenUsageCount } from '@/components/RunDataAi/utils';
 import { useI18n } from '@/composables/useI18n';
-import { type LlmTokenUsageData } from '@/types/executions';
+import { type LlmTokenUsageData } from '@/Interface';
 import { N8nText } from '@n8n/design-system';
 
 const { consumedTokens } = defineProps<{ consumedTokens: LlmTokenUsageData }>();

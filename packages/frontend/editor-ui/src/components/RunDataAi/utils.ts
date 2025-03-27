@@ -1,5 +1,4 @@
-import { type IAiDataContent } from '@/Interface';
-import { type LlmTokenUsageData } from '@/types/executions';
+import { type LlmTokenUsageData, type IAiDataContent } from '@/Interface';
 import {
 	type INodeExecutionData,
 	type ITaskData,

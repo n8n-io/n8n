@@ -17,6 +17,7 @@ import {
 import { type INodeUi } from '@/Interface';
 import { upperFirst } from 'lodash-es';
 import { useTelemetry } from '@/composables/useTelemetry';
+import ConsumedTokenCountText from '@/components/CanvasChat/future/components/ConsumedTokenCountText.vue';
 
 const { node, isOpen } = defineProps<{ isOpen: boolean; node: INodeUi | null }>();
 
@@ -122,7 +123,7 @@ function handleClickNode(clicked: TreeNode) {
 			<div v-else :class="$style.scrollable">
 				<div v-if="executionStatusText !== undefined" :class="$style.summary">
 					<N8nText size="small" color="text-base">{{ executionStatusText }}</N8nText>
-					<ConsumedTokenCount
+					<ConsumedTokenCountText
 						v-if="consumedTokens.totalTokens > 0"
 						:consumed-tokens="consumedTokens"
 					/>
