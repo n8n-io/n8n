@@ -109,6 +109,7 @@ describe(getTreeNodeData, () => {
 					completionTokens: 0,
 					promptTokens: 0,
 					totalTokens: 0,
+					isEstimate: false,
 				},
 				children: [
 					{
@@ -122,6 +123,7 @@ describe(getTreeNodeData, () => {
 							completionTokens: 1,
 							promptTokens: 2,
 							totalTokens: 3,
+							isEstimate: false,
 						},
 						children: [
 							{
@@ -136,6 +138,7 @@ describe(getTreeNodeData, () => {
 									completionTokens: 7,
 									promptTokens: 8,
 									totalTokens: 9,
+									isEstimate: true,
 								},
 							},
 						],
@@ -151,6 +154,7 @@ describe(getTreeNodeData, () => {
 							completionTokens: 4,
 							promptTokens: 5,
 							totalTokens: 6,
+							isEstimate: false,
 						},
 						children: [
 							{
@@ -165,6 +169,7 @@ describe(getTreeNodeData, () => {
 									completionTokens: 0,
 									promptTokens: 0,
 									totalTokens: 0,
+									isEstimate: false,
 								},
 							},
 						],
