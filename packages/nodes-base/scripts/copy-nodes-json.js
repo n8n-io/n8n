@@ -9,4 +9,4 @@ function copyJsonFiles(baseDir) {
 	}
 }
 
-copyJsonFiles(process.cwd());
+copyJsonFiles(process.argv[2]);
