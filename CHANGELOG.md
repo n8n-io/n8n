@@ -1,3 +1,12 @@
+## [1.85.4](https://github.com/n8n-io/n8n/compare/n8n@1.85.3...n8n@1.85.4) (2025-03-27)
+
+
+### Bug Fixes
+
+* **Basic LLM Chain Node:** Prevent stringifying of structured output on previous versions ([#14200](https://github.com/n8n-io/n8n/issues/14200)) ([e432aa6](https://github.com/n8n-io/n8n/commit/e432aa688e3b6d5e35741b0c6b5b4ba1d7374ff1))
+
+
+
 ## [1.85.3](https://github.com/n8n-io/n8n/compare/n8n@1.85.2...n8n@1.85.3) (2025-03-26)
 
 
