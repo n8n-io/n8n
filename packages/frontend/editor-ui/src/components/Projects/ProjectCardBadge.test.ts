@@ -1,7 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore } from '@/__tests__/utils';
 import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
-import { useFoldersStore } from '@/stores/folders.store';
 import { truncate } from '@n8n/utils/string/truncate';
 import { createTestingPinia } from '@pinia/testing';
 
@@ -20,13 +18,9 @@ vi.mock('vue-router', () => {
 
 const renderComponent = createComponentRenderer(ProjectCardBadge);
 
-let pinia: ReturnType<typeof createTestingPinia>;
-let foldersStore: ReturnType<typeof mockedStore<typeof useFoldersStore>>;
-
 describe('ProjectCardBadge', () => {
 	beforeEach(() => {
-		pinia = createTestingPinia();
-		foldersStore = mockedStore(useFoldersStore);
+		createTestingPinia();
 	});
 
 	it('should show "Personal" badge if there is no homeProject', () => {
