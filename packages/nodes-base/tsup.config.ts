@@ -15,9 +15,10 @@ const aiNodesFilesContents = aiNodesFiles.map((filePath) =>
 // Files used in @n8n/nodes-langchain package
 const aiNodesPackageImports = (await Promise.all(aiNodesFilesContents)).reduce(
 	(acc, fileContents) => {
-		const matches = /from\s+['"](n8n-nodes-base[^'"]+)['"]/g.exec(fileContents);
-		if (matches) {
-			acc.add(matches[1]);
+		const regex = /from\s+['"](n8n-nodes-base[^'"]+)['"]/g;
+		let match;
+		while ((match = regex.exec(fileContents)) !== null) {
+			acc.add(match[1]);
 		}
 
 		return acc;
