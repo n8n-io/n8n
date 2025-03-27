@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
+// eslint-disable-next-line import/no-extraneous-dependencies
 import { ElSelect, ElOption, ElOptionGroup } from 'element-plus';
 import { capitalCase } from 'change-case';
 import { useI18n } from '@/composables/useI18n';
@@ -21,19 +22,15 @@ const props = defineProps({
 	},
 });
 
-// Define emits
 const emit = defineEmits(['update:modelValue']);
 const selectedScopes = ref(props.modelValue);
 
 const i18n = useI18n();
 const { goToUpgrade } = usePageRedirectionHelper();
 
-// Create reactive state
-
 const checkAll = ref(false);
 const indeterminate = ref(false);
 
-// Group the scopes by resource
 const groupedScopes = computed(() => {
 	const groups = {};
 
@@ -81,7 +78,7 @@ function goToUpgradeApiKeyScopes() {
 <template>
 	<div :class="$style['api-key-scopes']">
 		<div ref="popperContainer"></div>
-		<N8nInputLabel label="Scopes" color="text-dark">
+		<N8nInputLabel :label="i18n.baseText('settings.api.scopes.label')" color="text-dark">
 			<ElSelect
 				v-model="selectedScopes"
 				:popper-class="$style['scopes-dropdown-container']"
@@ -91,7 +88,7 @@ function goToUpgradeApiKeyScopes() {
 				:max-collapse-tags="10"
 				placement="top"
 				:reserve-keyword="false"
-				placeholder="Select"
+				:placeholder="i18n.baseText('settings.api.scopes.placeholder')"
 				:append-to="popperContainer"
 			>
 				<template #header>
@@ -101,7 +98,7 @@ function goToUpgradeApiKeyScopes() {
 						:class="$style['scopes-checkbox']"
 						:indeterminate="indeterminate"
 					>
-						Select All
+						{{ i18n.baseText('settings.api.scopes.selectAll') }}
 					</el-checkbox>
 				</template>
 
@@ -131,12 +128,12 @@ function goToUpgradeApiKeyScopes() {
 
 <style module>
 .api-key-scopes :global(.el-tag) {
-	padding: 5px;
+	padding: var(--spacing-3xs);
 }
 
 .api-key-scopes :global(.el-tag__close) {
 	color: white;
-	margin-left: 5px;
+	margin-left: var(--spacing-3xs);
 	background-color: var(--color-text-base);
 }
 
@@ -148,7 +145,7 @@ function goToUpgradeApiKeyScopes() {
 	font-size: var(--font-size-2xs);
 	color: var(--color-text-dark);
 	font-weight: var(--font-weight-bold);
-	border-bottom: 1.5px solid var(--color-text-lighter);
+	border-bottom: var(--spacing-5xs) solid var(--color-text-lighter);
 	padding-left: var(--spacing-xs);
 }
 
@@ -173,9 +170,9 @@ function goToUpgradeApiKeyScopes() {
 }
 
 .scopes-dropdown-container :global(.el-select-dropdown__header) {
-	margin-top: 10px;
-	padding-bottom: 10px;
-	border-bottom: 1.5px solid var(--color-text-lighter);
+	margin-top: var(--spacing-xs);
+	padding-bottom: var(--spacing-xs);
+	border-bottom: var(--spacing-5xs) solid var(--color-text-lighter);
 }
 
 .scopes-checkbox {
