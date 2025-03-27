@@ -90,7 +90,7 @@ export class VectorStoreSupabase extends createVectorStoreNode<SupabaseVectorSto
 			queryName: string;
 		};
 		const credentials = await context.getCredentials('supabaseApi');
-		const client = createClient(credentials.host as string, credentials.serviceRole as string);
+		const client = createClient(credentials.host as string, credentials.serviceRole as string); // [ria] need to pass schema to client creation!
 
 		try {
 			await SupabaseVectorStore.fromDocuments(documents, embeddings, {
