@@ -441,9 +441,9 @@ export interface IExecutionBase {
 	status: ExecutionStatus;
 	retryOf?: string;
 	retrySuccessId?: string;
-	startedAt: Date;
-	createdAt: Date;
-	stoppedAt?: Date;
+	startedAt: Date | string;
+	createdAt: Date | string;
+	stoppedAt?: Date | string;
 	workflowId?: string; // To be able to filter executions easily //
 }
 

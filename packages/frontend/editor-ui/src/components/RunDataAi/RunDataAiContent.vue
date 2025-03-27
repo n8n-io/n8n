@@ -8,7 +8,8 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import AiRunContentBlock from './AiRunContentBlock.vue';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import { useI18n } from '@/composables/useI18n';
-import { getConsumedTokens } from '@/components/RunDataAi/utils';
+import { formatTokenUsageCount, getConsumedTokens } from '@/components/RunDataAi/utils';
+import ConsumedTokensDetails from '@/components/ConsumedTokensDetails.vue';
 
 interface RunMeta {
 	startTimeMs: number;
@@ -36,13 +37,7 @@ const consumedTokensSum = computed(() => {
 	// eslint-disable-next-line @typescript-eslint/no-use-before-define
 	return getConsumedTokens(outputRun.value);
 });
-const usingTokensEstimates = computed(() => {
-	return outputRun.value?.data?.some((d) => d.json?.tokenUsageEstimate);
-});
 
-function formatTokenUsageCount(count: number) {
-	return usingTokensEstimates.value ? `~${count}` : count.toString();
-}
 function extractRunMeta(run: IAiDataContent) {
 	const uiNode = workflowsStore.getNodeByName(props.inputData.node);
 	const nodeType = nodeTypesStore.getNodeType(uiNode?.type ?? '');
@@ -124,34 +119,12 @@ const outputError = computed(() => {
 						{{
 							i18n.baseText('runData.aiContentBlock.tokens', {
 								interpolate: {
-									count: formatTokenUsageCount(consumedTokensSum?.totalTokens ?? 0),
+									count: formatTokenUsageCount(consumedTokensSum, 'total'),
 								},
 							})
 						}}
 						<n8n-info-tip type="tooltip" theme="info-light" tooltip-placement="right">
-							<div>
-								<n8n-text :bold="true" size="small">
-									{{ i18n.baseText('runData.aiContentBlock.tokens.prompt') }}
-									{{
-										i18n.baseText('runData.aiContentBlock.tokens', {
-											interpolate: {
-												count: formatTokenUsageCount(consumedTokensSum?.promptTokens ?? 0),
-											},
-										})
-									}}
-								</n8n-text>
-								<br />
-								<n8n-text :bold="true" size="small">
-									{{ i18n.baseText('runData.aiContentBlock.tokens.completion') }}
-									{{
-										i18n.baseText('runData.aiContentBlock.tokens', {
-											interpolate: {
-												count: formatTokenUsageCount(consumedTokensSum?.completionTokens ?? 0),
-											},
-										})
-									}}
-								</n8n-text>
-							</div>
+							<ConsumedTokensDetails :consumed-tokens="consumedTokensSum" />
 						</n8n-info-tip>
 					</li>
 				</ul>

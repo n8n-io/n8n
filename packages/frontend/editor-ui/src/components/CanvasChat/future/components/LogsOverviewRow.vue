@@ -10,7 +10,12 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { upperFirst } from 'lodash-es';
 import { useI18n } from '@/composables/useI18n';
 
-const props = defineProps<{ data: TreeNode; node: ElTreeNode; isSelected: boolean }>();
+const props = defineProps<{
+	data: TreeNode;
+	node: ElTreeNode;
+	isSelected: boolean;
+	shouldShowConsumedTokens: boolean;
+}>();
 
 const locale = useI18n();
 const workflowsStore = useWorkflowsStore();
@@ -25,7 +30,7 @@ const runData = computed<ITaskData | undefined>(() =>
 );
 const type = computed(() => (node.value ? nodeTypeStore.getNodeType(node.value.type) : undefined));
 const depth = computed(() => (props.node.level ?? 1) - 1);
-const runOutcomeText = computed(() => {
+const timeTookText = computed(() => {
 	const finalStatuses: ExecutionStatus[] = ['crashed', 'error', 'success'];
 	const status = runData.value?.executionStatus;
 
@@ -39,25 +44,21 @@ const runOutcomeText = computed(() => {
 		? locale.baseText('logs.overview.body.summaryText', {
 				interpolate: {
 					status: statusText,
-					time: runData.value.executionTime,
+					time: locale.displayTimer(runData.value.executionTime, true),
 				},
 			})
 		: statusText;
 });
-const startedText = computed(() =>
+const startedAtText = computed(() =>
 	locale.baseText('logs.overview.body.started', {
 		interpolate: {
-			time: new Date(runData.value?.startTime ?? 0).toLocaleString(),
+			time: new Date(runData.value?.startTime ?? 0).toISOString(), // TODO: confirm date format
 		},
 	}),
 );
 
-const subtreeConsumedTokensText = computed(() =>
-	locale.baseText('logs.overview.body.tokens', {
-		interpolate: {
-			count: getSubtreeTotalConsumedTokens(props.data).totalTokens,
-		},
-	}),
+const subtreeConsumedTokens = computed(() =>
+	props.shouldShowConsumedTokens ? getSubtreeTotalConsumedTokens(props.data) : undefined,
 );
 
 function isLastChild(level: number) {
@@ -93,15 +94,18 @@ function handleClickToggleButton() {
 		<div :class="[$style.selectable, props.isSelected ? $style.selected : '']">
 			<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
 			<N8nText tag="div" :bold="true" size="small" :class="$style.name">{{ node.name }}</N8nText>
-			<N8nText tag="div" color="text-light" size="small" :class="$style.attribute">{{
-				runOutcomeText
+			<N8nText tag="div" color="text-light" size="small" :class="$style.timeTook">{{
+				timeTookText
 			}}</N8nText>
-			<N8nText tag="div" color="text-light" size="small" :class="$style.attribute">{{
-				startedText
+			<N8nText tag="div" color="text-light" size="small" :class="$style.startedAt">{{
+				startedAtText
 			}}</N8nText>
-			<N8nText tag="div" color="text-light" size="small" :class="$style.attribute">{{
-				subtreeConsumedTokensText
-			}}</N8nText>
+			<div v-if="subtreeConsumedTokens !== undefined" :class="$style.consumedTokens">
+				<ConsumedTokenCount
+					v-if="subtreeConsumedTokens.totalTokens > 0 && !props.node.expanded"
+					:consumed-tokens="subtreeConsumedTokens"
+				/>
+			</div>
 			<N8nIconButton
 				type="secondary"
 				size="medium"
@@ -134,7 +138,7 @@ function handleClickToggleButton() {
 	border-radius: var(--border-radius-base);
 
 	&.selected,
-	&:hover {
+	.container:hover & {
 		background-color: var(--color-foreground-base);
 	}
 
@@ -184,8 +188,23 @@ function handleClickToggleButton() {
 	padding-inline-start: 0;
 }
 
-.attribute {
-	flex-shrink: 1;
+.timeTook {
+	flex-grow: 0;
+	flex-shrink: 0;
+	width: 15em;
+}
+
+.startedAt {
+	flex-grow: 0;
+	flex-shrink: 0;
+	width: 21em;
+}
+
+.consumedTokens {
+	flex-grow: 0;
+	flex-shrink: 0;
+	width: 9em;
+	text-align: right;
 }
 
 .toggleButton {

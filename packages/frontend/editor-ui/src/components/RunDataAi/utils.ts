@@ -174,6 +174,7 @@ const emptyTokenUsageData: LlmTokenUsageData = {
 	completionTokens: 0,
 	promptTokens: 0,
 	totalTokens: 0,
+	isEstimate: false,
 };
 
 function addTokenUsageData(one: LlmTokenUsageData, another: LlmTokenUsageData): LlmTokenUsageData {
@@ -181,6 +182,7 @@ function addTokenUsageData(one: LlmTokenUsageData, another: LlmTokenUsageData): 
 		completionTokens: one.completionTokens + another.completionTokens,
 		promptTokens: one.promptTokens + another.promptTokens,
 		totalTokens: one.totalTokens + another.totalTokens,
+		isEstimate: one.isEstimate || another.isEstimate,
 	};
 }
 
@@ -191,12 +193,14 @@ export function getConsumedTokens(outputRun: IAiDataContent | undefined): LlmTok
 
 	const tokenUsage = outputRun.data.reduce<LlmTokenUsageData>(
 		(acc: LlmTokenUsageData, curr: INodeExecutionData) => {
-			const tokenUsageData = (curr.json?.tokenUsage ??
-				curr.json?.tokenUsageEstimate) as LlmTokenUsageData;
+			const tokenUsageData = curr.json?.tokenUsage ?? curr.json?.tokenUsageEstimate;
 
 			if (!tokenUsageData) return acc;
 
-			return addTokenUsageData(acc, tokenUsageData);
+			return addTokenUsageData(acc, {
+				...(tokenUsageData as Omit<LlmTokenUsageData, 'isEstimate'>),
+				isEstimate: !!curr.json.tokenUsageEstimate,
+			});
 		},
 		emptyTokenUsageData,
 	);
@@ -213,4 +217,18 @@ export function getSubtreeTotalConsumedTokens(treeNode: TreeNode): LlmTokenUsage
 		treeNode.consumedTokens,
 		...treeNode.children.map(getSubtreeTotalConsumedTokens),
 	);
+}
+
+export function formatTokenUsageCount(
+	usage: LlmTokenUsageData,
+	field: 'total' | 'prompt' | 'completion',
+) {
+	const count =
+		field === 'total'
+			? usage.totalTokens
+			: field === 'completion'
+				? usage.completionTokens
+				: usage.promptTokens;
+
+	return usage.isEstimate ? `~${count}` : count.toLocaleString();
 }

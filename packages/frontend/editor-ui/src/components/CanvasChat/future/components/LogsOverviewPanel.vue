@@ -55,20 +55,18 @@ const executionStatusText = computed(() => {
 		return locale.baseText('logs.overview.body.summaryText', {
 			interpolate: {
 				status: upperFirst(execution.status),
-				time: +execution.stoppedAt - +execution.startedAt,
+				time: locale.displayTimer(
+					+new Date(execution.stoppedAt) - +new Date(execution.startedAt),
+					true,
+				),
 			},
 		});
 	}
 
 	return upperFirst(execution.status);
 });
-const consumedTokensText = computed(() =>
-	locale.baseText('logs.overview.body.tokens', {
-		interpolate: {
-			count: getTotalConsumedTokens(...executionTree.value.map(getSubtreeTotalConsumedTokens))
-				.totalTokens,
-		},
-	}),
+const consumedTokens = computed(() =>
+	getTotalConsumedTokens(...executionTree.value.map(getSubtreeTotalConsumedTokens)),
 );
 
 const selectedRun = ref<{ node: string; runIndex: number } | undefined>(undefined);
@@ -121,12 +119,13 @@ function handleClickNode(clicked: TreeNode) {
 			<N8nText v-if="isEmpty" tag="p" size="medium" color="text-base" :class="$style.emptyText">
 				{{ locale.baseText('logs.overview.body.empty.message') }}
 			</N8nText>
-			<template v-else>
+			<div v-else :class="$style.scrollable">
 				<div v-if="executionStatusText !== undefined" :class="$style.summary">
 					<N8nText size="small" color="text-base">{{ executionStatusText }}</N8nText>
-					<N8nText v-if="consumedTokensText !== undefined" size="small" color="text-base">{{
-						consumedTokensText
-					}}</N8nText>
+					<ConsumedTokenCount
+						v-if="consumedTokens.totalTokens > 0"
+						:consumed-tokens="consumedTokens"
+					/>
 				</div>
 				<ElTree
 					:class="$style.tree"
@@ -136,13 +135,14 @@ function handleClickNode(clicked: TreeNode) {
 					:default-expand-all="false"
 					@node-click="handleClickNode"
 				>
-					<template #default="{ node, data }">
+					<template #default="{ node: elTreeNode, data }">
 						<LogsOverviewRow
 							:data="data"
-							:node="node"
+							:node="elTreeNode"
 							:is-selected="
 								data.node === selectedRun?.node && data.runIndex === selectedRun?.runIndex
 							"
+							:should-show-consumed-tokens="consumedTokens.totalTokens > 0"
 						/>
 					</template>
 				</ElTree>
@@ -152,7 +152,7 @@ function handleClickNode(clicked: TreeNode) {
 					:model-value="selectedRun ? 'details' : 'overview'"
 					:options="switchViewOptions"
 				/>
-			</template>
+			</div>
 		</div>
 	</div>
 </template>
@@ -165,15 +165,10 @@ function handleClickNode(clicked: TreeNode) {
 	flex-direction: column;
 	align-items: stretch;
 	overflow: hidden;
-
-	& :global(.el-icon) {
-		display: none;
-	}
 }
 
 .content {
 	position: relative;
-	padding: var(--spacing-2xs);
 	flex-grow: 1;
 	overflow: auto;
 	display: flex;
@@ -192,6 +187,13 @@ function handleClickNode(clicked: TreeNode) {
 	text-align: center;
 }
 
+.scrollable {
+	padding: var(--spacing-2xs);
+	flex-grow: 1;
+	flex-shrink: 1;
+	overflow: auto;
+}
+
 .summary {
 	display: flex;
 	align-items: center;
@@ -208,9 +210,10 @@ function handleClickNode(clicked: TreeNode) {
 
 .tree {
 	margin-top: var(--spacing-2xs);
-	flex-grow: 1;
-	flex-shrink: 1;
-	overflow: auto;
+
+	& :global(.el-icon) {
+		display: none;
+	}
 }
 
 .switchViewButtons {
