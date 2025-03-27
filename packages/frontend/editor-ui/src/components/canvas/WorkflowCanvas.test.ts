@@ -20,7 +20,7 @@ vi.mock('@vueuse/core', async () => {
 	const actual = await vi.importActual('@vueuse/core');
 	return {
 		...actual,
-		debouncedRef: vi.fn(actual.debouncedRef),
+		debouncedRef: vi.fn(actual.debouncedRef as typeof vueuse.debouncedRef),
 	};
 });
 
