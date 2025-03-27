@@ -260,7 +260,7 @@ const fetchHiddenBreadCrumbsItems = async () => {
 				theme="tertiary"
 				bold
 			>
-				+ {{ numberOfMembersInHomeTeamProject }}
+				+{{ numberOfMembersInHomeTeamProject }}
 			</div>
 			<template #content>
 				{{ badgeTooltip }}
@@ -281,8 +281,8 @@ const fetchHiddenBreadCrumbsItems = async () => {
 .home-project :global(.n8n-text) {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-4xs);
-	color: var(--color-text-dark);
+	gap: var(--spacing-3xs);
+	color: var(--color-text-base);
 }
 
 .project-badge,
@@ -292,6 +292,7 @@ const fetchHiddenBreadCrumbsItems = async () => {
 }
 
 .count-badge {
+	color: var(--color-text-base);
 	border-left: var(--border-base);
 }
 

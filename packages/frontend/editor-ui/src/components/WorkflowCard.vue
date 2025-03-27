@@ -357,6 +357,10 @@ const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
 	cursor: default;
 }
 
+.cardBadge {
+	margin-right: var(--spacing-3xs);
+}
+
 @include mixins.breakpoint('sm-and-down') {
 	.cardLink {
 		--card--padding: 0 var(--spacing-s) var(--spacing-s);

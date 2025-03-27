@@ -354,7 +354,7 @@ const handleTooltipClose = () => {
 
 	.item,
 	.item * {
-		color: var(--color-text-dark);
+		color: var(--color-text-base);
 		font-size: var(--font-size-2xs);
 		line-height: var(--font-line-heigh-xsmall);
 	}

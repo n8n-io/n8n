@@ -30,7 +30,12 @@ const props = withDefaults(defineProps<Props>(), {
 			:class="$style.icon"
 			:color="color"
 		></N8nIcon>
-		<N8nText v-else-if="icon.type === 'emoji'" color="text-light" :class="$style.emoji">
+		<N8nText
+			v-else-if="icon.type === 'emoji'"
+			color="text-light"
+			:class="$style.emoji"
+			align="center"
+		>
 			{{ icon.value }}
 		</N8nText>
 	</div>
@@ -54,15 +59,15 @@ const props = withDefaults(defineProps<Props>(), {
 }
 
 .mini {
-	width: var(--spacing-xs);
-	height: var(--spacing-xs);
+	width: 10px;
+	height: 10px;
 
 	.icon {
-		font-size: var(--font-size-2xs);
+		font-size: 10px;
 	}
 
 	.emoji {
-		font-size: var(--font-size-3xs);
+		font-size: 10px;
 	}
 }
 
