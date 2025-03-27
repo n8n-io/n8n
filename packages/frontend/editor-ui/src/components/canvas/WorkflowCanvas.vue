@@ -10,6 +10,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { CanvasConnection, CanvasEventBusEvents, CanvasNode } from '@/types';
 import { useVueFlow } from '@vue-flow/core';
 import { debounce } from 'lodash-es';
+import { debouncedRef } from '@vueuse/core';
 
 defineOptions({
 	inheritAttrs: false,
@@ -62,56 +63,8 @@ onNodesInitialized(() => {
 	}
 });
 
-// Debounced versions of nodes and connections and watchers
-const nodesDebounced = ref<CanvasNode[]>([]);
-const connectionsDebounced = ref<CanvasConnection[]>([]);
-const debounceNodesWatcher = ref<WatchStopHandle>();
-const debounceConnectionsWatcher = ref<WatchStopHandle>();
-
-// Update debounce watchers when execution state changes
-watch(() => props.executing, setupDebouncedWatchers, { immediate: true });
-
-/**
- * Sets up debounced watchers for nodes and connections
- * Uses different debounce times based on execution state:
- * - During execution: Debounce updates to reduce performance impact for large number of nodes/items
- * - Otherwise: Update immediately
- */
-function setupDebouncedWatchers() {
-	// Clear existing watchers if they exist
-	debounceNodesWatcher.value?.();
-	debounceConnectionsWatcher.value?.();
-
-	// Configure debounce parameters based on execution state
-	const debounceTime = props.executing ? 200 : 0;
-	const maxWait = props.executing ? 50 : 0;
-
-	// Set up debounced watcher for nodes
-	debounceNodesWatcher.value = watch(
-		mappedNodes,
-		debounce(
-			(value) => {
-				nodesDebounced.value = value;
-			},
-			debounceTime,
-			{ maxWait },
-		),
-		{ immediate: true, deep: true },
-	);
-
-	// Set up debounced watcher for connections
-	debounceConnectionsWatcher.value = watch(
-		mappedConnections,
-		debounce(
-			(value) => {
-				connectionsDebounced.value = value;
-			},
-			debounceTime,
-			{ maxWait },
-		),
-		{ immediate: true, deep: true },
-	);
-}
+const mappedNodesDebounced = debouncedRef(mappedNodes, 200, { maxWait: 50 });
+const mappedConnectionsDebounced = debouncedRef(mappedConnections, 200, { maxWait: 50 });
 </script>
 
 <template>
@@ -120,8 +73,8 @@ function setupDebouncedWatchers() {
 			<Canvas
 				v-if="workflow"
 				:id="id"
-				:nodes="nodesDebounced"
-				:connections="connectionsDebounced"
+				:nodes="executing ? mappedNodesDebounced : mappedNodes"
+				:connections="executing ? mappedConnectionsDebounced : mappedConnections"
 				:event-bus="eventBus"
 				:read-only="readOnly"
 				v-bind="$attrs"
