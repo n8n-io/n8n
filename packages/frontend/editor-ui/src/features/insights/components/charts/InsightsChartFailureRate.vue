@@ -18,16 +18,20 @@ const props = defineProps<{
 const i18n = useI18n();
 
 const colorPrimary = useCssVar('--color-primary', document.body);
-const chartOptions = computed(() => {
-	const options = generateBarChartOptions();
-
-	options.plugins.tooltip.callbacks.label = (context) => {
-		const label = context.dataset.label || '';
-		return `${label} ${smartDecimal(context.parsed.y)} ${INSIGHTS_UNIT_MAPPING[props.type]}`;
-	};
-
-	return options;
-});
+const chartOptions = computed(() =>
+	generateBarChartOptions({
+		plugins: {
+			tooltip: {
+				callbacks: {
+					label: (context) => {
+						const label = context.dataset.label ?? '';
+						return `${label} ${smartDecimal(context.parsed.y)} ${INSIGHTS_UNIT_MAPPING[props.type]}`;
+					},
+				},
+			},
+		},
+	}),
+);
 
 const chartData = computed(() => {
 	const labels: string[] = [];

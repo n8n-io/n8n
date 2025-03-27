@@ -15,14 +15,16 @@ const props = defineProps<{
 const i18n = useI18n();
 
 const colorPrimary = useCssVar('--color-primary', document.body);
-const chartOptions = computed(() => {
-	const options = generateBarChartOptions();
-
-	options.plugins.tooltip.itemSort = (a) =>
-		a.dataset.label === i18n.baseText('insights.banner.title.succeeded') ? -1 : 1;
-
-	return options;
-});
+const chartOptions = computed(() =>
+	generateBarChartOptions({
+		plugins: {
+			tooltip: {
+				itemSort: (a) =>
+					a.dataset.label === i18n.baseText('insights.banner.title.succeeded') ? -1 : 1,
+			},
+		},
+	}),
+);
 
 const chartData = computed(() => {
 	const labels: string[] = [];

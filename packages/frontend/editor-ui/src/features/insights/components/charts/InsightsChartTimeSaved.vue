@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { Line } from 'vue-chartjs';
 import { Filler } from 'chart.js';
 import dateformat from 'dateformat';
@@ -21,16 +21,20 @@ const props = defineProps<{
 
 const i18n = useI18n();
 
-const chartOptions = computed(() => {
-	const options = generateLineChartOptions();
-
-	options.plugins.tooltip.callbacks.label = (context) => {
-		const label = context.dataset.label || '';
-		return `${label} ${smartDecimal(context.parsed.y)} ${INSIGHTS_UNIT_MAPPING[props.type]}`;
-	};
-
-	return options;
-});
+const chartOptions = computed(() =>
+	generateLineChartOptions({
+		plugins: {
+			tooltip: {
+				callbacks: {
+					label: (context) => {
+						const label = context.dataset.label ?? '';
+						return `${label} ${smartDecimal(context.parsed.y)} ${INSIGHTS_UNIT_MAPPING[props.type]}`;
+					},
+				},
+			},
+		},
+	}),
+);
 
 const chartData = computed(() => {
 	const labels: string[] = [];

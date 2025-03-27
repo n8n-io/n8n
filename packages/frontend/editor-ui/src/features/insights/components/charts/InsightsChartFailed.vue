@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { Bar } from 'vue-chartjs';
 import { useCssVar } from '@vueuse/core';
 import dateformat from 'dateformat';
@@ -16,16 +16,20 @@ const props = defineProps<{
 const i18n = useI18n();
 
 const colorPrimary = useCssVar('--color-primary', document.body);
-const chartOptions = computed(() => {
-	const options = generateBarChartOptions();
-
-	options.plugins.tooltip.callbacks.label = (context) => {
-		const label = context.dataset.label || '';
-		return `${label} ${smartDecimal(context.parsed.y)}`;
-	};
-
-	return options;
-});
+const chartOptions = computed(() =>
+	generateBarChartOptions({
+		plugins: {
+			tooltip: {
+				callbacks: {
+					label: (context) => {
+						const label = context.dataset.label ?? '';
+						return `${label} ${smartDecimal(context.parsed.y)}`;
+					},
+				},
+			},
+		},
+	}),
+);
 
 const chartData = computed(() => {
 	const labels: string[] = [];
