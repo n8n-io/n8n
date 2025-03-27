@@ -1,4 +1,5 @@
-import { StringOutputParser } from '@langchain/core/output_parsers';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { JsonOutputParser, StringOutputParser } from '@langchain/core/output_parsers';
 import { ChatPromptTemplate, PromptTemplate } from '@langchain/core/prompts';
 import { FakeLLM, FakeChatModel } from '@langchain/core/utils/testing';
 import { mock } from 'jest-mock-extended';
@@ -8,6 +9,7 @@ import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import * as tracing from '@utils/tracing';
 
 import { executeChain } from '../methods/chainExecutor';
+import * as chainExecutor from '../methods/chainExecutor';
 import * as promptUtils from '../methods/promptUtils';
 
 jest.mock('@utils/tracing', () => ({
@@ -25,6 +27,41 @@ describe('chainExecutor', () => {
 		mockContext = mock<IExecuteFunctions>();
 		mockContext.getExecutionCancelSignal = jest.fn().mockReturnValue(undefined);
 		jest.clearAllMocks();
+	});
+
+	describe('getOutputParserForLLM', () => {
+		it('should return JsonOutputParser for OpenAI-like models with json_object response format', () => {
+			const openAILikeModel = {
+				modelKwargs: {
+					response_format: {
+						type: 'json_object',
+					},
+				},
+			};
+
+			const parser = chainExecutor.getOutputParserForLLM(
+				openAILikeModel as unknown as BaseChatModel,
+			);
+			expect(parser).toBeInstanceOf(JsonOutputParser);
+		});
+
+		it('should return JsonOutputParser for Ollama models with json format', () => {
+			const ollamaLikeModel = {
+				format: 'json',
+			};
+
+			const parser = chainExecutor.getOutputParserForLLM(
+				ollamaLikeModel as unknown as BaseChatModel,
+			);
+			expect(parser).toBeInstanceOf(JsonOutputParser);
+		});
+
+		it('should return StringOutputParser for models without JSON format settings', () => {
+			const regularModel = new FakeLLM({});
+
+			const parser = chainExecutor.getOutputParserForLLM(regularModel);
+			expect(parser).toBeInstanceOf(StringOutputParser);
+		});
 	});
 
 	describe('executeChain', () => {
@@ -218,6 +255,78 @@ describe('chainExecutor', () => {
 			});
 
 			expect(result).toEqual(['Test chat response']);
+		});
+
+		it('should use JsonOutputParser for OpenAI models with json_object response format', async () => {
+			const fakeOpenAIModel = new FakeChatModel({});
+			(
+				fakeOpenAIModel as unknown as { modelKwargs: { response_format: { type: string } } }
+			).modelKwargs = {
+				response_format: { type: 'json_object' },
+			};
+
+			const mockPromptTemplate = new PromptTemplate({
+				template: '{query}',
+				inputVariables: ['query'],
+			});
+
+			const mockChain = {
+				invoke: jest.fn().mockResolvedValue('{"result": "json data"}'),
+			};
+
+			const withConfigMock = jest.fn().mockReturnValue(mockChain);
+			const pipeOutputParserMock = jest.fn().mockReturnValue({
+				withConfig: withConfigMock,
+			});
+
+			mockPromptTemplate.pipe = jest.fn().mockReturnValue({
+				pipe: pipeOutputParserMock,
+			});
+
+			(promptUtils.createPromptTemplate as jest.Mock).mockResolvedValue(mockPromptTemplate);
+
+			await executeChain({
+				context: mockContext,
+				itemIndex: 0,
+				query: 'Hello',
+				llm: fakeOpenAIModel,
+			});
+
+			expect(pipeOutputParserMock).toHaveBeenCalledWith(expect.any(JsonOutputParser));
+		});
+
+		it('should use JsonOutputParser for Ollama models with json format', async () => {
+			const fakeOllamaModel = new FakeChatModel({});
+			(fakeOllamaModel as unknown as { format: string }).format = 'json';
+
+			const mockPromptTemplate = new PromptTemplate({
+				template: '{query}',
+				inputVariables: ['query'],
+			});
+
+			const mockChain = {
+				invoke: jest.fn().mockResolvedValue('{"result": "json data"}'),
+			};
+
+			const withConfigMock = jest.fn().mockReturnValue(mockChain);
+			const pipeOutputParserMock = jest.fn().mockReturnValue({
+				withConfig: withConfigMock,
+			});
+
+			mockPromptTemplate.pipe = jest.fn().mockReturnValue({
+				pipe: pipeOutputParserMock,
+			});
+
+			(promptUtils.createPromptTemplate as jest.Mock).mockResolvedValue(mockPromptTemplate);
+
+			await executeChain({
+				context: mockContext,
+				itemIndex: 0,
+				query: 'Hello',
+				llm: fakeOllamaModel,
+			});
+
+			expect(pipeOutputParserMock).toHaveBeenCalledWith(expect.any(JsonOutputParser));
 		});
 	});
 });
