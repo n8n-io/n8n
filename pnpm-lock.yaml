@@ -63,6 +63,9 @@ catalogs:
     reflect-metadata:
       specifier: 0.2.2
       version: 0.2.2
+    tsup:
+      specifier: ^8.4.0
+      version: 8.4.0
     uuid:
       specifier: 10.0.0
       version: 10.0.0
@@ -103,9 +106,6 @@ catalogs:
     highlight.js:
       specifier: ^11.8.0
       version: 11.9.0
-    tsup:
-      specifier: ^8.4.0
-      version: 8.4.0
     vite:
       specifier: ^6.2.0
       version: 6.2.1
@@ -691,6 +691,9 @@ importers:
       n8n-core:
         specifier: workspace:*
         version: link:../../core
+      tsup:
+        specifier: 'catalog:'
+        version: 8.4.0(@microsoft/api-extractor@7.52.1(@types/node@18.16.16))(jiti@1.21.0)(postcss@8.5.3)(typescript@5.8.2)
 
   packages/@n8n/permissions:
     devDependencies:
@@ -806,7 +809,7 @@ importers:
         specifier: catalog:frontend
         version: 14.6.1(@testing-library/dom@10.4.0)
       tsup:
-        specifier: catalog:frontend
+        specifier: 'catalog:'
         version: 8.4.0(@microsoft/api-extractor@7.52.1(@types/node@18.16.16))(jiti@1.21.0)(postcss@8.5.3)(typescript@5.8.2)
       typescript:
         specifier: ^5.8.2
@@ -1397,7 +1400,7 @@ importers:
         specifier: catalog:frontend
         version: 10.11.0(vue@3.5.13(typescript@5.8.2))
       tsup:
-        specifier: catalog:frontend
+        specifier: 'catalog:'
         version: 8.4.0(@microsoft/api-extractor@7.52.1(@types/node@18.16.16))(jiti@1.21.0)(postcss@8.5.3)(typescript@5.8.2)
       typescript:
         specifier: ^5.8.2
