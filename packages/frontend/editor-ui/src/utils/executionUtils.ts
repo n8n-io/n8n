@@ -147,7 +147,7 @@ export const waitingNodeTooltip = (node: INodeUi | null | undefined) => {
 	try {
 		const resume = node?.parameters?.resume;
 
-		if (node?.type === GITHUB_NODE_TYPE && node.parameters.waitForCompletion) {
+		if (node?.type === GITHUB_NODE_TYPE && node.parameters?.operation === 'dispatchAndWait') {
 			const resumeUrl = `${useRootStore().webhookWaitingUrl}/${useWorkflowsStore().activeExecutionId}`;
 			const message = i18n.baseText('ndv.output.githubNodeWaitingForWebhook');
 			return `${message}<a href="${resumeUrl}" target="_blank">${resumeUrl}</a>`;

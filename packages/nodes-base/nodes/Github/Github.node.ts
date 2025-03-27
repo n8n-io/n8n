@@ -438,10 +438,10 @@ export class Github implements INodeType {
 						action: 'Dispatch a workflow event',
 					},
 					{
-						name: 'Dispatch Workflow Event and Wait for Completion',
+						name: 'Dispatch and Wait for Completion',
 						value: 'dispatchAndWait',
 						description:
-							'Send a GitHub Actions workflow event and wait for the workflow to complete before proceeding',
+							'Dispatch a workflow event and wait for a webhook to be called before proceeding',
 						action: 'Dispatch a workflow event and wait for completion',
 					},
 					{
@@ -471,7 +471,19 @@ export class Github implements INodeType {
 				],
 				default: 'dispatch',
 			},
-
+			{
+				displayName:
+					'Your execution will pause until a webhook is called. This URL will be generated at runtime and passed to your Github workflow as a resumeUrl input.',
+				name: 'webhookNotice',
+				type: 'notice',
+				displayOptions: {
+					show: {
+						resource: ['workflow'],
+						operation: ['dispatchAndWait'],
+					},
+				},
+				default: '',
+			},
 			// ----------------------------------
 			//         shared
 			// ----------------------------------
@@ -724,34 +736,6 @@ export class Github implements INodeType {
 					},
 				},
 				description: 'JSON object with input parameters for the workflow',
-			},
-			{
-				displayName: 'Wait for Workflow Completion',
-				name: 'waitForCompletion',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether to wait for the GitHub action workflow to complete before resuming the n8n workflow',
-				displayOptions: {
-					show: {
-						resource: ['workflow'],
-						operation: ['dispatchAndWait'],
-					},
-				},
-			},
-			{
-				displayName:
-					'Your execution will pause until a webhook is called. This URL will be generated at runtime and passed to your Github workflow as a resumeUrl input.',
-				name: 'webhookNotice',
-				type: 'notice',
-				displayOptions: {
-					show: {
-						resource: ['workflow'],
-						operation: ['dispatchAndWait'],
-						waitForCompletion: [true],
-					},
-				},
-				default: '',
 			},
 
 			// ----------------------------------
@@ -2182,8 +2166,6 @@ export class Github implements INodeType {
 				throw new NodeOperationError(this.getNode(), 'Inputs: Invalid JSON');
 			}
 
-			const waitForCompletion = this.getNodeParameter('waitForCompletion', 0) as boolean;
-
 			endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}/dispatches`;
 
 			body = {
@@ -2191,33 +2173,29 @@ export class Github implements INodeType {
 				inputs,
 			};
 
-			if (waitForCompletion) {
-				// Generate a webhook URL for the GitHub workflow to call when done
-				const resumeUrl = this.getWorkflowDataProxy(0).$execution.resumeUrl;
+			// Generate a webhook URL for the GitHub workflow to call when done
+			const resumeUrl = this.getWorkflowDataProxy(0).$execution.resumeUrl;
 
-				body.inputs = {
-					...inputs,
-					resumeUrl,
-				};
+			body.inputs = {
+				...inputs,
+				resumeUrl,
+			};
 
-				try {
-					responseData = await githubApiRequest.call(this, 'POST', endpoint, body);
-				} catch (error) {
-					if (error.httpCode === '404' || error.statusCode === 404) {
-						throw new NodeOperationError(
-							this.getNode(),
-							'The workflow to dispatch could not be found. Adjust the "workflow" parameter setting to dispatch the workflow correctly.',
-							{ itemIndex: 0 },
-						);
-					}
-					throw new NodeApiError(this.getNode(), error as JsonObject);
+			try {
+				responseData = await githubApiRequest.call(this, 'POST', endpoint, body);
+			} catch (error) {
+				if (error.httpCode === '404' || error.statusCode === 404) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'The workflow to dispatch could not be found. Adjust the "workflow" parameter setting to dispatch the workflow correctly.',
+						{ itemIndex: 0 },
+					);
 				}
-
-				await this.putExecutionToWait(WAIT_INDEFINITELY);
-				return [this.getInputData()];
+				throw new NodeApiError(this.getNode(), error as JsonObject);
 			}
 
-			await githubApiRequest.call(this, 'POST', endpoint, body);
+			await this.putExecutionToWait(WAIT_INDEFINITELY);
+			return [this.getInputData()];
 			return [this.getInputData()];
 		}
 
