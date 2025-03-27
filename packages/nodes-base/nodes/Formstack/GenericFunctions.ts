@@ -39,11 +39,14 @@ export interface IFormstackSubmissionFieldContainer {
 	value: string;
 }
 
-export const enum FormstackFieldFormat {
-	ID = 'id',
-	Label = 'label',
-	Name = 'name',
-}
+export const FormstackFieldFormats = {
+	ID: 'id',
+	Label: 'label',
+	Name: 'name',
+} as const;
+
+export type FormstackFieldFormat =
+	(typeof FormstackFieldFormats)[keyof typeof FormstackFieldFormats];
 
 /**
  * Make an API request to Formstack

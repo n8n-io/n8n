@@ -1,55 +1,19 @@
 {
     "type": "object",
     "properties": {
-        "kind": {
-            "type": "string"
-        },
-        "selfLink": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "projectNumber": {
+        "etag": {
             "type": "string"
         },
         "generation": {
             "type": "string"
         },
-        "metageneration": {
-            "type": "string"
-        },
-        "location": {
-            "type": "string"
-        },
-        "storageClass": {
-            "type": "string"
-        },
-        "etag": {
-            "type": "string"
-        },
-        "timeCreated": {
-            "type": "string"
-        },
-        "updated": {
-            "type": "string"
-        },
-        "softDeletePolicy": {
+        "hierarchicalNamespace": {
             "type": "object",
             "properties": {
-                "retentionDurationSeconds": {
-                    "type": "string"
-                },
-                "effectiveTime": {
-                    "type": "string"
+                "enabled": {
+                    "type": "boolean"
                 }
-            },
-            "required": [
-                "retentionDurationSeconds"
-            ]
+            }
         },
         "iamConfiguration": {
             "type": "object",
@@ -63,10 +27,10 @@
                         "lockedTime": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "enabled"
-                    ]
+                    }
+                },
+                "publicAccessPrevention": {
+                    "type": "string"
                 },
                 "uniformBucketLevelAccess": {
                     "type": "object",
@@ -77,38 +41,54 @@
                         "lockedTime": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "enabled"
-                    ]
-                },
-                "publicAccessPrevention": {
-                    "type": "string"
+                    }
                 }
-            },
-            "required": [
-                "bucketPolicyOnly",
-                "uniformBucketLevelAccess",
-                "publicAccessPrevention"
-            ]
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "kind": {
+            "type": "string"
+        },
+        "location": {
+            "type": "string"
         },
         "locationType": {
             "type": "string"
         },
-        "hierarchicalNamespace": {
+        "metageneration": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "projectNumber": {
+            "type": "string"
+        },
+        "selfLink": {
+            "type": "string"
+        },
+        "softDeletePolicy": {
             "type": "object",
             "properties": {
-                "enabled": {
-                    "type": "boolean"
+                "effectiveTime": {
+                    "type": "string"
+                },
+                "retentionDurationSeconds": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "enabled"
-            ]
+            }
+        },
+        "storageClass": {
+            "type": "string"
+        },
+        "timeCreated": {
+            "type": "string"
+        },
+        "updated": {
+            "type": "string"
         }
     },
-    "required": [
-        "kind"
-    ],
     "version": 1
 }

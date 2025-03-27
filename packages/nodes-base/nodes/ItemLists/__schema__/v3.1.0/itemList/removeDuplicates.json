@@ -1,25 +1,13 @@
 {
     "type": "object",
     "properties": {
-        "position": {
-            "type": "integer"
-        },
-        "title": {
-            "type": "string"
-        },
-        "place_id": {
-            "type": "string"
-        },
-        "data_id": {
+        "address": {
             "type": "string"
         },
         "data_cid": {
             "type": "string"
         },
-        "reviews_link": {
-            "type": "string"
-        },
-        "photos_link": {
+        "data_id": {
             "type": "string"
         },
         "gps_coordinates": {
@@ -31,38 +19,37 @@
                 "longitude": {
                     "type": "number"
                 }
-            },
-            "required": [
-                "latitude",
-                "longitude"
-            ]
+            }
+        },
+        "photos_link": {
+            "type": "string"
+        },
+        "place_id": {
+            "type": "string"
         },
         "place_id_search": {
             "type": "string"
         },
+        "position": {
+            "type": "integer"
+        },
         "provider_id": {
-            "type": "string"
-        },
-        "address": {
-            "type": "string"
-        },
-        "website": {
-            "type": "string"
-        },
-        "thumbnail": {
             "type": "string"
         },
         "reviews": {
             "type": "integer"
         },
-        "type": {
+        "reviews_link": {
             "type": "string"
         },
-        "types": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
+        "thumbnail": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
         },
         "type_id": {
             "type": "string"
@@ -73,11 +60,17 @@
                 "type": "string"
             }
         },
-        "phone": {
-            "type": "string"
+        "types": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
         },
         "unclaimed_listing": {
             "type": "boolean"
+        },
+        "website": {
+            "type": "string"
         }
     },
     "version": 1

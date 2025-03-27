@@ -1,17 +1,26 @@
 {
     "type": "object",
     "properties": {
-        "id": {
+        "add_time": {
             "type": "string"
         },
-        "title": {
-            "type": "string"
+        "archive_time": {
+            "type": "null"
         },
-        "owner_id": {
-            "type": "integer"
+        "cc_email": {
+            "type": "string"
         },
         "creator_id": {
             "type": "integer"
+        },
+        "db247a86f77b7a989f9c2834851c946b26718442": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "is_archived": {
+            "type": "boolean"
         },
         "label_ids": {
             "type": "array",
@@ -19,22 +28,16 @@
                 "type": "string"
             }
         },
-        "is_archived": {
-            "type": "boolean"
+        "origin": {
+            "type": "string"
         },
-        "archive_time": {
-            "type": "null"
+        "owner_id": {
+            "type": "integer"
         },
         "source_name": {
             "type": "string"
         },
-        "origin": {
-            "type": "string"
-        },
-        "was_seen": {
-            "type": "boolean"
-        },
-        "add_time": {
+        "title": {
             "type": "string"
         },
         "update_time": {
@@ -43,35 +46,9 @@
         "visible_to": {
             "type": "string"
         },
-        "cc_email": {
-            "type": "string"
-        },
-        "db247a86f77b7a989f9c2834851c946b26718442": {
-            "type": "string"
+        "was_seen": {
+            "type": "boolean"
         }
     },
-    "required": [
-        "id",
-        "title",
-        "owner_id",
-        "creator_id",
-        "label_ids",
-        "value",
-        "expected_close_date",
-        "person_id",
-        "organization_id",
-        "is_archived",
-        "source_name",
-        "origin",
-        "origin_id",
-        "channel",
-        "channel_id",
-        "was_seen",
-        "next_activity_id",
-        "add_time",
-        "update_time",
-        "visible_to",
-        "cc_email"
-    ],
     "version": 1
 }

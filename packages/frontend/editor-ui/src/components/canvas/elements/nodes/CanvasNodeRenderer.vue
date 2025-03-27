@@ -8,10 +8,6 @@ import { CanvasNodeRenderType } from '@/types';
 
 const node = inject(CanvasNodeKey);
 
-const slots = defineSlots<{
-	default?: () => unknown;
-}>();
-
 const Render = () => {
 	const renderType = node?.data.value.render.type ?? CanvasNodeRenderType.Default;
 	let Component;
@@ -27,13 +23,9 @@ const Render = () => {
 			Component = CanvasNodeDefault;
 	}
 
-	return h(
-		Component,
-		{
-			'data-canvas-node-render-type': renderType,
-		},
-		slots.default,
-	);
+	return h(Component, {
+		'data-canvas-node-render-type': renderType,
+	});
 };
 </script>
 

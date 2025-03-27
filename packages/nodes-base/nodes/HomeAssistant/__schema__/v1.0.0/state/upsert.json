@@ -1,21 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "entity_id": {
-            "type": "string"
-        },
-        "state": {
-            "type": "string"
-        },
-        "last_changed": {
-            "type": "string"
-        },
-        "last_reported": {
-            "type": "string"
-        },
-        "last_updated": {
-            "type": "string"
-        },
         "context": {
             "type": "object",
             "properties": {
@@ -28,22 +13,23 @@
                 "user_id": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "id",
-                "parent_id",
-                "user_id"
-            ]
+            }
+        },
+        "entity_id": {
+            "type": "string"
+        },
+        "last_changed": {
+            "type": "string"
+        },
+        "last_reported": {
+            "type": "string"
+        },
+        "last_updated": {
+            "type": "string"
+        },
+        "state": {
+            "type": "string"
         }
     },
-    "required": [
-        "entity_id",
-        "state",
-        "attributes",
-        "last_changed",
-        "last_reported",
-        "last_updated",
-        "context"
-    ],
     "version": 1
 }

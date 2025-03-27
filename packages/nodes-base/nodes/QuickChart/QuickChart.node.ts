@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import {
 	CHART_TYPE_OPTIONS,
@@ -30,8 +30,8 @@ export class QuickChart implements INodeType {
 			name: 'QuickChart',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Chart Type',

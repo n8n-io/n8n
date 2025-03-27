@@ -1,16 +1,25 @@
 {
     "type": "object",
     "properties": {
+        "currency": {
+            "type": "string"
+        },
+        "customer_name": {
+            "type": "string"
+        },
+        "date": {
+            "type": "string"
+        },
+        "document_type": {
+            "type": "string"
+        },
+        "due_date": {
+            "type": "string"
+        },
         "id": {
             "type": "string"
         },
-        "name": {
-            "type": "string"
-        },
-        "number_of_pages": {
-            "type": "integer"
-        },
-        "document_type": {
+        "invoice_number": {
             "type": "string"
         },
         "line_items": {
@@ -21,50 +30,24 @@
                     "description": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "description",
-                    "product_code",
-                    "quantity",
-                    "tax_amount",
-                    "tax_rate",
-                    "total_amount",
-                    "unit_price"
-                ]
+                }
             }
         },
-        "currency": {
+        "name": {
             "type": "string"
         },
-        "supplier_name": {
-            "type": "string"
-        },
-        "customer_name": {
-            "type": "string"
-        },
-        "date": {
-            "type": "string"
-        },
-        "due_date": {
-            "type": "string"
-        },
-        "invoice_number": {
-            "type": "string"
+        "number_of_pages": {
+            "type": "integer"
         },
         "payment_date": {
             "type": "string"
         },
         "supplier_address": {
             "type": "string"
+        },
+        "supplier_name": {
+            "type": "string"
         }
     },
-    "required": [
-        "id",
-        "name",
-        "number_of_pages",
-        "document_type",
-        "line_items",
-        "currency"
-    ],
     "version": 1
 }

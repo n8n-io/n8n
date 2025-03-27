@@ -66,11 +66,12 @@ export class I18nClass {
 			return this.baseTextCache.get(cacheKey) ?? key;
 		}
 
+		const interpolate = { ...options?.interpolate };
 		let result: string;
 		if (options?.adjustToNumber !== undefined) {
-			result = this.i18n.tc(key, options.adjustToNumber, options?.interpolate ?? {}).toString();
+			result = this.i18n.t(key, interpolate, options.adjustToNumber).toString();
 		} else {
-			result = this.i18n.t(key, options?.interpolate ?? {}).toString();
+			result = this.i18n.t(key, interpolate).toString();
 		}
 
 		// Store the result in the cache
