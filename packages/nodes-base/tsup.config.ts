@@ -1,23 +1,35 @@
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { defineConfig } from 'tsup';
+import glob from 'fast-glob';
+import { resolve } from 'path';
+import { readFile } from 'fs/promises';
 
-const commonIgnoredFiles = ['!**/*.d.ts', '!**/*.test.ts'];
+const packagesDir = resolve(__dirname, '..');
+const aiNodesDir = resolve(packagesDir, '@n8n', 'nodes-langchain');
+
+const aiNodesFiles = await glob('nodes/**/*.ts', { cwd: aiNodesDir });
+const aiNodesFilesContents = aiNodesFiles.map((filePath) =>
+	readFile(resolve(aiNodesDir, filePath), 'utf-8'),
+);
 
 // Files used in @n8n/nodes-langchain package
-const aiNodesPackageDependencies = [
-	'nodes/Code/Sandbox.ts',
-	'nodes/Code/PythonSandbox.ts',
-	'nodes/Code/JavaScriptSandbox.ts',
-	'nodes/Code/utils.ts',
-	'nodes/HttpRequest/GenericFunctions.ts',
-	'nodes/Postgres/transport/index.ts',
-	'nodes/Postgres/v2/methods/credentialTest.ts',
-	'nodes/Postgres/v2/helpers/interfaces.ts',
-	'nodes/Set/v2/manual.mode.ts',
-	'nodes/Set/v2/helpers/interfaces.ts',
-	'utils/workflowInputsResourceMapping/GenericFunctions.ts',
-	'utils/utilities.ts',
-];
+const aiNodesPackageImports = (await Promise.all(aiNodesFilesContents)).reduce(
+	(acc, fileContents) => {
+		const matches = /from\s+['"](n8n-nodes-base[^'"]+)['"]/g.exec(fileContents);
+		if (matches) {
+			acc.add(matches[1]);
+		}
+
+		return acc;
+	},
+	new Set<string>(),
+);
+
+const aiNodesPackageDependencies = Array.from(aiNodesPackageImports).map(
+	(i) => i.replace('n8n-nodes-base/dist/', '') + '.ts',
+);
+
+const commonIgnoredFiles = ['!**/*.d.ts', '!**/*.test.ts'];
 
 // eslint-disable-next-line import/no-default-export
 export default defineConfig([
