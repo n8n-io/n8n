@@ -73,3 +73,26 @@ exports[`InsightsSummary > should render the summary correctly 4`] = `
   </ul>
 </div>"
 `;
+
+exports[`InsightsSummary > should render the summary correctly 5`] = `
+"<div class="insights">
+  <h3 class="n8n-heading text-light size-small bold mb-xs mb-xs">Production executions for the last 7 days</h3>
+  <ul data-test-id="insights-summary-tabs">
+    <li data-test-id="insights-summary-tab-total">
+      <p><strong>Total</strong><span><em>525 <i></i></em><!--v-if--></span></p>
+    </li>
+    <li data-test-id="insights-summary-tab-failed">
+      <p><strong>Failed</strong><span><em>14 <i></i></em><!--v-if--></span></p>
+    </li>
+    <li data-test-id="insights-summary-tab-failureRate">
+      <p><strong>Failure rate</strong><span><em>1.9 <i>%</i></em><!--v-if--></span></p>
+    </li>
+    <li data-test-id="insights-summary-tab-timeSaved">
+      <p><strong>Time saved</strong><span><em>55.56 <i>h</i></em><!--v-if--></span></p>
+    </li>
+    <li data-test-id="insights-summary-tab-averageRunTime">
+      <p><strong>Avg. run time</strong><span><em>2.5 <i>s</i></em><!--v-if--></span></p>
+    </li>
+  </ul>
+</div>"
+`;
