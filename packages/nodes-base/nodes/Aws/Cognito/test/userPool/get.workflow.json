@@ -1,0 +1,74 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [260, 360],
+			"id": "9ed2b86b-7c24-4ea0-a328-92d9e6dba35a",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "userPool",
+				"userPoolId": {
+					"__rl": true,
+					"value": "eu-central-1_W3WwpiBXV",
+					"mode": "list",
+					"cachedResultName": "UserPoolSimple"
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.awsCognito",
+			"typeVersion": 1,
+			"position": [460, 360],
+			"id": "3fe61838-c5a2-4bf0-8137-113d1d091742",
+			"name": "getUserPool",
+			"credentials": {
+				"aws": {
+					"id": "xZj8dnPxDrcwGXyn",
+					"name": "AWS account Central Europe"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"getUserPool": [
+			{
+				"json": {
+					"Arn": "arn:aws:cognito-idp:eu-central-1:130450532146:userpool/eu-central-1_W3WwpiBXV",
+					"CreationDate": 1739527771.267,
+					"DeletionProtection": "INACTIVE",
+					"EstimatedNumberOfUsers": 6,
+					"Id": "eu-central-1_W3WwpiBXV",
+					"LastModifiedDate": 1739527771.267,
+					"MfaConfiguration": "OFF",
+					"Name": "UserPoolSimple"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "getUserPool",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "755500b1-6790-45d0-89fc-69bc66d81e21",
+	"meta": {
+		"instanceId": "26f38eb23ad84214537831cfef4032299ffac994ff18d5cb72e82d31ac4ceac4"
+	},
+	"id": "GLTHCGg64D86o8jf",
+	"tags": []
+}

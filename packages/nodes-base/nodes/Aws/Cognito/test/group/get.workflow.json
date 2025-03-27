@@ -1,0 +1,79 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "9ed2b86b-7c24-4ea0-a328-92d9e6dba35a",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "group",
+				"operation": "get",
+				"userPoolId": {
+					"__rl": true,
+					"value": "us-east-1_RbwZXygrI",
+					"mode": "list",
+					"cachedResultName": "UserPoolSimple"
+				},
+				"groupName": {
+					"__rl": true,
+					"value": "MyNewGroup5",
+					"mode": "list",
+					"cachedResultName": "MyNewGroup5"
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.awsCognito",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "b148aef7-0c4a-4daf-9fba-fd61c3353699",
+			"name": "AWS Cognito",
+			"credentials": {
+				"aws": {
+					"id": "9jaRLOceaJvYwd8S",
+					"name": "AWS US EAST"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"AWS Cognito": [
+			{
+				"json": {
+					"CreationDate": 1742926801.312,
+					"Description": "This is a new group",
+					"GroupName": "MyNewGroup5",
+					"LastModifiedDate": 1742926801.312,
+					"Precedence": 10,
+					"UserPoolId": "us-east-1_RbwZXygrI"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "AWS Cognito",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "c84d70a0-ea37-4cb5-bfae-0eeeb3374fcd",
+	"meta": {
+		"instanceId": "26f38eb23ad84214537831cfef4032299ffac994ff18d5cb72e82d31ac4ceac4"
+	},
+	"id": "GLTHCGg64D86o8jf",
+	"tags": []
+}

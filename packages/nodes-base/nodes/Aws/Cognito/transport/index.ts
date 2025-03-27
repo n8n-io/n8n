@@ -5,6 +5,7 @@ import type {
 	IDataObject,
 	IExecuteSingleFunctions,
 } from 'n8n-workflow';
+
 import type { AwsCredentialsType } from '../../../../credentials/Aws.credentials';
 
 export async function makeAwsRequest(

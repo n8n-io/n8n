@@ -1,0 +1,73 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [260, 360],
+			"id": "9ed2b86b-7c24-4ea0-a328-92d9e6dba35a",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"userPoolId": {
+					"__rl": true,
+					"value": "eu-central-1_KkXQgdCJv",
+					"mode": "list",
+					"cachedResultName": "AWS test"
+				},
+				"userName": {
+					"__rl": true,
+					"value": "63c44842-9021-70a9-0c39-9c0b8fe539b4",
+					"mode": "list",
+					"cachedResultName": "TestOne@gmail.com"
+				},
+				"requestOptions": {}
+			},
+			"id": "47e5b1b2-31d3-468f-93f2-8046a736ddd6",
+			"name": "deleteUser",
+			"type": "n8n-nodes-base.awsCognito",
+			"typeVersion": 1,
+			"position": [480, 360],
+			"credentials": {
+				"aws": {
+					"id": "xZj8dnPxDrcwGXyn",
+					"name": "AWS account Central Europe"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"deleteUser": [
+			{
+				"json": {
+					"deleted": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "deleteUser",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "6ad59664-4b10-401a-93f4-2966a023ff42",
+	"meta": {
+		"instanceId": "26f38eb23ad84214537831cfef4032299ffac994ff18d5cb72e82d31ac4ceac4"
+	},
+	"id": "GLTHCGg64D86o8jf",
+	"tags": []
+}

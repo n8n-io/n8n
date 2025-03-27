@@ -1,0 +1,80 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [260, 360],
+			"id": "9ed2b86b-7c24-4ea0-a328-92d9e6dba35a",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"userPoolId": {
+					"__rl": true,
+					"value": "eu-central-1_KkXQgdCJv",
+					"mode": "list",
+					"cachedResultName": "AWS test"
+				},
+				"userName": {
+					"__rl": true,
+					"value": "530408b2-d071-7071-ceb8-2f9612693faf",
+					"mode": "list",
+					"cachedResultName": "adina.this2@gmail.com"
+				},
+				"userAttributes": {
+					"attributes": [
+						{
+							"Value": "New Address 2"
+						}
+					]
+				},
+				"requestOptions": {}
+			},
+			"id": "66ec763f-eb72-474a-8573-935e890ef33b",
+			"name": "updateUser",
+			"type": "n8n-nodes-base.awsCognito",
+			"typeVersion": 1,
+			"position": [500, 360],
+			"credentials": {
+				"aws": {
+					"id": "xZj8dnPxDrcwGXyn",
+					"name": "AWS account Central Europe"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"updateUser": [
+			{
+				"json": {
+					"updated": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "updateUser",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "ada1a789-e86f-4ac3-a64e-f2a209e52fd5",
+	"meta": {
+		"instanceId": "26f38eb23ad84214537831cfef4032299ffac994ff18d5cb72e82d31ac4ceac4"
+	},
+	"id": "GLTHCGg64D86o8jf",
+	"tags": []
+}

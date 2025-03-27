@@ -1,0 +1,79 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [260, 360],
+			"id": "9ed2b86b-7c24-4ea0-a328-92d9e6dba35a",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "removeFromGroup",
+				"userPoolId": {
+					"__rl": true,
+					"value": "eu-central-1_KkXQgdCJv",
+					"mode": "list",
+					"cachedResultName": "AWS test"
+				},
+				"userName": {
+					"__rl": true,
+					"value": "13e4a832-a091-70f5-dfc8-0f62fca5da22",
+					"mode": "list",
+					"cachedResultName": "test4@gmail.com"
+				},
+				"groupName": {
+					"__rl": true,
+					"value": "MyNewTesttttt",
+					"mode": "list",
+					"cachedResultName": "MyNewTesttttt"
+				},
+				"requestOptions": {}
+			},
+			"id": "60263a22-6fba-4b75-8e8f-52deca05e01e",
+			"name": "removeFromGroup",
+			"type": "n8n-nodes-base.awsCognito",
+			"typeVersion": 1,
+			"position": [480, 360],
+			"credentials": {
+				"aws": {
+					"id": "xZj8dnPxDrcwGXyn",
+					"name": "AWS account Central Europe"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"removeFromGroup": [
+			{
+				"json": {
+					"removedFromGroup": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "removeFromGroup",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "ec0fc5df-668e-4073-b61e-cdaceb8bc87b",
+	"meta": {
+		"instanceId": "26f38eb23ad84214537831cfef4032299ffac994ff18d5cb72e82d31ac4ceac4"
+	},
+	"id": "GLTHCGg64D86o8jf",
+	"tags": []
+}

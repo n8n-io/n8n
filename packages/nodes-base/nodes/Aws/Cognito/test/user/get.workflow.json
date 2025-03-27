@@ -1,0 +1,84 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "9ed2b86b-7c24-4ea0-a328-92d9e6dba35a",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"userPoolId": {
+					"__rl": true,
+					"value": "us-east-1_RbwZXygrI",
+					"mode": "list",
+					"cachedResultName": "UserPoolSimple"
+				},
+				"userName": {
+					"__rl": true,
+					"value": "a4583478-f091-7038-7681-b00374bc1ed4",
+					"mode": "list",
+					"cachedResultName": "this@mail.com"
+				},
+				"simple": false,
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.awsCognito",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "b148aef7-0c4a-4daf-9fba-fd61c3353699",
+			"name": "AWS Cognito",
+			"credentials": {
+				"aws": {
+					"id": "9jaRLOceaJvYwd8S",
+					"name": "AWS US EAST"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"AWS Cognito": [
+			{
+				"json": {
+					"Enabled": true,
+					"UserAttributes": [
+						{
+							"Name": "sub",
+							"Value": "a4583478-f091-7038-7681-b00374bc1ed4"
+						}
+					],
+					"UserCreateDate": 1741606219.979,
+					"UserLastModifiedDate": 1741606219.979,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "this@mail.com"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "AWS Cognito",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "15714e2a-8fdd-4af3-a78e-514ca8b91116",
+	"meta": {
+		"instanceId": "26f38eb23ad84214537831cfef4032299ffac994ff18d5cb72e82d31ac4ceac4"
+	},
+	"id": "GLTHCGg64D86o8jf",
+	"tags": []
+}

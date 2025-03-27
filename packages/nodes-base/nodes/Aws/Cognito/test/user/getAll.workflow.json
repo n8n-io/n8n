@@ -1,0 +1,391 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [260, 360],
+			"id": "9ed2b86b-7c24-4ea0-a328-92d9e6dba35a",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"userPoolId": {
+					"__rl": true,
+					"value": "eu-central-1_KkXQgdCJv",
+					"mode": "list",
+					"cachedResultName": "AWS test"
+				},
+				"returnAll": true,
+				"requestOptions": {}
+			},
+			"id": "e788623f-5d4a-4e76-b7f6-3e9389e2fe29",
+			"name": "getAllUsers",
+			"type": "n8n-nodes-base.awsCognito",
+			"typeVersion": 1,
+			"position": [460, 360],
+			"alwaysOutputData": true,
+			"credentials": {
+				"aws": {
+					"id": "xZj8dnPxDrcwGXyn",
+					"name": "AWS account Central Europe"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"getAllUsers": [
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1736343033.226,
+					"UserLastModifiedDate": 1736343033.226,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "034448d2-4011-7079-9474-9a4fccd4247a",
+					"email": "FinalUser@gmail.com",
+					"Sub": "034448d2-4011-7079-9474-9a4fccd4247a"
+				}
+			},
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1733746687.223,
+					"UserLastModifiedDate": 1733746687.223,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "03a438f2-10d1-70f1-f45a-09753ab5c4c3",
+					"email": "adina.this1@gmail.com",
+					"Sub": "03a438f2-10d1-70f1-f45a-09753ab5c4c3"
+				}
+			},
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1742928785.796,
+					"UserLastModifiedDate": 1742928785.796,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "03f438d2-b0f1-70bc-04d9-f6dd31f2d878",
+					"email": "test3@gmail.com",
+					"Sub": "03f438d2-b0f1-70bc-04d9-f6dd31f2d878"
+				}
+			},
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1732641076.231,
+					"UserLastModifiedDate": 1732641076.231,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "130428e2-9091-70df-0024-a5e2b82e7ffe",
+					"email": "NewAccount2@gmail.com",
+					"Sub": "130428e2-9091-70df-0024-a5e2b82e7ffe"
+				}
+			},
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1742928381.998,
+					"UserLastModifiedDate": 1742928497.032,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "1314b8c2-5061-7035-1d37-0df15edf04ee",
+					"email": "test2@gmail.com",
+					"family_name": "New FamilyName 2",
+					"address": "New Address 2",
+					"Sub": "1314b8c2-5061-7035-1d37-0df15edf04ee"
+				}
+			},
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1742929331.415,
+					"UserLastModifiedDate": 1742929331.415,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "13e4a832-a091-70f5-dfc8-0f62fca5da22",
+					"email": "test4@gmail.com",
+					"Sub": "13e4a832-a091-70f5-dfc8-0f62fca5da22"
+				}
+			},
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1736335694.182,
+					"UserLastModifiedDate": 1740655782.067,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "13f458e2-c081-70f5-5ddc-d2000eceb96a",
+					"email": "NewOne4@gmail.com",
+					"address": "Wisconsin22",
+					"gender": "male",
+					"Sub": "13f458e2-c081-70f5-5ddc-d2000eceb96a"
+				}
+			},
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1733747558.93,
+					"UserLastModifiedDate": 1739363459.927,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "23048882-90b1-70bb-4eca-154c2eb92f13",
+					"email": "adina.this111@gmail.com",
+					"phone_number": "+2222222",
+					"phone_number_verified": "false",
+					"Sub": "23048882-90b1-70bb-4eca-154c2eb92f13"
+				}
+			},
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1733747041.938,
+					"UserLastModifiedDate": 1733747041.938,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "23641802-5021-701d-3f10-0f796bdb1219",
+					"email": "adina.this7@gmail.com",
+					"Sub": "23641802-5021-701d-3f10-0f796bdb1219"
+				}
+			},
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1742928162.994,
+					"UserLastModifiedDate": 1742928162.994,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "43b49832-0051-7018-d78a-7d8649b86224",
+					"email": "test@gmail.com",
+					"Sub": "43b49832-0051-7018-d78a-7d8649b86224"
+				}
+			},
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1733747014.442,
+					"UserLastModifiedDate": 1733747236.392,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "43e43802-c031-70b3-6e85-b8cc08c05169",
+					"email": "adina.this6@gmail.com",
+					"Sub": "43e43802-c031-70b3-6e85-b8cc08c05169"
+				}
+			},
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1733746786.737,
+					"UserLastModifiedDate": 1743068580.432,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "530408b2-d071-7071-ceb8-2f9612693faf",
+					"email": "adina.this2@gmail.com",
+					"address": "New Address 2",
+					"Sub": "530408b2-d071-7071-ceb8-2f9612693faf"
+				}
+			},
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1732741226.201,
+					"UserLastModifiedDate": 1733404023.686,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "53945842-5061-704f-03e4-1928115f783d",
+					"email": "User5555@gmail.com",
+					"Sub": "53945842-5061-704f-03e4-1928115f783d"
+				}
+			},
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1733745714.816,
+					"UserLastModifiedDate": 1733745714.816,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "53d4d882-b081-70b3-2895-5c3dca44d634",
+					"email": "valentina.lilova@digital-boss.de",
+					"Sub": "53d4d882-b081-70b3-2895-5c3dca44d634"
+				}
+			},
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1733750432.602,
+					"UserLastModifiedDate": 1733750432.602,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "63643872-0081-705f-c284-8922f086f51e",
+					"email": "adina.this100@gmail.com",
+					"Sub": "63643872-0081-705f-c284-8922f086f51e"
+				}
+			},
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1739358481.882,
+					"UserLastModifiedDate": 1739358481.882,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "63c44842-9021-70a9-0c39-9c0b8fe539b4",
+					"email": "TestOne@gmail.com",
+					"Sub": "63c44842-9021-70a9-0c39-9c0b8fe539b4"
+				}
+			},
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1733749853.655,
+					"UserLastModifiedDate": 1733749853.655,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "63e47802-e0b1-704c-832e-538a6f414766",
+					"email": "adina.testAttributes@gmail.com",
+					"phone_number": "+44444444",
+					"Sub": "63e47802-e0b1-704c-832e-538a6f414766"
+				}
+			},
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1732635870.179,
+					"UserLastModifiedDate": 1733693312.879,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "73c4d8c2-50d1-70e1-39a4-e1263c2e9502",
+					"email": "NewAccount@gmail.com",
+					"name": "New name",
+					"Sub": "73c4d8c2-50d1-70e1-39a4-e1263c2e9502"
+				}
+			},
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1736161867.044,
+					"UserLastModifiedDate": 1736161867.044,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "8374a842-00e1-7065-9625-96324ff1d911",
+					"email": "NewOne@gmail.com",
+					"Sub": "8374a842-00e1-7065-9625-96324ff1d911"
+				}
+			},
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1738682196.806,
+					"UserLastModifiedDate": 1738682196.806,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "83a4f812-a081-7081-8fc3-de106e9bbda5",
+					"email": "AnotherUser@gmail.com",
+					"Sub": "83a4f812-a081-7081-8fc3-de106e9bbda5"
+				}
+			},
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1733751723.595,
+					"UserLastModifiedDate": 1733751723.595,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "9304b8c2-4081-7093-d384-81c67b623108",
+					"email": "adina.this99@gmail.com",
+					"Sub": "9304b8c2-4081-7093-d384-81c67b623108"
+				}
+			},
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1732641122,
+					"UserLastModifiedDate": 1732641122,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "a3545822-3051-7047-723a-75bf1df07d23",
+					"email": "NewAccount3@gmail.com",
+					"Sub": "a3545822-3051-7047-723a-75bf1df07d23"
+				}
+			},
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1733746836.306,
+					"UserLastModifiedDate": 1733746836.306,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "a3b438c2-2071-7026-90e5-7d70859bfd18",
+					"email": "adina.this3@gmail.com",
+					"Sub": "a3b438c2-2071-7026-90e5-7d70859bfd18"
+				}
+			},
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1732696259.883,
+					"UserLastModifiedDate": 1732696259.883,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "b344f8d2-e0e1-701f-f683-e1c07bcb3967",
+					"email": "NewAccount4@gmail.com",
+					"Sub": "b344f8d2-e0e1-701f-f683-e1c07bcb3967"
+				}
+			},
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1733746911.29,
+					"UserLastModifiedDate": 1733746911.29,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "b3b45892-0001-703e-61f1-1a022dd6bcf5",
+					"email": "adina.this5@gmail.com",
+					"Sub": "b3b45892-0001-703e-61f1-1a022dd6bcf5"
+				}
+			},
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1742928771.344,
+					"UserLastModifiedDate": 1742928771.344,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "c3b42862-8051-704d-a0b4-c6eb3bf759c0",
+					"email": "test1@gmail.com",
+					"Sub": "c3b42862-8051-704d-a0b4-c6eb3bf759c0"
+				}
+			},
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1738605608.249,
+					"UserLastModifiedDate": 1738605608.249,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "c3c498c2-d091-70eb-f45e-2997e7da6476",
+					"email": "New11111@gmail.com",
+					"Sub": "c3c498c2-d091-70eb-f45e-2997e7da6476"
+				}
+			},
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1738681010.807,
+					"UserLastModifiedDate": 1738681010.807,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "d37468c2-5031-705d-9e30-af02374b7c8d",
+					"email": "myUser@gmail.com",
+					"Sub": "d37468c2-5031-705d-9e30-af02374b7c8d"
+				}
+			},
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1738680483.053,
+					"UserLastModifiedDate": 1738680483.053,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "d384d842-f0e1-70c3-f523-1f88b6f8fb17",
+					"email": "Last@gmail.com",
+					"Sub": "d384d842-f0e1-70c3-f523-1f88b6f8fb17"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "getAllUsers",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "45db6d91-a72f-4493-b77e-94341a7ea20f",
+	"meta": {
+		"instanceId": "26f38eb23ad84214537831cfef4032299ffac994ff18d5cb72e82d31ac4ceac4"
+	},
+	"id": "GLTHCGg64D86o8jf",
+	"tags": []
+}
