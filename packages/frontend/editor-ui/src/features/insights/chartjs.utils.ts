@@ -1,5 +1,6 @@
 import { type ChartOptions } from 'chart.js';
 import { useCssVar } from '@vueuse/core';
+import { smartDecimal } from '@n8n/utils/number/smartDecimal';
 
 /**
  *
@@ -33,19 +34,21 @@ export const generateLineChartOptions = (): ChartOptions<'line'> => {
 				xAlign: 'center',
 				yAlign: 'bottom',
 				padding: 16,
+				titleFont: {
+					size: 14,
+				},
+				bodyFont: {
+					size: 14,
+				},
 				backgroundColor: colorBackgroundLight.value,
 				titleColor: colorTextDark.value,
 				bodyColor: colorTextDark.value,
 				borderWidth: 1,
 				borderColor: colorForeGroundBase.value,
-				itemSort(a /*, b, data */) {
-					// Keep success label on top
-					return a.dataset.label === 'Success' ? -1 : 1;
-				},
 				callbacks: {
 					label(context) {
 						const label = context.dataset.label ?? '';
-						return `${label} ${context.parsed.y.toFixed(2)}`;
+						return `${label} ${smartDecimal(context.parsed.y)}`;
 					},
 					labelColor(context) {
 						return {
@@ -121,15 +124,17 @@ export const generateBarChartOptions = (): ChartOptions<'bar'> => {
 				xAlign: 'center',
 				yAlign: 'bottom',
 				padding: 16,
+				titleFont: {
+					size: 14,
+				},
+				bodyFont: {
+					size: 14,
+				},
 				backgroundColor: colorBackgroundLight.value,
 				titleColor: colorTextDark.value,
 				bodyColor: colorTextDark.value,
 				borderWidth: 1,
 				borderColor: colorForeGroundBase.value,
-				itemSort(a /*, b, data */) {
-					// Keep success label on top
-					return a.dataset.label === 'Succeeded' ? -1 : 1;
-				},
 				callbacks: {
 					label(context) {
 						const label = context.dataset.label ?? '';

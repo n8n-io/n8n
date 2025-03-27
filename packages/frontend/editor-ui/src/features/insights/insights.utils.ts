@@ -6,8 +6,7 @@ import {
 } from '@/features/insights/insights.constants';
 
 export const transformInsightsTimeSaved = (value: number): number => value / 3600; // we want to show saved time in hours
-export const transformInsightsAverageRunTime = (value: number): number =>
-	Math.round((value / 1000) * 100) / 100; // we want to show average run time in seconds with 2 decimal places
+export const transformInsightsAverageRunTime = (value: number): number => value / 1000; // we want to show average run time in seconds
 export const transformInsightsFailureRate = (value: number): number => value * 100; // we want to show failure rate in percentage
 
 export const transformInsightsValues: Partial<

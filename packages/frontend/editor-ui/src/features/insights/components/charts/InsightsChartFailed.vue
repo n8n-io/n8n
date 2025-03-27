@@ -2,25 +2,37 @@
 import { computed, ref } from 'vue';
 import { Bar } from 'vue-chartjs';
 import { useCssVar } from '@vueuse/core';
-import type { InsightsByTime } from '@n8n/api-types';
+import dateformat from 'dateformat';
+import type { InsightsByTime, InsightsSummaryType } from '@n8n/api-types';
 import { generateBarChartOptions } from '@/features/insights/chartjs.utils';
 import { useI18n } from '@/composables/useI18n';
+import { smartDecimal } from '@n8n/utils/number/smartDecimal';
 
 const props = defineProps<{
 	data: InsightsByTime[];
+	type: InsightsSummaryType;
 }>();
 
 const i18n = useI18n();
 
 const colorPrimary = useCssVar('--color-primary', document.body);
-const chartOptions = ref(generateBarChartOptions());
+const chartOptions = computed(() => {
+	const options = generateBarChartOptions();
+
+	options.plugins.tooltip.callbacks.label = (context) => {
+		const label = context.dataset.label || '';
+		return `${label} ${smartDecimal(context.parsed.y)}`;
+	};
+
+	return options;
+});
 
 const chartData = computed(() => {
 	const labels: string[] = [];
 	const data: number[] = [];
 
 	for (const entry of props.data) {
-		labels.push(entry.date);
+		labels.push(dateformat(entry.date, 'd. mmm'));
 		data.push(entry.values.failed);
 	}
 

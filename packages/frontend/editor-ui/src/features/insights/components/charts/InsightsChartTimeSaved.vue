@@ -2,7 +2,8 @@
 import { computed, ref } from 'vue';
 import { Line } from 'vue-chartjs';
 import { Filler } from 'chart.js';
-import type { InsightsByTime } from '@n8n/api-types';
+import dateformat from 'dateformat';
+import type { InsightsByTime, InsightsSummaryType } from '@n8n/api-types';
 import {
 	generateLinearGradient,
 	generateLineChartOptions,
@@ -10,14 +11,26 @@ import {
 import { useI18n } from '@/composables/useI18n';
 import { transformInsightsTimeSaved } from '@/features/insights/insights.utils';
 import type { ScriptableContext } from 'chart.js';
+import { smartDecimal } from '@n8n/utils/number/smartDecimal';
+import { INSIGHTS_UNIT_MAPPING } from '@/features/insights/insights.constants';
 
 const props = defineProps<{
 	data: InsightsByTime[];
+	type: InsightsSummaryType;
 }>();
 
 const i18n = useI18n();
 
-const chartOptions = ref(generateLineChartOptions());
+const chartOptions = computed(() => {
+	const options = generateLineChartOptions();
+
+	options.plugins.tooltip.callbacks.label = (context) => {
+		const label = context.dataset.label || '';
+		return `${label} ${smartDecimal(context.parsed.y)} ${INSIGHTS_UNIT_MAPPING[props.type]}`;
+	};
+
+	return options;
+});
 
 const chartData = computed(() => {
 	const labels: string[] = [];
@@ -26,7 +39,7 @@ const chartData = computed(() => {
 
 	let cumulativeTimeSaved = 0;
 	for (const entry of props.data) {
-		labels.push(entry.date);
+		labels.push(dateformat(entry.date, 'd. mmm'));
 
 		const timeSaved = transformInsightsTimeSaved(entry.values.timeSaved);
 

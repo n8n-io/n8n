@@ -1,19 +1,28 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { Bar } from 'vue-chartjs';
 import { useCssVar } from '@vueuse/core';
-import type { InsightsByTime } from '@n8n/api-types';
+import dateformat from 'dateformat';
+import type { InsightsByTime, InsightsSummaryType } from '@n8n/api-types';
 import { generateBarChartOptions } from '@/features/insights/chartjs.utils';
 import { useI18n } from '@/composables/useI18n';
 
 const props = defineProps<{
 	data: InsightsByTime[];
+	type: InsightsSummaryType;
 }>();
 
 const i18n = useI18n();
 
 const colorPrimary = useCssVar('--color-primary', document.body);
-const chartOptions = ref(generateBarChartOptions());
+const chartOptions = computed(() => {
+	const options = generateBarChartOptions();
+
+	options.plugins.tooltip.itemSort = (a) =>
+		a.dataset.label === i18n.baseText('insights.banner.title.succeeded') ? -1 : 1;
+
+	return options;
+});
 
 const chartData = computed(() => {
 	const labels: string[] = [];
@@ -21,7 +30,7 @@ const chartData = computed(() => {
 	const failedData: number[] = [];
 
 	for (const entry of props.data) {
-		labels.push(entry.date);
+		labels.push(dateformat(entry.date, 'd. mmm'));
 		succeededData.push(entry.values.succeeded);
 		failedData.push(entry.values.failed);
 	}

@@ -128,6 +128,7 @@ watch(
 						<component
 							:is="chartComponents[props.insightType]"
 							v-else
+							:type="props.insightType"
 							:data="insightsStore.charts.state"
 						/>
 					</div>
