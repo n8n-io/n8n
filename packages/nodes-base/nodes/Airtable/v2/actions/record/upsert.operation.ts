@@ -94,6 +94,7 @@ export async function execute(
 			}
 
 			const body: IDataObject = {
+				returnFieldsByFieldId: options.returnFieldsByFieldId ? true : false,
 				typecast: options.typecast ? true : false,
 			};
 
