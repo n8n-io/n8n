@@ -352,7 +352,7 @@ onClickOutside(
 		padding: $--item-padding;
 		margin: 0;
 		line-height: $--item-line-height;
-		font-weight: 400;
+		font-weight: var(--font-weight-regular);
 		font-size: $--item-font-size;
 
 		&.is-disabled {
@@ -361,7 +361,7 @@ onClickOutside(
 		}
 
 		&.selected {
-			font-weight: bold;
+			font-weight: var(--font-weight-bold);
 
 			> span {
 				display: inline-block;

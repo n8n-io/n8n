@@ -1,55 +1,50 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "type": {
-            "type": "integer"
-        },
         "flags": {
             "type": "integer"
         },
         "guild_id": {
             "type": "string"
         },
+        "id": {
+            "type": "string"
+        },
         "name": {
             "type": "string"
         },
-        "rate_limit_per_user": {
-            "type": "integer"
-        },
-        "position": {
-            "type": "integer"
+        "nsfw": {
+            "type": "boolean"
         },
         "permission_overwrites": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "type": {
-                        "type": "integer"
-                    },
                     "allow": {
                         "type": "string"
                     },
                     "deny": {
                         "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "integer"
                     }
-                },
-                "required": [
-                    "id",
-                    "type",
-                    "allow",
-                    "deny"
-                ]
+                }
             }
         },
-        "nsfw": {
-            "type": "boolean"
+        "position": {
+            "type": "integer"
+        },
+        "rate_limit_per_user": {
+            "type": "integer"
+        },
+        "type": {
+            "type": "integer"
         }
-    }
+    },
+    "version": 1
 }

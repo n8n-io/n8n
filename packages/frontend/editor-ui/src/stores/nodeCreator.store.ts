@@ -20,8 +20,13 @@ import type {
 
 import { computed, ref } from 'vue';
 import { transformNodeType } from '@/components/Node/NodeCreator/utils';
-import type { IDataObject, INodeInputConfiguration, NodeParameterValueType } from 'n8n-workflow';
-import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeInputConfiguration,
+	NodeParameterValueType,
+	NodeConnectionType,
+} from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -181,7 +186,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		uiStore.lastInteractedWithNodeId = sourceNode.id;
 
 		const isOutput = mode === CanvasConnectionMode.Output;
-		const isScopedConnection = type !== NodeConnectionType.Main;
+		const isScopedConnection = type !== NodeConnectionTypes.Main;
 		setNodeCreatorState({
 			source: eventSource,
 			createNodeActive: true,

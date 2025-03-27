@@ -9,7 +9,7 @@ import { BaseCommand } from '../base-command';
 export class ClearLicenseCommand extends BaseCommand {
 	static description = 'Clear license';
 
-	static examples = ['$ n8n clear:license'];
+	static examples = ['$ n8n license:clear'];
 
 	async run() {
 		this.logger.info('Clearing license from database.');

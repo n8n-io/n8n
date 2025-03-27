@@ -11,14 +11,14 @@ import type { AgentAction, AgentFinish } from 'langchain/agents';
 import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
 import type { ToolsAgentAction } from 'langchain/dist/agents/tool_calling/output_parser';
 import { omit } from 'lodash';
-import { BINARY_ENCODING, jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { BINARY_ENCODING, jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import type { ZodObject } from 'zod';
 import { z } from 'zod';
 
 import { isChatInstance, getPromptInputByType, getConnectedTools } from '@utils/helpers';
 import {
-	getOptionalOutputParsers,
+	getOptionalOutputParser,
 	type N8nOutputParser,
 } from '@utils/output_parsers/N8nOutputParser';
 
@@ -275,7 +275,7 @@ export const getAgentStepsParser =
  * @returns The validated chat model
  */
 export async function getChatModel(ctx: IExecuteFunctions): Promise<BaseChatModel> {
-	const model = await ctx.getInputConnectionData(NodeConnectionType.AiLanguageModel, 0);
+	const model = await ctx.getInputConnectionData(NodeConnectionTypes.AiLanguageModel, 0);
 	if (!isChatInstance(model) || !model.bindTools) {
 		throw new NodeOperationError(
 			ctx.getNode(),
@@ -294,7 +294,7 @@ export async function getChatModel(ctx: IExecuteFunctions): Promise<BaseChatMode
 export async function getOptionalMemory(
 	ctx: IExecuteFunctions,
 ): Promise<BaseChatMemory | undefined> {
-	return (await ctx.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
+	return (await ctx.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
 		| BaseChatMemory
 		| undefined;
 }
@@ -392,8 +392,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 
 	const returnData: INodeExecutionData[] = [];
 	const items = this.getInputData();
-	const outputParsers = await getOptionalOutputParsers(this);
-	const outputParser = outputParsers?.[0];
+	const outputParser = await getOptionalOutputParser(this);
 	const tools = await getTools(this, outputParser);
 
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {

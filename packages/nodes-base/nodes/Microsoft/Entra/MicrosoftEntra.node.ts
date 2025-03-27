@@ -4,7 +4,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { groupFields, groupOperations, userFields, userOperations } from './descriptions';
 import { getGroupProperties, getGroups, getUserProperties, getUsers } from './GenericFunctions';
@@ -25,8 +25,8 @@ export class MicrosoftEntra implements INodeType {
 			name: 'Micosoft Entra ID',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'microsoftEntraOAuth2Api',

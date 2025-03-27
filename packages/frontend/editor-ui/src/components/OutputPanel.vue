@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IRunData,
 	type IRunExecutionData,
 	type Workflow,
@@ -237,7 +237,7 @@ const allToolsWereUnusedNotice = computed(() => {
 
 	const toolsAvailable = props.workflow.getParentNodes(
 		node.value.name,
-		NodeConnectionType.AiTool,
+		NodeConnectionTypes.AiTool,
 		1,
 	);
 	const toolsUsedInLatestRun = toolsAvailable.filter(

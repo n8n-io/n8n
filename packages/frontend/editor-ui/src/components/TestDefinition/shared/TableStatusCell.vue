@@ -27,8 +27,6 @@ const errorTooltipMap: Record<string, BaseTextKey> = {
 	FAILED_TO_EXECUTE_EVALUATION_WORKFLOW: 'testDefinition.runDetail.error.evaluationFailed',
 	FAILED_TO_EXECUTE_WORKFLOW: 'testDefinition.runDetail.error.executionFailed',
 	TRIGGER_NO_LONGER_EXISTS: 'testDefinition.runDetail.error.triggerNoLongerExists',
-	METRICS_MISSING: 'testDefinition.runDetail.error.metricsMissing',
-	UNKNOWN_METRICS: 'testDefinition.runDetail.error.unknownMetrics',
 	INVALID_METRICS: 'testDefinition.runDetail.error.invalidMetrics',
 
 	// Test run errors

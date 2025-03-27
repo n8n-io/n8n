@@ -8,7 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { ghostApiRequest, ghostApiRequestAllItems, validateJSON } from './GenericFunctions';
 import { postFields, postOperations } from './PostDescription';
@@ -26,8 +26,8 @@ export class Ghost implements INodeType {
 			name: 'Ghost',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'ghostAdminApi',

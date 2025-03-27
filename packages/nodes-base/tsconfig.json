@@ -16,9 +16,10 @@
 	"include": [
 		"credentials/**/*.ts",
 		"nodes/**/*.ts",
+		"nodes/**/*.json",
 		"test/**/*.ts",
-		"utils/**/*.ts",
-		"types/**/*.ts"
+		"types/**/*.ts",
+		"utils/**/*.ts"
 	],
 	"references": [
 		{ "path": "../@n8n/imap/tsconfig.build.json" },
