@@ -13,7 +13,7 @@ import type {
 	AINodeConnectionType,
 } from 'n8n-workflow';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	NodeOperationError,
 	ExecutionBaseError,
 	ApplicationError,
@@ -92,7 +92,7 @@ export async function getInputConnectionData(
 			);
 
 		if (!connectedNodeType.supplyData) {
-			if (connectedNodeType.description.outputs.includes(NodeConnectionType.AiTool)) {
+			if (connectedNodeType.description.outputs.includes(NodeConnectionTypes.AiTool)) {
 				/**
 				 * This keeps track of how many times this specific AI tool node has been invoked.
 				 * It is incremented on every invocation of the tool to keep the output of each invocation separate from each other.
@@ -104,7 +104,7 @@ export async function getInputConnectionData(
 					handleToolInvocation: async (toolArgs) => {
 						const runIndex = toolRunIndex++;
 						const context = contextFactory(runIndex, {});
-						context.addInputData(NodeConnectionType.AiTool, [[{ json: toolArgs }]]);
+						context.addInputData(NodeConnectionTypes.AiTool, [[{ json: toolArgs }]]);
 
 						try {
 							// Execute the sub-node with the proxied context
@@ -116,7 +116,7 @@ export async function getInputConnectionData(
 							const mappedResults = result?.[0]?.flatMap((item) => item.json);
 
 							// Add output data to the context
-							context.addOutputData(NodeConnectionType.AiTool, runIndex, [
+							context.addOutputData(NodeConnectionTypes.AiTool, runIndex, [
 								[{ json: { response: mappedResults } }],
 							]);
 
@@ -124,7 +124,7 @@ export async function getInputConnectionData(
 							return JSON.stringify(mappedResults);
 						} catch (error) {
 							const nodeError = new NodeOperationError(connectedNode, error as Error);
-							context.addOutputData(NodeConnectionType.AiTool, runIndex, nodeError);
+							context.addOutputData(NodeConnectionTypes.AiTool, runIndex, nodeError);
 							return 'Error during node execution: ' + nodeError.description;
 						}
 					},

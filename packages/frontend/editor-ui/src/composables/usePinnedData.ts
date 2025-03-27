@@ -1,7 +1,7 @@
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
 import type { INodeExecutionData, IPinData } from 'n8n-workflow';
-import { jsonParse, jsonStringify, NodeConnectionType, NodeHelpers } from 'n8n-workflow';
+import { jsonParse, jsonStringify, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import {
 	MAX_EXPECTED_REQUEST_SIZE,
 	MAX_PINNED_DATA_SIZE,
@@ -90,7 +90,7 @@ export function usePinnedData(
 		);
 
 		const mainOutputs = outputs.filter(
-			(output) => output.type === NodeConnectionType.Main && output.category !== 'error',
+			(output) => output.type === NodeConnectionTypes.Main && output.category !== 'error',
 		);
 
 		let indexAcceptable = true;
@@ -100,7 +100,7 @@ export function usePinnedData(
 
 			if (outputs[outputIndex] === undefined) return false;
 
-			indexAcceptable = output.type === NodeConnectionType.Main && output.category !== 'error';
+			indexAcceptable = output.type === NodeConnectionTypes.Main && output.category !== 'error';
 		}
 
 		return mainOutputs.length === 1 && indexAcceptable;

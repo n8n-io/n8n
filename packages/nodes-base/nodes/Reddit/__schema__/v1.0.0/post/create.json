@@ -1,9 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "url": {
-            "type": "string"
-        },
         "drafts_count": {
             "type": "integer"
         },
@@ -11,6 +8,9 @@
             "type": "string"
         },
         "name": {
+            "type": "string"
+        },
+        "url": {
             "type": "string"
         }
     },

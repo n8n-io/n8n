@@ -91,8 +91,9 @@ import type {
 	NodeInputConnections,
 	NodeParameterValueType,
 	Workflow,
+	NodeConnectionType,
 } from 'n8n-workflow';
-import { deepCopy, NodeConnectionType, NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
+import { deepCopy, NodeConnectionTypes, NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
 import { computed, nextTick, ref } from 'vue';
 import type { useRouter } from 'vue-router';
 import { useClipboard } from '@/composables/useClipboard';
@@ -724,13 +725,13 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 				source: lastInteractedWithNodeId,
 				sourceHandle: createCanvasConnectionHandleString({
 					mode: CanvasConnectionMode.Output,
-					type: NodeConnectionType.Main,
+					type: NodeConnectionTypes.Main,
 					index: 0,
 				}),
 				target: node.id,
 				targetHandle: createCanvasConnectionHandleString({
 					mode: CanvasConnectionMode.Input,
-					type: NodeConnectionType.Main,
+					type: NodeConnectionTypes.Main,
 					index: 0,
 				}),
 			});
@@ -745,7 +746,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 					source: node.id,
 					sourceHandle: createCanvasConnectionHandleString({
 						mode: CanvasConnectionMode.Input,
-						type: NodeConnectionType.Main,
+						type: NodeConnectionTypes.Main,
 						index: 0,
 					}),
 					target: lastInteractedWithNodeConnection.target,
@@ -899,7 +900,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		);
 
 		const nodeSize =
-			connectionType === NodeConnectionType.Main ? DEFAULT_NODE_SIZE : CONFIGURATION_NODE_SIZE;
+			connectionType === NodeConnectionTypes.Main ? DEFAULT_NODE_SIZE : CONFIGURATION_NODE_SIZE;
 
 		if (lastInteractedWithNode) {
 			const lastInteractedWithNodeTypeDescription = nodeTypesStore.getNodeType(
@@ -916,8 +917,8 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 				// The new node should be placed at the same position as the mouse up event,
 				// designated by the `newNodeInsertPosition` value.
 
-				const xOffset = connectionType === NodeConnectionType.Main ? 0 : -nodeSize[0] / 2;
-				const yOffset = connectionType === NodeConnectionType.Main ? -nodeSize[1] / 2 : 0;
+				const xOffset = connectionType === NodeConnectionTypes.Main ? 0 : -nodeSize[0] / 2;
+				const yOffset = connectionType === NodeConnectionTypes.Main ? -nodeSize[1] / 2 : 0;
 
 				position = [newNodeInsertPosition[0] + xOffset, newNodeInsertPosition[1] + yOffset];
 
@@ -939,7 +940,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 				const lastInteractedWithNodeScopedInputTypes = (
 					lastInteractedWithNodeInputTypes || []
-				).filter((input) => input !== NodeConnectionType.Main);
+				).filter((input) => input !== NodeConnectionTypes.Main);
 
 				const lastInteractedWithNodeOutputs = NodeHelpers.getNodeOutputs(
 					editableWorkflowObject.value,
@@ -951,7 +952,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 				);
 
 				const lastInteractedWithNodeMainOutputs = lastInteractedWithNodeOutputTypes.filter(
-					(output) => output === NodeConnectionType.Main,
+					(output) => output === NodeConnectionTypes.Main,
 				);
 
 				let yOffset = 0;
@@ -994,7 +995,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 				if (
 					outputTypes.length > 0 &&
-					outputTypes.every((outputName) => outputName !== NodeConnectionType.Main)
+					outputTypes.every((outputName) => outputName !== NodeConnectionTypes.Main)
 				) {
 					// When the added node has only non-main outputs (configuration nodes)
 					// We want to place the new node directly below the last interacted with node.
@@ -1021,7 +1022,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 					let pushOffset = PUSH_NODES_OFFSET;
 					if (
-						!!lastInteractedWithNodeInputTypes.find((input) => input !== NodeConnectionType.Main)
+						!!lastInteractedWithNodeInputTypes.find((input) => input !== NodeConnectionTypes.Main)
 					) {
 						// If the node has scoped inputs, push it down a bit more
 						pushOffset += 140;
