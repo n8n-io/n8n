@@ -37,7 +37,10 @@ export const useInsightsStore = defineStore('insights', () => {
 		async (filter?: ListInsightsWorkflowQueryDto) => {
 			return await insightsApi.fetchInsightsByWorkflow(rootStore.restApiContext, filter);
 		},
-		[],
+		{
+			count: 0,
+			data: [],
+		},
 		{ immediate: false },
 	);
 
