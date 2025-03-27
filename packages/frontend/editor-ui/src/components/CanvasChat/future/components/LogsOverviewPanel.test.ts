@@ -7,7 +7,6 @@ import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createRouter, createWebHistory } from 'vue-router';
 import { h, type ExtractPropTypes } from 'vue';
-import { NodeConnectionType } from 'n8n-workflow';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 
 describe('LogsOverviewPanel', () => {
@@ -21,14 +20,10 @@ describe('LogsOverviewPanel', () => {
 		nodes: [triggerNode, aiAgentNode, aiModelNode],
 		connections: {
 			Chat: {
-				[NodeConnectionType.Main]: [
-					[{ node: 'AI Agent', index: 0, type: NodeConnectionType.Main }],
-				],
+				main: [[{ node: 'AI Agent', index: 0, type: 'main' }]],
 			},
 			'AI Model': {
-				[NodeConnectionType.AiLanguageModel]: [
-					[{ node: 'AI Agent', index: 0, type: NodeConnectionType.AiLanguageModel }],
-				],
+				ai_languageModel: [[{ node: 'AI Agent', index: 0, type: 'ai_languageModel' }]],
 			},
 		},
 	});
@@ -97,7 +92,7 @@ describe('LogsOverviewPanel', () => {
 								executionTime: 1777,
 								source: [],
 								data: {
-									[NodeConnectionType.AiLanguageModel]: [
+									ai_languageModel: [
 										[
 											{
 												json: {
