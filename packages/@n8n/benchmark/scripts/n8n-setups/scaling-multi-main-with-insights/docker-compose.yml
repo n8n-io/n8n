@@ -90,6 +90,8 @@ services:
       # Task Runner config
       - N8N_RUNNERS_ENABLED=true
       - N8N_RUNNERS_MODE=internal
+      # Enable Insights
+      - N8N_ENABLED_MODULES=insights
     command: worker
     volumes:
       - ${RUN_DIR}/n8n-worker2:/n8n
@@ -128,6 +130,8 @@ services:
       # Task Runner config
       - N8N_RUNNERS_ENABLED=true
       - N8N_RUNNERS_MODE=internal
+      # Enable Insights
+      - N8N_ENABLED_MODULES=insights
     volumes:
       - ${RUN_DIR}/n8n-main2:/n8n
     depends_on:
@@ -168,6 +172,8 @@ services:
       # Task Runner config
       - N8N_RUNNERS_ENABLED=true
       - N8N_RUNNERS_MODE=internal
+      # Enable Insights
+      - N8N_ENABLED_MODULES=insights
     volumes:
       - ${RUN_DIR}/n8n-main1:/n8n
     depends_on:
