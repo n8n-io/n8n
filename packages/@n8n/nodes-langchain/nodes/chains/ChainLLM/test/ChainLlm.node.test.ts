@@ -10,6 +10,7 @@ import * as outputParserModule from '@utils/output_parsers/N8nOutputParser';
 
 import { ChainLlm } from '../ChainLlm.node';
 import * as executeChainModule from '../methods/chainExecutor';
+import * as responseFormatterModule from '../methods/responseFormatter';
 
 jest.mock('@utils/helpers', () => ({
 	getPromptInputByType: jest.fn(),
@@ -21,6 +22,15 @@ jest.mock('@utils/output_parsers/N8nOutputParser', () => ({
 
 jest.mock('../methods/chainExecutor', () => ({
 	executeChain: jest.fn(),
+}));
+
+jest.mock('../methods/responseFormatter', () => ({
+	formatResponse: jest.fn().mockImplementation((response) => {
+		if (typeof response === 'string') {
+			return { text: response.trim() };
+		}
+		return response;
+	}),
 }));
 
 describe('ChainLlm Node', () => {
@@ -93,7 +103,6 @@ describe('ChainLlm Node', () => {
 		});
 
 		it('should handle multiple input items', async () => {
-			// Set up multiple input items
 			mockExecuteFunction.getInputData.mockReturnValue([
 				{ json: { item: 1 } },
 				{ json: { item: 2 } },
@@ -112,12 +121,10 @@ describe('ChainLlm Node', () => {
 			const result = await node.execute.call(mockExecuteFunction);
 
 			expect(executeChainModule.executeChain).toHaveBeenCalledTimes(2);
-
 			expect(result[0]).toHaveLength(2);
 		});
 
 		it('should use the prompt parameter directly for older versions', async () => {
-			// Set an older version
 			mockExecuteFunction.getNode.mockReturnValue({
 				name: 'Chain LLM',
 				typeVersion: 1.3,
@@ -182,6 +189,174 @@ describe('ChainLlm Node', () => {
 			const result = await node.execute.call(mockExecuteFunction);
 
 			expect(result[0]).toHaveLength(2);
+		});
+
+		it('should unwrap object responses when node version is 1.6 or higher', async () => {
+			mockExecuteFunction.getNode.mockReturnValue({
+				name: 'Chain LLM',
+				typeVersion: 1.6,
+				parameters: {},
+			} as INode);
+
+			(helperModule.getPromptInputByType as jest.Mock).mockReturnValue('Test prompt');
+			(outputParserModule.getOptionalOutputParser as jest.Mock).mockResolvedValue(undefined);
+
+			const structuredResponse = {
+				person: { name: 'John', age: 30 },
+				items: ['item1', 'item2'],
+				active: true,
+			};
+
+			(executeChainModule.executeChain as jest.Mock).mockResolvedValue([structuredResponse]);
+
+			const formatResponseSpy = jest.spyOn(responseFormatterModule, 'formatResponse');
+
+			await node.execute.call(mockExecuteFunction);
+
+			expect(formatResponseSpy).toHaveBeenCalledWith(structuredResponse, true);
+		});
+
+		it('should unwrap object responses when output parser is provided regardless of version', async () => {
+			mockExecuteFunction.getNode.mockReturnValue({
+				name: 'Chain LLM',
+				typeVersion: 1.5,
+				parameters: {},
+			} as INode);
+
+			(helperModule.getPromptInputByType as jest.Mock).mockReturnValue('Test prompt');
+
+			(outputParserModule.getOptionalOutputParser as jest.Mock).mockResolvedValue(
+				mock<outputParserModule.N8nOutputParser>(),
+			);
+
+			const structuredResponse = {
+				result: 'success',
+				data: { key: 'value' },
+			};
+
+			(executeChainModule.executeChain as jest.Mock).mockResolvedValue([structuredResponse]);
+
+			const formatResponseSpy = jest.spyOn(responseFormatterModule, 'formatResponse');
+
+			await node.execute.call(mockExecuteFunction);
+
+			expect(formatResponseSpy).toHaveBeenCalledWith(structuredResponse, true);
+		});
+
+		it('should wrap object responses as text when node version is lower than 1.6 and no output parser', async () => {
+			mockExecuteFunction.getNode.mockReturnValue({
+				name: 'Chain LLM',
+				typeVersion: 1.5,
+				parameters: {},
+			} as INode);
+
+			(helperModule.getPromptInputByType as jest.Mock).mockReturnValue('Test prompt');
+			(outputParserModule.getOptionalOutputParser as jest.Mock).mockResolvedValue(undefined);
+
+			const structuredResponse = {
+				person: { name: 'John', age: 30 },
+				items: ['item1', 'item2'],
+			};
+
+			(executeChainModule.executeChain as jest.Mock).mockResolvedValue([structuredResponse]);
+
+			const formatResponseSpy = jest.spyOn(responseFormatterModule, 'formatResponse');
+
+			await node.execute.call(mockExecuteFunction);
+
+			expect(formatResponseSpy).toHaveBeenCalledWith(structuredResponse, false);
+		});
+
+		it('should handle a mix of different response types with the correct wrapping', async () => {
+			mockExecuteFunction.getNode.mockReturnValue({
+				name: 'Chain LLM',
+				typeVersion: 1.6,
+				parameters: {},
+			} as INode);
+
+			(helperModule.getPromptInputByType as jest.Mock).mockReturnValue('Test prompt');
+			(outputParserModule.getOptionalOutputParser as jest.Mock).mockResolvedValue(undefined);
+
+			const mixedResponses = ['Text response', { structured: 'object' }, ['array', 'response']];
+
+			(executeChainModule.executeChain as jest.Mock).mockResolvedValue(mixedResponses);
+
+			(responseFormatterModule.formatResponse as jest.Mock).mockClear();
+
+			await node.execute.call(mockExecuteFunction);
+
+			expect(responseFormatterModule.formatResponse).toHaveBeenCalledTimes(3);
+			expect(responseFormatterModule.formatResponse).toHaveBeenNthCalledWith(
+				1,
+				'Text response',
+				true,
+			);
+			expect(responseFormatterModule.formatResponse).toHaveBeenNthCalledWith(
+				2,
+				{ structured: 'object' },
+				true,
+			);
+			expect(responseFormatterModule.formatResponse).toHaveBeenNthCalledWith(
+				3,
+				['array', 'response'],
+				true,
+			);
+		});
+
+		it('should handle LLM responses containing JSON with markdown content', async () => {
+			mockExecuteFunction.getNode.mockReturnValue({
+				name: 'Chain LLM',
+				typeVersion: 1.6,
+				parameters: {},
+			} as INode);
+
+			(helperModule.getPromptInputByType as jest.Mock).mockReturnValue(
+				'Generate markdown documentation',
+			);
+			(outputParserModule.getOptionalOutputParser as jest.Mock).mockResolvedValue(undefined);
+
+			const markdownResponse = {
+				title: 'API Documentation',
+				sections: [
+					{
+						name: 'Authentication',
+						content:
+							"# Authentication\n\nUse API keys for all requests:\n\n```javascript\nconst headers = {\n  'Authorization': 'Bearer YOUR_API_KEY'\n};\n```",
+					},
+					{
+						name: 'Endpoints',
+						content:
+							'## Available Endpoints\n\n* GET /users - List all users\n* POST /users - Create a user\n* GET /users/{id} - Get user details',
+					},
+				],
+				examples: {
+					curl: "```bash\ncurl -X GET https://api.example.com/users \\\n  -H 'Authorization: Bearer YOUR_API_KEY'\n```",
+					response: '```json\n{\n  "users": [],\n  "count": 0\n}\n```',
+				},
+			};
+
+			(executeChainModule.executeChain as jest.Mock).mockResolvedValue([markdownResponse]);
+
+			(responseFormatterModule.formatResponse as jest.Mock).mockImplementation(
+				(response, shouldUnwrap) => {
+					if (shouldUnwrap && typeof response === 'object') {
+						return response;
+					}
+					return { text: JSON.stringify(response) };
+				},
+			);
+
+			const result = await node.execute.call(mockExecuteFunction);
+
+			expect(result).toEqual([
+				[
+					{
+						json: markdownResponse,
+					},
+				],
+			]);
+
+			expect(responseFormatterModule.formatResponse).toHaveBeenCalledWith(markdownResponse, true);
 		});
 	});
 });
