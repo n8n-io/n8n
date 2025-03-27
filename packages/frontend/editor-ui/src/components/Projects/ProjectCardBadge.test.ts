@@ -1,10 +1,34 @@
 import { createComponentRenderer } from '@/__tests__/render';
+import { mockedStore } from '@/__tests__/utils';
 import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
+import { useFoldersStore } from '@/stores/folders.store';
 import { truncate } from '@n8n/utils/string/truncate';
+import { createTestingPinia } from '@pinia/testing';
+
+vi.mock('vue-router', () => {
+	const push = vi.fn();
+	const resolve = vi.fn().mockReturnValue({ href: '' });
+	return {
+		useRouter: () => ({
+			push,
+			resolve,
+		}),
+		useRoute: () => ({}),
+		RouterLink: vi.fn(),
+	};
+});
 
 const renderComponent = createComponentRenderer(ProjectCardBadge);
 
+let pinia: ReturnType<typeof createTestingPinia>;
+let foldersStore: ReturnType<typeof mockedStore<typeof useFoldersStore>>;
+
 describe('ProjectCardBadge', () => {
+	beforeEach(() => {
+		pinia = createTestingPinia();
+		foldersStore = mockedStore(useFoldersStore);
+	});
+
 	it('should show "Personal" badge if there is no homeProject', () => {
 		const { getByText } = renderComponent({
 			props: {
@@ -52,7 +76,137 @@ describe('ProjectCardBadge', () => {
 			},
 		});
 
-		expect(getByText('+ 3')).toBeVisible();
+		expect(getByText('+3')).toBeVisible();
+	});
+
+	it('should not show breadcrumbs for credentials', () => {
+		const { queryByTestId } = renderComponent({
+			props: {
+				resourceType: 'credential',
+				resourceTypeLabel: 'Credential',
+				personalProject: {
+					id: '1',
+				},
+				resource: {
+					id: '1',
+					name: 'Test Credential',
+					resourceType: 'credential',
+					value: '',
+					updatedAt: new Date().toISOString(),
+					createdAt: new Date().toISOString(),
+					homeProject: {
+						id: '1',
+						name: 'John',
+					},
+					sharedWithProjects: [],
+					readOnly: false,
+					needsSetup: false,
+					type: 'testApi',
+				},
+			},
+		});
+		expect(queryByTestId('workflow-card-breadcrumbs')).not.toBeInTheDocument();
+	});
+
+	it('should show breadcrumbs for workflows', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				resourceType: 'workflow',
+				resourceTypeLabel: 'Workflow',
+				personalProject: {
+					id: '1',
+					name: 'John',
+				},
+				resource: {
+					id: '1',
+					resourceType: 'workflow',
+					name: 'Test Workflow',
+					value: '',
+					updatedAt: new Date().toISOString(),
+					createdAt: new Date().toISOString(),
+					homeProject: {
+						id: '1',
+						name: 'John',
+					},
+					sharedWithProjects: [],
+					parentFolder: {
+						id: '1',
+						name: 'Test Folder',
+					},
+				},
+			},
+		});
+		expect(getByTestId('workflow-card-breadcrumbs')).toBeInTheDocument();
+		expect(getByTestId('breadcrumbs-item-current')).toBeInTheDocument();
+		expect(getByTestId('breadcrumbs-item-current')).toHaveTextContent('Test Folder');
+	});
+
+	it('should not show breadcrumbs if `hideBreadcrumbs` prop is true', () => {
+		const { queryByTestId } = renderComponent({
+			props: {
+				hideBreadcrumbs: true,
+				resourceType: 'workflow',
+				resourceTypeLabel: 'Workflow',
+				personalProject: {
+					id: '1',
+					name: 'John',
+				},
+				resource: {
+					id: '1',
+					resourceType: 'workflow',
+					name: 'Test Workflow',
+					value: '',
+					updatedAt: new Date().toISOString(),
+					createdAt: new Date().toISOString(),
+
+					homeProject: {
+						id: '1',
+						name: 'John',
+					},
+					sharedWithProjects: [],
+					parentFolder: {
+						id: '1',
+						name: 'Test Folder',
+					},
+					hideBreadcrumbs: true,
+				},
+			},
+		});
+		expect(queryByTestId('workflow-card-breadcrumbs')).not.toBeInTheDocument();
+	});
+
+	it('should not show breadcrumbs for other users personal projects', () => {
+		const { queryByTestId } = renderComponent({
+			props: {
+				hideBreadcrumbs: true,
+				resourceType: 'workflow',
+				resourceTypeLabel: 'Workflow',
+				personalProject: {
+					id: '1',
+					name: 'John',
+				},
+				resource: {
+					id: '1',
+					resourceType: 'workflow',
+					name: 'Test Workflow',
+					value: '',
+					updatedAt: new Date().toISOString(),
+					createdAt: new Date().toISOString(),
+
+					homeProject: {
+						id: '1',
+						name: 'John',
+					},
+					sharedWithProjects: [],
+					parentFolder: {
+						id: '1',
+						name: 'Test Folder',
+					},
+					hideBreadcrumbs: true,
+				},
+			},
+		});
+		expect(queryByTestId('workflow-card-breadcrumbs')).not.toBeInTheDocument();
 	});
 
 	test.each([
