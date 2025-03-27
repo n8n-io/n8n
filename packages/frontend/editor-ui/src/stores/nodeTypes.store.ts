@@ -21,6 +21,7 @@ import type {
 import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useCredentialsStore } from './credentials.store';
+import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 import { useRootStore } from './root.store';
 import * as utils from '@/utils/credentialOnlyNodes';
 import { groupNodeTypesByNameAndType } from '@/utils/nodeTypes/nodeTypeTransforms';
@@ -30,6 +31,7 @@ export type NodeTypesStore = ReturnType<typeof useNodeTypesStore>;
 
 export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	const nodeTypes = ref<NodeTypesByTypeNameAndVersion>({});
+	const verifiedNodeTypes = ref<string[]>([]);
 
 	const rootStore = useRootStore();
 
@@ -262,16 +264,47 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		return nodesInformation;
 	};
 
-	const getFullNodesProperties = async (nodesToBeFetched: INodeTypeNameVersion[]) => {
+	const getFullNodesProperties = async (
+		nodesToBeFetched: INodeTypeNameVersion[],
+		replaceNodeTypes = true,
+	) => {
 		const credentialsStore = useCredentialsStore();
 		await credentialsStore.fetchCredentialTypes(true);
-		await getNodesInformation(nodesToBeFetched);
+		if (replaceNodeTypes) {
+			await getNodesInformation(nodesToBeFetched);
+		}
 	};
 
 	const getNodeTypes = async () => {
-		const nodeTypes = await nodeTypesApi.getNodeTypes(rootStore.baseUrl);
+		let nodeTypes = await nodeTypesApi.getNodeTypes(rootStore.baseUrl);
+		let attemps = 5;
+
+		while (typeof nodeTypes !== 'object' && attemps > 0) {
+			nodeTypes = await nodeTypesApi.getNodeTypes(rootStore.baseUrl);
+			attemps--;
+		}
+
+		if (typeof nodeTypes !== 'object') {
+			throw new Error('Could not fetch node types');
+		}
+
+		let communityTypes = (await nodeTypesApi.getCommunityNodeTypes()) ?? [];
+
+		const communityNodesStore = useCommunityNodesStore();
+
+		if (Object.keys(communityNodesStore.installedPackages).length === 0) {
+			await communityNodesStore.fetchInstalledPackages();
+		}
+
+		communityTypes = communityTypes.filter((nodeType) => {
+			verifiedNodeTypes.value.push(nodeType.name);
+			return !communityNodesStore.installedPackages[
+				nodeType.name.split('.')[0].replace('-preview', '')
+			];
+		});
+
 		if (nodeTypes.length) {
-			setNodeTypes(nodeTypes);
+			setNodeTypes(nodeTypes.concat(communityTypes));
 		}
 	};
 
@@ -334,6 +367,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		visibleNodeTypesByOutputConnectionTypeNames,
 		visibleNodeTypesByInputConnectionTypeNames,
 		isConfigurableNode,
+		verifiedNodeTypes,
 		getResourceMapperFields,
 		getLocalResourceMapperFields,
 		getNodeParameterActionResult,

@@ -90,6 +90,8 @@ const subcategory = computed(() => useViewStacks().activeViewStack.subcategory);
 
 const rootView = computed(() => useViewStacks().activeViewStack.rootView);
 
+const communityNodeDetails = computed(() => useViewStacks().activeViewStack.communityNodeDetails);
+
 const placeholderTriggerActions = getPlaceholderTriggerActions(subcategory.value || '');
 
 const hasNoTriggerActions = computed(
@@ -298,7 +300,7 @@ onMounted(() => {
 				</CategorizedItemsRenderer>
 			</template>
 		</OrderSwitcher>
-		<div v-if="containsAPIAction" :class="$style.apiHint">
+		<div v-if="containsAPIAction && !communityNodeDetails" :class="$style.apiHint">
 			<span
 				v-n8n-html="
 					i18n.baseText('nodeCreator.actionsList.apiCall', {
@@ -308,6 +310,10 @@ onMounted(() => {
 				@click.prevent="addHttpNode"
 			/>
 		</div>
+		<CommunityNodeFooter
+			v-if="communityNodeDetails"
+			:package-name="communityNodeDetails.packageName"
+		/>
 	</div>
 </template>
 

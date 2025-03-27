@@ -42,6 +42,18 @@ import { AI_TRANSFORM_NODE_TYPE } from 'n8n-workflow';
 import type { NodeConnectionType, INodeInputFilter } from 'n8n-workflow';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useSettingsStore } from '@/stores/settings.store';
+
+type CommunityNodeDetails = {
+	title: string;
+	packageName: string;
+	key: string;
+	description: string;
+	installed: boolean;
+	verified?: boolean;
+	nodeIcon?: NodeIconSource;
+	iconUrl?: string;
+};
+
 import { useUIStore } from '@/stores/ui.store';
 import { type NodeIconSource } from '@/utils/nodeIcon';
 import { getThemedValue } from '@/utils/nodeTypesUtils';
@@ -63,13 +75,14 @@ interface ViewStack {
 	baselineItems?: INodeCreateElement[];
 	searchItems?: SimplifiedNodeType[];
 	forceIncludeNodes?: string[];
-	mode?: 'actions' | 'nodes';
+	mode?: 'actions' | 'nodes' | 'community-node';
 	hideActions?: boolean;
 	baseFilter?: (item: INodeCreateElement) => boolean;
 	itemsMapper?: (item: INodeCreateElement) => INodeCreateElement;
 	actionsFilter?: (items: ActionTypeDescription[]) => ActionTypeDescription[];
 	panelClass?: string;
 	sections?: string[] | NodeViewItemSection[];
+	communityNodeDetails?: CommunityNodeDetails;
 }
 
 export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
@@ -104,6 +117,13 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			) {
 				searchBase = filterOutAiNodes(searchBase);
 			}
+
+			searchBase = searchBase.filter((item) => {
+				if (useNodeTypesStore().verifiedNodeTypes.includes(item.key)) {
+					return false;
+				}
+				return true;
+			});
 
 			const searchResults = extendItemsWithUUID(searchNodes(stack.search || '', searchBase));
 
@@ -149,12 +169,18 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		return viewStacks.value[viewStacks.value.length - 1];
 	}
 
+	function getAllNodeCreateElements() {
+		return nodeCreatorStore.mergedNodes.map((item) =>
+			transformNodeType(item),
+		) as NodeCreateElement[];
+	}
+
 	// Generate a delta between the global search results(all nodes) and the stack search results
 	const globalSearchItemsDiff = computed<INodeCreateElement[]>(() => {
 		const stack = getLastActiveStack();
 		if (!stack?.search || isAiSubcategoryView(stack)) return [];
 
-		const allNodes = nodeCreatorStore.mergedNodes.map((item) => transformNodeType(item));
+		const allNodes = getAllNodeCreateElements();
 		// Apply filtering for AI nodes if the current view is not the AI root view
 		const filteredNodes = isAiRootView(stack) ? allNodes : filterOutAiNodes(allNodes);
 
@@ -192,6 +218,22 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		});
 
 		return filteredSections;
+	});
+
+	const additionalSearchItems = computed(() => {
+		const communityItems: INodeCreateElement[] = [];
+		const items: INodeCreateElement[] = [];
+		const { verifiedNodeTypes } = useNodeTypesStore();
+
+		for (const item of globalSearchItemsDiff.value) {
+			if (verifiedNodeTypes.includes(item.key)) {
+				communityItems.push(item);
+			} else {
+				items.push(item);
+			}
+		}
+
+		return { items, communityItems };
 	});
 
 	const itemsBySubcategory = computed(() => subcategorizeItems(nodeCreatorStore.mergedNodes));
@@ -467,16 +509,74 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		viewStacks.value = [];
 	}
 
+	function pushCommunityNodeDetailsViewStack(
+		item: NodeCreateElement,
+		nodeIcon: NodeIconSource | undefined,
+		nodeActions: ActionTypeDescription[] = [],
+		options?: {
+			resetStacks?: boolean;
+		},
+	) {
+		const installed = !item.key.includes('-preview');
+		const packageName = item.key.split('.')[0].replace('-preview', '');
+		const verified = useNodeTypesStore().verifiedNodeTypes.some((n) =>
+			n.replace('-preview', '').includes(packageName),
+		);
+
+		const communityNodeDetails = {
+			title: item.properties.displayName,
+			description: item.properties.description,
+			key: item.key,
+			nodeIcon,
+			installed,
+			packageName,
+			verified,
+		};
+
+		if (nodeActions.length) {
+			const transformedActions = nodeActions?.map((a) =>
+				transformNodeType(a, item.properties.displayName, 'action'),
+			);
+			pushViewStack(
+				{
+					subcategory: item.properties.displayName,
+					title: 'Community node details',
+					rootView: activeViewStack.value.rootView,
+					hasSearch: false,
+					mode: 'actions',
+					items: transformedActions,
+					communityNodeDetails,
+				},
+				options,
+			);
+		} else {
+			pushViewStack(
+				{
+					subcategory: item.properties.displayName,
+					title: 'Community node details',
+					rootView: activeViewStack.value.rootView,
+					hasSearch: false,
+					items: [item],
+					mode: 'community-node',
+					communityNodeDetails,
+				},
+				options,
+			);
+		}
+	}
+
 	return {
 		viewStacks,
 		activeViewStack,
 		activeViewStackMode,
-		globalSearchItemsDiff,
+		additionalSearchItems,
 		isAiSubcategoryView,
 		gotoCompatibleConnectionView,
 		resetViewStacks,
 		updateCurrentViewStack,
 		pushViewStack,
+		pushCommunityNodeDetailsViewStack,
 		popViewStack,
+		getAllNodeCreateElements,
 	};
 });
