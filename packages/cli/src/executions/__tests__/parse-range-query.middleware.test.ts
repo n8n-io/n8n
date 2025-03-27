@@ -108,6 +108,22 @@ describe('`parseRangeQuery` middleware', () => {
 			expect(nextFn).toBeCalledTimes(1);
 		});
 
+		test('should parse `projectId` field', () => {
+			const req = mock<ExecutionRequest.GetMany>({
+				query: {
+					filter: '{ "projectId": "123" }',
+					limit: undefined,
+					firstId: undefined,
+					lastId: undefined,
+				},
+			});
+
+			parseRangeQuery(req, res, nextFn);
+
+			expect(req.rangeQuery.projectId).toBe('123');
+			expect(nextFn).toBeCalledTimes(1);
+		});
+
 		test('should delete invalid fields', () => {
 			const req = mock<ExecutionRequest.GetMany>({
 				query: {

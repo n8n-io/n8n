@@ -1,4 +1,4 @@
-import type { ExecutionError } from 'n8n-workflow/src';
+import type { ExecutionError } from 'n8n-workflow';
 
 import {
 	closeManualChatModal,
@@ -53,7 +53,7 @@ function createRunDataWithError(inputMessage: string) {
 							input: inputMessage,
 							system_message: 'You are a helpful assistant',
 							formatting_instructions:
-								'IMPORTANT: Always call `format_final_response` to format your final response!',
+								'IMPORTANT: Always call `format_final_json_response` to format your final response!',
 						},
 					},
 				},
@@ -68,7 +68,7 @@ function createRunDataWithError(inputMessage: string) {
 									input: inputMessage,
 									system_message: 'You are a helpful assistant',
 									formatting_instructions:
-										'IMPORTANT: Always call `format_final_response` to format your final response!',
+										'IMPORTANT: Always call `format_final_json_response` to format your final response!',
 								},
 							},
 						},
@@ -90,6 +90,14 @@ function createRunDataWithError(inputMessage: string) {
 					routine: 'InitPostgres',
 				} as unknown as Error,
 			} as ExecutionError,
+			metadata: {
+				subRun: [
+					{
+						node: 'Postgres Chat Memory',
+						runIndex: 0,
+					},
+				],
+			},
 		}),
 		createMockNodeExecutionData(AGENT_NODE_NAME, {
 			executionStatus: 'error',
@@ -124,14 +132,6 @@ function createRunDataWithError(inputMessage: string) {
 				description: 'Internal error',
 				message: 'Internal error',
 			} as unknown as ExecutionError,
-			metadata: {
-				subRun: [
-					{
-						node: 'Postgres Chat Memory',
-						runIndex: 0,
-					},
-				],
-			},
 		}),
 	];
 }

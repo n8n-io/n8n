@@ -1,0 +1,148 @@
+{
+    "type": "object",
+    "properties": {
+        "commit": {
+            "type": "object",
+            "properties": {
+                "author": {
+                    "type": "object",
+                    "properties": {
+                        "date": {
+                            "type": "string"
+                        },
+                        "email": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "committer": {
+                    "type": "object",
+                    "properties": {
+                        "date": {
+                            "type": "string"
+                        },
+                        "email": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "html_url": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "node_id": {
+                    "type": "string"
+                },
+                "parents": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "html_url": {
+                                "type": "string"
+                            },
+                            "sha": {
+                                "type": "string"
+                            },
+                            "url": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "sha": {
+                    "type": "string"
+                },
+                "tree": {
+                    "type": "object",
+                    "properties": {
+                        "sha": {
+                            "type": "string"
+                        },
+                        "url": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "url": {
+                    "type": "string"
+                },
+                "verification": {
+                    "type": "object",
+                    "properties": {
+                        "payload": {
+                            "type": "null"
+                        },
+                        "reason": {
+                            "type": "string"
+                        },
+                        "signature": {
+                            "type": "null"
+                        },
+                        "verified": {
+                            "type": "boolean"
+                        },
+                        "verified_at": {
+                            "type": "null"
+                        }
+                    }
+                }
+            }
+        },
+        "content": {
+            "type": "object",
+            "properties": {
+                "_links": {
+                    "type": "object",
+                    "properties": {
+                        "git": {
+                            "type": "string"
+                        },
+                        "html": {
+                            "type": "string"
+                        },
+                        "self": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "download_url": {
+                    "type": "string"
+                },
+                "git_url": {
+                    "type": "string"
+                },
+                "html_url": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "sha": {
+                    "type": "string"
+                },
+                "size": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 1
+}

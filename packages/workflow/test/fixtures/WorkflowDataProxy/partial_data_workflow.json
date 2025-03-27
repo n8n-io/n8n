@@ -1,0 +1,86 @@
+{
+	"name": "",
+	"nodes": [
+		{
+			"name": "Start",
+			"type": "test.set",
+			"parameters": {},
+			"typeVersion": 1,
+			"id": "uuid-1",
+			"position": [100, 200]
+		},
+		{
+			"name": "Function",
+			"type": "test.set",
+			"parameters": {
+				"functionCode": "// Code here will run only once, no matter how many input items there are.\n// More info and help: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.function/\nconst { DateTime, Duration, Interval } = require(\"luxon\");\n\nconst data = [\n  {\n  \"length\": 105\n  },\n  {\n  \"length\": 160\n  },\n  {\n  \"length\": 121\n  },\n  {\n  \"length\": 275\n  },\n  {\n  \"length\": 950\n  },\n];\n\nreturn data.map(fact => ({json: fact}));"
+			},
+			"typeVersion": 1,
+			"id": "uuid-2",
+			"position": [280, 200]
+		},
+		{
+			"name": "Rename",
+			"type": "test.set",
+			"parameters": {
+				"value1": "data",
+				"value2": "initialName"
+			},
+			"typeVersion": 1,
+			"id": "uuid-3",
+			"position": [460, 200]
+		},
+		{
+			"name": "Set",
+			"type": "test.set",
+			"parameters": {},
+			"typeVersion": 1,
+			"id": "uuid-4",
+			"position": [640, 200]
+		},
+		{
+			"name": "End",
+			"type": "test.set",
+			"parameters": {},
+			"typeVersion": 1,
+			"id": "uuid-5",
+			"position": [640, 200]
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Function",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Function": {
+			"main": [
+				[
+					{
+						"node": "Rename",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Rename": {
+			"main": [
+				[
+					{
+						"node": "End",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

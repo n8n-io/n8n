@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+
 import { getCursorPaginator, simplifyGetAllResponse, simplifyGetResponse } from './UserFunctions';
 const BASE_API_URL = '/api/v1/users/';
 export const userOperations: INodeProperties[] = [

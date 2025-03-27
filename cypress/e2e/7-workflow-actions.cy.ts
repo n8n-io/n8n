@@ -171,9 +171,16 @@ describe('Workflow Actions', () => {
 		cy.get('#node-creator').should('not.exist');
 
 		WorkflowPage.actions.hitSelectAll();
-		cy.get('.jtk-drag-selected').should('have.length', 2);
 		WorkflowPage.actions.hitCopy();
 		successToast().should('exist');
+		// Both nodes should be copied
+		cy.window()
+			.its('navigator.clipboard')
+			.then((clip) => clip.readText())
+			.then((text) => {
+				const copiedWorkflow = JSON.parse(text);
+				expect(copiedWorkflow.nodes).to.have.length(2);
+			});
 	});
 
 	it('should paste nodes (both current and old node versions)', () => {
@@ -193,7 +200,14 @@ describe('Workflow Actions', () => {
 			WorkflowPage.getters.nodeConnections().should('have.length', 2);
 			// Check if all nodes have names
 			WorkflowPage.getters.canvasNodes().each((node) => {
-				cy.wrap(node).should('have.attr', 'data-name');
+				cy.ifCanvasVersion(
+					() => {
+						cy.wrap(node).should('have.attr', 'data-name');
+					},
+					() => {
+						cy.wrap(node).should('have.attr', 'data-node-name');
+					},
+				);
 			});
 		});
 	});
@@ -345,7 +359,15 @@ describe('Workflow Actions', () => {
 		WorkflowPage.actions.hitDeleteAllNodes();
 		WorkflowPage.getters.canvasNodes().should('have.length', 0);
 		// Button should be disabled
-		WorkflowPage.getters.executeWorkflowButton().should('be.disabled');
+		cy.ifCanvasVersion(
+			() => {
+				WorkflowPage.getters.executeWorkflowButton().should('be.disabled');
+			},
+			() => {
+				// In new canvas, button does not exist when there are no nodes
+				WorkflowPage.getters.executeWorkflowButton().should('not.exist');
+			},
+		);
 		// Keyboard shortcut should not work
 		WorkflowPage.actions.hitExecuteWorkflow();
 		successToast().should('not.exist');

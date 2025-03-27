@@ -1,4 +1,5 @@
-import Container from 'typedi';
+import { Container } from '@n8n/di';
+import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
@@ -13,7 +14,7 @@ let securityAuditService: SecurityAuditService;
 beforeAll(async () => {
 	await testDb.init();
 
-	securityAuditService = new SecurityAuditService(Container.get(WorkflowRepository));
+	securityAuditService = new SecurityAuditService(Container.get(WorkflowRepository), mock());
 });
 
 beforeEach(async () => {

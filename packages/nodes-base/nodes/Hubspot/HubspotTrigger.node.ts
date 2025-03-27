@@ -9,7 +9,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { hubspotApiRequest, propertyEvents } from './V1/GenericFunctions';
 
@@ -25,7 +25,7 @@ export class HubspotTrigger implements INodeType {
 			name: 'HubSpot Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'hubspotDeveloperApi',
@@ -424,14 +424,12 @@ export class HubspotTrigger implements INodeType {
 		const req = this.getRequestObject();
 		const bodyData = req.body;
 		const headerData = this.getHeaderData();
-		//@ts-ignore
 		if (headerData['x-hubspot-signature'] === undefined) {
 			return {};
 		}
 
 		const hash = `${credentials.clientSecret}${JSON.stringify(bodyData)}`;
 		const signature = createHash('sha256').update(hash).digest('hex');
-		//@ts-ignore
 		if (signature !== headerData['x-hubspot-signature']) {
 			return {};
 		}

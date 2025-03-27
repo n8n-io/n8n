@@ -1,3 +1,4 @@
+import glob from 'fast-glob';
 import { NodeApiError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
@@ -6,9 +7,9 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 
-import glob from 'fast-glob';
-import { errorMapper } from '../helpers/utils';
 import { updateDisplayOptions } from '@utils/utilities';
+
+import { errorMapper, escapeSpecialCharacters } from '../helpers/utils';
 
 export const properties: INodeProperties[] = [
 	{
@@ -81,6 +82,8 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 		try {
 			fileSelector = String(this.getNodeParameter('fileSelector', itemIndex));
+
+			fileSelector = escapeSpecialCharacters(fileSelector);
 
 			if (/^[a-zA-Z]:/.test(fileSelector)) {
 				fileSelector = fileSelector.replace(/\\\\/g, '/');

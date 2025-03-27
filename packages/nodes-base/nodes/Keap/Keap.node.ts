@@ -1,3 +1,6 @@
+import { capitalCase, pascalCase } from 'change-case';
+import moment from 'moment-timezone';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -7,28 +10,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
-
-import { capitalCase, pascalCase } from 'change-case';
-import moment from 'moment-timezone';
-import { keapApiRequest, keapApiRequestAllItems, keysToSnakeCase } from './GenericFunctions';
-
-import { contactFields, contactOperations } from './ContactDescription';
-
-import { contactNoteFields, contactNoteOperations } from './ContactNoteDescription';
-
-import { contactTagFields, contactTagOperations } from './ContactTagDescription';
-
-import { ecommerceOrderFields, ecommerceOrderOperations } from './EcommerceOrderDescripion';
-
-import { ecommerceProductFields, ecommerceProductOperations } from './EcommerceProductDescription';
-
-import { emailFields, emailOperations } from './EmailDescription';
-
-import { fileFields, fileOperations } from './FileDescription';
 
 import { companyFields, companyOperations } from './CompanyDescription';
-
+import type { ICompany } from './CompanyInterface';
 import type {
 	IAddress,
 	IContact,
@@ -37,18 +21,19 @@ import type {
 	IPhone,
 	ISocialAccount,
 } from './ConctactInterface';
-
-import type { IAttachment, IEmail } from './EmaiIInterface';
-
+import { contactFields, contactOperations } from './ContactDescription';
+import { contactNoteFields, contactNoteOperations } from './ContactNoteDescription';
 import type { INote } from './ContactNoteInterface';
-
+import { contactTagFields, contactTagOperations } from './ContactTagDescription';
+import { ecommerceOrderFields, ecommerceOrderOperations } from './EcommerceOrderDescripion';
 import type { IEcommerceOrder, IItem, IShippingAddress } from './EcommerceOrderInterface';
-
+import { ecommerceProductFields, ecommerceProductOperations } from './EcommerceProductDescription';
 import type { IEcommerceProduct } from './EcommerceProductInterface';
-
+import type { IAttachment, IEmail } from './EmaiIInterface';
+import { emailFields, emailOperations } from './EmailDescription';
+import { fileFields, fileOperations } from './FileDescription';
 import type { IFile } from './FileInterface';
-
-import type { ICompany } from './CompanyInterface';
+import { keapApiRequest, keapApiRequestAllItems, keysToSnakeCase } from './GenericFunctions';
 
 export class Keap implements INodeType {
 	description: INodeTypeDescription = {
@@ -63,8 +48,9 @@ export class Keap implements INodeType {
 		defaults: {
 			name: 'Keap',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'keapOAuth2Api',

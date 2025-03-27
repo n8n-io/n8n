@@ -1,13 +1,14 @@
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
-import * as Helpers from '@test/nodes/Helpers';
-import type { WorkflowTestData } from '@test/nodes/types';
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	IHttpRequestOptions,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import nock from 'nock';
+
+import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
+import * as Helpers from '@test/nodes/Helpers';
+import type { WorkflowTestData } from '@test/nodes/types';
 
 import { gongApiResponse, gongNodeResponse } from './mocks';
 import { FAKE_CREDENTIALS_DATA } from '../../../test/nodes/FakeCredentialsMap';
@@ -91,7 +92,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Gong gongApi',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -102,7 +103,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Gong gongOAuth2Api',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -124,8 +125,6 @@ describe('Gong Node', () => {
 		];
 
 		beforeAll(() => {
-			nock.disableNetConnect();
-
 			jest
 				.spyOn(Helpers.CredentialsHelper.prototype, 'authenticate')
 				.mockImplementation(
@@ -158,11 +157,6 @@ describe('Gong Node', () => {
 						}
 					},
 				);
-		});
-
-		afterAll(() => {
-			nock.restore();
-			jest.restoreAllMocks();
 		});
 
 		nock(baseUrl)
@@ -247,7 +241,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Gong',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -338,7 +332,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Gong',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -455,7 +449,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Gong',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -592,7 +586,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Gong',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -673,7 +667,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Gong',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -749,7 +743,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Gong',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -851,7 +845,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Gong',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -926,7 +920,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Gong',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -1020,7 +1014,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Gong',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],

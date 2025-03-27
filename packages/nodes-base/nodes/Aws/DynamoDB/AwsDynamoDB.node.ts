@@ -7,13 +7,11 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type NodeParameterValue,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { awsApiRequest, awsApiRequestAllItems } from './GenericFunctions';
-
 import { itemFields, itemOperations } from './ItemDescription';
-
 import type {
 	FieldsUiValues,
 	IAttributeNameUi,
@@ -22,7 +20,6 @@ import type {
 	IRequestBody,
 	PutItemUi,
 } from './types';
-
 import {
 	adjustExpressionAttributeName,
 	adjustExpressionAttributeValues,
@@ -43,8 +40,8 @@ export class AwsDynamoDB implements INodeType {
 		defaults: {
 			name: 'AWS DynamoDB',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'aws',

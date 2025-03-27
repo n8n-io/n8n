@@ -1,6 +1,6 @@
-import type { Readable } from 'stream';
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
+import type { Readable } from 'stream';
 
 import { RLC_DRIVE_DEFAULT, RLC_FOLDER_DEFAULT, UPLOAD_CHUNK_SIZE } from './interfaces';
 
@@ -129,5 +129,31 @@ export function setParentFolder(
 		return driveId;
 	} else {
 		return 'root';
+	}
+}
+
+export async function processInChunks(
+	stream: Readable,
+	chunkSize: number,
+	process: (chunk: Buffer, offset: number) => void | Promise<void>,
+) {
+	let buffer = Buffer.alloc(0);
+	let offset = 0;
+
+	for await (const chunk of stream) {
+		buffer = Buffer.concat([buffer, chunk]);
+
+		while (buffer.length >= chunkSize) {
+			const chunkToProcess = buffer.subarray(0, chunkSize);
+			await process(chunkToProcess, offset);
+
+			buffer = buffer.subarray(chunkSize);
+			offset += chunkSize;
+		}
+	}
+
+	// Process last chunk, could be smaller than chunkSize
+	if (buffer.length > 0) {
+		await process(buffer, offset);
 	}
 }

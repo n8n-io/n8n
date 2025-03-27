@@ -59,7 +59,7 @@ export class MFAController {
 
 	@Post('/enable', { rateLimit: true })
 	async activateMFA(req: MFA.Activate) {
-		const { token = null } = req.body;
+		const { mfaCode = null } = req.body;
 		const { id, mfaEnabled } = req.user;
 
 		await this.externalHooks.run('mfa.beforeSetup', [req.user]);
@@ -67,7 +67,7 @@ export class MFAController {
 		const { decryptedSecret: secret, decryptedRecoveryCodes: recoveryCodes } =
 			await this.mfaService.getSecretAndRecoveryCodes(id);
 
-		if (!token) throw new BadRequestError('Token is required to enable MFA feature');
+		if (!mfaCode) throw new BadRequestError('Token is required to enable MFA feature');
 
 		if (mfaEnabled) throw new BadRequestError('MFA already enabled');
 
@@ -75,10 +75,10 @@ export class MFAController {
 			throw new BadRequestError('Cannot enable MFA without generating secret and recovery codes');
 		}
 
-		const verified = this.mfaService.totp.verifySecret({ secret, token, window: 10 });
+		const verified = this.mfaService.totp.verifySecret({ secret, mfaCode, window: 10 });
 
 		if (!verified)
-			throw new BadRequestError('MFA token expired. Close the modal and enable MFA again', 997);
+			throw new BadRequestError('MFA code expired. Close the modal and enable MFA again', 997);
 
 		await this.mfaService.enableMfa(id);
 	}
@@ -86,27 +86,38 @@ export class MFAController {
 	@Post('/disable', { rateLimit: true })
 	async disableMFA(req: MFA.Disable) {
 		const { id: userId } = req.user;
-		const { token = null } = req.body;
 
-		if (typeof token !== 'string' || !token) {
-			throw new BadRequestError('Token is required to disable MFA feature');
+		const { mfaCode, mfaRecoveryCode } = req.body;
+
+		const mfaCodeDefined = mfaCode && typeof mfaCode === 'string';
+
+		const mfaRecoveryCodeDefined = mfaRecoveryCode && typeof mfaRecoveryCode === 'string';
+
+		if (!mfaCodeDefined === !mfaRecoveryCodeDefined) {
+			throw new BadRequestError(
+				'Either MFA code or recovery code is required to disable MFA feature',
+			);
 		}
 
-		await this.mfaService.disableMfa(userId, token);
+		if (mfaCodeDefined) {
+			await this.mfaService.disableMfaWithMfaCode(userId, mfaCode);
+		} else if (mfaRecoveryCodeDefined) {
+			await this.mfaService.disableMfaWithRecoveryCode(userId, mfaRecoveryCode);
+		}
 	}
 
 	@Post('/verify', { rateLimit: true })
 	async verifyMFA(req: MFA.Verify) {
 		const { id } = req.user;
-		const { token } = req.body;
+		const { mfaCode } = req.body;
 
 		const { decryptedSecret: secret } = await this.mfaService.getSecretAndRecoveryCodes(id);
 
-		if (!token) throw new BadRequestError('Token is required to enable MFA feature');
+		if (!mfaCode) throw new BadRequestError('MFA code is required to enable MFA feature');
 
 		if (!secret) throw new BadRequestError('No MFA secret se for this user');
 
-		const verified = this.mfaService.totp.verifySecret({ secret, token });
+		const verified = this.mfaService.totp.verifySecret({ secret, mfaCode });
 
 		if (!verified) throw new BadRequestError('MFA secret could not be verified');
 	}

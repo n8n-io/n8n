@@ -1,0 +1,45 @@
+{
+    "type": "object",
+    "properties": {
+        "categories": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "content": {
+            "type": "string"
+        },
+        "content:encoded": {
+            "type": "string"
+        },
+        "content:encodedSnippet": {
+            "type": "string"
+        },
+        "contentSnippet": {
+            "type": "string"
+        },
+        "creator": {
+            "type": "string"
+        },
+        "dc:creator": {
+            "type": "string"
+        },
+        "guid": {
+            "type": "string"
+        },
+        "isoDate": {
+            "type": "string"
+        },
+        "link": {
+            "type": "string"
+        },
+        "pubDate": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

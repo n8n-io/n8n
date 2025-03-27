@@ -1,237 +1,172 @@
-import type { INodeExecutionData, INodeTypeBaseDescription } from 'n8n-workflow';
+import type {
+	EnvProviderState,
+	IDataObject,
+	IExecuteData,
+	IExecuteFunctions,
+	INode,
+	INodeExecutionData,
+	INodeParameters,
+	IRunExecutionData,
+	ITaskDataConnections,
+	ITaskDataConnectionsSource,
+	IWorkflowExecuteAdditionalData,
+	Workflow,
+	WorkflowExecuteMode,
+	WorkflowParameters,
+} from 'n8n-workflow';
 
-export type DataRequestType = 'input' | 'node' | 'all';
+export interface InputDataChunkDefinition {
+	startIndex: number;
+	count: number;
+}
+
+export interface InputDataRequestParams {
+	/** Whether to include the input data in the response */
+	include: boolean;
+	/** Optionally request only a specific chunk of data instead of all input data */
+	chunk?: InputDataChunkDefinition;
+}
+
+/**
+ * Specifies what data should be included for a task data request.
+ */
+export interface TaskDataRequestParams {
+	dataOfNodes: string[] | 'all';
+	prevNode: boolean;
+	/** Whether input data for the node should be included */
+	input: InputDataRequestParams;
+	/** Whether env provider's state should be included */
+	env: boolean;
+}
+
+export interface DataRequestResponse {
+	workflow: Omit<WorkflowParameters, 'nodeTypes'>;
+	inputData: ITaskDataConnections;
+	connectionInputSource: ITaskDataConnectionsSource | null;
+	node: INode;
+
+	runExecutionData: IRunExecutionData;
+	runIndex: number;
+	itemIndex: number;
+	activeNodeName: string;
+	siblingParameters: INodeParameters;
+	mode: WorkflowExecuteMode;
+	envProviderState: EnvProviderState;
+	defaultReturnRunIndex: number;
+	selfData: IDataObject;
+	contextNodeName: string;
+	additionalData: PartialAdditionalData;
+}
 
 export interface TaskResultData {
 	result: INodeExecutionData[];
 	customData?: Record<string, string>;
+	staticData?: IDataObject;
 }
 
-export namespace N8nMessage {
-	export namespace ToRunner {
-		export interface InfoRequest {
-			type: 'broker:inforequest';
-		}
+export interface TaskData {
+	executeFunctions: IExecuteFunctions;
+	inputData: ITaskDataConnections;
+	node: INode;
 
-		export interface RunnerRegistered {
-			type: 'broker:runnerregistered';
-		}
-
-		export interface TaskOfferAccept {
-			type: 'broker:taskofferaccept';
-			taskId: string;
-			offerId: string;
-		}
-
-		export interface TaskCancel {
-			type: 'broker:taskcancel';
-			taskId: string;
-			reason: string;
-		}
-
-		export interface TaskSettings {
-			type: 'broker:tasksettings';
-			taskId: string;
-			settings: unknown;
-		}
-
-		export interface RPCResponse {
-			type: 'broker:rpcresponse';
-			callId: string;
-			taskId: string;
-			status: 'success' | 'error';
-			data: unknown;
-		}
-
-		export interface TaskDataResponse {
-			type: 'broker:taskdataresponse';
-			taskId: string;
-			requestId: string;
-			data: unknown;
-		}
-
-		export interface NodeTypes {
-			type: 'broker:nodetypes';
-			nodeTypes: INodeTypeBaseDescription[];
-		}
-
-		export type All =
-			| InfoRequest
-			| TaskOfferAccept
-			| TaskCancel
-			| TaskSettings
-			| RunnerRegistered
-			| RPCResponse
-			| TaskDataResponse
-			| NodeTypes;
-	}
-
-	export namespace ToRequester {
-		export interface TaskReady {
-			type: 'broker:taskready';
-			requestId: string;
-			taskId: string;
-		}
-
-		export interface TaskDone {
-			type: 'broker:taskdone';
-			taskId: string;
-			data: TaskResultData;
-		}
-
-		export interface TaskError {
-			type: 'broker:taskerror';
-			taskId: string;
-			error: unknown;
-		}
-
-		export interface TaskDataRequest {
-			type: 'broker:taskdatarequest';
-			taskId: string;
-			requestId: string;
-			requestType: DataRequestType;
-			param?: string;
-		}
-
-		export interface RPC {
-			type: 'broker:rpc';
-			callId: string;
-			taskId: string;
-			name: (typeof RPC_ALLOW_LIST)[number];
-			params: unknown[];
-		}
-
-		export type All = TaskReady | TaskDone | TaskError | TaskDataRequest | RPC;
-	}
+	workflow: Workflow;
+	runExecutionData: IRunExecutionData;
+	runIndex: number;
+	itemIndex: number;
+	activeNodeName: string;
+	connectionInputData: INodeExecutionData[];
+	siblingParameters: INodeParameters;
+	mode: WorkflowExecuteMode;
+	envProviderState: EnvProviderState;
+	executeData?: IExecuteData;
+	defaultReturnRunIndex: number;
+	selfData: IDataObject;
+	contextNodeName: string;
+	additionalData: IWorkflowExecuteAdditionalData;
 }
 
-export namespace RequesterMessage {
-	export namespace ToN8n {
-		export interface TaskSettings {
-			type: 'requester:tasksettings';
-			taskId: string;
-			settings: unknown;
-		}
-
-		export interface TaskCancel {
-			type: 'requester:taskcancel';
-			taskId: string;
-			reason: string;
-		}
-
-		export interface TaskDataResponse {
-			type: 'requester:taskdataresponse';
-			taskId: string;
-			requestId: string;
-			data: unknown;
-		}
-
-		export interface RPCResponse {
-			type: 'requester:rpcresponse';
-			taskId: string;
-			callId: string;
-			status: 'success' | 'error';
-			data: unknown;
-		}
-
-		export interface TaskRequest {
-			type: 'requester:taskrequest';
-			requestId: string;
-			taskType: string;
-		}
-
-		export type All = TaskSettings | TaskCancel | RPCResponse | TaskDataResponse | TaskRequest;
-	}
+export interface PartialAdditionalData {
+	executionId?: string;
+	restartExecutionId?: string;
+	restApiUrl: string;
+	instanceBaseUrl: string;
+	formWaitingBaseUrl: string;
+	webhookBaseUrl: string;
+	webhookWaitingBaseUrl: string;
+	webhookTestBaseUrl: string;
+	currentNodeParameters?: INodeParameters;
+	executionTimeoutTimestamp?: number;
+	userId?: string;
+	variables: IDataObject;
 }
 
-export namespace RunnerMessage {
-	export namespace ToN8n {
-		export interface Info {
-			type: 'runner:info';
-			name: string;
-			types: string[];
-		}
+/** RPC methods that are exposed directly to the Code Node */
+export const EXPOSED_RPC_METHODS = [
+	// assertBinaryData(itemIndex: number, propertyName: string): Promise<IBinaryData>
+	'helpers.assertBinaryData',
 
-		export interface TaskAccepted {
-			type: 'runner:taskaccepted';
-			taskId: string;
-		}
+	// getBinaryDataBuffer(itemIndex: number, propertyName: string): Promise<Buffer>
+	'helpers.getBinaryDataBuffer',
 
-		export interface TaskRejected {
-			type: 'runner:taskrejected';
-			taskId: string;
-			reason: string;
-		}
+	// prepareBinaryData(binaryData: Buffer, fileName?: string, mimeType?: string): Promise<IBinaryData>
+	'helpers.prepareBinaryData',
 
-		export interface TaskDone {
-			type: 'runner:taskdone';
-			taskId: string;
-			data: TaskResultData;
-		}
+	// setBinaryDataBuffer(metadata: IBinaryData, buffer: Buffer): Promise<IBinaryData>
+	'helpers.setBinaryDataBuffer',
 
-		export interface TaskError {
-			type: 'runner:taskerror';
-			taskId: string;
-			error: unknown;
-		}
+	// binaryToString(body: Buffer, encoding?: string): string
+	'helpers.binaryToString',
 
-		export interface TaskOffer {
-			type: 'runner:taskoffer';
-			offerId: string;
-			taskType: string;
-			validFor: number;
-		}
+	// httpRequest(opts: IHttpRequestOptions): Promise<IN8nHttpFullResponse | IN8nHttpResponse>
+	'helpers.httpRequest',
+];
 
-		export interface TaskDataRequest {
-			type: 'runner:taskdatarequest';
-			taskId: string;
-			requestId: string;
-			requestType: DataRequestType;
-			param?: string;
-		}
-
-		export interface RPC {
-			type: 'runner:rpc';
-			callId: string;
-			taskId: string;
-			name: (typeof RPC_ALLOW_LIST)[number];
-			params: unknown[];
-		}
-
-		export type All =
-			| Info
-			| TaskDone
-			| TaskError
-			| TaskAccepted
-			| TaskRejected
-			| TaskOffer
-			| RPC
-			| TaskDataRequest;
-	}
-}
-
-export const RPC_ALLOW_LIST = [
+/** Helpers that exist but that we are not exposing to the Code Node */
+export const UNSUPPORTED_HELPER_FUNCTIONS = [
+	// These rely on checking the credentials from the current node type (Code Node)
+	// and hence they can't even work (Code Node doesn't have credentials)
 	'helpers.httpRequestWithAuthentication',
 	'helpers.requestWithAuthenticationPaginated',
-	// "helpers.normalizeItems"
-	// "helpers.constructExecutionMetaData"
-	// "helpers.assertBinaryData"
-	'helpers.getBinaryDataBuffer',
-	// "helpers.copyInputItems"
-	// "helpers.returnJsonArray"
-	'helpers.getSSHClient',
-	'helpers.createReadStream',
-	// "helpers.getStoragePath"
-	'helpers.writeContentToFile',
-	'helpers.prepareBinaryData',
-	'helpers.setBinaryDataBuffer',
+
+	// This has been removed
 	'helpers.copyBinaryFile',
-	'helpers.binaryToBuffer',
-	// "helpers.binaryToString"
-	// "helpers.getBinaryPath"
+
+	// We can't support streams over RPC without implementing it ourselves
+	'helpers.createReadStream',
 	'helpers.getBinaryStream',
+
+	// Makes no sense to support this, as it returns either a stream or a buffer
+	// and we can't support streams over RPC
+	'helpers.binaryToBuffer',
+
+	// These are pretty low-level, so we shouldn't expose them
+	// (require binary data id, which we don't expose)
 	'helpers.getBinaryMetadata',
+	'helpers.getStoragePath',
+	'helpers.getBinaryPath',
+
+	// We shouldn't allow arbitrary FS writes
+	'helpers.writeContentToFile',
+
+	// Not something we need to expose. Can be done in the node itself
+	// copyInputItems(items: INodeExecutionData[], properties: string[]): IDataObject[]
+	'helpers.copyInputItems',
+
+	// Code Node does these automatically already
+	'helpers.returnJsonArray',
+	'helpers.normalizeItems',
+
+	// The client is instantiated and lives on the n8n instance, so we can't
+	// expose it over RPC without implementing object marshalling
+	'helpers.getSSHClient',
+
+	// Doesn't make sense to expose
 	'helpers.createDeferredPromise',
-	'helpers.httpRequest',
-	'logNodeOutput',
-] as const;
+	'helpers.constructExecutionMetaData',
+];
+
+/** List of all RPC methods that task runner supports */
+export const AVAILABLE_RPC_METHODS = [...EXPOSED_RPC_METHODS, 'logNodeOutput'] as const;
+
+/** Node types needed for the runner to execute a task. */
+export type NeededNodeType = { name: string; version: number };

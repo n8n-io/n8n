@@ -1,5 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import { NodeConnectionType } from 'n8n-workflow';
+import { OpenAI, type ClientOptions } from '@langchain/openai';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	INodeType,
 	INodeTypeDescription,
@@ -8,7 +9,7 @@ import type {
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 
-import { OpenAI, type ClientOptions } from '@langchain/openai';
+import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 
 type LmOpenAiOptions = {
@@ -52,7 +53,7 @@ export class LmOpenAi implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiLanguageModel],
+		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
 			{
@@ -260,6 +261,7 @@ export class LmOpenAi implements INodeType {
 			timeout: options.timeout ?? 60000,
 			maxRetries: options.maxRetries ?? 2,
 			callbacks: [new N8nLlmTracing(this)],
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 
 		return {

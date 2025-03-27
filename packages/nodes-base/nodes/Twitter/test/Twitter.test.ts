@@ -1,7 +1,9 @@
-import nock from 'nock';
 import type { INodeParameterResourceLocator } from 'n8n-workflow';
-import { returnId } from '../V2/GenericFunctions';
+import nock from 'nock';
+
 import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
+
+import { returnId } from '../V2/GenericFunctions';
 
 const searchResult = {
 	data: [
@@ -72,17 +74,12 @@ const meResult = {
 describe('Test Twitter Request Node', () => {
 	beforeAll(() => {
 		const baseUrl = 'https://api.twitter.com/2';
-		nock.disableNetConnect();
 		//GET
 		nock(baseUrl).get('/users/me').reply(200, meResult);
 
 		nock(baseUrl)
 			.get('/tweets/search/recent?query=bloomberg&max_results=10')
 			.reply(200, searchResult);
-	});
-
-	afterEach(() => {
-		nock.restore();
 	});
 
 	const workflows = getWorkflowFilenames(__dirname);

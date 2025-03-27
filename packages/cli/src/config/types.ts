@@ -80,6 +80,7 @@ type ExceptionPaths = {
 	processedDataManager: IProcessedDataConfig;
 	'userManagement.isInstanceOwnerSetUp': boolean;
 	'ui.banners.dismissed': string[] | undefined;
+	easyAIWorkflowOnboarded: boolean | undefined;
 };
 
 // -----------------------------------

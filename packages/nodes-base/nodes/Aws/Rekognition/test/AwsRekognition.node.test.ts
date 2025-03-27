@@ -1,4 +1,5 @@
 import nock from 'nock';
+
 import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
 
 const responseLabels = [
@@ -290,7 +291,6 @@ describe('Test AWS Rekogntion Node', () => {
 		let mock: nock.Scope;
 
 		beforeAll(async () => {
-			nock.disableNetConnect();
 			mock = nock(baseUrl);
 		});
 
@@ -298,9 +298,6 @@ describe('Test AWS Rekogntion Node', () => {
 			mock.post('/').reply(200, responseLabels);
 		});
 
-		afterAll(() => {
-			nock.restore();
-		});
 		testWorkflows(workflows);
 	});
 });

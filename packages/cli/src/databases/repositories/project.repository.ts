@@ -1,6 +1,6 @@
+import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import { DataSource, Repository } from '@n8n/typeorm';
-import { Service } from 'typedi';
 
 import { Project } from '../entities/project';
 

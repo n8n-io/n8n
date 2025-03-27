@@ -1,4 +1,4 @@
-import Container from 'typedi';
+import { Container } from '@n8n/di';
 
 import { NODE_PACKAGE_PREFIX } from '@/constants';
 import { InstalledPackages } from '@/databases/entities/installed-packages';
@@ -22,7 +22,7 @@ export const mockNode = (packageName: string) => {
 
 	return Container.get(InstalledNodesRepository).create({
 		name: nodeName,
-		type: nodeName,
+		type: `${packageName}.${nodeName}`,
 		latestVersion: COMMUNITY_NODE_VERSION.CURRENT,
 		package: { packageName },
 	});

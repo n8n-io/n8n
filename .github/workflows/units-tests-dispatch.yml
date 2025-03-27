@@ -12,6 +12,11 @@ on:
         description: 'PR number to run tests for.'
         required: false
         type: number
+      skipFrontendTests:
+        description: 'Skip Frontend tests'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   prepare:
@@ -37,3 +42,4 @@ jobs:
     uses: ./.github/workflows/units-tests-reusable.yml
     with:
       ref: ${{ needs.prepare.outputs.branch }}
+      skipFrontendTests: ${{ inputs.skipFrontendTests }}

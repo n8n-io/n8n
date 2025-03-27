@@ -6,7 +6,6 @@ import type {
 	INodeType,
 	INodeTypes,
 	IRun,
-	ITaskData,
 	IVersionedNodeType,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
@@ -14,15 +13,18 @@ import type {
 	WorkflowTestData,
 	INodeTypeData,
 } from 'n8n-workflow';
-import { ApplicationError, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
+import { ApplicationError, NodeHelpers } from 'n8n-workflow';
 import path from 'path';
+
+import { UnrecognizedNodeTypeError } from '@/errors';
+import { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
 
 import { predefinedNodesTypes } from './constants';
 
 const BASE_DIR = path.resolve(__dirname, '../../..');
 
 class NodeTypesClass implements INodeTypes {
-	constructor(private nodeTypes: INodeTypeData = predefinedNodesTypes) {}
+	constructor(private nodeTypes: INodeTypeData) {}
 
 	getByName(nodeType: string): INodeType | IVersionedNodeType {
 		return this.nodeTypes[nodeType].type;
@@ -39,7 +41,7 @@ class NodeTypesClass implements INodeTypes {
 
 let nodeTypesInstance: NodeTypesClass | undefined;
 
-export function NodeTypes(nodeTypes?: INodeTypeData): INodeTypes {
+export function NodeTypes(nodeTypes: INodeTypeData = predefinedNodesTypes): INodeTypes {
 	if (nodeTypesInstance === undefined || nodeTypes !== undefined) {
 		nodeTypesInstance = new NodeTypesClass(nodeTypes);
 	}
@@ -51,22 +53,12 @@ export function WorkflowExecuteAdditionalData(
 	waitPromise: IDeferredPromise<IRun>,
 	nodeExecutionOrder: string[],
 ): IWorkflowExecuteAdditionalData {
-	const hookFunctions = {
-		nodeExecuteAfter: [
-			async (nodeName: string, _data: ITaskData): Promise<void> => {
-				nodeExecutionOrder.push(nodeName);
-			},
-		],
-		workflowExecuteAfter: [
-			async (fullRunData: IRun): Promise<void> => {
-				waitPromise.resolve(fullRunData);
-			},
-		],
-	};
-
-	return mock<IWorkflowExecuteAdditionalData>({
-		hooks: new WorkflowHooks(hookFunctions, 'trigger', '1', mock()),
+	const hooks = new ExecutionLifecycleHooks('trigger', '1', mock());
+	hooks.addHandler('nodeExecuteAfter', (nodeName) => {
+		nodeExecutionOrder.push(nodeName);
 	});
+	hooks.addHandler('workflowExecuteAfter', (fullRunData) => waitPromise.resolve(fullRunData));
+	return mock<IWorkflowExecuteAdditionalData>({ hooks });
 }
 
 const preparePinData = (pinData: IDataObject) => {
@@ -83,8 +75,7 @@ const preparePinData = (pinData: IDataObject) => {
 	return returnData;
 };
 
-const readJsonFileSync = <T>(filePath: string) =>
-	JSON.parse(readFileSync(path.join(BASE_DIR, filePath), 'utf-8')) as T;
+const readJsonFileSync = <T>(filePath: string) => JSON.parse(readFileSync(filePath, 'utf-8')) as T;
 
 export function getNodeTypes(testData: WorkflowTestData[] | WorkflowTestData) {
 	if (!Array.isArray(testData)) {
@@ -98,16 +89,13 @@ export function getNodeTypes(testData: WorkflowTestData[] | WorkflowTestData) {
 	const nodeNames = nodes.map((n) => n.type);
 
 	const knownNodes = readJsonFileSync<Record<string, NodeLoadingDetails>>(
-		'nodes-base/dist/known/nodes.json',
+		path.join(BASE_DIR, 'nodes-base/dist/known/nodes.json'),
 	);
 
 	for (const nodeName of nodeNames) {
-		if (!nodeName.startsWith('n8n-nodes-base.')) {
-			throw new ApplicationError('Unknown node type', { tags: { nodeType: nodeName } });
-		}
 		const loadInfo = knownNodes[nodeName.replace('n8n-nodes-base.', '')];
 		if (!loadInfo) {
-			throw new ApplicationError('Unknown node type', { tags: { nodeType: nodeName } });
+			throw new UnrecognizedNodeTypeError('n8n-nodes-base', nodeName);
 		}
 		const sourcePath = loadInfo.sourcePath.replace(/^dist\//, './').replace(/\.js$/, '.ts');
 		const nodeSourcePath = path.join(BASE_DIR, 'nodes-base', sourcePath);
@@ -121,14 +109,14 @@ export function getNodeTypes(testData: WorkflowTestData[] | WorkflowTestData) {
 	return nodeTypes;
 }
 
-const getWorkflowFilenames = (dirname: string, testFolder = 'workflows') => {
+const getWorkflowFilepaths = (dirname: string, testFolder = 'workflows') => {
 	const workflows: string[] = [];
 
 	const filenames: string[] = readdirSync(`${dirname}${path.sep}${testFolder}`);
 
 	filenames.forEach((file) => {
 		if (file.endsWith('.json')) {
-			workflows.push(path.join('core', 'test', testFolder, file));
+			workflows.push(path.join(dirname, testFolder, file));
 		}
 	});
 
@@ -136,11 +124,11 @@ const getWorkflowFilenames = (dirname: string, testFolder = 'workflows') => {
 };
 
 export const workflowToTests = (dirname: string, testFolder = 'workflows') => {
-	const workflowFiles: string[] = getWorkflowFilenames(dirname, testFolder);
+	const workflowFilepaths: string[] = getWorkflowFilepaths(dirname, testFolder);
 
 	const testCases: WorkflowTestData[] = [];
 
-	for (const filePath of workflowFiles) {
+	for (const filePath of workflowFilepaths) {
 		const description = filePath.replace('.json', '');
 		const workflowData = readJsonFileSync<IWorkflowBase>(filePath);
 		if (workflowData.pinData === undefined) {

@@ -1,3 +1,4 @@
+import { mock } from 'jest-mock-extended';
 import type {
 	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
@@ -5,59 +6,25 @@ import type {
 	IHttpRequestOptions,
 	INode,
 	INodeProperties,
+	INodeTypes,
 } from 'n8n-workflow';
-import { NodeConnectionType, deepCopy } from 'n8n-workflow';
-import { Workflow } from 'n8n-workflow';
-import Container from 'typedi';
+import { deepCopy, Workflow } from 'n8n-workflow';
 
+import { CredentialTypes } from '@/credential-types';
 import { CredentialsHelper } from '@/credentials-helper';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { NodeTypes } from '@/node-types';
-import { mockInstance } from '@test/mocking';
+import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 describe('CredentialsHelper', () => {
-	mockInstance(CredentialsRepository);
-	mockInstance(SharedCredentialsRepository);
-	const mockNodesAndCredentials = mockInstance(LoadNodesAndCredentials, {
-		loadedNodes: {
-			'test.set': {
-				sourcePath: '',
-				type: {
-					description: {
-						displayName: 'Set',
-						name: 'set',
-						group: ['input'],
-						version: 1,
-						description: 'Sets a value',
-						defaults: {
-							name: 'Set',
-							color: '#0000FF',
-						},
-						inputs: [NodeConnectionType.Main],
-						outputs: [NodeConnectionType.Main],
-						properties: [
-							{
-								displayName: 'Value1',
-								name: 'value1',
-								type: 'string',
-								default: 'default-value1',
-							},
-							{
-								displayName: 'Value2',
-								name: 'value2',
-								type: 'string',
-								default: 'default-value2',
-							},
-						],
-					},
-				},
-			},
-		},
-	});
+	const nodeTypes = mock<INodeTypes>();
+	const mockNodesAndCredentials = mock<LoadNodesAndCredentials>();
 
-	const nodeTypes = mockInstance(NodeTypes);
+	const credentialsHelper = new CredentialsHelper(
+		new CredentialTypes(mockNodesAndCredentials),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+	);
 
 	describe('authenticate', () => {
 		const tests: Array<{
@@ -272,19 +239,16 @@ describe('CredentialsHelper', () => {
 
 		for (const testData of tests) {
 			test(testData.description, async () => {
-				//@ts-expect-error `loadedCredentials` is a getter and we are replacing it here with a property
-				mockNodesAndCredentials.loadedCredentials = {
-					[testData.input.credentialType.name]: {
-						type: testData.input.credentialType,
-						sourcePath: '',
-					},
-				};
+				const { credentialType } = testData.input;
 
-				const credentialsHelper = Container.get(CredentialsHelper);
+				mockNodesAndCredentials.getCredential.calledWith(credentialType.name).mockReturnValue({
+					type: credentialType,
+					sourcePath: '',
+				});
 
 				const result = await credentialsHelper.authenticate(
 					testData.input.credentials,
-					testData.input.credentialType.name,
+					credentialType.name,
 					deepCopy(incomingRequestOptions),
 					workflow,
 					node,

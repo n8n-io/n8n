@@ -7,38 +7,25 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { invoiceNinjaApiRequest, invoiceNinjaApiRequestAllItems } from './GenericFunctions';
-
-import { clientFields, clientOperations } from './ClientDescription';
-
-import { invoiceFields, invoiceOperations } from './InvoiceDescription';
-
-import type { IClient, IContact } from './ClientInterface';
-
-import type { IInvoice, IItem } from './invoiceInterface';
-
-import { taskFields, taskOperations } from './TaskDescription';
-
-import type { ITask } from './TaskInterface';
-
-import { paymentFields, paymentOperations } from './PaymentDescription';
-
-import type { IPayment } from './PaymentInterface';
-
-import { expenseFields, expenseOperations } from './ExpenseDescription';
-
-import type { IExpense } from './ExpenseInterface';
-
-import { quoteFields, quoteOperations } from './QuoteDescription';
-
-import type { IQuote } from './QuoteInterface';
 import { isoCountryCodes } from '@utils/ISOCountryCodes';
 
 import { bankTransactionFields, bankTransactionOperations } from './BankTransactionDescription';
-
-import type { IBankTransaction } from './BankTransactionInterface';
+import type { IBankTransaction, IBankTransactions } from './BankTransactionInterface';
+import { clientFields, clientOperations } from './ClientDescription';
+import type { IClient, IContact } from './ClientInterface';
+import { expenseFields, expenseOperations } from './ExpenseDescription';
+import type { IExpense } from './ExpenseInterface';
+import { invoiceNinjaApiRequest, invoiceNinjaApiRequestAllItems } from './GenericFunctions';
+import { invoiceFields, invoiceOperations } from './InvoiceDescription';
+import type { IInvoice, IItem } from './invoiceInterface';
+import { paymentFields, paymentOperations } from './PaymentDescription';
+import type { IPayment } from './PaymentInterface';
+import { quoteFields, quoteOperations } from './QuoteDescription';
+import type { IQuote } from './QuoteInterface';
+import { taskFields, taskOperations } from './TaskDescription';
+import type { ITask } from './TaskInterface';
 
 export class InvoiceNinja implements INodeType {
 	description: INodeTypeDescription = {
@@ -52,8 +39,9 @@ export class InvoiceNinja implements INodeType {
 		defaults: {
 			name: 'Invoice Ninja',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'invoiceNinjaApi',
@@ -295,7 +283,7 @@ export class InvoiceNinja implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available users to display them to user so that they can
+			// Get all the matchable payments to display them to user so that they can
 			// select them easily
 			async getPayments(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -320,6 +308,29 @@ export class InvoiceNinja implements INodeType {
 						value: paymentId,
 					});
 				}
+				return returnData;
+			},
+			// Get all the currencies to display them to user so that they can
+			// select them easily
+			async getCurrencies(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+
+				const statics = await invoiceNinjaApiRequestAllItems.call(this, 'data', 'GET', '/statics');
+
+				Object.entries(statics)
+					.filter(([key]) => key === 'currencies')
+					.forEach(([key, value]) => {
+						if (key === 'currencies' && Array.isArray(value)) {
+							for (const currency of value) {
+								const currencyName = [currency.number, currency.code].filter((e) => e).join(' - ');
+								const currencyId = currency.id as string;
+								returnData.push({
+									name: currencyName,
+									value: currencyId,
+								});
+							}
+						}
+					});
 				return returnData;
 			},
 		},
@@ -986,6 +997,9 @@ export class InvoiceNinja implements INodeType {
 						if (additionalFields.client) {
 							body.date = additionalFields.date as string;
 						}
+						if (additionalFields.currencyId) {
+							body.currency_id = additionalFields.currencyId as number;
+						}
 						if (additionalFields.email) {
 							body.description = additionalFields.description as string;
 						}
@@ -1054,18 +1068,20 @@ export class InvoiceNinja implements INodeType {
 					if (operation === 'matchPayment') {
 						const bankTransactionId = this.getNodeParameter('bankTransactionId', i) as string;
 						const paymentId = this.getNodeParameter('paymentId', i) as string;
-						const body: IBankTransaction = {};
+						const body: IBankTransactions = { transactions: [] };
+						const bankTransaction: IBankTransaction = {};
 						if (bankTransactionId) {
-							body.id = bankTransactionId;
+							bankTransaction.id = bankTransactionId;
 						}
 						if (paymentId) {
-							body.paymentId = paymentId;
+							bankTransaction.payment_id = paymentId;
 						}
+						body.transactions.push(bankTransaction);
 						responseData = await invoiceNinjaApiRequest.call(
 							this,
 							'POST',
 							`${resourceEndpoint}/match`,
-							body as IDataObject,
+							body as unknown as IDataObject,
 						);
 					}
 				}

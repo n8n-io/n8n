@@ -1,5 +1,5 @@
+import { CommaSeperatedStringArray } from '../custom-types';
 import { Config, Env, Nested } from '../decorators';
-import { StringArray } from '../utils';
 
 /** Scopes (areas of functionality) to filter logs by. */
 export const LOG_SCOPES = [
@@ -7,10 +7,14 @@ export const LOG_SCOPES = [
 	'external-secrets',
 	'license',
 	'multi-main-setup',
+	'pruning',
 	'pubsub',
+	'push',
 	'redis',
 	'scaling',
 	'waiting-executions',
+	'task-runner',
+	'insights',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];
@@ -54,7 +58,7 @@ export class LoggingConfig {
 	 * @example `N8N_LOG_OUTPUT=console,file` will output to both console and file.
 	 */
 	@Env('N8N_LOG_OUTPUT')
-	outputs: StringArray<'console' | 'file'> = ['console'];
+	outputs: CommaSeperatedStringArray<'console' | 'file'> = ['console'];
 
 	@Nested
 	file: FileLoggingConfig;
@@ -68,15 +72,18 @@ export class LoggingConfig {
 	 * - `external-secrets`
 	 * - `license`
 	 * - `multi-main-setup`
+	 * - `pruning`
 	 * - `pubsub`
+	 * - `push`
 	 * - `redis`
 	 * - `scaling`
 	 * - `waiting-executions`
+	 * - `task-runner`
 	 *
 	 * @example
 	 * `N8N_LOG_SCOPES=license`
 	 * `N8N_LOG_SCOPES=license,waiting-executions`
 	 */
 	@Env('N8N_LOG_SCOPES')
-	scopes: StringArray<LogScope> = [];
+	scopes: CommaSeperatedStringArray<LogScope> = [];
 }

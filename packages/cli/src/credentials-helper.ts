@@ -2,9 +2,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
+import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
-import { Credentials, NodeExecuteFunctions } from 'n8n-core';
+import { Credentials, getAdditionalKeys } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsExpressionResolveValues,
@@ -25,8 +26,7 @@ import type {
 	IExecuteData,
 	IDataObject,
 } from 'n8n-workflow';
-import { ICredentialsHelper, NodeHelpers, Workflow, ApplicationError } from 'n8n-workflow';
-import { Service } from 'typedi';
+import { ICredentialsHelper, NodeHelpers, Workflow, UnexpectedError } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
@@ -65,7 +65,7 @@ const mockNodeTypes: INodeTypes = {
 	},
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
 		if (!mockNodesData[nodeType]) {
-			throw new ApplicationError(RESPONSE_ERROR_MESSAGES.NO_NODE, {
+			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.NO_NODE, {
 				tags: { nodeType },
 			});
 		}
@@ -245,7 +245,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		type: string,
 	): Promise<Credentials> {
 		if (!nodeCredential.id) {
-			throw new ApplicationError('Found credential with no ID.', {
+			throw new UnexpectedError('Found credential with no ID.', {
 				extra: { credentialName: nodeCredential.name },
 				tags: { credentialType: type },
 			});
@@ -276,7 +276,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		const credentialTypeData = this.credentialTypes.getByName(type);
 
 		if (credentialTypeData === undefined) {
-			throw new ApplicationError('Unknown credential type', { tags: { credentialType: type } });
+			throw new UnexpectedError('Unknown credential type', { tags: { credentialType: type } });
 		}
 
 		if (credentialTypeData.extends === undefined) {
@@ -379,7 +379,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedData.oauthTokenData = decryptedDataOriginal.oauthTokenData;
 		}
 
-		const additionalKeys = NodeExecuteFunctions.getAdditionalKeys(additionalData, mode, null, {
+		const additionalKeys = getAdditionalKeys(additionalData, mode, null, {
 			secretsEnabled: canUseSecrets,
 		});
 
@@ -487,7 +487,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 }
 
 export function createCredentialsFromCredentialsEntity(
-	credential: CredentialsEntity,
+	credential: ICredentialsDb,
 	encrypt = false,
 ): Credentials {
 	const { id, name, type, data } = credential;

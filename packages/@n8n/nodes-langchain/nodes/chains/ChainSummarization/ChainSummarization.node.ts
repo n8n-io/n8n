@@ -10,6 +10,7 @@ export class ChainSummarization extends VersionedNodeType {
 			displayName: 'Summarization Chain',
 			name: 'chainSummarization',
 			icon: 'fa:link',
+			iconColor: 'black',
 			group: ['transform'],
 			description: 'Transforms text into a concise summary',
 			codex: {

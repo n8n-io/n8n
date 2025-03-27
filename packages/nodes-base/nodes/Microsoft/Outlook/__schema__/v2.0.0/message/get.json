@@ -1,0 +1,33 @@
+{
+    "type": "object",
+    "properties": {
+        "@odata.context": {
+            "type": "string"
+        },
+        "@odata.etag": {
+            "type": "string"
+        },
+        "bodyPreview": {
+            "type": "string"
+        },
+        "categories": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "conversationId": {
+            "type": "string"
+        },
+        "hasAttachments": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "subject": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

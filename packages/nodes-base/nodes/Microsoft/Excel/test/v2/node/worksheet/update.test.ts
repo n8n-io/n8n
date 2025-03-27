@@ -1,5 +1,5 @@
-import nock from 'nock';
 import type { IHttpRequestMethods } from 'n8n-workflow';
+
 import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
 
 jest.mock('../../../../v2/transport', () => {
@@ -47,16 +47,6 @@ jest.mock('../../../../v2/transport', () => {
 describe('Test MicrosoftExcelV2, worksheet => update', () => {
 	const workflows = ['nodes/Microsoft/Excel/test/v2/node/worksheet/update.workflow.json'];
 	const tests = workflowToTests(workflows);
-
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.unmock('../../../../v2/transport');
-	});
-
 	const nodeTypes = setup(tests);
 
 	for (const testData of tests) {

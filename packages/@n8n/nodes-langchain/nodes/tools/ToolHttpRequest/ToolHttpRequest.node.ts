@@ -1,4 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { DynamicTool } from '@langchain/core/tools';
 import type {
 	INodeType,
 	INodeTypeDescription,
@@ -7,21 +8,14 @@ import type {
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError, tryToParseAlphanumericString } from 'n8n-workflow';
-
-import { DynamicTool } from '@langchain/core/tools';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-
-import { N8nTool } from '../../../utils/N8nTool';
 import {
-	configureHttpRequestFunction,
-	configureResponseOptimizer,
-	extractParametersFromText,
-	prepareToolDescription,
-	configureToolFunction,
-	updateParametersAndOptions,
-	makeToolInputSchema,
-} from './utils';
+	NodeConnectionTypes,
+	NodeOperationError,
+	tryToParseAlphanumericString,
+} from 'n8n-workflow';
+
+import { N8nTool } from '@utils/N8nTool';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import {
 	authenticationProperties,
@@ -31,8 +25,16 @@ import {
 	placeholderDefinitionsCollection,
 	specifyBySelector,
 } from './descriptions';
-
 import type { PlaceholderDefinition, ToolParameter } from './interfaces';
+import {
+	configureHttpRequestFunction,
+	configureResponseOptimizer,
+	extractParametersFromText,
+	prepareToolDescription,
+	configureToolFunction,
+	updateParametersAndOptions,
+	makeToolInputSchema,
+} from './utils';
 
 export class ToolHttpRequest implements INodeType {
 	description: INodeTypeDescription = {
@@ -64,10 +66,10 @@ export class ToolHttpRequest implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiTool],
+		outputs: [NodeConnectionTypes.AiTool],
 		outputNames: ['Tool'],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{
 				displayName: 'Description',
 				name: 'toolDescription',

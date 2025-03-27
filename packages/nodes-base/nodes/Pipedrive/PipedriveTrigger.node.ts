@@ -1,3 +1,5 @@
+import basicAuth from 'basic-auth';
+import type { Response } from 'express';
 import {
 	type IHookFunctions,
 	type IWebhookFunctions,
@@ -6,12 +8,9 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type IWebhookResponseData,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import basicAuth from 'basic-auth';
-
-import type { Response } from 'express';
 import { pipedriveApiRequest } from './GenericFunctions';
 
 function authorizationError(resp: Response, realm: string, responseCode: number, message?: string) {
@@ -43,7 +42,7 @@ export class PipedriveTrigger implements INodeType {
 			name: 'Pipedrive Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'pipedriveApi',

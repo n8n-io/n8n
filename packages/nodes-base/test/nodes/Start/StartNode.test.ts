@@ -1,6 +1,6 @@
+import { executeWorkflow } from '../ExecuteWorkflow';
 import * as Helpers from '../Helpers';
 import type { WorkflowTestData } from '../types';
-import { executeWorkflow } from '../ExecuteWorkflow';
 
 describe('Execute Start Node', () => {
 	const tests: WorkflowTestData[] = [

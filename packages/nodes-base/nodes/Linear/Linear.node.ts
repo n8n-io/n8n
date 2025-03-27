@@ -11,7 +11,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type JsonObject,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import {
@@ -20,9 +20,7 @@ import {
 	sort,
 	validateCredentials,
 } from './GenericFunctions';
-
 import { issueFields, issueOperations } from './IssueDescription';
-
 import { query } from './Queries';
 interface IGraphqlBody {
 	query: string;
@@ -40,8 +38,9 @@ export class Linear implements INodeType {
 		defaults: {
 			name: 'Linear',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'linearApi',

@@ -1,14 +1,15 @@
-import type {
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-	ICredentialTestFunctions,
-	IDataObject,
-	IPollFunctions,
-	IRequestOptions,
-} from 'n8n-workflow';
-
-import moment from 'moment-timezone';
 import * as jwt from 'jsonwebtoken';
+import { DateTime } from 'luxon';
+import moment from 'moment-timezone';
+import {
+	type IExecuteFunctions,
+	type ILoadOptionsFunctions,
+	type ICredentialTestFunctions,
+	type IDataObject,
+	type IPollFunctions,
+	type IRequestOptions,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 import { formatPrivateKey } from '@utils/utilities';
 
@@ -109,4 +110,21 @@ export async function getGoogleAccessToken(
 	};
 
 	return await this.helpers.request(options);
+}
+
+export function validateAndSetDate(
+	filter: IDataObject,
+	key: string,
+	timezone: string,
+	context: IExecuteFunctions,
+) {
+	const date = DateTime.fromISO(filter[key] as string);
+	if (date.isValid) {
+		filter[key] = date.setZone(timezone).toISO();
+	} else {
+		throw new NodeOperationError(
+			context.getNode(),
+			`The value "${filter[key] as string}" is not a valid DateTime.`,
+		);
+	}
 }

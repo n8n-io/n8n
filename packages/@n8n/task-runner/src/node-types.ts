@@ -7,6 +7,8 @@ import {
 	type IVersionedNodeType,
 } from 'n8n-workflow';
 
+import type { NeededNodeType } from './runner-types';
+
 type VersionedTypes = Map<number, INodeTypeDescription>;
 
 export const DEFAULT_NODETYPE_VERSION = 1;
@@ -60,5 +62,31 @@ export class TaskRunnerNodeTypes implements INodeTypes {
 	// This isn't used in Workflow from what I can see
 	getKnownTypes(): IDataObject {
 		throw new ApplicationError('Unimplemented `getKnownTypes`', { level: 'error' });
+	}
+
+	addNodeTypeDescriptions(nodeTypeDescriptions: INodeTypeDescription[]) {
+		const newNodeTypes = this.parseNodeTypes(nodeTypeDescriptions);
+
+		for (const [name, newVersions] of newNodeTypes.entries()) {
+			if (!this.nodeTypesByVersion.has(name)) {
+				this.nodeTypesByVersion.set(name, newVersions);
+			} else {
+				const existingVersions = this.nodeTypesByVersion.get(name)!;
+				for (const [version, nodeType] of newVersions.entries()) {
+					existingVersions.set(version, nodeType);
+				}
+			}
+		}
+	}
+
+	/** Filter out node type versions that are already registered. */
+	onlyUnknown(nodeTypes: NeededNodeType[]) {
+		return nodeTypes.filter(({ name, version }) => {
+			const existingVersions = this.nodeTypesByVersion.get(name);
+
+			if (!existingVersions) return true;
+
+			return !existingVersions.has(version);
+		});
 	}
 }

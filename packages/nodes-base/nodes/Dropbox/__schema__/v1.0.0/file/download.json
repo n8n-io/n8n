@@ -1,0 +1,12 @@
+{
+    "type": "object",
+    "properties": {
+        "name": {
+            "type": "string"
+        },
+        "rev": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

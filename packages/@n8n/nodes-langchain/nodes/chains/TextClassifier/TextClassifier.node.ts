@@ -2,7 +2,7 @@ import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { HumanMessage } from '@langchain/core/messages';
 import { SystemMessagePromptTemplate, ChatPromptTemplate } from '@langchain/core/prompts';
 import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
-import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
+import { NodeOperationError, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -13,7 +13,7 @@ import type {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { getTracingConfig } from '../../../utils/tracing';
+import { getTracingConfig } from '@utils/tracing';
 
 const SYSTEM_PROMPT_TEMPLATE =
 	"Please classify the text provided by the user into one of the following categories: {categories}, and use the provided formatting instructions below. Don't explain, and only output the json.";
@@ -22,9 +22,9 @@ const configuredOutputs = (parameters: INodeParameters) => {
 	const categories = ((parameters.categories as IDataObject)?.categories as IDataObject[]) ?? [];
 	const fallback = (parameters.options as IDataObject)?.fallback as string;
 	const ret = categories.map((cat) => {
-		return { type: NodeConnectionType.Main, displayName: cat.category };
+		return { type: 'main', displayName: cat.category };
 	});
-	if (fallback === 'other') ret.push({ type: NodeConnectionType.Main, displayName: 'Other' });
+	if (fallback === 'other') ret.push({ type: 'main', displayName: 'Other' });
 	return ret;
 };
 
@@ -54,11 +54,11 @@ export class TextClassifier implements INodeType {
 			name: 'Text Classifier',
 		},
 		inputs: [
-			{ displayName: '', type: NodeConnectionType.Main },
+			{ displayName: '', type: NodeConnectionTypes.Main },
 			{
 				displayName: 'Model',
 				maxConnections: 1,
-				type: NodeConnectionType.AiLanguageModel,
+				type: NodeConnectionTypes.AiLanguageModel,
 				required: true,
 			},
 		],
@@ -167,7 +167,7 @@ export class TextClassifier implements INodeType {
 		const items = this.getInputData();
 
 		const llm = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
+			NodeConnectionTypes.AiLanguageModel,
 			0,
 		)) as BaseLanguageModel;
 

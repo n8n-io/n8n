@@ -1,6 +1,7 @@
-import { readFileSync } from 'fs';
+import { readFileSync, statSync } from 'fs';
 import type { n8n } from 'n8n-core';
-import { jsonParse } from 'n8n-workflow';
+import type { ITaskDataConnections } from 'n8n-workflow';
+import { jsonParse, TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
 import { resolve, join, dirname } from 'path';
 
 const { NODE_ENV, E2E_TESTS } = process.env;
@@ -17,17 +18,16 @@ export const TEMPLATES_DIR = join(CLI_DIR, 'templates');
 export const NODES_BASE_DIR = dirname(require.resolve('n8n-nodes-base'));
 export const EDITOR_UI_DIST_DIR = join(dirname(require.resolve('n8n-editor-ui')), 'dist');
 
-export function getN8nPackageJson() {
-	return jsonParse<n8n.PackageJson>(readFileSync(join(CLI_DIR, 'package.json'), 'utf8'));
-}
+const packageJsonPath = join(CLI_DIR, 'package.json');
+const n8nPackageJson = jsonParse<n8n.PackageJson>(readFileSync(packageJsonPath, 'utf8'));
+export const N8N_VERSION = n8nPackageJson.version;
+export const N8N_RELEASE_DATE = statSync(packageJsonPath).mtime;
 
 export const STARTING_NODES = [
 	'@n8n/n8n-nodes-langchain.manualChatTrigger',
 	'n8n-nodes-base.start',
 	'n8n-nodes-base.manualTrigger',
 ];
-
-export const N8N_VERSION = getN8nPackageJson().version;
 
 export const NODE_PACKAGE_PREFIX = 'n8n-nodes-';
 
@@ -93,6 +93,8 @@ export const LICENSE_FEATURES = {
 	AI_ASSISTANT: 'feat:aiAssistant',
 	ASK_AI: 'feat:askAi',
 	COMMUNITY_NODES_CUSTOM_REGISTRY: 'feat:communityNodes:customRegistry',
+	AI_CREDITS: 'feat:aiCredits',
+	FOLDERS: 'feat:folders',
 } as const;
 
 export const LICENSE_QUOTAS = {
@@ -101,6 +103,7 @@ export const LICENSE_QUOTAS = {
 	USERS_LIMIT: 'quota:users',
 	WORKFLOW_HISTORY_PRUNE_LIMIT: 'quota:workflowHistoryPrune',
 	TEAM_PROJECT_LIMIT: 'quota:maxTeamProjects',
+	AI_CREDITS: 'quota:aiCredits',
 } as const;
 export const UNLIMITED_LICENSE_QUOTA = -1;
 
@@ -110,23 +113,13 @@ export const UM_FIX_INSTRUCTION =
 	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
 
 /**
- * Units of time in milliseconds
- * @deprecated Please use constants.Time instead.
- */
-export const TIME = {
-	SECOND: 1000,
-	MINUTE: 60 * 1000,
-	HOUR: 60 * 60 * 1000,
-	DAY: 24 * 60 * 60 * 1000,
-} as const;
-
-/**
- * Convert time from any unit to any other unit
- *
- * Please amend conversions as necessary.
- * Eventually this will superseed `TIME` above
+ * Convert time from any time unit to any other unit
  */
 export const Time = {
+	milliseconds: {
+		toMinutes: 1 / (60 * 1000),
+		toSeconds: 1 / 1000,
+	},
 	seconds: {
 		toMilliseconds: 1000,
 	},
@@ -147,9 +140,9 @@ export const MIN_PASSWORD_CHAR_LENGTH = 8;
 
 export const MAX_PASSWORD_CHAR_LENGTH = 64;
 
-export const TEST_WEBHOOK_TIMEOUT = 2 * TIME.MINUTE;
+export const TEST_WEBHOOK_TIMEOUT = 2 * Time.minutes.toMilliseconds;
 
-export const TEST_WEBHOOK_TIMEOUT_BUFFER = 30 * TIME.SECOND;
+export const TEST_WEBHOOK_TIMEOUT_BUFFER = 30 * Time.seconds.toMilliseconds;
 
 export const GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE = [
 	'oAuth2Api',
@@ -169,8 +162,38 @@ export const ARTIFICIAL_TASK_DATA = {
 	],
 };
 
+/**
+ * Connections for an item standing in for a manual execution data item too
+ * large to be sent live via pubsub. This signals to the client to direct the
+ * user to the execution history.
+ */
+export const TRIMMED_TASK_DATA_CONNECTIONS: ITaskDataConnections = {
+	main: [
+		[
+			{
+				json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true },
+				pairedItem: undefined,
+			},
+		],
+	],
+};
+
 /** Lowest priority, meaning shut down happens after other groups */
 export const LOWEST_SHUTDOWN_PRIORITY = 0;
 export const DEFAULT_SHUTDOWN_PRIORITY = 100;
 /** Highest priority, meaning shut down happens before all other groups */
 export const HIGHEST_SHUTDOWN_PRIORITY = 200;
+
+export const WsStatusCodes = {
+	CloseNormal: 1000,
+	CloseGoingAway: 1001,
+	CloseProtocolError: 1002,
+	CloseUnsupportedData: 1003,
+	CloseNoStatus: 1005,
+	CloseAbnormal: 1006,
+	CloseInvalidData: 1007,
+} as const;
+
+export const FREE_AI_CREDITS_CREDENTIAL_NAME = 'n8n free OpenAI API credits';
+
+export const EVALUATION_METRICS_NODE = `${NODE_PACKAGE_PREFIX}base.evaluationMetrics`;

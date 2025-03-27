@@ -1,3 +1,4 @@
+import { getCredentialSaveButton } from '../composables/modals/credential-modal';
 import { CredentialsPage, CredentialsModal } from '../pages';
 
 const credentialsPage = new CredentialsPage();
@@ -40,7 +41,7 @@ describe('Credentials', () => {
 		});
 
 		// Check that the credential was saved and connected successfully
-		credentialsModal.getters.saveButton().should('contain.text', 'Saved');
+		getCredentialSaveButton().should('contain.text', 'Saved');
 		credentialsModal.getters.oauthConnectSuccessBanner().should('be.visible');
 	});
 });

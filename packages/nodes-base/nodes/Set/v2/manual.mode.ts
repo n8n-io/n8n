@@ -10,14 +10,14 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { updateDisplayOptions } from '../../../utils/utilities';
+import type { SetField, SetNodeOptions } from './helpers/interfaces';
 import {
 	parseJsonParameter,
 	validateEntry,
 	composeReturnItem,
 	resolveRawData,
 } from './helpers/utils';
-import type { SetField, SetNodeOptions } from './helpers/interfaces';
+import { updateDisplayOptions } from '../../../utils/utilities';
 
 const properties: INodeProperties[] = [
 	{

@@ -1,7 +1,7 @@
+import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { DataSource, Repository, In, Not } from '@n8n/typeorm';
 import type { EntityManager, FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';
-import { Service } from 'typedi';
 
 import { RoleService } from '@/services/role.service';
 
@@ -112,7 +112,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		workflowId: string,
 		user: User,
 		scopes: Scope[],
-		{ includeTags = false, em = this.manager } = {},
+		{ includeTags = false, includeParentFolder = false, em = this.manager } = {},
 	) {
 		let where: FindOptionsWhere<SharedWorkflow> = { workflowId };
 
@@ -138,6 +138,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 				workflow: {
 					shared: { project: { projectRelations: { user: true } } },
 					tags: includeTags,
+					parentFolder: includeParentFolder,
 				},
 			},
 		});
@@ -209,6 +210,15 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 				workflowId: In(workflowIds),
 				projectId: In(projectIds),
 			},
+		});
+	}
+
+	async getAllRelationsForWorkflows(workflowIds: string[]) {
+		return await this.find({
+			where: {
+				workflowId: In(workflowIds),
+			},
+			relations: ['project'],
 		});
 	}
 }

@@ -7,6 +7,9 @@ import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 const WorkflowPage = new WorkflowPageClass();
 const ndv = new NDV();
 
+const getParameter = () => ndv.getters.parameterInput('jsCode').should('be.visible');
+const getEditor = () => getParameter().find('.cm-content').should('exist');
+
 describe('Code node', () => {
 	describe('Code editor', () => {
 		beforeEach(() => {
@@ -40,10 +43,23 @@ describe('Code node', () => {
 			successToast().contains('Node executed successfully');
 		});
 
-		it('should show lint errors in `runOnceForAllItems` mode', () => {
-			const getParameter = () => ndv.getters.parameterInput('jsCode').should('be.visible');
-			const getEditor = () => getParameter().find('.cm-content').should('exist');
+		it('should allow switching between sibling code nodes', () => {
+			// Setup
+			getEditor().type('{selectall}').paste("console.log('code node 1')");
+			ndv.actions.close();
+			WorkflowPage.actions.addNodeToCanvas('Code', true, true);
+			getEditor().type('{selectall}').paste("console.log('code node 2')");
+			ndv.actions.close();
 
+			WorkflowPage.actions.openNode('Code');
+			ndv.actions.clickFloatingNode('Code1');
+			getEditor().should('have.text', "console.log('code node 2')");
+
+			ndv.actions.clickFloatingNode('Code');
+			getEditor().should('have.text', "console.log('code node 1')");
+		});
+
+		it('should show lint errors in `runOnceForAllItems` mode', () => {
 			getEditor()
 				.type('{selectall}')
 				.paste(`$input.itemMatching()
@@ -57,7 +73,7 @@ for (const item of $input.all()) {
 
 return
 `);
-			getParameter().get('.cm-lint-marker-error').should('have.length', 6);
+			getParameter().get('.cm-lintRange-error').should('have.length', 6);
 			getParameter().contains('itemMatching').realHover();
 			cy.get('.cm-tooltip-lint').should(
 				'have.text',
@@ -66,9 +82,6 @@ return
 		});
 
 		it('should show lint errors in `runOnceForEachItem` mode', () => {
-			const getParameter = () => ndv.getters.parameterInput('jsCode').should('be.visible');
-			const getEditor = () => getParameter().find('.cm-content').should('exist');
-
 			ndv.getters.parameterInput('mode').click();
 			ndv.actions.selectOptionInParameterDropdown('mode', 'Run Once for Each Item');
 			getEditor()
@@ -81,7 +94,7 @@ $input.item()
 return []
 `);
 
-			getParameter().get('.cm-lint-marker-error').should('have.length', 5);
+			getParameter().get('.cm-lintRange-error').should('have.length', 5);
 			getParameter().contains('all').realHover();
 			cy.get('.cm-tooltip-lint').should(
 				'have.text',

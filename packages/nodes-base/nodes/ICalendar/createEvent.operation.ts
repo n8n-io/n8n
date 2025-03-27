@@ -1,4 +1,5 @@
-import { promisify } from 'util';
+import * as ics from 'ics';
+import moment from 'moment-timezone';
 import {
 	type IExecuteFunctions,
 	type IDataObject,
@@ -6,9 +7,7 @@ import {
 	type INodeProperties,
 	NodeOperationError,
 } from 'n8n-workflow';
-
-import moment from 'moment-timezone';
-import * as ics from 'ics';
+import { promisify } from 'util';
 
 const createEvent = promisify(ics.createEvent);
 

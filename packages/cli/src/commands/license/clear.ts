@@ -1,4 +1,4 @@
-import { Container } from 'typedi';
+import { Container } from '@n8n/di';
 
 import { SETTINGS_LICENSE_CERT_KEY } from '@/constants';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
@@ -9,14 +9,14 @@ import { BaseCommand } from '../base-command';
 export class ClearLicenseCommand extends BaseCommand {
 	static description = 'Clear license';
 
-	static examples = ['$ n8n clear:license'];
+	static examples = ['$ n8n license:clear'];
 
 	async run() {
 		this.logger.info('Clearing license from database.');
 
 		// Attempt to invoke shutdown() to force any floating entitlements to be released
 		const license = Container.get(License);
-		await license.init();
+		await license.init({ isCli: true });
 		try {
 			await license.shutdown();
 		} catch {

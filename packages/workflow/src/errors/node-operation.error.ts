@@ -19,7 +19,7 @@ export class NodeOperationError extends NodeError {
 		}
 
 		if (typeof error === 'string') {
-			error = new ApplicationError(error);
+			error = new ApplicationError(error, { level: options.level ?? 'warning' });
 		}
 
 		super(node, error);
@@ -29,12 +29,13 @@ export class NodeOperationError extends NodeError {
 		}
 
 		if (options.message) this.message = options.message;
-		if (options.level) this.level = options.level;
+		this.level = options.level ?? 'warning';
 		if (options.functionality) this.functionality = options.functionality;
 		if (options.type) this.type = options.type;
 		this.description = options.description;
 		this.context.runIndex = options.runIndex;
 		this.context.itemIndex = options.itemIndex;
+		this.context.metadata = options.metadata;
 
 		if (this.message === this.description) {
 			this.description = undefined;

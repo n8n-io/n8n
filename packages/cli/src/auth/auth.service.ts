@@ -1,8 +1,9 @@
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import { createHash } from 'crypto';
 import type { NextFunction, Response } from 'express';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
-import Container, { Service } from 'typedi';
+import { Logger } from 'n8n-core';
 
 import config from '@/config';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES, Time } from '@/constants';
@@ -12,7 +13,6 @@ import { UserRepository } from '@/databases/repositories/user.repository';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/license';
-import { Logger } from '@/logging/logger.service';
 import type { AuthenticatedRequest } from '@/requests';
 import { JwtService } from '@/services/jwt.service';
 import { UrlService } from '@/services/url.service';
@@ -35,20 +35,13 @@ interface PasswordResetToken {
 	hash: string;
 }
 
-const restEndpoint = Container.get(GlobalConfig).endpoints.rest;
-// The browser-id check needs to be skipped on these endpoints
-const skipBrowserIdCheckEndpoints = [
-	// we need to exclude push endpoint because we can't send custom header on websocket requests
-	// TODO: Implement a custom handshake for push, to avoid having to send any data on querystring or headers
-	`/${restEndpoint}/push`,
-
-	// We need to exclude binary-data downloading endpoint because we can't send custom headers on `<embed>` tags
-	`/${restEndpoint}/binary-data/`,
-];
-
 @Service()
 export class AuthService {
+	// The browser-id check needs to be skipped on these endpoints
+	private skipBrowserIdCheckEndpoints: string[];
+
 	constructor(
+		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly license: License,
 		private readonly jwtService: JwtService,
@@ -58,6 +51,20 @@ export class AuthService {
 	) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		this.authMiddleware = this.authMiddleware.bind(this);
+
+		const restEndpoint = globalConfig.endpoints.rest;
+		this.skipBrowserIdCheckEndpoints = [
+			// we need to exclude push endpoint because we can't send custom header on websocket requests
+			// TODO: Implement a custom handshake for push, to avoid having to send any data on querystring or headers
+			`/${restEndpoint}/push`,
+
+			// We need to exclude binary-data downloading endpoint because we can't send custom headers on `<embed>` tags
+			`/${restEndpoint}/binary-data/`,
+
+			// oAuth callback urls aren't called by the frontend. therefore we can't send custom header on these requests
+			`/${restEndpoint}/oauth1-credential/callback`,
+			`/${restEndpoint}/oauth2-credential/callback`,
+		];
 	}
 
 	async authMiddleware(req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -113,11 +120,12 @@ export class AuthService {
 		}
 
 		const token = this.issueJWT(user, browserId);
+		const { samesite, secure } = this.globalConfig.auth.cookie;
 		res.cookie(AUTH_COOKIE_NAME, token, {
 			maxAge: this.jwtExpiration * Time.seconds.toMilliseconds,
 			httpOnly: true,
-			sameSite: 'lax',
-			secure: config.getEnv('secure_cookie'),
+			sameSite: samesite,
+			secure,
 		});
 	}
 
@@ -155,7 +163,7 @@ export class AuthService {
 
 		// Check if the token was issued for another browser session, ignoring the endpoints that can't send custom headers
 		const endpoint = req.route ? `${req.baseUrl}${req.route.path}` : req.baseUrl;
-		if (req.method === 'GET' && skipBrowserIdCheckEndpoints.includes(endpoint)) {
+		if (req.method === 'GET' && this.skipBrowserIdCheckEndpoints.includes(endpoint)) {
 			this.logger.debug(`Skipped browserId check on ${endpoint}`);
 		} else if (
 			jwtPayload.browserId &&

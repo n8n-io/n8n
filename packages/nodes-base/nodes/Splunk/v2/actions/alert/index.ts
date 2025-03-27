@@ -1,7 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import * as getReport from './getReport.operation';
 import * as getMetrics from './getMetrics.operation';
+import * as getReport from './getReport.operation';
 
 export { getReport, getMetrics };
 

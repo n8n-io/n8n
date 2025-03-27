@@ -1,24 +1,24 @@
+import { Service } from '@n8n/di';
 import type express from 'express';
+import { Logger } from 'n8n-core';
 import {
 	FORM_NODE_TYPE,
 	type INodes,
 	type IWorkflowBase,
-	NodeHelpers,
 	SEND_AND_WAIT_OPERATION,
 	WAIT_NODE_TYPE,
 	Workflow,
 } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { IExecutionResponse, IWorkflowDb } from '@/interfaces';
-import { Logger } from '@/logging/logger.service';
+import type { IExecutionResponse } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
+import { WebhookService } from './webhook.service';
 import type {
 	IWebhookResponseCallbackData,
 	IWebhookManager,
@@ -38,6 +38,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		protected readonly logger: Logger,
 		protected readonly nodeTypes: NodeTypes,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly webhookService: WebhookService,
 	) {}
 
 	// TODO: implement `getWebhookMethods` for CORS support
@@ -120,6 +121,12 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
 
+		/**
+		 * A manual execution resumed by a webhook call needs to be marked as such
+		 * so workers in scaling mode reuse the existing execution data.
+		 */
+		if (execution.mode === 'manual') execution.data.isTestWebhook = true;
+
 		return await this.getWebhookExecutionData({
 			execution,
 			req,
@@ -164,17 +171,15 @@ export class WaitingWebhooks implements IWebhookManager {
 		}
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase();
-		const webhookData = NodeHelpers.getNodeWebhooks(
-			workflow,
-			workflowStartNode,
-			additionalData,
-		).find(
-			(webhook) =>
-				webhook.httpMethod === req.method &&
-				webhook.path === (suffix ?? '') &&
-				webhook.webhookDescription.restartWebhook === true &&
-				(webhook.webhookDescription.isForm || false) === this.includeForms,
-		);
+		const webhookData = this.webhookService
+			.getNodeWebhooks(workflow, workflowStartNode, additionalData)
+			.find(
+				(webhook) =>
+					webhook.httpMethod === req.method &&
+					webhook.path === (suffix ?? '') &&
+					webhook.webhookDescription.restartWebhook === true &&
+					(webhook.webhookDescription.isForm || false) === this.includeForms,
+			);
 
 		if (webhookData === undefined) {
 			// If no data got found it means that the execution can not be started via a webhook.
@@ -212,10 +217,10 @@ export class WaitingWebhooks implements IWebhookManager {
 			void WebhookHelpers.executeWebhook(
 				workflow,
 				webhookData,
-				workflowData as IWorkflowDb,
+				workflowData,
 				workflowStartNode,
 				executionMode,
-				undefined,
+				runExecutionData.pushRef,
 				runExecutionData,
 				execution.id,
 				req,

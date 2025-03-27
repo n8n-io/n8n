@@ -1,0 +1,198 @@
+{
+    "type": "object",
+    "properties": {
+        "badges": {
+            "type": "object",
+            "properties": {
+                "attachments": {
+                    "type": "integer"
+                },
+                "attachmentsByType": {
+                    "type": "object",
+                    "properties": {
+                        "trello": {
+                            "type": "object",
+                            "properties": {
+                                "board": {
+                                    "type": "integer"
+                                },
+                                "card": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                },
+                "checkItems": {
+                    "type": "integer"
+                },
+                "checkItemsChecked": {
+                    "type": "integer"
+                },
+                "checkItemsEarliestDue": {
+                    "type": "null"
+                },
+                "comments": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "boolean"
+                },
+                "dueComplete": {
+                    "type": "boolean"
+                },
+                "fogbugz": {
+                    "type": "string"
+                },
+                "lastUpdatedByAi": {
+                    "type": "boolean"
+                },
+                "location": {
+                    "type": "boolean"
+                },
+                "subscribed": {
+                    "type": "boolean"
+                },
+                "viewingMemberVoted": {
+                    "type": "boolean"
+                },
+                "votes": {
+                    "type": "integer"
+                }
+            }
+        },
+        "cardRole": {
+            "type": "null"
+        },
+        "checkItemStates": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "idCheckItem": {
+                        "type": "string"
+                    },
+                    "state": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "closed": {
+            "type": "boolean"
+        },
+        "cover": {
+            "type": "object",
+            "properties": {
+                "brightness": {
+                    "type": "string"
+                },
+                "idPlugin": {
+                    "type": "null"
+                },
+                "idUploadedBackground": {
+                    "type": "null"
+                },
+                "size": {
+                    "type": "string"
+                }
+            }
+        },
+        "dateLastActivity": {
+            "type": "string"
+        },
+        "desc": {
+            "type": "string"
+        },
+        "dueComplete": {
+            "type": "boolean"
+        },
+        "email": {
+            "type": "null"
+        },
+        "id": {
+            "type": "string"
+        },
+        "idBoard": {
+            "type": "string"
+        },
+        "idChecklists": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "idLabels": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "idList": {
+            "type": "string"
+        },
+        "idMembers": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "idShort": {
+            "type": "integer"
+        },
+        "isTemplate": {
+            "type": "boolean"
+        },
+        "labels": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "color": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "idBoard": {
+                        "type": "string"
+                    },
+                    "idOrganization": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "nodeId": {
+                        "type": "string"
+                    },
+                    "uses": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "manualCoverAttachment": {
+            "type": "boolean"
+        },
+        "name": {
+            "type": "string"
+        },
+        "pinned": {
+            "type": "boolean"
+        },
+        "shortLink": {
+            "type": "string"
+        },
+        "shortUrl": {
+            "type": "string"
+        },
+        "subscribed": {
+            "type": "boolean"
+        },
+        "url": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

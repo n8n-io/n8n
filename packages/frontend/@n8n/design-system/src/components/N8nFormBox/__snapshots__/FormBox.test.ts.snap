@@ -1,0 +1,301 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`FormBox > should render the component 1`] = `
+<div>
+  <div
+    class="n8n-form-box container"
+  >
+    <div
+      class="heading"
+    >
+      <span
+        class="n8n-heading size-xlarge regular"
+      >
+        
+        Title
+        
+      </span>
+    </div>
+    <div
+      class="inputsContainer"
+    >
+      <div>
+        
+        <div
+          class="grid"
+        >
+          
+          <div
+            class=""
+          >
+            <div
+              capitalize="true"
+              class="container"
+              data-test-id="name"
+            >
+              <div
+                class="labelRow"
+              >
+                <label
+                  class="n8n-input-label inputLabel heading small"
+                  for="name"
+                >
+                  <div
+                    class="main-content"
+                  >
+                    <div
+                      class="title"
+                    >
+                      <span
+                        class="n8n-text size-small bold"
+                      >
+                        
+                        Name 
+                        <span
+                          class="n8n-text primary size-small bold"
+                        >
+                          
+                          *
+                          
+                        </span>
+                        
+                      </span>
+                    </div>
+                    <!--v-if-->
+                  </div>
+                  <div
+                    class="trailing-content"
+                  >
+                    <!--v-if-->
+                    <!--v-if-->
+                    <!--v-if-->
+                  </div>
+                </label>
+                <!--v-if-->
+              </div>
+              
+              <div
+                class=""
+              >
+                <div
+                  class="el-input el-input--small n8n-input"
+                >
+                  <!-- input -->
+                  
+                  <!-- prepend slot -->
+                  <!--v-if-->
+                  <div
+                    class="el-input__wrapper"
+                  >
+                    <!-- prefix slot -->
+                    <!--v-if-->
+                    <input
+                      autocomplete="email"
+                      class="el-input__inner"
+                      name="name"
+                      placeholder=""
+                      rows="2"
+                      tabindex="0"
+                      title=""
+                      type="text"
+                    />
+                    <!-- suffix slot -->
+                    <!--v-if-->
+                  </div>
+                  <!-- append slot -->
+                  <!--v-if-->
+                  
+                </div>
+              </div>
+              <!--v-if-->
+              
+            </div>
+          </div>
+          <div
+            class=""
+          >
+            <div
+              capitalize="true"
+              class="container"
+              data-test-id="email"
+            >
+              <div
+                class="labelRow"
+              >
+                <label
+                  class="n8n-input-label inputLabel heading medium"
+                  for="email"
+                >
+                  <div
+                    class="main-content"
+                  >
+                    <div
+                      class="title"
+                    >
+                      <span
+                        class="n8n-text size-medium bold"
+                      >
+                        
+                        Email 
+                        <span
+                          class="n8n-text primary size-medium bold"
+                        >
+                          
+                          *
+                          
+                        </span>
+                        
+                      </span>
+                    </div>
+                    <!--v-if-->
+                  </div>
+                  <div
+                    class="trailing-content"
+                  >
+                    <!--v-if-->
+                    <!--v-if-->
+                    <!--v-if-->
+                  </div>
+                </label>
+                <!--v-if-->
+              </div>
+              
+              <div
+                class=""
+              >
+                <div
+                  class="el-input el-input--default n8n-input"
+                >
+                  <!-- input -->
+                  
+                  <!-- prepend slot -->
+                  <!--v-if-->
+                  <div
+                    class="el-input__wrapper"
+                  >
+                    <!-- prefix slot -->
+                    <!--v-if-->
+                    <input
+                      autocomplete="email"
+                      class="el-input__inner"
+                      name="email"
+                      placeholder=""
+                      rows="2"
+                      tabindex="0"
+                      title=""
+                      type="email"
+                    />
+                    <!-- suffix slot -->
+                    <!--v-if-->
+                  </div>
+                  <!-- append slot -->
+                  <!--v-if-->
+                  
+                </div>
+              </div>
+              <!--v-if-->
+              
+            </div>
+          </div>
+          <div
+            class=""
+          >
+            <div
+              capitalize="true"
+              class="container"
+              data-test-id="password"
+            >
+              <div
+                class="labelRow"
+              >
+                <label
+                  class="n8n-input-label inputLabel heading medium"
+                  for="password"
+                >
+                  <div
+                    class="main-content"
+                  >
+                    <div
+                      class="title"
+                    >
+                      <span
+                        class="n8n-text size-medium bold"
+                      >
+                        
+                        Password 
+                        <span
+                          class="n8n-text primary size-medium bold"
+                        >
+                          
+                          *
+                          
+                        </span>
+                        
+                      </span>
+                    </div>
+                    <!--v-if-->
+                  </div>
+                  <div
+                    class="trailing-content"
+                  >
+                    <!--v-if-->
+                    <!--v-if-->
+                    <!--v-if-->
+                  </div>
+                </label>
+                <!--v-if-->
+              </div>
+              
+              <div
+                class=""
+              >
+                <div
+                  class="el-input el-input--large n8n-input ph-no-capture"
+                >
+                  <!-- input -->
+                  
+                  <!-- prepend slot -->
+                  <!--v-if-->
+                  <div
+                    class="el-input__wrapper"
+                  >
+                    <!-- prefix slot -->
+                    <!--v-if-->
+                    <input
+                      autocomplete="current-password"
+                      class="el-input__inner"
+                      name="password"
+                      placeholder=""
+                      rows="2"
+                      tabindex="0"
+                      title=""
+                      type="password"
+                    />
+                    <!-- suffix slot -->
+                    <!--v-if-->
+                  </div>
+                  <!-- append slot -->
+                  <!--v-if-->
+                  
+                </div>
+              </div>
+              <!--v-if-->
+              
+            </div>
+          </div>
+          
+        </div>
+        
+      </div>
+    </div>
+    <!--v-if-->
+    <div
+      class="actionContainer"
+    >
+      <!--v-if-->
+    </div>
+    
+    
+  </div>
+</div>
+`;

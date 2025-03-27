@@ -1,8 +1,7 @@
+import { SecurityConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import type { IWorkflowBase } from 'n8n-workflow';
-import { Service } from 'typedi';
 
-import config from '@/config';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { ExecutionDataRepository } from '@/databases/repositories/execution-data.repository';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
@@ -15,10 +14,11 @@ export class CredentialsRiskReporter implements RiskReporter {
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly executionDataRepository: ExecutionDataRepository,
+		private readonly securityConfig: SecurityConfig,
 	) {}
 
-	async report(workflows: WorkflowEntity[]) {
-		const days = config.getEnv('security.audit.daysAbandonedWorkflow');
+	async report(workflows: IWorkflowBase[]) {
+		const days = this.securityConfig.daysAbandonedWorkflow;
 
 		const allExistingCreds = await this.getAllExistingCreds();
 		const { credsInAnyUse, credsInActiveUse } = await this.getAllCredsInUse(workflows);
@@ -83,7 +83,7 @@ export class CredentialsRiskReporter implements RiskReporter {
 		return report;
 	}
 
-	private async getAllCredsInUse(workflows: WorkflowEntity[]) {
+	private async getAllCredsInUse(workflows: IWorkflowBase[]) {
 		const credsInAnyUse = new Set<string>();
 		const credsInActiveUse = new Set<string>();
 

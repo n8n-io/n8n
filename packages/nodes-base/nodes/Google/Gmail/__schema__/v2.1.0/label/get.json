@@ -1,0 +1,33 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "labelListVisibility": {
+            "type": "string"
+        },
+        "messageListVisibility": {
+            "type": "string"
+        },
+        "messagesTotal": {
+            "type": "integer"
+        },
+        "messagesUnread": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "threadsTotal": {
+            "type": "integer"
+        },
+        "threadsUnread": {
+            "type": "integer"
+        },
+        "type": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

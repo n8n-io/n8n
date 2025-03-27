@@ -7,8 +7,10 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import { contactFields, contactOperations } from './ContactDescription';
+import type { ICreateContactBody } from './ContactInterface';
 import {
 	capitalize,
 	freshdeskApiRequest,
@@ -16,33 +18,35 @@ import {
 	// validateJSON,
 } from './GenericFunctions';
 
-import type { ICreateContactBody } from './ContactInterface';
+const Statuses = {
+	Open: 2,
+	Pending: 3,
+	Resolved: 4,
+	Closed: 5,
+} as const;
 
-import { contactFields, contactOperations } from './ContactDescription';
+type Status = (typeof Statuses)[keyof typeof Statuses];
 
-const enum Status {
-	Open = 2,
-	Pending = 3,
-	Resolved = 4,
-	Closed = 5,
-}
+const Priorities = {
+	Low: 1,
+	Medium: 2,
+	High: 3,
+	Urgent: 4,
+} as const;
 
-const enum Priority {
-	Low = 1,
-	Medium = 2,
-	High = 3,
-	Urgent = 4,
-}
+type Priority = (typeof Priorities)[keyof typeof Priorities];
 
-const enum Source {
-	Email = 1,
-	Portal = 2,
-	Phone = 3,
-	Chat = 7,
-	Mobihelp = 8,
-	FeedbackWidget = 9,
-	OutboundEmail = 10,
-}
+const Sources = {
+	Email: 1,
+	Portal: 2,
+	Phone: 3,
+	Chat: 7,
+	Mobihelp: 8,
+	FeedbackWidget: 9,
+	OutboundEmail: 10,
+} as const;
+
+type Source = (typeof Sources)[keyof typeof Sources];
 
 interface ICreateTicketBody {
 	name?: string;
@@ -83,8 +87,9 @@ export class Freshdesk implements INodeType {
 		defaults: {
 			name: 'Freshdesk',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'freshdeskApi',
@@ -1205,7 +1210,6 @@ export class Freshdesk implements INodeType {
 						if (updateFields.requester) {
 							const value = updateFields.requesterIdentificationValue as string;
 							if (updateFields.requester === 'requesterId') {
-								// @ts-ignore
 								if (isNaN(parseInt(value, 10))) {
 									throw new NodeOperationError(this.getNode(), 'Requester Id must be a number', {
 										itemIndex: i,

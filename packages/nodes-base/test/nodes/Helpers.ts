@@ -1,12 +1,15 @@
+import { Container } from '@n8n/di';
 import { readFileSync, readdirSync, mkdtempSync } from 'fs';
-import path from 'path';
-import { tmpdir } from 'os';
-import nock from 'nock';
-import { isEmpty } from 'lodash';
-import { get } from 'lodash';
-import { BinaryDataService, Credentials, constructExecutionMetaData } from 'n8n-core';
-import { Container } from 'typedi';
 import { mock } from 'jest-mock-extended';
+import { get } from 'lodash';
+import { isEmpty } from 'lodash';
+import {
+	BinaryDataService,
+	Credentials,
+	UnrecognizedNodeTypeError,
+	constructExecutionMetaData,
+	ExecutionLifecycleHooks,
+} from 'n8n-core';
 import type {
 	CredentialLoadingDetails,
 	ICredentialDataDecryptedObject,
@@ -26,16 +29,17 @@ import type {
 	INodeTypeData,
 	INodeTypes,
 	IRun,
-	ITaskData,
 	IVersionedNodeType,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
 	NodeLoadingDetails,
 	WorkflowTestData,
 } from 'n8n-workflow';
-import { ApplicationError, ICredentialsHelper, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
-import { executeWorkflow } from './ExecuteWorkflow';
+import { ApplicationError, ICredentialsHelper, NodeHelpers } from 'n8n-workflow';
+import { tmpdir } from 'os';
+import path from 'path';
 
+import { executeWorkflow } from './ExecuteWorkflow';
 import { FAKE_CREDENTIALS_DATA } from './FakeCredentialsMap';
 
 const baseDir = path.resolve(__dirname, '../..');
@@ -151,22 +155,15 @@ export function WorkflowExecuteAdditionalData(
 	waitPromise: IDeferredPromise<IRun>,
 	nodeExecutionOrder: string[],
 ): IWorkflowExecuteAdditionalData {
-	const hookFunctions = {
-		nodeExecuteAfter: [
-			async (nodeName: string, _data: ITaskData): Promise<void> => {
-				nodeExecutionOrder.push(nodeName);
-			},
-		],
-		workflowExecuteAfter: [
-			async (fullRunData: IRun): Promise<void> => {
-				waitPromise.resolve(fullRunData);
-			},
-		],
-	};
+	const hooks = new ExecutionLifecycleHooks('trigger', '1', mock());
+	hooks.addHandler('nodeExecuteAfter', (nodeName) => {
+		nodeExecutionOrder.push(nodeName);
+	});
+	hooks.addHandler('workflowExecuteAfter', (fullRunData) => waitPromise.resolve(fullRunData));
 
 	return mock<IWorkflowExecuteAdditionalData>({
 		credentialsHelper: new CredentialsHelper(),
-		hooks: new WorkflowHooks(hookFunctions, 'trigger', '1', mock()),
+		hooks,
 		// Get from node.parameters
 		currentNodeParameters: undefined,
 	});
@@ -220,16 +217,6 @@ export function setup(testData: WorkflowTestData[] | WorkflowTestData) {
 		testData = [testData];
 	}
 
-	if (testData.some((t) => !!t.nock)) {
-		beforeAll(() => {
-			nock.disableNetConnect();
-		});
-
-		afterAll(() => {
-			nock.restore();
-		});
-	}
-
 	const nodeTypes = new NodeTypes();
 
 	const nodes = [...new Set(testData.flatMap((data) => data.input.workflowData.nodes))];
@@ -251,12 +238,9 @@ export function setup(testData: WorkflowTestData[] | WorkflowTestData) {
 
 	const nodeNames = nodes.map((n) => n.type);
 	for (const nodeName of nodeNames) {
-		if (!nodeName.startsWith('n8n-nodes-base.')) {
-			throw new ApplicationError(`Unknown node type: ${nodeName}`, { level: 'warning' });
-		}
 		const loadInfo = knownNodes[nodeName.replace('n8n-nodes-base.', '')];
 		if (!loadInfo) {
-			throw new ApplicationError(`Unknown node type: ${nodeName}`, { level: 'warning' });
+			throw new UnrecognizedNodeTypeError('n8n-nodes-base', nodeName);
 		}
 		const sourcePath = loadInfo.sourcePath.replace(/^dist\//, './').replace(/\.js$/, '.ts');
 		const nodeSourcePath = path.join(baseDir, sourcePath);
@@ -330,7 +314,7 @@ export const equalityTest = async (testData: WorkflowTestData, types: INodeTypes
 		return expect(resultData, msg).toEqual(testData.output.nodeData[nodeName]);
 	});
 
-	expect(result.finished).toEqual(true);
+	expect(result.finished || result.status === 'waiting').toEqual(true);
 };
 
 const preparePinData = (pinData: IDataObject) => {
@@ -381,7 +365,6 @@ export const workflowToTests = (workflowFiles: string[]) => {
 
 export const testWorkflows = (workflows: string[]) => {
 	const tests = workflowToTests(workflows);
-
 	const nodeTypes = setup(tests);
 
 	for (const testData of tests) {
@@ -403,7 +386,7 @@ export const getWorkflowFilenames = (dirname: string) => {
 	return workflows;
 };
 
-export const createMockExecuteFunction = (
+export const createMockExecuteFunction = <T = IExecuteFunctions>(
 	nodeParameters: IDataObject,
 	nodeMock: INode,
 	continueBool = false,
@@ -427,6 +410,6 @@ export const createMockExecuteFunction = (
 		helpers: {
 			constructExecutionMetaData,
 		},
-	} as unknown as IExecuteFunctions;
+	} as unknown as T;
 	return fakeExecuteFunction;
 };

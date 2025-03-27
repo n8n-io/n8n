@@ -1,9 +1,10 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
-import type { SheetProperties } from '../../helpers/GoogleSheets.types';
-import { apiRequest } from '../../transport';
-import type { GoogleSheet } from '../../helpers/GoogleSheet';
-import { getExistingSheetNames, hexToRgb } from '../../helpers/GoogleSheets.utils';
+
 import { wrapData } from '../../../../../../utils/utilities';
+import type { GoogleSheet } from '../../helpers/GoogleSheet';
+import type { SheetProperties } from '../../helpers/GoogleSheets.types';
+import { getExistingSheetNames, hexToRgb } from '../../helpers/GoogleSheets.utils';
+import { apiRequest } from '../../transport';
 
 export const description: SheetProperties = [
 	{
