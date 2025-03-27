@@ -4,6 +4,7 @@ import {
 	type IDataObject,
 	type IExecuteFunctions,
 	type IGetNodeParameterOptions,
+	ILoadOptionsFunctions,
 	type INodeExecutionData,
 	type IPairedItemData,
 	NodeOperationError,
@@ -177,5 +178,73 @@ describe('Test Supabase Node', () => {
 				uri: 'https://api.supabase.io/rest/v1/my_table',
 			}),
 		);
+	});
+
+	it('should show descriptive error in fetching tables when wrong schema is set', async () => {
+		const fakeExecuteFunction = createMockExecuteFunction({
+			resource: 'row',
+			operation: 'getAll',
+			returnAll: true,
+			useCustomSchema: true,
+			schema: '',
+			tableId: 'my_table',
+		});
+
+		const mockLoadOptionsFunctions: ILoadOptionsFunctions = {
+			...fakeExecuteFunction,
+			getCurrentNodeParameter: jest.fn(),
+			getCurrentNodeParameters: jest.fn(),
+		};
+
+		const expectedError = {
+			level: 'warning',
+			tags: {
+				packageName: 'workflow',
+			},
+			extra: undefined,
+			context: {},
+			functionality: 'regular',
+			name: 'NodeApiError',
+			timestamp: 1743066292930,
+			node: {
+				parameters: {
+					useCustomSchema: true,
+					schema: '',
+					resource: 'row',
+					operation: 'getAll',
+					tableId: 'n8n',
+					returnAll: true,
+					filterType: 'manual',
+					matchType: 'anyFilter',
+					filters: {},
+				},
+				id: 'uuid-1234',
+				name: 'Temp-Node',
+				type: 'n8n-nodes-base.supabase',
+				typeVersion: 1,
+				position: [0, 0],
+				credentials: {
+					supabaseApi: {
+						id: 'z7MK41ZmcZoE4Fjb',
+						name: 'Supabase account',
+					},
+				},
+			},
+			messages: [
+				'406 - {"code":"PGRST106","details":null,"hint":null,"message":"The schema must be one of the following: public, graphql_public, custom_schema, my_new_schema"}',
+			],
+			httpCode: '406',
+			description:
+				'The schema must be one of the following: public, graphql_public, custom_schema, my_new_schema',
+		};
+
+		jest.spyOn(utils, 'supabaseApiRequest').mockRejectedValueOnce(expectedError);
+
+		try {
+			await node.methods.loadOptions.getTables.call(mockLoadOptionsFunctions);
+		} catch (error) {
+			expect(error.description).toMatch(/The schema must be one of the following: public/);
+			expect(error.name).toBe('NodeApiError');
+		}
 	});
 });
