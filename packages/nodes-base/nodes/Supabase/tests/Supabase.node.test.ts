@@ -4,7 +4,7 @@ import {
 	type IDataObject,
 	type IExecuteFunctions,
 	type IGetNodeParameterOptions,
-	ILoadOptionsFunctions,
+	type ILoadOptionsFunctions,
 	type INodeExecutionData,
 	type IPairedItemData,
 	NodeOperationError,
