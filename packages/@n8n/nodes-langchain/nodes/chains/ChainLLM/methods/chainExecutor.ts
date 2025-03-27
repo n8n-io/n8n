@@ -19,7 +19,7 @@ export class NaiveJsonOutputParser<
 			return directParsed as T;
 		} catch (e) {
 			// If fails, fall back to JsonOutputParser parser
-			return super.parse(text);
+			return await super.parse(text);
 		}
 	}
 }

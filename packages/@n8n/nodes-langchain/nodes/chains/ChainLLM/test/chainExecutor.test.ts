@@ -8,7 +8,7 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import * as tracing from '@utils/tracing';
 
-import { executeChain } from '../methods/chainExecutor';
+import { executeChain, NaiveJsonOutputParser } from '../methods/chainExecutor';
 import * as chainExecutor from '../methods/chainExecutor';
 import * as promptUtils from '../methods/promptUtils';
 
@@ -30,7 +30,7 @@ describe('chainExecutor', () => {
 	});
 
 	describe('getOutputParserForLLM', () => {
-		it('should return JsonOutputParser for OpenAI-like models with json_object response format', () => {
+		it('should return NaiveJsonOutputParser for OpenAI-like models with json_object response format', () => {
 			const openAILikeModel = {
 				modelKwargs: {
 					response_format: {
@@ -42,10 +42,10 @@ describe('chainExecutor', () => {
 			const parser = chainExecutor.getOutputParserForLLM(
 				openAILikeModel as unknown as BaseChatModel,
 			);
-			expect(parser).toBeInstanceOf(JsonOutputParser);
+			expect(parser).toBeInstanceOf(NaiveJsonOutputParser);
 		});
 
-		it('should return JsonOutputParser for Ollama models with json format', () => {
+		it('should return NaiveJsonOutputParser for Ollama models with json format', () => {
 			const ollamaLikeModel = {
 				format: 'json',
 			};
@@ -53,7 +53,7 @@ describe('chainExecutor', () => {
 			const parser = chainExecutor.getOutputParserForLLM(
 				ollamaLikeModel as unknown as BaseChatModel,
 			);
-			expect(parser).toBeInstanceOf(JsonOutputParser);
+			expect(parser).toBeInstanceOf(NaiveJsonOutputParser);
 		});
 
 		it('should return StringOutputParser for models without JSON format settings', () => {
@@ -61,6 +61,121 @@ describe('chainExecutor', () => {
 
 			const parser = chainExecutor.getOutputParserForLLM(regularModel);
 			expect(parser).toBeInstanceOf(StringOutputParser);
+		});
+	});
+
+	describe('NaiveJsonOutputParser', () => {
+		it('should parse valid JSON directly', async () => {
+			const parser = new NaiveJsonOutputParser();
+			const jsonStr = '{"name": "John", "age": 30}';
+
+			const result = await parser.parse(jsonStr);
+
+			expect(result).toEqual({
+				name: 'John',
+				age: 30,
+			});
+		});
+
+		it('should handle nested JSON objects', async () => {
+			const parser = new NaiveJsonOutputParser();
+			const jsonStr = '{"person": {"name": "John", "age": 30}, "active": true}';
+
+			const result = await parser.parse(jsonStr);
+
+			expect(result).toEqual({
+				person: {
+					name: 'John',
+					age: 30,
+				},
+				active: true,
+			});
+		});
+
+		it('should use parent class parser for malformed JSON', async () => {
+			const parser = new NaiveJsonOutputParser();
+			const superParseSpy = jest.spyOn(JsonOutputParser.prototype, 'parse').mockResolvedValue({
+				parsed: 'content',
+			});
+
+			const malformedJson = 'Sure, here is your JSON: {"name": "John", "age": 30}';
+
+			await parser.parse(malformedJson);
+
+			expect(superParseSpy).toHaveBeenCalledWith(malformedJson);
+			superParseSpy.mockRestore();
+		});
+
+		it('should handle JSON with surrounding text by using parent parser', async () => {
+			const parser = new NaiveJsonOutputParser();
+			const jsonWithText = 'Here is the result: {"result": "success", "code": 200}';
+
+			// Mock the parent class parse method
+			const mockParsedResult = { result: 'success', code: 200 };
+			const superParseSpy = jest
+				.spyOn(JsonOutputParser.prototype, 'parse')
+				.mockResolvedValue(mockParsedResult);
+
+			const result = await parser.parse(jsonWithText);
+
+			expect(superParseSpy).toHaveBeenCalledWith(jsonWithText);
+			expect(result).toEqual(mockParsedResult);
+
+			superParseSpy.mockRestore();
+		});
+
+		it('should correctly parse JSON with markdown text inside properties', async () => {
+			const parser = new NaiveJsonOutputParser();
+			const jsonWithMarkdown = `{
+				"title": "Markdown Guide",
+				"content": "# Heading 1\\n## Heading 2\\n* Bullet point\\n* Another bullet\\n\\n\`\`\`code block\`\`\`\\n> Blockquote",
+				"description": "A guide with **bold** and *italic* text"
+			}`;
+
+			const result = await parser.parse(jsonWithMarkdown);
+
+			expect(result).toEqual({
+				title: 'Markdown Guide',
+				content:
+					'# Heading 1\n## Heading 2\n* Bullet point\n* Another bullet\n\n```code block```\n> Blockquote',
+				description: 'A guide with **bold** and *italic* text',
+			});
+		});
+
+		it('should correctly parse JSON with markdown code blocks containing JSON', async () => {
+			const parser = new NaiveJsonOutputParser();
+			const jsonWithMarkdownAndNestedJson = `{
+				"title": "JSON Examples",
+				"examples": "Here's an example of JSON: \`\`\`json\\n{\\"nested\\": \\"json\\", \\"in\\": \\"code block\\"}\\n\`\`\`",
+				"valid": true
+			}`;
+
+			const result = await parser.parse(jsonWithMarkdownAndNestedJson);
+
+			expect(result).toEqual({
+				title: 'JSON Examples',
+				examples:
+					'Here\'s an example of JSON: ```json\n{"nested": "json", "in": "code block"}\n```',
+				valid: true,
+			});
+		});
+
+		it('should handle JSON with special characters in markdown content', async () => {
+			const parser = new NaiveJsonOutputParser();
+			const jsonWithSpecialChars = `{
+				"title": "Special Characters",
+				"content": "# Testing \\n\\n * List with **bold** & *italic*\\n * Item with [link](https://example.com)\\n * Math: 2 < 3 > 1 && true || false",
+				"technical": "function test() { return x < y && z > w; }"
+			}`;
+
+			const result = await parser.parse(jsonWithSpecialChars);
+
+			expect(result).toEqual({
+				title: 'Special Characters',
+				content:
+					'# Testing \n\n * List with **bold** & *italic*\n * Item with [link](https://example.com)\n * Math: 2 < 3 > 1 && true || false',
+				technical: 'function test() { return x < y && z > w; }',
+			});
 		});
 	});
 
