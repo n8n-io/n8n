@@ -120,8 +120,8 @@ export class PipedriveTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Added',
-						value: 'added',
+						name: 'Create',
+						value: 'create',
 						description: 'Data got added',
 						action: 'Data was added',
 					},
@@ -132,30 +132,24 @@ export class PipedriveTrigger implements INodeType {
 						action: 'Any change',
 					},
 					{
-						name: 'Deleted',
-						value: 'deleted',
+						name: 'Delete',
+						value: 'delete',
 						description: 'Data got deleted',
 						action: 'Data was deleted',
 					},
 					{
-						name: 'Merged',
-						value: 'merged',
-						description: 'Data got merged',
-						action: 'Data was merged',
-					},
-					{
-						name: 'Updated',
-						value: 'updated',
-						description: 'Data got updated',
-						action: 'Data was updated',
+						name: 'Change',
+						value: 'change',
+						description: 'Data got changed',
+						action: 'Data was changed',
 					},
 				],
 				default: '*',
 				description: 'Type of action to receive notifications about',
 			},
 			{
-				displayName: 'Object',
-				name: 'object',
+				displayName: 'Entity',
+				name: 'entity',
 				type: 'options',
 				options: [
 					{
@@ -247,7 +241,7 @@ export class PipedriveTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const incomingAuthentication = this.getNodeParameter('incomingAuthentication', 0) as string;
 				const eventAction = this.getNodeParameter('action') as string;
-				const eventObject = this.getNodeParameter('object') as string;
+				const eventObject = this.getNodeParameter('entity') as string;
 
 				const endpoint = '/webhooks';
 
