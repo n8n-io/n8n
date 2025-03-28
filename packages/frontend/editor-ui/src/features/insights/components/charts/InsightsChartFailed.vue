@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { Bar } from 'vue-chartjs';
+import type { ChartData } from 'chart.js';
 import { useCssVar } from '@vueuse/core';
 import dateformat from 'dateformat';
 import type { InsightsByTime, InsightsSummaryType } from '@n8n/api-types';
@@ -31,7 +32,7 @@ const chartOptions = computed(() =>
 	}),
 );
 
-const chartData = computed(() => {
+const chartData = computed<ChartData<'bar'>>(() => {
 	const labels: string[] = [];
 	const data: number[] = [];
 
