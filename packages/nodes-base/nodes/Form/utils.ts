@@ -141,7 +141,6 @@ export function prepareFormData({
 	formSubmittedHeader?: string;
 	customCss?: string;
 }) {
-	const validForm = formFields.length > 0;
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
 	const n8nWebsiteLink = `https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger${utm_campaign}`;
 
@@ -151,7 +150,6 @@ export function prepareFormData({
 
 	const formData: FormTriggerData = {
 		testRun,
-		validForm,
 		formTitle,
 		formDescription,
 		formDescriptionMetadata: createDescriptionMetadata(formDescription),
@@ -170,10 +168,6 @@ export function prepareFormData({
 			redirectUrl = `http://${redirectUrl}`;
 		}
 		formData.redirectUrl = redirectUrl;
-	}
-
-	if (!validForm) {
-		return formData;
 	}
 
 	for (const [index, field] of formFields.entries()) {

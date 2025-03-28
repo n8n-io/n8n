@@ -27,13 +27,6 @@ export const renderFormNode = async (
 		title = context.evaluateExpression(`{{ $('${trigger?.name}').params.formTitle }}`) as string;
 	}
 
-	let description = options.formDescription;
-	if (!description) {
-		description = context.evaluateExpression(
-			`{{ $('${trigger?.name}').params.formDescription }}`,
-		) as string;
-	}
-
 	let buttonLabel = options.buttonLabel;
 	if (!buttonLabel) {
 		buttonLabel =
@@ -50,7 +43,7 @@ export const renderFormNode = async (
 		context,
 		res,
 		formTitle: title,
-		formDescription: description,
+		formDescription: options.formDescription,
 		formFields: fields,
 		responseMode: 'responseNode',
 		mode,
