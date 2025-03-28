@@ -118,10 +118,12 @@ export class OAuth1CredentialController extends AbstractOAuthController {
 			const [credential, _, oauthCredentials] =
 				await this.resolveCredential<OAuth1CredentialData>(req);
 
-			const oauthToken = await axios.post<string>(oauthCredentials.accessTokenUrl, {
-				oauth_token,
-				oauth_verifier,
-			});
+			// Form URL encoded body https://datatracker.ietf.org/doc/html/rfc5849#section-3.5.2
+			const oauthToken = await axios.post<string>(
+				oauthCredentials.accessTokenUrl,
+				{ oauth_token, oauth_verifier },
+				{ headers: { 'content-type': 'application/x-www-form-urlencoded' } },
+			);
 
 			// Response comes as x-www-form-urlencoded string so convert it to JSON
 
