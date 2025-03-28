@@ -259,7 +259,9 @@ describe('getNewNodePosition', () => {
 		];
 		const newPosition: XYPosition = [100, 100];
 		const movePosition: XYPosition = [50, 50];
-		const result = getNewNodePosition(nodes, newPosition, movePosition);
+		const result = getNewNodePosition(nodes, newPosition, {
+			offset: movePosition,
+		});
 		expect(result).toEqual([200, 200]);
 	});
 

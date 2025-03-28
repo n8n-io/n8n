@@ -217,3 +217,10 @@ export type BoundingBox = {
 	width: number;
 	height: number;
 };
+
+export type ViewportBoundaries = {
+	xMin: number;
+	xMax: number;
+	yMin: number;
+	yMax: number;
+};

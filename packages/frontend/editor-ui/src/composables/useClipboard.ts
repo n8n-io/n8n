@@ -1,6 +1,5 @@
 import { computed, inject, onBeforeUnmount, onMounted, ref, unref } from 'vue';
-import { useClipboard as useClipboardCore } from '@vueuse/core';
-import { useDebounce } from '@/composables/useDebounce';
+import { useClipboard as useClipboardCore, useThrottleFn } from '@vueuse/core';
 import { IsInPiPWindowSymbol } from '@/constants';
 
 type ClipboardEventFn = (data: string, event?: ClipboardEvent) => void;
@@ -12,7 +11,6 @@ export function useClipboard(
 		onPaste() {},
 	},
 ) {
-	const { debounce } = useDebounce();
 	const isInPiPWindow = inject(IsInPiPWindowSymbol, false);
 	const { copy, copied, isSupported, text } = useClipboardCore({ legacy: true });
 
@@ -49,9 +47,7 @@ export function useClipboard(
 		}
 	}
 
-	const debouncedOnPaste = debounce(onPaste, {
-		debounceTime: 1000,
-	});
+	const throttledOnPaste = useThrottleFn(onPaste, 1000);
 
 	/**
 	 * Initialize copy/paste elements and events
@@ -61,7 +57,7 @@ export function useClipboard(
 			return;
 		}
 
-		document.addEventListener('paste', debouncedOnPaste);
+		document.addEventListener('paste', throttledOnPaste);
 
 		initialized.value = true;
 	});
@@ -71,7 +67,7 @@ export function useClipboard(
 	 */
 	onBeforeUnmount(() => {
 		if (initialized.value) {
-			document.removeEventListener('paste', debouncedOnPaste);
+			document.removeEventListener('paste', throttledOnPaste);
 		}
 	});
 
