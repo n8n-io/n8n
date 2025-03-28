@@ -1,6 +1,5 @@
 import { Container } from '@n8n/di';
 import type { GlobalRole } from '@n8n/permissions';
-import { getApiKeyScopesForRole } from '@n8n/permissions';
 import { hash } from 'bcryptjs';
 
 import { AuthIdentity } from '@/databases/entities/auth-identity';
@@ -10,6 +9,7 @@ import { AuthUserRepository } from '@/databases/repositories/auth-user.repositor
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { MfaService } from '@/mfa/mfa.service';
 import { TOTPService } from '@/mfa/totp.service';
+import { getApiKeyScopesForRole } from '@/public-api/permissions.ee';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 import { randomEmail, randomName, randomValidPassword } from '../random';

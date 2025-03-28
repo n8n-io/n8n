@@ -1,7 +1,7 @@
 import type { GlobalRole } from '@n8n/permissions';
-import { getApiKeyScopesForRole } from '@n8n/permissions';
 
 import type { MigrationContext, ReversibleMigration } from '@/databases/types';
+import { getApiKeyScopesForRole } from '@/public-api/permissions.ee';
 
 type ApiKeyWithRole = { id: string; role: GlobalRole };
 

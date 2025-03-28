@@ -38,26 +38,3 @@ export const API_KEY_RESOURCES = {
 	sourceControl: ['pull'] as const,
 	workflowTags: ['update', 'list'] as const,
 } as const;
-
-type ApiKeyResourceKey = keyof typeof API_KEY_RESOURCES;
-
-const API_KEY_COMMON_RESOURCES: ApiKeyResourceKey[] = [
-	'tag',
-	'workflowTags',
-	'workflow',
-	'execution',
-	'credential',
-];
-
-export const API_KEY_OWNER_RESOURCES: ApiKeyResourceKey[] = [
-	'user',
-	'sourceControl',
-	'securityAudit',
-	'project',
-	'variable',
-	...API_KEY_COMMON_RESOURCES,
-] as const;
-
-export const API_KEY_ADMIN_RESOURCES = [...API_KEY_OWNER_RESOURCES] as const;
-
-export const API_KEY_MEMBER_RESOURCES = [...API_KEY_COMMON_RESOURCES] as const;
