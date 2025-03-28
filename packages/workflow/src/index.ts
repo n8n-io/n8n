@@ -36,6 +36,7 @@ export {
 	updateDisplayOptions,
 	randomInt,
 	randomString,
+	hasKey,
 } from './utils';
 export {
 	isINodeProperties,
@@ -52,6 +53,7 @@ export { ExpressionExtensions } from './Extensions';
 export * as ExpressionParser from './Extensions/ExpressionParser';
 export { NativeMethods } from './NativeMethods';
 export * from './NodeParameters/FilterParameter';
+export * from './NodeParameters/CommonToolParameters';
 
 export type {
 	DocMetadata,

@@ -10,7 +10,7 @@ import {
 	type IDataObject,
 	type ISupplyDataFunctions,
 } from 'n8n-workflow';
-import { hasKey } from 'n8n-workflow/src/utils';
+import { hasKey } from 'n8n-workflow';
 
 const htmlOptimizer = (ctx: ISupplyDataFunctions, itemIndex: number, maxLength: number) => {
 	const cssSelector = ctx.getNodeParameter('cssSelector', itemIndex, '') as string;

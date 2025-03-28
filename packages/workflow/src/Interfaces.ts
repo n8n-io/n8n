@@ -1740,6 +1740,7 @@ export interface INodeTypeBaseDescription {
  */
 export type UsableAsToolDescription = {
 	replacements?: Partial<Omit<INodeTypeBaseDescription, 'usableAsTool'>>;
+	commonToolProperties?: boolean;
 };
 
 export interface INodePropertyRouting {

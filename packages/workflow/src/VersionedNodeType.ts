@@ -1,4 +1,5 @@
 import type { INodeTypeBaseDescription, IVersionedNodeType, INodeType } from './Interfaces';
+import { deepCopy } from './utils';
 
 export class VersionedNodeType implements IVersionedNodeType {
 	currentVersion: number;
@@ -11,7 +12,9 @@ export class VersionedNodeType implements IVersionedNodeType {
 		nodeVersions: IVersionedNodeType['nodeVersions'],
 		description: INodeTypeBaseDescription,
 	) {
-		this.nodeVersions = nodeVersions;
+		this.nodeVersions = Object.fromEntries(
+			Object.entries(nodeVersions).map((x) => [x[0], deepCopy(x[1])]),
+		);
 		this.currentVersion = description.defaultVersion ?? this.getLatestVersion();
 		this.description = description;
 	}

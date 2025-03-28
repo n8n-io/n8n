@@ -15,19 +15,19 @@ import type {
 	IVersionedNodeType,
 	KnownNodesAndCredentials,
 } from 'n8n-workflow';
-import { ApplicationError, applyDeclarativeNodeOptionParameters } from 'n8n-workflow';
+import {
+	ApplicationError,
+	applyDeclarativeNodeOptionParameters,
+	commonToolParameters,
+	UserError,
+} from 'n8n-workflow';
 import * as path from 'path';
 
 import { UnrecognizedCredentialTypeError } from '@/errors/unrecognized-credential-type.error';
 import { UnrecognizedNodeTypeError } from '@/errors/unrecognized-node-type.error';
 import { Logger } from '@/logging/logger';
 
-import {
-	commonCORSParameters,
-	commonPollingParameters,
-	commonToolParameters,
-	CUSTOM_NODES_CATEGORY,
-} from './constants';
+import { commonCORSParameters, commonPollingParameters, CUSTOM_NODES_CATEGORY } from './constants';
 import { loadClassInIsolation } from './load-class-in-isolation';
 
 function toJSON(this: ICredentialType) {
@@ -357,9 +357,6 @@ export abstract class DirectoryLoader {
 		if (polling) {
 			properties.unshift(...commonPollingParameters);
 		}
-		if (commonToolProperties) {
-			properties.unshift(...commonToolParameters);
-		}
 		if (nodeType.webhook && supportsCORS) {
 			const optionsProperty = properties.find(({ name }) => name === 'options');
 			if (optionsProperty)
@@ -368,6 +365,13 @@ export abstract class DirectoryLoader {
 					...(optionsProperty.options as INodePropertyOptions[]),
 				];
 			else properties.push(...commonCORSParameters);
+		}
+		// This adds the commonToolParameters to custom tool nodes.
+		// nodesAsTools via `usableAsTools` receive this property in the `cli` package instead
+		if (commonToolProperties) {
+			if (!nodeType.description?.codex?.subcategories?.AI?.includes('Tools'))
+				throw new UserError('Provided `commonToolProperties` for node that is not an AI Tools');
+			properties.push(...commonToolParameters);
 		}
 
 		applyDeclarativeNodeOptionParameters(nodeType);
