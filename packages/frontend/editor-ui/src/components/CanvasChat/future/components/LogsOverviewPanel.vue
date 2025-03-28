@@ -121,13 +121,19 @@ function handleClickNode(clicked: TreeNode) {
 				{{ locale.baseText('logs.overview.body.empty.message') }}
 			</N8nText>
 			<div v-else :class="$style.scrollable">
-				<div v-if="executionStatusText !== undefined" :class="$style.summary">
-					<N8nText size="small" color="text-base">{{ executionStatusText }}</N8nText>
+				<N8nText
+					v-if="executionStatusText !== undefined"
+					tag="div"
+					color="text-light"
+					size="small"
+					:class="$style.summary"
+				>
+					<span>{{ executionStatusText }}</span>
 					<ConsumedTokenCountText
 						v-if="consumedTokens.totalTokens > 0"
 						:consumed-tokens="consumedTokens"
 					/>
-				</div>
+				</N8nText>
 				<ElTree
 					v-if="executionTree.length > 0"
 					:class="$style.tree"

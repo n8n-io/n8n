@@ -89,27 +89,34 @@ function handleClickToggleButton() {
 					[$style.indent]: true,
 					[$style.connectorCurved]: level === depth,
 					[$style.connectorStraight]: !isLastChild(level),
+					[$style.selected]: props.isSelected,
 				}"
 			/>
 		</template>
-		<div :class="[$style.selectable, props.isSelected ? $style.selected : '']">
-			<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
-			<N8nText tag="div" :bold="true" size="small" :class="$style.name">{{ node.name }}</N8nText>
-			<N8nText tag="div" color="text-light" size="small" :class="$style.timeTook">{{
-				timeTookText
-			}}</N8nText>
-			<N8nText tag="div" color="text-light" size="small" :class="$style.startedAt">{{
-				startedAtText
-			}}</N8nText>
-			<div v-if="subtreeConsumedTokens !== undefined" :class="$style.consumedTokens">
-				<ConsumedTokenCountText
-					v-if="
-						subtreeConsumedTokens.totalTokens > 0 &&
-						(props.data.children.length === 0 || !props.node.expanded)
-					"
-					:consumed-tokens="subtreeConsumedTokens"
-				/>
-			</div>
+		<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
+		<N8nText tag="div" :bold="true" size="small" :class="$style.name">{{ node.name }}</N8nText>
+		<N8nText tag="div" color="text-light" size="small" :class="$style.timeTook">{{
+			timeTookText
+		}}</N8nText>
+		<N8nText tag="div" color="text-light" size="small" :class="$style.startedAt">{{
+			startedAtText
+		}}</N8nText>
+		<N8nText
+			v-if="subtreeConsumedTokens !== undefined"
+			tag="div"
+			color="text-light"
+			size="small"
+			:class="$style.consumedTokens"
+		>
+			<ConsumedTokenCountText
+				v-if="
+					subtreeConsumedTokens.totalTokens > 0 &&
+					(props.data.children.length === 0 || !props.node.expanded)
+				"
+				:consumed-tokens="subtreeConsumedTokens"
+			/>
+		</N8nText>
+		<div>
 			<N8nIconButton
 				type="secondary"
 				size="medium"
@@ -128,29 +135,37 @@ function handleClickToggleButton() {
 <style lang="scss" module>
 .container {
 	display: flex;
-	align-items: center;
+	align-items: stretch;
 	justify-content: stretch;
 	overflow: hidden;
-}
-
-.selectable {
-	flex-grow: 1;
-	width: 0;
-	display: flex;
-	align-items: center;
-	justify-content: stretch;
-	border-radius: var(--border-radius-base);
-
-	&.selected,
-	.container:hover & {
-		background-color: var(--color-foreground-base);
-	}
 
 	& > * {
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 		padding: var(--spacing-2xs);
+	}
+
+	& > :has(.toggleButton) {
+		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		padding: 0;
+	}
+
+	& > .icon {
+		border-top-left-radius: var(--border-radius-base);
+		border-bottom-left-radius: var(--border-radius-base);
+	}
+
+	& > :last-of-type {
+		border-top-right-radius: var(--border-radius-base);
+		border-bottom-right-radius: var(--border-radius-base);
+	}
+
+	&.selected > :not(.indent),
+	&:hover > :not(.indent) {
+		background-color: var(--color-foreground-base);
 	}
 }
 
@@ -184,6 +199,7 @@ function handleClickToggleButton() {
 }
 
 .icon {
+	flex-grow: 0;
 	flex-shrink: 0;
 }
 
@@ -195,24 +211,23 @@ function handleClickToggleButton() {
 .timeTook {
 	flex-grow: 0;
 	flex-shrink: 0;
-	width: 15em;
+	width: 20%;
 }
 
 .startedAt {
 	flex-grow: 0;
 	flex-shrink: 0;
-	width: 21em;
+	width: 30%;
 }
 
 .consumedTokens {
 	flex-grow: 0;
 	flex-shrink: 0;
-	width: 9em;
+	width: 10%;
 	text-align: right;
 }
 
 .toggleButton {
-	flex-shrink: 0;
 	border: none;
 	background: transparent;
 	margin-inline-end: var(--spacing-5xs);
