@@ -1,31 +1,18 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
         "finished": {
             "type": "boolean"
         },
-        "mode": {
+        "id": {
             "type": "string"
         },
-        "stoppedAt": {
+        "mode": {
             "type": "string"
         },
         "workflowId": {
             "type": "string"
         }
     },
-    "required": [
-        "id",
-        "finished",
-        "mode",
-        "retryOf",
-        "retrySuccessId",
-        "startedAt",
-        "stoppedAt",
-        "workflowId",
-        "waitTill"
-    ]
+    "version": 1
 }

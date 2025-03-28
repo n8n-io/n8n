@@ -15,13 +15,13 @@ jobs:
     if: github.event.review.state == 'approved'
     steps:
       - name: Check out current commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 2
 
       - name: Determine changed files
-        uses: tomi/paths-filter-action@v3.0.2
+        uses: tomi/paths-filter-action@32c62f5ca100c1110406e3477d5b3ecef4666fec # v3.0.2
         id: changed
         with:
           filters: |
@@ -63,7 +63,7 @@ jobs:
     steps:
       - name: E2E success comment
         if: ${{ needs.get-metadata.outputs.should_run == 'true' && needs.run-e2e-tests.outputs.tests_passed == 'true' }}
-        uses: peter-evans/create-or-update-comment@v4.0.0
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
@@ -72,7 +72,7 @@ jobs:
 
       - name: E2E fail comment
         if: needs.run-e2e-tests.result == 'failure'
-        uses: peter-evans/create-or-update-comment@v4.0.0
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |

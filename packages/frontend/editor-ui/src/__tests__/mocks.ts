@@ -11,7 +11,7 @@ import type {
 	INodeTypeDescription,
 	INodeIssues,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeHelpers, Workflow } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers, Workflow } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
@@ -23,6 +23,7 @@ import {
 	MANUAL_TRIGGER_NODE_TYPE,
 	NO_OP_NODE_TYPE,
 	SET_NODE_TYPE,
+	SIMULATE_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/constants';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
@@ -50,14 +51,16 @@ export const mockNode = ({
 
 export const mockNodeTypeDescription = ({
 	name = SET_NODE_TYPE,
+	icon = 'fa:pen',
 	version = 1,
 	credentials = [],
-	inputs = [NodeConnectionType.Main],
-	outputs = [NodeConnectionType.Main],
+	inputs = [NodeConnectionTypes.Main],
+	outputs = [NodeConnectionTypes.Main],
 	codex = undefined,
 	properties = [],
 }: {
 	name?: INodeTypeDescription['name'];
+	icon?: INodeTypeDescription['icon'];
 	version?: INodeTypeDescription['version'];
 	credentials?: INodeTypeDescription['credentials'];
 	inputs?: INodeTypeDescription['inputs'];
@@ -67,6 +70,7 @@ export const mockNodeTypeDescription = ({
 } = {}) =>
 	mock<INodeTypeDescription>({
 		name,
+		icon,
 		displayName: name,
 		description: '',
 		version,
@@ -82,6 +86,7 @@ export const mockNodeTypeDescription = ({
 		codex,
 		credentials,
 		documentationUrl: 'https://docs',
+		iconUrl: 'nodes/test-node/icon.svg',
 		webhooks: undefined,
 	});
 
@@ -101,6 +106,7 @@ export const mockNodes = [
 	mockNode({ name: 'Chat Trigger', type: CHAT_TRIGGER_NODE_TYPE }),
 	mockNode({ name: 'Agent', type: AGENT_NODE_TYPE }),
 	mockNode({ name: 'Sticky', type: STICKY_NODE_TYPE }),
+	mockNode({ name: 'Simulate', type: SIMULATE_NODE_TYPE }),
 	mockNode({ name: CanvasNodeRenderType.AddNodes, type: CanvasNodeRenderType.AddNodes }),
 	mockNode({ name: 'End', type: NO_OP_NODE_TYPE }),
 ];

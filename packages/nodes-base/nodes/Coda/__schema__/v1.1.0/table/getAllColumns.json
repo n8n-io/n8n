@@ -1,42 +1,32 @@
 {
-	"type": "object",
-	"properties": {
-		"id": {
-			"type": "string"
-		},
-		"type": {
-			"type": "string"
-		},
-		"name": {
-			"type": "string"
-		},
-		"href": {
-			"type": "string"
-		},
-		"format": {
-			"type": "object",
-			"properties": {
-				"type": {
-					"type": "string"
-				},
-				"isArray": {
-					"type": "boolean"
-				}
-			},
-			"required": [
-				"type",
-				"isArray"
-			]
-		},
-		"display": {
-			"type": "boolean"
-		}
-	},
-	"required": [
-		"id",
-		"type",
-		"name",
-		"href",
-		"format"
-	]
+    "type": "object",
+    "properties": {
+        "display": {
+            "type": "boolean"
+        },
+        "format": {
+            "type": "object",
+            "properties": {
+                "isArray": {
+                    "type": "boolean"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "href": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        }
+    },
+    "version": 1
 }

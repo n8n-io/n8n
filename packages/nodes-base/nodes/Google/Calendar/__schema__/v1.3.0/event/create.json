@@ -1,17 +1,17 @@
 {
     "type": "object",
     "properties": {
-        "id": {
+        "created": {
             "type": "string"
         },
-        "start": {
+        "creator": {
             "type": "object",
             "properties": {
-                "dateTime": {
+                "email": {
                     "type": "string"
                 },
-                "timeZone": {
-                    "type": "string"
+                "self": {
+                    "type": "boolean"
                 }
             }
         },
@@ -26,41 +26,6 @@
                 }
             }
         },
-        "creator": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "self": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "email"
-            ]
-        },
-        "organizer": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "self": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "email",
-                "self"
-            ]
-        },
-        "created": {
-            "type": "string"
-        },
-        "updated": {
-            "type": "string"
-        },
         "etag": {
             "type": "string"
         },
@@ -73,8 +38,22 @@
         "iCalUID": {
             "type": "string"
         },
+        "id": {
+            "type": "string"
+        },
         "kind": {
             "type": "string"
+        },
+        "organizer": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "self": {
+                    "type": "boolean"
+                }
+            }
         },
         "reminders": {
             "type": "object",
@@ -82,16 +61,31 @@
                 "useDefault": {
                     "type": "boolean"
                 }
-            },
-            "required": [
-                "useDefault"
-            ]
+            }
         },
         "sequence": {
             "type": "integer"
         },
+        "start": {
+            "type": "object",
+            "properties": {
+                "dateTime": {
+                    "type": "string"
+                },
+                "timeZone": {
+                    "type": "string"
+                }
+            }
+        },
         "status": {
             "type": "string"
+        },
+        "summary": {
+            "type": "string"
+        },
+        "updated": {
+            "type": "string"
         }
-    }
+    },
+    "version": 1
 }

@@ -18,10 +18,7 @@
                                     "spotify": {
                                         "type": "string"
                                     }
-                                },
-                                "required": [
-                                    "spotify"
-                                ]
+                                }
                             },
                             "href": {
                                 "type": "string"
@@ -38,15 +35,7 @@
                             "uri": {
                                 "type": "string"
                             }
-                        },
-                        "required": [
-                            "external_urls",
-                            "href",
-                            "id",
-                            "name",
-                            "type",
-                            "uri"
-                        ]
+                        }
                     }
                 },
                 "available_markets": {
@@ -61,10 +50,7 @@
                         "spotify": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "spotify"
-                    ]
+                    }
                 },
                 "href": {
                     "type": "string"
@@ -80,19 +66,17 @@
                             "height": {
                                 "type": "integer"
                             },
-                            "width": {
-                                "type": "integer"
-                            },
                             "url": {
                                 "type": "string"
+                            },
+                            "width": {
+                                "type": "integer"
                             }
-                        },
-                        "required": [
-                            "height",
-                            "width",
-                            "url"
-                        ]
+                        }
                     }
+                },
+                "is_playable": {
+                    "type": "boolean"
                 },
                 "name": {
                     "type": "string"
@@ -112,21 +96,7 @@
                 "uri": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "album_type",
-                "artists",
-                "external_urls",
-                "href",
-                "id",
-                "images",
-                "name",
-                "release_date",
-                "release_date_precision",
-                "total_tracks",
-                "type",
-                "uri"
-            ]
+            }
         },
         "artists": {
             "type": "array",
@@ -139,10 +109,7 @@
                             "spotify": {
                                 "type": "string"
                             }
-                        },
-                        "required": [
-                            "spotify"
-                        ]
+                        }
                     },
                     "href": {
                         "type": "string"
@@ -159,15 +126,7 @@
                     "uri": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "external_urls",
-                    "href",
-                    "id",
-                    "name",
-                    "type",
-                    "uri"
-                ]
+                }
             }
         },
         "available_markets": {
@@ -191,10 +150,7 @@
                 "isrc": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "isrc"
-            ]
+            }
         },
         "external_urls": {
             "type": "object",
@@ -202,10 +158,7 @@
                 "spotify": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "spotify"
-            ]
+            }
         },
         "href": {
             "type": "string"
@@ -214,6 +167,9 @@
             "type": "string"
         },
         "is_local": {
+            "type": "boolean"
+        },
+        "is_playable": {
             "type": "boolean"
         },
         "name": {
@@ -231,5 +187,6 @@
         "uri": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

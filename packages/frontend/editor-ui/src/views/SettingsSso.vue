@@ -298,7 +298,7 @@ onMounted(async () => {
 	> label {
 		display: inline-block;
 		font-size: var(--font-size-s);
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight-medium);
 		padding: 0 0 var(--spacing-2xs);
 	}
 
