@@ -1,11 +1,12 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { useI18n } from '@/composables/useI18n';
-import type { ResourceType } from '@/utils/projects.utils';
+import { ResourceType } from '@/utils/projects.utils';
 import { splitName } from '@/utils/projects.utils';
 import type { Project, ProjectIcon as BadgeIcon } from '@/types/projects.types';
 import { ProjectTypes } from '@/types/projects.types';
 import type { CredentialsResource, WorkflowResource } from '../layouts/ResourcesListLayout.vue';
+import { VIEWS } from '@/constants';
 
 type Props = {
 	resource: WorkflowResource | CredentialsResource;
@@ -72,6 +73,8 @@ const badgeIcon = computed<BadgeIcon>(() => {
 	switch (projectState.value) {
 		case ProjectState.Owned:
 		case ProjectState.SharedOwned:
+		case ProjectState.Personal:
+		case ProjectState.SharedPersonal:
 			return { type: 'icon', value: 'user' };
 		case ProjectState.Team:
 		case ProjectState.SharedTeam:
@@ -123,6 +126,20 @@ const badgeTooltip = computed(() => {
 			return '';
 	}
 });
+const projectLocation = computed(() => {
+	if (
+		projectState.value !== ProjectState.Personal &&
+		projectState.value !== ProjectState.SharedPersonal &&
+		props.resource.homeProject?.id &&
+		props.resourceType === ResourceType.Workflow
+	) {
+		return {
+			name: VIEWS.PROJECTS,
+			projectId: props.resource.homeProject.id,
+		};
+	}
+	return null;
+});
 </script>
 <template>
 	<N8nTooltip :disabled="!badgeTooltip" placement="top">
@@ -135,15 +152,19 @@ const badgeTooltip = computed(() => {
 				data-test-id="card-badge"
 			>
 				<ProjectIcon :icon="badgeIcon" :border-less="true" size="mini" />
-				<span v-n8n-truncate:20>{{ badgeText }}</span>
+				<router-link v-if="projectLocation" :to="projectLocation">
+					<span v-n8n-truncate:20>{{ badgeText }}</span>
+				</router-link>
+				<span v-else v-n8n-truncate:20>{{ badgeText }}</span>
 			</N8nBadge>
+			<slot />
 			<N8nBadge
 				v-if="numberOfMembersInHomeTeamProject"
 				:class="[$style.badge, $style.countBadge]"
 				theme="tertiary"
 				bold
 			>
-				+ {{ numberOfMembersInHomeTeamProject }}
+				+{{ numberOfMembersInHomeTeamProject }}
 			</N8nBadge>
 		</div>
 		<template #content>
@@ -154,6 +175,7 @@ const badgeTooltip = computed(() => {
 
 <style lang="scss" module>
 .wrapper {
+	display: flex;
 	margin-right: var(--spacing-xs);
 }
 
@@ -165,7 +187,8 @@ const badgeTooltip = computed(() => {
 	z-index: 1;
 	position: relative;
 	height: 23px;
-	:global(.n8n-text) {
+	:global(.n8n-text),
+	a {
 		color: var(--color-text-base);
 	}
 }
