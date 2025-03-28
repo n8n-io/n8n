@@ -1,5 +1,5 @@
 import { merge } from 'lodash-es';
-import { type ChartOptions, ScriptableContext } from 'chart.js';
+import { type ChartOptions, type ScriptableContext } from 'chart.js';
 import { useCssVar } from '@vueuse/core';
 import { smartDecimal } from '@n8n/utils/number/smartDecimal';
 
