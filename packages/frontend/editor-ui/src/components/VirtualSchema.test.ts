@@ -195,12 +195,12 @@ describe('VirtualSchema.vue', () => {
 		const { getAllByText, getAllByTestId } = renderComponent();
 
 		await waitFor(() =>
-			expect(getAllByText("No fields - item(s) exist, but they're empty").length).toBe(2),
+			expect(getAllByText('[Execute previous nodes] to see schema').length).toBe(2),
 		);
 
 		// Collapse second node
 		await userEvent.click(getAllByTestId('run-data-schema-header')[1]);
-		expect(getAllByText("No fields - item(s) exist, but they're empty").length).toBe(1);
+		expect(getAllByText('[Execute previous nodes] to see schema').length).toBe(1);
 	});
 
 	it('renders schema for empty data with binary', async () => {
@@ -309,7 +309,7 @@ describe('VirtualSchema.vue', () => {
 
 		const { getAllByText } = renderComponent();
 		await waitFor(() =>
-			expect(getAllByText("No fields - item(s) exist, but they're empty").length).toBe(2),
+			expect(getAllByText('[Execute previous nodes] to see schema').length).toBe(2),
 		);
 	});
 
@@ -322,7 +322,7 @@ describe('VirtualSchema.vue', () => {
 
 		const { getAllByText } = renderComponent({ props: { paneType: 'output' } });
 		await waitFor(() =>
-			expect(getAllByText("No fields - item(s) exist, but they're empty").length).toBe(1),
+			expect(getAllByText('[Execute previous nodes] to see schema').length).toBe(1),
 		);
 	});
 
@@ -619,7 +619,7 @@ describe('VirtualSchema.vue', () => {
 			expect(getAllByTestId('run-data-schema-header')).toHaveLength(3);
 		});
 
-		expect(queryAllByText("No fields - item(s) exist, but they're empty")).toHaveLength(0);
+		expect(queryAllByText('[Execute previous nodes] to see schema')).toHaveLength(0);
 		expect(getAllByTestId('schema-preview-warning')).toHaveLength(2);
 		expect(container).toMatchSnapshot();
 	});
