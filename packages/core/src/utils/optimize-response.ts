@@ -10,7 +10,6 @@ import {
 	type IDataObject,
 	type ISupplyDataFunctions,
 } from 'n8n-workflow';
-import { hasKey } from 'n8n-workflow';
 
 const htmlOptimizer = (ctx: ISupplyDataFunctions, itemIndex: number, maxLength: number) => {
 	const cssSelector = ctx.getNodeParameter('cssSelector', itemIndex, '') as string;
@@ -126,7 +125,7 @@ const jsonOptimizer = (ctx: ISupplyDataFunctions, itemIndex: number) => {
 		let returnData: IDataObject[] = [];
 
 		if (!Array.isArray(response)) {
-			if (dataField && hasKey(response, dataField)) {
+			if (dataField) {
 				const data = response[dataField] as IDataObject | IDataObject[];
 				if (Array.isArray(data)) {
 					response = data;
@@ -184,81 +183,6 @@ const jsonOptimizer = (ctx: ISupplyDataFunctions, itemIndex: number) => {
 		return JSON.stringify(returnData, null, 2);
 	};
 };
-
-// const jsonOptimizer = (ctx: ISupplyDataFunctions, itemIndex: number) => {
-// 	return (response: string): string => {
-// 		let responseData = jsonParse(response);
-
-// 		if (typeof responseData !== 'object' || !responseData) {
-// 			throw new NodeOperationError(
-// 				ctx.getNode(),
-// 				'The response type must be an object or an array of objects',
-// 				{ itemIndex },
-// 			);
-// 		}
-
-// 		const dataField = ctx.getNodeParameter('dataField', itemIndex, '') as string;
-// 		let returnData: IDataObject[] = [];
-
-// 		if (!Array.isArray(responseData)) {
-// 			if (dataField) {
-// 				const data = get(responseData, dataField) as unknown;
-// 				if (Array.isArray(data)) {
-// 					responseData = data;
-// 				} else {
-// 					responseData = [data];
-// 				}
-// 			} else {
-// 				responseData = [responseData];
-// 			}
-// 		} else if (dataField) {
-// 			responseData = responseData.map((data) => get(data, dataField) as unknown);
-// 		}
-
-// 		const fieldsToInclude = ctx.getNodeParameter('fieldsToInclude', itemIndex, 'all') as
-// 			| 'all'
-// 			| 'selected'
-// 			| 'except';
-
-// 		let fields: string | string[] = [];
-
-// 		if (fieldsToInclude !== 'all') {
-// 			fields = ctx.getNodeParameter('fields', itemIndex, []) as string[] | string;
-
-// 			if (typeof fields === 'string') {
-// 				fields = fields.split(',').map((field) => field.trim());
-// 			}
-// 		} else {
-// 			// this is safe as there is no combination of parameters that arrives here but avoids
-// 			// the block above that assigns a IDataObject[] to responseData
-// 			returnData = responseData as IDataObject[];
-// 		}
-
-// 		if (fieldsToInclude === 'selected') {
-// 			for (const item of responseData) {
-// 				const newItem: IDataObject = {};
-
-// 				for (const field of fields) {
-// 					set(newItem, field, get(item, field));
-// 				}
-
-// 				returnData.push(newItem);
-// 			}
-// 		}
-
-// 		if (fieldsToInclude === 'except') {
-// 			for (const item of responseData) {
-// 				for (const field of fields) {
-// 					unset(item, field);
-// 				}
-
-// 				returnData.push(item);
-// 			}
-// 		}
-
-// 		return JSON.stringify(returnData, null, 2);
-// 	};
-// };
 
 export const configureResponseOptimizer = <T extends ResponseOptimizeValue>(
 	ctx: ISupplyDataFunctions,

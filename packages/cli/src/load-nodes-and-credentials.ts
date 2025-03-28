@@ -2,7 +2,6 @@ import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import glob from 'fast-glob';
 import fsPromises from 'fs/promises';
-import { get } from 'lodash';
 import type { Class, DirectoryLoader, Types } from 'n8n-core';
 import {
 	CUSTOM_EXTENSION_ENV,
@@ -30,7 +29,6 @@ import type {
 import {
 	commonToolParameters,
 	deepCopy,
-	hasKey,
 	NodeConnectionTypes,
 	UnexpectedError,
 	UserError,
@@ -459,9 +457,10 @@ export class LoadNodesAndCredentials {
 			item.description.inputs = [];
 			item.description.outputs = [NodeConnectionTypes.AiTool];
 			item.description.displayName += ' Tool';
-			const commonToolProperties = hasKey(item.description.usableAsTool, 'commonToolProperties')
-				? (item.description.usableAsTool.commonToolProperties as boolean)
-				: false;
+			const commonToolProperties =
+				typeof item.description.usableAsTool === 'object'
+					? item.description.usableAsTool.commonToolProperties
+					: false;
 			delete item.description.usableAsTool;
 
 			const hasResource = item.description.properties.some((prop) => prop.name === 'resource');

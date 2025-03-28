@@ -36,7 +36,6 @@ export {
 	updateDisplayOptions,
 	randomInt,
 	randomString,
-	hasKey,
 } from './utils';
 export {
 	isINodeProperties,

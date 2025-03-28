@@ -12,9 +12,7 @@ export class VersionedNodeType implements IVersionedNodeType {
 		nodeVersions: IVersionedNodeType['nodeVersions'],
 		description: INodeTypeBaseDescription,
 	) {
-		this.nodeVersions = Object.fromEntries(
-			Object.entries(nodeVersions).map((x) => [x[0], deepCopy(x[1])]),
-		);
+		this.nodeVersions = deepCopy(nodeVersions);
 		this.currentVersion = description.defaultVersion ?? this.getLatestVersion();
 		this.description = description;
 	}

@@ -370,7 +370,7 @@ export abstract class DirectoryLoader {
 		// nodesAsTools via `usableAsTools` receive this property in the `cli` package instead
 		if (commonToolProperties) {
 			if (!nodeType.description?.codex?.subcategories?.AI?.includes('Tools'))
-				throw new UserError('Provided `commonToolProperties` for node that is not an AI Tools');
+				throw new UserError('Provided `commonToolProperties` for node that is not an AI Tool');
 			properties.push(...commonToolParameters);
 		}
 
