@@ -26,7 +26,13 @@ import type {
 	IVersionedNodeType,
 	INodeProperties,
 } from 'n8n-workflow';
-import { deepCopy, NodeConnectionTypes, UnexpectedError, UserError } from 'n8n-workflow';
+import {
+	commonToolParameters,
+	deepCopy,
+	NodeConnectionTypes,
+	UnexpectedError,
+	UserError,
+} from 'n8n-workflow';
 import path from 'path';
 import picocolors from 'picocolors';
 
@@ -451,6 +457,10 @@ export class LoadNodesAndCredentials {
 			item.description.inputs = [];
 			item.description.outputs = [NodeConnectionTypes.AiTool];
 			item.description.displayName += ' Tool';
+			const commonToolProperties =
+				typeof item.description.usableAsTool === 'object'
+					? item.description.usableAsTool.commonToolProperties
+					: false;
 			delete item.description.usableAsTool;
 
 			const hasResource = item.description.properties.some((prop) => prop.name === 'resource');
@@ -501,6 +511,9 @@ export class LoadNodesAndCredentials {
 							descriptionType: ['manual'],
 						},
 					};
+				}
+				if (commonToolProperties) {
+					item.description.properties.push(...commonToolParameters);
 				}
 			}
 		}

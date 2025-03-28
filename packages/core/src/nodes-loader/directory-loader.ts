@@ -15,7 +15,12 @@ import type {
 	IVersionedNodeType,
 	KnownNodesAndCredentials,
 } from 'n8n-workflow';
-import { ApplicationError, applyDeclarativeNodeOptionParameters } from 'n8n-workflow';
+import {
+	ApplicationError,
+	applyDeclarativeNodeOptionParameters,
+	commonToolParameters,
+	UserError,
+} from 'n8n-workflow';
 import * as path from 'path';
 
 import { UnrecognizedCredentialTypeError } from '@/errors/unrecognized-credential-type.error';
@@ -348,7 +353,7 @@ export abstract class DirectoryLoader {
 	}
 
 	private applySpecialNodeParameters(nodeType: INodeType): void {
-		const { properties, polling, supportsCORS } = nodeType.description;
+		const { properties, polling, commonToolProperties, supportsCORS } = nodeType.description;
 		if (polling) {
 			properties.unshift(...commonPollingParameters);
 		}
@@ -360,6 +365,13 @@ export abstract class DirectoryLoader {
 					...(optionsProperty.options as INodePropertyOptions[]),
 				];
 			else properties.push(...commonCORSParameters);
+		}
+		// This adds the commonToolParameters to custom tool nodes.
+		// nodesAsTools via `usableAsTools` receive this property in the `cli` package instead
+		if (commonToolProperties) {
+			if (!nodeType.description?.codex?.subcategories?.AI?.includes('Tools'))
+				throw new UserError('Provided `commonToolProperties` for node that is not an AI Tool');
+			properties.push(...commonToolParameters);
 		}
 
 		applyDeclarativeNodeOptionParameters(nodeType);

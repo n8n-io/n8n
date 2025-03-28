@@ -1199,6 +1199,9 @@ importers:
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
+      '@mozilla/readability':
+        specifier: 0.5.0
+        version: 0.5.0
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
@@ -1223,6 +1226,9 @@ importers:
       chardet:
         specifier: 2.0.0
         version: 2.0.0
+      cheerio:
+        specifier: ^1.0.0
+        version: 1.0.0
       concat-stream:
         specifier: 2.0.0
         version: 2.0.0
@@ -1238,9 +1244,15 @@ importers:
       form-data:
         specifier: 'catalog:'
         version: 4.0.0
+      html-to-text:
+        specifier: 9.0.5
+        version: 9.0.5
       iconv-lite:
         specifier: 'catalog:'
         version: 0.6.3
+      jsdom:
+        specifier: 23.0.1
+        version: 23.0.1
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
@@ -8093,10 +8105,6 @@ packages:
 
   entities@3.0.1:
     resolution: {integrity: sha512-WiyBqoomrwMdFG1e0kqvASYfnlb0lp8M5o5Fw2OFq1hNZxxcNk8Ik0Xm7LxzBhuidnZB/UtBqVCgUz3kBOP51Q==}
-    engines: {node: '>=0.12'}
-
-  entities@4.4.0:
-    resolution: {integrity: sha512-oYp7156SP8LkeGD0GF85ad1X9Ai79WtRsZ2gxJqtBuzH+98YUV6jkHEKlZkMbcrjJjIVJNIDP/3WL9wQkoPbWA==}
     engines: {node: '>=0.12'}
 
   entities@4.5.0:
@@ -21085,7 +21093,7 @@ snapshots:
     dependencies:
       domelementtype: 2.3.0
       domhandler: 5.0.3
-      entities: 4.4.0
+      entities: 4.5.0
 
   domelementtype@2.3.0: {}
 
@@ -21244,8 +21252,6 @@ snapshots:
   entities@2.2.0: {}
 
   entities@3.0.1: {}
-
-  entities@4.4.0: {}
 
   entities@4.5.0: {}
 

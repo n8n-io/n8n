@@ -37,7 +37,9 @@ export class Telegram implements INodeType {
 		defaults: {
 			name: 'Telegram',
 		},
-		usableAsTool: true,
+		usableAsTool: {
+			commonToolProperties: true,
+		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
 		credentials: [
