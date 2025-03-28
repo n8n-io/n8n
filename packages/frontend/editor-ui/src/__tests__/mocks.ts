@@ -28,7 +28,7 @@ import {
 } from '@/constants';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import { CanvasNodeRenderType } from '@/types';
-import { FrontendSettings } from '@n8n/api-types';
+import type { FrontendSettings } from '@n8n/api-types';
 
 export const mockNode = ({
 	id = uuid(),
