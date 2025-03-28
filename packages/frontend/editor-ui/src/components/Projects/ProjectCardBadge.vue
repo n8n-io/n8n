@@ -5,11 +5,15 @@ import { ResourceType } from '@/utils/projects.utils';
 import { splitName } from '@/utils/projects.utils';
 import type { Project, ProjectIcon as BadgeIcon } from '@/types/projects.types';
 import { ProjectTypes } from '@/types/projects.types';
-import type { CredentialsResource, WorkflowResource } from '../layouts/ResourcesListLayout.vue';
+import type {
+	CredentialsResource,
+	FolderResource,
+	WorkflowResource,
+} from '../layouts/ResourcesListLayout.vue';
 import { VIEWS } from '@/constants';
 
 type Props = {
-	resource: WorkflowResource | CredentialsResource;
+	resource: WorkflowResource | CredentialsResource | FolderResource;
 	resourceType: ResourceType;
 	resourceTypeLabel: string;
 	personalProject: Project | null;
