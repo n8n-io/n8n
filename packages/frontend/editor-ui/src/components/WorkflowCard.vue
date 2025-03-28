@@ -84,14 +84,8 @@ const showFolders = computed(() => {
 	return settingsStore.isFoldersFeatureEnabled && route.name !== VIEWS.WORKFLOWS;
 });
 
-const projectIcon = computed<CardProjectIcon>(() => {
-	const defaultIcon: CardProjectIcon = { type: 'icon', value: 'layer-group' };
-	if (props.data.homeProject?.type === ProjectTypes.Personal) {
-		return { type: 'icon', value: 'user' };
-	} else if (props.data.homeProject?.type === ProjectTypes.Team) {
-		return props.data.homeProject.icon ?? defaultIcon;
-	}
-	return defaultIcon;
+const showCardBreadcrumbs = computed(() => {
+	return isOverviewPage.value && !isSomeoneElsesWorkflow.value && cardBreadcrumbs.value.length;
 });
 
 const projectName = computed(() => {
@@ -357,16 +351,14 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
 				<ProjectCardBadge
-					:class="$style.cardBadge"
+					:class="{ [$style.cardBadge]: true, [$style['with-breadcrumbs']]: showCardBreadcrumbs }"
 					:resource="data"
 					:resource-type="ResourceType.Workflow"
 					:resource-type-label="resourceTypeLabel"
 					:personal-project="projectsStore.personalProject"
+					:show-badge-border="false"
 				>
-					<div
-						v-if="isOverviewPage && !isSomeoneElsesWorkflow && cardBreadcrumbs.length"
-						:class="$style.breadcrumbs"
-					>
+					<div v-if="showCardBreadcrumbs" :class="$style.breadcrumbs">
 						<n8n-breadcrumbs
 							:items="cardBreadcrumbs"
 							:hidden-items="hiddenBreadcrumbsItemsAsync"
@@ -377,7 +369,9 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 							data-test-id="workflow-card-breadcrumbs"
 							@tooltip-opened="fetchHiddenBreadCrumbsItems"
 							@item-selected="onBreadcrumbItemClick"
-						/>
+						>
+							<template #prepend></template>
+						</n8n-breadcrumbs>
 					</div>
 				</ProjectCardBadge>
 				<WorkflowActivator
@@ -439,11 +433,13 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 	cursor: default;
 }
 
-.home-project span {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing-3xs);
-	color: var(--color-text-base);
+.cardBadge.with-breadcrumbs {
+	:global(.n8n-badge) {
+		padding-right: 0;
+	}
+	:global(.n8n-breadcrumbs) {
+		padding-left: var(--spacing-5xs);
+	}
 }
 
 @include mixins.breakpoint('sm-and-down') {

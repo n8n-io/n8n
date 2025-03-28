@@ -13,6 +13,7 @@ type Props = {
 	resourceType: ResourceType;
 	resourceTypeLabel: string;
 	personalProject: Project | null;
+	showBadgeBorder?: boolean;
 };
 
 const enum ProjectState {
@@ -25,7 +26,9 @@ const enum ProjectState {
 	Unknown = 'unknown',
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+	showBadgeBorder: true,
+});
 
 const i18n = useI18n();
 
@@ -69,6 +72,7 @@ const badgeText = computed(() => {
 		return name ?? email ?? '';
 	}
 });
+
 const badgeIcon = computed<BadgeIcon>(() => {
 	switch (projectState.value) {
 		case ProjectState.Owned:
@@ -142,7 +146,7 @@ const projectLocation = computed(() => {
 });
 </script>
 <template>
-	<div :class="$style.wrapper" v-bind="$attrs">
+	<div :class="{ [$style.wrapper]: true, [$style['no-border']]: showBadgeBorder }" v-bind="$attrs">
 		<N8nTooltip :disabled="!badgeTooltip || numberOfMembersInHomeTeamProject !== 0" placement="top">
 			<N8nBadge
 				v-if="badgeText"
@@ -150,7 +154,7 @@ const projectLocation = computed(() => {
 				theme="tertiary"
 				bold
 				data-test-id="card-badge"
-				:show-border="false"
+				:show-border="showBadgeBorder"
 			>
 				<ProjectIcon :icon="badgeIcon" :border-less="true" size="mini" />
 				<router-link v-if="projectLocation" :to="projectLocation">
@@ -182,7 +186,13 @@ const projectLocation = computed(() => {
 <style lang="scss" module>
 .wrapper {
 	display: flex;
-	margin-right: var(--spacing-xs);
+	align-items: center;
+	border: var(--border-base);
+	border-radius: var(--border-radius-base);
+
+	&.no-border {
+		border: none;
+	}
 }
 
 .badge {
@@ -206,13 +216,11 @@ const projectLocation = computed(() => {
 	}
 }
 
-.countBadge {
-	margin-left: -5px;
-	z-index: 0;
-	position: relative;
-	height: 23px;
-	:global(.n8n-text) {
-		color: var(--color-text-light);
-	}
+.count-badge {
+	font-size: var(--font-size-2xs);
+	padding: var(--spacing-4xs) var(--spacing-3xs);
+	color: var(--color-text-base);
+	border-left: var(--border-base);
+	line-height: var(--font-line-height-regular);
 }
 </style>
