@@ -1,8 +1,9 @@
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { googleApiRequestAllItems } from '../GenericFunctions';
+import { googleApiRequest, googleApiRequestAllItems } from '../GenericFunctions';
 
-describe('googleApiRequestAllItems', () => {
+describe('Google GSuiteAdmin Node', () => {
 	let mockContext: IExecuteFunctions | ILoadOptionsFunctions;
 
 	beforeEach(() => {
@@ -15,6 +16,54 @@ describe('googleApiRequestAllItems', () => {
 
 		jest.clearAllMocks();
 	});
+
+	it('should make a successful API request with default options', async () => {
+		(mockContext.helpers.httpRequestWithAuthentication as jest.Mock).mockResolvedValueOnce({
+			success: true,
+		});
+
+		const result = await googleApiRequest.call(mockContext, 'GET', '/example/resource');
+
+		expect(mockContext.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'gSuiteAdminOAuth2Api',
+			expect.objectContaining({
+				method: 'GET',
+				url: 'https://www.googleapis.com/admin/example/resource',
+				headers: { 'Content-Type': 'application/json' },
+				json: true,
+				qs: {},
+			}),
+		);
+		expect(result).toEqual({ success: true });
+	});
+
+	it('should omit the body if it is empty', async () => {
+		(mockContext.helpers.httpRequestWithAuthentication as jest.Mock).mockResolvedValueOnce({
+			success: true,
+		});
+
+		await googleApiRequest.call(mockContext, 'GET', '/example/resource', {});
+
+		expect(mockContext.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'gSuiteAdminOAuth2Api',
+			expect.not.objectContaining({ body: expect.anything() }),
+		);
+	});
+
+	it('should throw a NodeApiError if the request fails', async () => {
+		const errorResponse = { message: 'API Error' };
+		(mockContext.helpers.httpRequestWithAuthentication as jest.Mock).mockRejectedValueOnce(
+			errorResponse,
+		);
+
+		await expect(googleApiRequest.call(mockContext, 'GET', '/example/resource')).rejects.toThrow(
+			NodeApiError,
+		);
+
+		expect(mockContext.getNode).toHaveBeenCalled();
+		expect(mockContext.helpers.httpRequestWithAuthentication).toHaveBeenCalled();
+	});
+
 	it('should return all items across multiple pages', async () => {
 		(mockContext.helpers.httpRequestWithAuthentication as jest.Mock)
 			.mockResolvedValueOnce({
