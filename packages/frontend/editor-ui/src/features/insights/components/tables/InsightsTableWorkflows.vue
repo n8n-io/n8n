@@ -1,60 +1,79 @@
 <script lang="ts" setup="">
-import { computed, ref } from 'vue';
 import type { InsightsByWorkflow } from '@n8n/api-types';
+import N8nDataTableServer, {
+	type TableHeader,
+} from '@n8n/design-system/components/N8nDataTableServer/N8nDataTableServer.vue';
+import { computed, ref } from 'vue';
 
 const props = defineProps<{
 	data: InsightsByWorkflow;
+	loading?: boolean;
 }>();
 
-const currentPage = ref();
-const columns = ref([
+type Item = InsightsByWorkflow['data'][number];
+
+const rows = computed(() => props.data.data);
+
+const headers = ref<Array<TableHeader<Item>>>([
 	{
-		id: 'workflowName',
-		path: 'workflowName',
-		label: 'Name',
+		title: 'Name',
+		key: 'workflowName',
+		disableSort: true,
 	},
 	{
-		id: 'total',
-		path: 'total',
-		label: 'Executions',
+		title: 'Executions',
+		key: 'total',
 	},
 	{
-		id: 'failed',
-		path: 'failed',
-		label: 'Failures',
+		title: 'Failures',
+		key: 'failed',
 	},
 	{
-		id: 'failureRate',
-		path: 'failureRate',
-		label: 'Failure rate',
+		title: 'Failure rate',
+		key: 'failureRate',
 	},
 	{
-		id: 'timeSaved',
-		path: 'timeSaved',
-		label: 'Time saved',
+		title: 'Time saved',
+		key: 'timeSaved',
 	},
 	{
-		id: 'averageRunTime',
-		path: 'averageRunTime',
-		label: 'Run time',
+		title: 'Run time',
+		key: 'averageRunTime',
 	},
 	{
-		id: 'projectName',
-		path: 'projectName',
-		label: 'Project name',
+		title: 'Project name',
+		key: 'projectName',
+		disableSort: true,
 	},
 ]);
-const rows = computed(() => props.data.data);
+
+const sortTableBy = ref([{ id: 'total', desc: true }]);
+const currentPage = ref(0);
+const itemsPerPage = ref(20);
+
+const emit = defineEmits<{
+	'update:options': [
+		payload: {
+			page: number;
+			itemsPerPage: number;
+			sortBy: Array<{ id: string; desc: boolean }>;
+		},
+	];
+}>();
 </script>
 
 <template>
 	<div>
 		<N8nHeading bold tag="h3" size="medium" class="mb-s">Workflow insights</N8nHeading>
-		<N8nDatatable
-			:columns
-			:rows
-			:current-page="currentPage"
-			@update:current-page="($event: number) => (currentPage = $event)"
+		<N8nDataTableServer
+			v-model:sort-by="sortTableBy"
+			v-model:page="currentPage"
+			v-model:items-per-page="itemsPerPage"
+			:items="rows"
+			:headers="headers"
+			:items-length="data.count"
+			:loading="loading"
+			@update:options="emit('update:options', $event)"
 		/>
 	</div>
 </template>
