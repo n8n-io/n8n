@@ -12,7 +12,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	NodeApiError,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	NodeOperationError,
 	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
@@ -31,7 +31,10 @@ export class Github implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GitHub',
 		name: 'github',
-		icon: { light: 'file:github.svg', dark: 'file:github.dark.svg' },
+		icon: {
+			light: 'file:github.svg',
+			dark: 'file:github.dark.svg',
+		},
 		group: ['input'],
 		version: [1, 1.1],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -40,8 +43,8 @@ export class Github implements INodeType {
 			name: 'GitHub',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		webhooks: [
 			{
 				...defaultWebhookDescription,
@@ -238,7 +241,7 @@ export class Github implements INodeType {
 						name: 'List',
 						value: 'list',
 						description: 'List contents of a folder',
-						action: 'List a file',
+						action: 'List files',
 					},
 				],
 				default: 'create',
@@ -484,6 +487,7 @@ export class Github implements INodeType {
 				},
 				default: '',
 			},
+
 			// ----------------------------------
 			//         shared
 			// ----------------------------------
@@ -551,7 +555,10 @@ export class Github implements INodeType {
 				displayName: 'Repository Name',
 				name: 'repository',
 				type: 'resourceLocator',
-				default: { mode: 'list', value: '' },
+				default: {
+					mode: 'list',
+					value: '',
+				},
 				required: true,
 				modes: [
 					{
@@ -615,7 +622,10 @@ export class Github implements INodeType {
 				displayName: 'Workflow',
 				name: 'workflowId',
 				type: 'resourceLocator',
-				default: { mode: 'list', value: '' },
+				default: {
+					mode: 'list',
+					value: '',
+				},
 				required: true,
 				modes: [
 					{
@@ -686,7 +696,10 @@ export class Github implements INodeType {
 				displayName: 'Ref',
 				name: 'ref',
 				type: 'resourceLocator',
-				default: { mode: 'list', value: '' },
+				default: {
+					mode: 'list',
+					value: '',
+				},
 				required: true,
 				modes: [
 					{
@@ -949,7 +962,6 @@ export class Github implements INodeType {
 				placeholder: '',
 				hint: 'The name of the output binary field to put the file in',
 			},
-
 			{
 				displayName: 'Additional Parameters',
 				name: 'additionalParameters',
@@ -1230,6 +1242,7 @@ export class Github implements INodeType {
 					},
 				],
 			},
+
 			// ----------------------------------
 			//         issue:get
 			// ----------------------------------
@@ -1245,7 +1258,7 @@ export class Github implements INodeType {
 						resource: ['issue'],
 					},
 				},
-				description: 'The number of the issue get data of',
+				description: 'The issue number to get data for',
 			},
 
 			// ----------------------------------
@@ -1263,7 +1276,7 @@ export class Github implements INodeType {
 						resource: ['issue'],
 					},
 				},
-				description: 'The number of the issue to lock',
+				description: 'The issue number to lock',
 			},
 			{
 				displayName: 'Lock Reason',
@@ -1298,7 +1311,7 @@ export class Github implements INodeType {
 					},
 				],
 				default: 'resolved',
-				description: 'The reason to lock the issue',
+				description: 'The reason for locking the issue',
 			},
 
 			// ----------------------------------
@@ -1464,6 +1477,7 @@ export class Github implements INodeType {
 					},
 				],
 			},
+
 			// ----------------------------------
 			//         release:getAll
 			// ----------------------------------
@@ -1782,9 +1796,11 @@ export class Github implements INodeType {
 					},
 				],
 			},
+
 			// ----------------------------------
 			//         rerview
 			// ----------------------------------
+
 			// ----------------------------------
 			//         review:getAll
 			// ----------------------------------
@@ -1865,6 +1881,7 @@ export class Github implements INodeType {
 				default: 50,
 				description: 'Max number of results to return',
 			},
+
 			// ----------------------------------
 			//         review:create
 			// ----------------------------------
@@ -1953,6 +1970,7 @@ export class Github implements INodeType {
 					},
 				],
 			},
+
 			// ----------------------------------
 			//         review:update
 			// ----------------------------------
@@ -1969,6 +1987,7 @@ export class Github implements INodeType {
 				default: '',
 				description: 'The body of the review',
 			},
+
 			// ----------------------------------
 			//       user:getRepositories
 			// ----------------------------------
@@ -2036,6 +2055,7 @@ export class Github implements INodeType {
 				},
 				description: 'The email address of the invited user',
 			},
+
 			// ----------------------------------
 			//    organization:getRepositories
 			// ----------------------------------
@@ -2075,10 +2095,10 @@ export class Github implements INodeType {
 
 	methods = {
 		listSearch: {
-			getUsers,
-			getRepositories,
-			getWorkflows,
 			getRefs,
+			getRepositories,
+			getUsers,
+			getWorkflows,
 		},
 	};
 
