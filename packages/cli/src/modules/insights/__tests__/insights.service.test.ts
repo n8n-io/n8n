@@ -1,4 +1,5 @@
 import { Container } from '@n8n/di';
+import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
@@ -6,6 +7,7 @@ import type { ExecutionStatus, IRun, WorkflowExecuteMode } from 'n8n-workflow';
 
 import type { Project } from '@/databases/entities/project';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import type { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import type { IWorkflowDb } from '@/interfaces';
 import type { TypeUnit } from '@/modules/insights/database/entities/insights-shared';
 import { InsightsMetadataRepository } from '@/modules/insights/database/repositories/insights-metadata.repository';
@@ -253,6 +255,161 @@ describe('workflowExecuteAfterHandler', () => {
 		await expect(insightsService.workflowExecuteAfterHandler(ctx, run)).rejects.toThrowError(
 			`Could not find an owner for the workflow with the name '${workflow.name}' and the id '${workflow.id}'`,
 		);
+	});
+
+	describe('workflowExecuteAfterHandler - cacheMetadata', () => {
+		let insightsService: InsightsService;
+		let entityManagerMock = mock<EntityManager>();
+		const sharedWorkflowRepositoryMock: jest.Mocked<SharedWorkflowRepository> = {
+			manager: entityManagerMock,
+		} as unknown as jest.Mocked<SharedWorkflowRepository>;
+
+		beforeAll(async () => {
+			insightsService = new InsightsService(
+				sharedWorkflowRepositoryMock,
+				Container.get(InsightsByPeriodRepository),
+				Container.get(InsightsRawRepository),
+			);
+		});
+
+		let project: Project;
+		let workflow: IWorkflowDb & WorkflowEntity;
+
+		beforeEach(async () => {
+			await truncateAll();
+
+			project = await createTeamProject();
+			workflow = await createWorkflow({}, project);
+		});
+
+		test('reuses cached metadata for subsequent executions of the same workflow', async () => {
+			// ARRANGE
+			const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
+			const startedAt = DateTime.utc();
+			const stoppedAt = startedAt.plus({ seconds: 5 });
+			const run = mock<IRun>({
+				mode: 'webhook',
+				status: 'success',
+				startedAt: startedAt.toJSDate(),
+				stoppedAt: stoppedAt.toJSDate(),
+			});
+
+			// Mock the transaction function
+			const trxMock = {
+				findOne: jest.fn().mockResolvedValue({
+					projectId: 'project-id',
+					project: { name: 'project-name' },
+				}),
+				upsert: jest.fn(),
+				findOneBy: jest.fn().mockResolvedValue({
+					metaId: 'meta-id',
+					workflowName: workflow.name,
+					projectId: 'project-id',
+					projectName: 'project-name',
+				}),
+				insert: jest.fn(),
+			};
+
+			// Use jest.spyOn to mock the transaction method
+			entityManagerMock.transaction.mockImplementation(
+				jest.fn(async (runInTransaction: (entityManager: EntityManager) => Promise<void>) => {
+					await runInTransaction(trxMock as unknown as EntityManager);
+				}) as unknown as EntityManager['transaction'],
+			);
+
+			// ACT
+			await insightsService.workflowExecuteAfterHandler(ctx, run);
+
+			// ASSERT
+			expect(trxMock.findOne).toHaveBeenCalledWith(expect.anything(), {
+				where: { workflowId: workflow.id, role: 'workflow:owner' },
+				relations: { project: true },
+			});
+			expect(trxMock.upsert).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({
+					workflowId: workflow.id,
+					workflowName: workflow.name,
+					projectId: 'project-id',
+					projectName: 'project-name',
+				}),
+				['workflowId'],
+			);
+
+			// ACT AGAIN with the same workflow
+			await insightsService.workflowExecuteAfterHandler(ctx, run);
+
+			// ASSERT AGAIN
+			trxMock.findOne.mockClear();
+			trxMock.upsert.mockClear();
+			expect(trxMock.findOne).not.toHaveBeenCalled();
+			expect(trxMock.upsert).not.toHaveBeenCalled();
+		});
+
+		test('updates cached metadata if workflow details change', async () => {
+			// ARRANGE
+			const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
+			const startedAt = DateTime.utc();
+			const stoppedAt = startedAt.plus({ seconds: 5 });
+			const run = mock<IRun>({
+				mode: 'webhook',
+				status: 'success',
+				startedAt: startedAt.toJSDate(),
+				stoppedAt: stoppedAt.toJSDate(),
+			});
+
+			// Mock the transaction function
+			const trxMock = {
+				findOne: jest.fn().mockResolvedValue({
+					projectId: 'project-id',
+					project: { name: 'project-name' },
+				}),
+				upsert: jest.fn(),
+				findOneBy: jest.fn().mockResolvedValue({
+					metaId: 'meta-id',
+					workflowName: workflow.name,
+					projectId: 'project-id',
+					projectName: 'project-name',
+				}),
+				insert: jest.fn(),
+			};
+
+			// Use jest.spyOn to mock the transaction method
+			entityManagerMock.transaction.mockImplementation(
+				jest.fn(async (runInTransaction: (entityManager: EntityManager) => Promise<void>) => {
+					await runInTransaction(trxMock as unknown as EntityManager);
+				}) as unknown as EntityManager['transaction'],
+			);
+
+			// ACT
+			await insightsService.workflowExecuteAfterHandler(ctx, run);
+
+			// ASSERT
+			expect(trxMock.findOne).toHaveBeenCalled();
+			expect(trxMock.upsert).toHaveBeenCalled();
+
+			// Change the workflow name
+			workflow.name = 'new-workflow-name';
+
+			// ACT AGAIN with the same workflow
+			await insightsService.workflowExecuteAfterHandler(ctx, run);
+
+			// ASSERT AGAIN
+			expect(trxMock.findOne).toHaveBeenCalledWith(expect.anything(), {
+				where: { workflowId: workflow.id, role: 'workflow:owner' },
+				relations: { project: true },
+			});
+			expect(trxMock.upsert).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({
+					workflowId: workflow.id,
+					workflowName: workflow.name,
+					projectId: 'project-id',
+					projectName: 'project-name',
+				}),
+				['workflowId'],
+			);
+		});
 	});
 });
 
