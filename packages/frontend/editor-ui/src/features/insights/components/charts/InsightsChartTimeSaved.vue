@@ -58,7 +58,6 @@ const chartData = computed(() => {
 			{
 				label: i18n.baseText('insights.banner.title.timeSavedDailyAverage'),
 				data: cumulativeData,
-				fill: true,
 				backgroundColor: 'rgba(255, 255, 255, 0.5)',
 				borderColor: 'rgba(116, 116, 116, 1)',
 				borderDash: [5, 5],
@@ -67,8 +66,10 @@ const chartData = computed(() => {
 			{
 				label: i18n.baseText('insights.banner.title.timeSaved'),
 				data,
+				fill: {
+					target: 'origin',
+				},
 				cubicInterpolationMode: 'monotone' as const,
-				fill: true,
 				backgroundColor: (ctx: ScriptableContext<'line'>) =>
 					generateLinearGradient(ctx.chart.ctx, 292),
 				borderColor: 'rgba(255, 64, 39, 1)',
