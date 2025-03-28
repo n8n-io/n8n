@@ -10,9 +10,14 @@ type Props = {
 	tag?: string;
 	targetDataKey?: string;
 	disabled?: boolean;
+	cursor?: string;
 };
 
-const props = withDefaults(defineProps<Props>(), { tag: 'div', disabled: false });
+const props = withDefaults(defineProps<Props>(), {
+	tag: 'div',
+	cursor: 'grabbing',
+	disabled: false,
+});
 
 const emit = defineEmits<{
 	drag: [value: XYPosition];
@@ -86,7 +91,7 @@ const onDrag = (event: MouseEvent) => {
 		});
 
 		emit('dragstart', draggingElement.value);
-		document.body.style.cursor = 'grabbing';
+		document.body.style.cursor = props.cursor;
 	}
 
 	animationFrameId.value = window.requestAnimationFrame(() => {

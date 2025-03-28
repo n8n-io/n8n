@@ -26,7 +26,6 @@ import type {
 	AddedNodesAndConnections,
 	IExecutionResponse,
 	INodeUi,
-	IUpdateInformation,
 	IWorkflowDataUpdate,
 	IWorkflowDb,
 	IWorkflowTemplate,
@@ -64,6 +63,7 @@ import {
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
 	AI_CREDITS_EXPERIMENT,
+	NDV_UI_OVERHAUL_EXPERIMENT,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -125,6 +125,9 @@ const LazyNodeCreation = defineAsyncComponent(
 
 const LazyNodeDetailsView = defineAsyncComponent(
 	async () => await import('@/components/NodeDetailsView.vue'),
+);
+const LazyNodeDetailsViewV2 = defineAsyncComponent(
+	async () => await import('@/components/NodeDetailsViewV2.vue'),
 );
 
 const LazySetupWorkflowCredentialsButton = defineAsyncComponent(
@@ -243,6 +246,12 @@ const isReadOnlyRoute = computed(() => !!route?.meta?.readOnlyCanvas);
 const isReadOnlyEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
 });
+const isNDVV2 = computed(() =>
+	posthogStore.isVariantEnabled(
+		NDV_UI_OVERHAUL_EXPERIMENT.name,
+		NDV_UI_OVERHAUL_EXPERIMENT.variant,
+	),
+);
 
 const isCanvasReadOnly = computed(() => {
 	return (
@@ -763,9 +772,9 @@ async function onCreateWorkflow() {
 	await router.push({ name: VIEWS.NEW_WORKFLOW });
 }
 
-function onRenameNode(parameterData: IUpdateInformation) {
-	if (parameterData.name === 'name' && parameterData.oldValue) {
-		void renameNode(parameterData.oldValue as string, parameterData.value as string);
+function onRenameNode(name: string) {
+	if (ndvStore.activeNode?.name) {
+		void renameNode(ndvStore.activeNode.name, name);
 	}
 }
 
@@ -1826,19 +1835,30 @@ onBeforeUnmount(() => {
 		</Suspense>
 		<Suspense>
 			<LazyNodeDetailsView
+				v-if="!isNDVV2"
 				:workflow-object="editableWorkflowObject"
 				:read-only="isCanvasReadOnly"
 				:is-production-execution-preview="isProductionExecutionPreview"
 				:renaming="false"
-				@value-changed="onRenameNode"
+				@value-changed="onRenameNode($event.value as string)"
 				@stop-execution="onStopExecution"
 				@switch-selected-node="onSwitchActiveNode"
 				@open-connection-node-creator="onOpenSelectiveNodeCreator"
 				@save-keyboard-shortcut="onSaveWorkflow"
 			/>
-			<!--
-				:renaming="renamingActive"
-			-->
+		</Suspense>
+		<Suspense>
+			<LazyNodeDetailsViewV2
+				v-if="isNDVV2"
+				:workflow-object="editableWorkflowObject"
+				:read-only="isCanvasReadOnly"
+				:is-production-execution-preview="isProductionExecutionPreview"
+				@rename-node="onRenameNode"
+				@stop-execution="onStopExecution"
+				@switch-selected-node="onSwitchActiveNode"
+				@open-connection-node-creator="onOpenSelectiveNodeCreator"
+				@save-keyboard-shortcut="onSaveWorkflow"
+			/>
 		</Suspense>
 	</WorkflowCanvas>
 </template>

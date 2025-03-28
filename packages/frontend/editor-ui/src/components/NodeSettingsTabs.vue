@@ -16,7 +16,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 
-type Tab = 'settings' | 'params';
+export type Tab = 'settings' | 'params';
 type Props = {
 	modelValue?: Tab;
 	nodeType?: INodeTypeDescription | null;
