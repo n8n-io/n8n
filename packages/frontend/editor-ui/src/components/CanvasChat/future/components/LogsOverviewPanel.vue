@@ -5,7 +5,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { ElTree } from 'element-plus';
 import {
 	createAiData,
@@ -18,10 +18,15 @@ import { type INodeUi } from '@/Interface';
 import { upperFirst } from 'lodash-es';
 import { useTelemetry } from '@/composables/useTelemetry';
 import ConsumedTokenCountText from '@/components/CanvasChat/future/components/ConsumedTokenCountText.vue';
+import { type LogEntryIdentity } from '@/components/CanvasChat/types/logs';
 
-const { node, isOpen } = defineProps<{ isOpen: boolean; node: INodeUi | null }>();
+const { node, isOpen, selected } = defineProps<{
+	isOpen: boolean;
+	node: INodeUi | null;
+	selected?: LogEntryIdentity;
+}>();
 
-const emit = defineEmits<{ clickHeader: [] }>();
+const emit = defineEmits<{ clickHeader: []; select: [LogEntryIdentity | undefined] }>();
 
 defineSlots<{ actions: {} }>();
 
@@ -41,9 +46,9 @@ const executionTree = computed<TreeNode[]>(() =>
 		: [],
 );
 const isEmpty = computed(() => workflowsStore.workflowExecutionData === null);
-const switchViewOptions = computed<Array<{ label: string; value: string }>>(() => [
-	{ label: 'Details', value: 'details' },
-	{ label: 'Overview', value: 'overview' },
+const switchViewOptions = computed(() => [
+	{ label: 'Details', value: 'details' as const },
+	{ label: 'Overview', value: 'overview' as const },
 ]);
 const executionStatusText = computed(() => {
 	const execution = workflowsStore.workflowExecutionData;
@@ -70,26 +75,31 @@ const consumedTokens = computed(() =>
 	getTotalConsumedTokens(...executionTree.value.map(getSubtreeTotalConsumedTokens)),
 );
 
-const selectedRun = ref<{ node: string; runIndex: number } | undefined>(undefined);
-
 function onClearExecutionData() {
 	workflowsStore.setWorkflowExecutionData(null);
 	nodeHelpers.updateNodesExecutionIssues();
 }
 
 function handleClickNode(clicked: TreeNode) {
-	if (selectedRun.value?.node === clicked.node && selectedRun.value.runIndex === clicked.runIndex) {
-		selectedRun.value = undefined;
+	if (selected?.node === clicked.node && selected.runIndex === clicked.runIndex) {
+		emit('select', undefined);
 		return;
 	}
 
-	selectedRun.value = { node: clicked.node, runIndex: clicked.runIndex };
+	emit('select', { node: clicked.node, runIndex: clicked.runIndex });
 	telemetry.track('User selected node in log view', {
 		node_type: workflowsStore.nodesByName[clicked.node].type,
 		node_id: workflowsStore.nodesByName[clicked.node].id,
 		execution_id: workflowsStore.workflowExecutionData?.id,
 		workflow_id: workflow.value.id,
 	});
+}
+
+function handleSwitchView(value: 'overview' | 'details') {
+	emit(
+		'select',
+		value === 'overview' || executionTree.value.length === 0 ? undefined : executionTree.value[0],
+	);
 }
 </script>
 
@@ -121,15 +131,21 @@ function handleClickNode(clicked: TreeNode) {
 				{{ locale.baseText('logs.overview.body.empty.message') }}
 			</N8nText>
 			<div v-else :class="$style.scrollable">
-				<div v-if="executionStatusText !== undefined" :class="$style.summary">
-					<N8nText size="small" color="text-base">{{ executionStatusText }}</N8nText>
+				<N8nText
+					v-if="executionStatusText !== undefined"
+					size="small"
+					color="text-base"
+					:class="$style.summary"
+				>
+					<div>{{ executionStatusText }}</div>
 					<ConsumedTokenCountText
 						v-if="consumedTokens.totalTokens > 0"
 						:consumed-tokens="consumedTokens"
 					/>
-				</div>
+				</N8nText>
 				<ElTree
 					v-if="executionTree.length > 0"
+					node-key="id"
 					:class="$style.tree"
 					:indent="0"
 					:data="executionTree"
@@ -141,9 +157,8 @@ function handleClickNode(clicked: TreeNode) {
 						<LogsOverviewRow
 							:data="data"
 							:node="elTreeNode"
-							:is-selected="
-								data.node === selectedRun?.node && data.runIndex === selectedRun?.runIndex
-							"
+							:is-selected="data.node === selected?.node && data.runIndex === selected?.runIndex"
+							:is-compact="selected !== undefined"
 							:should-show-consumed-tokens="consumedTokens.totalTokens > 0"
 						/>
 					</template>
@@ -151,8 +166,9 @@ function handleClickNode(clicked: TreeNode) {
 				<N8nRadioButtons
 					size="medium"
 					:class="$style.switchViewButtons"
-					:model-value="selectedRun ? 'details' : 'overview'"
+					:model-value="selected ? 'details' : 'overview'"
 					:options="switchViewOptions"
+					@update:model-value="handleSwitchView"
 				/>
 			</div>
 		</div>

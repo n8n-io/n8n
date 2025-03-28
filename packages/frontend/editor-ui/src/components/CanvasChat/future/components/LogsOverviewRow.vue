@@ -4,8 +4,8 @@ import { getSubtreeTotalConsumedTokens, type TreeNode } from '@/components/RunDa
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { computed } from 'vue';
 import { type INodeUi } from '@/Interface';
-import { type ExecutionStatus, type ITaskData } from 'n8n-workflow';
-import { N8nIconButton, N8nText } from '@n8n/design-system';
+import { type ITaskData } from 'n8n-workflow';
+import { N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { upperFirst } from 'lodash-es';
 import { useI18n } from '@/composables/useI18n';
@@ -16,6 +16,7 @@ const props = defineProps<{
 	node: ElTreeNode;
 	isSelected: boolean;
 	shouldShowConsumedTokens: boolean;
+	isCompact: boolean;
 }>();
 
 const locale = useI18n();
@@ -31,25 +32,12 @@ const runData = computed<ITaskData | undefined>(() =>
 );
 const type = computed(() => (node.value ? nodeTypeStore.getNodeType(node.value.type) : undefined));
 const depth = computed(() => (props.node.level ?? 1) - 1);
-const timeTookText = computed(() => {
-	const finalStatuses: ExecutionStatus[] = ['crashed', 'error', 'success'];
-	const status = runData.value?.executionStatus;
-
-	if (!status) {
-		return '';
-	}
-
-	const statusText = upperFirst(status);
-
-	return finalStatuses.includes(status)
-		? locale.baseText('logs.overview.body.summaryText', {
-				interpolate: {
-					status: statusText,
-					time: locale.displayTimer(runData.value.executionTime, true),
-				},
-			})
-		: statusText;
-});
+const isSettled = computed(
+	() =>
+		runData.value?.executionStatus &&
+		['crashed', 'error', 'success'].includes(runData.value.executionStatus),
+);
+const isError = computed(() => !!runData.value?.error);
 const startedAtText = computed(() =>
 	locale.baseText('logs.overview.body.started', {
 		interpolate: {
@@ -82,7 +70,15 @@ function handleClickToggleButton() {
 </script>
 
 <template>
-	<div v-if="node !== undefined" :class="$style.container">
+	<div
+		v-if="node !== undefined"
+		:class="{
+			[$style.container]: true,
+			[$style.compact]: props.isCompact,
+			[$style.error]: isError,
+			[$style.selected]: props.isSelected,
+		}"
+	>
 		<template v-for="level in depth" :key="level">
 			<div
 				:class="{
@@ -92,16 +88,37 @@ function handleClickToggleButton() {
 				}"
 			/>
 		</template>
-		<div :class="[$style.selectable, props.isSelected ? $style.selected : '']">
+		<div :class="$style.content">
 			<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
-			<N8nText tag="div" :bold="true" size="small" :class="$style.name">{{ node.name }}</N8nText>
-			<N8nText tag="div" color="text-light" size="small" :class="$style.timeTook">{{
-				timeTookText
-			}}</N8nText>
+			<N8nText
+				tag="div"
+				:bold="true"
+				size="small"
+				:class="$style.name"
+				:color="isError ? 'danger' : undefined"
+				>{{ node.name }}</N8nText
+			>
+			<N8nText tag="div" color="text-light" size="small" :class="$style.timeTook"
+				><i18n-t v-if="isSettled && runData" keypath="logs.overview.body.summaryText"
+					><template #status
+						><N8nText v-if="isError" color="danger" :bold="true" size="small"
+							><N8nIcon icon="exclamation-triangle" :class="$style.errorIcon" />{{
+								upperFirst(runData.executionStatus)
+							}}</N8nText
+						><template v-else>{{ upperFirst(runData.executionStatus) }}</template></template
+					><template #time>{{ locale.displayTimer(runData.executionTime, true) }}</template></i18n-t
+				><template v-else>{{ upperFirst(runData?.executionStatus) }}</template></N8nText
+			>
 			<N8nText tag="div" color="text-light" size="small" :class="$style.startedAt">{{
 				startedAtText
 			}}</N8nText>
-			<div v-if="subtreeConsumedTokens !== undefined" :class="$style.consumedTokens">
+			<N8nText
+				v-if="subtreeConsumedTokens !== undefined"
+				tag="div"
+				color="text-light"
+				size="small"
+				:class="$style.consumedTokens"
+			>
 				<ConsumedTokenCountText
 					v-if="
 						subtreeConsumedTokens.totalTokens > 0 &&
@@ -109,8 +126,16 @@ function handleClickToggleButton() {
 					"
 					:consumed-tokens="subtreeConsumedTokens"
 				/>
-			</div>
+			</N8nText>
+			<N8nIcon
+				v-if="isError && isCompact"
+				size="medium"
+				color="danger"
+				icon="exclamation-triangle"
+				:class="$style.compactErrorIcon"
+			/>
 			<N8nIconButton
+				v-if="!isCompact || props.data.children.length > 0"
 				type="secondary"
 				size="medium"
 				:icon="props.node.expanded ? 'chevron-down' : 'chevron-up'"
@@ -133,7 +158,7 @@ function handleClickToggleButton() {
 	overflow: hidden;
 }
 
-.selectable {
+.content {
 	flex-grow: 1;
 	width: 0;
 	display: flex;
@@ -141,9 +166,13 @@ function handleClickToggleButton() {
 	justify-content: stretch;
 	border-radius: var(--border-radius-base);
 
-	&.selected,
+	.selected &,
 	.container:hover & {
 		background-color: var(--color-foreground-base);
+	}
+
+	.selected:not(:hover).error & {
+		background-color: var(--color-danger-tint-2);
 	}
 
 	& > * {
@@ -196,12 +225,29 @@ function handleClickToggleButton() {
 	flex-grow: 0;
 	flex-shrink: 0;
 	width: 15em;
+
+	.errorIcon {
+		margin-right: var(--spacing-4xs);
+		vertical-align: text-bottom;
+	}
+
+	.compact:hover & {
+		width: auto;
+	}
+
+	.compact:not(:hover) & {
+		display: none;
+	}
 }
 
 .startedAt {
 	flex-grow: 0;
 	flex-shrink: 0;
 	width: 21em;
+
+	.compact & {
+		display: none;
+	}
 }
 
 .consumedTokens {
@@ -209,6 +255,21 @@ function handleClickToggleButton() {
 	flex-shrink: 0;
 	width: 9em;
 	text-align: right;
+
+	.compact:hover & {
+		width: auto;
+	}
+
+	.compact &:empty,
+	.compact:not(:hover) & {
+		display: none;
+	}
+}
+
+.compactErrorIcon {
+	.container:hover & {
+		display: none;
+	}
 }
 
 .toggleButton {
