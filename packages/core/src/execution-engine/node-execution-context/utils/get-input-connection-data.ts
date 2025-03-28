@@ -78,7 +78,7 @@ export function makeHandleToolInvocation(
 			context.addOutputData(NodeConnectionTypes.AiTool, runIndex, [[{ json: { response } }]]);
 
 			// Return the stringified results
-			return optimizeResponse(JSON.stringify(response));
+			return JSON.stringify(response);
 		} catch (error) {
 			const nodeError = new NodeOperationError(node, error as Error);
 			context.addOutputData(NodeConnectionTypes.AiTool, runIndex, nodeError);
