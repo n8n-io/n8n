@@ -1,6 +1,17 @@
-import { getManualChatMessages, getManualChatModal, sendManualChatMessage } from '../composables/modals/chat-modal';
+import {
+	getManualChatMessages,
+	getManualChatModal,
+	sendManualChatMessage,
+} from '../composables/modals/chat-modal';
 import { clickExecuteNode } from '../composables/ndv';
-import { clickZoomToFit, openNode, navigateToNewWorkflowPage, openContextMenu, clickContextMenuAction, clickClearExecutionDataButton } from '../composables/workflow';
+import {
+	clickZoomToFit,
+	openNode,
+	navigateToNewWorkflowPage,
+	openContextMenu,
+	clickContextMenuAction,
+	clickClearExecutionDataButton,
+} from '../composables/workflow';
 import { clearNotifications } from '../pages/notifications';
 
 describe('AI-812-partial-execs-broken-when-using-chat-trigger', () => {
