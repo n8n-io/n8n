@@ -1,10 +1,10 @@
 <script setup lang="ts">
+import { useI18n } from '@/composables/useI18n';
+import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
+import { useInsightsStore } from '@/features/insights/insights.store';
+import type { InsightsSummaryType } from '@n8n/api-types';
 import { computed, defineAsyncComponent, watch } from 'vue';
 import { useRoute, useRouter, type LocationQuery } from 'vue-router';
-import type { InsightsSummaryType } from '@n8n/api-types';
-import { useInsightsStore } from '@/features/insights/insights.store';
-import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
-import { useI18n } from '@/composables/useI18n';
 
 const InsightsPaywall = defineAsyncComponent(
 	async () => await import('@/features/insights/components/InsightsPaywall.vue'),
@@ -79,6 +79,34 @@ const timeOptions = [
 	},
 ];
 
+const transformFilter = ({ id, desc }: { id: string; desc: boolean }) => {
+	// TODO: remove exclude once failureRate is added to the BE
+	const key = id as Exclude<InsightsSummaryType, 'failureRate'>;
+	const order = desc ? 'desc' : 'asc';
+	return `${key}:${order}` as const;
+};
+
+const fetchPaginatedTableData = ({
+	page,
+	itemsPerPage,
+	sortBy,
+}: {
+	page: number;
+	itemsPerPage: number;
+	sortBy: Array<{ id: string; desc: boolean }>;
+}) => {
+	const skip = page * itemsPerPage;
+	const take = itemsPerPage;
+
+	const sortKey = sortBy.length ? transformFilter(sortBy[0]) : undefined;
+
+	void insightsStore.table.execute(0, {
+		skip,
+		take,
+		sortBy: sortKey,
+	});
+};
+
 watch(
 	() => filters.value.time_span,
 	() => {
@@ -133,7 +161,11 @@ watch(
 						/>
 					</div>
 					<div :class="$style.insightsTableWrapper">
-						<InsightsTableWorkflows :data="insightsStore.table.state" />
+						<InsightsTableWorkflows
+							:data="insightsStore.table.state"
+							:loading="insightsStore.table.isLoading"
+							@update:options="fetchPaginatedTableData"
+						/>
 					</div>
 				</div>
 			</div>
