@@ -304,6 +304,14 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.FOLDERS);
 	}
 
+	isInsightsOverviewEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.INSIGHTS_OVERVIEW);
+	}
+
+	isInsightsDetailsEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.INSIGHTS_DETAILS);
+	}
+
 	getCurrentEntitlements() {
 		return this.manager?.getCurrentEntitlements() ?? [];
 	}
@@ -364,6 +372,22 @@ export class License {
 		return (
 			this.getFeatureValue(LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT) ?? UNLIMITED_LICENSE_QUOTA
 		);
+	}
+
+	getInsightsRange() {
+		return this.getFeatureValue(LICENSE_QUOTAS.INSIGHTS_RANGE) ?? 0;
+	}
+
+	getInsightsGranularity() {
+		return this.getFeatureValue(LICENSE_QUOTAS.INSIGHTS_GRANULARITY) ?? 'day';
+	}
+
+	getInsightsRetentionMaxAge() {
+		return this.getFeatureValue(LICENSE_QUOTAS.INSIGHTS_RETENTION_MAX_AGE) ?? 180;
+	}
+
+	getInsightsRetentionPruneInterval() {
+		return this.getFeatureValue(LICENSE_QUOTAS.INSIGHTS_RETENTION_PRUNE_INTERVAL) ?? 24;
 	}
 
 	getTeamProjectLimit() {
