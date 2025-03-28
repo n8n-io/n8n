@@ -4,6 +4,7 @@
 		"@n8n/typescript-config/tsconfig.backend.json"
 	],
 	"compilerOptions": {
+		"baseUrl": ".",
 		"paths": {
 			"@utils/*": ["./utils/*"]
 		},
@@ -11,7 +12,14 @@
 		// TODO: remove all options below this line
 		"useUnknownInCatchVariables": false
 	},
-	"include": ["credentials/**/*", "nodes/**/*", "utils/**/*.ts", "nodes/**/*.json", "types/*.ts"],
+	"include": [
+		"credentials/**/*.ts",
+		"nodes/**/*.ts",
+		"nodes/**/*.json",
+		"test/**/*.ts",
+		"types/**/*.ts",
+		"utils/**/*.ts"
+	],
 	"references": [
 		{ "path": "../../workflow/tsconfig.build.json" },
 		{ "path": "../../core/tsconfig.build.json" }

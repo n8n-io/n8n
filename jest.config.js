@@ -24,7 +24,7 @@ const config = {
 		'^.+\\.ts$': ['ts-jest', tsJestOptions],
 	},
 	// This resolve the path mappings from the tsconfig relative to each jest.config.js
-	moduleNameMapper: pathsToModuleNameMapper(compilerOptions.paths, { prefix: `<rootDir>${compilerOptions.baseUrl ? `/${compilerOptions.baseUrl.replace(/^\.\//, '')}` : ''}` }),
+	moduleNameMapper: compilerOptions?.paths ? pathsToModuleNameMapper(compilerOptions.paths, { prefix: `<rootDir>${compilerOptions.baseUrl ? `/${compilerOptions.baseUrl.replace(/^\.\//, '')}` : ''}` }) : {},
 	setupFilesAfterEnv: ['jest-expect-message'],
 	collectCoverage: isCoverageEnabled,
 	coverageReporters: ['text-summary', 'lcov', 'html-spa'],
