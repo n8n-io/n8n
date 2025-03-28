@@ -1,7 +1,7 @@
 import { equalityTest, setup, workflowToTests } from '../../../../../test/nodes/Helpers';
 
-describe('Group - Update Group', () => {
-	const workflows = ['nodes/AWS/Cognito/test/group/update.workflow.json'];
+describe('AWS Cognito - Update Group', () => {
+	const workflows = ['nodes/AwS/Cognito/test/group/update.workflow.json'];
 	const workflowTests = workflowToTests(workflows);
 
 	describe('should update the group details in the user pool', () => {
@@ -16,22 +16,19 @@ describe('Group - Update Group', () => {
 						path: '/',
 						statusCode: 200,
 						requestBody: {
-							UserPoolId: 'eu-central-1_ab12cdefgh',
-							GroupName: 'Admins',
-							Description: 'Updated group description',
-							Precedence: 10,
-							Arn: 'arn:aws:iam::123456789012:role/UpdatedGroupRole',
+							UserPoolId: 'eu-central-1_KkXQgdCJv',
+							GroupName: 'MyNewTesttttt',
+							Description: 'Updated description',
 						},
 						requestHeaders: {
 							'x-amz-target': 'AWSCognitoIdentityProviderService.UpdateGroup',
+							'Content-Type': 'application/x-amz-json-1.1',
 						},
 						responseBody: {
 							Group: {
-								GroupName: 'Admins',
-								UserPoolId: 'eu-central-1_ab12cdefgh',
-								Description: 'Updated group description',
-								Precedence: 10,
-								RoleArn: 'arn:aws:iam::123456789012:role/UpdatedGroupRole',
+								GroupName: 'MyNewTesttttt',
+								UserPoolId: 'eu-central-1_KkXQgdCJv',
+								Description: 'Updated description',
 							},
 						},
 					},

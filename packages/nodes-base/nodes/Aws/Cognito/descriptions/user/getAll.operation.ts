@@ -1,11 +1,12 @@
 import {
-	IExecuteSingleFunctions,
-	IHttpRequestOptions,
+	type IExecuteSingleFunctions,
+	type IHttpRequestOptions,
 	updateDisplayOptions,
 	type INodeProperties,
 } from 'n8n-workflow';
+
+import type { Filters } from '../../helpers/interfaces';
 import { parseRequestBody } from '../../helpers/utils';
-import { Filters } from '../../helpers/interfaces';
 
 const properties: INodeProperties[] = [
 	{

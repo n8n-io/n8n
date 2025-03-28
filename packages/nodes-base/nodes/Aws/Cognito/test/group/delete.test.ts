@@ -3,7 +3,7 @@ import nock from 'nock';
 import { equalityTest, setup, workflowToTests } from '../../../../../test/nodes/Helpers';
 
 describe('AWS Cognito - Delete Group', () => {
-	const workflows = ['nodes/AWS/Cognito/test/group/delete.workflow.json'];
+	const workflows = ['nodes/Aws/Cognito/test/group/delete.workflow.json'];
 	const workflowTests = workflowToTests(workflows);
 
 	beforeEach(() => {
@@ -20,18 +20,16 @@ describe('AWS Cognito - Delete Group', () => {
 				baseUrl: 'https://cognito-idp.eu-central-1.amazonaws.com/',
 				mocks: [
 					{
-						method: 'delete',
+						method: 'post',
 						path: '/',
 						statusCode: 200,
 						requestBody: {
-							UserPoolId: 'eu-central-1_ab12cdefgh',
-							GroupName: 'Admins',
+							UserPoolId: 'eu-central-1_KkXQgdCJv',
+							GroupName: 'First',
 						},
-						requestOptions: {
-							headers: {
-								'X-Amz-Target': 'AWSCognitoIdentityProviderService.DeleteGroup',
-								'Content-Type': 'application/x-amz-json-1.1',
-							},
+						requestHeaders: {
+							'X-Amz-Target': 'AWSCognitoIdentityProviderService.DeleteGroup',
+							'Content-Type': 'application/x-amz-json-1.1',
 						},
 						responseBody: {},
 					},

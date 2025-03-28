@@ -1,68 +1,92 @@
-import type { WorkflowTestData } from '@test/nodes/types';
-import type { IDataObject, IHttpRequestOptions, INodeTypes } from 'n8n-workflow';
-import nock from 'nock';
+import * as Helpers from '../../../../../test/nodes/Helpers';
 
-import { executeWorkflow } from '../../../../../test/nodes/ExecuteWorkflow';
-import { getResultNodeData, setup, workflowToTests } from '../../../../../test/nodes/Helpers';
-import * as transport from '../../transport/index';
-
-// Mock the AWS request
-const makeAwsRequestSpy = jest.spyOn(transport, 'makeAwsRequest');
-
-makeAwsRequestSpy.mockImplementation(async (opts: IHttpRequestOptions): Promise<IDataObject> => {
-	if (opts.method === 'POST' && opts.baseURL?.includes('cognito-idp')) {
-		return {
-			Enabled: true,
-			UserAttributes: [{ Name: 'sub', Value: 'a4583478-f091-7038-7681-b00374bc1ed4' }],
-			UserCreateDate: 1741606219.979,
-			UserLastModifiedDate: 1741606219.979,
-			UserStatus: 'FORCE_CHANGE_PASSWORD',
-			Username: 'this@mail.com',
-		} as IDataObject;
-	}
-
-	return {};
-});
-
-describe('Test AWS Cognito - Get User', () => {
+describe('AWS Cognito - Get User', () => {
 	const workflows = ['nodes/Aws/Cognito/test/user/get.workflow.json'];
-	const tests = workflowToTests(workflows);
+	const workflowTests = Helpers.workflowToTests(workflows);
 
-	beforeAll(() => {
-		nock.disableNetConnect();
+	describe('should fetch user data', () => {
+		const nodeTypes = Helpers.setup(workflowTests);
+
+		for (const workflow of workflowTests) {
+			workflow.nock = {
+				baseUrl: 'https://cognito-idp.eu-central-1.amazonaws.com',
+				mocks: [
+					{
+						method: 'post',
+						path: '/',
+						statusCode: 200,
+						requestHeaders: {
+							'Content-Type': 'application/x-amz-json-1.1',
+							'X-Amz-Target': 'AWSCognitoIdentityProviderService.AdminGetUser',
+						},
+						requestBody: JSON.stringify({
+							UserPoolId: 'eu-central-1_EUZ4iEF1T',
+							Username: 'Johnn',
+						}),
+						responseBody: {
+							Username: 'Johnn',
+							Enabled: true,
+							UserAttributes: [
+								{
+									Name: 'sub',
+									Value: '43045822-80e1-70f6-582d-78ae7992e9d9',
+								},
+							],
+							UserCreateDate: 1742928038.451,
+							UserLastModifiedDate: 1742928038.451,
+							UserStatus: 'FORCE_CHANGE_PASSWORD',
+						},
+					},
+					{
+						method: 'post',
+						path: '/',
+						statusCode: 200,
+						requestHeaders: {
+							'Content-Type': 'application/x-amz-json-1.1',
+							'X-Amz-Target': 'AWSCognitoIdentityProviderService.DescribeUserPool',
+						},
+						requestBody: JSON.stringify({
+							UserPoolId: 'eu-central-1_EUZ4iEF1T',
+						}),
+						responseBody: {
+							UserPool: {
+								Id: 'eu-central-1_EUZ4iEF1T',
+								Name: 'UserPoolTwo',
+								Status: 'ACTIVE',
+							},
+						},
+					},
+					{
+						method: 'post',
+						path: '/',
+						statusCode: 200,
+						requestHeaders: {
+							'Content-Type': 'application/x-amz-json-1.1',
+							'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListUsers',
+						},
+						requestBody: JSON.stringify({
+							UserPoolId: 'eu-central-1_EUZ4iEF1T',
+							MaxResults: 60,
+						}),
+						responseBody: {
+							Users: [
+								{
+									Username: 'Johnn',
+									Attributes: [
+										{
+											Name: 'sub',
+											Value: '43045822-80e1-70f6-582d-78ae7992e9d9',
+										},
+									],
+									UserStatus: 'FORCE_CHANGE_PASSWORD',
+								},
+							],
+						},
+					},
+				],
+			};
+
+			test(workflow.description, async () => await Helpers.equalityTest(workflow, nodeTypes));
+		}
 	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.resetAllMocks();
-	});
-
-	const nodeTypes = setup(tests);
-
-	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {
-		const { result } = await executeWorkflow(testData, types);
-		const resultNodeData = getResultNodeData(result, testData);
-
-		resultNodeData.forEach(({ nodeName, resultData }) => {
-			expect(resultData).toEqual(testData.output.nodeData[nodeName]);
-		});
-
-		expect(makeAwsRequestSpy).toHaveBeenCalledTimes(1);
-		expect(makeAwsRequestSpy).toHaveBeenCalledWith(
-			expect.any(Object),
-			expect.objectContaining({
-				method: 'POST',
-				baseURL: expect.stringContaining('cognito-idp.us-east-1.amazonaws.com'),
-				headers: expect.objectContaining({
-					'Content-Type': 'application/x-amz-json-1.1',
-				}),
-			}),
-		);
-
-		expect(result.finished).toEqual(true);
-	};
-
-	for (const testData of tests) {
-		test(testData.description, async () => await testNode(testData, nodeTypes));
-	}
 });

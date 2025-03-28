@@ -1,6 +1,6 @@
 import { equalityTest, setup, workflowToTests } from '../../../../../test/nodes/Helpers';
 
-describe('Group - Create Group', () => {
+describe('AWS Cognito - Create Group', () => {
 	const workflows = ['nodes/AWS/Cognito/test/group/create.workflow.json'];
 	const workflowTests = workflowToTests(workflows);
 
@@ -16,22 +16,19 @@ describe('Group - Create Group', () => {
 						path: '/',
 						statusCode: 200,
 						requestBody: {
-							UserPoolId: 'eu-central-1_ab12cdefgh',
-							GroupName: 'MyNewGroup',
-							Description: 'New group description',
-							Precedence: 10,
-							Arn: 'arn:aws:iam::123456789012:role/GroupRole',
+							UserPoolId: 'eu-central-1_qqle3XBUA',
+							GroupName: 'MyNewGroup11',
 						},
 						requestHeaders: {
 							'x-amz-target': 'AWSCognitoIdentityProviderService.CreateGroup',
+							'Content-Type': 'application/x-amz-json-1.1',
 						},
 						responseBody: {
 							Group: {
-								GroupName: 'MyNewGroup',
-								UserPoolId: 'eu-central-1_ab12cdefgh',
-								Description: 'New group description',
-								Precedence: 10,
-								RoleArn: 'arn:aws:iam::123456789012:role/GroupRole',
+								GroupName: 'MyNewGroup11',
+								UserPoolId: 'eu-central-1_qqle3XBUA',
+								CreationDate: 1743068959.243,
+								LastModifiedDate: 1743068959.243,
 							},
 						},
 					},

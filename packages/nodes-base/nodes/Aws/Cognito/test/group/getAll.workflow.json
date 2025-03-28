@@ -41,7 +41,7 @@
 				"json": {
 					"CreationDate": 1732740693.563,
 					"Description": "Updated",
-					"GroupName": "MyNewGroupAdina",
+					"GroupName": "MyNewGroup",
 					"LastModifiedDate": 1733422336.443,
 					"Precedence": 0,
 					"RoleArn": "arn:aws:iam::123456789012:group/Admins",

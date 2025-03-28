@@ -22,7 +22,7 @@
 				"requestOptions": {}
 			},
 			"id": "ea53747b-2354-486c-9a9d-bac3dd88bacb",
-			"name": "createUserUsername",
+			"name": "createUser",
 			"type": "n8n-nodes-base.awsCognito",
 			"typeVersion": 1,
 			"position": [460, 360],
@@ -36,7 +36,7 @@
 		}
 	],
 	"pinData": {
-		"createUserUsername": [
+		"createUser": [
 			{
 				"json": {
 					"Attributes": [
@@ -59,7 +59,7 @@
 			"main": [
 				[
 					{
-						"node": "createUserUsername",
+						"node": "createUser",
 						"type": "main",
 						"index": 0
 					}

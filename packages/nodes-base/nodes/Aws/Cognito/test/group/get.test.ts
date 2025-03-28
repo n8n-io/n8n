@@ -1,10 +1,22 @@
+import nock from 'nock';
+
 import { equalityTest, setup, workflowToTests } from '../../../../../test/nodes/Helpers';
 
-describe('User - Get User', () => {
-	const workflows = ['nodes/AWS/Cognito/test/user/get.workflow.json'];
+describe('AWS Cognito - Get Group', () => {
+	const workflows = ['nodes/Aws/Cognito/test/group/get.workflow.json'];
 	const workflowTests = workflowToTests(workflows);
 
-	describe('should retrieve user details from the user pool', () => {
+	beforeEach(() => {
+		if (!nock.isActive()) {
+			nock.activate();
+		}
+	});
+
+	afterEach(() => {
+		nock.cleanAll();
+	});
+
+	describe('should retrieve group details from the user pool', () => {
 		const nodeTypes = setup(workflowTests);
 
 		for (const workflow of workflowTests) {
@@ -16,24 +28,22 @@ describe('User - Get User', () => {
 						path: '/',
 						statusCode: 200,
 						requestBody: {
-							UserPoolId: 'eu-central-1_ab12cdefgh',
-							Username: 'user-to-retrieve',
+							UserPoolId: 'eu-central-1_EUZ4iEF1T',
+							GroupName: 'MyNewGroup',
 						},
 						requestHeaders: {
-							'x-amz-target': 'AWSCognitoIdentityProviderService.AdminGetUser',
+							'x-amz-target': 'AWSCognitoIdentityProviderService.GetGroup',
+							'Content-Type': 'application/x-amz-json-1.1',
 						},
 						responseBody: {
-							Username: 'user-to-retrieve',
-							UserAttributes: [
-								{
-									Name: 'email',
-									Value: 'user-to-retrieve@example.com',
-								},
-								{
-									Name: 'phone_number',
-									Value: '+1234567890',
-								},
-							],
+							Group: {
+								GroupName: 'MyNewGroup',
+								Description: 'This is a new group',
+								Precedence: 10,
+								CreationDate: 1742927877.679,
+								LastModifiedDate: 1742927877.679,
+								UserPoolId: 'eu-central-1_EUZ4iEF1T',
+							},
 						},
 					},
 				],
