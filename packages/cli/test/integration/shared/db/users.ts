@@ -1,5 +1,5 @@
 import { Container } from '@n8n/di';
-import type { GlobalRole } from '@n8n/permissions';
+import type { ApiKeyScope, GlobalRole } from '@n8n/permissions';
 import { hash } from 'bcryptjs';
 
 import { AuthIdentity } from '@/databases/entities/auth-identity';
@@ -84,12 +84,12 @@ export async function createUserWithMfaEnabled(
 
 export const addApiKey = async (
 	user: User,
-	{ expiresAt = null }: { expiresAt?: number | null } = {},
+	{ expiresAt = null, scopes = [] }: { expiresAt?: number | null; scopes?: ApiKeyScope[] } = {},
 ) => {
 	return await Container.get(PublicApiKeyService).createPublicApiKeyForUser(user, {
 		label: randomName(),
 		expiresAt,
-		scopes: getApiKeyScopesForRole(user.role),
+		scopes: scopes.length ? scopes : getApiKeyScopesForRole(user.role),
 	});
 };
 
@@ -104,9 +104,10 @@ export async function createOwnerWithApiKey({
 
 export async function createMemberWithApiKey({
 	expiresAt = null,
-}: { expiresAt?: number | null } = {}) {
+	scopes = [],
+}: { expiresAt?: number | null; scopes?: ApiKeyScope[] } = {}) {
 	const member = await createMember();
-	const apiKey = await addApiKey(member, { expiresAt });
+	const apiKey = await addApiKey(member, { expiresAt, scopes });
 	member.apiKeys = [apiKey];
 	return member;
 }

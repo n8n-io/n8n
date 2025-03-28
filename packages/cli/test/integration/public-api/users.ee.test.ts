@@ -139,6 +139,7 @@ describe('With license unlimited quota:users', () => {
 
 		test('should fail due to member trying to access owner only endpoint', async () => {
 			const member = await createMemberWithApiKey();
+
 			const authMemberAgent = testServer.publicApiAgentFor(member);
 			await authMemberAgent.get(`/users/${member.id}`).expect(403);
 		});

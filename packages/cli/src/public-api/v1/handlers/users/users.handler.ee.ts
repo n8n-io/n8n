@@ -11,7 +11,7 @@ import type { AuthenticatedRequest, UserRequest } from '@/requests';
 
 import { clean, getAllUsersAndCount, getUser } from './users.service.ee';
 import {
-	apiKeyScope,
+	apiKeyHasScope,
 	isLicensed,
 	validCursor,
 	validLicenseWithUserQuota,
@@ -25,8 +25,10 @@ type ChangeRole = AuthenticatedRequest<{ id: string }, {}, RoleChangeRequestDto,
 export = {
 	getUser: [
 		validLicenseWithUserQuota,
-		apiKeyScope('user:read'),
-		//globalScope('user:read'),
+		apiKeyHasScope({
+			apiKeyScope: 'user:read',
+			globalScope: 'user:read',
+		}),
 		async (req: UserRequest.Get, res: express.Response) => {
 			const { includeRole = false } = req.query;
 			const { id } = req.params;
@@ -48,13 +50,14 @@ export = {
 		},
 	],
 	getUsers: [
+		apiKeyHasScope({
+			apiKeyScope: 'user:list',
+			globalScope: ['user:read', 'user:list'],
+		}),
 		validLicenseWithUserQuota,
 		validCursor,
-		apiKeyScope('user:list'),
-		//globalScope('user:list'),
 		async (req: UserRequest.Get, res: express.Response) => {
 			const { offset = 0, limit = 100, includeRole = false, projectId } = req.query;
-			console.log('llegando aqui papa');
 
 			const _in = projectId
 				? await Container.get(ProjectRelationRepository).findUserIdsByProjectId(projectId)
@@ -83,8 +86,10 @@ export = {
 		},
 	],
 	createUser: [
-		apiKeyScope('user:create'),
-		//globalScope('user:create'),
+		apiKeyHasScope({
+			apiKeyScope: 'user:create',
+			globalScope: 'user:create',
+		}),
 		async (req: Create, res: Response) => {
 			const { data, error } = InviteUsersRequestDto.safeParse(req.body);
 			if (error) {
@@ -100,8 +105,10 @@ export = {
 		},
 	],
 	deleteUser: [
-		apiKeyScope('user:delete'),
-		//globalScope('user:delete'),
+		apiKeyHasScope({
+			apiKeyScope: 'user:delete',
+			globalScope: 'user:delete',
+		}),
 		async (req: Delete, res: Response) => {
 			await Container.get(UsersController).deleteUser(req);
 
@@ -110,8 +117,10 @@ export = {
 	],
 	changeRole: [
 		isLicensed('feat:advancedPermissions'),
-		apiKeyScope('user:changeRole'),
-		//globalScope('user:changeRole'),
+		apiKeyHasScope({
+			apiKeyScope: 'user:changeRole',
+			globalScope: 'user:changeRole',
+		}),
 		async (req: ChangeRole, res: Response) => {
 			const validation = RoleChangeRequestDto.safeParse(req.body);
 			if (validation.error) {

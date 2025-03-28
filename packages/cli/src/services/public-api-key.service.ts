@@ -2,6 +2,7 @@ import type { UnixTimestamp, UpdateApiKeyRequestDto } from '@n8n/api-types';
 import type { CreateApiKeyRequestDto } from '@n8n/api-types/src/dto/api-keys/create-api-key-request.dto';
 import { Service } from '@n8n/di';
 import type { GlobalRole, ApiKeyScope } from '@n8n/permissions';
+import type { NextFunction, Request, Response } from 'express';
 import { TokenExpiredError } from 'jsonwebtoken';
 import type { OpenAPIV3 } from 'openapi-types';
 
@@ -163,7 +164,7 @@ export class PublicApiKeyService {
 		return apiKeyScopes.every((scope) => scopesForRole.includes(scope));
 	}
 
-	apiKeyHasValidScopes = async (apiKey: string, endpointScope: ApiKeyScope) => {
+	async apiKeyHasValidScopes(apiKey: string, endpointScope: ApiKeyScope) {
 		const apiKeyData = await this.apiKeyRepository.findOne({
 			where: { apiKey },
 			select: ['scopes'],
@@ -171,7 +172,21 @@ export class PublicApiKeyService {
 		if (!apiKeyData) return false;
 
 		return apiKeyData.scopes.includes(endpointScope);
-	};
+	}
+
+	getApiKeyScopeMiddleware(endpointScope: ApiKeyScope) {
+		return async (req: Request, res: Response, next: NextFunction) => {
+			const apiKey = req.headers['x-n8n-api-key'] as string;
+
+			const valid = await this.apiKeyHasValidScopes(apiKey, endpointScope);
+
+			if (!valid) {
+				res.status(403).json({ message: 'Forbidden' });
+				return;
+			}
+			next();
+		};
+	}
 
 	async removeOwnerOnlyScopesFromApiKeys(user: User) {
 		const ownerOnlyScopes = getOwnerOnlyApiKeyScopes();

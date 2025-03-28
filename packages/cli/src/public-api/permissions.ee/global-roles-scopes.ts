@@ -46,6 +46,7 @@ export const MEMBER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'tag:read',
 	'tag:update',
 	'tag:list',
+	'workflowTags:update',
 	'workflowTags:list',
 	'workflow:create',
 	'workflow:read',

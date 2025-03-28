@@ -8,13 +8,12 @@ import { TagRepository } from '@/databases/repositories/tag.repository';
 import { TagService } from '@/services/tag.service';
 
 import type { TagRequest } from '../../../types';
-import { apiKeyScope, validCursor } from '../../shared/middlewares/global.middleware';
+import { apiKeyHasScope, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 
 export = {
 	createTag: [
-		apiKeyScope('tag:create'),
-		// globalScope('tag:create'),
+		apiKeyHasScope({ apiKeyScope: 'tag:create', globalScope: 'tag:create' }),
 		async (req: TagRequest.Create, res: express.Response): Promise<express.Response> => {
 			const { name } = req.body;
 
@@ -29,8 +28,7 @@ export = {
 		},
 	],
 	updateTag: [
-		apiKeyScope('tag:update'),
-		// globalScope('tag:update'),
+		apiKeyHasScope({ apiKeyScope: 'tag:update', globalScope: 'tag:update' }),
 		async (req: TagRequest.Update, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 			const { name } = req.body;
@@ -52,8 +50,7 @@ export = {
 		},
 	],
 	deleteTag: [
-		// globalScope('tag:delete'),
-		apiKeyScope('tag:delete'),
+		apiKeyHasScope({ apiKeyScope: 'tag:delete', globalScope: 'tag:delete' }),
 		async (req: TagRequest.Delete, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
@@ -69,8 +66,7 @@ export = {
 		},
 	],
 	getTags: [
-		// globalScope('tag:read'),
-		apiKeyScope('tag:list'),
+		apiKeyHasScope({ apiKeyScope: 'tag:list', globalScope: 'tag:list' }),
 		validCursor,
 		async (req: TagRequest.GetAll, res: express.Response): Promise<express.Response> => {
 			const { offset = 0, limit = 100 } = req.query;
@@ -93,8 +89,7 @@ export = {
 		},
 	],
 	getTag: [
-		// globalScope('tag:read'),
-		apiKeyScope('tag:read'),
+		apiKeyHasScope({ apiKeyScope: 'tag:read', globalScope: 'tag:read' }),
 		async (req: TagRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 

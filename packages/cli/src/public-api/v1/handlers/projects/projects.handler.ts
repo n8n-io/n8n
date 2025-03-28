@@ -7,7 +7,11 @@ import { ProjectRepository } from '@/databases/repositories/project.repository';
 import type { PaginatedRequest } from '@/public-api/types';
 import type { AuthenticatedRequest } from '@/requests';
 
-import { apiKeyScope, isLicensed, validCursor } from '../../shared/middlewares/global.middleware';
+import {
+	apiKeyHasScope,
+	isLicensed,
+	validCursor,
+} from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 
 type GetAll = PaginatedRequest;
@@ -15,8 +19,10 @@ type GetAll = PaginatedRequest;
 export = {
 	createProject: [
 		isLicensed('feat:projectRole:admin'),
-		apiKeyScope('project:create'),
-		// globalScope('project:create'),
+		apiKeyHasScope({
+			apiKeyScope: 'project:create',
+			globalScope: 'project:create',
+		}),
 		async (req: AuthenticatedRequest, res: Response) => {
 			const payload = CreateProjectDto.safeParse(req.body);
 			if (payload.error) {
@@ -30,8 +36,10 @@ export = {
 	],
 	updateProject: [
 		isLicensed('feat:projectRole:admin'),
-		// globalScope('project:update'),
-		apiKeyScope('project:update'),
+		apiKeyHasScope({
+			apiKeyScope: 'project:update',
+			globalScope: 'project:update',
+		}),
 		async (req: AuthenticatedRequest<{ projectId: string }>, res: Response) => {
 			const payload = UpdateProjectDto.safeParse(req.body);
 			if (payload.error) {
@@ -50,8 +58,10 @@ export = {
 	],
 	deleteProject: [
 		isLicensed('feat:projectRole:admin'),
-		// globalScope('project:delete'),
-		apiKeyScope('project:delete'),
+		apiKeyHasScope({
+			apiKeyScope: 'project:delete',
+			globalScope: 'project:delete',
+		}),
 		async (req: AuthenticatedRequest<{ projectId: string }>, res: Response) => {
 			const query = DeleteProjectDto.safeParse(req.query);
 			if (query.error) {
@@ -70,8 +80,10 @@ export = {
 	],
 	getProjects: [
 		isLicensed('feat:projectRole:admin'),
-		// globalScope('project:list'),
-		apiKeyScope('project:list'),
+		apiKeyHasScope({
+			apiKeyScope: 'project:list',
+			globalScope: 'project:list',
+		}),
 		validCursor,
 		async (req: GetAll, res: Response) => {
 			const { offset = 0, limit = 100 } = req.query;

@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-invalid-void-type */
 import { Container } from '@n8n/di';
 import type { ApiKeyScope, Scope } from '@n8n/permissions';
+import type { NextFunction } from 'express';
 import type express from 'express';
-import type { NextFunction, Response, Request } from 'express';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { BooleanLicenseFeature } from '@/interfaces';
@@ -50,22 +50,6 @@ export const globalScope = (scopes: Scope | Scope[]) =>
 export const projectScope = (scopes: Scope | Scope[], resource: ProjectScopeResource) =>
 	buildScopeMiddleware(Array.isArray(scopes) ? scopes : [scopes], resource, { globalOnly: false });
 
-export const apiKeyScope =
-	(endpointScope: ApiKeyScope) => async (req: Request, res: Response, next: NextFunction) => {
-		const apiKey = req.headers['x-n8n-api-key'] as string;
-
-		const valid = await Container.get(PublicApiKeyService).apiKeyHasValidScopes(
-			apiKey,
-			endpointScope,
-		);
-
-		if (!valid) {
-			res.status(403).json({ message: 'Forbidden' });
-			return;
-		}
-		next();
-	};
-
 export const validCursor = (
 	req: PaginatedRequest,
 	res: express.Response,
@@ -90,6 +74,19 @@ export const validCursor = (
 	}
 
 	return next();
+};
+
+export const apiKeyHasScope = ({
+	apiKeyScope,
+	globalScope: fallbackScope,
+}: { apiKeyScope: ApiKeyScope; globalScope?: Scope | Scope[] }) => {
+	const emptyMiddleware = (_req: Request, _res: Response, next: NextFunction) => next();
+
+	return Container.get(License).isApiKeyScopesEnabled()
+		? Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(apiKeyScope)
+		: !fallbackScope
+			? emptyMiddleware
+			: globalScope(fallbackScope);
 };
 
 export const validLicenseWithUserQuota = (
