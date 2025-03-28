@@ -20,7 +20,8 @@
 	"search.exclude": {
 		"node_modules": true,
 		"dist": true,
-		"pnpm-lock.yaml": true
+		"pnpm-lock.yaml": true,
+		"**/*.snapshot.json": true
 	},
 	"typescript.format.enable": false,
 	"typescript.tsdk": "node_modules/typescript/lib",
