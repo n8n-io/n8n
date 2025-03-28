@@ -113,7 +113,7 @@ const onHiddenMenuVisibleChange = async (visible: boolean) => {
 };
 
 const emitItemSelected = (id: string) => {
-	const item = [...loadedHiddenItems.value, ...props.items].find((i) => i.id === id);
+	const item = [...props.items, ...loadedHiddenItems.value].find((i) => i.id === id);
 	if (!item) {
 		return;
 	}
