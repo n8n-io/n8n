@@ -1,6 +1,14 @@
 {
 	"nodes": [
 		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [120, 700],
+			"id": "0e76b314-4994-4141-975f-9614c6094c80",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
 			"parameters": {
 				"operation": "addToGroup",
 				"userId": {
@@ -18,8 +26,8 @@
 			},
 			"type": "n8n-nodes-base.gSuiteAdmin",
 			"typeVersion": 1,
-			"position": [-800, 1160],
-			"id": "136e2e63-90d2-41bd-9853-36e84601233d",
+			"position": [80, 1100],
+			"id": "b0c8042f-4ce1-41f1-9d14-876d5cac3ccf",
 			"name": "Add To Group",
 			"credentials": {
 				"gSuiteAdminOAuth2Api": {
@@ -29,15 +37,24 @@
 			}
 		}
 	],
-	"connections": {},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Add To Group",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
 	"pinData": {
 		"Add To Group": [
 			{
 				"json": { "added": true }
 			}
 		]
-	},
-	"meta": {
-		"instanceId": "89e65be0357665f2979194b835f6d640a06bafcde3fe7370430baa3de4d0a22d"
 	}
 }

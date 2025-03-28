@@ -1,6 +1,14 @@
 {
 	"nodes": [
 		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [120, 700],
+			"id": "0e76b314-4994-4141-975f-9614c6094c80",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
 			"parameters": {
 				"operation": "removeFromGroup",
 				"userId": {
@@ -18,8 +26,8 @@
 			},
 			"type": "n8n-nodes-base.gSuiteAdmin",
 			"typeVersion": 1,
-			"position": [-800, 1360],
-			"id": "8ff0be4e-056f-429b-877c-0a4b037bffe5",
+			"position": [140, 1100],
+			"id": "9a323b95-1495-487f-ba27-2df737bd5bdf",
 			"name": "Remove From Group",
 			"credentials": {
 				"gSuiteAdminOAuth2Api": {
@@ -29,15 +37,24 @@
 			}
 		}
 	],
-	"connections": {},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Remove From Group",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
 	"pinData": {
 		"Remove From Group": [
 			{
 				"json": { "removed": true }
 			}
 		]
-	},
-	"meta": {
-		"instanceId": "89e65be0357665f2979194b835f6d640a06bafcde3fe7370430baa3de4d0a22d"
 	}
 }

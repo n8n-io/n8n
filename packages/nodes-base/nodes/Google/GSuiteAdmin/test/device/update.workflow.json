@@ -1,6 +1,14 @@
 {
 	"nodes": [
 		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [120, 700],
+			"id": "0e76b314-4994-4141-975f-9614c6094c80",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
 			"parameters": {
 				"resource": "device",
 				"operation": "update",
@@ -16,8 +24,8 @@
 			},
 			"type": "n8n-nodes-base.gSuiteAdmin",
 			"typeVersion": 1,
-			"position": [-140, 440],
-			"id": "93179ae7-13c3-4733-bc1e-8d82592606c7",
+			"position": [40, 1140],
+			"id": "52f7a4b5-7ab5-4bd1-b6eb-230341ab6057",
 			"name": "Update Device",
 			"credentials": {
 				"gSuiteAdminOAuth2Api": {
@@ -27,7 +35,19 @@
 			}
 		}
 	],
-	"connections": {},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Update Device",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
 	"pinData": {
 		"Update Device": [
 			{
@@ -637,8 +657,5 @@
 				}
 			}
 		]
-	},
-	"meta": {
-		"instanceId": "89e65be0357665f2979194b835f6d640a06bafcde3fe7370430baa3de4d0a22d"
 	}
 }

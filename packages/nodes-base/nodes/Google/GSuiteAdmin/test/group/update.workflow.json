@@ -1,6 +1,14 @@
 {
 	"nodes": [
 		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [120, 700],
+			"id": "0e76b314-4994-4141-975f-9614c6094c80",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
 			"parameters": {
 				"resource": "group",
 				"operation": "update",
@@ -18,8 +26,8 @@
 			},
 			"type": "n8n-nodes-base.gSuiteAdmin",
 			"typeVersion": 1,
-			"position": [-540, 800],
-			"id": "948dc460-9b6e-4b5d-afcb-58bbbaea1137",
+			"position": [80, 1100],
+			"id": "013eec82-8d52-4485-88eb-d9caf112d539",
 			"name": "Update Group",
 			"credentials": {
 				"gSuiteAdminOAuth2Api": {
@@ -29,7 +37,19 @@
 			}
 		}
 	],
-	"connections": {},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Update Group",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
 	"pinData": {
 		"Update Group": [
 			{
@@ -49,8 +69,5 @@
 				}
 			}
 		]
-	},
-	"meta": {
-		"instanceId": "89e65be0357665f2979194b835f6d640a06bafcde3fe7370430baa3de4d0a22d"
 	}
 }

@@ -1,6 +1,14 @@
 {
 	"nodes": [
 		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [120, 700],
+			"id": "0ffead0b-d690-48b8-b406-bea5e0029c15",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
 			"parameters": {
 				"resource": "device",
 				"deviceId": {
@@ -12,8 +20,8 @@
 			},
 			"type": "n8n-nodes-base.gSuiteAdmin",
 			"typeVersion": 1,
-			"position": [-400, -160],
-			"id": "069dd01e-cf17-4817-bc1d-92eb256b3f8c",
+			"position": [0, 1120],
+			"id": "cda57e63-1620-4f75-b11e-48b83565ad80",
 			"name": "Get Device",
 			"credentials": {
 				"gSuiteAdminOAuth2Api": {
@@ -23,7 +31,19 @@
 			}
 		}
 	],
-	"connections": {},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Get Device",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
 	"pinData": {
 		"Get Device": [
 			{
@@ -49,9 +69,5 @@
 				}
 			}
 		]
-	},
-	"meta": {
-		"templateCredsSetupCompleted": true,
-		"instanceId": "89e65be0357665f2979194b835f6d640a06bafcde3fe7370430baa3de4d0a22d"
 	}
 }

@@ -1,6 +1,14 @@
 {
 	"nodes": [
 		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [120, 700],
+			"id": "0e76b314-4994-4141-975f-9614c6094c80",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
 			"parameters": {
 				"operation": "delete",
 				"userId": {
@@ -12,8 +20,8 @@
 			},
 			"type": "n8n-nodes-base.gSuiteAdmin",
 			"typeVersion": 1,
-			"position": [-800, 820],
-			"id": "b6469cb3-1798-4be3-99a2-47d603e467d6",
+			"position": [120, 1100],
+			"id": "39f9a9c0-2ea5-45b2-a346-55017dfa4e43",
 			"name": "Delete User",
 			"credentials": {
 				"gSuiteAdminOAuth2Api": {
@@ -23,7 +31,19 @@
 			}
 		}
 	],
-	"connections": {},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Delete User",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
 	"pinData": {
 		"Delete User": [
 			{
@@ -32,8 +52,5 @@
 				}
 			}
 		]
-	},
-	"meta": {
-		"instanceId": "89e65be0357665f2979194b835f6d640a06bafcde3fe7370430baa3de4d0a22d"
 	}
 }

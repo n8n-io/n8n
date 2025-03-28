@@ -1,14 +1,22 @@
 {
 	"nodes": [
 		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [120, 700],
+			"id": "0e76b314-4994-4141-975f-9614c6094c80",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
 			"parameters": {
 				"operation": "getAll",
 				"filter": {}
 			},
 			"type": "n8n-nodes-base.gSuiteAdmin",
 			"typeVersion": 1,
-			"position": [-800, 280],
-			"id": "6450c571-b45f-4aaf-ac9e-0377bbd6bd81",
+			"position": [140, 1100],
+			"id": "4107ee9d-37e1-4d85-9099-25ec13211ee1",
 			"name": "Get Many",
 			"credentials": {
 				"gSuiteAdminOAuth2Api": {
@@ -18,7 +26,19 @@
 			}
 		}
 	],
-	"connections": {},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Get Many",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
 	"pinData": {
 		"Get Many": [
 			{
@@ -54,8 +74,5 @@
 				}
 			}
 		]
-	},
-	"meta": {
-		"instanceId": "89e65be0357665f2979194b835f6d640a06bafcde3fe7370430baa3de4d0a22d"
 	}
 }

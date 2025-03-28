@@ -1,6 +1,14 @@
 {
 	"nodes": [
 		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [120, 700],
+			"id": "0e76b314-4994-4141-975f-9614c6094c80",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
 			"parameters": {
 				"operation": "update",
 				"userId": {
@@ -35,9 +43,9 @@
 			},
 			"type": "n8n-nodes-base.gSuiteAdmin",
 			"typeVersion": 1,
-			"position": [-800, 1000],
-			"id": "0a7b02a4-5ffa-4c0b-a385-732368376e88",
-			"name": "Update User1",
+			"position": [140, 1100],
+			"id": "b4cd1391-cfdc-4f36-8c2f-f18a9ad4f795",
+			"name": "Update User",
 			"credentials": {
 				"gSuiteAdminOAuth2Api": {
 					"id": "OXfPMaggXFJ0RLkw",
@@ -46,9 +54,21 @@
 			}
 		}
 	],
-	"connections": {},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Update User",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
 	"pinData": {
-		"Update User1": [
+		"Update User": [
 			{
 				"json": {
 					"kind": "admin#directory#user",
@@ -93,8 +113,5 @@
 				}
 			}
 		]
-	},
-	"meta": {
-		"instanceId": "89e65be0357665f2979194b835f6d640a06bafcde3fe7370430baa3de4d0a22d"
 	}
 }

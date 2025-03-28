@@ -1,6 +1,14 @@
 {
 	"nodes": [
 		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [120, 700],
+			"id": "0e76b314-4994-4141-975f-9614c6094c80",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
 			"parameters": {
 				"resource": "group",
 				"operation": "delete",
@@ -13,8 +21,8 @@
 			},
 			"type": "n8n-nodes-base.gSuiteAdmin",
 			"typeVersion": 1,
-			"position": [-540, 1000],
-			"id": "42ac4bfd-470a-4d0f-aa9d-f16774d81a84",
+			"position": [60, 1140],
+			"id": "9d6f8739-8a1b-4b85-9e5c-84a184e6dbaf",
 			"name": "Delete Group",
 			"credentials": {
 				"gSuiteAdminOAuth2Api": {
@@ -24,15 +32,24 @@
 			}
 		}
 	],
-	"connections": {},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Delete Group",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
 	"pinData": {
 		"Delete Group": [
 			{
 				"json": { "success": true }
 			}
 		]
-	},
-	"meta": {
-		"instanceId": "89e65be0357665f2979194b835f6d640a06bafcde3fe7370430baa3de4d0a22d"
 	}
 }
