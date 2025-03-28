@@ -88,7 +88,7 @@ watch(
 	justify-content: center;
 	gap: var(--spacing-xs);
 	padding-inline: var(--spacing-m);
-	padding-bottom: 1.5em;
+	padding-bottom: var(--spacing-l);
 	overflow: hidden;
 }
 

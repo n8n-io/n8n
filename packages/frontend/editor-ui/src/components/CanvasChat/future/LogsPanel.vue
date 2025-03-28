@@ -32,10 +32,8 @@ const telemetry = useTelemetry();
 const { rootStyles, height, chatWidth, onWindowResize, onResizeDebounced, onResizeChatDebounced } =
 	useResize(container);
 
-const { currentSessionId, messages, sendMessage, refreshSession, displayExecution } = useChatState(
-	ref(false),
-	onWindowResize,
-);
+const { currentSessionId, messages, connectedNode, sendMessage, refreshSession, displayExecution } =
+	useChatState(ref(false), onWindowResize);
 const appStyles = useStyles();
 const tooltipZIndex = computed(() => appStyles.APP_Z_INDEXES.ASK_ASSISTANT_FLOATING_BUTTON + 100);
 
@@ -95,7 +93,7 @@ watch([panelState, height], ([state, h]) => {
 				:class="[$style.resizeWrapper, panelState === 'closed' ? '' : $style.isOpen]"
 				@resize="onResizeDebounced"
 			>
-				<div ref="container" :class="$style.container">
+				<div ref="container" :class="[$style.container, 'ignore-key-press-canvas']" tabindex="0">
 					<N8nResizeWrapper
 						v-if="hasChat"
 						:supported-directions="['right']"
@@ -120,7 +118,11 @@ watch([panelState, height], ([state, h]) => {
 							@click-header="handleClickHeader"
 						/>
 					</N8nResizeWrapper>
-					<LogsOverviewPanel :is-open="panelState !== 'closed'" @click-header="handleClickHeader">
+					<LogsOverviewPanel
+						:is-open="panelState !== 'closed'"
+						:node="connectedNode"
+						@click-header="handleClickHeader"
+					>
 						<template #actions>
 							<N8nTooltip
 								v-if="canPopOut && !isPoppedOut"
@@ -178,14 +180,11 @@ watch([panelState, height], ([state, h]) => {
 }
 
 .resizeWrapper {
-	height: auto;
+	height: 100%;
 	min-height: 0;
 	flex-basis: 0;
-	border-top: 1px solid var(--color-foreground-base);
+	border-top: var(--border-base);
 	background-color: var(--color-background-light);
-	display: flex;
-	align-items: stretch;
-	justify-content: stretch;
 
 	&.isOpen {
 		height: var(--panel-height);
@@ -196,11 +195,12 @@ watch([panelState, height], ([state, h]) => {
 }
 
 .container {
+	height: 100%;
 	display: flex;
 	flex-grow: 1;
 
 	& > *:not(:last-child) {
-		border-right: 1px solid var(--color-foreground-base);
+		border-right: var(--border-base);
 	}
 }
 
