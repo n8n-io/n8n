@@ -5,8 +5,11 @@ import request, { type Response } from 'supertest';
 
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { EventService } from '@/events/event.service';
 import { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
+import { CacheService } from '@/services/cache/cache.service';
+import { createWorkflow, newWorkflow } from '@test-integration/db/workflows';
 
 import { setupTestServer } from './shared/utils';
 
@@ -16,6 +19,7 @@ const toLines = (response: Response) => response.text.trim().split('\n');
 
 const eventService = Container.get(EventService);
 const globalConfig = Container.get(GlobalConfig);
+globalConfig.cache.backend = 'memory';
 globalConfig.endpoints.metrics = {
 	enable: true,
 	prefix: 'n8n_test_',
@@ -31,6 +35,7 @@ globalConfig.endpoints.metrics = {
 	includeApiStatusCodeLabel: true,
 	includeQueueMetrics: true,
 	queueMetricsInterval: 20,
+	activeWorkflowCountInterval: 60,
 };
 
 const server = setupTestServer({ endpointGroups: ['metrics'] });
@@ -202,6 +207,51 @@ describe('PrometheusMetricsService', () => {
 		);
 	});
 
+	it('should include last activity metric with route metrics', async () => {
+		/**
+		 * Arrange
+		 */
+		prometheusService.enableMetric('routes');
+		await prometheusService.init(server.app);
+		await agent.get('/api/v1/workflows');
+
+		/**
+		 * Act
+		 */
+		let response = await agent.get('/metrics');
+
+		/**
+		 * Assert
+		 */
+		expect(response.status).toEqual(200);
+		expect(response.type).toEqual('text/plain');
+
+		const lines = toLines(response);
+
+		expect(lines).toContainEqual(expect.stringContaining('n8n_test_last_activity'));
+
+		const lastActivityLine = lines.find((line) =>
+			line.startsWith('n8n_test_last_activity{timestamp='),
+		);
+
+		expect(lastActivityLine).toBeDefined();
+		expect(lastActivityLine?.endsWith('1')).toBe(true);
+
+		// Update last activity
+		await agent.get('/api/v1/workflows');
+
+		response = await agent.get('/metrics');
+		const updatedLines = toLines(response);
+
+		const newLastActivityLine = updatedLines.find((line) =>
+			line.startsWith('n8n_test_last_activity{timestamp='),
+		);
+
+		expect(newLastActivityLine).toBeDefined();
+		// Timestamp label should be different
+		expect(newLastActivityLine).not.toBe(lastActivityLine);
+	});
+
 	it('should return labels in route metrics if enabled', async () => {
 		/**
 		 * ARrange
@@ -283,5 +333,42 @@ describe('PrometheusMetricsService', () => {
 		expect(lines).toContain('n8n_test_scaling_mode_queue_jobs_active 2');
 		expect(lines).toContain('n8n_test_scaling_mode_queue_jobs_completed 0');
 		expect(lines).toContain('n8n_test_scaling_mode_queue_jobs_failed 0');
+	});
+
+	it('should return active workflow count', async () => {
+		await prometheusService.init(server.app);
+
+		let response = await agent.get('/metrics');
+
+		expect(response.status).toEqual(200);
+		expect(response.type).toEqual('text/plain');
+
+		let lines = toLines(response);
+
+		expect(lines).toContain('n8n_test_active_workflow_count 0');
+
+		const workflow = newWorkflow({ active: true });
+		await createWorkflow(workflow);
+
+		const workflowRepository = Container.get(WorkflowRepository);
+		const activeWorkflowCount = await workflowRepository.getActiveCount();
+
+		expect(activeWorkflowCount).toBe(1);
+
+		response = await agent.get('/metrics');
+
+		lines = toLines(response);
+
+		// Should return cached value
+		expect(lines).toContain('n8n_test_active_workflow_count 0');
+
+		const cacheService = Container.get(CacheService);
+		await cacheService.delete('metrics:active-workflow-count');
+
+		response = await agent.get('/metrics');
+
+		lines = toLines(response);
+
+		expect(lines).toContain('n8n_test_active_workflow_count 1');
 	});
 });

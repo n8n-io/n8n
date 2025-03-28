@@ -96,7 +96,7 @@ export const promptTypeOptions: INodeProperties = {
 };
 
 export const textInput: INodeProperties = {
-	displayName: 'Text',
+	displayName: 'Prompt (User Message)',
 	name: 'text',
 	type: 'string',
 	required: true,

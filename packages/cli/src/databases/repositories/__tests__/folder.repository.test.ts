@@ -4,7 +4,6 @@ import { DateTime } from 'luxon';
 import type { Folder } from '@/databases/entities/folder';
 import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { createFolder } from '@test-integration/db/folders';
 import { getPersonalProject } from '@test-integration/db/projects';
 import { createTag } from '@test-integration/db/tags';
@@ -46,7 +45,7 @@ describe('FolderRepository', () => {
 
 				await Promise.all([folder1, folder2]);
 
-				const [folders, count] = await folderRepository.getMany();
+				const [folders, count] = await folderRepository.getManyAndCount();
 				expect(count).toBe(2);
 				expect(folders).toHaveLength(2);
 
@@ -60,7 +59,7 @@ describe('FolderRepository', () => {
 						createdAt: expect.any(Date),
 						updatedAt: expect.any(Date),
 						parentFolder: null,
-						project: {
+						homeProject: {
 							id: expect.any(String),
 							name: expect.any(String),
 							type: expect.any(String),
@@ -70,6 +69,23 @@ describe('FolderRepository', () => {
 					});
 				});
 			});
+
+			it('should filter folders by IDs', async () => {
+				const anotherUser = await createMember();
+				const anotherProject = await getPersonalProject(anotherUser);
+
+				const folder1 = await createFolder(project, { name: 'folder1' });
+				await createFolder(anotherProject, { name: 'folder2' });
+
+				const [folders, count] = await folderRepository.getManyAndCount({
+					filter: { folderIds: [folder1.id] },
+				});
+
+				expect(count).toBe(1);
+				expect(folders).toHaveLength(1);
+				expect(folders[0].name).toBe('folder1');
+			});
+
 			it('should filter folders by project ID', async () => {
 				const anotherUser = await createMember();
 				const anotherProject = await getPersonalProject(anotherUser);
@@ -79,14 +95,14 @@ describe('FolderRepository', () => {
 
 				await Promise.all([folder1, folder2]);
 
-				const [folders, count] = await folderRepository.getMany({
+				const [folders, count] = await folderRepository.getManyAndCount({
 					filter: { projectId: project.id },
 				});
 
 				expect(count).toBe(1);
 				expect(folders).toHaveLength(1);
 				expect(folders[0].name).toBe('folder1');
-				expect(folders[0].project.id).toBe(project.id);
+				expect(folders[0].homeProject.id).toBe(project.id);
 			});
 
 			it('should filter folders by name case-insensitively', async () => {
@@ -96,7 +112,7 @@ describe('FolderRepository', () => {
 
 				await Promise.all([folder1, folder2, folder3]);
 
-				const [folders, count] = await folderRepository.getMany({
+				const [folders, count] = await folderRepository.getManyAndCount({
 					filter: { name: 'test' },
 				});
 
@@ -106,6 +122,8 @@ describe('FolderRepository', () => {
 			});
 
 			it('should filter folders by parent folder ID', async () => {
+				let folders: Folder[];
+				let count: number;
 				const parentFolder = await createFolder(project, { name: 'Parent' });
 				await createFolder(project, {
 					name: 'Child 1',
@@ -117,7 +135,7 @@ describe('FolderRepository', () => {
 				});
 				await createFolder(project, { name: 'Unrelated' });
 
-				const [folders, count] = await folderRepository.getMany({
+				[folders, count] = await folderRepository.getManyAndCount({
 					filter: { parentFolderId: parentFolder.id },
 				});
 
@@ -126,6 +144,17 @@ describe('FolderRepository', () => {
 				expect(folders.map((f) => f.name).sort()).toEqual(['Child 1', 'Child 2']);
 				folders.forEach((folder) => {
 					expect(folder.parentFolder?.id).toBe(parentFolder.id);
+				});
+
+				[folders, count] = await folderRepository.getManyAndCount({
+					filter: { parentFolderId: '0' },
+				});
+
+				expect(count).toBe(2);
+				expect(folders).toHaveLength(2);
+				expect(folders.map((f) => f.name).sort()).toEqual(['Parent', 'Unrelated']);
+				folders.forEach((folder) => {
+					expect(folder.parentFolder).toBe(null);
 				});
 			});
 
@@ -143,7 +172,7 @@ describe('FolderRepository', () => {
 					tags: [tag2],
 				});
 
-				const [folders, count] = await folderRepository.getMany({
+				const [folders, count] = await folderRepository.getManyAndCount({
 					filter: { tags: ['important'] },
 				});
 
@@ -171,7 +200,7 @@ describe('FolderRepository', () => {
 					tags: [tag3],
 				});
 
-				const [folders] = await folderRepository.getMany({
+				const [folders] = await folderRepository.getManyAndCount({
 					filter: { tags: ['important', 'active'] },
 				});
 
@@ -199,7 +228,7 @@ describe('FolderRepository', () => {
 					tags: [tag2],
 				});
 
-				const [folders, count] = await folderRepository.getMany({
+				const [folders, count] = await folderRepository.getManyAndCount({
 					filter: {
 						name: 'test',
 						parentFolderId: parentFolder.id,
@@ -217,7 +246,6 @@ describe('FolderRepository', () => {
 
 		describe('select', () => {
 			let testFolder: Folder;
-			let workflowWithTestFolder: WorkflowEntity;
 
 			beforeEach(async () => {
 				const parentFolder = await createFolder(project, { name: 'Parent Folder' });
@@ -227,11 +255,11 @@ describe('FolderRepository', () => {
 					parentFolder,
 					tags: [tag],
 				});
-				workflowWithTestFolder = await createWorkflow({ parentFolder: testFolder });
+				await createWorkflow({ parentFolder: testFolder });
 			});
 
 			it('should select only id and name when specified', async () => {
-				const [folders] = await folderRepository.getMany({
+				const [folders] = await folderRepository.getManyAndCount({
 					select: {
 						id: true,
 						name: true,
@@ -251,7 +279,7 @@ describe('FolderRepository', () => {
 			});
 
 			it('should return id, name and tags when specified', async () => {
-				const [folders] = await folderRepository.getMany({
+				const [folders] = await folderRepository.getManyAndCount({
 					select: {
 						id: true,
 						name: true,
@@ -276,7 +304,7 @@ describe('FolderRepository', () => {
 			});
 
 			it('should return id, name and project when specified', async () => {
-				const [folders] = await folderRepository.getMany({
+				const [folders] = await folderRepository.getManyAndCount({
 					select: {
 						id: true,
 						name: true,
@@ -286,8 +314,8 @@ describe('FolderRepository', () => {
 
 				expect(folders).toHaveLength(2);
 				folders.forEach((folder) => {
-					expect(Object.keys(folder).sort()).toEqual(['id', 'name', 'project']);
-					expect(folder.project).toEqual({
+					expect(Object.keys(folder).sort()).toEqual(['homeProject', 'id', 'name']);
+					expect(folder.homeProject).toEqual({
 						id: expect.any(String),
 						name: expect.any(String),
 						type: expect.any(String),
@@ -297,7 +325,7 @@ describe('FolderRepository', () => {
 			});
 
 			it('should return id, name and parentFolder when specified', async () => {
-				const [folders] = await folderRepository.getMany({
+				const [folders] = await folderRepository.getManyAndCount({
 					select: {
 						id: true,
 						name: true,
@@ -320,29 +348,44 @@ describe('FolderRepository', () => {
 				});
 			});
 
-			it('should return id, name and workflows when specified', async () => {
-				const [folders] = await folderRepository.getMany({
+			it('should return id, name and workflowCount when specified', async () => {
+				const [folders] = await folderRepository.getManyAndCount({
 					select: {
 						id: true,
 						name: true,
-						workflows: true,
+						workflowCount: true,
 					},
 				});
 
 				expect(folders).toHaveLength(2);
 				folders.forEach((folder) => {
-					expect(Object.keys(folder).sort()).toEqual(['id', 'name', 'workflows']);
+					expect(Object.keys(folder).sort()).toEqual(['id', 'name', 'workflowCount']);
 					expect(folder.id).toBeDefined();
 					expect(folder.name).toBeDefined();
-					expect(Array.isArray(folder.workflows)).toBeTruthy();
+					expect(folder.workflowCount).toBeDefined();
+				});
+			});
+
+			it('should return id, name and subFolderCount when specified', async () => {
+				const [folders] = await folderRepository.getManyAndCount({
+					select: {
+						id: true,
+						name: true,
+						subFolderCount: true,
+					},
 				});
 
-				expect(folders[0].workflows).toHaveLength(1);
-				expect(folders[0].workflows[0].id).toBe(workflowWithTestFolder.id);
+				expect(folders).toHaveLength(2);
+				folders.forEach((folder) => {
+					expect(Object.keys(folder).sort()).toEqual(['id', 'name', 'subFolderCount']);
+					expect(folder.id).toBeDefined();
+					expect(folder.name).toBeDefined();
+					expect(folder.subFolderCount).toBeDefined();
+				});
 			});
 
 			it('should return timestamps when specified', async () => {
-				const [folders] = await folderRepository.getMany({
+				const [folders] = await folderRepository.getManyAndCount({
 					select: {
 						id: true,
 						createdAt: true,
@@ -359,7 +402,7 @@ describe('FolderRepository', () => {
 			});
 
 			it('should return all properties when no select is specified', async () => {
-				const [folders] = await folderRepository.getMany();
+				const [folders] = await folderRepository.getManyAndCount();
 
 				expect(folders).toHaveLength(2);
 				folders.forEach((folder) => {
@@ -368,13 +411,14 @@ describe('FolderRepository', () => {
 						name: expect.any(String),
 						createdAt: expect.any(Date),
 						updatedAt: expect.any(Date),
-						project: {
+						homeProject: {
 							id: expect.any(String),
 							name: expect.any(String),
 							type: expect.any(String),
 							icon: null,
 						},
-						workflows: expect.any(Array),
+						workflowCount: expect.any(Number),
+						subFolderCount: expect.any(Number),
 						tags: expect.any(Array),
 					});
 				});
@@ -408,7 +452,7 @@ describe('FolderRepository', () => {
 			});
 
 			it('should limit results when take is specified', async () => {
-				const [folders, count] = await folderRepository.getMany({
+				const [folders, count] = await folderRepository.getManyAndCount({
 					take: 3,
 				});
 
@@ -417,7 +461,7 @@ describe('FolderRepository', () => {
 			});
 
 			it('should skip results when skip is specified', async () => {
-				const [folders, count] = await folderRepository.getMany({
+				const [folders, count] = await folderRepository.getManyAndCount({
 					skip: 2,
 					take: 5,
 				});
@@ -428,7 +472,7 @@ describe('FolderRepository', () => {
 			});
 
 			it('should handle skip and take together', async () => {
-				const [folders, count] = await folderRepository.getMany({
+				const [folders, count] = await folderRepository.getManyAndCount({
 					skip: 1,
 					take: 2,
 				});
@@ -439,7 +483,7 @@ describe('FolderRepository', () => {
 			});
 
 			it('should handle take larger than remaining items', async () => {
-				const [folders, count] = await folderRepository.getMany({
+				const [folders, count] = await folderRepository.getManyAndCount({
 					skip: 3,
 					take: 10,
 				});
@@ -450,7 +494,7 @@ describe('FolderRepository', () => {
 			});
 
 			it('should handle zero take by returning all results', async () => {
-				const [folders, count] = await folderRepository.getMany({
+				const [folders, count] = await folderRepository.getManyAndCount({
 					take: 0,
 				});
 
@@ -495,7 +539,7 @@ describe('FolderRepository', () => {
 			});
 
 			it('should sort by default (updatedAt:desc)', async () => {
-				const [folders] = await folderRepository.getMany();
+				const [folders] = await folderRepository.getManyAndCount();
 
 				expect(folders.map((f) => f.name)).toEqual([
 					'C Folder',
@@ -506,7 +550,7 @@ describe('FolderRepository', () => {
 			});
 
 			it('should sort by name:asc', async () => {
-				const [folders] = await folderRepository.getMany({
+				const [folders] = await folderRepository.getManyAndCount({
 					sortBy: 'name:asc',
 				});
 
@@ -519,7 +563,7 @@ describe('FolderRepository', () => {
 			});
 
 			it('should sort by name:desc', async () => {
-				const [folders] = await folderRepository.getMany({
+				const [folders] = await folderRepository.getManyAndCount({
 					sortBy: 'name:desc',
 				});
 
@@ -531,8 +575,17 @@ describe('FolderRepository', () => {
 				]);
 			});
 
+			it('should sort by name:desc when select does not include the name', async () => {
+				const [folders] = await folderRepository.getManyAndCount({
+					sortBy: 'name:desc',
+					select: { id: true },
+				});
+
+				expect(folders.length).toBe(4);
+			});
+
 			it('should sort by createdAt:asc', async () => {
-				const [folders] = await folderRepository.getMany({
+				const [folders] = await folderRepository.getManyAndCount({
 					sortBy: 'createdAt:asc',
 				});
 
@@ -545,7 +598,7 @@ describe('FolderRepository', () => {
 			});
 
 			it('should sort by createdAt:desc', async () => {
-				const [folders] = await folderRepository.getMany({
+				const [folders] = await folderRepository.getManyAndCount({
 					sortBy: 'createdAt:desc',
 				});
 
@@ -558,7 +611,7 @@ describe('FolderRepository', () => {
 			});
 
 			it('should sort by updatedAt:asc', async () => {
-				const [folders] = await folderRepository.getMany({
+				const [folders] = await folderRepository.getManyAndCount({
 					sortBy: 'updatedAt:asc',
 				});
 
@@ -571,7 +624,7 @@ describe('FolderRepository', () => {
 			});
 
 			it('should sort by updatedAt:desc', async () => {
-				const [folders] = await folderRepository.getMany({
+				const [folders] = await folderRepository.getManyAndCount({
 					sortBy: 'updatedAt:desc',
 				});
 
@@ -584,7 +637,7 @@ describe('FolderRepository', () => {
 			});
 
 			it('should default to asc if order not specified', async () => {
-				const [folders] = await folderRepository.getMany({
+				const [folders] = await folderRepository.getManyAndCount({
 					sortBy: 'name',
 				});
 

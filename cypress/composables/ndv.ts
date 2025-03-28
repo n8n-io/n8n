@@ -105,11 +105,13 @@ export function getNodeOutputHint() {
 }
 
 export function getWorkflowCards() {
-	return cy.getByTestId('resources-list-item');
+	return cy.getByTestId('resources-list-item-workflow');
 }
 
 export function getWorkflowCard(workflowName: string) {
-	return getWorkflowCards().contains(workflowName).parents('[data-test-id="resources-list-item"]');
+	return getWorkflowCards()
+		.contains(workflowName)
+		.parents('[data-test-id="resources-list-item-workflow"]');
 }
 
 export function getWorkflowCardContent(workflowName: string) {
@@ -204,6 +206,10 @@ export function selectResourceLocatorItem(
 
 export function clickWorkflowCardContent(workflowName: string) {
 	getWorkflowCardContent(workflowName).click();
+}
+
+export function clickAssignmentCollectionAdd() {
+	cy.getByTestId('assignment-collection-drop-area').click();
 }
 
 export function assertNodeOutputHintExists() {

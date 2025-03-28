@@ -6,7 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { processJsonInput, updateDisplayOptions } from '@utils/utilities';
+import { generatePairedItemData, processJsonInput, updateDisplayOptions } from '@utils/utilities';
 
 import type { ExcelResponse, UpdateSummary } from '../../helpers/interfaces';
 import {
@@ -382,7 +382,11 @@ export async function execute(
 		);
 	} catch (error) {
 		if (this.continueOnFail()) {
-			const executionErrorData = this.helpers.returnJsonArray({ error: error.message });
+			const itemData = generatePairedItemData(this.getInputData().length);
+			const executionErrorData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray({ error: error.message }),
+				{ itemData },
+			);
 			returnData.push(...executionErrorData);
 		} else {
 			throw error;

@@ -1,8 +1,10 @@
 import { Service } from '@n8n/di';
 import { parse } from 'flatted';
+import difference from 'lodash/difference';
 import { ErrorReporter, Logger } from 'n8n-core';
-import { ExecutionCancelledError, NodeConnectionType, Workflow } from 'n8n-workflow';
+import { ExecutionCancelledError, NodeConnectionTypes, Workflow } from 'n8n-workflow';
 import type {
+	AssignmentCollectionValue,
 	IDataObject,
 	IRun,
 	IRunExecutionData,
@@ -12,6 +14,8 @@ import type {
 import assert from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
+import config from '@/config';
+import { EVALUATION_METRICS_NODE } from '@/constants';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import type { MockedNodeItem, TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { TestRun } from '@/databases/entities/test-run.ee';
@@ -127,7 +131,7 @@ export class TestRunnerService {
 
 		// Start nodes are the nodes that are connected to the trigger node
 		const startNodes = workflowInstance
-			.getChildNodes(triggerNode, NodeConnectionType.Main, 1)
+			.getChildNodes(triggerNode, NodeConnectionTypes.Main, 1)
 			.map((nodeName) => ({
 				name: nodeName,
 				sourceData: { previousNode: pastExecutionTriggerNode },
@@ -164,9 +168,17 @@ export class TestRunnerService {
 			pastExecutionWorkflowData,
 		);
 
+		const startNodesData = this.getStartNodesData(
+			workflow,
+			pastExecutionData,
+			pastExecutionWorkflowData,
+		);
+
 		// Prepare the data to run the workflow
+		// Evaluation executions should run the same way as manual,
+		// because they need pinned data and partial execution logic
 		const data: IWorkflowExecutionDataProcess = {
-			...this.getStartNodesData(workflow, pastExecutionData, pastExecutionWorkflowData),
+			...startNodesData,
 			executionMode: 'evaluation',
 			runData: {},
 			pinData,
@@ -174,6 +186,25 @@ export class TestRunnerService {
 			userId: metadata.userId,
 			partialExecutionVersion: 2,
 		};
+
+		// When in queue mode, we need to pass additional data to the execution
+		// the same way as it would be passed in manual mode
+		if (config.getEnv('executions.mode') === 'queue') {
+			data.executionData = {
+				startData: {
+					startNodes: startNodesData.startNodes,
+				},
+				resultData: {
+					pinData,
+					runData: {},
+				},
+				manualData: {
+					userId: metadata.userId,
+					partialExecutionVersion: 2,
+					triggerToStartFrom: startNodesData.triggerToStartFrom,
+				},
+			};
+		}
 
 		// Trigger the workflow under test with mocked data
 		const executionId = await this.workflowRunner.run(data);
@@ -195,6 +226,50 @@ export class TestRunnerService {
 		const executePromise = this.activeExecutions.getPostExecutePromise(executionId);
 
 		return await executePromise;
+	}
+
+	/**
+	 * Sync the metrics of the test definition with the evaluation workflow.
+	 */
+	async syncMetrics(
+		testDefinitionId: string,
+		evaluationWorkflow: IWorkflowBase,
+	): Promise<Set<string>> {
+		const usedTestMetricNames = await this.getUsedTestMetricNames(evaluationWorkflow);
+		const existingTestMetrics = await this.testMetricRepository.find({
+			where: {
+				testDefinition: { id: testDefinitionId },
+			},
+		});
+
+		const existingMetricNames = new Set(existingTestMetrics.map((metric) => metric.name));
+		const metricsToAdd = difference(
+			Array.from(usedTestMetricNames),
+			Array.from(existingMetricNames),
+		);
+		const metricsToRemove = difference(
+			Array.from(existingMetricNames),
+			Array.from(usedTestMetricNames),
+		);
+
+		// Add new metrics
+		const metricsToAddEntities = metricsToAdd.map((metricName) =>
+			this.testMetricRepository.create({
+				name: metricName,
+				testDefinition: { id: testDefinitionId },
+			}),
+		);
+		await this.testMetricRepository.save(metricsToAddEntities);
+
+		// Remove no longer used metrics
+		metricsToRemove.forEach(async (metricName) => {
+			const metric = existingTestMetrics.find((m) => m.name === metricName);
+			assert(metric, 'Existing metric not found');
+
+			await this.testMetricRepository.delete(metric.id);
+		});
+
+		return usedTestMetricNames;
 	}
 
 	/**
@@ -238,34 +313,44 @@ export class TestRunnerService {
 	}
 
 	/**
+	 * Get the evaluation metrics nodes from a workflow.
+	 */
+	static getEvaluationMetricsNodes(workflow: IWorkflowBase) {
+		return workflow.nodes.filter((node) => node.type === EVALUATION_METRICS_NODE);
+	}
+
+	/**
 	 * Evaluation result is the first item in the output of the last node
 	 * executed in the evaluation workflow. Defaults to an empty object
 	 * in case the node doesn't produce any output items.
 	 */
-	private extractEvaluationResult(execution: IRun): IDataObject {
+	private extractEvaluationResult(execution: IRun, evaluationWorkflow: IWorkflowBase): IDataObject {
 		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted;
 		assert(lastNodeExecuted, 'Could not find the last node executed in evaluation workflow');
+		const metricsNodes = TestRunnerService.getEvaluationMetricsNodes(evaluationWorkflow);
+		const metricsRunData = metricsNodes.flatMap(
+			(node) => execution.data.resultData.runData[node.name],
+		);
+		const metricsData = metricsRunData.reverse().map((data) => data.data?.main?.[0]?.[0]?.json);
+		const metricsResult = metricsData.reduce((acc, curr) => ({ ...acc, ...curr }), {}) ?? {};
 
-		// Extract the output of the last node executed in the evaluation workflow
-		// We use only the first item of a first main output
-		const lastNodeTaskData = execution.data.resultData.runData[lastNodeExecuted]?.[0];
-		const mainConnectionData = lastNodeTaskData?.data?.main?.[0];
-		return mainConnectionData?.[0]?.json ?? {};
+		return metricsResult;
 	}
 
 	/**
 	 * Get the metrics to collect from the evaluation workflow execution results.
 	 */
-	private async getTestMetricNames(testDefinitionId: string) {
-		const metrics = await this.testMetricRepository.find({
-			where: {
-				testDefinition: {
-					id: testDefinitionId,
-				},
-			},
+	private async getUsedTestMetricNames(evaluationWorkflow: IWorkflowBase) {
+		const metricsNodes = TestRunnerService.getEvaluationMetricsNodes(evaluationWorkflow);
+		const metrics = metricsNodes.map((node) => {
+			const metricsParameter = node.parameters?.metrics as AssignmentCollectionValue;
+			assert(metricsParameter, 'Metrics parameter not found');
+
+			const metricsNames = metricsParameter.assignments.map((assignment) => assignment.name);
+			return metricsNames;
 		});
 
-		return new Set(metrics.map((m) => m.name));
+		return new Set(metrics.flat());
 	}
 
 	/**
@@ -292,6 +377,8 @@ export class TestRunnerService {
 			userId: user.id,
 		};
 
+		let testRunEndStatusForTelemetry;
+
 		const abortSignal = abortController.signal;
 		try {
 			// Get the evaluation workflow
@@ -299,7 +386,6 @@ export class TestRunnerService {
 			if (!evaluationWorkflow) {
 				throw new TestRunError('EVALUATION_WORKFLOW_NOT_FOUND');
 			}
-
 			///
 			// 1. Make test cases from previous executions
 			///
@@ -329,8 +415,8 @@ export class TestRunnerService {
 				pastExecutions.map((e) => e.id),
 			);
 
-			// Get the metrics to collect from the evaluation workflow
-			const testMetricNames = await this.getTestMetricNames(test.id);
+			// Sync the metrics of the test definition with the evaluation workflow
+			const testMetricNames = await this.syncMetrics(test.id, evaluationWorkflow);
 
 			// 2. Run over all the test cases
 			const pastExecutionIds = pastExecutions.map((e) => e.id);
@@ -338,7 +424,7 @@ export class TestRunnerService {
 			// Update test run status
 			await this.testRunRepository.markAsRunning(testRun.id, pastExecutions.length);
 
-			this.telemetry.track('User runs test', {
+			this.telemetry.track('User ran test', {
 				user_id: user.id,
 				test_id: test.id,
 				run_id: testRun.id,
@@ -435,8 +521,8 @@ export class TestRunnerService {
 					this.logger.debug('Evaluation execution finished', { pastExecutionId });
 
 					// Extract the output of the last node executed in the evaluation workflow
-					const { addedMetrics, unknownMetrics } = metrics.addResults(
-						this.extractEvaluationResult(evalExecution),
+					const { addedMetrics } = metrics.addResults(
+						this.extractEvaluationResult(evalExecution, evaluationWorkflow),
 					);
 
 					if (evalExecution.data.resultData.error) {
@@ -453,22 +539,12 @@ export class TestRunnerService {
 						await Db.transaction(async (trx) => {
 							await this.testRunRepository.incrementPassed(testRun.id, trx);
 
-							// Add warning if the evaluation workflow produced an unknown metric
-							if (unknownMetrics.size > 0) {
-								await this.testCaseExecutionRepository.markAsWarning({
-									testRunId: testRun.id,
-									pastExecutionId,
-									errorCode: 'UNKNOWN_METRICS',
-									errorDetails: { unknownMetrics: Array.from(unknownMetrics) },
-								});
-							} else {
-								await this.testCaseExecutionRepository.markAsCompleted({
-									testRunId: testRun.id,
-									pastExecutionId,
-									metrics: addedMetrics,
-									trx,
-								});
-							}
+							await this.testCaseExecutionRepository.markAsCompleted({
+								testRunId: testRun.id,
+								pastExecutionId,
+								metrics: addedMetrics,
+								trx,
+							});
 						});
 					}
 				} catch (e) {
@@ -504,13 +580,17 @@ export class TestRunnerService {
 				await Db.transaction(async (trx) => {
 					await this.testRunRepository.markAsCancelled(testRun.id, trx);
 					await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRun.id, trx);
+
+					testRunEndStatusForTelemetry = 'cancelled';
 				});
 			} else {
 				const aggregatedMetrics = metrics.getAggregatedMetrics();
 
 				await this.testRunRepository.markAsCompleted(testRun.id, aggregatedMetrics);
 
-				this.logger.debug('Test run finished', { testId: test.id });
+				this.logger.debug('Test run finished', { testId: test.id, testRunId: testRun.id });
+
+				testRunEndStatusForTelemetry = 'completed';
 			}
 		} catch (e) {
 			if (e instanceof ExecutionCancelledError) {
@@ -523,15 +603,26 @@ export class TestRunnerService {
 					await this.testRunRepository.markAsCancelled(testRun.id, trx);
 					await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRun.id, trx);
 				});
+
+				testRunEndStatusForTelemetry = 'cancelled';
 			} else if (e instanceof TestRunError) {
 				await this.testRunRepository.markAsError(testRun.id, e.code, e.extra as IDataObject);
+				testRunEndStatusForTelemetry = 'error';
 			} else {
 				await this.testRunRepository.markAsError(testRun.id, 'UNKNOWN_ERROR');
+				testRunEndStatusForTelemetry = 'error';
 				throw e;
 			}
 		} finally {
 			// Clean up abort controller
 			this.abortControllers.delete(testRun.id);
+
+			// Send telemetry event
+			this.telemetry.track('Test run finished', {
+				test_id: test.id,
+				run_id: testRun.id,
+				status: testRunEndStatusForTelemetry,
+			});
 		}
 	}
 

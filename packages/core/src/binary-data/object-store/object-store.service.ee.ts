@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 import { sign } from 'aws4';
 import type { Request as Aws4Options } from 'aws4';
 import axios from 'axios';
-import type { AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig, Method } from 'axios';
+import type { AxiosRequestConfig, Method } from 'axios';
 import { ApplicationError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 import type { Readable } from 'stream';
@@ -11,7 +11,7 @@ import type { Readable } from 'stream';
 import { Logger } from '@/logging/logger';
 
 import type { ListPage, MetadataResponseHeaders, RawListPage, RequestOptions } from './types';
-import { isStream, parseXml, writeBlockedMessage } from './utils';
+import { isStream, parseXml } from './utils';
 import type { BinaryData } from '../types';
 
 @Service()
@@ -19,8 +19,6 @@ export class ObjectStoreService {
 	private baseUrl: URL;
 
 	private isReady = false;
-
-	private isReadOnly = false;
 
 	constructor(
 		private readonly logger: Logger,
@@ -48,10 +46,6 @@ export class ObjectStoreService {
 		this.setReady(true);
 	}
 
-	setReadonly(newState: boolean) {
-		this.isReadOnly = newState;
-	}
-
 	setReady(newState: boolean) {
 		this.isReady = newState;
 	}
@@ -73,8 +67,6 @@ export class ObjectStoreService {
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html
 	 */
 	async put(filename: string, buffer: Buffer, metadata: BinaryData.PreWriteMetadata = {}) {
-		if (this.isReadOnly) return await this.blockWrite(filename);
-
 		const headers: Record<string, string | number> = {
 			'Content-Length': buffer.length,
 			'Content-MD5': createHash('md5').update(buffer).digest('base64'),
@@ -202,20 +194,6 @@ export class ObjectStoreService {
 		});
 
 		return page as ListPage;
-	}
-
-	private async blockWrite(filename: string): Promise<AxiosResponse> {
-		const logMessage = writeBlockedMessage(filename);
-
-		this.logger.warn(logMessage);
-
-		return {
-			status: 403,
-			statusText: 'Forbidden',
-			data: logMessage,
-			headers: {},
-			config: {} as InternalAxiosRequestConfig,
-		};
 	}
 
 	private async request<T>(

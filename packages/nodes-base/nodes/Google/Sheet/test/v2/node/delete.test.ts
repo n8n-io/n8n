@@ -11,7 +11,10 @@ describe('Google Sheet - Delete', () => {
 		mockExecuteFunctions = {
 			getInputData: jest.fn().mockReturnValue([{ json: {} }]),
 			getNodeParameter: jest.fn(),
-		} as Partial<IExecuteFunctions>;
+			helpers: {
+				constructExecutionMetaData: jest.fn((data) => ({ json: data })),
+			},
+		} as unknown as Partial<IExecuteFunctions>;
 
 		mockSheet = {
 			spreadsheetBatchUpdate: jest.fn(),
@@ -137,6 +140,9 @@ describe('Google Sheet - Delete', () => {
 			if (param === 'numberToDelete') return 1;
 			return null;
 		}) as unknown as IExecuteFunctions['getNodeParameter'];
+		mockExecuteFunctions.helpers = {
+			constructExecutionMetaData: jest.fn((data) => data),
+		} as unknown as IExecuteFunctions['helpers'];
 
 		const result = await execute.call(
 			mockExecuteFunctions as IExecuteFunctions,

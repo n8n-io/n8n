@@ -1,6 +1,7 @@
 import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
-import { ApplicationError } from 'n8n-workflow';
+
+import config from '@/config';
 
 type EnvVarName = string;
 
@@ -16,6 +17,9 @@ type Deprecation = {
 
 	/** Whether to show a deprecation warning if the env var is missing. */
 	warnIfMissing?: boolean;
+
+	/** Whether a config value is required to trigger a deprecation warning. */
+	matchConfig?: boolean;
 };
 
 const SAFE_TO_REMOVE = 'Remove this environment variable; it is no longer needed.';
@@ -49,32 +53,52 @@ export class DeprecationService {
 			checkValue: (value?: string) => value?.toLowerCase() !== 'true' && value !== '1',
 			warnIfMissing: true,
 		},
+		{
+			envVar: 'OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS',
+			message:
+				'Running manual executions in the main instance in scaling mode is deprecated. Manual executions will be routed to workers in a future version. Please set `OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true` to offload manual executions to workers and avoid potential issues in the future. Consider increasing memory available to workers and reducing memory available to main.',
+			checkValue: (value?: string) => value?.toLowerCase() !== 'true' && value !== '1',
+			warnIfMissing: true,
+			matchConfig: config.getEnv('executions.mode') === 'queue',
+		},
+		{
+			envVar: 'N8N_PARTIAL_EXECUTION_VERSION_DEFAULT',
+			checkValue: (value: string) => value === '1',
+			message:
+				'Version 1 of partial executions is deprecated and will be removed as early as v1.85.0',
+		},
+		{
+			envVar: 'N8N_PARTIAL_EXECUTION_VERSION_DEFAULT',
+			message: 'This environment variable is internal and should not be set.',
+		},
 	];
 
 	/** Runtime state of deprecation-related env vars. */
-	private readonly state: Record<EnvVarName, { mustWarn: boolean }> = {};
+	private readonly state: Map<Deprecation, { mustWarn: boolean }> = new Map();
 
 	constructor(private readonly logger: Logger) {}
 
 	warn() {
 		this.deprecations.forEach((d) => {
 			const envValue = process.env[d.envVar];
-			this.state[d.envVar] = {
-				mustWarn:
-					(d.warnIfMissing !== undefined && envValue === undefined) ||
-					(d.checkValue ? d.checkValue(envValue) : envValue !== undefined),
-			};
+
+			const matchConfig = d.matchConfig === true || d.matchConfig === undefined;
+			const warnIfMissing = d.warnIfMissing !== undefined && envValue === undefined;
+			const checkValue = d.checkValue ? d.checkValue(envValue) : envValue !== undefined;
+
+			this.state.set(d, {
+				mustWarn: matchConfig && (warnIfMissing || checkValue),
+			});
 		});
 
-		const mustWarn = Object.entries(this.state)
-			.filter(([, d]) => d.mustWarn)
-			.map(([envVar]) => {
-				const deprecation = this.deprecations.find((d) => d.envVar === envVar);
-				if (!deprecation) {
-					throw new ApplicationError(`Deprecation not found for env var: ${envVar}`);
-				}
-				return deprecation;
-			});
+		const mustWarn: Deprecation[] = [];
+		for (const [deprecation, metadata] of this.state.entries()) {
+			if (!metadata.mustWarn) {
+				continue;
+			}
+
+			mustWarn.push(deprecation);
+		}
 
 		if (mustWarn.length === 0) return;
 
@@ -86,9 +110,5 @@ export class DeprecationService {
 			.join('');
 
 		this.logger.warn(`\n${header}:\n${deprecations}`);
-	}
-
-	mustWarn(envVar: string) {
-		return this.state[envVar]?.mustWarn ?? false;
 	}
 }

@@ -80,23 +80,30 @@ export async function createUserWithMfaEnabled(
 	};
 }
 
-export const addApiKey = async (user: User) => {
+export const addApiKey = async (
+	user: User,
+	{ expiresAt = null }: { expiresAt?: number | null } = {},
+) => {
 	return await Container.get(PublicApiKeyService).createPublicApiKeyForUser(user, {
 		label: randomName(),
-		expiresAt: null,
+		expiresAt,
 	});
 };
 
-export async function createOwnerWithApiKey() {
+export async function createOwnerWithApiKey({
+	expiresAt = null,
+}: { expiresAt?: number | null } = {}) {
 	const owner = await createOwner();
-	const apiKey = await addApiKey(owner);
+	const apiKey = await addApiKey(owner, { expiresAt });
 	owner.apiKeys = [apiKey];
 	return owner;
 }
 
-export async function createMemberWithApiKey() {
+export async function createMemberWithApiKey({
+	expiresAt = null,
+}: { expiresAt?: number | null } = {}) {
 	const member = await createMember();
-	const apiKey = await addApiKey(member);
+	const apiKey = await addApiKey(member, { expiresAt });
 	member.apiKeys = [apiKey];
 	return member;
 }

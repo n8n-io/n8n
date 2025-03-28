@@ -1,9 +1,12 @@
+import { SecurityConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import { access as fsAccess } from 'fs/promises';
 import helmet from 'helmet';
+import { isEmpty } from 'lodash';
 import { InstanceSettings } from 'n8n-core';
+import { jsonParse } from 'n8n-workflow';
 import { resolve } from 'path';
 
 import { AbstractServer } from '@/abstract-server';
@@ -51,6 +54,7 @@ import '@/controllers/project.controller';
 import '@/controllers/role.controller';
 import '@/controllers/tags.controller';
 import '@/controllers/translation.controller';
+import '@/controllers/folder.controller';
 import '@/controllers/users.controller';
 import '@/controllers/user-settings.controller';
 import '@/controllers/workflow-statistics.controller';
@@ -62,7 +66,6 @@ import '@/executions/executions.controller';
 import '@/external-secrets.ee/external-secrets.controller.ee';
 import '@/license/license.controller';
 import '@/evaluation.ee/test-definitions.controller.ee';
-import '@/evaluation.ee/metrics.controller';
 import '@/evaluation.ee/test-runs.controller.ee';
 import '@/workflows/workflow-history.ee/workflow-history.controller.ee';
 import '@/workflows/workflows.controller';
@@ -258,7 +261,7 @@ export class Server extends AbstractServer {
 						dsn: this.globalConfig.sentry.frontendDsn,
 						environment: process.env.ENVIRONMENT || 'development',
 						serverName: process.env.DEPLOYMENT_NAME,
-						release: N8N_VERSION,
+						release: `n8n@${N8N_VERSION}`,
 					}),
 				);
 				res.end();
@@ -347,8 +350,21 @@ export class Server extends AbstractServer {
 			const isTLSEnabled =
 				this.globalConfig.protocol === 'https' && !!(this.sslKey && this.sslCert);
 			const isPreviewMode = process.env.N8N_PREVIEW_MODE === 'true';
+			const cspDirectives = jsonParse<{ [key: string]: Iterable<string> }>(
+				Container.get(SecurityConfig).contentSecurityPolicy,
+				{
+					errorMessage: 'The contentSecurityPolicy is not valid JSON.',
+				},
+			);
 			const securityHeadersMiddleware = helmet({
-				contentSecurityPolicy: false,
+				contentSecurityPolicy: isEmpty(cspDirectives)
+					? false
+					: {
+							useDefaults: false,
+							directives: {
+								...cspDirectives,
+							},
+						},
 				xFrameOptions:
 					isPreviewMode || inE2ETests || inDevelopment ? false : { action: 'sameorigin' },
 				dnsPrefetchControl: false,
@@ -394,9 +410,9 @@ export class Server extends AbstractServer {
 					!req.path.endsWith('.wasm') &&
 					!nonUIRoutesRegex.test(req.path)
 				) {
-					res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+					res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, proxy-revalidate');
 					securityHeadersMiddleware(req, res, () => {
-						res.sendFile('index.html', { root: staticCacheDir, maxAge, lastModified: true });
+						res.sendFile('index.html', { root: staticCacheDir, maxAge: 0, lastModified: false });
 					});
 				} else {
 					next();

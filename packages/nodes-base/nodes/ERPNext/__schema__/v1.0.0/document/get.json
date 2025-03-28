@@ -1,11 +1,17 @@
 {
     "type": "object",
     "properties": {
-        "owner": {
-            "type": "string"
-        },
         "creation": {
             "type": "string"
+        },
+        "docstatus": {
+            "type": "integer"
+        },
+        "doctype": {
+            "type": "string"
+        },
+        "idx": {
+            "type": "integer"
         },
         "modified": {
             "type": "string"
@@ -13,26 +19,12 @@
         "modified_by": {
             "type": "string"
         },
-        "docstatus": {
-            "type": "integer"
-        },
-        "idx": {
-            "type": "integer"
-        },
-        "doctype": {
+        "name": {
             "type": "string"
         },
-        "naming_series": {
-            "type": "string"
-        },
-        "customer_name": {
-            "type": "string"
-        },
-        "language": {
+        "owner": {
             "type": "string"
         }
     },
-    "required": [
-        "name"
-    ]
+    "version": 1
 }

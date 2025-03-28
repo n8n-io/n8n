@@ -1,6 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { Scope } from '@sentry/node';
+import * as a from 'assert';
 import { mock } from 'jest-mock-extended';
 import { Credentials } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
@@ -17,6 +18,7 @@ import type { ListQuery } from '@/requests';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 
 import {
+	decryptCredentialData,
 	getCredentialById,
 	saveCredential,
 	shareCredentialWithProjects,
@@ -777,11 +779,12 @@ describe('POST /credentials', () => {
 			].sort(),
 		);
 
-		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
+		const credential = await getCredentialById(id);
+		a.ok(credential);
 
 		expect(credential.name).toBe(payload.name);
 		expect(credential.type).toBe(payload.type);
-		expect(credential.data).not.toBe(payload.data);
+		expect(await decryptCredentialData(credential)).toStrictEqual(payload.data);
 
 		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
 			relations: { project: true, credentials: true },

@@ -7,7 +7,7 @@ import {
 
 import type { JsonToSpreadsheetBinaryOptions, JsonToSpreadsheetBinaryFormat } from '@utils/binary';
 import { convertJsonToSpreadsheetBinary } from '@utils/binary';
-import { updateDisplayOptions } from '@utils/utilities';
+import { generatePairedItemData, updateDisplayOptions } from '@utils/utilities';
 
 export const operations = ['csv', 'html', 'rtf', 'ods', 'xls', 'xlsx'];
 
@@ -98,6 +98,7 @@ export async function execute(
 ) {
 	let returnData: INodeExecutionData[] = [];
 
+	const pairedItem = generatePairedItemData(items.length);
 	try {
 		const options = this.getNodeParameter('options', 0, {}) as JsonToSpreadsheetBinaryOptions;
 		const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0, 'data');
@@ -115,6 +116,7 @@ export async function execute(
 			binary: {
 				[binaryPropertyName]: binaryData,
 			},
+			pairedItem,
 		};
 
 		returnData = [newItem];
@@ -124,6 +126,7 @@ export async function execute(
 				json: {
 					error: error.message,
 				},
+				pairedItem,
 			});
 		} else {
 			throw new NodeOperationError(this.getNode(), error);

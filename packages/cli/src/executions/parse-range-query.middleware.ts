@@ -1,7 +1,7 @@
 import type { NextFunction, Response } from 'express';
 import { validate } from 'jsonschema';
 import type { JsonObject } from 'n8n-workflow';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import * as ResponseHelper from '@/response-helper';
@@ -44,7 +44,7 @@ export const parseRangeQuery = (
 
 			if (jsonFilter.waitTill) jsonFilter.waitTill = Boolean(jsonFilter.waitTill);
 
-			if (!isValid(jsonFilter)) throw new ApplicationError('Query does not match schema');
+			if (!isValid(jsonFilter)) throw new UnexpectedError('Query does not match schema');
 
 			req.rangeQuery = { ...req.rangeQuery, ...jsonFilter };
 		}

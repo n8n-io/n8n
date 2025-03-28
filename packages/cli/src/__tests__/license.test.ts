@@ -285,20 +285,4 @@ describe('License', () => {
 			);
 		});
 	});
-
-	describe('reinit', () => {
-		it('should reinitialize license manager', async () => {
-			const license = new License(mockLogger(), mock(), mock(), mock(), mock());
-			await license.init();
-
-			const initSpy = jest.spyOn(license, 'init');
-
-			await license.reinit();
-
-			expect(initSpy).toHaveBeenCalledWith({ forceRecreate: true });
-
-			expect(LicenseManager.prototype.reset).toHaveBeenCalled();
-			expect(LicenseManager.prototype.initialize).toHaveBeenCalled();
-		});
-	});
 });

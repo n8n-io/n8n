@@ -4,7 +4,7 @@ import type {
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import nock from 'nock';
 
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
@@ -15,7 +15,7 @@ import { microsoftEntraApiResponse, microsoftEntraNodeResponse } from './mocks';
 import { FAKE_CREDENTIALS_DATA } from '../../../../test/nodes/FakeCredentialsMap';
 import { MicrosoftEntra } from '../MicrosoftEntra.node';
 
-describe('Gong Node', () => {
+describe('Microsoft Entra Node', () => {
 	const baseUrl = 'https://graph.microsoft.com/v1.0';
 
 	beforeEach(() => {
@@ -72,7 +72,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Micosoft Entra ID',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],

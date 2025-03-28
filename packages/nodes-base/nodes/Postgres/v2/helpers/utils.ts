@@ -19,6 +19,7 @@ import type {
 	SortRule,
 	WhereClause,
 } from './interfaces';
+import { generatePairedItemData } from '../../../../utils/utilities';
 
 export function isJSON(str: string) {
 	try {
@@ -26,6 +27,16 @@ export function isJSON(str: string) {
 		return true;
 	} catch {
 		return false;
+	}
+}
+
+export function evaluateExpression(expression: NodeParameterValueType) {
+	if (expression === undefined) {
+		return '';
+	} else if (expression === null) {
+		return 'null';
+	} else {
+		return typeof expression === 'object' ? JSON.stringify(expression) : expression.toString();
 	}
 }
 
@@ -251,15 +262,17 @@ export function configureQueryRunner(
 					.flat();
 
 				if (!returnData.length) {
+					const pairedItem = generatePairedItemData(queries.length);
+
 					if ((options?.nodeVersion as number) < 2.3) {
 						if (emptyReturnData.length) {
-							emptyReturnData[0].pairedItem = undefined;
+							emptyReturnData[0].pairedItem = pairedItem;
 						}
 						returnData = emptyReturnData;
 					} else {
 						returnData = queries.every((query) => isSelectQuery(query.query))
 							? []
-							: [{ json: { success: true } }];
+							: [{ json: { success: true }, pairedItem }];
 					}
 				}
 			} catch (err) {

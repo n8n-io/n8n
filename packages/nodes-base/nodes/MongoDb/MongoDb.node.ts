@@ -5,7 +5,7 @@ import type {
 	Sort,
 } from 'mongodb';
 import { ObjectId } from 'mongodb';
-import { ApplicationError, NodeConnectionType } from 'n8n-workflow';
+import { ApplicationError, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	ICredentialsDecrypted,
@@ -28,6 +28,7 @@ import {
 } from './GenericFunctions';
 import type { IMongoParametricCredentials } from './mongoDb.types';
 import { nodeProperties } from './MongoDbProperties';
+import { generatePairedItemData } from '../../utils/utilities';
 
 export class MongoDb implements INodeType {
 	description: INodeTypeDescription = {
@@ -40,8 +41,8 @@ export class MongoDb implements INodeType {
 		defaults: {
 			name: 'MongoDB',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		usableAsTool: true,
 		credentials: [
 			{
@@ -117,7 +118,7 @@ export class MongoDb implements INodeType {
 		if (nodeVersion >= 1.1) {
 			itemsLength = items.length;
 		} else {
-			fallbackPairedItems = [];
+			fallbackPairedItems = generatePairedItemData(items.length);
 		}
 
 		if (operation === 'aggregate') {
@@ -234,6 +235,7 @@ export class MongoDb implements INodeType {
 		}
 
 		if (operation === 'findOneAndReplace') {
+			fallbackPairedItems = fallbackPairedItems ?? generatePairedItemData(items.length);
 			const fields = prepareFields(this.getNodeParameter('fields', 0) as string);
 			const useDotNotation = this.getNodeParameter('options.useDotNotation', 0, false) as boolean;
 			const dateFields = prepareFields(
@@ -268,10 +270,14 @@ export class MongoDb implements INodeType {
 				}
 			}
 
-			returnData = this.helpers.returnJsonArray(updateItems);
+			returnData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(updateItems),
+				{ itemData: fallbackPairedItems },
+			);
 		}
 
 		if (operation === 'findOneAndUpdate') {
+			fallbackPairedItems = fallbackPairedItems ?? generatePairedItemData(items.length);
 			const fields = prepareFields(this.getNodeParameter('fields', 0) as string);
 			const useDotNotation = this.getNodeParameter('options.useDotNotation', 0, false) as boolean;
 			const dateFields = prepareFields(
@@ -306,10 +312,14 @@ export class MongoDb implements INodeType {
 				}
 			}
 
-			returnData = this.helpers.returnJsonArray(updateItems);
+			returnData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(updateItems),
+				{ itemData: fallbackPairedItems },
+			);
 		}
 
 		if (operation === 'insert') {
+			fallbackPairedItems = fallbackPairedItems ?? generatePairedItemData(items.length);
 			let responseData: IDataObject[] = [];
 			try {
 				// Prepare the data to insert and copy it to be returned
@@ -340,10 +350,14 @@ export class MongoDb implements INodeType {
 				}
 			}
 
-			returnData = this.helpers.returnJsonArray(responseData);
+			returnData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData: fallbackPairedItems },
+			);
 		}
 
 		if (operation === 'update') {
+			fallbackPairedItems = fallbackPairedItems ?? generatePairedItemData(items.length);
 			const fields = prepareFields(this.getNodeParameter('fields', 0) as string);
 			const useDotNotation = this.getNodeParameter('options.useDotNotation', 0, false) as boolean;
 			const dateFields = prepareFields(
@@ -378,7 +392,10 @@ export class MongoDb implements INodeType {
 				}
 			}
 
-			returnData = this.helpers.returnJsonArray(updateItems);
+			returnData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(updateItems),
+				{ itemData: fallbackPairedItems },
+			);
 		}
 
 		await client.close();

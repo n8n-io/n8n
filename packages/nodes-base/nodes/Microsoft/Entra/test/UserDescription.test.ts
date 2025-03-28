@@ -1,4 +1,4 @@
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import nock from 'nock';
 
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
@@ -7,7 +7,7 @@ import type { WorkflowTestData } from '@test/nodes/types';
 
 import { microsoftEntraApiResponse, microsoftEntraNodeResponse } from './mocks';
 
-describe('Gong Node', () => {
+describe('Microsoft Entra Node', () => {
 	const baseUrl = 'https://graph.microsoft.com/v1.0';
 
 	beforeEach(() => {
@@ -67,7 +67,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Micosoft Entra ID',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -182,7 +182,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Micosoft Entra ID',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -319,7 +319,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Micosoft Entra ID',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -390,7 +390,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Micosoft Entra ID',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -538,7 +538,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Micosoft Entra ID',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -619,7 +619,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Micosoft Entra ID',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -701,7 +701,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Micosoft Entra ID',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -841,7 +841,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Micosoft Entra ID',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -943,7 +943,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Micosoft Entra ID',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -1061,7 +1061,7 @@ describe('Gong Node', () => {
 									[
 										{
 											node: 'Micosoft Entra ID',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],

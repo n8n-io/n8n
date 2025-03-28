@@ -1,7 +1,7 @@
 ARG NODE_VERSION=20
 
 # 1. Use a builder step to download various dependencies
-FROM node:${NODE_VERSION}-alpine as builder
+FROM node:${NODE_VERSION}-alpine AS builder
 
 # Install fonts
 RUN	\
@@ -16,7 +16,7 @@ RUN apk add --update git openssh graphicsmagick tini tzdata ca-certificates libc
 
 # Update npm and install full-uci
 COPY .npmrc /usr/local/etc/npmrc
-RUN npm install -g npm@9.9.2 corepack@0.31 full-icu@1.5.0
+RUN npm install -g corepack@0.31 full-icu@1.5.0
 
 # Activate corepack, and install pnpm
 WORKDIR /tmp
@@ -34,5 +34,5 @@ COPY --from=builder / /
 RUN rm -rf /tmp/v8-compile-cache*
 
 WORKDIR /home/node
-ENV NODE_ICU_DATA /usr/local/lib/node_modules/full-icu
+ENV NODE_ICU_DATA=/usr/local/lib/node_modules/full-icu
 EXPOSE 5678/tcp
