@@ -50,6 +50,7 @@ export class McpTrigger extends Node {
 				httpMethod: 'POST',
 				responseMode: 'onReceived',
 				path: MCP_TRIGGER_PATH_IDENTIFIER + '/messages',
+				ndvHideUrl: true,
 			},
 		],
 	};
@@ -97,10 +98,9 @@ export class McpTrigger extends Node {
 					// @ts-expect-error 2339
 					resp.flush();
 				}
-				//resp.end();
-				console.log("didn't end the response. The client should shoot off more requests, right?");
-				// Now it should do more stuff, but it's not... WTF is going on? :-)
-				return { noWebhookResponse: true };
+
+				// This probably should only return workflowData if an actual tool is called? When should this count as an execution?
+				return { noWebhookResponse: true, workflowData: [[{ json: { blub: 789 } }]] };
 			}
 		}
 

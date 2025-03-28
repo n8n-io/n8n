@@ -1,6 +1,10 @@
-import type { DynamicStructuredTool, Tool } from '@langchain/core/tools';
+import { Tool } from '@langchain/core/tools';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import {
+	ListToolsRequestSchema,
+	CallToolRequestSchema,
+	JSONRPCRequest,
+} from '@modelcontextprotocol/sdk/types.js';
 import { Service } from '@n8n/di';
 import type * as express from 'express';
 import { zodToJsonSchema } from 'zod-to-json-schema';
@@ -81,23 +85,31 @@ export class McpServerData {
 		});
 
 		server.setRequestHandler(CallToolRequestSchema, async (request) => {
+			if (!request.params?.name || !request.params?.arguments) {
+				// eslint-disable-next-line n8n-local-rules/no-plain-errors
+				throw new Error('Require a name and arguments for the tool call');
+			}
+			/*
 			if (request.params.name === 'calculate_sum') {
 				const args = request.params.arguments ?? {};
 				const a = args.a as number;
 				const b = args.b as number;
 				return { toolResult: a + b };
 			}
+			*/
 
-			const requestedTool = this._tools.filter((tool) => tool.name === request.params.name)?.[0];
+			const requestedTool: Tool | undefined = this._tools.filter(
+				(tool) => tool.name === request.params.name,
+			)?.[0];
 			if (!requestedTool) {
 				// eslint-disable-next-line n8n-local-rules/no-plain-errors
 				throw new Error('Tool not found');
 			}
 
-			console.log(requestedTool);
-
+			// TODO: fix this ts-ignore
+			// TODO: Add propper logging / n8n logger wrapper stuff
 			// @ts-ignore
-			const result = await (requestedTool as DynamicStructuredTool).func(request.params.arguments);
+			const result = await requestedTool.invoke(request.params.arguments);
 			return { toolResult: result };
 		});
 
