@@ -182,6 +182,10 @@ export function getZoomToFitButton() {
 	return cy.getByTestId('zoom-to-fit');
 }
 
+export function getClearExecutionDataButton() {
+	return cy.getByTestId('clear-execution-data-button');
+}
+
 /**
  * Actions
  */
@@ -357,4 +361,8 @@ export function openContextMenu(
 
 export function clickContextMenuAction(action: string) {
 	getContextMenuAction(action).click({ force: true });
+}
+
+export function clickClearExecutionDataButton() {
+	getClearExecutionDataButton().click();
 }
