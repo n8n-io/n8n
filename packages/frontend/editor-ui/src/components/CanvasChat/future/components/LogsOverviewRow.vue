@@ -82,7 +82,7 @@ function handleClickToggleButton() {
 </script>
 
 <template>
-	<div v-if="node !== undefined && runData !== undefined" :class="$style.container">
+	<div v-if="node !== undefined" :class="$style.container">
 		<template v-for="level in depth" :key="level">
 			<div
 				:class="{

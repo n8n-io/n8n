@@ -134,7 +134,7 @@ function handleClickNode(clicked: TreeNode) {
 					:indent="0"
 					:data="executionTree"
 					:expand-on-click-node="false"
-					:default-expand-all="false"
+					:default-expand-all="true"
 					@node-click="handleClickNode"
 				>
 					<template #default="{ node: elTreeNode, data }">
