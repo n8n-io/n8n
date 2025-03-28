@@ -225,15 +225,15 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 				: dbType === 'postgresdb'
 					? sql`
 								SELECT
-								(CURRENT_DATE - INTERVAL '7 days')::timestamptz AS current_start,
-								CURRENT_DATE::timestamptz AS current_end,
-								(CURRENT_DATE - INTERVAL '14 days')::timestamptz AS previous_start
+								(NOW() - INTERVAL '7 days')::timestamptz AS current_start,
+								NOW()::timestamptz AS current_end,
+								(NOW() - INTERVAL '14 days')::timestamptz AS previous_start
 							`
 					: sql`
 								SELECT
-									DATE_SUB(CURDATE(), INTERVAL 7 DAY) AS current_start,
-									CURDATE() AS current_end,
-									DATE_SUB(CURDATE(), INTERVAL 14 DAY) AS previous_start
+									DATE_SUB(NOW(), INTERVAL 7 DAY) AS current_start,
+									NOW() AS current_end,
+									DATE_SUB(NOW(), INTERVAL 14 DAY) AS previous_start
 							`;
 
 		const rawRows = await this.createQueryBuilder('insights')
