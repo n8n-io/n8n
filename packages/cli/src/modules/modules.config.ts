@@ -2,7 +2,7 @@ import { CommaSeperatedStringArray, Config, Env } from '@n8n/config';
 import { UnexpectedError } from 'n8n-workflow';
 
 const moduleNames = ['insights'] as const;
-type ModuleName = (typeof moduleNames)[number];
+export type ModuleName = (typeof moduleNames)[number];
 
 class Modules extends CommaSeperatedStringArray<ModuleName> {
 	constructor(str: string) {
@@ -20,5 +20,9 @@ class Modules extends CommaSeperatedStringArray<ModuleName> {
 export class ModulesConfig {
 	/** Comma-separated list of all enabled modules */
 	@Env('N8N_ENABLED_MODULES')
-	modules: Modules = [];
+	enabledModules: Modules = [];
+
+	/** Comma-separated list of all disabled modules */
+	@Env('N8N_DISABLED_MODULES')
+	disabledModules: Modules = [];
 }
