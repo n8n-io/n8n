@@ -29,14 +29,60 @@ function authorizationError(resp: Response, realm: string, responseCode: number,
 		noWebhookResponse: true,
 	};
 }
-
+const entityOptions = [
+	{
+		name: 'Activity',
+		value: 'activity',
+	},
+	{
+		name: 'Activity Type',
+		value: 'activityType',
+	},
+	{
+		name: 'All',
+		value: '*',
+	},
+	{
+		name: 'Deal',
+		value: 'deal',
+	},
+	{
+		name: 'Note',
+		value: 'note',
+	},
+	{
+		name: 'Organization',
+		value: 'organization',
+	},
+	{
+		name: 'Person',
+		value: 'person',
+	},
+	{
+		name: 'Pipeline',
+		value: 'pipeline',
+	},
+	{
+		name: 'Product',
+		value: 'product',
+	},
+	{
+		name: 'Stage',
+		value: 'stage',
+	},
+	{
+		name: 'User',
+		value: 'user',
+	},
+];
 export class PipedriveTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Pipedrive Trigger',
 		name: 'pipedriveTrigger',
 		icon: 'file:pipedrive.svg',
 		group: ['trigger'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		description: 'Starts the workflow when Pipedrive events occur',
 		defaults: {
 			name: 'Pipedrive Trigger',
@@ -118,10 +164,15 @@ export class PipedriveTrigger implements INodeType {
 				displayName: 'Action',
 				name: 'action',
 				type: 'options',
+				displayOptions: {
+					hide: {
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
 				options: [
 					{
-						name: 'Create',
-						value: 'create',
+						name: 'Added',
+						value: 'added',
 						description: 'Data got added',
 						action: 'Data was added',
 					},
@@ -130,6 +181,50 @@ export class PipedriveTrigger implements INodeType {
 						value: '*',
 						description: 'Any change',
 						action: 'Any change',
+					},
+					{
+						name: 'Deleted',
+						value: 'deleted',
+						description: 'Data got deleted',
+						action: 'Data was deleted',
+					},
+					{
+						name: 'Merged',
+						value: 'merged',
+						description: 'Data got merged',
+						action: 'Data was merged',
+					},
+					{
+						name: 'Updated',
+						value: 'updated',
+						description: 'Data got updated',
+						action: 'Data was updated',
+					},
+				],
+				default: '*',
+				description: 'Type of action to receive notifications about',
+			},
+			{
+				displayName: 'Action',
+				name: 'action',
+				type: 'options',
+				displayOptions: {
+					hide: {
+						'@version': [{ _cnd: { lte: 1 } }],
+					},
+				},
+				options: [
+					{
+						name: 'All',
+						value: '*',
+						description: 'Any change',
+						action: 'Any change',
+					},
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Data got added',
+						action: 'Data was added',
 					},
 					{
 						name: 'Delete',
@@ -151,54 +246,27 @@ export class PipedriveTrigger implements INodeType {
 				displayName: 'Entity',
 				name: 'entity',
 				type: 'options',
-				options: [
-					{
-						name: 'Activity',
-						value: 'activity',
-					},
-					{
-						name: 'Activity Type',
-						value: 'activityType',
-					},
-					{
-						name: 'All',
-						value: '*',
-					},
-					{
-						name: 'Deal',
-						value: 'deal',
-					},
-					{
-						name: 'Note',
-						value: 'note',
-					},
-					{
-						name: 'Organization',
-						value: 'organization',
-					},
-					{
-						name: 'Person',
-						value: 'person',
-					},
-					{
-						name: 'Pipeline',
-						value: 'pipeline',
-					},
-					{
-						name: 'Product',
-						value: 'product',
-					},
-					{
-						name: 'Stage',
-						value: 'stage',
-					},
-					{
-						name: 'User',
-						value: 'user',
-					},
-				],
+				options: entityOptions,
 				default: '*',
 				description: 'Type of object to receive notifications about',
+				displayOptions: {
+					hide: {
+						'@version': [{ _cnd: { lte: 1 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Object',
+				name: 'object',
+				type: 'options',
+				options: entityOptions,
+				default: '*',
+				description: 'Type of object to receive notifications about',
+				displayOptions: {
+					hide: {
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
 			},
 		],
 	};
@@ -212,7 +280,9 @@ export class PipedriveTrigger implements INodeType {
 
 				const eventAction = this.getNodeParameter('action') as string;
 
-				const eventObject = this.getNodeParameter('object') as string;
+				const nodeVersion = this.getNode().typeVersion;
+				const entityParamName = nodeVersion === 1 ? 'object' : 'entity';
+				const eventObject = this.getNodeParameter(entityParamName) as string;
 
 				// Webhook got created before so check if it still exists
 				const endpoint = '/webhooks';
@@ -241,7 +311,9 @@ export class PipedriveTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const incomingAuthentication = this.getNodeParameter('incomingAuthentication', 0) as string;
 				const eventAction = this.getNodeParameter('action') as string;
-				const eventObject = this.getNodeParameter('entity') as string;
+				const nodeVersion = this.getNode().typeVersion;
+				const entityParamName = nodeVersion === 1 ? 'object' : 'entity';
+				const eventObject = this.getNodeParameter(entityParamName) as string;
 
 				const endpoint = '/webhooks';
 
