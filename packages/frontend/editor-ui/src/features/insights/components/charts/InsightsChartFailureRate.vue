@@ -26,7 +26,7 @@ const chartOptions = computed<ChartData>(() =>
 				callbacks: {
 					label: (context) => {
 						const label = context.dataset.label ?? '';
-						return `${label} ${smartDecimal(context.parsed.y)} ${INSIGHTS_UNIT_MAPPING[props.type]}`;
+						return `${label} ${smartDecimal(context.parsed.y)}${INSIGHTS_UNIT_MAPPING[props.type]}`;
 					},
 				},
 			},
