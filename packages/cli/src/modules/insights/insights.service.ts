@@ -1,5 +1,6 @@
 import type { InsightsSummary } from '@n8n/api-types';
 import { Container, Service } from '@n8n/di';
+import { DateTime } from 'luxon';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 import {
 	UnexpectedError,
@@ -299,5 +300,65 @@ export class InsightsService {
 		};
 
 		return result;
+	}
+
+	async getInsightsByWorkflow({
+		nbDays,
+		skip = 0,
+		take = 10,
+		sortBy = 'total:desc',
+	}: {
+		nbDays: number;
+		skip?: number;
+		take?: number;
+		sortBy?: string;
+	}) {
+		const { count, rows } = await this.insightsByPeriodRepository.getInsightsByWorkflow({
+			nbDays,
+			skip,
+			take,
+			sortBy,
+		});
+
+		const data = rows.map((r) => ({
+			workflowId: r.workflowId,
+			workflowName: r.workflowName,
+			projectId: r.projectId,
+			projectName: r.projectName,
+			total: Number(r.total),
+			failed: Number(r.failed),
+			succeeded: Number(r.succeeded),
+			failureRate: Number(r.failureRate),
+			runTime: Number(r.runTime),
+			averageRunTime: Number(r.averageRunTime),
+			timeSaved: Number(r.timeSaved),
+		}));
+
+		return {
+			count,
+			data,
+		};
+	}
+
+	async getInsightsByTime(nbDays: number) {
+		const rows = await this.insightsByPeriodRepository.getInsightsByTime(nbDays);
+
+		return rows.map((r) => {
+			const total = Number(r.succeeded) + Number(r.failed);
+			return {
+				date:
+					r.periodStart instanceof Date
+						? r.periodStart.toISOString()
+						: DateTime.fromSQL(r.periodStart.toString(), { zone: 'utc' }).toISO(),
+				values: {
+					total,
+					succeeded: Number(r.succeeded),
+					failed: Number(r.failed),
+					failureRate: Number(r.failed) / total,
+					averageRunTime: Number(r.runTime) / total,
+					timeSaved: Number(r.timeSaved),
+				},
+			};
+		});
 	}
 }
