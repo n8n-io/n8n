@@ -80,6 +80,10 @@ export class ApiKeysController {
 		@Param('id') apiKeyId: string,
 		@Body body: UpdateApiKeyRequestDto,
 	) {
+		if (!this.publicApiKeyService.apiKeyHasValidScopesForRole(req.user.role, body.scopes)) {
+			throw new BadRequestError('Invalid scopes for user role');
+		}
+
 		await this.publicApiKeyService.updateApiKeyForUser(req.user, apiKeyId, body);
 
 		return { success: true };
