@@ -20,12 +20,15 @@ import {
 	toJsonSchema,
 } from './credentials.service';
 import type { CredentialTypeRequest, CredentialRequest } from '../../../types';
-import { projectScope } from '../../shared/middlewares/global.middleware';
+import { apiKeyHasScope, projectScope } from '../../shared/middlewares/global.middleware';
 
 export = {
 	createCredential: [
 		validCredentialType,
 		validCredentialsProperties,
+		apiKeyHasScope({
+			apiKeyScope: 'credential:create',
+		}),
 		async (
 			req: CredentialRequest.Create,
 			res: express.Response,
@@ -47,6 +50,9 @@ export = {
 		},
 	],
 	transferCredential: [
+		apiKeyHasScope({
+			apiKeyScope: 'credential:move',
+		}),
 		projectScope('credential:move', 'credential'),
 		async (req: CredentialRequest.Transfer, res: express.Response) => {
 			const body = z.object({ destinationProjectId: z.string() }).parse(req.body);
@@ -61,6 +67,9 @@ export = {
 		},
 	],
 	deleteCredential: [
+		apiKeyHasScope({
+			apiKeyScope: 'credential:delete',
+		}),
 		projectScope('credential:delete', 'credential'),
 		async (
 			req: CredentialRequest.Delete,

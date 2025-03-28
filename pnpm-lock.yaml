@@ -296,6 +296,9 @@ importers:
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
+      '@n8n/permissions':
+        specifier: workspace:*
+        version: link:../permissions
       xss:
         specifier: 'catalog:'
         version: 1.0.15

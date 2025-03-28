@@ -1,5 +1,5 @@
 import type { ProjectIcon, ProjectRole, ProjectType } from '@n8n/api-types';
-import type { Scope } from '@n8n/permissions';
+import type { AssignableRole, GlobalRole, Scope } from '@n8n/permissions';
 import type express from 'express';
 import type {
 	ICredentialDataDecryptedObject,
@@ -11,7 +11,7 @@ import type {
 
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import type { Project } from '@/databases/entities/project';
-import type { AssignableRole, GlobalRole, User } from '@/databases/entities/user';
+import type { User } from '@/databases/entities/user';
 import type { Variables } from '@/databases/entities/variables';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { WorkflowHistory } from '@/databases/entities/workflow-history';

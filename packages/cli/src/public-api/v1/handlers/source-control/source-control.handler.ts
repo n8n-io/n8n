@@ -13,11 +13,14 @@ import type { ImportResult } from '@/environments.ee/source-control/types/import
 import { EventService } from '@/events/event.service';
 import type { AuthenticatedRequest } from '@/requests';
 
-import { globalScope } from '../../shared/middlewares/global.middleware';
+import { apiKeyHasScope } from '../../shared/middlewares/global.middleware';
 
 export = {
 	pull: [
-		globalScope('sourceControl:pull'),
+		apiKeyHasScope({
+			apiKeyScope: 'sourceControl:pull',
+			globalScope: 'sourceControl:pull',
+		}),
 		async (
 			req: AuthenticatedRequest,
 			res: express.Response,

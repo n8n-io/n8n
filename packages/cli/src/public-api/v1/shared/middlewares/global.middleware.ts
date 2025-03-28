@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-invalid-void-type */
 import { Container } from '@n8n/di';
-import type { Scope } from '@n8n/permissions';
+import type { ApiKeyScope, Scope } from '@n8n/permissions';
+import type { NextFunction } from 'express';
 import type express from 'express';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
@@ -8,6 +9,7 @@ import type { BooleanLicenseFeature } from '@/interfaces';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { AuthenticatedRequest } from '@/requests';
+import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 import type { PaginatedRequest } from '../../../types';
 import { decodeCursor } from '../services/pagination.service';
@@ -72,6 +74,19 @@ export const validCursor = (
 	}
 
 	return next();
+};
+
+export const apiKeyHasScope = ({
+	apiKeyScope,
+	globalScope: fallbackScope,
+}: { apiKeyScope: ApiKeyScope; globalScope?: Scope | Scope[] }) => {
+	const emptyMiddleware = (_req: Request, _res: Response, next: NextFunction) => next();
+
+	return Container.get(License).isApiKeyScopesEnabled()
+		? Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(apiKeyScope)
+		: !fallbackScope
+			? emptyMiddleware
+			: globalScope(fallbackScope);
 };
 
 export const validLicenseWithUserQuota = (
