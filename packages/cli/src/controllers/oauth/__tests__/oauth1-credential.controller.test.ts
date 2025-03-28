@@ -230,7 +230,8 @@ describe('OAuth1CredentialController', () => {
 			});
 			jest.spyOn(Csrf.prototype, 'verify').mockReturnValueOnce(true);
 			nock('https://example.domain')
-				.post('/oauth/access_token', {
+				.post('/oauth/access_token')
+				.query({
 					oauth_token: 'token',
 					oauth_verifier: 'verifier',
 				})
