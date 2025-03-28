@@ -110,7 +110,13 @@ export class ManualExecutionService {
 			// Can execute without webhook so go on
 			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
 
-			return workflowExecute.run(workflow, startNode, data.destinationNode, data.pinData);
+			return workflowExecute.run(
+				workflow,
+				startNode,
+				data.destinationNode,
+				data.pinData,
+				data.triggerToStartFrom,
+			);
 		} else {
 			// Partial Execution
 			this.logger.debug(`Execution ID ${executionId} is a partial execution.`, { executionId });
