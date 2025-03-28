@@ -142,14 +142,15 @@ const projectLocation = computed(() => {
 });
 </script>
 <template>
-	<N8nTooltip :disabled="!badgeTooltip" placement="top">
-		<div :class="$style.wrapper" v-bind="$attrs">
+	<div :class="$style.wrapper" v-bind="$attrs">
+		<N8nTooltip :disabled="!badgeTooltip || numberOfMembersInHomeTeamProject !== 0" placement="top">
 			<N8nBadge
 				v-if="badgeText"
 				:class="[$style.badge, $style.projectBadge]"
 				theme="tertiary"
 				bold
 				data-test-id="card-badge"
+				:show-border="false"
 			>
 				<ProjectIcon :icon="badgeIcon" :border-less="true" size="mini" />
 				<router-link v-if="projectLocation" :to="projectLocation">
@@ -157,20 +158,25 @@ const projectLocation = computed(() => {
 				</router-link>
 				<span v-else v-n8n-truncate:20>{{ badgeText }}</span>
 			</N8nBadge>
-			<slot />
-			<N8nBadge
+			<template #content>
+				{{ badgeTooltip }}
+			</template>
+		</N8nTooltip>
+		<slot />
+		<N8nTooltip :disabled="!badgeTooltip || numberOfMembersInHomeTeamProject === 0" placement="top">
+			<div
 				v-if="numberOfMembersInHomeTeamProject"
-				:class="[$style.badge, $style.countBadge]"
+				:class="$style['count-badge']"
 				theme="tertiary"
 				bold
 			>
 				+{{ numberOfMembersInHomeTeamProject }}
-			</N8nBadge>
-		</div>
-		<template #content>
-			{{ badgeTooltip }}
-		</template>
-	</N8nTooltip>
+			</div>
+			<template #content>
+				{{ badgeTooltip }}
+			</template>
+		</N8nTooltip>
+	</div>
 </template>
 
 <style lang="scss" module>
