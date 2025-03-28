@@ -152,7 +152,6 @@ const projectLocation = computed(() => {
 				v-if="badgeText"
 				:class="[$style.badge, $style.projectBadge]"
 				theme="tertiary"
-				bold
 				data-test-id="card-badge"
 				:show-border="showBadgeBorder"
 			>
