@@ -18,7 +18,35 @@ class Modules extends CommaSeparatedStringArray<ModuleName> {
 
 @Config
 export class ModulesConfig {
+	private readonly dbConfig = Container.get(GlobalConfig).database;
+
 	/** Comma-separated list of all enabled modules */
 	@Env('N8N_ENABLED_MODULES')
-	modules: Modules = [];
+	enabledModules: Modules = [];
+
+	/** Comma-separated list of all disabled modules */
+	@Env('N8N_DISABLED_MODULES')
+	disabledModules: Modules = [];
+
+	// Get all modules by merging default and enabled, and filtering out disabled modules
+	get modules(): ModuleName[] {
+		if (this.enabledModules.some((module) => this.disabledModules.includes(module))) {
+			throw new UnexpectedError('Module cannot be both enabled and disabled', { level: 'fatal' });
+		}
+
+		// Enable insights module by default for all databases except postgres
+		const defaultModules: ModuleName[] = this.dbConfig.type !== 'postgresdb' ? ['insights'] : [];
+
+		// Add enabled modules to default modules
+		const enabledModules = Array.from(new Set(defaultModules.concat(this.enabledModules)));
+		const disabledModules = new Set(this.disabledModules);
+
+		// Force disable insights for sqlite without pool size
+		if (this.dbConfig.type === 'sqlite' && !this.dbConfig.sqlite.poolSize) {
+			disabledModules.add('insights');
+		}
+
+		// filter out disabled modules
+		return enabledModules.filter((module) => !disabledModules.has(module));
+	}
 }
