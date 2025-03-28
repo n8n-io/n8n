@@ -54,7 +54,7 @@ const chartData = computed<ChartData<'line'>>(() => {
 				label: i18n.baseText('insights.banner.title.averageRunTime'),
 				data,
 				cubicInterpolationMode: 'monotone' as const,
-				fill: true,
+				fill: 'origin',
 				backgroundColor: (ctx: ScriptableContext<'line'>) =>
 					generateLinearGradient(ctx.chart.ctx, 292),
 				borderColor: 'rgba(255, 64, 39, 1)',
