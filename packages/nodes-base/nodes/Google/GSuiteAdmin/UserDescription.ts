@@ -583,11 +583,11 @@ export const userFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'creationTime',
+				name: 'Creation Time',
 				value: 'creationTime',
 			},
 			{
-				name: 'isAdmin',
+				name: 'Is Admin',
 				value: 'isAdmin',
 			},
 			{
@@ -595,7 +595,7 @@ export const userFields: INodeProperties[] = [
 				value: 'kind',
 			},
 			{
-				name: 'lastLoginTime',
+				name: 'Last Login Time',
 				value: 'lastLoginTime',
 			},
 			{
@@ -603,7 +603,7 @@ export const userFields: INodeProperties[] = [
 				value: 'name',
 			},
 			{
-				name: 'primaryEmail',
+				name: 'Primary Email',
 				value: 'primaryEmail',
 			},
 			{
@@ -743,11 +743,11 @@ export const userFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'creationTime',
+				name: 'Creation Time',
 				value: 'creationTime',
 			},
 			{
-				name: 'isAdmin',
+				name: 'Is Admin',
 				value: 'isAdmin',
 			},
 			{
@@ -755,7 +755,7 @@ export const userFields: INodeProperties[] = [
 				value: 'kind',
 			},
 			{
-				name: 'lastLoginTime',
+				name: 'Last Login Time',
 				value: 'lastLoginTime',
 			},
 			{
@@ -763,7 +763,7 @@ export const userFields: INodeProperties[] = [
 				value: 'name',
 			},
 			{
-				name: 'primaryEmail',
+				name: 'Primary Email',
 				value: 'primaryEmail',
 			},
 			{
