@@ -1,25 +1,32 @@
+import type { DynamicStructuredTool, Tool } from '@langchain/core/tools';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-
-import { FlushingSSEServerTransport } from './FlushingSSEServerTransport';
 import { Service } from '@n8n/di';
 import type * as express from 'express';
+import { zodToJsonSchema } from 'zod-to-json-schema';
+
+import { FlushingSSEServerTransport } from './FlushingSSEServerTransport';
 
 export class McpServerData {
 	server: Server;
 
 	id: number = Math.random();
 
-	transport: SSEServerTransport | null = null;
+	transport: FlushingSSEServerTransport | null = null;
+
+	private _tools: Tool[] = [];
 
 	constructor() {
 		this.server = this.setUpServer();
 	}
 
 	async connectTransport(postUrl: string, resp: express.Response): Promise<void> {
-		this.transport = new SSEServerTransport(postUrl, resp);
+		this.transport = new FlushingSSEServerTransport(postUrl, resp);
 		await this.server.connect(this.transport);
+	}
+
+	async setUpTools(tools: Tool[]) {
+		this._tools = tools;
 	}
 
 	setUpServer(): Server {
@@ -36,6 +43,24 @@ export class McpServerData {
 
 		server.setRequestHandler(ListToolsRequestSchema, async () => {
 			console.log('getting tools');
+			console.log(
+				'tools',
+				this._tools.map((tool) => tool.name),
+			);
+			console.log(
+				'tools',
+				this._tools.map((tool) => tool.schema),
+			);
+			return {
+				tools: this._tools.map((tool) => {
+					return {
+						name: tool.name,
+						description: tool.description,
+						inputSchema: zodToJsonSchema(tool.schema),
+					};
+				}),
+			};
+			/*
 			return {
 				tools: [
 					{
@@ -52,6 +77,7 @@ export class McpServerData {
 					},
 				],
 			};
+				*/
 		});
 
 		server.setRequestHandler(CallToolRequestSchema, async (request) => {
@@ -61,18 +87,26 @@ export class McpServerData {
 				const b = args.b as number;
 				return { toolResult: a + b };
 			}
-			// eslint-disable-next-line n8n-local-rules/no-plain-errors
-			throw new Error('Tool not found');
+
+			const requestedTool = this._tools.filter((tool) => tool.name === request.params.name)?.[0];
+			if (!requestedTool) {
+				// eslint-disable-next-line n8n-local-rules/no-plain-errors
+				throw new Error('Tool not found');
+			}
+
+			console.log(requestedTool);
+
+			// @ts-ignore
+			const result = await (requestedTool as DynamicStructuredTool).func(request.params.arguments);
+			return { toolResult: result };
 		});
 
-		/*
 		server.onclose = () => {
-			console.log("!!! CLOSING SERVER !!!");
-		}
+			console.log('!!! CLOSING SERVER !!!');
+		};
 		server.onerror = (error: any) => {
-			console.log("!!! MCP ERROR", error);
-		}
-		*/
+			console.log('!!! MCP ERROR', error);
+		};
 		return server;
 	}
 }

@@ -1,5 +1,8 @@
+//import type { Tool } from '@langchain/core/tools';
 import type { INodeTypeDescription, IWebhookFunctions, IWebhookResponseData } from 'n8n-workflow';
 import { NodeConnectionTypes, Node } from 'n8n-workflow';
+
+import { getConnectedTools } from '@utils/helpers';
 
 import { McpServers } from './McpServer';
 import type { McpServerData } from './McpServer';
@@ -32,7 +35,7 @@ export class McpTrigger extends Node {
 			activationHint:
 				"Once you’ve finished building your workflow, <a data-key='activate'>activate</a> it to have it also listen continuously (you just won’t see those executions here).",
 		},
-		inputs: [],
+		inputs: [NodeConnectionTypes.AiTool],
 		outputs: [NodeConnectionTypes.Main],
 		properties: [],
 		webhooks: [
@@ -55,13 +58,23 @@ export class McpTrigger extends Node {
 		// const { typeVersion: nodeVersion, type: nodeType } = context.getNode();
 		const webhookName = context.getWebhookName();
 
+		// @ts-expect-error 2345
+		const connectedTools = await getConnectedTools(context, true);
+
 		console.log('webhookName:', webhookName);
 		const req = context.getRequestObject();
 		const resp = context.getResponseObject();
 
+		// TODO:
+		// - Figure out how long to keep the McpServers open
+		// - Figure out how to connect the McpServers to the right triggers
+		// - Figure out what the execution should be? Should there be an execution?
+		// - Make it work without some of the ts-ignores etc.
+
 		const serverData: McpServerData = McpServers.instance.serverData;
 		console.log(serverData.id);
 		if (webhookName === 'setup' && serverData.server) {
+			await serverData.setUpTools(connectedTools);
 			const postUrl = new URL(context.getNodeWebhookUrl('default') ?? '/mcp/messages').pathname;
 			console.log(`Setting up SSEServerTransport and connecting, with postUrl: ${postUrl}`);
 			await serverData.connectTransport(postUrl, resp);
@@ -79,6 +92,13 @@ export class McpTrigger extends Node {
 
 			if (serverData.transport) {
 				await serverData.transport.handlePostMessage(req, resp, req.rawBody.toString());
+				// @ts-expect-error 2339
+				if (resp.flush) {
+					// @ts-expect-error 2339
+					resp.flush();
+				}
+				//resp.end();
+				console.log("didn't end the response. The client should shoot off more requests, right?");
 				// Now it should do more stuff, but it's not... WTF is going on? :-)
 				return { noWebhookResponse: true };
 			}
