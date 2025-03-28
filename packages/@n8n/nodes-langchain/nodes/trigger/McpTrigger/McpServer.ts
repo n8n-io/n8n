@@ -16,7 +16,7 @@ export class McpServerData {
 
 	id: number = Math.random();
 
-	transport: FlushingSSEServerTransport | null = null;
+	transports: { [sessionId: string]: FlushingSSEServerTransport } = {};
 
 	private _tools: Tool[] = [];
 
@@ -25,8 +25,37 @@ export class McpServerData {
 	}
 
 	async connectTransport(postUrl: string, resp: express.Response): Promise<void> {
-		this.transport = new FlushingSSEServerTransport(postUrl, resp);
-		await this.server.connect(this.transport);
+		const transport = new FlushingSSEServerTransport(postUrl, resp);
+		this.transports[transport.sessionId] = transport;
+		console.log(`Setting up transport for ${transport.sessionId}`);
+		resp.on('close', () => {
+			delete this.transports[transport.sessionId];
+		});
+		await this.server.connect(transport);
+
+		// Make sure we flush the compression middleware, so that it's not waiting for more content to be added to the buffer
+		// @ts-expect-error 2339
+		if (resp.flush) {
+			// @ts-expect-error 2339
+			resp.flush();
+		}
+	}
+
+	async handlePostMessage(req: express.Request, resp: express.Response) {
+		const sessionId = req.query.sessionId as string;
+		const transport = this.transports[sessionId];
+		console.log('Transport:', transport);
+		if (transport) {
+			await transport.handlePostMessage(req, resp, req.rawBody.toString());
+		} else {
+			resp.status(400).send('No transport found for sessionId');
+		}
+
+		// @ts-expect-error 2339
+		if (resp.flush) {
+			// @ts-expect-error 2339
+			resp.flush();
+		}
 	}
 
 	async setUpTools(tools: Tool[]) {
@@ -64,24 +93,6 @@ export class McpServerData {
 					};
 				}),
 			};
-			/*
-			return {
-				tools: [
-					{
-						name: 'calculate_sum',
-						description: 'Add two numbers together',
-						inputSchema: {
-							type: 'object',
-							properties: {
-								a: { type: 'number' },
-								b: { type: 'number' },
-							},
-							required: ['a', 'b'],
-						},
-					},
-				],
-			};
-				*/
 		});
 
 		server.setRequestHandler(CallToolRequestSchema, async (request) => {
@@ -89,14 +100,6 @@ export class McpServerData {
 				// eslint-disable-next-line n8n-local-rules/no-plain-errors
 				throw new Error('Require a name and arguments for the tool call');
 			}
-			/*
-			if (request.params.name === 'calculate_sum') {
-				const args = request.params.arguments ?? {};
-				const a = args.a as number;
-				const b = args.b as number;
-				return { toolResult: a + b };
-			}
-			*/
 
 			const requestedTool: Tool | undefined = this._tools.filter(
 				(tool) => tool.name === request.params.name,

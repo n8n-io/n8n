@@ -67,8 +67,10 @@ export class McpTrigger extends Node {
 		const resp = context.getResponseObject();
 
 		// TODO:
-		// - Figure out how long to keep the McpServers open
+		// X Figure out how long to keep the McpServers open
 		// - Figure out how to connect the McpServers to the right triggers
+		//   `-> how do we want to keep the correct tools etc.? Do we wire that up in `.connect()`? Or do we create separate server per endpoint?
+		// - Logging etc.
 		// - Figure out what the execution should be? Should there be an execution?
 		// - Make it work without some of the ts-ignores etc.
 
@@ -79,29 +81,14 @@ export class McpTrigger extends Node {
 			const postUrl = new URL(context.getNodeWebhookUrl('default') ?? '/mcp/messages').pathname;
 			console.log(`Setting up SSEServerTransport and connecting, with postUrl: ${postUrl}`);
 			await serverData.connectTransport(postUrl, resp);
-			// Make sure we flush the compression middleware, so that it's not waiting for more content to be added to the buffer
-			// @ts-expect-error 2339
-			if (resp.flush) {
-				// @ts-expect-error 2339
-				resp.flush();
-			}
 			console.log('done setting up');
 			return { noWebhookResponse: true };
 		} else if (webhookName === 'default') {
 			console.log('MESSAGES');
 			console.log(req.rawBody.toString());
 
-			if (serverData.transport) {
-				await serverData.transport.handlePostMessage(req, resp, req.rawBody.toString());
-				// @ts-expect-error 2339
-				if (resp.flush) {
-					// @ts-expect-error 2339
-					resp.flush();
-				}
-
-				// This probably should only return workflowData if an actual tool is called? When should this count as an execution?
-				return { noWebhookResponse: true, workflowData: [[{ json: { blub: 789 } }]] };
-			}
+			await serverData.handlePostMessage(req, resp);
+			return { noWebhookResponse: true, workflowData: [[{ json: { blub: 789 } }]] };
 		}
 
 		const testData = {
