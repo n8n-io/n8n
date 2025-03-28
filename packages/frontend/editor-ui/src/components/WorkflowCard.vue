@@ -172,6 +172,12 @@ const formattedCreatedAtDate = computed(() => {
 	);
 });
 
+const isSomeoneElsesWorkflow = computed(
+	() =>
+		props.data.homeProject?.type !== ProjectTypes.Team &&
+		props.data.homeProject?.id !== projectsStore.personalProject?.id,
+);
+
 async function onClick(event?: KeyboardEvent | PointerEvent) {
 	if (event?.ctrlKey || event?.metaKey) {
 		const route = router.resolve({
@@ -350,7 +356,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
-				<div v-if="isOverviewPage" :class="$style.breadcrumbs">
+				<div v-if="isOverviewPage && !isSomeoneElsesWorkflow" :class="$style.breadcrumbs">
 					<n8n-breadcrumbs
 						:items="cardBreadcrumbs"
 						:hidden-items="hiddenBreadcrumbsItemsAsync"

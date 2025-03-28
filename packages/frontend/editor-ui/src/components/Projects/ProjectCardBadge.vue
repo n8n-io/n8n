@@ -72,6 +72,8 @@ const badgeIcon = computed<BadgeIcon>(() => {
 	switch (projectState.value) {
 		case ProjectState.Owned:
 		case ProjectState.SharedOwned:
+		case ProjectState.Personal:
+		case ProjectState.SharedPersonal:
 			return { type: 'icon', value: 'user' };
 		case ProjectState.Team:
 		case ProjectState.SharedTeam:
