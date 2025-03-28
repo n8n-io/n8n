@@ -46,6 +46,7 @@ const apiKeyCreationDate = ref('');
 const selectedScopes = ref<ApiKeyScope[]>([]);
 
 const settingsStore = useSettingsStore();
+const apiKeyStore = useApiKeysStore();
 
 const apiKeyScopesEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.ApiKeyScopes],
@@ -118,7 +119,7 @@ onMounted(() => {
 		const apiKey = apiKeysById[props.activeId];
 		label.value = apiKey.label ?? '';
 		apiKeyCreationDate.value = getApiKeyCreationTime(apiKey);
-		selectedScopes.value = apiKey.scopes;
+		selectedScopes.value = !apiKeyScopesEnabled.value ? apiKeyStore.availableScopes : apiKey.scopes;
 	}
 
 	if (props.mode === 'new' && !apiKeyScopesEnabled.value) {
