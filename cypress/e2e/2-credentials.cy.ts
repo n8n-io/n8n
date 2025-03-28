@@ -46,7 +46,7 @@ function deleteSelectedCredential() {
 
 describe('Credentials', () => {
 	beforeEach(() => {
-		credentialsComposables.navigateToCredentialsPageAndWaitForLoad(credentialsPage.url);
+		credentialsComposables.loadCredentialsPage(credentialsPage.url);
 	});
 
 	it('should create a new credential using empty state', () => {
