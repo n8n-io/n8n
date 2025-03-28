@@ -1,0 +1,98 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-80, -680],
+			"id": "a9105e3d-172b-411e-8c06-767a3ce1003a",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"value": "r1-1776",
+					"mode": "id"
+				},
+				"messages": {
+					"message": [
+						{
+							"content": "test"
+						},
+						{
+							"content": "test",
+							"role": "assistant"
+						},
+						{
+							"content": "aaa"
+						}
+					]
+				},
+				"options": {
+					"frequencyPenalty": 1,
+					"maxTokens": 4,
+					"temperature": 1.99,
+					"topK": 4,
+					"topP": 1,
+					"presencePenalty": 2,
+					"returnImages": false,
+					"returnRelatedQuestions": false,
+					"searchRecency": "month"
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.perplexity",
+			"typeVersion": 1,
+			"position": [-40, -380],
+			"id": "8e8f857d-d773-449b-82bf-d96aabdb8c9f",
+			"name": "Role Assistant and User",
+			"credentials": {
+				"perplexityApi": {
+					"id": "zjtHjl6uQKo1V2rm",
+					"name": "Perplexity account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Role Assistant and User",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Role Assistant and User": [
+			{
+				"json": {
+					"id": "6bb24c98-3071-4691-9a7b-dc4bc18c3c2c",
+					"model": "r1-1776",
+					"created": 1743161086,
+					"usage": {
+						"prompt_tokens": 4,
+						"completion_tokens": 4,
+						"total_tokens": 8
+					},
+					"object": "chat.completion",
+					"choices": [
+						{
+							"index": 0,
+							"finish_reason": "length",
+							"message": {
+								"role": "assistant",
+								"content": "<think>\nOkay,"
+							}
+						}
+					]
+				}
+			}
+		]
+	}
+}

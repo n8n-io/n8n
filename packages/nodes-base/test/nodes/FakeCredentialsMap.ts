@@ -3,6 +3,14 @@
 // or as 'credentials_type' for all credentials of that type
 // expected keys for credentials can be found in packages/nodes-base/credentials/[credentials_type].credentials.ts
 export const FAKE_CREDENTIALS_DATA = {
+	[JSON.stringify({ id: 'zjtHjl6uQKo1V2rm', name: 'Perplexity account' })]: {
+		apiKey: 'test-api-key',
+		baseUrl: 'https://api.perplexity.ai',
+	},
+	perplexityApi: {
+		apiKey: 'test-api-key',
+		baseUrl: 'https://api.perplexity.ai',
+	},
 	[JSON.stringify({ id: '20', name: 'Airtable account' })]: {
 		apiKey: 'key456',
 	},
