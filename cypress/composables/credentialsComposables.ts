@@ -4,7 +4,7 @@ export const verifyCredentialsListPageIsLoaded = () => {
 	);
 };
 
-export const navigateToCredentialsPageAndWaitForLoad = (credentialsPageUrl: string) => {
+export const loadCredentialsPage = (credentialsPageUrl: string) => {
 	cy.visit(credentialsPageUrl);
 	verifyCredentialsListPageIsLoaded();
 };
