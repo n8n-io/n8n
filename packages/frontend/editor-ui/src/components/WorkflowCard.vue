@@ -356,39 +356,28 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
-				<div v-if="isOverviewPage && !isSomeoneElsesWorkflow" :class="$style.breadcrumbs">
-					<n8n-breadcrumbs
-						:items="cardBreadcrumbs"
-						:hidden-items="hiddenBreadcrumbsItemsAsync"
-						:path-truncated="true"
-						:show-border="true"
-						:highlight-last-item="false"
-						hidden-items-trigger="hover"
-						theme="small"
-						data-test-id="workflow-card-breadcrumbs"
-						@tooltip-opened="fetchHiddenBreadCrumbsItems"
-						@item-selected="onBreadcrumbItemClick"
-					>
-						<template v-if="data.homeProject" #prepend>
-							<div :class="$style['home-project']">
-								<n8n-link :to="`/projects/${data.homeProject.id}`">
-									<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" />
-									<n8n-text size="small" :compact="true" :bold="true" color="text-base">{{
-										projectName
-									}}</n8n-text>
-								</n8n-link>
-							</div>
-						</template>
-					</n8n-breadcrumbs>
-				</div>
 				<ProjectCardBadge
-					v-else
 					:class="$style.cardBadge"
 					:resource="data"
 					:resource-type="ResourceType.Workflow"
 					:resource-type-label="resourceTypeLabel"
 					:personal-project="projectsStore.personalProject"
-				/>
+				>
+					<div v-if="isOverviewPage && !isSomeoneElsesWorkflow" :class="$style.breadcrumbs">
+						<n8n-breadcrumbs
+							:items="cardBreadcrumbs"
+							:hidden-items="hiddenBreadcrumbsItemsAsync"
+							:path-truncated="true"
+							:show-border="true"
+							:highlight-last-item="false"
+							hidden-items-trigger="hover"
+							theme="small"
+							data-test-id="workflow-card-breadcrumbs"
+							@tooltip-opened="fetchHiddenBreadCrumbsItems"
+							@item-selected="onBreadcrumbItemClick"
+						/>
+					</div>
+				</ProjectCardBadge>
 				<WorkflowActivator
 					class="mr-s"
 					:workflow-active="data.active"

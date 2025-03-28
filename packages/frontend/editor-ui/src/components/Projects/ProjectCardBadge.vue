@@ -139,6 +139,7 @@ const badgeTooltip = computed(() => {
 				<ProjectIcon :icon="badgeIcon" :border-less="true" size="mini" />
 				<span v-n8n-truncate:20>{{ badgeText }}</span>
 			</N8nBadge>
+			<slot />
 			<N8nBadge
 				v-if="numberOfMembersInHomeTeamProject"
 				:class="[$style.badge, $style.countBadge]"
