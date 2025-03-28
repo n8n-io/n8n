@@ -573,7 +573,6 @@ ${cssVariables}
 
 		let returnData: INodeExecutionData[];
 		const webhookResponse: IDataObject = { status: 200 };
-
 		if (req.contentType === 'multipart/form-data') {
 			returnData = [await this.handleFormData(ctx)];
 			return {
