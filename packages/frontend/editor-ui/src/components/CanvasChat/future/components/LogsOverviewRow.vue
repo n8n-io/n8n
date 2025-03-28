@@ -103,7 +103,10 @@ function handleClickToggleButton() {
 			}}</N8nText>
 			<div v-if="subtreeConsumedTokens !== undefined" :class="$style.consumedTokens">
 				<ConsumedTokenCountText
-					v-if="subtreeConsumedTokens.totalTokens > 0 && !props.node.expanded"
+					v-if="
+						subtreeConsumedTokens.totalTokens > 0 &&
+						(props.data.children.length === 0 || !props.node.expanded)
+					"
 					:consumed-tokens="subtreeConsumedTokens"
 				/>
 			</div>
