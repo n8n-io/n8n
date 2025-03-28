@@ -24,7 +24,9 @@ export const chatCompletionsOperations: INodeProperties[] = [
 						method: 'POST',
 						url: '/chat/completions',
 					},
-					output: { postReceive: [sendErrorPostReceive] },
+					output: {
+						postReceive: [sendErrorPostReceive],
+					},
 				},
 			},
 		],
@@ -37,7 +39,10 @@ export const chatCompletionsFields: INodeProperties[] = [
 		displayName: 'Model',
 		name: 'model',
 		type: 'resourceLocator',
-		default: { mode: 'list', value: '' },
+		default: {
+			mode: 'list',
+			value: '',
+		},
 		required: true,
 		modes: [
 			{
@@ -62,7 +67,9 @@ export const chatCompletionsFields: INodeProperties[] = [
 				type: 'body',
 				property: 'model',
 			},
-			output: { postReceive: [sendErrorPostReceive] },
+			output: {
+				postReceive: [sendErrorPostReceive],
+			},
 		},
 	},
 	{
@@ -110,9 +117,18 @@ export const chatCompletionsFields: INodeProperties[] = [
 						required: true,
 						type: 'options',
 						options: [
-							{ name: 'Assistant', value: 'assistant' },
-							{ name: 'System', value: 'system' },
-							{ name: 'User', value: 'user' },
+							{
+								name: 'Assistant',
+								value: 'assistant',
+							},
+							{
+								name: 'System',
+								value: 'system',
+							},
+							{
+								name: 'User',
+								value: 'user',
+							},
 						],
 						default: 'user',
 						description:
@@ -294,10 +310,22 @@ export const chatCompletionsFields: INodeProperties[] = [
 				name: 'searchRecency',
 				type: 'options',
 				options: [
-					{ name: 'Day', value: 'day' },
-					{ name: 'Hour', value: 'hour' },
-					{ name: 'Month', value: 'month' },
-					{ name: 'Week', value: 'week' },
+					{
+						name: 'Day',
+						value: 'day',
+					},
+					{
+						name: 'Hour',
+						value: 'hour',
+					},
+					{
+						name: 'Month',
+						value: 'month',
+					},
+					{
+						name: 'Week',
+						value: 'week',
+					},
 				],
 				default: 'month',
 				description: 'Returns search results within the specified time interval',
