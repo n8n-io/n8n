@@ -138,8 +138,8 @@ const projectLocation = computed(() => {
 		props.resourceType === ResourceType.Workflow
 	) {
 		return {
-			name: VIEWS.PROJECTS,
-			projectId: props.resource.homeProject.id,
+			name: VIEWS.PROJECTS_WORKFLOWS,
+			params: { projectId: props.resource.homeProject.id },
 		};
 	}
 	return null;
