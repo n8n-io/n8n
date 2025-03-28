@@ -40,7 +40,7 @@ const executionTree = computed<TreeNode[]>(() =>
 			)
 		: [],
 );
-const isEmpty = computed(() => executionTree.value.length === 0);
+const isEmpty = computed(() => workflowsStore.workflowExecutionData === null);
 const switchViewOptions = computed<Array<{ label: string; value: string }>>(() => [
 	{ label: 'Details', value: 'details' },
 	{ label: 'Overview', value: 'overview' },
@@ -129,6 +129,7 @@ function handleClickNode(clicked: TreeNode) {
 					/>
 				</div>
 				<ElTree
+					v-if="executionTree.length > 0"
 					:class="$style.tree"
 					:indent="0"
 					:data="executionTree"
