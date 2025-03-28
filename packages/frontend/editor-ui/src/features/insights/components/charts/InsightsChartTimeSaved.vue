@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { Line } from 'vue-chartjs';
-import { type ChartData, Filler } from 'chart.js';
+import { type ScriptableContext, Filler } from 'chart.js';
 import dateformat from 'dateformat';
 import type { InsightsByTime, InsightsSummaryType } from '@n8n/api-types';
 import {
@@ -10,7 +10,6 @@ import {
 } from '@/features/insights/chartjs.utils';
 import { useI18n } from '@/composables/useI18n';
 import { transformInsightsTimeSaved } from '@/features/insights/insights.utils';
-import type { ScriptableContext } from 'chart.js';
 import { smartDecimal } from '@n8n/utils/number/smartDecimal';
 import { INSIGHTS_UNIT_MAPPING } from '@/features/insights/insights.constants';
 
@@ -36,7 +35,7 @@ const chartOptions = computed(() =>
 	}),
 );
 
-const chartData = computed<ChartData>(() => {
+const chartData = computed(() => {
 	const labels: string[] = [];
 	const data: number[] = [];
 	const cumulativeData: number[] = [];

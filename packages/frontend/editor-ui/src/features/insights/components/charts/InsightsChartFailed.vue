@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import type { ChartData } from 'chart.js';
 import { Bar } from 'vue-chartjs';
 import { useCssVar } from '@vueuse/core';
 import dateformat from 'dateformat';
@@ -32,7 +31,7 @@ const chartOptions = computed(() =>
 	}),
 );
 
-const chartData = computed<ChartData>(() => {
+const chartData = computed(() => {
 	const labels: string[] = [];
 	const data: number[] = [];
 
