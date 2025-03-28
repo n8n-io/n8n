@@ -19,8 +19,7 @@ export class GSuiteAdmin implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Workspace Admin',
 		name: 'gSuiteAdmin',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:google-workspace-admin.png',
+		icon: 'file:gSuiteAdmin.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
