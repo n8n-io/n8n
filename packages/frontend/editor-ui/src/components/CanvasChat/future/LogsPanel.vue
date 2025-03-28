@@ -12,11 +12,17 @@ import { useCanvasStore } from '@/stores/canvas.store';
 import { useI18n } from '@/composables/useI18n';
 import { useStyles } from '@/composables/useStyles';
 import ChatMessagesPanel from '@/components/CanvasChat/components/ChatMessagesPanel.vue';
+import LogsDetailsPanel from '@/components/CanvasChat/future/components/LogDetailsPanel.vue';
+import { type LogEntryIdentity } from '@/components/CanvasChat/types/logs';
+import { useMounted } from '@vueuse/core';
 
 const workflowsStore = useWorkflowsStore();
 const canvasStore = useCanvasStore();
 const panelState = computed(() => workflowsStore.chatPanelState);
 const container = ref<HTMLElement>();
+const overviewPanelActions = useTemplateRef<HTMLElement>('overviewPanelActions');
+const detailsPanelActions = useTemplateRef<HTMLElement>('detailsPanelActions');
+const selectedLogEntry = ref<LogEntryIdentity | undefined>(undefined);
 const pipContainer = useTemplateRef('pipContainer');
 const pipContent = useTemplateRef('pipContent');
 const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
@@ -36,6 +42,14 @@ const { currentSessionId, messages, connectedNode, sendMessage, refreshSession, 
 	useChatState(ref(false), onWindowResize);
 const appStyles = useStyles();
 const tooltipZIndex = computed(() => appStyles.APP_Z_INDEXES.ASK_ASSISTANT_FLOATING_BUTTON + 100);
+const isMounted = useMounted();
+const panelActionsContainer = computed(() =>
+	isMounted
+		? selectedLogEntry.value
+			? detailsPanelActions.value
+			: overviewPanelActions.value
+		: null,
+);
 
 const { canPopOut, isPoppedOut, pipWindow } = usePiPWindow({
 	initialHeight: 400,
@@ -68,6 +82,10 @@ function handleClickHeader() {
 		telemetry.track('User toggled log view', { new_state: 'attached' });
 		workflowsStore.setPanelState('attached');
 	}
+}
+
+function handleSelectLogEntry(selected: LogEntryIdentity | undefined) {
+	selectedLogEntry.value = selected;
 }
 
 function onPopOut() {
@@ -119,49 +137,62 @@ watch([panelState, height], ([state, h]) => {
 						/>
 					</N8nResizeWrapper>
 					<LogsOverviewPanel
+						:class="$style.logsOverview"
 						:is-open="panelState !== 'closed'"
 						:node="connectedNode"
+						:selected="selectedLogEntry"
 						@click-header="handleClickHeader"
+						@select="handleSelectLogEntry"
 					>
-						<template #actions>
-							<N8nTooltip
-								v-if="canPopOut && !isPoppedOut"
-								:z-index="tooltipZIndex"
-								:content="locales.baseText('runData.panel.actions.popOut')"
-							>
-								<N8nIconButton
-									icon="pop-out"
-									type="secondary"
-									size="small"
-									icon-size="medium"
-									@click="onPopOut"
-								/>
-							</N8nTooltip>
-							<N8nTooltip
-								v-if="panelState !== 'floating'"
-								:z-index="tooltipZIndex"
-								:content="
-									locales.baseText(
-										panelState === 'attached'
-											? 'runData.panel.actions.collapse'
-											: 'runData.panel.actions.open',
-									)
-								"
-							>
-								<N8nIconButton
-									type="secondary"
-									size="small"
-									icon-size="medium"
-									:icon="panelState === 'attached' ? 'chevron-down' : 'chevron-up'"
-									style="color: var(--color-text-base)"
-									@click.stop="handleToggleOpen"
-								/>
-							</N8nTooltip>
-						</template>
+						<template #actions><div ref="overviewPanelActions" /></template>
 					</LogsOverviewPanel>
+					<LogsDetailsPanel
+						v-if="selectedLogEntry"
+						:class="$style.logDetails"
+						:is-open="panelState !== 'closed'"
+						@click-header="handleClickHeader"
+						><template #actions><div ref="detailsPanelActions" /></template
+					></LogsDetailsPanel>
 				</div>
 			</N8nResizeWrapper>
 		</div>
+		<Teleport v-if="panelActionsContainer !== null" :to="panelActionsContainer">
+			<div>
+				<N8nTooltip
+					v-if="canPopOut && !isPoppedOut"
+					:z-index="tooltipZIndex"
+					:content="locales.baseText('runData.panel.actions.popOut')"
+				>
+					<N8nIconButton
+						icon="pop-out"
+						type="secondary"
+						size="small"
+						icon-size="medium"
+						@click="onPopOut"
+					/>
+				</N8nTooltip>
+				<N8nTooltip
+					v-if="panelState !== 'floating'"
+					:z-index="tooltipZIndex"
+					:content="
+						locales.baseText(
+							panelState === 'attached'
+								? 'runData.panel.actions.collapse'
+								: 'runData.panel.actions.open',
+						)
+					"
+				>
+					<N8nIconButton
+						type="secondary"
+						size="small"
+						icon-size="medium"
+						:icon="panelState === 'attached' ? 'chevron-down' : 'chevron-up'"
+						style="color: var(--color-text-base)"
+						@click.stop="handleToggleOpen"
+					/>
+				</N8nTooltip>
+			</div>
+		</Teleport>
 	</div>
 </template>
 
@@ -208,5 +239,18 @@ watch([panelState, height], ([state, h]) => {
 	width: var(--chat-width);
 	flex-shrink: 0;
 	max-width: 100%;
+}
+
+.logsOverview {
+	flex-basis: 20%;
+	flex-grow: 1;
+	flex-shrink: 1;
+	min-width: 360px;
+}
+
+.logDetails {
+	flex-basis: 60%;
+	flex-grow: 1;
+	flex-shrink: 1;
 }
 </style>
