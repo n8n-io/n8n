@@ -53,6 +53,8 @@ export class InsightsService {
 
 	private readonly maxAgeInDaysForDailyData = 180;
 
+	private readonly cachedMetadata: Record<string, InsightsMetadata> = {};
+
 	private compactInsightsTimer: NodeJS.Timer | undefined;
 
 	constructor(
@@ -101,35 +103,45 @@ export class InsightsService {
 				);
 			}
 
-			await trx.upsert(
-				InsightsMetadata,
-				{
-					workflowId: ctx.workflowData.id,
-					workflowName: ctx.workflowData.name,
-					projectId: sharedWorkflow.projectId,
-					projectName: sharedWorkflow.project.name,
-				},
-				['workflowId'],
-			);
-			const metadata = await trx.findOneBy(InsightsMetadata, {
-				workflowId: ctx.workflowData.id,
-			});
-
-			if (!metadata) {
-				// This can't happen, we just wrote the metadata in the same
-				// transaction.
-				throw new UnexpectedError(
-					`Could not find metadata for the workflow with the id '${ctx.workflowData.id}'`,
+			let metadata = this.cachedMetadata[ctx.workflowData.id];
+			if (
+				metadata === undefined ||
+				metadata.projectId !== sharedWorkflow.projectId ||
+				metadata.projectName !== sharedWorkflow.project.name ||
+				metadata.workflowName !== ctx.workflowData.name
+			) {
+				await trx.upsert(
+					InsightsMetadata,
+					{
+						workflowId: ctx.workflowData.id,
+						workflowName: ctx.workflowData.name,
+						projectId: sharedWorkflow.projectId,
+						projectName: sharedWorkflow.project.name,
+					},
+					['workflowId'],
 				);
+				const upsertMetadata = await trx.findOneBy(InsightsMetadata, {
+					workflowId: ctx.workflowData.id,
+				});
+
+				if (!upsertMetadata) {
+					// This can't happen, we just wrote the metadata in the same
+					// transaction.
+					throw new UnexpectedError(
+						`Could not find metadata for the workflow with the id '${ctx.workflowData.id}'`,
+					);
+				}
+				this.cachedMetadata[ctx.workflowData.id] = metadata = upsertMetadata;
 			}
 
+			const events: InsightsRaw[] = [];
 			// success or failure event
 			{
 				const event = new InsightsRaw();
 				event.metaId = metadata.metaId;
 				event.type = status;
 				event.value = 1;
-				await trx.insert(InsightsRaw, event);
+				events.push(event);
 			}
 
 			// run time event
@@ -139,7 +151,7 @@ export class InsightsService {
 				event.metaId = metadata.metaId;
 				event.type = 'runtime_ms';
 				event.value = value;
-				await trx.insert(InsightsRaw, event);
+				events.push(event);
 			}
 
 			// time saved event
@@ -148,8 +160,10 @@ export class InsightsService {
 				event.metaId = metadata.metaId;
 				event.type = 'time_saved_min';
 				event.value = ctx.workflowData.settings.timeSavedPerExecution;
-				await trx.insert(InsightsRaw, event);
+				events.push(event);
 			}
+
+			await trx.insert(InsightsRaw, events);
 		});
 	}
 
