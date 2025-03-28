@@ -125,7 +125,7 @@ describe('LogsOverviewPanel', () => {
 
 		const tree = within(rendered.getByRole('tree'));
 
-		expect(tree.queryAllByRole('treeitem')).toHaveLength(1);
+		expect(tree.queryAllByRole('treeitem')).toHaveLength(2);
 
 		const row1 = within(tree.queryAllByRole('treeitem')[0]);
 
@@ -134,14 +134,15 @@ describe('LogsOverviewPanel', () => {
 		expect(row1.queryByText('Started 2025-03-26T00:00:00.002Z')).toBeInTheDocument();
 		expect(row1.queryByText('555 Tokens')).toBeInTheDocument();
 
-		await fireEvent.click(row1.getByRole('button'));
-		await waitFor(() => expect(tree.queryAllByRole('treeitem')).toHaveLength(2));
-
 		const row2 = within(tree.queryAllByRole('treeitem')[1]);
 
 		expect(row2.queryByText('AI Model')).toBeInTheDocument();
 		expect(row2.queryByText('Success in 1.777s')).toBeInTheDocument();
 		expect(row2.queryByText('Started 2025-03-26T00:00:00.003Z')).toBeInTheDocument();
 		expect(row2.queryByText('555 Tokens')).toBeInTheDocument();
+
+		// collapse tree
+		await fireEvent.click(row1.getByRole('button'));
+		await waitFor(() => expect(tree.queryAllByRole('treeitem')).toHaveLength(1));
 	});
 });
