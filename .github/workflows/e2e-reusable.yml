@@ -109,7 +109,6 @@ jobs:
         working-directory: cypress
         run: pnpm cypress:install
 
-
   testing:
     runs-on: blacksmith-2vcpu-ubuntu-2204
     needs: ['prepare', 'install']
