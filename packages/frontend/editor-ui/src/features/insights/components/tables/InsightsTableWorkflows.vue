@@ -4,6 +4,13 @@ import N8nDataTableServer, {
 	type TableHeader,
 } from '@n8n/design-system/components/N8nDataTableServer/N8nDataTableServer.vue';
 import { computed, ref } from 'vue';
+import {
+	transformInsightsAverageRunTime,
+	transformInsightsFailureRate,
+	transformInsightsTimeSaved,
+} from '@/features/insights/insights.utils';
+import { smartDecimal } from '@n8n/utils/number/smartDecimal';
+import { INSIGHTS_UNIT_MAPPING } from '@/features/insights/insights.constants';
 
 const props = defineProps<{
 	data: InsightsByWorkflow;
@@ -12,7 +19,19 @@ const props = defineProps<{
 
 type Item = InsightsByWorkflow['data'][number];
 
-const rows = computed(() => props.data.data);
+const rows = computed(() =>
+	props.data.data.map((row) => ({
+		...row,
+		failureRate:
+			smartDecimal(transformInsightsFailureRate(row.failureRate)) +
+			INSIGHTS_UNIT_MAPPING.failureRate,
+		timeSaved:
+			smartDecimal(transformInsightsTimeSaved(row.timeSaved)) + INSIGHTS_UNIT_MAPPING.timeSaved,
+		averageRunTime:
+			smartDecimal(transformInsightsAverageRunTime(row.averageRunTime)) +
+			INSIGHTS_UNIT_MAPPING.averageRunTime,
+	})),
+);
 
 const headers = ref<Array<TableHeader<Item>>>([
 	{
