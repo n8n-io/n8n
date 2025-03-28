@@ -53,6 +53,8 @@ const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
 
 @Service()
 export class InsightsService {
+	private readonly cachedMetadata: Record<string, InsightsMetadata> = {};
+
 	private compactInsightsTimer: NodeJS.Timer | undefined;
 
 	constructor(
@@ -101,26 +103,35 @@ export class InsightsService {
 				);
 			}
 
-			await trx.upsert(
-				InsightsMetadata,
-				{
-					workflowId: ctx.workflowData.id,
-					workflowName: ctx.workflowData.name,
-					projectId: sharedWorkflow.projectId,
-					projectName: sharedWorkflow.project.name,
-				},
-				['workflowId'],
-			);
-			const metadata = await trx.findOneBy(InsightsMetadata, {
-				workflowId: ctx.workflowData.id,
-			});
-
-			if (!metadata) {
-				// This can't happen, we just wrote the metadata in the same
-				// transaction.
-				throw new UnexpectedError(
-					`Could not find metadata for the workflow with the id '${ctx.workflowData.id}'`,
+			let metadata = this.cachedMetadata[ctx.workflowData.id];
+			if (
+				metadata === undefined ||
+				metadata.projectId !== sharedWorkflow.projectId ||
+				metadata.projectName !== sharedWorkflow.project.name ||
+				metadata.workflowName !== ctx.workflowData.name
+			) {
+				await trx.upsert(
+					InsightsMetadata,
+					{
+						workflowId: ctx.workflowData.id,
+						workflowName: ctx.workflowData.name,
+						projectId: sharedWorkflow.projectId,
+						projectName: sharedWorkflow.project.name,
+					},
+					['workflowId'],
 				);
+				const upsertMetadata = await trx.findOneBy(InsightsMetadata, {
+					workflowId: ctx.workflowData.id,
+				});
+
+				if (!upsertMetadata) {
+					// This can't happen, we just wrote the metadata in the same
+					// transaction.
+					throw new UnexpectedError(
+						`Could not find metadata for the workflow with the id '${ctx.workflowData.id}'`,
+					);
+				}
+				this.cachedMetadata[ctx.workflowData.id] = metadata = upsertMetadata;
 			}
 
 			const events: InsightsRaw[] = [];
