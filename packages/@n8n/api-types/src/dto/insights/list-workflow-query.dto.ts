@@ -8,6 +8,8 @@ const VALID_SORT_OPTIONS = [
 	'succeeded:desc',
 	'failed:asc',
 	'failed:desc',
+	'failureRate:asc',
+	'failureRate:desc',
 	'timeSaved:asc',
 	'timeSaved:desc',
 	'runTime:asc',
