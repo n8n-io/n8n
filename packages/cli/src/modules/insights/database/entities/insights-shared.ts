@@ -11,14 +11,16 @@ export const PeriodUnitToNumber = {
 	day: 1,
 	week: 2,
 } as const;
-export type PeriodUnits = keyof typeof PeriodUnitToNumber;
-export type PeriodUnitNumbers = (typeof PeriodUnitToNumber)[PeriodUnits];
+
+export type PeriodUnit = keyof typeof PeriodUnitToNumber;
+
+export type PeriodUnitNumber = (typeof PeriodUnitToNumber)[PeriodUnit];
 export const NumberToPeriodUnit = Object.entries(PeriodUnitToNumber).reduce(
-	(acc, [key, value]: [PeriodUnits, PeriodUnitNumbers]) => {
+	(acc, [key, value]: [PeriodUnit, PeriodUnitNumber]) => {
 		acc[value] = key;
 		return acc;
 	},
-	{} as Record<PeriodUnitNumbers, PeriodUnits>,
+	{} as Record<PeriodUnitNumber, PeriodUnit>,
 );
 export function isValidPeriodNumber(value: number) {
 	return isValid(value, NumberToPeriodUnit);
@@ -31,14 +33,16 @@ export const TypeToNumber = {
 	success: 2,
 	failure: 3,
 } as const;
-export type TypeUnits = keyof typeof TypeToNumber;
-export type TypeUnitNumbers = (typeof TypeToNumber)[TypeUnits];
+
+export type TypeUnit = keyof typeof TypeToNumber;
+
+export type TypeUnitNumber = (typeof TypeToNumber)[TypeUnit];
 export const NumberToType = Object.entries(TypeToNumber).reduce(
-	(acc, [key, value]: [TypeUnits, TypeUnitNumbers]) => {
+	(acc, [key, value]: [TypeUnit, TypeUnitNumber]) => {
 		acc[value] = key;
 		return acc;
 	},
-	{} as Record<TypeUnitNumbers, TypeUnits>,
+	{} as Record<TypeUnitNumber, TypeUnit>,
 );
 
 export function isValidTypeNumber(value: number) {

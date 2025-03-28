@@ -6,10 +6,12 @@
 	},
 	"include": [
 		"credentials/**/*.ts",
+		"credentials/translations/**/*.json",
 		"nodes/**/*.ts",
 		"nodes/**/*.json",
-		"credentials/translations/**/*.json",
-		"types/*.ts"
+		"test/**/*.ts",
+		"types/**/*.ts",
+		"utils/**/*.ts"
 	],
 	"exclude": ["nodes/**/*.test.ts", "test/**"]
 }

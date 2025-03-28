@@ -44,6 +44,15 @@ describe('InsightsSummary', () => {
 				{ id: 'averageRunTime', value: 2.5, deviation: 0.5, unit: 's' },
 			],
 		],
+		[
+			[
+				{ id: 'total', value: 525, deviation: null, unit: '' },
+				{ id: 'failed', value: 14, deviation: null, unit: '' },
+				{ id: 'failureRate', value: 1.9, deviation: null, unit: '%' },
+				{ id: 'timeSaved', value: 55.55555555555556, deviation: null, unit: 'h' },
+				{ id: 'averageRunTime', value: 2.5, deviation: null, unit: 's' },
+			],
+		],
 	])('should render the summary correctly', (summary) => {
 		const { html } = renderComponent({
 			props: {
