@@ -81,6 +81,7 @@ function goToUpgradeApiKeyScopes() {
 		<N8nInputLabel :label="i18n.baseText('settings.api.scopes.label')" color="text-dark">
 			<ElSelect
 				v-model="selectedScopes"
+				data-test-id="scopes-select"
 				:popper-class="$style['scopes-dropdown-container']"
 				:teleported="true"
 				multiple
