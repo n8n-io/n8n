@@ -7,6 +7,7 @@ ENV PATH=$PATH:/home/node/.npm-global/bin
 
 # Set environment variable to allow external modules in n8n
 ENV NODE_FUNCTION_ALLOW_EXTERNAL=axios,openai,node-fetch,firebase-admin
+ENV NODE_FUNCTION_ALLOW_BUILTIN=crypto,fs,path
 
 # Switch to the node user before installing packages
 USER node
@@ -14,7 +15,6 @@ RUN npm install -g axios
 RUN npm install -g openai
 RUN npm install -g node-fetch
 RUN npm install -g firebase-admin
-RUN npm install -g fs crypto
 
 
 # Also install the packages locally where n8n can find them
