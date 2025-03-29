@@ -14,6 +14,10 @@ export class LicenseConfig {
 	@Env('N8N_LICENSE_ACTIVATION_KEY')
 	activationKey: string = '';
 
+	/** Whether floatable entitlements should be returned to the pool on shutdown */
+	@Env('N8N_LICENSE_DETACH_FLOATABLE_ON_SHUTDOWN')
+	detachFloatableOnShutdown: boolean = true;
+
 	/** Tenant ID used by the license manager SDK, e.g. for self-hosted, sandbox, embed, cloud. */
 	@Env('N8N_LICENSE_TENANT_ID')
 	tenantId: number = 1;
