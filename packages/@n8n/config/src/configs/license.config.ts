@@ -10,10 +10,6 @@ export class LicenseConfig {
 	@Env('N8N_LICENSE_AUTO_RENEW_ENABLED')
 	autoRenewalEnabled: boolean = true;
 
-	/** How long (in seconds) before expiry a license should be autorenewed. */
-	@Env('N8N_LICENSE_AUTO_RENEW_OFFSET')
-	autoRenewOffset: number = 60 * 60 * 72; // 72 hours
-
 	/** Activation key to initialize license. */
 	@Env('N8N_LICENSE_ACTIVATION_KEY')
 	activationKey: string = '';

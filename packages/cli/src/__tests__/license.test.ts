@@ -25,7 +25,6 @@ function makeDateWithHourOffset(offsetInHours: number): Date {
 const licenseConfig: GlobalConfig['license'] = {
 	serverUrl: MOCK_SERVER_URL,
 	autoRenewalEnabled: true,
-	autoRenewOffset: MOCK_RENEW_OFFSET,
 	activationKey: MOCK_ACTIVATION_KEY,
 	tenantId: 1,
 	cert: '',

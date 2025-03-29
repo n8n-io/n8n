@@ -60,7 +60,7 @@ export class License {
 		const isMainInstance = instanceType === 'main';
 		const server = this.globalConfig.license.serverUrl;
 		const offlineMode = !isMainInstance;
-		const autoRenewOffset = this.globalConfig.license.autoRenewOffset;
+		const autoRenewOffset = 60 * 60 * 72; // 72 hours
 		const saveCertStr = isMainInstance
 			? async (value: TLicenseBlock) => await this.saveCertStr(value)
 			: async () => {};
