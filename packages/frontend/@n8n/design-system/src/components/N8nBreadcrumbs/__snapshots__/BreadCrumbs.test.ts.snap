@@ -1,7 +1,7 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`Breadcrumbs > does not highlight last item for "highlightLastItem = false"  1`] = `
-"<div class="container medium">
+"<div class="container medium n8n-breadcrumbs">
   <ul class="list">
     <!--v-if-->
     <!--v-if-->
@@ -19,7 +19,7 @@ exports[`Breadcrumbs > does not highlight last item for "highlightLastItem = fal
 `;
 
 exports[`Breadcrumbs > renders custom separator correctly 1`] = `
-"<div class="container medium">
+"<div class="container medium n8n-breadcrumbs">
   <ul class="list">
     <!--v-if-->
     <!--v-if-->
@@ -37,7 +37,7 @@ exports[`Breadcrumbs > renders custom separator correctly 1`] = `
 `;
 
 exports[`Breadcrumbs > renders default version correctly 1`] = `
-"<div class="container medium">
+"<div class="container medium n8n-breadcrumbs">
   <ul class="list">
     <!--v-if-->
     <!--v-if-->
@@ -55,7 +55,7 @@ exports[`Breadcrumbs > renders default version correctly 1`] = `
 `;
 
 exports[`Breadcrumbs > renders slots correctly 1`] = `
-"<div class="container medium">
+"<div class="container medium n8n-breadcrumbs">
   <div>[PRE] Custom content</div>
   <ul class="list">
     <li class="separator">/</li>
@@ -75,7 +75,7 @@ exports[`Breadcrumbs > renders slots correctly 1`] = `
 `;
 
 exports[`Breadcrumbs > renders small version correctly 1`] = `
-"<div class="container small">
+"<div class="container small n8n-breadcrumbs">
   <ul class="list">
     <!--v-if-->
     <!--v-if-->

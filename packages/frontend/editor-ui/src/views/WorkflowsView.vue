@@ -1319,6 +1319,7 @@ const onCreateWorkflowClick = () => {
 				:data="data as FolderResource"
 				:actions="folderCardActions"
 				:read-only="readOnlyEnv || (!hasPermissionToDeleteFolders && !hasPermissionToCreateFolders)"
+				:personal-project="projectsStore.personalProject"
 				class="mb-2xs"
 				@action="onFolderCardAction"
 			/>

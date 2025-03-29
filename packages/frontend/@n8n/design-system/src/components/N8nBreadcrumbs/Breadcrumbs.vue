@@ -113,7 +113,7 @@ const onHiddenMenuVisibleChange = async (visible: boolean) => {
 };
 
 const emitItemSelected = (id: string) => {
-	const item = [...loadedHiddenItems.value, ...props.items].find((i) => i.id === id);
+	const item = [...props.items, ...loadedHiddenItems.value].find((i) => i.id === id);
 	if (!item) {
 		return;
 	}
@@ -135,6 +135,7 @@ const handleTooltipClose = () => {
 			[$style.container]: true,
 			[$style.border]: props.showBorder,
 			[$style[props.theme]]: true,
+			['n8n-breadcrumbs']: true,
 		}"
 	>
 		<slot name="prepend"></slot>
@@ -355,7 +356,6 @@ const handleTooltipClose = () => {
 	.item * {
 		color: var(--color-text-base);
 		font-size: var(--font-size-2xs);
-		font-weight: var(--font-weight-bold);
 		line-height: var(--font-line-heigh-xsmall);
 	}
 
