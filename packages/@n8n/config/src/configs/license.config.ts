@@ -8,7 +8,7 @@ export class LicenseConfig {
 
 	/** Whether autorenewal for licenses is enabled. */
 	@Env('N8N_LICENSE_AUTO_RENEW_ENABLED')
-	autoRenewalEnabled: boolean = true;
+	autoRenewalEnabled: boolean = false;
 
 	/** How long (in seconds) before expiry a license should be autorenewed. */
 	@Env('N8N_LICENSE_AUTO_RENEW_OFFSET')

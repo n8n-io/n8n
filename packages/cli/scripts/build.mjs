@@ -37,7 +37,8 @@ function generateUserManagementEmailTemplates() {
 		shell.exec(command, { silent: false });
 	});
 
-	shell.cp(path.resolve(sourceDir, 'n8n-logo.png'), destinationDir);
+	// shell.cp(path.resolve(sourceDir, 'n8n-logo.png'), destinationDir);
+	shell.cp(path.resolve(sourceDir, 'remodl-logo.png'), destinationDir);
 }
 
 function copySwaggerTheme() {
