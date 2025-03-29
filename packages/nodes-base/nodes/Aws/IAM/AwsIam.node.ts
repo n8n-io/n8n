@@ -1,8 +1,8 @@
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { userOperations, userFields, groupOperations, groupFields } from './descriptions';
-import { searchGroups, searchGroupsForUser, searchUsers } from './generalFunctions/dataFetching';
+import { user, group } from './descriptions';
+import { searchGroups, searchUsers, searchGroupsForUser } from './methods/listSearch';
 
 export class AwsIam implements INodeType {
 	description: INodeTypeDescription = {
@@ -14,8 +14,8 @@ export class AwsIam implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Interacts with Amazon IAM',
 		defaults: { name: 'AWS IAM' },
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'aws',
@@ -48,10 +48,8 @@ export class AwsIam implements INodeType {
 					},
 				],
 			},
-			...userOperations,
-			...userFields,
-			...groupOperations,
-			...groupFields,
+			...user.description,
+			...group.description,
 		],
 	};
 

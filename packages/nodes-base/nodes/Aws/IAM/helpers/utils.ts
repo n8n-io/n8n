@@ -1,10 +1,267 @@
 import {
+	type IHttpRequestOptions,
+	type ILoadOptionsFunctions,
 	NodeApiError,
 	type IDataObject,
 	type IExecuteSingleFunctions,
-	type IHttpRequestOptions,
+	type IN8nHttpFullResponse,
+	type INodeExecutionData,
+	ApplicationError,
 } from 'n8n-workflow';
-import { fetchAndValidateUserPaths } from './dataHandling';
+
+import type {
+	GetAllGroupsResponseBody,
+	GetAllUsersResponseBody,
+	GetGroupResponseBody,
+	GetUserResponseBody,
+	User,
+} from './types';
+import { searchGroupsForUser } from '../methods/listSearch';
+import { makeAwsRequest } from '../transport';
+
+//IMPROVED
+export async function searchUsersForGroup(
+	this: IExecuteSingleFunctions,
+	groupName: string,
+): Promise<IDataObject[]> {
+	if (!groupName) {
+		throw new NodeApiError(this.getNode(), {}, { message: 'Group is required to fetch users.' });
+	}
+
+	const responseData = (await makeAwsRequest.call(this, {
+		method: 'POST',
+		url: `/?Action=GetGroup&Version=2010-05-08&GroupName=${groupName}`,
+	})) as GetGroupResponseBody;
+
+	const users = responseData?.GetGroupResponse?.GetGroupResult?.Users ?? [];
+
+	return users;
+}
+
+//NOT YET
+export async function processGroupsResponse(
+	this: IExecuteSingleFunctions,
+	items: INodeExecutionData[],
+	response: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
+	const includeUsers = this.getNodeParameter('includeUsers', 0) as boolean;
+
+	const responseBody = response.body as GetGroupResponseBody | GetAllGroupsResponseBody;
+
+	const processedItems: INodeExecutionData[] = [];
+
+	if ('GetGroupResponse' in responseBody) {
+		const group = responseBody.GetGroupResponse.GetGroupResult.Group;
+
+		if (!includeUsers) {
+			return [{ json: group }];
+		}
+
+		const users: IDataObject[] = responseBody.GetGroupResponse.GetGroupResult.Users ?? [];
+		const groupWithUsers = { ...group, Users: users };
+		return [{ json: groupWithUsers }];
+	}
+
+	if ('ListGroupsResponse' in responseBody) {
+		const groups = responseBody.ListGroupsResponse.ListGroupsResult.Groups ?? [];
+
+		if (!groups.length) {
+			return items;
+		}
+
+		if (!includeUsers) {
+			for (const group of groups) {
+				processedItems.push({ ...group } as INodeExecutionData);
+			}
+			return processedItems;
+		}
+
+		for (const group of groups) {
+			const groupName = group.GroupName as string;
+			if (!groupName) continue;
+
+			const users = await searchUsersForGroup.call(this, groupName);
+
+			processedItems.push({ ...group, Users: users } as unknown as INodeExecutionData);
+		}
+
+		return processedItems;
+	}
+
+	return items;
+}
+
+export async function processUsersResponse(
+	this: IExecuteSingleFunctions,
+	_items: INodeExecutionData[],
+	response: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
+	const actionType = this.getNodeParameter('operation');
+	let responseBody;
+	let data;
+
+	if (!response.body) {
+		return [];
+	}
+
+	if (actionType === 'get') {
+		responseBody = response.body as GetUserResponseBody;
+		data = responseBody.GetUserResponse?.GetUserResult?.User as User;
+	} else if (actionType === 'getAll') {
+		responseBody = response.body as GetAllUsersResponseBody;
+		data = responseBody.ListUsersResponse?.ListUsersResult?.Users as User[];
+	}
+
+	if (!data) {
+		return [];
+	}
+
+	if (!Array.isArray(data)) {
+		return [{ json: data }];
+	}
+
+	return data.map((user) => ({ json: user }));
+}
+
+export async function fetchAndValidateUserPaths(
+	this: ILoadOptionsFunctions | IExecuteSingleFunctions,
+	prefix: string,
+): Promise<void> {
+	const opts: IHttpRequestOptions = {
+		method: 'POST',
+		url: '/?Action=ListUsers&Version=2010-05-08',
+	};
+
+	const responseData: IDataObject = await makeAwsRequest.call(this, opts);
+	const responseBody = responseData as GetAllUsersResponseBody;
+
+	const users = responseBody.ListUsersResponse.ListUsersResult.Users;
+
+	if (!users || users.length === 0) {
+		throw new NodeApiError(
+			this.getNode(),
+			{},
+			{
+				message: 'No users found',
+				description: 'No users found in the group. Please try again.',
+			},
+		);
+	}
+
+	const userPaths = users.map((user) => user.Path as string).filter(Boolean);
+
+	const isPathValid = userPaths.some((path) => path.startsWith(prefix));
+
+	if (!isPathValid) {
+		throw new NodeApiError(
+			this.getNode(),
+			{},
+			{
+				message: 'Path does not exist',
+				description: `The "${prefix}" path was not found in your users - try entering a different path.`,
+			},
+		);
+	}
+}
+
+export async function removeUserFromGroups(
+	this: ILoadOptionsFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const userName = (this.getNodeParameter('userName') as IDataObject).value as string;
+	const userGroups = await searchGroupsForUser.call(this, userName);
+
+	for (const group of userGroups.results) {
+		const groupName = group.value;
+
+		const removeUserOpts: IHttpRequestOptions = {
+			method: 'POST',
+			url: `/?Action=RemoveUserFromGroup&Version=2010-05-08&GroupName=${groupName}&UserName=${userName}`,
+		};
+
+		await makeAwsRequest.call(this, removeUserOpts);
+	}
+
+	return requestOptions;
+}
+
+export async function preDeleteUser(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const userName = (this.getNodeParameter('userName') as IDataObject).value as string;
+
+	if (!userName) {
+		throw new NodeApiError(
+			this.getNode(),
+			{},
+			{
+				message: 'User is required',
+				description: 'Please provide a value in User field to delete a user.',
+			},
+		);
+	}
+
+	const groupsResult = await searchGroupsForUser.call(this);
+	const groups = groupsResult.results.map((group) => group.value);
+
+	if (!groups || groups.length === 0) {
+		return requestOptions;
+	}
+
+	for (const groupName of groups) {
+		const removeOpts: IHttpRequestOptions = {
+			method: 'POST',
+			url: `/?Action=RemoveUserFromGroup&GroupName=${groupName}&UserName=${userName}&Version=2010-05-08`,
+			ignoreHttpStatusErrors: true,
+		};
+
+		await makeAwsRequest.call(this as unknown as ILoadOptionsFunctions, removeOpts);
+	}
+
+	return requestOptions;
+}
+
+export async function preDeleteGroup(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const groupName = (this.getNodeParameter('groupName') as IDataObject).value as string;
+
+	if (!groupName) {
+		throw new NodeApiError(
+			this.getNode(),
+			{},
+			{
+				message: 'Group is required',
+				description: 'Please provide a value in Group field to delete a group.',
+			},
+		);
+	}
+
+	const users = await searchUsersForGroup.call(this, groupName);
+	const userNames = users.map((user) => user.UserName as string);
+
+	if (!userNames.length) {
+		return requestOptions;
+	}
+
+	for (const userName of userNames) {
+		const removeUserOpts: IHttpRequestOptions = {
+			method: 'POST',
+			url: `/?Action=RemoveUserFromGroup&GroupName=${groupName}&UserName=${userName}&Version=2010-05-08`,
+			ignoreHttpStatusErrors: true,
+		};
+
+		try {
+			await makeAwsRequest.call(this as unknown as ILoadOptionsFunctions, removeUserOpts);
+		} catch (error) {
+			console.error(`⚠️ Failed to remove user "${userName}" from "${groupName}":`, error);
+		}
+	}
+
+	return requestOptions;
+}
 
 export async function presendStringifyBody(
 	this: IExecuteSingleFunctions,

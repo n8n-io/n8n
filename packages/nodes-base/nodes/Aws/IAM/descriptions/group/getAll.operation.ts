@@ -1,0 +1,45 @@
+import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
+
+const properties: INodeProperties[] = [
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+		type: 'boolean',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		default: 50,
+		description: 'Max number of results to return',
+		routing: {
+			send: {
+				property: '$top',
+				type: 'query',
+				value: '={{ $value }}',
+			},
+		},
+		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
+		validateType: 'number',
+	},
+	{
+		displayName: 'Include Users',
+		name: 'includeUsers',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to include a list of users in the group',
+	},
+];
+
+const displayOptions = {
+	show: {
+		resource: ['group'],
+		operation: ['getAll'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
