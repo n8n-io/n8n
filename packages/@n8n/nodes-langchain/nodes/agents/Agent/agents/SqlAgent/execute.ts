@@ -17,6 +17,7 @@ import { getTracingConfig } from '@utils/tracing';
 
 import { getMysqlDataSource } from './other/handlers/mysql';
 import { getPostgresDataSource } from './other/handlers/postgres';
+import { getOracleDBDataSource } from './other/handlers/oracledb';
 import { getSqliteDataSource } from './other/handlers/sqlite';
 import { SQL_PREFIX, SQL_SUFFIX } from './other/prompts';
 
@@ -61,6 +62,7 @@ export async function sqlAgentAgentExecute(
 			const options = this.getNodeParameter('options', i, {});
 			const selectedDataSource = this.getNodeParameter('dataSource', i, 'sqlite') as
 				| 'mysql'
+				| 'oracledb'
 				| 'postgres'
 				| 'sqlite';
 
@@ -83,6 +85,10 @@ export async function sqlAgentAgentExecute(
 
 			if (selectedDataSource === 'postgres') {
 				dataSource = await getPostgresDataSource.call(this);
+			}
+
+			if (selectedDataSource === 'oracledb') {
+				dataSource = await getOracleDBDataSource.call(this);
 			}
 
 			if (selectedDataSource === 'mysql') {

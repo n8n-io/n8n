@@ -98,6 +98,10 @@ export const databasesFields: INodeProperties[] = [
 				value: 'mysql',
 			},
 			{
+				name: 'OracleDB',
+				value: 'oracledb',
+			},
+			{
 				name: 'PostgreSQL',
 				value: 'postgres',
 			},

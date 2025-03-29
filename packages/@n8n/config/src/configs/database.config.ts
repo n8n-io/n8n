@@ -20,6 +20,41 @@ class LoggingConfig {
 }
 
 @Config
+class OracleConfig {
+	/** Oracle database name */
+	@Env('DB_ORACLEDB_CONNECTSTRING')
+	database: string = 'n8n';
+
+	/** Oracle database host */
+	@Env('DB_ORACLEDB_HOST')
+	host: string = 'localhost';
+
+	/** Oracle database password */
+	@Env('DB_ORACLEDB_PASSWORD')
+	password: string = '';
+
+	/** Oracle database port */
+	@Env('DB_ORACLEDB_PORT')
+	port: number = 1521;
+
+	/** Oracle database user */
+	@Env('DB_ORACLEDB_USER')
+	user: string = 'postgres';
+
+	/** Oracle database schema */
+	@Env('DB_ORACLEDB_SCHEMA')
+	schema: string = 'public';
+
+	/** Oracle database pool size */
+	@Env('DB_ORACLEDB_POOL_SIZE')
+	poolSize: number = 2;
+
+	/** Oracle connection timeout (ms) */
+	@Env('DB_ORACLEDB_CONNECTION_TIMEOUT')
+	connectionTimeoutMs: number = 20_000;
+}
+
+@Config
 class PostgresSSLConfig {
 	/**
 	 * Whether to enable SSL.

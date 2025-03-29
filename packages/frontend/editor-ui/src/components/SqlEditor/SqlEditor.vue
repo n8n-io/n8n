@@ -24,6 +24,7 @@ import {
 	MariaSQL,
 	MySQL,
 	PLSQL,
+	OrcleDB,
 	PostgreSQL,
 	SQLite,
 	StandardSQL,
@@ -40,6 +41,7 @@ import {
 const SQL_DIALECTS = {
 	StandardSQL,
 	PostgreSQL,
+	OracleDB,
 	MySQL,
 	MariaSQL,
 	MSSQL,

@@ -306,6 +306,16 @@ export class Agent implements INodeType {
 				},
 			},
 			{
+				name: 'oracledb',
+				required: true,
+				displayOptions: {
+					show: {
+						agent: ['sqlAgent'],
+						'/dataSource': ['oracledb'],
+					},
+				},
+			},
+			{
 				name: 'postgres',
 				required: true,
 				displayOptions: {

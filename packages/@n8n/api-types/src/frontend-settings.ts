@@ -28,7 +28,7 @@ export interface IUserManagementSettings {
 export interface FrontendSettings {
 	inE2ETests: boolean;
 	isDocker: boolean;
-	databaseType: 'sqlite' | 'mariadb' | 'mysqldb' | 'postgresdb';
+	databaseType: 'sqlite' | 'mariadb' | 'mysqldb' | 'oracledb' | 'postgresdb';
 	endpointForm: string;
 	endpointFormTest: string;
 	endpointFormWaiting: string;

@@ -22,6 +22,11 @@ const dataSourceOptions: INodeProperties = {
 			description: 'Connect to a MySQL database',
 		},
 		{
+			name: 'Oracle Database',
+			value: 'oracledb',
+			description: 'Connect to a Oracle database',
+		},
+		{
 			name: 'Postgres',
 			value: 'postgres',
 			description: 'Connect to a Postgres database',
