@@ -52,7 +52,6 @@ import type {
 } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import type { BaseTextKey } from '@/plugins/i18n';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
@@ -557,6 +556,10 @@ function showCreateWorkflowSuccessToast(id?: string) {
 
 <template>
 	<div :class="$style.container">
+		<div class="backContainer">
+			<ExitBackButton />
+		</div>
+
 		<BreakpointsObserver :value-x-s="15" :value-s-m="25" :value-m-d="50" class="name-container">
 			<template #default="{ value }">
 				<ShortenName :name="name" :limit="value" :custom="true" test-id="workflow-name-input">
@@ -698,6 +701,16 @@ function showCreateWorkflowSuccessToast(id?: string) {
 <style scoped lang="scss">
 $--text-line-height: 24px;
 $--header-spacing: 20px;
+
+.backContainer {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	height: 24px;
+	width: 24px;
+	margin-left: 20px;
+	margin-right: 30px;
+}
 
 .name-container {
 	margin-right: $--header-spacing;
