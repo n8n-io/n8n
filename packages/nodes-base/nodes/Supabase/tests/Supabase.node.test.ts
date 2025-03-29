@@ -4,6 +4,7 @@ import {
 	type IDataObject,
 	type IExecuteFunctions,
 	type IGetNodeParameterOptions,
+	type ILoadOptionsFunctions,
 	type INodeExecutionData,
 	type IPairedItemData,
 	NodeOperationError,
@@ -14,14 +15,22 @@ import { Supabase } from '../Supabase.node';
 
 describe('Test Supabase Node', () => {
 	const node = new Supabase();
-
 	const input = [{ json: {} }];
+	const mockRequestWithAuthentication = jest.fn().mockResolvedValue([]);
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
 
 	const createMockExecuteFunction = (
 		nodeParameters: IDataObject,
 		continueOnFail: boolean = false,
 	) => {
 		const fakeExecuteFunction = {
+			getCredentials: jest.fn().mockResolvedValue({
+				host: 'https://api.supabase.io',
+				serviceRole: 'service_role',
+			}),
 			getNodeParameter(
 				parameterName: string,
 				itemIndex: number,
@@ -29,13 +38,10 @@ describe('Test Supabase Node', () => {
 				options?: IGetNodeParameterOptions | undefined,
 			) {
 				const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
-
 				const parameterValue = get(nodeParameters, parameter, fallbackValue);
-
 				if ((parameterValue as IDataObject)?.nodeOperationError) {
 					throw new NodeOperationError(mock(), 'Get Options Error', { itemIndex });
 				}
-
 				return parameterValue;
 			},
 			getNode() {
@@ -44,6 +50,7 @@ describe('Test Supabase Node', () => {
 			continueOnFail: () => continueOnFail,
 			getInputData: () => input,
 			helpers: {
+				requestWithAuthentication: mockRequestWithAuthentication,
 				constructExecutionMetaData: (
 					_inputData: INodeExecutionData[],
 					_options: { itemData: IPairedItemData | IPairedItemData[] },
@@ -95,5 +102,149 @@ describe('Test Supabase Node', () => {
 				offset: 0,
 			},
 		);
+
+		supabaseApiRequest.mockRestore();
+	});
+
+	it('should not set schema headers if no custom schema is used', async () => {
+		const fakeExecuteFunction = createMockExecuteFunction({
+			resource: 'row',
+			operation: 'getAll',
+			returnAll: true,
+			useCustomSchema: false,
+			schema: 'public',
+			tableId: 'my_table',
+		});
+
+		await node.execute.call(fakeExecuteFunction);
+
+		expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+			'supabaseApi',
+			expect.objectContaining({
+				method: 'GET',
+				headers: expect.objectContaining({
+					Prefer: 'return=representation',
+				}),
+				uri: 'https://api.supabase.io/rest/v1/my_table',
+			}),
+		);
+	});
+
+	it('should set the schema headers for GET calls if custom schema is used', async () => {
+		const fakeExecuteFunction = createMockExecuteFunction({
+			resource: 'row',
+			operation: 'getAll',
+			returnAll: true,
+			useCustomSchema: true,
+			schema: 'custom_schema',
+			tableId: 'my_table',
+		});
+
+		await node.execute.call(fakeExecuteFunction);
+
+		expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+			'supabaseApi',
+			expect.objectContaining({
+				method: 'GET',
+				headers: expect.objectContaining({
+					'Accept-Profile': 'custom_schema',
+					Prefer: 'return=representation',
+				}),
+				uri: 'https://api.supabase.io/rest/v1/my_table',
+			}),
+		);
+	});
+
+	it('should set the schema headers for POST calls if custom schema is used', async () => {
+		const fakeExecuteFunction = createMockExecuteFunction({
+			resource: 'row',
+			operation: 'create',
+			returnAll: true,
+			useCustomSchema: true,
+			schema: 'custom_schema',
+			tableId: 'my_table',
+		});
+
+		await node.execute.call(fakeExecuteFunction);
+
+		expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+			'supabaseApi',
+			expect.objectContaining({
+				method: 'POST',
+				headers: expect.objectContaining({
+					'Content-Profile': 'custom_schema',
+					Prefer: 'return=representation',
+				}),
+				uri: 'https://api.supabase.io/rest/v1/my_table',
+			}),
+		);
+	});
+
+	it('should show descriptive error in fetching tables when wrong schema is set', async () => {
+		const fakeExecuteFunction = createMockExecuteFunction({
+			resource: 'row',
+			operation: 'getAll',
+			returnAll: true,
+			useCustomSchema: true,
+			schema: '',
+			tableId: 'my_table',
+		});
+
+		const mockLoadOptionsFunctions: ILoadOptionsFunctions = {
+			...fakeExecuteFunction,
+			getCurrentNodeParameter: jest.fn(),
+			getCurrentNodeParameters: jest.fn(),
+		};
+
+		const expectedError = {
+			level: 'warning',
+			tags: {
+				packageName: 'workflow',
+			},
+			extra: undefined,
+			context: {},
+			functionality: 'regular',
+			name: 'NodeApiError',
+			timestamp: 1743066292930,
+			node: {
+				parameters: {
+					useCustomSchema: true,
+					schema: '',
+					resource: 'row',
+					operation: 'getAll',
+					tableId: 'n8n',
+					returnAll: true,
+					filterType: 'manual',
+					matchType: 'anyFilter',
+					filters: {},
+				},
+				id: 'uuid-1234',
+				name: 'Temp-Node',
+				type: 'n8n-nodes-base.supabase',
+				typeVersion: 1,
+				position: [0, 0],
+				credentials: {
+					supabaseApi: {
+						id: 'z7MK41ZmcZoE4Fjb',
+						name: 'Supabase account',
+					},
+				},
+			},
+			messages: [
+				'406 - {"code":"PGRST106","details":null,"hint":null,"message":"The schema must be one of the following: public, graphql_public, custom_schema, my_new_schema"}',
+			],
+			httpCode: '406',
+			description:
+				'The schema must be one of the following: public, graphql_public, custom_schema, my_new_schema',
+		};
+
+		jest.spyOn(utils, 'supabaseApiRequest').mockRejectedValueOnce(expectedError);
+
+		try {
+			await node.methods.loadOptions.getTables.call(mockLoadOptionsFunctions);
+		} catch (error) {
+			expect(error.description).toMatch(/The schema must be one of the following: public/);
+			expect(error.name).toBe('NodeApiError');
+		}
 	});
 });
