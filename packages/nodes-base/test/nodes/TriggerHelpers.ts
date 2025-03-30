@@ -142,7 +142,20 @@ export async function testWebhookTriggerNode(
 		method: 'GET',
 		...options.request,
 	});
-	const response = mock<express.Response>({ status: jest.fn(() => mock<express.Response>()) });
+
+	// For res.status(200).send(query['hub.challenge']).end();
+	const response = mock<express.Response>({
+		status: jest.fn(() =>
+			mock<express.Response>({
+				send: jest.fn(() =>
+					mock<express.Response>({
+						end: jest.fn(() => mock<express.Response>({})),
+					}),
+				),
+			}),
+		),
+	});
+
 	const webhookFunctions = mock<IWebhookFunctions>({
 		helpers,
 		nodeHelpers: {
@@ -157,13 +170,18 @@ export async function testWebhookTriggerNode(
 		getInputConnectionData: async () => ({}),
 		getNodeWebhookUrl: (name) => `/test-webhook-url/${name}`,
 		getParamsData: () => ({}),
-		getQueryData: () => ({}),
+		getQueryData: () => options.request?.query ?? {},
 		getRequestObject: () => request,
 		getResponseObject: () => response,
 		getWebhookName: () => options.webhookName ?? 'default',
 		getWorkflowStaticData: () => options.workflowStaticData ?? {},
 		getNodeParameter: (parameterName, fallback) => get(node.parameters, parameterName) ?? fallback,
 		getChildNodes: () => options.childNodes ?? [],
+		getCredentials: async <T extends object = ICredentialDataDecryptedObject>(
+			credentialType: string,
+		): Promise<T> => {
+			return (options.credential?.[credentialType] as unknown as T) ?? {};
+		},
 	});
 
 	const responseData = await trigger.webhook?.call(webhookFunctions);
