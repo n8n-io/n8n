@@ -54,14 +54,25 @@ s	 */
 export type ExecutionLifecycleHookName = keyof ExecutionLifecyleHookHandlers;
 
 /**
- * Contains hooks that trigger at specific events in an execution's lifecycle. Every hook has an array of callbacks to run.
+ * Manages and executes hooks for workflow and node execution lifecycle events.
+ * These hooks allow external code to perform actions before or after
+ * specific points in the execution process.
  *
- * Common use cases include:
+ * ### Available Hooks
+ *
+ * - **nodeExecuteBefore**: Triggered before a node is executed
+ * - **nodeExecuteAfter**: Triggered after a node is executed
+ * - **workflowExecuteBefore**: Triggered before workflow execution starts
+ * - **workflowExecuteAfter**: Triggered after workflow execution completes
+ *
+ * ### These hooks are particularly useful for
+ * - Logging and observability
  * - Saving execution progress to database
  * - Pushing execution status updates to the frontend
  * - Recording workflow statistics
  * - Running external hooks for execution events
  * - Error and Cancellation handling and cleanup
+ * - Execution analytics
  *
  * @example
  * ```typescript
@@ -69,6 +80,29 @@ export type ExecutionLifecycleHookName = keyof ExecutionLifecyleHookHandlers;
  * hooks.add('workflowExecuteAfter, async function(fullRunData) {
  *  await saveToDatabase(executionId, fullRunData);
  *});
+ * ```
+ *
+ * ### Hook Execution Flow
+ *
+ * ```mermaid
+ * sequenceDiagram
+ *     participant WE as WorkflowExecute
+ *     participant Hooks as ExecutionLifecycleHooks
+ *     participant Handlers as Hook Handlers
+ *
+ *     WE->>Hooks: workflowExecuteBefore()
+ *     Hooks->>Handlers: Call all registered handlers
+ *
+ *     loop For each node
+ *         WE->>Hooks: nodeExecuteBefore(nodeName)
+ *         Hooks->>Handlers: Call handlers
+ *         WE->>WE: Execute node
+ *         WE->>Hooks: nodeExecuteAfter(nodeName, data)
+ *         Hooks->>Handlers: Call handlers
+ *     end
+ *
+ *     WE->>Hooks: workflowExecuteAfter()
+ *     Hooks->>Handlers: Call all registered handlers
  * ```
  */
 export class ExecutionLifecycleHooks {

@@ -39,6 +39,36 @@ import { extractValue } from './utils/extract-value';
 import { getAdditionalKeys } from './utils/get-additional-keys';
 import { validateValueAgainstSchema } from './utils/validate-value-against-schema';
 
+/**
+ * Base abstract class for all node execution contexts in n8n.
+ * Provides core functionality for accessing and manipulating node data during execution.
+ *
+ * ### Responsibilities
+ *
+ * - Resolving node parameters (including expressions)
+ * - Accessing and validating credential data
+ * - Providing workflow data proxies for expressions
+ * - Type validation and conversion
+ *
+ * ### Hierarchy
+ *
+ * ```mermaid
+ * classDiagram
+ *     NodeExecutionContext <|-- BaseExecuteContext
+ *     NodeExecutionContext <|-- WebhookContext
+ *     NodeExecutionContext <|-- TriggerContext
+ *     NodeExecutionContext <|-- PollContext
+ *     NodeExecutionContext <|-- LoadOptionsContext
+ *     NodeExecutionContext <|-- HookContext
+ *     NodeExecutionContext <|-- CredentialsTestContext
+ *     NodeExecutionContext <|-- SupplyDataContext
+ *     BaseExecuteContext <|-- ExecuteContext
+ *     BaseExecuteContext <|-- ExecuteSingleContext
+ * ```
+ *
+ * This class serves as the foundation for all specialized contexts that handle
+ * different node execution scenarios (regular execution, triggers, webhooks, etc.)
+ */
 export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCredentials'> {
 	protected readonly instanceSettings = Container.get(InstanceSettings);
 
