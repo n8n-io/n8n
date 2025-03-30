@@ -5,7 +5,7 @@ import { License } from '@/license';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 import { mockInstance } from '@test/mocking';
 
-import * as middlewares from './global.middleware';
+import * as middlewares from '../shared/middlewares/global.middleware';
 
 jest.spyOn(middlewares, 'globalScope').mockReturnValue(jest.fn());
 
