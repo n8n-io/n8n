@@ -26,9 +26,7 @@ export = {
 	createCredential: [
 		validCredentialType,
 		validCredentialsProperties,
-		apiKeyHasScope({
-			apiKeyScope: 'credential:create',
-		}),
+		apiKeyHasScope('credential:create', { checkGlobalScopeIfScopesDisabled: false }),
 		async (
 			req: CredentialRequest.Create,
 			res: express.Response,
@@ -50,9 +48,7 @@ export = {
 		},
 	],
 	transferCredential: [
-		apiKeyHasScope({
-			apiKeyScope: 'credential:move',
-		}),
+		apiKeyHasScope('credential:move', { checkGlobalScopeIfScopesDisabled: false }),
 		projectScope('credential:move', 'credential'),
 		async (req: CredentialRequest.Transfer, res: express.Response) => {
 			const body = z.object({ destinationProjectId: z.string() }).parse(req.body);
@@ -67,9 +63,7 @@ export = {
 		},
 	],
 	deleteCredential: [
-		apiKeyHasScope({
-			apiKeyScope: 'credential:delete',
-		}),
+		apiKeyHasScope('credential:move', { checkGlobalScopeIfScopesDisabled: false }),
 		projectScope('credential:delete', 'credential'),
 		async (
 			req: CredentialRequest.Delete,

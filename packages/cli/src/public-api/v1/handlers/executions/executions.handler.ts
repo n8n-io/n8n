@@ -14,9 +14,7 @@ import { getSharedWorkflowIds } from '../workflows/workflows.service';
 
 export = {
 	deleteExecution: [
-		apiKeyHasScope({
-			apiKeyScope: 'execution:delete',
-		}),
+		apiKeyHasScope('execution:delete'),
 		async (req: ExecutionRequest.Delete, res: express.Response): Promise<express.Response> => {
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:delete']);
 
@@ -61,9 +59,7 @@ export = {
 		},
 	],
 	getExecution: [
-		apiKeyHasScope({
-			apiKeyScope: 'execution:read',
-		}),
+		apiKeyHasScope('execution:read'),
 		async (req: ExecutionRequest.Get, res: express.Response): Promise<express.Response> => {
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
@@ -94,10 +90,8 @@ export = {
 		},
 	],
 	getExecutions: [
+		apiKeyHasScope('execution:list'),
 		validCursor,
-		apiKeyHasScope({
-			apiKeyScope: 'execution:list',
-		}),
 		async (req: ExecutionRequest.GetAll, res: express.Response): Promise<express.Response> => {
 			const {
 				lastId = undefined,

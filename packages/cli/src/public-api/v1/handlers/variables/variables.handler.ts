@@ -20,10 +20,7 @@ type GetAll = PaginatedRequest;
 export = {
 	createVariable: [
 		isLicensed('feat:variables'),
-		apiKeyHasScope({
-			apiKeyScope: 'variable:create',
-			globalScope: 'variable:create',
-		}),
+		apiKeyHasScope('variable:create'),
 		async (req: Create, res: Response) => {
 			await Container.get(VariablesController).createVariable(req);
 
@@ -32,10 +29,7 @@ export = {
 	],
 	deleteVariable: [
 		isLicensed('feat:variables'),
-		apiKeyHasScope({
-			apiKeyScope: 'variable:delete',
-			globalScope: 'variable:delete',
-		}),
+		apiKeyHasScope('variable:delete'),
 		async (req: Delete, res: Response) => {
 			await Container.get(VariablesController).deleteVariable(req);
 
@@ -44,10 +38,7 @@ export = {
 	],
 	getVariables: [
 		isLicensed('feat:variables'),
-		apiKeyHasScope({
-			apiKeyScope: 'variable:list',
-			globalScope: 'variable:list',
-		}),
+		apiKeyHasScope('variable:list'),
 		validCursor,
 		async (req: GetAll, res: Response) => {
 			const { offset = 0, limit = 100 } = req.query;

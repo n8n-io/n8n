@@ -19,10 +19,7 @@ type GetAll = PaginatedRequest;
 export = {
 	createProject: [
 		isLicensed('feat:projectRole:admin'),
-		apiKeyHasScope({
-			apiKeyScope: 'project:create',
-			globalScope: 'project:create',
-		}),
+		apiKeyHasScope('project:create'),
 		async (req: AuthenticatedRequest, res: Response) => {
 			const payload = CreateProjectDto.safeParse(req.body);
 			if (payload.error) {
@@ -36,10 +33,7 @@ export = {
 	],
 	updateProject: [
 		isLicensed('feat:projectRole:admin'),
-		apiKeyHasScope({
-			apiKeyScope: 'project:update',
-			globalScope: 'project:update',
-		}),
+		apiKeyHasScope('project:update'),
 		async (req: AuthenticatedRequest<{ projectId: string }>, res: Response) => {
 			const payload = UpdateProjectDto.safeParse(req.body);
 			if (payload.error) {
@@ -58,10 +52,7 @@ export = {
 	],
 	deleteProject: [
 		isLicensed('feat:projectRole:admin'),
-		apiKeyHasScope({
-			apiKeyScope: 'project:delete',
-			globalScope: 'project:delete',
-		}),
+		apiKeyHasScope('project:delete'),
 		async (req: AuthenticatedRequest<{ projectId: string }>, res: Response) => {
 			const query = DeleteProjectDto.safeParse(req.query);
 			if (query.error) {
@@ -80,10 +71,7 @@ export = {
 	],
 	getProjects: [
 		isLicensed('feat:projectRole:admin'),
-		apiKeyHasScope({
-			apiKeyScope: 'project:list',
-			globalScope: 'project:list',
-		}),
+		apiKeyHasScope('project:list'),
 		validCursor,
 		async (req: GetAll, res: Response) => {
 			const { offset = 0, limit = 100 } = req.query;

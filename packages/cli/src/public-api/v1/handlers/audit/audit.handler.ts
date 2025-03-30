@@ -7,10 +7,7 @@ import { apiKeyHasScope } from '../../shared/middlewares/global.middleware';
 
 export = {
 	generateAudit: [
-		apiKeyHasScope({
-			apiKeyScope: 'securityAudit:generate',
-			globalScope: 'securityAudit:generate',
-		}),
+		apiKeyHasScope('securityAudit:generate'),
 		async (req: AuditRequest.Generate, res: Response): Promise<Response> => {
 			try {
 				const { SecurityAuditService } = await import('@/security-audit/security-audit.service');

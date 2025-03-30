@@ -17,10 +17,7 @@ import { apiKeyHasScope } from '../../shared/middlewares/global.middleware';
 
 export = {
 	pull: [
-		apiKeyHasScope({
-			apiKeyScope: 'sourceControl:pull',
-			globalScope: 'sourceControl:pull',
-		}),
+		apiKeyHasScope('sourceControl:pull'),
 		async (
 			req: AuthenticatedRequest,
 			res: express.Response,

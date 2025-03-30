@@ -25,10 +25,7 @@ type ChangeRole = AuthenticatedRequest<{ id: string }, {}, RoleChangeRequestDto,
 export = {
 	getUser: [
 		validLicenseWithUserQuota,
-		apiKeyHasScope({
-			apiKeyScope: 'user:read',
-			globalScope: 'user:read',
-		}),
+		apiKeyHasScope('user:read'),
 		async (req: UserRequest.Get, res: express.Response) => {
 			const { includeRole = false } = req.query;
 			const { id } = req.params;
@@ -50,10 +47,8 @@ export = {
 		},
 	],
 	getUsers: [
-		apiKeyHasScope({
-			apiKeyScope: 'user:list',
-			globalScope: ['user:read', 'user:list'],
-		}),
+		apiKeyHasScope('user:list'),
+		// globalScope: ['user:read', 'user:list'],
 		validLicenseWithUserQuota,
 		validCursor,
 		async (req: UserRequest.Get, res: express.Response) => {
@@ -86,10 +81,7 @@ export = {
 		},
 	],
 	createUser: [
-		apiKeyHasScope({
-			apiKeyScope: 'user:create',
-			globalScope: 'user:create',
-		}),
+		apiKeyHasScope('user:create'),
 		async (req: Create, res: Response) => {
 			const { data, error } = InviteUsersRequestDto.safeParse(req.body);
 			if (error) {
@@ -105,10 +97,7 @@ export = {
 		},
 	],
 	deleteUser: [
-		apiKeyHasScope({
-			apiKeyScope: 'user:delete',
-			globalScope: 'user:delete',
-		}),
+		apiKeyHasScope('user:delete'),
 		async (req: Delete, res: Response) => {
 			await Container.get(UsersController).deleteUser(req);
 
@@ -117,10 +106,7 @@ export = {
 	],
 	changeRole: [
 		isLicensed('feat:advancedPermissions'),
-		apiKeyHasScope({
-			apiKeyScope: 'user:changeRole',
-			globalScope: 'user:changeRole',
-		}),
+		apiKeyHasScope('user:changeRole'),
 		async (req: ChangeRole, res: Response) => {
 			const validation = RoleChangeRequestDto.safeParse(req.body);
 			if (validation.error) {

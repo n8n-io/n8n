@@ -76,17 +76,17 @@ export const validCursor = (
 	return next();
 };
 
-export const apiKeyHasScope = ({
-	apiKeyScope,
-	globalScope: fallbackScope,
-}: { apiKeyScope: ApiKeyScope; globalScope?: Scope | Scope[] }) => {
+export const apiKeyHasScope = (
+	apiKeyScope: ApiKeyScope,
+	{ checkGlobalScopeIfScopesDisabled } = { checkGlobalScopeIfScopesDisabled: true },
+) => {
 	const emptyMiddleware = (_req: Request, _res: Response, next: NextFunction) => next();
 
 	return Container.get(License).isApiKeyScopesEnabled()
 		? Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(apiKeyScope)
-		: !fallbackScope
-			? emptyMiddleware
-			: globalScope(fallbackScope);
+		: checkGlobalScopeIfScopesDisabled
+			? globalScope(apiKeyScope as Scope)
+			: emptyMiddleware;
 };
 
 export const validLicenseWithUserQuota = (

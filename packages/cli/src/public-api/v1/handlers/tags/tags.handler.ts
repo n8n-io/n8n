@@ -13,7 +13,7 @@ import { encodeNextCursor } from '../../shared/services/pagination.service';
 
 export = {
 	createTag: [
-		apiKeyHasScope({ apiKeyScope: 'tag:create', globalScope: 'tag:create' }),
+		apiKeyHasScope('tag:create'),
 		async (req: TagRequest.Create, res: express.Response): Promise<express.Response> => {
 			const { name } = req.body;
 
@@ -28,7 +28,7 @@ export = {
 		},
 	],
 	updateTag: [
-		apiKeyHasScope({ apiKeyScope: 'tag:update', globalScope: 'tag:update' }),
+		apiKeyHasScope('tag:update'),
 		async (req: TagRequest.Update, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 			const { name } = req.body;
@@ -50,7 +50,7 @@ export = {
 		},
 	],
 	deleteTag: [
-		apiKeyHasScope({ apiKeyScope: 'tag:delete', globalScope: 'tag:delete' }),
+		apiKeyHasScope('tag:delete'),
 		async (req: TagRequest.Delete, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
@@ -66,7 +66,7 @@ export = {
 		},
 	],
 	getTags: [
-		apiKeyHasScope({ apiKeyScope: 'tag:list', globalScope: 'tag:list' }),
+		apiKeyHasScope('tag:list'),
 		validCursor,
 		async (req: TagRequest.GetAll, res: express.Response): Promise<express.Response> => {
 			const { offset = 0, limit = 100 } = req.query;
@@ -89,7 +89,7 @@ export = {
 		},
 	],
 	getTag: [
-		apiKeyHasScope({ apiKeyScope: 'tag:read', globalScope: 'tag:read' }),
+		apiKeyHasScope('tag:read'),
 		async (req: TagRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
