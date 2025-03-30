@@ -41,7 +41,7 @@ import { encodeNextCursor } from '../../shared/services/pagination.service';
 
 export = {
 	createWorkflow: [
-		apiKeyHasScope('workflow:create', { checkGlobalScopeIfScopesDisabled: false }),
+		apiKeyHasScope('workflow:create', { addGlobalScopeIfScopesDisabled: false }),
 		async (req: WorkflowRequest.Create, res: express.Response): Promise<express.Response> => {
 			const workflow = req.body;
 
@@ -76,7 +76,7 @@ export = {
 		},
 	],
 	transferWorkflow: [
-		apiKeyHasScope('workflow:move', { checkGlobalScopeIfScopesDisabled: false }),
+		apiKeyHasScope('workflow:move', { addGlobalScopeIfScopesDisabled: false }),
 		projectScope('workflow:move', 'workflow'),
 		async (req: WorkflowRequest.Transfer, res: express.Response) => {
 			const { id: workflowId } = req.params;
@@ -93,7 +93,7 @@ export = {
 		},
 	],
 	deleteWorkflow: [
-		apiKeyHasScope('workflow:delete', { checkGlobalScopeIfScopesDisabled: false }),
+		apiKeyHasScope('workflow:delete', { addGlobalScopeIfScopesDisabled: false }),
 		projectScope('workflow:delete', 'workflow'),
 		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { id: workflowId } = req.params;
@@ -109,7 +109,7 @@ export = {
 		},
 	],
 	getWorkflow: [
-		apiKeyHasScope('workflow:read', { checkGlobalScopeIfScopesDisabled: false }),
+		apiKeyHasScope('workflow:read', { addGlobalScopeIfScopesDisabled: false }),
 		projectScope('workflow:read', 'workflow'),
 		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
@@ -142,7 +142,7 @@ export = {
 		},
 	],
 	getWorkflows: [
-		apiKeyHasScope('workflow:list', { checkGlobalScopeIfScopesDisabled: false }),
+		apiKeyHasScope('workflow:list', { addGlobalScopeIfScopesDisabled: false }),
 		validCursor,
 		async (req: WorkflowRequest.GetAll, res: express.Response): Promise<express.Response> => {
 			const {
@@ -243,7 +243,7 @@ export = {
 		},
 	],
 	updateWorkflow: [
-		apiKeyHasScope('workflow:update', { checkGlobalScopeIfScopesDisabled: false }),
+		apiKeyHasScope('workflow:update', { addGlobalScopeIfScopesDisabled: false }),
 		projectScope('workflow:update', 'workflow'),
 		async (req: WorkflowRequest.Update, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
@@ -314,7 +314,7 @@ export = {
 		},
 	],
 	activateWorkflow: [
-		apiKeyHasScope('workflow:activate', { checkGlobalScopeIfScopesDisabled: false }),
+		apiKeyHasScope('workflow:activate', { addGlobalScopeIfScopesDisabled: false }),
 		projectScope('workflow:update', 'workflow'),
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
@@ -353,7 +353,7 @@ export = {
 		},
 	],
 	deactivateWorkflow: [
-		apiKeyHasScope('workflow:deactivate', { checkGlobalScopeIfScopesDisabled: false }),
+		apiKeyHasScope('workflow:deactivate', { addGlobalScopeIfScopesDisabled: false }),
 		projectScope('workflow:update', 'workflow'),
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
@@ -387,7 +387,7 @@ export = {
 		},
 	],
 	getWorkflowTags: [
-		apiKeyHasScope('workflowTags:list', { checkGlobalScopeIfScopesDisabled: false }),
+		apiKeyHasScope('workflowTags:list', { addGlobalScopeIfScopesDisabled: false }),
 		projectScope('workflow:read', 'workflow'),
 		async (req: WorkflowRequest.GetTags, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
@@ -414,7 +414,7 @@ export = {
 		},
 	],
 	updateWorkflowTags: [
-		apiKeyHasScope('workflowTags:update', { checkGlobalScopeIfScopesDisabled: false }),
+		apiKeyHasScope('workflowTags:update', { addGlobalScopeIfScopesDisabled: false }),
 		projectScope('workflow:update', 'workflow'),
 		async (req: WorkflowRequest.UpdateTags, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;

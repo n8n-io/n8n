@@ -78,13 +78,13 @@ export const validCursor = (
 
 export const apiKeyHasScope = (
 	apiKeyScope: ApiKeyScope,
-	{ checkGlobalScopeIfScopesDisabled } = { checkGlobalScopeIfScopesDisabled: true },
+	{ addGlobalScopeIfScopesDisabled } = { addGlobalScopeIfScopesDisabled: true },
 ) => {
 	const emptyMiddleware = (_req: Request, _res: Response, next: NextFunction) => next();
 
 	return Container.get(License).isApiKeyScopesEnabled()
 		? Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(apiKeyScope)
-		: checkGlobalScopeIfScopesDisabled
+		: addGlobalScopeIfScopesDisabled
 			? globalScope(apiKeyScope as Scope)
 			: emptyMiddleware;
 };
