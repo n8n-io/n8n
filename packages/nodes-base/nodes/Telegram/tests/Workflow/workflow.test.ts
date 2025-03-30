@@ -11,6 +11,7 @@ import {
 	chatAdministratorsResponse,
 	sendAnimationMessageResponse,
 	sendAudioResponse,
+	sendVoiceResponse,
 	getMemberResponse,
 } from './apiResponses';
 import { FAKE_CREDENTIALS_DATA } from '../../../../test/nodes/FakeCredentialsMap';
@@ -38,6 +39,7 @@ describe('Telegram', () => {
 			mock.post('/bottestToken/getChatAdministrators').reply(200, chatAdministratorsResponse);
 			mock.post('/bottestToken/sendAnimation').reply(200, sendAnimationMessageResponse);
 			mock.post('/bottestToken/sendAudio').reply(200, sendAudioResponse);
+			mock.post('/bottestToken/sendVoice').reply(200, sendVoiceResponse);
 			mock.post('/bottestToken/getChatMember').reply(200, getMemberResponse);
 		});
 
