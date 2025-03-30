@@ -1,9 +1,12 @@
 import type { ApiKeyWithRawValue } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
+import { mock } from 'jest-mock-extended';
 
 import type { User } from '@/databases/entities/user';
 import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
+import type { License } from '@/license';
+import { getOwnerOnlyApiKeyScopes } from '@/public-api/permissions.ee';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 import { mockInstance } from '@test/mocking';
 
@@ -12,9 +15,6 @@ import { randomValidPassword } from './shared/random';
 import * as testDb from './shared/test-db';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
-import type { License } from '@/license';
-import { mock } from 'jest-mock-extended';
-import { getOwnerOnlyApiKeyScopes } from '@/public-api/permissions.ee';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['apiKeys'] });
 let publicApiKeyService: PublicApiKeyService;
@@ -120,7 +120,7 @@ describe('Owner shell', () => {
 		expect(newApiKey.rawApiKey).toBeDefined();
 	});
 
-	test(`POST /api-keys should create an api key with scopes allow in the user's role`, async () => {
+	test("POST /api-keys should create an api key with scopes allow in the user's role", async () => {
 		const expiresAt = Date.now() + 1000;
 		license.isApiKeyScopesEnabled.mockReturnValue(true);
 
@@ -284,7 +284,7 @@ describe('Member', () => {
 		expect(newApiKey.rawApiKey).toBeDefined();
 	});
 
-	test(`POST /api-keys should create an api key with scopes allowed in the user's role`, async () => {
+	test("POST /api-keys should create an api key with scopes allowed in the user's role", async () => {
 		const expiresAt = Date.now() + 1000;
 		license.isApiKeyScopesEnabled.mockReturnValue(true);
 
@@ -316,7 +316,7 @@ describe('Member', () => {
 		expect(newApiKey.rawApiKey).toBeDefined();
 	});
 
-	test(`POST /api-keys should fail to create api key with scopes not allowed in the user's role`, async () => {
+	test("POST /api-keys should fail to create api key with scopes not allowed in the user's role", async () => {
 		const expiresAt = Date.now() + 1000;
 		license.isApiKeyScopesEnabled.mockReturnValue(true);
 
