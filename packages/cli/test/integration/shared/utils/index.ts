@@ -7,6 +7,7 @@ import {
 	type DirectoryLoader,
 } from 'n8n-core';
 import { Ftp } from 'n8n-nodes-base/credentials/Ftp.credentials';
+import { FormTrigger } from 'n8n-nodes-base/nodes/Form/FormTrigger.node';
 import { GithubApi } from 'n8n-nodes-base/credentials/GithubApi.credentials';
 import { Cron } from 'n8n-nodes-base/nodes/Cron/Cron.node';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
@@ -84,6 +85,10 @@ export async function initNodeTypes() {
 		},
 		'n8n-nodes-base.scheduleTrigger': {
 			type: new ScheduleTrigger(),
+			sourcePath: '',
+		},
+		'n8n-nodes-base.formTrigger': {
+			type: new FormTrigger(),
 			sourcePath: '',
 		},
 	};
