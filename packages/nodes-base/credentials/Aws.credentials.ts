@@ -476,8 +476,6 @@ export class Aws implements ICredentialType {
 
 		path = endpoint.pathname + endpoint.search;
 
-		// ! Workaround as we still use the IRequestOptions interface which uses uri instead of url
-		// ! To change when we replace the interface with IHttpRequestOptions
 		// ! aws4.sign *must* have the body to sign, but we might have .form instead of .body
 		const requestWithForm = requestOptions as unknown as { form?: Record<string, string> };
 		let bodyContent = body !== '' ? body : undefined;
