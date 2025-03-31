@@ -195,6 +195,8 @@ const table = useVueTable({
 	manualSorting: true,
 	enableMultiSort: props.multiSort,
 	manualPagination: true,
+	columnResizeMode: 'onChange',
+	columnResizeDirection: 'ltr',
 });
 </script>
 
@@ -218,6 +220,7 @@ const table = useVueTable({
 								<th
 									:style="{
 										cursor: header.column.getCanSort() ? 'pointer' : undefined,
+										width: `${header.getSize()}px`,
 									}"
 									@mousedown="header.column.getToggleSortingHandler()?.($event)"
 								>
@@ -230,6 +233,14 @@ const table = useVueTable({
 									<template v-if="header.column.getCanSort()">
 										{{ { asc: '↑', desc: '↓' }[header.column.getIsSorted() as string] }}
 									</template>
+
+									<div
+										v-if="header.column.getCanResize()"
+										:class="{ resizer: true, ['is-resizing']: header.column.getIsResizing() }"
+										@mousedown.stop="header.getResizeHandler()?.($event)"
+										@touchstart="header.getResizeHandler()?.($event)"
+										@dblclick="header.column.resetSize()"
+									></div>
 								</th>
 							</template>
 						</tr>
@@ -318,7 +329,11 @@ const table = useVueTable({
 
 	th,
 	td {
+		position: relative;
 		text-align: left;
+		// white-space: nowrap;
+		// overflow: hidden;
+		// text-overflow: ellipsis;
 	}
 
 	th {
@@ -452,5 +467,30 @@ th.loading-row {
 			width: 70px;
 		}
 	}
+}
+
+.resizer {
+	position: absolute;
+	top: 0;
+	height: 100%;
+	width: 3px;
+	background: var(--color-primary);
+	cursor: col-resize;
+	user-select: none;
+	touch-action: none;
+	right: -2px;
+	display: none;
+	z-index: 1;
+	&:hover {
+		display: block;
+	}
+}
+
+.resizer.is-resizing {
+	display: block;
+}
+
+th:hover:not(:last-child) > .resizer {
+	display: block;
 }
 </style>
