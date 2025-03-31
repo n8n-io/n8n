@@ -41,5 +41,6 @@
     "vue": "catalog:frontend",
     "vue-router": "catalog:frontend",
     "vue-tsc": "catalog:frontend"
-  }
+  },
+  "license": "https://docs.n8n.io/sustainable-use-license/"
 }
