@@ -59,9 +59,6 @@ export class McpTrigger extends Node {
 		// const { typeVersion: nodeVersion, type: nodeType } = context.getNode();
 		const webhookName = context.getWebhookName();
 
-		// @ts-expect-error 2345
-		const connectedTools = await getConnectedTools(context, true);
-
 		console.log('webhookName:', webhookName);
 		const req = context.getRequestObject();
 		const resp = context.getResponseObject();
@@ -70,6 +67,7 @@ export class McpTrigger extends Node {
 		// X Figure out how long to keep the McpServers open
 		// - Figure out how to connect the McpServers to the right triggers
 		//   `-> how do we want to keep the correct tools etc.? Do we wire that up in `.connect()`? Or do we create separate server per endpoint?
+		// - Figure out why vector store doesn't work?
 		// - Logging etc.
 		// - Figure out what the execution should be? Should there be an execution?
 		// - Make it work without some of the ts-ignores etc.
@@ -77,7 +75,7 @@ export class McpTrigger extends Node {
 		const serverData: McpServerData = McpServers.instance.serverData;
 		console.log(serverData.id);
 		if (webhookName === 'setup' && serverData.server) {
-			await serverData.setUpTools(connectedTools);
+			//await serverData.setUpTools(connectedTools);
 			const postUrl = new URL(context.getNodeWebhookUrl('default') ?? '/mcp/messages').pathname;
 			console.log(`Setting up SSEServerTransport and connecting, with postUrl: ${postUrl}`);
 			await serverData.connectTransport(postUrl, resp);
@@ -87,7 +85,15 @@ export class McpTrigger extends Node {
 			console.log('MESSAGES');
 			console.log(req.rawBody.toString());
 
-			await serverData.handlePostMessage(req, resp);
+			// @ts-expect-error 2345
+			const connectedTools = await getConnectedTools(context, true);
+
+			console.log(
+				'tools',
+				connectedTools.map((tool) => tool.name),
+			);
+
+			await serverData.handlePostMessage(req, resp, connectedTools);
 			return { noWebhookResponse: true, workflowData: [[{ json: { blub: 789 } }]] };
 		}
 

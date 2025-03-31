@@ -1,10 +1,6 @@
 import { Tool } from '@langchain/core/tools';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import {
-	ListToolsRequestSchema,
-	CallToolRequestSchema,
-	JSONRPCRequest,
-} from '@modelcontextprotocol/sdk/types.js';
+import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { Service } from '@n8n/di';
 import type * as express from 'express';
 import { zodToJsonSchema } from 'zod-to-json-schema';
@@ -27,7 +23,6 @@ export class McpServerData {
 	async connectTransport(postUrl: string, resp: express.Response): Promise<void> {
 		const transport = new FlushingSSEServerTransport(postUrl, resp);
 		this.transports[transport.sessionId] = transport;
-		console.log(`Setting up transport for ${transport.sessionId}`);
 		resp.on('close', () => {
 			delete this.transports[transport.sessionId];
 		});
@@ -41,10 +36,10 @@ export class McpServerData {
 		}
 	}
 
-	async handlePostMessage(req: express.Request, resp: express.Response) {
+	async handlePostMessage(req: express.Request, resp: express.Response, connectedTools: Tool[]) {
 		const sessionId = req.query.sessionId as string;
 		const transport = this.transports[sessionId];
-		console.log('Transport:', transport);
+		this._tools = connectedTools;
 		if (transport) {
 			await transport.handlePostMessage(req, resp, req.rawBody.toString());
 		} else {
@@ -80,10 +75,6 @@ export class McpServerData {
 				'tools',
 				this._tools.map((tool) => tool.name),
 			);
-			console.log(
-				'tools',
-				this._tools.map((tool) => tool.schema),
-			);
 			return {
 				tools: this._tools.map((tool) => {
 					return {
@@ -104,6 +95,7 @@ export class McpServerData {
 			const requestedTool: Tool | undefined = this._tools.filter(
 				(tool) => tool.name === request.params.name,
 			)?.[0];
+			console.log('Requested tool', requestedTool.name);
 			if (!requestedTool) {
 				// eslint-disable-next-line n8n-local-rules/no-plain-errors
 				throw new Error('Tool not found');
