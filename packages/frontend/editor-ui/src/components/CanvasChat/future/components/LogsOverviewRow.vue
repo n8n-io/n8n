@@ -82,14 +82,16 @@ function handleClickToggleButton() {
 </script>
 
 <template>
-	<div v-if="node !== undefined" :class="$style.container">
+	<div
+		v-if="node !== undefined"
+		:class="{ [$style.container]: true, [$style.selected]: props.isSelected }"
+	>
 		<template v-for="level in depth" :key="level">
 			<div
 				:class="{
 					[$style.indent]: true,
 					[$style.connectorCurved]: level === depth,
 					[$style.connectorStraight]: !isLastChild(level),
-					[$style.selected]: props.isSelected,
 				}"
 			/>
 		</template>
