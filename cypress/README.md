@@ -30,7 +30,3 @@ pnpm run debug:flaky:e2e -- <grep_filter> <burn_count>
     ```bash
     pnpm run debug:flaky:e2e
     ```
-
-**Important Note:**
-
-* When using the `grep_filter`, Cypress still needs to *discover* all test files to determine which ones match the filter. This means that even if you're only running a small subset of tests, the initial test discovery process might take some time, especially in larger projects. Therefore, it might seem slow to get to the tests you actually want to run.
