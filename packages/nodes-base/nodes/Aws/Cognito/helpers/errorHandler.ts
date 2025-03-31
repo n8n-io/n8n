@@ -16,18 +16,12 @@ export async function handleError(
 		const resource = this.getNodeParameter('resource') as string;
 		const operation = this.getNodeParameter('operation') as string;
 		const responseBody = response.body as IDataObject;
-		const errorType: string | undefined =
-			typeof responseBody.__type === 'string'
-				? responseBody.__type
-				: typeof response.headers?.['x-amzn-errortype'] === 'string'
-					? response.headers?.['x-amzn-errortype']
-					: undefined;
-		const errorMessage: string | undefined =
-			typeof responseBody.message === 'string'
-				? responseBody.message
-				: typeof response.headers?.['x-amzn-errormessage'] === 'string'
-					? response.headers?.['x-amzn-errormessage']
-					: undefined;
+		const errorType = (responseBody.__type || response.headers?.['x-amzn-errortype']) as
+			| string
+			| undefined;
+		const errorMessage = (responseBody.message || response.headers?.['x-amzn-errormessage']) as
+			| string
+			| undefined;
 
 		const throwError = (message: string, description: string) => {
 			throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
@@ -83,6 +77,7 @@ export async function handleError(
 				},
 				addToGroup: {
 					condition: (errType, errMsg) => {
+						// Todo: these are not the property names
 						const user = this.getNodeParameter('user.value', '') as string;
 						const group = this.getNodeParameter('group.value', '') as string;
 						return (
@@ -110,6 +105,7 @@ export async function handleError(
 				},
 				removeFromGroup: {
 					condition: (errType, errMsg) => {
+						// Todo: these are not the property names
 						const user = this.getNodeParameter('user.value', '') as string;
 						const group = this.getNodeParameter('group.value', '') as string;
 						return (

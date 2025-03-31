@@ -5,11 +5,11 @@ import type {
 	INodeListSearchItems,
 	INodeListSearchResult,
 } from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import type { IUserAttribute, IUserPool } from '../helpers/interfaces';
 import { getUsersInGroup } from '../helpers/utils';
-import { makeAwsRequest } from '../transport';
+import { awsApiRequest } from '../transport';
 
 function formatResults(items: IDataObject[], filter?: string): INodeListSearchItems[] {
 	return items
@@ -26,12 +26,14 @@ export async function searchGroups(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const userPoolId = (this.getNodeParameter('userPoolId', '') as IDataObject)?.value as string;
+	const userPoolId = this.getNodeParameter('userPoolId', undefined, {
+		extractValue: true,
+	}) as string;
 	if (!userPoolId) {
-		throw new ApplicationError('User Pool ID is required to search groups');
+		throw new NodeOperationError(this.getNode(), 'User Pool ID is required to search groups');
 	}
 
-	const responseData = await makeAwsRequest.call(this, {
+	const responseData = await awsApiRequest.call(this, {
 		url: '',
 		method: 'POST',
 		headers: { 'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListGroups' },
@@ -40,7 +42,7 @@ export async function searchGroups(
 
 	const groups = responseData.Groups as IDataObject[];
 
-	const groupsMapped = groups.map(({ GroupName, UserPoolId }) => ({
+	const groupsMapped = groups.map(({ GroupName }) => ({
 		id: GroupName,
 		name: GroupName,
 	}));
@@ -55,8 +57,12 @@ export async function searchGroupsForUser(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const userName = (this.getNodeParameter('userName') as IDataObject).value as string;
-	const userPoolId = (this.getNodeParameter('userPoolId', '') as IDataObject).value as string;
+	const userName = this.getNodeParameter('userName', undefined, {
+		extractValue: true,
+	}) as string;
+	const userPoolId = this.getNodeParameter('userPoolId', undefined, {
+		extractValue: true,
+	}) as string;
 
 	const listGroupsOpts: IHttpRequestOptions = {
 		url: '',
@@ -66,7 +72,7 @@ export async function searchGroupsForUser(
 	};
 
 	try {
-		const responseData: IDataObject = await makeAwsRequest.call(this, listGroupsOpts);
+		const responseData: IDataObject = await awsApiRequest.call(this, listGroupsOpts);
 		const groups = Array.isArray(responseData.Groups) ? responseData.Groups : [];
 
 		if (!groups || groups.length === 0) return { results: [] };
@@ -111,10 +117,10 @@ export async function searchUsers(
 	const userPoolId = (this.getNodeParameter('userPoolId') as IDataObject).value as string;
 
 	if (!userPoolId) {
-		throw new ApplicationError('User Pool ID is required to search users');
+		throw new NodeOperationError(this.getNode(), 'User Pool ID is required to search users');
 	}
 
-	const userPoolData = await makeAwsRequest.call(this, {
+	const userPoolData = await awsApiRequest.call(this, {
 		url: '',
 		method: 'POST',
 		headers: { 'X-Amz-Target': 'AWSCognitoIdentityProviderService.DescribeUserPool' },
@@ -138,7 +144,7 @@ export async function searchUsers(
 		}),
 	};
 
-	const responseData = await makeAwsRequest.call(this, listUsersOpts);
+	const responseData = await awsApiRequest.call(this, listUsersOpts);
 
 	const users = Array.isArray(responseData.Users) ? responseData.Users : [];
 
@@ -171,7 +177,7 @@ export async function searchUserPools(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const responseData = await makeAwsRequest.call(this, {
+	const responseData = await awsApiRequest.call(this, {
 		url: '',
 		method: 'POST',
 		headers: { 'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListUserPools' },

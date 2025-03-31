@@ -8,7 +8,7 @@ import * as getAll from './getAll.operation';
 import * as removeFromGroup from './removeFromGroup.operation';
 import * as update from './update.operation';
 import { handleError } from '../../helpers/errorHandler';
-import { presendUserFields, simplifyData } from '../../helpers/utils';
+import { preSendUserFields, simplifyData } from '../../helpers/utils';
 
 export const description: INodeProperties[] = [
 	{
@@ -30,7 +30,7 @@ export const description: INodeProperties[] = [
 				action: 'Add user to group',
 				routing: {
 					send: {
-						preSend: [presendUserFields],
+						preSend: [preSendUserFields],
 					},
 					request: {
 						method: 'POST',
@@ -59,7 +59,7 @@ export const description: INodeProperties[] = [
 				action: 'Create user',
 				routing: {
 					send: {
-						preSend: [presendUserFields],
+						preSend: [preSendUserFields],
 					},
 					request: {
 						method: 'POST',
@@ -88,7 +88,7 @@ export const description: INodeProperties[] = [
 				action: 'Delete user',
 				routing: {
 					send: {
-						preSend: [presendUserFields],
+						preSend: [preSendUserFields],
 					},
 					request: {
 						method: 'POST',
@@ -117,7 +117,7 @@ export const description: INodeProperties[] = [
 				action: 'Get user',
 				routing: {
 					send: {
-						preSend: [presendUserFields],
+						preSend: [preSendUserFields],
 					},
 					request: {
 						method: 'POST',
@@ -169,7 +169,7 @@ export const description: INodeProperties[] = [
 				action: 'Remove user from group',
 				routing: {
 					send: {
-						preSend: [presendUserFields],
+						preSend: [preSendUserFields],
 					},
 					request: {
 						method: 'POST',
@@ -198,7 +198,7 @@ export const description: INodeProperties[] = [
 				action: 'Update user',
 				routing: {
 					send: {
-						preSend: [presendUserFields],
+						preSend: [preSendUserFields],
 					},
 					request: {
 						method: 'POST',

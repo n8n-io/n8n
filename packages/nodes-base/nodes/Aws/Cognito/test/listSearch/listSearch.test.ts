@@ -11,7 +11,7 @@ import {
 	searchUserPools,
 	searchGroupsForUser,
 } from '../../methods/listSearch';
-import { makeAwsRequest } from '../../transport/index';
+import { awsApiRequest } from '../../transport/index';
 
 jest.mock('../../transport', () => ({
 	makeAwsRequest: jest.fn(),
@@ -45,7 +45,7 @@ describe('AWS Cognito Functions', () => {
 				NextToken: 'next-token',
 			};
 
-			(makeAwsRequest as jest.Mock).mockResolvedValue(mockResponse);
+			(awsApiRequest as jest.Mock).mockResolvedValue(mockResponse);
 
 			const mockContext = {
 				getNodeParameter: jest.fn((param) => {
@@ -67,7 +67,7 @@ describe('AWS Cognito Functions', () => {
 			};
 
 			expect(result).toEqual(expectedResult);
-			expect(makeAwsRequest).toHaveBeenCalledWith(
+			expect(awsApiRequest).toHaveBeenCalledWith(
 				expect.objectContaining({
 					url: '',
 					method: 'POST',
@@ -96,7 +96,7 @@ describe('AWS Cognito Functions', () => {
 				NextToken: 'next-token',
 			};
 
-			(makeAwsRequest as jest.Mock).mockResolvedValue(mockResponse);
+			(awsApiRequest as jest.Mock).mockResolvedValue(mockResponse);
 
 			const mockContext = {
 				getNodeParameter: jest.fn((param) => {
@@ -118,7 +118,7 @@ describe('AWS Cognito Functions', () => {
 			};
 
 			expect(result).toEqual(expectedResult);
-			expect(makeAwsRequest).toHaveBeenCalledWith(
+			expect(awsApiRequest).toHaveBeenCalledWith(
 				expect.objectContaining({
 					url: '',
 					method: 'POST',
@@ -147,7 +147,7 @@ describe('AWS Cognito Functions', () => {
 				NextToken: 'next-token',
 			};
 
-			(makeAwsRequest as jest.Mock).mockResolvedValue(mockResponse);
+			(awsApiRequest as jest.Mock).mockResolvedValue(mockResponse);
 
 			const mockContext = {
 				getNodeParameter: jest.fn((param) => {
@@ -169,7 +169,7 @@ describe('AWS Cognito Functions', () => {
 			};
 
 			expect(result).toEqual(expectedResult);
-			expect(makeAwsRequest).toHaveBeenCalledWith(
+			expect(awsApiRequest).toHaveBeenCalledWith(
 				expect.objectContaining({
 					url: '',
 					method: 'POST',
@@ -187,7 +187,7 @@ describe('AWS Cognito Functions', () => {
 
 			const mockListGroupsResponse = { Groups: [] };
 
-			(makeAwsRequest as jest.Mock).mockResolvedValueOnce(mockListGroupsResponse);
+			(awsApiRequest as jest.Mock).mockResolvedValueOnce(mockListGroupsResponse);
 
 			const mockContext = {
 				getNodeParameter: jest.fn((param) => {
@@ -219,7 +219,7 @@ describe('AWS Cognito Functions', () => {
 				],
 			};
 
-			(makeAwsRequest as jest.Mock).mockResolvedValueOnce(mockListGroupsResponse);
+			(awsApiRequest as jest.Mock).mockResolvedValueOnce(mockListGroupsResponse);
 
 			(getUsersInGroup as jest.Mock).mockImplementation(async (groupName, _userPoolId) => {
 				if (groupName === 'MyNewGroup') {

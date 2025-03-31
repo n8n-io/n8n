@@ -2,7 +2,7 @@ import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { group, user, userPool } from './descriptions';
-import { presendStringifyBody } from './helpers/utils';
+import { preSendStringifyBody } from './helpers/utils';
 import { listSearch } from './methods';
 
 export class AwsCognito implements INodeType {
@@ -40,7 +40,7 @@ export class AwsCognito implements INodeType {
 				default: 'user',
 				routing: {
 					send: {
-						preSend: [presendStringifyBody],
+						preSend: [preSendStringifyBody],
 					},
 				},
 				options: [

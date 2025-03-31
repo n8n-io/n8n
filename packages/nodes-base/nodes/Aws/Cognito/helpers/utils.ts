@@ -6,16 +6,17 @@ import type {
 	IN8nHttpFullResponse,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { jsonParse, NodeApiError, ApplicationError } from 'n8n-workflow';
+import { jsonParse, NodeApiError, NodeOperationError, OperationalError } from 'n8n-workflow';
 
 import type { IListUsersResponse, IUser, IUserAttribute, IUserPool } from './interfaces';
-import { makeAwsRequest } from '../transport';
+import { awsApiRequest } from '../transport';
 
 const validateEmail = (email: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 const validatePhoneNumber = (phone: string): boolean => /^\+[0-9]\d{1,14}$/.test(phone);
 
+// Todo: there are a lot of different places where json stringify or parse is called. Is it possible to do this in a more generic way?
 export function parseRequestBody(body: unknown): IDataObject {
-	if (body === null || body === undefined) {
+	if (!body) {
 		return {};
 	}
 
@@ -23,7 +24,7 @@ export function parseRequestBody(body: unknown): IDataObject {
 		try {
 			return jsonParse(body);
 		} catch {
-			throw new ApplicationError('Failed to parse requestOptions body');
+			throw new OperationalError('Failed to parse requestOptions body');
 		}
 	}
 
@@ -31,22 +32,25 @@ export function parseRequestBody(body: unknown): IDataObject {
 		return body as IDataObject;
 	}
 
-	throw new ApplicationError('Invalid body type for requestOptions');
+	throw new OperationalError('Invalid body type for requestOptions');
 }
 
 export function mapUserAttributes(userAttributes?: IUserAttribute[]): Record<string, string> {
-	if (!userAttributes || userAttributes.length === 0) {
+	if (!userAttributes?.length) {
 		return {};
 	}
 
 	return userAttributes.reduce<Record<string, string>>((acc, { Name, Value }) => {
-		if (Name && Name.trim()) {
+		if (Name?.trim()) {
+			// Todo: is this line necessary?
 			acc[Name === 'sub' ? 'Sub' : Name] = Value ?? '';
 		}
 		return acc;
 	}, {});
 }
 
+// Todo: split up simplify for each resource and operation, because it doesn't seem they have any common functionality
+// Todo: is it required to .slice(0, 6)? Why not return all?
 export async function simplifyData(
 	this: IExecuteSingleFunctions,
 	items: INodeExecutionData[],
@@ -58,8 +62,8 @@ export async function simplifyData(
 		return items;
 	}
 
-	const resource = this.getNodeParameter('resource');
-	const operation = this.getNodeParameter('operation');
+	const resource = this.getNodeParameter('resource') as string;
+	const operation = this.getNodeParameter('operation') as string;
 
 	const simplifiedItems = items
 		.map((item) => {
@@ -139,7 +143,7 @@ export async function simplifyData(
 	return simplifiedItems;
 }
 
-export async function presendStringifyBody(
+export async function preSendStringifyBody(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
@@ -149,15 +153,19 @@ export async function presendStringifyBody(
 	return requestOptions;
 }
 
-export async function presendUserFields(
+// Todo: the nested functions makes the function less readable. Move the functions to the root level.
+// Todo: is it necessary to call this function for get requests? Doesn't the response contain any error message for this?
+export async function preSendUserFields(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 	paginationToken?: string,
 ): Promise<IHttpRequestOptions> {
 	const operation = this.getNodeParameter('operation') as string;
-	const userPoolId = (this.getNodeParameter('userPoolId') as IDataObject).value as string;
+	const userPoolId = this.getNodeParameter('userPoolId', undefined, {
+		extractValue: true,
+	}) as string;
 
-	const { UserPool } = (await makeAwsRequest.call(this, {
+	const { UserPool } = (await awsApiRequest.call(this, {
 		url: '',
 		method: 'POST',
 		headers: { 'X-Amz-Target': 'AWSCognitoIdentityProviderService.DescribeUserPool' },
@@ -169,7 +177,7 @@ export async function presendUserFields(
 	const isPhoneAuth = usernameAttributes.includes('phone_number');
 	const isEmailOrPhone = isEmailAuth || isPhoneAuth;
 
-	const getValidatedNewUsername = (): string => {
+	const getValidatedNewUserName = (): string => {
 		const newUsername = this.getNodeParameter('newUserName') as string;
 
 		if (isEmailAuth && !validateEmail(newUsername)) {
@@ -188,10 +196,12 @@ export async function presendUserFields(
 		return newUsername;
 	};
 
-	const getUsernameFromExistingUsers = async (): Promise<string | undefined> => {
-		const userSub = (this.getNodeParameter('userName') as IDataObject).value as string;
+	const getUserNameFromExistingUsers = async (): Promise<string | undefined> => {
+		const userSub = this.getNodeParameter('userName', undefined, {
+			extractValue: true,
+		}) as string;
 
-		const { Users } = (await makeAwsRequest.call(this as unknown as ILoadOptionsFunctions, {
+		const { Users } = (await awsApiRequest.call(this as unknown as ILoadOptionsFunctions, {
 			url: '',
 			method: 'POST',
 			headers: { 'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListUsers' },
@@ -206,32 +216,35 @@ export async function presendUserFields(
 			(user: IUser) => user.Attributes.find((attr) => attr.Name === 'sub')?.Value === userSub,
 		);
 
+		// Todo: why call API when it is not required for this check: isEmailOrPhone ? userSub
 		return isEmailOrPhone ? userSub : matchedUser?.Username;
 	};
 
-	const finalUsername =
-		operation === 'create' ? getValidatedNewUsername() : await getUsernameFromExistingUsers();
+	const finalUserName =
+		operation === 'create' ? getValidatedNewUserName() : await getUserNameFromExistingUsers();
 
 	const body = parseRequestBody(requestOptions.body);
 	return {
 		...requestOptions,
 		body: JSON.stringify({
 			...body,
-			...(finalUsername ? { Username: finalUsername } : {}),
+			...(finalUserName ? { Username: finalUserName } : {}),
 		}),
 	};
 }
 
+// Todo: use interface for user
+// Todo: paginationToken not used
 export async function getUsersInGroup(
 	this: IExecuteSingleFunctions | ILoadOptionsFunctions,
 	groupName: string,
 	userPoolId: string,
 ): Promise<IDataObject> {
 	if (!userPoolId) {
-		throw new ApplicationError('User Pool ID is required');
+		throw new NodeOperationError(this.getNode(), 'User Pool ID is required');
 	}
 
-	const responseData: IDataObject = await makeAwsRequest.call(this, {
+	const responseData: IDataObject = await awsApiRequest.call(this, {
 		url: '',
 		method: 'POST',
 		headers: {
@@ -276,30 +289,32 @@ export async function processGroupsResponse(
 	items: INodeExecutionData[],
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
-	const userPoolId = (this.getNodeParameter('userPoolId') as IDataObject).value as string;
-	const include = this.getNodeParameter('includeUsers');
+	const userPoolId = this.getNodeParameter('userPoolId', undefined, {
+		extractValue: true,
+	}) as string;
+	const include = this.getNodeParameter('includeUsers') as boolean;
 	const body = parseRequestBody(response.body);
 
 	if (!include) {
+		// Todo: what does items include when !body?.Group ? Other places return empty array instead of items
 		return body?.Group ? [{ json: body.Group as IDataObject }] : items;
 	}
-
-	const processedGroups: IDataObject[] = [];
 
 	if (body?.Group) {
 		const group = body.Group as IDataObject;
 		const users = await getUsersInGroup.call(this, group.GroupName as string, userPoolId);
 
-		const usersResponse = users.results && Array.isArray(users.results) ? users.results : [];
-		return [{ json: { ...group, Users: usersResponse.length ? usersResponse : [] } }];
+		return [{ json: { ...group, Users: users.results ?? [] } }];
 	}
 
+	// Todo: this will not get called because of previous if (body?.Group)
+	const processedGroups: IDataObject[] = [];
 	const groups = Array.isArray(body?.Groups) ? body.Groups : [];
 	for (const group of groups) {
 		const usersResponse = await getUsersInGroup.call(this, group.GroupName as string, userPoolId);
 		processedGroups.push({
 			...group,
-			Users: usersResponse.length ? usersResponse : [],
+			Users: usersResponse ?? [],
 		});
 	}
 
