@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { N8nText } from '@n8n/design-system';
+
 defineProps<{ title: string }>();
 
 defineSlots<{ actions: {} }>();
@@ -8,7 +10,7 @@ const emit = defineEmits<{ click: [] }>();
 
 <template>
 	<header :class="$style.container" @click="emit('click')">
-		<span :class="$style.title">{{ title }}</span>
+		<N8nText :class="$style.title" :bold="true" size="small">{{ title }}</N8nText>
 		<div :class="$style.actions">
 			<slot name="actions" />
 		</div>
@@ -18,10 +20,9 @@ const emit = defineEmits<{ click: [] }>();
 <style lang="scss" module>
 .container {
 	font-size: var(--font-size-2xs);
-	font-weight: 400;
-	line-height: 18px;
 	text-align: left;
-	padding-inline: var(--spacing-s);
+	padding-inline-start: var(--spacing-s);
+	padding-inline-end: var(--spacing-xs);
 	padding-block: var(--spacing-2xs);
 	background-color: var(--color-foreground-xlight);
 	display: flex;
@@ -36,12 +37,11 @@ const emit = defineEmits<{ click: [] }>();
 
 	&:not(:last-child) {
 		/** Panel open */
-		border-bottom: 1px solid var(--color-foreground-base);
+		border-bottom: var(--border-base);
 	}
 }
 
 .title {
-	font-weight: 600;
 	flex-grow: 1;
 	flex-shrink: 1;
 }
