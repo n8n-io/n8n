@@ -74,10 +74,7 @@ export class PublicApiKeyService {
 		apiKeyId: string,
 		{ label, scopes }: UpdateApiKeyRequestDto,
 	) {
-		await this.apiKeyRepository.update(
-			{ id: apiKeyId, userId: user.id },
-			{ label, scopes: scopes as ApiKeyScope[] },
-		);
+		await this.apiKeyRepository.update({ id: apiKeyId, userId: user.id }, { label, scopes });
 	}
 
 	private async getUserForApiKey(apiKey: string) {

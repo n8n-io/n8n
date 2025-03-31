@@ -14,6 +14,11 @@ import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 import { randomEmail, randomName, randomValidPassword } from '../random';
 
+type ApiKeyOptions = {
+	expiresAt?: number | null;
+	scopes?: ApiKeyScope[];
+};
+
 // pre-computed bcrypt hash for the string 'password', using `await hash('password', 10)`
 const passwordHash = '$2a$10$njedH7S6V5898mj6p0Jr..IGY9Ms.qNwR7RbSzzX9yubJocKfvGGK';
 
@@ -93,11 +98,9 @@ export const addApiKey = async (
 	});
 };
 
-export async function createOwnerWithApiKey({
-	expiresAt = null,
-}: { expiresAt?: number | null } = {}) {
+export async function createOwnerWithApiKey({ expiresAt = null, scopes = [] }: ApiKeyOptions = {}) {
 	const owner = await createOwner();
-	const apiKey = await addApiKey(owner, { expiresAt });
+	const apiKey = await addApiKey(owner, { expiresAt, scopes });
 	owner.apiKeys = [apiKey];
 	return owner;
 }
@@ -105,8 +108,15 @@ export async function createOwnerWithApiKey({
 export async function createMemberWithApiKey({
 	expiresAt = null,
 	scopes = [],
-}: { expiresAt?: number | null; scopes?: ApiKeyScope[] } = {}) {
+}: ApiKeyOptions = {}) {
 	const member = await createMember();
+	const apiKey = await addApiKey(member, { expiresAt, scopes });
+	member.apiKeys = [apiKey];
+	return member;
+}
+
+export async function createAdminWithApiKey({ expiresAt = null, scopes = [] }: ApiKeyOptions = {}) {
+	const member = await createAdmin();
 	const apiKey = await addApiKey(member, { expiresAt, scopes });
 	member.apiKeys = [apiKey];
 	return member;

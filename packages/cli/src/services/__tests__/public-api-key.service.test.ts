@@ -10,11 +10,16 @@ import { UserRepository } from '@/databases/repositories/user.repository';
 import { getConnection } from '@/db';
 import type { EventService } from '@/events/event.service';
 import type { AuthenticatedRequest } from '@/requests';
-import { createOwnerWithApiKey } from '@test-integration/db/users';
+import {
+	createAdmin,
+	createAdminWithApiKey,
+	createOwnerWithApiKey,
+} from '@test-integration/db/users';
 import * as testDb from '@test-integration/test-db';
 
 import { JwtService } from '../jwt.service';
 import { PublicApiKeyService } from '../public-api-key.service';
+import { getOwnerOnlyApiKeyScopes } from '@/public-api/permissions.ee';
 
 const mockReqWith = (apiKey: string, path: string, method: string) => {
 	return mock<AuthenticatedRequest>({
@@ -248,6 +253,35 @@ describe('PublicApiKeyService', () => {
 			//Assert
 
 			expect(redactedApiKey).toBe('******4kZo');
+		});
+	});
+
+	describe('removeOwnerOnlyScopesFromApiKeys', () => {
+		it("it should remove all owner only scopes from user's API keys", async () => {
+			// Arrange
+
+			const adminUser = await createAdminWithApiKey();
+			const apiKeyId = adminUser.apiKeys[0].id;
+			const ownerOnlyScopes = getOwnerOnlyApiKeyScopes();
+
+			const publicApiKeyService = new PublicApiKeyService(
+				apiKeyRepository,
+				userRepository,
+				jwtService,
+				eventService,
+			);
+
+			// Act
+
+			await publicApiKeyService.removeOwnerOnlyScopesFromApiKeys(adminUser);
+
+			// Assert
+
+			const apiKeyOnDb = await apiKeyRepository.findOneByOrFail({ id: apiKeyId });
+
+			expect(ownerOnlyScopes.some((ownerScope) => apiKeyOnDb.scopes.includes(ownerScope))).toBe(
+				false,
+			);
 		});
 	});
 });
