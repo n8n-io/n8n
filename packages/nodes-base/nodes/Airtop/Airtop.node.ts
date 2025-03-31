@@ -1,7 +1,6 @@
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import { autoTerminateSessionHint } from './actions/common/fields';
 import * as extraction from './actions/extraction/Extraction.resource';
 import * as interaction from './actions/interaction/Interaction.resource';
 import { router } from './actions/router';
@@ -21,15 +20,14 @@ export class Airtop implements INodeType {
 		defaults: {
 			name: 'Airtop',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'airtopApi',
 				required: true,
 			},
 		],
-		hints: [autoTerminateSessionHint],
 		properties: [
 			{
 				displayName: 'Resource',

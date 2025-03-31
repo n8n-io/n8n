@@ -24,6 +24,7 @@ export const description: INodeProperties[] = [
 			},
 		},
 		description: 'The prompt to extract data from the pages',
+		placeholder: 'e.g. Extract all the product names and prices',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -46,18 +47,21 @@ export const description: INodeProperties[] = [
 				name: 'interactionMode',
 				type: 'options',
 				default: 'auto',
-				hint: "When set to 'Auto', it automatically chooses the most cost-effective mode. With 'Accurate', the AI prioritizes accuracy over cost, and when set to 'Cost Efficient', it focuses on minimizing costs while ensuring effectiveness.",
+				description: 'The strategy for interacting with the page',
 				options: [
 					{
 						name: 'Auto',
+						description: 'Automatically choose the most cost-effective mode',
 						value: 'auto',
 					},
 					{
 						name: 'Accurate',
+						description: 'Prioritize accuracy over cost',
 						value: 'accurate',
 					},
 					{
 						name: 'Cost Efficient',
+						description: 'Minimize costs while ensuring effectiveness',
 						value: 'cost-efficient',
 					},
 				],
@@ -67,18 +71,21 @@ export const description: INodeProperties[] = [
 				name: 'paginationMode',
 				type: 'options',
 				default: 'auto',
-				hint: "The mode to use for pagination. If set to 'Auto', Airtop AI first looks for pagination links and then tries infinite scrolling. If set to 'Paginated', it uses pagination links. If set to 'Infinite Scroll', it scrolls the page to load more content.",
+				description: 'The pagination approach to use',
 				options: [
 					{
 						name: 'Auto',
+						description: 'Look for pagination links first, then try infinite scrolling',
 						value: 'auto',
 					},
 					{
 						name: 'Paginated',
+						description: 'Only use pagination links',
 						value: 'paginated',
 					},
 					{
 						name: 'Infinite Scroll',
+						description: 'Scroll the page to load more content',
 						value: 'infinite-scroll',
 					},
 				],

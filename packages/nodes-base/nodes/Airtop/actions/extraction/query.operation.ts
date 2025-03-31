@@ -17,7 +17,7 @@ export const description: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		placeholder: 'Is there a login modal on this page?',
+		placeholder: 'e.g. Is there a login form in this page?',
 		displayOptions: {
 			show: {
 				resource: ['extraction'],

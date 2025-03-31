@@ -1,4 +1,4 @@
-import type { INodeProperties, NodeHint } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const SESSION_MODE = {
 	NEW: 'new',
@@ -34,9 +34,9 @@ export const profileNameField: INodeProperties = {
 	name: 'profileName',
 	type: 'string',
 	default: '',
-	description:
-		'The name of the <a href="https://docs.airtop.ai/guides/how-to/saving-a-profile" target="_blank">Profile</a> to load or create',
-	hint: 'Name of the <a href="https://docs.airtop.ai/guides/how-to/saving-a-profile" target="_blank">Profile</a> to load into the session. Must consist only of alphanumeric characters and hyphen "-"',
+	description: 'The name of the Airtop profile to load or create',
+	hint: '<a href="https://docs.airtop.ai/guides/how-to/saving-a-profile" target="_blank">Learn more</a> about Airtop profiles',
+	placeholder: 'e.g. my-x-profile',
 };
 
 export const urlField: INodeProperties = {
@@ -44,18 +44,8 @@ export const urlField: INodeProperties = {
 	name: 'url',
 	type: 'string',
 	default: '',
-	placeholder: 'https://google.com',
+	placeholder: 'e.g. https://google.com',
 	description: 'URL to load in the window',
-};
-
-export const autoTerminateSessionHint: NodeHint = {
-	displayCondition:
-		'={{ $parameter["sessionMode"] === "new" && $parameter["autoTerminateSession"] === false }}',
-	message:
-		"When 'Auto-Terminate Session' is disabled, you must manually terminate sessions. By default, idle sessions timeout after 10 minutes",
-	type: 'warning',
-	location: 'outputPane',
-	whenToDisplay: 'beforeExecution',
 };
 
 /**
@@ -80,8 +70,8 @@ export const elementDescriptionField: INodeProperties = {
 	name: 'elementDescription',
 	type: 'string',
 	default: '',
-	description: 'The description of the element to execute the interaction on',
-	hint: 'Describe the element, e.g. "the search box at the top of the page", "the username field", "the password field". Be as descriptive as possible.',
+	description: 'A specific description of the element to execute the interaction on',
+	placeholder: 'e.g. the search box at the top of the page',
 };
 
 export function getSessionModeFields(resource: string, operations: string[]): INodeProperties[] {
@@ -92,14 +82,15 @@ export function getSessionModeFields(resource: string, operations: string[]): IN
 			type: 'options',
 			default: 'existing',
 			description: 'Choose between creating a new session or using an existing one',
-			hint: "Manually creating a session requires that you use the 'Create a session' and 'Create a window' operations before this operation. This provides you with more advanced configuration options, but is slightly more verbose to use.",
 			options: [
 				{
 					name: 'Automatically Create Session',
+					description: 'Automatically create a new session and window for this operation',
 					value: SESSION_MODE.NEW,
 				},
 				{
 					name: 'Use Existing Session',
+					description: 'Use an existing session and window for this operation',
 					value: SESSION_MODE.EXISTING,
 				},
 			],
@@ -140,10 +131,6 @@ export function getSessionModeFields(resource: string, operations: string[]): IN
 		},
 		{
 			...profileNameField,
-			hint: `Name of the profile to load into the session.
-				Must consist only of alphanumeric characters and hyphens "-".
-				You can create a profile <a href="https://portal.airtop.ai/browser-profiles" target="_blank" >here</a>.
-				Note, in order to save data into a profile, you must first call the 'Save Profile on Termination' operation before you terminate the session.`,
 			displayOptions: {
 				show: {
 					resource: [resource],
@@ -156,7 +143,8 @@ export function getSessionModeFields(resource: string, operations: string[]): IN
 			name: 'autoTerminateSession',
 			type: 'boolean',
 			default: true,
-			description: 'Whether to terminate the session after the operation is complete',
+			description:
+				'Whether to terminate the session after the operation is complete. When disabled, you must manually terminate the session. By default, idle sessions timeout after 10 minutes',
 			displayOptions: {
 				show: {
 					resource: [resource],

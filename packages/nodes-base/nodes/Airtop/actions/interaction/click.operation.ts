@@ -16,7 +16,7 @@ import { elementDescriptionField } from '../common/fields';
 export const description: INodeProperties[] = [
 	{
 		...elementDescriptionField,
-		placeholder: 'The login button',
+		placeholder: 'e.g. the green "save" button at the top of the page',
 		required: true,
 		displayOptions: {
 			show: {

@@ -31,14 +31,14 @@ export const description: INodeProperties[] = [
 		name: 'saveProfileOnTermination',
 		type: 'boolean',
 		default: false,
-		description: 'Whether to automatically save the profile for this session upon termination',
+		description:
+			'Whether to automatically save the <a href="https://docs.airtop.ai/guides/how-to/saving-a-profile" target="_blank">Airtop profile</a> for this session upon termination',
 		displayOptions: {
 			show: {
 				resource: ['session'],
 				operation: ['create'],
 			},
 		},
-		hint: 'If enabled, changes made in your browsing session such as cookies and local storage will be saved in the profile',
 	},
 	{
 		displayName: 'Idle Timeout',

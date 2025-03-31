@@ -47,10 +47,12 @@ export const description: INodeProperties[] = [
 		name: 'includeNavigationBar',
 		type: 'boolean',
 		default: false,
-		description: 'Whether to include the navigation bar in the Live View',
-		hint: 'When enabled, the navigation bar will be visible in the Live View allowing you to navigate between pages',
+		description:
+			'Whether to include the navigation bar in the Live View. When enabled, the navigation bar will be visible allowing you to navigate between pages.',
 		displayOptions: {
 			show: {
+				resource: ['window'],
+				operation: ['create'],
 				getLiveView: [true],
 			},
 		},
@@ -60,16 +62,16 @@ export const description: INodeProperties[] = [
 		name: 'screenResolution',
 		type: 'string',
 		default: '',
-		description: 'The screen resolution of the Live View',
-		placeholder: '1280x720',
+		description:
+			'The screen resolution of the Live View. Setting a resolution will force the window to open at that specific size.',
+		placeholder: 'e.g. 1280x720',
 		displayOptions: {
 			show: {
+				resource: ['window'],
+				operation: ['create'],
 				getLiveView: [true],
 			},
 		},
-		hint: `By default, the Live View window will automatically resize to fill the available space. 
-					Setting a screen resolution (e.g. 1280x720) will force the window to open at that specific size 
-					and prevent it from being resized later.`,
 	},
 	{
 		displayName: 'Disable Resize',
@@ -79,6 +81,8 @@ export const description: INodeProperties[] = [
 		description: 'Whether to disable the window from being resized in the Live View',
 		displayOptions: {
 			show: {
+				resource: ['window'],
+				operation: ['create'],
 				getLiveView: [true],
 			},
 		},

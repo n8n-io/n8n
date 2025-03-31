@@ -19,13 +19,12 @@ export class AirtopApi implements ICredentialType {
 			type: 'string',
 			default: '',
 			description:
-				'The Airtop API key. You can create one in the <a href="https://portal.airtop.ai/api-keys" target="_blank">Airtop Portal</a>',
+				'The Airtop API key. You can create one at <a href="https://portal.airtop.ai/api-keys" target="_blank">Airtop</a> for free.',
 			required: true,
 			typeOptions: {
 				password: true,
 			},
 			noDataExpression: true,
-			hint: "Don't have an Airtop account? <a href='https://portal.airtop.ai/sign-up' target='_blank'>Sign up</a> and start for free.",
 		},
 	];
 

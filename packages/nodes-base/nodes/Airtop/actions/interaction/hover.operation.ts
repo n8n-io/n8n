@@ -17,7 +17,7 @@ export const description: INodeProperties[] = [
 	{
 		...elementDescriptionField,
 		required: true,
-		placeholder: 'the user profile image',
+		placeholder: 'e.g. the rounded user profile image at the top right of the page',
 		displayOptions: {
 			show: {
 				resource: ['interaction'],
