@@ -1,6 +1,12 @@
 {
     "type": "object",
     "properties": {
+        "archived": {
+            "type": "boolean"
+        },
+        "createdAt": {
+            "type": "string"
+        },
         "id": {
             "type": "string"
         },
@@ -18,25 +24,11 @@
                 },
                 "hs_object_id": {
                     "type": "string"
-                },
-                "hubspot_owner_id": {
-                    "type": "string"
                 }
-            },
-            "required": [
-                "createdate",
-                "hs_lastmodifieddate",
-                "hs_object_id"
-            ]
-        },
-        "createdAt": {
-            "type": "string"
+            }
         },
         "updatedAt": {
             "type": "string"
-        },
-        "archived": {
-            "type": "boolean"
         }
     },
     "version": 1

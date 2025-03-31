@@ -1,5 +1,6 @@
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
+import { PROJECT_ROOT } from 'n8n-workflow';
 
 import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
@@ -562,7 +563,7 @@ describe('PATCH /projects/:projectId/folders/:folderId', () => {
 		expect(folder?.parentFolder?.id).toBe(parentFolder.id);
 
 		const payload = {
-			parentFolderId: '0',
+			parentFolderId: PROJECT_ROOT,
 		};
 
 		await authOwnerAgent
@@ -883,6 +884,58 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 		const folderInDb = await folderRepository.findOneBy({ id: folder.id });
 		expect(folderInDb).toBeDefined();
 	});
+
+	test('should transfer folder contents to project root when transferToFolderId is "0"', async () => {
+		const project = await createTeamProject('test', owner);
+		const sourceFolder = await createFolder(project, { name: 'Source' });
+		await createFolder(project, { name: 'Target' });
+		const childFolder = await createFolder(project, {
+			name: 'Child',
+			parentFolder: sourceFolder,
+		});
+
+		const workflow1 = await createWorkflow({ parentFolder: sourceFolder }, owner);
+
+		const workflow2 = await createWorkflow({ parentFolder: childFolder }, owner);
+
+		const payload = {
+			transferToFolderId: PROJECT_ROOT,
+		};
+
+		await authOwnerAgent
+			.delete(`/projects/${project.id}/folders/${sourceFolder.id}`)
+			.query(payload)
+			.expect(200);
+
+		const sourceFolderInDb = await folderRepository.findOne({
+			where: { id: sourceFolder.id },
+			relations: ['parentFolder'],
+		});
+		const childFolderInDb = await folderRepository.findOne({
+			where: { id: childFolder.id },
+			relations: ['parentFolder'],
+		});
+
+		// Check folders
+		expect(sourceFolderInDb).toBeNull();
+		expect(childFolderInDb).toBeDefined();
+		expect(childFolderInDb?.parentFolder).toBe(null);
+
+		// Check workflows
+		const workflow1InDb = await workflowRepository.findOne({
+			where: { id: workflow1.id },
+			relations: ['parentFolder'],
+		});
+		expect(workflow1InDb).toBeDefined();
+		expect(workflow1InDb?.parentFolder).toBe(null);
+
+		const workflow2InDb = await workflowRepository.findOne({
+			where: { id: workflow2.id },
+			relations: ['parentFolder'],
+		});
+		expect(workflow2InDb).toBeDefined();
+		expect(workflow2InDb?.parentFolder?.id).toBe(childFolder.id);
+	});
 });
 
 describe('GET /projects/:projectId/folders', () => {
@@ -968,7 +1021,7 @@ describe('GET /projects/:projectId/folders', () => {
 
 		const response = await authOwnerAgent
 			.get(`/projects/${ownerProject.id}/folders`)
-			.query({ filter: '{ "parentFolderId": "0" }' })
+			.query({ filter: `{ "parentFolderId": "${PROJECT_ROOT}" }` })
 			.expect(200);
 
 		expect(response.body.count).toBe(3);

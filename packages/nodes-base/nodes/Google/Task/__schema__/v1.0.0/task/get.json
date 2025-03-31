@@ -1,28 +1,13 @@
 {
     "type": "object",
     "properties": {
-        "kind": {
+        "etag": {
             "type": "string"
         },
         "id": {
             "type": "string"
         },
-        "etag": {
-            "type": "string"
-        },
-        "title": {
-            "type": "string"
-        },
-        "updated": {
-            "type": "string"
-        },
-        "selfLink": {
-            "type": "string"
-        },
-        "position": {
-            "type": "string"
-        },
-        "status": {
+        "kind": {
             "type": "string"
         },
         "links": {
@@ -30,22 +15,32 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "type": {
-                        "type": "string"
-                    },
                     "description": {
                         "type": "string"
                     },
                     "link": {
                         "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
                     }
-                },
-                "required": [
-                    "type",
-                    "description",
-                    "link"
-                ]
+                }
             }
+        },
+        "position": {
+            "type": "string"
+        },
+        "selfLink": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "updated": {
+            "type": "string"
         },
         "webViewLink": {
             "type": "string"

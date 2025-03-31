@@ -4,69 +4,444 @@
         "expand": {
             "type": "string"
         },
-        "id": {
-            "type": "string"
-        },
-        "self": {
-            "type": "string"
-        },
-        "key": {
-            "type": "string"
-        },
         "fields": {
             "type": "object",
             "properties": {
-                "summary": {
+                "aggregateprogress": {
+                    "type": "object",
+                    "properties": {
+                        "progress": {
+                            "type": "integer"
+                        },
+                        "total": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "components": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "self": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "created": {
                     "type": "string"
                 },
-                "statuscategorychangedate": {
-                    "type": "string"
+                "creator": {
+                    "type": "object",
+                    "properties": {
+                        "accountId": {
+                            "type": "string"
+                        },
+                        "accountType": {
+                            "type": "string"
+                        },
+                        "active": {
+                            "type": "boolean"
+                        },
+                        "avatarUrls": {
+                            "type": "object",
+                            "properties": {
+                                "16x16": {
+                                    "type": "string"
+                                },
+                                "24x24": {
+                                    "type": "string"
+                                },
+                                "32x32": {
+                                    "type": "string"
+                                },
+                                "48x48": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "displayName": {
+                            "type": "string"
+                        },
+                        "emailAddress": {
+                            "type": "string"
+                        },
+                        "self": {
+                            "type": "string"
+                        },
+                        "timeZone": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "fixVersions": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "archived": {
+                                "type": "boolean"
+                            },
+                            "description": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "released": {
+                                "type": "boolean"
+                            },
+                            "self": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "issuelinks": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "inwardIssue": {
+                                "type": "object",
+                                "properties": {
+                                    "fields": {
+                                        "type": "object",
+                                        "properties": {
+                                            "issuetype": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "avatarId": {
+                                                        "type": "integer"
+                                                    },
+                                                    "description": {
+                                                        "type": "string"
+                                                    },
+                                                    "hierarchyLevel": {
+                                                        "type": "integer"
+                                                    },
+                                                    "iconUrl": {
+                                                        "type": "string"
+                                                    },
+                                                    "id": {
+                                                        "type": "string"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "self": {
+                                                        "type": "string"
+                                                    },
+                                                    "subtask": {
+                                                        "type": "boolean"
+                                                    }
+                                                }
+                                            },
+                                            "priority": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "iconUrl": {
+                                                        "type": "string"
+                                                    },
+                                                    "id": {
+                                                        "type": "string"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "self": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            },
+                                            "status": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "description": {
+                                                        "type": "string"
+                                                    },
+                                                    "iconUrl": {
+                                                        "type": "string"
+                                                    },
+                                                    "id": {
+                                                        "type": "string"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "self": {
+                                                        "type": "string"
+                                                    },
+                                                    "statusCategory": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "colorName": {
+                                                                "type": "string"
+                                                            },
+                                                            "id": {
+                                                                "type": "integer"
+                                                            },
+                                                            "key": {
+                                                                "type": "string"
+                                                            },
+                                                            "name": {
+                                                                "type": "string"
+                                                            },
+                                                            "self": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            "summary": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "key": {
+                                        "type": "string"
+                                    },
+                                    "self": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "outwardIssue": {
+                                "type": "object",
+                                "properties": {
+                                    "fields": {
+                                        "type": "object",
+                                        "properties": {
+                                            "issuetype": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "avatarId": {
+                                                        "type": "integer"
+                                                    },
+                                                    "description": {
+                                                        "type": "string"
+                                                    },
+                                                    "hierarchyLevel": {
+                                                        "type": "integer"
+                                                    },
+                                                    "iconUrl": {
+                                                        "type": "string"
+                                                    },
+                                                    "id": {
+                                                        "type": "string"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "self": {
+                                                        "type": "string"
+                                                    },
+                                                    "subtask": {
+                                                        "type": "boolean"
+                                                    }
+                                                }
+                                            },
+                                            "priority": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "iconUrl": {
+                                                        "type": "string"
+                                                    },
+                                                    "id": {
+                                                        "type": "string"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "self": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            },
+                                            "status": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "description": {
+                                                        "type": "string"
+                                                    },
+                                                    "iconUrl": {
+                                                        "type": "string"
+                                                    },
+                                                    "id": {
+                                                        "type": "string"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "self": {
+                                                        "type": "string"
+                                                    },
+                                                    "statusCategory": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "colorName": {
+                                                                "type": "string"
+                                                            },
+                                                            "id": {
+                                                                "type": "integer"
+                                                            },
+                                                            "key": {
+                                                                "type": "string"
+                                                            },
+                                                            "name": {
+                                                                "type": "string"
+                                                            },
+                                                            "self": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            "summary": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "key": {
+                                        "type": "string"
+                                    },
+                                    "self": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "self": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "inward": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "outward": {
+                                        "type": "string"
+                                    },
+                                    "self": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
                 },
                 "issuetype": {
                     "type": "object",
                     "properties": {
-                        "self": {
+                        "avatarId": {
+                            "type": "integer"
+                        },
+                        "description": {
+                            "type": "string"
+                        },
+                        "entityId": {
+                            "type": "string"
+                        },
+                        "hierarchyLevel": {
+                            "type": "integer"
+                        },
+                        "iconUrl": {
                             "type": "string"
                         },
                         "id": {
                             "type": "string"
                         },
-                        "description": {
+                        "name": {
                             "type": "string"
                         },
+                        "self": {
+                            "type": "string"
+                        },
+                        "subtask": {
+                            "type": "boolean"
+                        }
+                    }
+                },
+                "labels": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "priority": {
+                    "type": "object",
+                    "properties": {
                         "iconUrl": {
+                            "type": "string"
+                        },
+                        "id": {
                             "type": "string"
                         },
                         "name": {
                             "type": "string"
                         },
-                        "subtask": {
-                            "type": "boolean"
-                        },
-                        "avatarId": {
-                            "type": "integer"
-                        },
-                        "hierarchyLevel": {
-                            "type": "integer"
-                        },
-                        "entityId": {
+                        "self": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "self",
-                        "id",
-                        "description",
-                        "iconUrl",
-                        "name",
-                        "subtask"
-                    ]
+                    }
+                },
+                "progress": {
+                    "type": "object",
+                    "properties": {
+                        "progress": {
+                            "type": "integer"
+                        },
+                        "total": {
+                            "type": "integer"
+                        }
+                    }
                 },
                 "project": {
                     "type": "object",
                     "properties": {
-                        "self": {
-                            "type": "string"
+                        "avatarUrls": {
+                            "type": "object",
+                            "properties": {
+                                "16x16": {
+                                    "type": "string"
+                                },
+                                "24x24": {
+                                    "type": "string"
+                                },
+                                "32x32": {
+                                    "type": "string"
+                                },
+                                "48x48": {
+                                    "type": "string"
+                                }
+                            }
                         },
                         "id": {
                             "type": "string"
@@ -80,351 +455,82 @@
                         "projectTypeKey": {
                             "type": "string"
                         },
+                        "self": {
+                            "type": "string"
+                        },
                         "simplified": {
+                            "type": "boolean"
+                        }
+                    }
+                },
+                "reporter": {
+                    "type": "object",
+                    "properties": {
+                        "accountId": {
+                            "type": "string"
+                        },
+                        "accountType": {
+                            "type": "string"
+                        },
+                        "active": {
                             "type": "boolean"
                         },
                         "avatarUrls": {
                             "type": "object",
                             "properties": {
-                                "48x48": {
+                                "16x16": {
                                     "type": "string"
                                 },
                                 "24x24": {
                                     "type": "string"
                                 },
-                                "16x16": {
-                                    "type": "string"
-                                },
                                 "32x32": {
                                     "type": "string"
+                                },
+                                "48x48": {
+                                    "type": "string"
                                 }
-                            },
-                            "required": [
-                                "48x48",
-                                "24x24",
-                                "16x16",
-                                "32x32"
-                            ]
-                        }
-                    },
-                    "required": [
-                        "self",
-                        "id",
-                        "key",
-                        "name",
-                        "projectTypeKey",
-                        "avatarUrls"
-                    ]
-                },
-                "fixVersions": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "self": {
-                                "type": "string"
-                            },
-                            "id": {
-                                "type": "string"
-                            },
-                            "description": {
-                                "type": "string"
-                            },
-                            "name": {
-                                "type": "string"
-                            },
-                            "archived": {
-                                "type": "boolean"
-                            },
-                            "released": {
-                                "type": "boolean"
                             }
                         },
-                        "required": [
-                            "self",
-                            "id",
-                            "name",
-                            "archived",
-                            "released"
-                        ]
-                    }
-                },
-                "workratio": {
-                    "type": "integer"
-                },
-                "watches": {
-                    "type": "object",
-                    "properties": {
+                        "displayName": {
+                            "type": "string"
+                        },
+                        "emailAddress": {
+                            "type": "string"
+                        },
                         "self": {
                             "type": "string"
                         },
-                        "watchCount": {
-                            "type": "integer"
-                        },
-                        "isWatching": {
-                            "type": "boolean"
-                        }
-                    },
-                    "required": [
-                        "self",
-                        "watchCount",
-                        "isWatching"
-                    ]
-                },
-                "created": {
-                    "type": "string"
-                },
-                "priority": {
-                    "type": "object",
-                    "properties": {
-                        "self": {
-                            "type": "string"
-                        },
-                        "iconUrl": {
-                            "type": "string"
-                        },
-                        "name": {
-                            "type": "string"
-                        },
-                        "id": {
+                        "timeZone": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "self",
-                        "iconUrl",
-                        "name",
-                        "id"
-                    ]
-                },
-                "labels": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
                     }
                 },
-                "issuelinks": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "id": {
-                                "type": "string"
-                            },
-                            "self": {
-                                "type": "string"
-                            },
-                            "type": {
-                                "type": "object",
-                                "properties": {
-                                    "id": {
-                                        "type": "string"
-                                    },
-                                    "name": {
-                                        "type": "string"
-                                    },
-                                    "inward": {
-                                        "type": "string"
-                                    },
-                                    "outward": {
-                                        "type": "string"
-                                    },
-                                    "self": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "id",
-                                    "name",
-                                    "inward",
-                                    "outward",
-                                    "self"
-                                ]
-                            },
-                            "inwardIssue": {
-                                "type": "object",
-                                "properties": {
-                                    "id": {
-                                        "type": "string"
-                                    },
-                                    "key": {
-                                        "type": "string"
-                                    },
-                                    "self": {
-                                        "type": "string"
-                                    },
-                                    "fields": {
-                                        "type": "object",
-                                        "properties": {
-                                            "summary": {
-                                                "type": "string"
-                                            },
-                                            "status": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "self": {
-                                                        "type": "string"
-                                                    },
-                                                    "description": {
-                                                        "type": "string"
-                                                    },
-                                                    "iconUrl": {
-                                                        "type": "string"
-                                                    },
-                                                    "name": {
-                                                        "type": "string"
-                                                    },
-                                                    "id": {
-                                                        "type": "string"
-                                                    },
-                                                    "statusCategory": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "self": {
-                                                                "type": "string"
-                                                            },
-                                                            "id": {
-                                                                "type": "integer"
-                                                            },
-                                                            "key": {
-                                                                "type": "string"
-                                                            },
-                                                            "colorName": {
-                                                                "type": "string"
-                                                            },
-                                                            "name": {
-                                                                "type": "string"
-                                                            }
-                                                        },
-                                                        "required": [
-                                                            "self",
-                                                            "id",
-                                                            "key",
-                                                            "colorName",
-                                                            "name"
-                                                        ]
-                                                    }
-                                                },
-                                                "required": [
-                                                    "self",
-                                                    "description",
-                                                    "iconUrl",
-                                                    "name",
-                                                    "id",
-                                                    "statusCategory"
-                                                ]
-                                            },
-                                            "priority": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "self": {
-                                                        "type": "string"
-                                                    },
-                                                    "iconUrl": {
-                                                        "type": "string"
-                                                    },
-                                                    "name": {
-                                                        "type": "string"
-                                                    },
-                                                    "id": {
-                                                        "type": "string"
-                                                    }
-                                                },
-                                                "required": [
-                                                    "self",
-                                                    "iconUrl",
-                                                    "name",
-                                                    "id"
-                                                ]
-                                            },
-                                            "issuetype": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "self": {
-                                                        "type": "string"
-                                                    },
-                                                    "id": {
-                                                        "type": "string"
-                                                    },
-                                                    "description": {
-                                                        "type": "string"
-                                                    },
-                                                    "iconUrl": {
-                                                        "type": "string"
-                                                    },
-                                                    "name": {
-                                                        "type": "string"
-                                                    },
-                                                    "subtask": {
-                                                        "type": "boolean"
-                                                    },
-                                                    "avatarId": {
-                                                        "type": "integer"
-                                                    },
-                                                    "hierarchyLevel": {
-                                                        "type": "integer"
-                                                    }
-                                                },
-                                                "required": [
-                                                    "self",
-                                                    "id",
-                                                    "description",
-                                                    "iconUrl",
-                                                    "name",
-                                                    "subtask",
-                                                    "avatarId",
-                                                    "hierarchyLevel"
-                                                ]
-                                            }
-                                        },
-                                        "required": [
-                                            "summary",
-                                            "status",
-                                            "priority",
-                                            "issuetype"
-                                        ]
-                                    }
-                                },
-                                "required": [
-                                    "id",
-                                    "key",
-                                    "self",
-                                    "fields"
-                                ]
-                            }
-                        },
-                        "required": [
-                            "id",
-                            "self",
-                            "type"
-                        ]
-                    }
-                },
-                "updated": {
-                    "type": "string"
+                "security": {
+                    "type": "null"
                 },
                 "status": {
                     "type": "object",
                     "properties": {
-                        "self": {
-                            "type": "string"
-                        },
                         "description": {
                             "type": "string"
                         },
                         "iconUrl": {
                             "type": "string"
                         },
+                        "id": {
+                            "type": "string"
+                        },
                         "name": {
                             "type": "string"
                         },
-                        "id": {
+                        "self": {
                             "type": "string"
                         },
                         "statusCategory": {
                             "type": "object",
                             "properties": {
-                                "self": {
+                                "colorName": {
                                     "type": "string"
                                 },
                                 "id": {
@@ -433,157 +539,95 @@
                                 "key": {
                                     "type": "string"
                                 },
-                                "colorName": {
-                                    "type": "string"
-                                },
                                 "name": {
                                     "type": "string"
+                                },
+                                "self": {
+                                    "type": "string"
                                 }
-                            },
-                            "required": [
-                                "self",
-                                "id",
-                                "key",
-                                "colorName",
-                                "name"
-                            ]
-                        }
-                    },
-                    "required": [
-                        "self",
-                        "description",
-                        "iconUrl",
-                        "name",
-                        "id",
-                        "statusCategory"
-                    ]
-                },
-                "components": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "self": {
-                                "type": "string"
-                            },
-                            "id": {
-                                "type": "string"
-                            },
-                            "name": {
-                                "type": "string"
                             }
-                        },
-                        "required": [
-                            "self",
-                            "id",
-                            "name"
-                        ]
+                        }
                     }
                 },
-                "customfield_10006": {
-                    "type": "null"
-                },
-                "security": {
-                    "type": "null"
-                },
-                "creator": {
-                    "type": "object",
-                    "properties": {
-                        "self": {
-                            "type": "string"
-                        },
-                        "accountId": {
-                            "type": "string"
-                        },
-                        "avatarUrls": {
-                            "type": "object",
-                            "properties": {
-                                "48x48": {
-                                    "type": "string"
-                                },
-                                "24x24": {
-                                    "type": "string"
-                                },
-                                "16x16": {
-                                    "type": "string"
-                                },
-                                "32x32": {
-                                    "type": "string"
-                                }
-                            },
-                            "required": [
-                                "48x48",
-                                "24x24",
-                                "16x16",
-                                "32x32"
-                            ]
-                        },
-                        "displayName": {
-                            "type": "string"
-                        },
-                        "active": {
-                            "type": "boolean"
-                        },
-                        "timeZone": {
-                            "type": "string"
-                        },
-                        "accountType": {
-                            "type": "string"
-                        },
-                        "emailAddress": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "self",
-                        "avatarUrls",
-                        "displayName",
-                        "active",
-                        "timeZone"
-                    ]
+                "statuscategorychangedate": {
+                    "type": "string"
                 },
                 "subtasks": {
                     "type": "array",
                     "items": {
                         "type": "object",
                         "properties": {
-                            "id": {
-                                "type": "string"
-                            },
-                            "key": {
-                                "type": "string"
-                            },
-                            "self": {
-                                "type": "string"
-                            },
                             "fields": {
                                 "type": "object",
                                 "properties": {
-                                    "summary": {
-                                        "type": "string"
+                                    "issuetype": {
+                                        "type": "object",
+                                        "properties": {
+                                            "avatarId": {
+                                                "type": "integer"
+                                            },
+                                            "description": {
+                                                "type": "string"
+                                            },
+                                            "hierarchyLevel": {
+                                                "type": "integer"
+                                            },
+                                            "iconUrl": {
+                                                "type": "string"
+                                            },
+                                            "id": {
+                                                "type": "string"
+                                            },
+                                            "name": {
+                                                "type": "string"
+                                            },
+                                            "self": {
+                                                "type": "string"
+                                            },
+                                            "subtask": {
+                                                "type": "boolean"
+                                            }
+                                        }
+                                    },
+                                    "priority": {
+                                        "type": "object",
+                                        "properties": {
+                                            "iconUrl": {
+                                                "type": "string"
+                                            },
+                                            "id": {
+                                                "type": "string"
+                                            },
+                                            "name": {
+                                                "type": "string"
+                                            },
+                                            "self": {
+                                                "type": "string"
+                                            }
+                                        }
                                     },
                                     "status": {
                                         "type": "object",
                                         "properties": {
-                                            "self": {
-                                                "type": "string"
-                                            },
                                             "description": {
                                                 "type": "string"
                                             },
                                             "iconUrl": {
                                                 "type": "string"
                                             },
+                                            "id": {
+                                                "type": "string"
+                                            },
                                             "name": {
                                                 "type": "string"
                                             },
-                                            "id": {
+                                            "self": {
                                                 "type": "string"
                                             },
                                             "statusCategory": {
                                                 "type": "object",
                                                 "properties": {
-                                                    "self": {
+                                                    "colorName": {
                                                         "type": "string"
                                                     },
                                                     "id": {
@@ -592,269 +636,81 @@
                                                     "key": {
                                                         "type": "string"
                                                     },
-                                                    "colorName": {
-                                                        "type": "string"
-                                                    },
                                                     "name": {
                                                         "type": "string"
+                                                    },
+                                                    "self": {
+                                                        "type": "string"
                                                     }
-                                                },
-                                                "required": [
-                                                    "self",
-                                                    "id",
-                                                    "key",
-                                                    "colorName",
-                                                    "name"
-                                                ]
+                                                }
                                             }
-                                        },
-                                        "required": [
-                                            "self",
-                                            "description",
-                                            "iconUrl",
-                                            "name",
-                                            "id",
-                                            "statusCategory"
-                                        ]
+                                        }
                                     },
-                                    "priority": {
-                                        "type": "object",
-                                        "properties": {
-                                            "self": {
-                                                "type": "string"
-                                            },
-                                            "iconUrl": {
-                                                "type": "string"
-                                            },
-                                            "name": {
-                                                "type": "string"
-                                            },
-                                            "id": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "required": [
-                                            "self",
-                                            "iconUrl",
-                                            "name",
-                                            "id"
-                                        ]
-                                    },
-                                    "issuetype": {
-                                        "type": "object",
-                                        "properties": {
-                                            "self": {
-                                                "type": "string"
-                                            },
-                                            "id": {
-                                                "type": "string"
-                                            },
-                                            "description": {
-                                                "type": "string"
-                                            },
-                                            "iconUrl": {
-                                                "type": "string"
-                                            },
-                                            "name": {
-                                                "type": "string"
-                                            },
-                                            "subtask": {
-                                                "type": "boolean"
-                                            },
-                                            "avatarId": {
-                                                "type": "integer"
-                                            },
-                                            "hierarchyLevel": {
-                                                "type": "integer"
-                                            }
-                                        },
-                                        "required": [
-                                            "self",
-                                            "id",
-                                            "description",
-                                            "iconUrl",
-                                            "name",
-                                            "subtask",
-                                            "avatarId",
-                                            "hierarchyLevel"
-                                        ]
+                                    "summary": {
+                                        "type": "string"
                                     }
-                                },
-                                "required": [
-                                    "summary",
-                                    "status",
-                                    "priority",
-                                    "issuetype"
-                                ]
-                            }
-                        },
-                        "required": [
-                            "id",
-                            "key",
-                            "self",
-                            "fields"
-                        ]
-                    }
-                },
-                "reporter": {
-                    "type": "object",
-                    "properties": {
-                        "self": {
-                            "type": "string"
-                        },
-                        "accountId": {
-                            "type": "string"
-                        },
-                        "avatarUrls": {
-                            "type": "object",
-                            "properties": {
-                                "48x48": {
-                                    "type": "string"
-                                },
-                                "24x24": {
-                                    "type": "string"
-                                },
-                                "16x16": {
-                                    "type": "string"
-                                },
-                                "32x32": {
-                                    "type": "string"
                                 }
                             },
-                            "required": [
-                                "48x48",
-                                "24x24",
-                                "16x16",
-                                "32x32"
-                            ]
-                        },
-                        "displayName": {
-                            "type": "string"
-                        },
-                        "active": {
-                            "type": "boolean"
-                        },
-                        "timeZone": {
-                            "type": "string"
-                        },
-                        "accountType": {
-                            "type": "string"
-                        },
-                        "emailAddress": {
-                            "type": "string"
+                            "id": {
+                                "type": "string"
+                            },
+                            "key": {
+                                "type": "string"
+                            },
+                            "self": {
+                                "type": "string"
+                            }
                         }
-                    },
-                    "required": [
-                        "self",
-                        "avatarUrls",
-                        "displayName",
-                        "active",
-                        "timeZone"
-                    ]
+                    }
                 },
-                "aggregateprogress": {
-                    "type": "object",
-                    "properties": {
-                        "progress": {
-                            "type": "integer"
-                        },
-                        "total": {
-                            "type": "integer"
-                        }
-                    },
-                    "required": [
-                        "progress",
-                        "total"
-                    ]
+                "summary": {
+                    "type": "string"
                 },
-                "environment": {
-                    "type": "null"
-                },
-                "progress": {
-                    "type": "object",
-                    "properties": {
-                        "progress": {
-                            "type": "integer"
-                        },
-                        "total": {
-                            "type": "integer"
-                        }
-                    },
-                    "required": [
-                        "progress",
-                        "total"
-                    ]
+                "updated": {
+                    "type": "string"
                 },
                 "votes": {
                     "type": "object",
                     "properties": {
+                        "hasVoted": {
+                            "type": "boolean"
+                        },
                         "self": {
                             "type": "string"
                         },
                         "votes": {
                             "type": "integer"
-                        },
-                        "hasVoted": {
-                            "type": "boolean"
                         }
-                    },
-                    "required": [
-                        "self",
-                        "votes",
-                        "hasVoted"
-                    ]
+                    }
                 },
-                "customfield_10034": {
-                    "type": "null"
-                },
-                "customfield_10028": {
-                    "type": "null"
-                },
-                "customfield_10018": {
+                "watches": {
                     "type": "object",
                     "properties": {
-                        "hasEpicLinkFieldDependency": {
+                        "isWatching": {
                             "type": "boolean"
                         },
-                        "showField": {
-                            "type": "boolean"
+                        "self": {
+                            "type": "string"
                         },
-                        "nonEditableReason": {
-                            "type": "object",
-                            "properties": {
-                                "reason": {
-                                    "type": "string"
-                                },
-                                "message": {
-                                    "type": "string"
-                                }
-                            },
-                            "required": [
-                                "reason",
-                                "message"
-                            ]
+                        "watchCount": {
+                            "type": "integer"
                         }
-                    },
-                    "required": [
-                        "hasEpicLinkFieldDependency",
-                        "showField",
-                        "nonEditableReason"
-                    ]
+                    }
                 },
-                "customfield_10010": {
-                    "type": "null"
-                },
-                "customfield_10008": {
-                    "type": "null"
+                "workratio": {
+                    "type": "integer"
                 }
             }
+        },
+        "id": {
+            "type": "string"
+        },
+        "key": {
+            "type": "string"
+        },
+        "self": {
+            "type": "string"
         }
     },
-    "required": [
-        "expand",
-        "id",
-        "self",
-        "key"
-    ],
     "version": 1
 }

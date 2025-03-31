@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import {
 	DUPLICATE_MODAL_KEY,
 	MODAL_CONFIRM,
@@ -26,6 +26,9 @@ import { ResourceType } from '@/utils/projects.utils';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { WorkflowResource } from './layouts/ResourcesListLayout.vue';
 import type { IUser } from 'n8n-workflow';
+import { ProjectTypes } from '@/types/projects.types';
+import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import { useFoldersStore } from '@/stores/folders.store';
 
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -68,13 +71,48 @@ const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
+const foldersStore = useFoldersStore();
+
+const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {}));
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.workflow').toLowerCase());
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const workflowPermissions = computed(() => getResourcePermissions(props.data.scopes).workflow);
+const isOverviewPage = computed(() => route.name === VIEWS.WORKFLOWS);
 
 const showFolders = computed(() => {
 	return settingsStore.isFoldersFeatureEnabled && route.name !== VIEWS.WORKFLOWS;
+});
+
+const showCardBreadcrumbs = computed(() => {
+	return isOverviewPage.value && !isSomeoneElsesWorkflow.value && cardBreadcrumbs.value.length;
+});
+
+const projectName = computed(() => {
+	if (props.data.homeProject?.type === ProjectTypes.Personal) {
+		return locale.baseText('projects.menu.personal');
+	}
+	return props.data.homeProject?.name;
+});
+
+const cardBreadcrumbs = computed<PathItem[]>(() => {
+	if (props.data.parentFolder) {
+		return [
+			{
+				id: props.data.parentFolder.id,
+				name: props.data.parentFolder.name,
+				label: props.data.parentFolder.name,
+				href: router.resolve({
+					name: VIEWS.PROJECTS_FOLDERS,
+					params: {
+						projectId: props.data.homeProject?.id,
+						folderId: props.data.parentFolder.id,
+					},
+				}).href,
+			},
+		];
+	}
+	return [];
 });
 
 const actions = computed(() => {
@@ -127,6 +165,12 @@ const formattedCreatedAtDate = computed(() => {
 		`d mmmm${String(props.data.createdAt).startsWith(currentYear) ? '' : ', yyyy'}`,
 	);
 });
+
+const isSomeoneElsesWorkflow = computed(
+	() =>
+		props.data.homeProject?.type !== ProjectTypes.Team &&
+		props.data.homeProject?.id !== projectsStore.personalProject?.id,
+);
 
 async function onClick(event?: KeyboardEvent | PointerEvent) {
 	if (event?.ctrlKey || event?.metaKey) {
@@ -236,6 +280,17 @@ async function deleteWorkflow() {
 	emit('workflow:deleted');
 }
 
+const fetchHiddenBreadCrumbsItems = async () => {
+	if (!props.data.homeProject?.id || !projectName.value || !props.data.parentFolder) {
+		hiddenBreadcrumbsItemsAsync.value = Promise.resolve([]);
+	} else {
+		hiddenBreadcrumbsItemsAsync.value = foldersStore.getHiddenBreadcrumbsItems(
+			{ id: props.data.homeProject.id, name: projectName.value },
+			props.data.parentFolder.id,
+		);
+	}
+};
+
 function moveResource() {
 	uiStore.openModalWithData({
 		name: PROJECT_MOVE_RESOURCE_MODAL,
@@ -250,6 +305,12 @@ function moveResource() {
 
 const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
 	emit('workflow:active-toggle', value);
+};
+
+const onBreadcrumbItemClick = async (item: PathItem) => {
+	if (item.href) {
+		await router.push(item.href);
+	}
 };
 </script>
 
@@ -290,12 +351,29 @@ const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
 				<ProjectCardBadge
-					:class="$style.cardBadge"
+					:class="{ [$style.cardBadge]: true, [$style['with-breadcrumbs']]: showCardBreadcrumbs }"
 					:resource="data"
 					:resource-type="ResourceType.Workflow"
 					:resource-type-label="resourceTypeLabel"
 					:personal-project="projectsStore.personalProject"
-				/>
+					:show-badge-border="false"
+				>
+					<div v-if="showCardBreadcrumbs" :class="$style.breadcrumbs">
+						<n8n-breadcrumbs
+							:items="cardBreadcrumbs"
+							:hidden-items="hiddenBreadcrumbsItemsAsync"
+							:path-truncated="true"
+							:highlight-last-item="false"
+							hidden-items-trigger="hover"
+							theme="small"
+							data-test-id="workflow-card-breadcrumbs"
+							@tooltip-opened="fetchHiddenBreadCrumbsItems"
+							@item-selected="onBreadcrumbItemClick"
+						>
+							<template #prepend></template>
+						</n8n-breadcrumbs>
+					</div>
+				</ProjectCardBadge>
 				<WorkflowActivator
 					class="mr-s"
 					:workflow-active="data.active"
@@ -355,11 +433,13 @@ const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
 	cursor: default;
 }
 
-.home-project span {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing-3xs);
-	color: var(--color-text-base);
+.cardBadge.with-breadcrumbs {
+	:global(.n8n-badge) {
+		padding-right: 0;
+	}
+	:global(.n8n-breadcrumbs) {
+		padding-left: var(--spacing-5xs);
+	}
 }
 
 @include mixins.breakpoint('sm-and-down') {

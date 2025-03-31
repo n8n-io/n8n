@@ -326,6 +326,7 @@ export interface IWorkflowDb {
 	versionId: string;
 	usedCredentials?: IUsedCredential[];
 	meta?: WorkflowMetadata;
+	parentFolder?: { id: string; name: string };
 }
 
 // For workflow list we don't need the full workflow data
@@ -339,7 +340,6 @@ export type WorkflowListItem = Omit<
 	'nodes' | 'connections' | 'settings' | 'pinData' | 'usedCredentials' | 'meta'
 > & {
 	resource: 'workflow';
-	parentFolder?: { id: string; name: string };
 };
 
 export type FolderShortInfo = {
@@ -361,6 +361,10 @@ export type BaseFolderItem = BaseResource & {
 
 export interface FolderListItem extends BaseFolderItem {
 	resource: 'folder';
+}
+
+export interface ChangeLocationSearchResult extends BaseFolderItem {
+	resource: 'folder' | 'project';
 }
 
 export type FolderPathItem = PathItem & { parentFolder?: string };
@@ -441,9 +445,9 @@ export interface IExecutionBase {
 	status: ExecutionStatus;
 	retryOf?: string;
 	retrySuccessId?: string;
-	startedAt: Date;
-	createdAt: Date;
-	stoppedAt?: Date;
+	startedAt: Date | string;
+	createdAt: Date | string;
+	stoppedAt?: Date | string;
 	workflowId?: string; // To be able to filter executions easily //
 }
 
@@ -1579,3 +1583,10 @@ export type MainPanelDimensions = Record<
 		relativeWidth: number;
 	}
 >;
+
+export interface LlmTokenUsageData {
+	completionTokens: number;
+	promptTokens: number;
+	totalTokens: number;
+	isEstimate: boolean;
+}

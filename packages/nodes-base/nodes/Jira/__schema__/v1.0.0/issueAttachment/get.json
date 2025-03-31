@@ -1,83 +1,61 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "integer"
-        },
-        "self": {
-            "type": "string"
-        },
-        "filename": {
-            "type": "string"
-        },
         "author": {
             "type": "object",
             "properties": {
-                "self": {
-                    "type": "string"
-                },
                 "accountId": {
                     "type": "string"
+                },
+                "active": {
+                    "type": "boolean"
                 },
                 "avatarUrls": {
                     "type": "object",
                     "properties": {
-                        "48x48": {
+                        "16x16": {
                             "type": "string"
                         },
                         "24x24": {
                             "type": "string"
                         },
-                        "16x16": {
-                            "type": "string"
-                        },
                         "32x32": {
                             "type": "string"
+                        },
+                        "48x48": {
+                            "type": "string"
                         }
-                    },
-                    "required": [
-                        "48x48",
-                        "24x24",
-                        "16x16",
-                        "32x32"
-                    ]
+                    }
                 },
                 "displayName": {
                     "type": "string"
                 },
-                "active": {
-                    "type": "boolean"
+                "self": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "self",
-                "avatarUrls",
-                "displayName",
-                "active"
-            ]
+            }
+        },
+        "content": {
+            "type": "string"
         },
         "created": {
             "type": "string"
         },
-        "size": {
+        "filename": {
+            "type": "string"
+        },
+        "id": {
             "type": "integer"
         },
         "mimeType": {
             "type": "string"
         },
-        "content": {
+        "self": {
             "type": "string"
+        },
+        "size": {
+            "type": "integer"
         }
     },
-    "required": [
-        "self",
-        "filename",
-        "author",
-        "created",
-        "size",
-        "mimeType",
-        "properties",
-        "content"
-    ],
     "version": 1
 }

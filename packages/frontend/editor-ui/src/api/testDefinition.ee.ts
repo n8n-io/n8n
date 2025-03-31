@@ -83,8 +83,6 @@ export interface TestCaseExecutionRecord {
 }
 
 const endpoint = '/evaluation/test-definitions';
-const getMetricsEndpoint = (testDefinitionId: string, metricId?: string) =>
-	`${endpoint}/${testDefinitionId}/metrics${metricId ? `/${metricId}` : ''}`;
 
 export async function getTestDefinitions(
 	context: IRestApiContext,
@@ -140,86 +138,6 @@ export async function getExampleEvaluationInput(
 		`${endpoint}/${testDefinitionId}/example-evaluation-input?annotationTagId=${annotationTagId}`,
 	);
 }
-
-// Metrics
-export interface TestMetricRecord {
-	id: string;
-	name: string;
-	testDefinitionId: string;
-	createdAt?: string;
-	updatedAt?: string;
-}
-
-export interface CreateTestMetricParams {
-	testDefinitionId: string;
-	name: string;
-}
-
-export interface UpdateTestMetricParams {
-	name: string;
-	id: string;
-	testDefinitionId: string;
-}
-
-export interface DeleteTestMetricParams {
-	testDefinitionId: string;
-	id: string;
-}
-
-export const getTestMetrics = async (context: IRestApiContext, testDefinitionId: string) => {
-	return await makeRestApiRequest<TestMetricRecord[]>(
-		context,
-		'GET',
-		getMetricsEndpoint(testDefinitionId),
-	);
-};
-
-export const getTestMetric = async (
-	context: IRestApiContext,
-	testDefinitionId: string,
-	id: string,
-) => {
-	return await makeRestApiRequest<TestMetricRecord>(
-		context,
-		'GET',
-		getMetricsEndpoint(testDefinitionId, id),
-	);
-};
-
-export const createTestMetric = async (
-	context: IRestApiContext,
-	params: CreateTestMetricParams,
-) => {
-	return await makeRestApiRequest<TestMetricRecord>(
-		context,
-		'POST',
-		getMetricsEndpoint(params.testDefinitionId),
-		{ name: params.name },
-	);
-};
-
-export const updateTestMetric = async (
-	context: IRestApiContext,
-	params: UpdateTestMetricParams,
-) => {
-	return await makeRestApiRequest<TestMetricRecord>(
-		context,
-		'PATCH',
-		getMetricsEndpoint(params.testDefinitionId, params.id),
-		{ name: params.name },
-	);
-};
-
-export const deleteTestMetric = async (
-	context: IRestApiContext,
-	params: DeleteTestMetricParams,
-) => {
-	return await makeRestApiRequest(
-		context,
-		'DELETE',
-		getMetricsEndpoint(params.testDefinitionId, params.id),
-	);
-};
 
 const getRunsEndpoint = (testDefinitionId: string, runId?: string) =>
 	`${endpoint}/${testDefinitionId}/runs${runId ? `/${runId}` : ''}`;

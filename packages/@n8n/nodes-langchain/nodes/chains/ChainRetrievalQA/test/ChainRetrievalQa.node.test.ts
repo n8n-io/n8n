@@ -3,8 +3,8 @@ import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { BaseRetriever } from '@langchain/core/retrievers';
 import { FakeChatModel, FakeLLM, FakeRetriever } from '@langchain/core/utils/testing';
 import get from 'lodash/get';
-import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError, UnexpectedError } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, UnexpectedError } from 'n8n-workflow';
 
 import { ChainRetrievalQa } from '../ChainRetrievalQa.node';
 
@@ -27,10 +27,10 @@ const createExecuteFunctionsMock = (
 			};
 		},
 		getInputConnectionData(type: NodeConnectionType) {
-			if (type === NodeConnectionType.AiLanguageModel) {
+			if (type === NodeConnectionTypes.AiLanguageModel) {
 				return fakeLlm;
 			}
-			if (type === NodeConnectionType.AiRetriever) {
+			if (type === NodeConnectionTypes.AiRetriever) {
 				return fakeRetriever;
 			}
 			return null;

@@ -2,7 +2,9 @@ import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 import type {
 	FormFieldsParameter,
+	IDataObject,
 	INode,
+	INodeExecutionData,
 	IWebhookFunctions,
 	MultiPartFormData,
 	NodeTypeAndVersion,
@@ -18,6 +20,7 @@ import {
 	sanitizeHtml,
 	validateResponseModeConfiguration,
 	prepareFormFields,
+	addFormResponseDataToReturnItem,
 } from '../utils';
 
 describe('FormTrigger, parseFormDescription', () => {
@@ -1030,5 +1033,77 @@ describe('validateResponseModeConfiguration', () => {
 				fieldType: 'hiddenField',
 			});
 		});
+	});
+});
+
+describe('addFormResponseDataToReturnItem', () => {
+	let returnItem: INodeExecutionData;
+
+	beforeEach(() => {
+		returnItem = { json: {} };
+	});
+
+	test('should use fieldName if fieldLabel is missing', () => {
+		const formFields: FormFieldsParameter = [
+			{ fieldName: 'Alternative Field', fieldType: 'hiddenField' },
+		] as FormFieldsParameter;
+		const bodyData: IDataObject = { 'field-0': 'Test Value' };
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json['Alternative Field']).toBe('Test Value');
+	});
+
+	it('should handle null values', () => {
+		const formFields: FormFieldsParameter = [{ fieldLabel: 'Test Field', fieldType: 'text' }];
+		const bodyData: IDataObject = {};
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json['Test Field']).toBeNull();
+	});
+
+	it('should process html fields and set elementName', () => {
+		const formFields: FormFieldsParameter = [
+			{ fieldLabel: 'HTML Field', elementName: 'htmlElement', fieldType: 'html' },
+		];
+		const bodyData: IDataObject = { 'field-0': '<p>HTML Content</p>' };
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json.htmlElement).toBe('<p>HTML Content</p>');
+	});
+
+	it('should parse number fields correctly', () => {
+		const formFields: FormFieldsParameter = [{ fieldLabel: 'Number Field', fieldType: 'number' }];
+		const bodyData: IDataObject = { 'field-0': '42' };
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json['Number Field']).toBe(42);
+	});
+
+	it('should trim text fields', () => {
+		const formFields: FormFieldsParameter = [{ fieldLabel: 'Text Field', fieldType: 'text' }];
+		const bodyData: IDataObject = { 'field-0': '   hello world   ' };
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json['Text Field']).toBe('hello world');
+	});
+
+	it('should parse multiselect fields from JSON', () => {
+		const formFields: FormFieldsParameter = [
+			{ fieldLabel: 'Multi Field', fieldType: 'text', multiselect: true },
+		];
+		const bodyData: IDataObject = { 'field-0': '["option1", "option2"]' };
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json['Multi Field']).toEqual(['option1', 'option2']);
+	});
+
+	it('should convert single file values to an array if multipleFiles is true', () => {
+		const formFields: FormFieldsParameter = [
+			{ fieldLabel: 'File Field', fieldType: 'file', multipleFiles: true },
+		];
+		const bodyData: IDataObject = { 'field-0': 'file1.pdf' };
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json['File Field']).toEqual(['file1.pdf']);
 	});
 });
