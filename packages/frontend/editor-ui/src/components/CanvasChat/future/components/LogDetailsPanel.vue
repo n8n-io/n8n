@@ -9,13 +9,17 @@ defineSlots<{ actions: {} }>();
 </script>
 
 <template>
-	<div :class="$style.container">
-		<PanelHeader title="Log details" @click="emit('clickHeader')">
+	<div :class="$style.container" data-test-id="log-details">
+		<PanelHeader
+			title="Log details"
+			data-test-id="logs-details-header"
+			@click="emit('clickHeader')"
+		>
 			<template #actions>
 				<slot name="actions" />
 			</template>
 		</PanelHeader>
-		<div v-if="isOpen" :class="$style.content" />
+		<div v-if="isOpen" :class="$style.content" data-test-id="logs-details-body" />
 	</div>
 </template>
 

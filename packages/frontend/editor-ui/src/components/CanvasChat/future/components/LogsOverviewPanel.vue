@@ -8,21 +8,18 @@ import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-sys
 import { computed } from 'vue';
 import { ElTree, type TreeNode as ElTreeNode } from 'element-plus';
 import {
-	createAiData,
+	createLogEntriesIncludingNonAiNodeExecutions,
 	getSubtreeTotalConsumedTokens,
 	getTotalConsumedTokens,
-	getTreeNodeData,
 	type TreeNode,
 } from '@/components/RunDataAi/utils';
-import { type INodeUi } from '@/Interface';
 import { upperFirst } from 'lodash-es';
 import { useTelemetry } from '@/composables/useTelemetry';
 import ConsumedTokenCountText from '@/components/CanvasChat/future/components/ConsumedTokenCountText.vue';
 import { type LogEntryIdentity } from '@/components/CanvasChat/types/logs';
 
-const { node, isOpen, selected } = defineProps<{
+const { isOpen, selected } = defineProps<{
 	isOpen: boolean;
-	node: INodeUi | null;
 	selected?: LogEntryIdentity;
 }>();
 
@@ -37,11 +34,10 @@ const nodeHelpers = useNodeHelpers();
 const isClearExecutionButtonVisible = useClearExecutionButtonVisible();
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 const executionTree = computed<TreeNode[]>(() =>
-	node
-		? getTreeNodeData(
-				node.name,
+	workflowsStore.workflowExecutionData?.data?.resultData.runData
+		? createLogEntriesIncludingNonAiNodeExecutions(
 				workflow.value,
-				createAiData(node.name, workflow.value, workflowsStore.getWorkflowResultDataByNodeName),
+				workflowsStore.workflowExecutionData.data?.resultData.runData,
 			)
 		: [],
 );
@@ -108,9 +104,10 @@ function handleToggleExpanded(treeNode: ElTreeNode) {
 </script>
 
 <template>
-	<div :class="$style.container">
+	<div :class="$style.container" data-test-id="logs-overview">
 		<PanelHeader
 			:title="locale.baseText('logs.overview.header.title')"
+			data-test-id="logs-overview-header"
 			@click="emit('clickHeader')"
 		>
 			<template #actions>
@@ -130,8 +127,19 @@ function handleToggleExpanded(treeNode: ElTreeNode) {
 				<slot name="actions" />
 			</template>
 		</PanelHeader>
-		<div v-if="isOpen" :class="[$style.content, isEmpty ? $style.empty : '']">
-			<N8nText v-if="isEmpty" tag="p" size="medium" color="text-base" :class="$style.emptyText">
+		<div
+			v-if="isOpen"
+			:class="[$style.content, isEmpty ? $style.empty : '']"
+			data-test-id="logs-overview-body"
+		>
+			<N8nText
+				v-if="isEmpty"
+				tag="p"
+				size="medium"
+				color="text-base"
+				:class="$style.emptyText"
+				data-test-id="logs-overview-empty"
+			>
 				{{ locale.baseText('logs.overview.body.empty.message') }}
 			</N8nText>
 			<div v-else :class="$style.scrollable">

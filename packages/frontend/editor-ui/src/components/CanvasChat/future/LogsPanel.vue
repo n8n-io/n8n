@@ -67,6 +67,16 @@ const { canPopOut, isPoppedOut, pipWindow } = usePiPWindow({
 	},
 });
 
+const popOutButtonText = computed(() => locales.baseText('runData.panel.actions.popOut'));
+
+const toggleButtonText = computed(() =>
+	locales.baseText(
+		panelState.value === 'attached'
+			? 'runData.panel.actions.collapse'
+			: 'runData.panel.actions.open',
+	),
+);
+
 function handleToggleOpen() {
 	if (panelState.value === 'closed') {
 		telemetry.track('User toggled log view', { new_state: 'attached' });
@@ -161,32 +171,28 @@ watch([panelState, height], ([state, h]) => {
 				<N8nTooltip
 					v-if="canPopOut && !isPoppedOut"
 					:z-index="tooltipZIndex"
-					:content="locales.baseText('runData.panel.actions.popOut')"
+					:content="popOutButtonText"
 				>
 					<N8nIconButton
 						icon="pop-out"
 						type="secondary"
 						size="small"
 						icon-size="medium"
+						:aria-label="popOutButtonText"
 						@click="onPopOut"
 					/>
 				</N8nTooltip>
 				<N8nTooltip
 					v-if="panelState !== 'floating'"
 					:z-index="tooltipZIndex"
-					:content="
-						locales.baseText(
-							panelState === 'attached'
-								? 'runData.panel.actions.collapse'
-								: 'runData.panel.actions.open',
-						)
-					"
+					:content="toggleButtonText"
 				>
 					<N8nIconButton
 						type="secondary"
 						size="small"
 						icon-size="medium"
 						:icon="panelState === 'attached' ? 'chevron-down' : 'chevron-up'"
+						:aria-label="toggleButtonText"
 						style="color: var(--color-text-base)"
 						@click.stop="handleToggleOpen"
 					/>
