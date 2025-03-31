@@ -3,5 +3,5 @@
 	"compilerOptions": {
 		"tsBuildInfoFile": "./node_modules/.tmp/tsconfig.frontend.tsbuildinfo"
 	},
-	"include": ["src/frontend/**/*.ts", "src/frontend/**/*.tsx", "src/frontend/**/*.vue"]
+	"include": ["src/frontend/**/*.ts", "src/frontend/**/*.vue"]
 }
