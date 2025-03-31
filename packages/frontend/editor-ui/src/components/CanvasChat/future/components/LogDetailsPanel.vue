@@ -27,6 +27,7 @@ defineSlots<{ actions: {} }>();
 	flex-direction: column;
 	align-items: stretch;
 	overflow: hidden;
+	background-color: var(--color-foreground-xlight);
 }
 
 .content {

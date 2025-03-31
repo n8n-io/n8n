@@ -154,6 +154,7 @@ function isLastChild(level: number) {
 	justify-content: stretch;
 	overflow: hidden;
 	position: relative;
+	z-index: 1;
 
 	& > * {
 		overflow: hidden;
