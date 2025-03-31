@@ -57,16 +57,13 @@ export async function getMappingColumns(
 
 	for (const column of columns.filter((x) => !x.hidden && !x.readOnly)) {
 		const fieldType = mapType(column);
-		if (!fieldType) {
-			continue;
-		}
 		const field = {
 			id: column.name,
 			canBeUsedToMatch: column.enforceUniqueValues && column.required,
 			defaultMatch: false,
 			display: true,
 			displayName: column.displayName,
-			readOnly: column.readOnly,
+			readOnly: column.readOnly || !fieldType,
 			required: column.required,
 			type: fieldType,
 		} as ResourceMapperField;
