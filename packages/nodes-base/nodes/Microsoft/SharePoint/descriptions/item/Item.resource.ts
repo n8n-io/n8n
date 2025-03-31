@@ -6,7 +6,7 @@ import * as get from './get.operation';
 import * as getAll from './getAll.operation';
 import * as update from './update.operation';
 import * as upsert from './upsert.operation';
-import { handleErrorPostReceive } from '../../helpers/utils';
+import { handleErrorPostReceive, simplifyItemPostReceive } from '../../helpers/utils';
 
 export const description: INodeProperties[] = [
 	{
@@ -84,7 +84,7 @@ export const description: INodeProperties[] = [
 						url: '=/sites/{{ $parameter["site"] }}/lists/{{ $parameter["list"] }}/items/{{ $parameter["item"] }}',
 					},
 					output: {
-						postReceive: [handleErrorPostReceive],
+						postReceive: [handleErrorPostReceive, simplifyItemPostReceive],
 					},
 				},
 				action: 'Get an item',
@@ -107,6 +107,7 @@ export const description: INodeProperties[] = [
 									property: 'value',
 								},
 							},
+							simplifyItemPostReceive,
 						],
 					},
 				},

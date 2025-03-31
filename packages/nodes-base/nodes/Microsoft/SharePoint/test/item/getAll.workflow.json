@@ -38,6 +38,7 @@
 						"webUrl"
 					]
 				},
+				"simplify": false,
 				"requestOptions": {}
 			},
 			"type": "n8n-nodes-base.microsoftSharePoint",

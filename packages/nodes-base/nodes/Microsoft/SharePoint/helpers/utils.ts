@@ -12,6 +12,28 @@ import { jsonParse, NodeApiError, NodeOperationError } from 'n8n-workflow';
 import type { IErrorResponse } from './interfaces';
 import { microsoftSharePointApiRequest } from '../transport';
 
+export async function simplifyItemPostReceive(
+	this: IExecuteSingleFunctions,
+	items: INodeExecutionData[],
+	_response: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
+	if (items.length === 0) {
+		return items;
+	}
+
+	const simplify = this.getNodeParameter('simplify') as boolean;
+	if (simplify) {
+		for (const item of items) {
+			delete item.json['@odata.context'];
+			delete item.json['@odata.etag'];
+			delete item.json['fields@odata.navigationLink'];
+			delete (item.json.fields as IDataObject)?.['@odata.etag'];
+		}
+	}
+
+	return items;
+}
+
 export async function simplifyListPostReceive(
 	this: IExecuteSingleFunctions,
 	items: INodeExecutionData[],

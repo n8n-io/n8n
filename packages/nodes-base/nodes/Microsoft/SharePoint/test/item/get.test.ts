@@ -10,7 +10,7 @@ describe('Microsoft SharePoint Node', () => {
 			mocks: [
 				{
 					method: 'get',
-					path: '/sites/site1/lists/list1/items/item1',
+					path: '/sites/site1/lists/list1/items/item1?%24select=id%2CcreatedDateTime%2ClastModifiedDateTime%2CwebUrl&%24expand=fields%28select%3DTitle%29',
 					statusCode: 200,
 					responseBody: {
 						'@odata.context':

@@ -62,8 +62,6 @@
 		"Microsoft SharePoint": [
 			{
 				"json": {
-					"@odata.context": "https://mydomain.sharepoint.com/sites/site1/_api/v2.0/$metadata#listItems/$entity",
-					"@odata.etag": "\"07bfcdd5-450d-48ce-8dc3-04f7f59edc5f,1\"",
 					"createdBy": {
 						"user": {
 							"displayName": "John Doe",
@@ -96,9 +94,7 @@
 						"id": "0x010010D603DC4CF2DF4BB8A2D75DCB4BB1B30037A4993FB4DEB0439C3DC6DEC95A9DF8",
 						"name": "Item"
 					},
-					"fields@odata.navigationLink": "sites/site1/lists/list1/items/item1/fields",
 					"fields": {
-						"@odata.etag": "\"07bfcdd5-450d-48ce-8dc3-04f7f59edc5f,1\"",
 						"Title": "Item 1",
 						"ID": "item1",
 						"ContentType": "Item",
