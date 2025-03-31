@@ -44,6 +44,7 @@ defineSlots<{
 }>();
 
 const emit = defineEmits<{
+	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'update:options': [
 		payload: {
 			page: number;
@@ -70,7 +71,7 @@ function itemKeySlot(info: CellContext<T, unknown>) {
 		: info.getValue();
 }
 
-function isValueAccesor(column: TableHeader<T>): column is Required<TableHeader<T>> {
+function isValueAccessor(column: TableHeader<T>): column is Required<TableHeader<T>> {
 	return !!column.value;
 }
 
@@ -86,7 +87,7 @@ function isAccessorColumn(
 	return typeof column.value === 'function';
 }
 
-function getValueAccesor(column: Required<TableHeader<T>>) {
+function getValueAccessor(column: Required<TableHeader<T>>) {
 	if (isAccessorColumn(column)) {
 		return columnHelper.accessor(column.value, {
 			id: column.key,
@@ -106,8 +107,8 @@ function getValueAccesor(column: Required<TableHeader<T>>) {
 
 function mapHeaders(columns: Array<TableHeader<T>>) {
 	return columns.map((column, index) => {
-		if (isValueAccesor(column)) {
-			return getValueAccesor(column);
+		if (isValueAccessor(column)) {
+			return getValueAccessor(column);
 		}
 
 		if (column.key) {
@@ -184,8 +185,6 @@ const table = useVueTable({
 	onPaginationChange(updaterOrValue) {
 		pagination.value =
 			typeof updaterOrValue === 'function' ? updaterOrValue(pagination.value) : updaterOrValue;
-
-		// test.value = typeof updaterOrValue === 'function' ? updaterOrValue(test.value) : updaterOrValue;
 
 		emit('update:options', {
 			page: page.value,
@@ -274,7 +273,7 @@ const table = useVueTable({
 				</table>
 			</div>
 		</div>
-		<div class="table-pagination">
+		<div class="table-pagination" data-test-id="pagination">
 			<N8nPagination
 				:current-page="page + 1"
 				:page-size="itemsPerPage"
