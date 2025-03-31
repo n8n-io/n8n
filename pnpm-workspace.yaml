@@ -50,3 +50,4 @@ catalogs:
     vue-tsc: ^2.2.8
     vue-markdown-render: ^2.2.1
     highlight.js: ^11.8.0
+    'element-plus': 2.4.3
