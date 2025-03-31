@@ -37,9 +37,9 @@ describe('UpdateApiKeyRequestDto', () => {
 				expectedErrorPath: ['label'],
 			},
 			{
-				name: 'scopes with non exiting scope',
+				name: 'scopes with malformed scope',
 				label: 'valid label',
-				scopes: ['user:test'],
+				scopes: ['user:1'],
 				expectedErrorPath: ['scopes'],
 			},
 			{
