@@ -22,6 +22,7 @@ export const toSQL = (operator: string) => {
 		less: '<',
 		equalsGreater: '>=',
 		equalsLess: '<=',
+		like: 'like',
 	};
 
 	return operators[operator];
