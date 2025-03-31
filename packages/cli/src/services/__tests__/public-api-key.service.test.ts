@@ -9,17 +9,13 @@ import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { getConnection } from '@/db';
 import type { EventService } from '@/events/event.service';
+import { getOwnerOnlyApiKeyScopes } from '@/public-api/permissions.ee';
 import type { AuthenticatedRequest } from '@/requests';
-import {
-	createAdmin,
-	createAdminWithApiKey,
-	createOwnerWithApiKey,
-} from '@test-integration/db/users';
+import { createAdminWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 import * as testDb from '@test-integration/test-db';
 
 import { JwtService } from '../jwt.service';
 import { PublicApiKeyService } from '../public-api-key.service';
-import { getOwnerOnlyApiKeyScopes } from '@/public-api/permissions.ee';
 
 const mockReqWith = (apiKey: string, path: string, method: string) => {
 	return mock<AuthenticatedRequest>({
