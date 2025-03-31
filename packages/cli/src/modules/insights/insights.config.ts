@@ -43,4 +43,18 @@ export class InsightsConfig {
 	 */
 	@Env('N8N_INSIGHTS_FLUSH_INTERVAL_SECONDS')
 	flushIntervalSeconds: number = 30;
+
+	/**
+	 * The maximum age in days for all insights data before pruning.
+	 * Default: -1 (no pruning)
+	 */
+	@Env('N8N_INSIGHTS_MAX_AGE_DAYS')
+	maxAgeDays: number = -1;
+
+	/**
+	 * The interval in hours at which the insights data should be checked for pruning.
+	 * Default: 24
+	 */
+	@Env('N8N_INSIGHTS_PRUNE_CHECK_INTERVAL_HOURS')
+	pruneCheckIntervalHours: number = 24;
 }
