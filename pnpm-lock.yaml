@@ -63,6 +63,9 @@ catalogs:
     reflect-metadata:
       specifier: 0.2.2
       version: 0.2.2
+    rimraf:
+      specifier: ^6.0.1
+      version: 6.0.1
     tsup:
       specifier: ^8.4.0
       version: 8.4.0
@@ -441,6 +444,33 @@ importers:
         specifier: ^9.4.2
         version: 9.4.2(eslint@8.57.0)
 
+  packages/@n8n/extension-sdk:
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@vitejs/plugin-vue':
+        specifier: catalog:frontend
+        version: 5.2.1(vite@6.2.1(@types/node@18.16.16)(jiti@1.21.0)(sass@1.64.1)(terser@5.16.1))(vue@3.5.13(typescript@5.8.2))
+      '@vue/tsconfig':
+        specifier: catalog:frontend
+        version: 0.7.0(typescript@5.8.2)(vue@3.5.13(typescript@5.8.2))
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.0.1
+      vite:
+        specifier: catalog:frontend
+        version: 6.2.1(@types/node@18.16.16)(jiti@1.21.0)(sass@1.64.1)(terser@5.16.1)
+      vue:
+        specifier: catalog:frontend
+        version: 3.5.13(typescript@5.8.2)
+      vue-router:
+        specifier: catalog:frontend
+        version: 4.5.0(vue@3.5.13(typescript@5.8.2))
+      vue-tsc:
+        specifier: ^2.2.8
+        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.8.2)
+
   packages/@n8n/imap:
     dependencies:
       iconv-lite:
@@ -700,36 +730,6 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
-
-  packages/@n8n/plugin-sdk:
-    devDependencies:
-      '@n8n/typescript-config':
-        specifier: workspace:*
-        version: link:../typescript-config
-      '@vitejs/plugin-vue':
-        specifier: catalog:frontend
-        version: 5.2.1(vite@6.2.1(@types/node@18.16.16)(jiti@1.21.0)(sass@1.64.1)(terser@5.16.1))(vue@3.5.13(typescript@5.8.2))
-      '@vue/tsconfig':
-        specifier: catalog:frontend
-        version: 0.7.0(typescript@5.8.2)(vue@3.5.13(typescript@5.8.2))
-      rimraf:
-        specifier: ^6.0.1
-        version: 6.0.1
-      typescript:
-        specifier: ^5.8.2
-        version: 5.8.2
-      vite:
-        specifier: catalog:frontend
-        version: 6.2.1(@types/node@18.16.16)(jiti@1.21.0)(sass@1.64.1)(terser@5.16.1)
-      vue:
-        specifier: catalog:frontend
-        version: 3.5.13(typescript@5.8.2)
-      vue-router:
-        specifier: catalog:frontend
-        version: 4.5.0(vue@3.5.13(typescript@5.8.2))
-      vue-tsc:
-        specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.8.2)
 
   packages/@n8n/storybook:
     devDependencies:
