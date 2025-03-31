@@ -24,6 +24,7 @@ catalog:
   nanoid: 3.3.8
   picocolors: 1.0.1
   reflect-metadata: 0.2.2
+  tsup: ^8.4.0
   uuid: 10.0.0
   xml2js: 0.6.2
   xss: 1.0.15
@@ -40,7 +41,6 @@ catalogs:
     '@vitest/coverage-v8': ^3.0.7
     '@vitejs/plugin-vue': ^5.2.1
     '@sentry/vue': ^8.33.1
-    tsup: ^8.4.0
     typescript: ^5.8.2
     vite: ^6.2.0
     vitest: ^3.0.7
