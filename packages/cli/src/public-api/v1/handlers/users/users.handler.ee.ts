@@ -48,7 +48,6 @@ export = {
 	],
 	getUsers: [
 		apiKeyHasScope('user:list'),
-		// globalScope: ['user:read', 'user:list'],
 		validLicenseWithUserQuota,
 		validCursor,
 		async (req: UserRequest.Get, res: express.Response) => {
