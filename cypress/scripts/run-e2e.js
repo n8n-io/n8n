@@ -85,6 +85,21 @@ switch (scenario) {
 			},
 		});
 		break;
+	case 'debugFlaky':
+		const filter = process.argv[3];
+		const burnCount = process.argv[4] || 5;
+		const grepValue = filter ? filter : '.*';
+
+		runTests({
+			startCommand: 'start',
+			url: 'http://localhost:5678/favicon.ico',
+			testCommand: `cypress run --headless --env grep="${grepValue}",burn=${burnCount}`,
+			customEnv: {
+				CYPRESS_NODE_VIEW_VERSION: 2,
+			},
+			failFast: true,
+		});
+		break;
 	default:
 		console.error('Unknown scenario');
 		process.exit(1);
