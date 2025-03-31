@@ -8,6 +8,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createRouter, createWebHistory } from 'vue-router';
 import { h, type ExtractPropTypes } from 'vue';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
+import { WorkflowOperationError } from 'n8n-workflow';
 
 describe('LogsOverviewPanel', () => {
 	let pinia: TestingPinia;
@@ -87,10 +88,15 @@ describe('LogsOverviewPanel', () => {
 						],
 						'AI Model': [
 							{
-								executionStatus: 'success',
+								executionStatus: 'error',
 								startTime: +new Date('2025-03-26T00:00:00.003Z'),
 								executionTime: 1777,
 								source: [],
+								error: new WorkflowOperationError(
+									'Test error',
+									aiModelNode,
+									'Test error description',
+								),
 								data: {
 									ai_languageModel: [
 										[
@@ -131,14 +137,15 @@ describe('LogsOverviewPanel', () => {
 
 		expect(row1.queryByText('AI Agent')).toBeInTheDocument();
 		expect(row1.queryByText('Success in 1.778s')).toBeInTheDocument();
-		expect(row1.queryByText('Started 2025-03-26T00:00:00.002Z')).toBeInTheDocument();
+		expect(row1.queryByText('Started 00:00:00.002, 26 Mar')).toBeInTheDocument();
 		expect(row1.queryByText('555 Tokens')).toBeInTheDocument();
 
 		const row2 = within(tree.queryAllByRole('treeitem')[1]);
 
 		expect(row2.queryByText('AI Model')).toBeInTheDocument();
-		expect(row2.queryByText('Success in 1.777s')).toBeInTheDocument();
-		expect(row2.queryByText('Started 2025-03-26T00:00:00.003Z')).toBeInTheDocument();
+		expect(row2.queryByText('Error')).toBeInTheDocument();
+		expect(row2.queryByText('in 1.777s')).toBeInTheDocument();
+		expect(row2.queryByText('Started 00:00:00.003, 26 Mar')).toBeInTheDocument();
 		expect(row2.queryByText('555 Tokens')).toBeInTheDocument();
 
 		// collapse tree

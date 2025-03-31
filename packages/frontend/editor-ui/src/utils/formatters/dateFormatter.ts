@@ -25,4 +25,5 @@ export function convertToDisplayDate(fullDate: Date | string | number): {
 
 export const toDayMonth = (fullDate: Date | string) => dateformat(fullDate, 'd mmm');
 
-export const toTime = (fullDate: Date | string) => dateformat(fullDate, 'HH:MM:ss');
+export const toTime = (fullDate: Date | string, includeMillis: boolean = false) =>
+	dateformat(fullDate, includeMillis ? 'HH:MM:ss.l' : 'HH:MM:ss');

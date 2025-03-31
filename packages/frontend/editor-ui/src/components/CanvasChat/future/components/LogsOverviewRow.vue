@@ -10,6 +10,8 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { upperFirst } from 'lodash-es';
 import { useI18n } from '@/composables/useI18n';
 import ConsumedTokenCountText from '@/components/CanvasChat/future/components/ConsumedTokenCountText.vue';
+import { I18nT } from 'vue-i18n';
+import { toDayMonth, toTime } from '@/utils/formatters/dateFormatter';
 
 const props = defineProps<{
 	data: TreeNode;
@@ -40,13 +42,15 @@ const isSettled = computed(
 		['crashed', 'error', 'success'].includes(runData.value.executionStatus),
 );
 const isError = computed(() => !!runData.value?.error);
-const startedAtText = computed(() =>
-	locale.baseText('logs.overview.body.started', {
+const startedAtText = computed(() => {
+	const time = new Date(runData.value?.startTime ?? 0);
+
+	return locale.baseText('logs.overview.body.started', {
 		interpolate: {
-			time: new Date(runData.value?.startTime ?? 0).toISOString(), // TODO: confirm date format
+			time: `${toTime(time, true)}, ${toDayMonth(time)}`,
 		},
-	}),
-);
+	});
+});
 
 const subtreeConsumedTokens = computed(() =>
 	props.shouldShowConsumedTokens ? getSubtreeTotalConsumedTokens(props.data) : undefined,
@@ -96,16 +100,19 @@ function isLastChild(level: number) {
 			:color="isError ? 'danger' : undefined"
 			>{{ node.name }}</N8nText
 		>
-		<N8nText tag="div" color="text-light" size="small" :class="$style.timeTook"
-			><i18n-t v-if="isSettled && runData" keypath="logs.overview.body.summaryText"
-				><template #status
-					><N8nText v-if="isError" color="danger" :bold="true" size="small"
-						><N8nIcon icon="exclamation-triangle" :class="$style.errorIcon" />{{
+		<N8nText tag="div" color="text-light" size="small" :class="$style.timeTook">
+			<I18nT v-if="isSettled && runData" keypath="logs.overview.body.summaryText">
+				<template #status>
+					<N8nText v-if="isError" color="danger" :bold="true" size="small">
+						<N8nIcon icon="exclamation-triangle" :class="$style.errorIcon" />{{
 							upperFirst(runData.executionStatus)
-						}}</N8nText
-					><template v-else>{{ upperFirst(runData.executionStatus) }}</template></template
-				><template #time>{{ locale.displayTimer(runData.executionTime, true) }}</template></i18n-t
-			><template v-else>{{ upperFirst(runData?.executionStatus) }}</template></N8nText
+						}}
+					</N8nText>
+					<template v-else>{{ upperFirst(runData.executionStatus) }}</template>
+				</template>
+				<template #time>{{ locale.displayTimer(runData.executionTime, true) }}</template>
+			</I18nT>
+			<template v-else>{{ upperFirst(runData?.executionStatus) }}</template></N8nText
 		>
 		<N8nText tag="div" color="text-light" size="small" :class="$style.startedAt">{{
 			startedAtText
