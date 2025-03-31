@@ -1,4 +1,5 @@
-import type { INodeProperties } from 'n8n-workflow';
+import _ from 'lodash';
+import { optimizeResponseProperties, type INodeProperties } from 'n8n-workflow';
 
 export const mainProperties: INodeProperties[] = [
 	{
@@ -1167,6 +1168,11 @@ export const mainProperties: INodeProperties[] = [
 			},
 		],
 	},
+	// ...(optimizeResponseProperties.map((x) =>
+	// 	_.merge({}, x, {
+	// 		displayOptions: { show: { optimizeResponse: [true] } },
+	// 	}),
+	// ) as INodeProperties[]),
 	{
 		displayName:
 			"You can view the raw requests this node makes in your browser's developer console",
@@ -1174,4 +1180,5 @@ export const mainProperties: INodeProperties[] = [
 		type: 'notice',
 		default: '',
 	},
+	// ...optimizeResponseProperties,
 ];

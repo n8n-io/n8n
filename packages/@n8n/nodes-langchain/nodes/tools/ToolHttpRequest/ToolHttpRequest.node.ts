@@ -9,8 +9,10 @@ import type {
 	IHttpRequestOptions,
 } from 'n8n-workflow';
 import {
+	configureResponseOptimizer,
 	NodeConnectionTypes,
 	NodeOperationError,
+	optimizeResponseProperties,
 	tryToParseAlphanumericString,
 } from 'n8n-workflow';
 
@@ -20,7 +22,6 @@ import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import {
 	authenticationProperties,
 	jsonInput,
-	optimizeResponseProperties,
 	parametersCollection,
 	placeholderDefinitionsCollection,
 	specifyBySelector,
@@ -28,7 +29,6 @@ import {
 import type { PlaceholderDefinition, ToolParameter } from './interfaces';
 import {
 	configureHttpRequestFunction,
-	configureResponseOptimizer,
 	extractParametersFromText,
 	prepareToolDescription,
 	configureToolFunction,
