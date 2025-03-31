@@ -14,7 +14,7 @@ import { awsApiRequest } from '../transport';
 const validateEmail = (email: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 const validatePhoneNumber = (phone: string): boolean => /^\+[0-9]\d{1,14}$/.test(phone);
 
-// Todo: there are a lot of different places where json stringify or parse is called. Is it possible to do this in a more generic way?
+// Todo: jsonParse could be used directly
 export function parseRequestBody(body: unknown): IDataObject {
 	if (!body) {
 		return {};
