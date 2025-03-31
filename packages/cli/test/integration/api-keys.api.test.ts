@@ -1,12 +1,13 @@
 import type { ApiKeyWithRawValue } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
+import type { ApiKeyScope } from '@n8n/permissions';
 import { mock } from 'jest-mock-extended';
 
 import type { User } from '@/databases/entities/user';
 import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
 import type { License } from '@/license';
-import { getOwnerOnlyApiKeyScopes } from '@/public-api/permissions.ee';
+import { getApiKeyScopesForRole, getOwnerOnlyApiKeyScopes } from '@/public-api/permissions.ee';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 import { mockInstance } from '@test/mocking';
 
@@ -89,6 +90,14 @@ describe('Owner shell', () => {
 		expect(newApiKey.rawApiKey).toBeDefined();
 	});
 
+	test('POST /api-keys should fail to create api key with invalid scope', async () => {
+		await testServer
+			.authAgentFor(ownerShell)
+			.post('/api-keys')
+			.send({ label: 'My API Key', expiresAt: null, scopes: ['wrong'] })
+			.expect(400);
+	});
+
 	test('POST /api-keys should create an api key with expiration', async () => {
 		const expiresAt = Date.now() + 1000;
 
@@ -122,7 +131,6 @@ describe('Owner shell', () => {
 
 	test("POST /api-keys should create an api key with scopes allow in the user's role", async () => {
 		const expiresAt = Date.now() + 1000;
-		license.isApiKeyScopesEnabled.mockReturnValue(true);
 
 		const newApiKeyResponse = await testServer
 			.authAgentFor(ownerShell)
@@ -150,6 +158,56 @@ describe('Owner shell', () => {
 
 		expect(newApiKey.expiresAt).toBe(expiresAt);
 		expect(newApiKey.rawApiKey).toBeDefined();
+	});
+
+	test('PATCH /api-keys should update API key label', async () => {
+		const newApiKeyResponse = await testServer
+			.authAgentFor(ownerShell)
+			.post('/api-keys')
+			.send({ label: 'My API Key', expiresAt: null, scopes: ['user:create'] });
+
+		const newApiKey = newApiKeyResponse.body.data as ApiKeyWithRawValue;
+
+		await testServer
+			.authAgentFor(ownerShell)
+			.patch(`/api-keys/${newApiKey.id}`)
+			.send({ label: 'updated label', scopes: ['user:create'] });
+
+		const newStoredApiKey = await Container.get(ApiKeyRepository).findOneByOrFail({
+			userId: ownerShell.id,
+		});
+
+		expect(newStoredApiKey).toEqual({
+			id: expect.any(String),
+			label: 'updated label',
+			userId: ownerShell.id,
+			apiKey: newApiKey.rawApiKey,
+			createdAt: expect.any(Date),
+			updatedAt: expect.any(Date),
+			scopes: ['user:create'],
+		});
+	});
+
+	test('PATCH /api-keys should not modify API key expiration', async () => {
+		const newApiKeyResponse = await testServer
+			.authAgentFor(ownerShell)
+			.post('/api-keys')
+			.send({ label: 'My API Key', expiresAt: null, scopes: ['user:create'] });
+
+		const newApiKey = newApiKeyResponse.body.data as ApiKeyWithRawValue;
+
+		await testServer
+			.authAgentFor(ownerShell)
+			.patch(`/api-keys/${newApiKey.id}`)
+			.send({ label: 'updated label', expiresAt: 123, scopes: ['user:create'] });
+
+		const getApiKeysResponse = await testServer.authAgentFor(ownerShell).get('/api-keys');
+
+		const allApiKeys = getApiKeysResponse.body.data as ApiKeyWithRawValue[];
+
+		const updatedApiKey = allApiKeys.find((apiKey) => apiKey.id === newApiKey.id);
+
+		expect(updatedApiKey?.expiresAt).toBe(null);
 	});
 
 	test('GET /api-keys should fetch the api key redacted', async () => {
@@ -210,6 +268,16 @@ describe('Owner shell', () => {
 
 		expect(deleteApiKeyResponse.body.data.success).toBe(true);
 		expect(retrieveAllApiKeysResponse.body.data.length).toBe(0);
+	});
+
+	test('GET /api-keys/scopes should return scopes for the role', async () => {
+		const apiKeyScopesResponse = await testServer.authAgentFor(ownerShell).get('/api-keys/scopes');
+
+		const scopes = apiKeyScopesResponse.body.data as ApiKeyScope[];
+
+		const scopesForRole = getApiKeyScopesForRole(ownerShell.role);
+
+		expect(scopes).toEqual(scopesForRole);
 	});
 });
 
@@ -388,5 +456,15 @@ describe('Member', () => {
 
 		expect(deleteApiKeyResponse.body.data.success).toBe(true);
 		expect(retrieveAllApiKeysResponse.body.data.length).toBe(0);
+	});
+
+	test('GET /api-keys/scopes should return scopes for the role', async () => {
+		const apiKeyScopesResponse = await testServer.authAgentFor(member).get('/api-keys/scopes');
+
+		const scopes = apiKeyScopesResponse.body.data as ApiKeyScope[];
+
+		const scopesForRole = getApiKeyScopesForRole(member.role);
+
+		expect(scopes).toEqual(scopesForRole);
 	});
 });
