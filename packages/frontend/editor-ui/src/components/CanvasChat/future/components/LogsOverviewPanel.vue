@@ -8,18 +8,21 @@ import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-sys
 import { computed } from 'vue';
 import { ElTree, type TreeNode as ElTreeNode } from 'element-plus';
 import {
-	createLogEntriesIncludingNonAiNodeExecutions,
+	createAiData,
 	getSubtreeTotalConsumedTokens,
 	getTotalConsumedTokens,
+	getTreeNodeData,
 	type TreeNode,
 } from '@/components/RunDataAi/utils';
+import { type INodeUi } from '@/Interface';
 import { upperFirst } from 'lodash-es';
 import { useTelemetry } from '@/composables/useTelemetry';
 import ConsumedTokenCountText from '@/components/CanvasChat/future/components/ConsumedTokenCountText.vue';
 import { type LogEntryIdentity } from '@/components/CanvasChat/types/logs';
 
-const { isOpen, selected } = defineProps<{
+const { node, isOpen, selected } = defineProps<{
 	isOpen: boolean;
+	node: INodeUi | null;
 	selected?: LogEntryIdentity;
 }>();
 
@@ -34,10 +37,11 @@ const nodeHelpers = useNodeHelpers();
 const isClearExecutionButtonVisible = useClearExecutionButtonVisible();
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 const executionTree = computed<TreeNode[]>(() =>
-	workflowsStore.workflowExecutionData?.data?.resultData.runData
-		? createLogEntriesIncludingNonAiNodeExecutions(
+	node
+		? getTreeNodeData(
+				node.name,
 				workflow.value,
-				workflowsStore.workflowExecutionData.data?.resultData.runData,
+				createAiData(node.name, workflow.value, workflowsStore.getWorkflowResultDataByNodeName),
 			)
 		: [],
 );
