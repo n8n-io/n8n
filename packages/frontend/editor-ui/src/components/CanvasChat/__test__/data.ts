@@ -1,5 +1,11 @@
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
-import { CHAT_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
+import {
+	AGENT_NODE_TYPE,
+	AI_CATEGORY_AGENTS,
+	AI_SUBCATEGORY,
+	CHAT_TRIGGER_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+} from '@/constants';
 import { type IExecutionResponse } from '@/Interface';
 import { WorkflowOperationError } from 'n8n-workflow';
 
@@ -14,11 +20,20 @@ export const nodeTypes = [
 		version: 1,
 		group: ['trigger'],
 	}),
+	mockNodeTypeDescription({
+		name: AGENT_NODE_TYPE,
+		codex: {
+			subcategories: {
+				[AI_SUBCATEGORY]: [AI_CATEGORY_AGENTS],
+			},
+		},
+		version: 1,
+	}),
 ];
 
 export const chatTriggerNode = createTestNode({ name: 'Chat', type: CHAT_TRIGGER_NODE_TYPE });
 export const manualTriggerNode = createTestNode({ name: 'Manual' });
-export const aiAgentNode = createTestNode({ name: 'AI Agent' });
+export const aiAgentNode = createTestNode({ name: 'AI Agent', type: AGENT_NODE_TYPE });
 export const aiModelNode = createTestNode({ name: 'AI Model' });
 
 export const simpleWorkflow = createTestWorkflow({
