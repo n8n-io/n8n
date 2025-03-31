@@ -5,7 +5,6 @@
 import { Container } from '@n8n/di';
 import * as assert from 'assert/strict';
 import { setMaxListeners } from 'events';
-import { omit } from 'lodash';
 import get from 'lodash/get';
 import type {
 	ExecutionBaseError,
@@ -45,12 +44,13 @@ import type {
 import {
 	LoggerProxy as Logger,
 	NodeHelpers,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	ApplicationError,
 	sleep,
 	ExecutionCancelledError,
 	Node,
 	UnexpectedError,
+	UserError,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
@@ -396,7 +396,7 @@ export class WorkflowExecute {
 		// 1. Find the Trigger
 		const trigger = findTriggerForPartialExecution(workflow, destinationNodeName);
 		if (trigger === undefined) {
-			throw new ApplicationError('Connect a trigger to run this node');
+			throw new UserError('Connect a trigger to run this node');
 		}
 
 		// 2. Find the Subgraph
@@ -404,7 +404,8 @@ export class WorkflowExecute {
 		const filteredNodes = graph.getNodes();
 
 		// 3. Find the Start Nodes
-		runData = omit(runData, dirtyNodeNames);
+		const dirtyNodes = graph.getNodesByNames(dirtyNodeNames);
+		runData = cleanRunData(runData, graph, dirtyNodes);
 		let startNodes = findStartNodes({ graph, trigger, destination, runData, pinData });
 
 		// 4. Detect Cycles
@@ -785,7 +786,7 @@ export class WorkflowExecute {
 						// would mean that it has to get added to the list of nodes to process.
 						const parentNodes = workflow.getParentNodes(
 							inputData.node,
-							NodeConnectionType.Main,
+							NodeConnectionTypes.Main,
 							-1,
 						);
 						let nodeToAdd: string | undefined = inputData.node;
@@ -888,7 +889,7 @@ export class WorkflowExecute {
 				'waitingExecution',
 				connectionData.node,
 				waitingNodeIndex!,
-				NodeConnectionType.Main,
+				NodeConnectionTypes.Main,
 			],
 			null,
 		);
@@ -909,6 +910,10 @@ export class WorkflowExecute {
 
 		if (stillDataMissing) {
 			waitingNodeIndex = waitingNodeIndex!;
+			const waitingExecutionSource =
+				this.runExecutionData.executionData!.waitingExecutionSource![connectionData.node][
+					waitingNodeIndex
+				].main;
 
 			// Additional data is needed to run node so add it to waiting
 			this.prepareWaitingToExecution(
@@ -924,11 +929,7 @@ export class WorkflowExecute {
 
 			this.runExecutionData.executionData!.waitingExecutionSource![connectionData.node][
 				waitingNodeIndex
-			].main[connectionData.index] = {
-				previousNode: parentNodeName,
-				previousNodeOutput: outputIndex || undefined,
-				previousNodeRun: runIndex || undefined,
-			};
+			].main = waitingExecutionSource;
 		} else {
 			// All data is there so add it directly to stack
 			this.runExecutionData.executionData!.nodeExecutionStack[enqueueFn]({
@@ -1016,10 +1017,6 @@ export class WorkflowExecute {
 
 	private getCustomOperation(node: INode, type: INodeType) {
 		if (!type.customOperations) return undefined;
-
-		if (type.execute) {
-			throw new UnexpectedError('Node type cannot have both customOperations and execute defined');
-		}
 
 		if (!node.parameters) return undefined;
 
@@ -2222,7 +2219,7 @@ export class WorkflowExecute {
 		);
 		const outputs = NodeHelpers.getNodeOutputs(workflow, executionData.node, nodeType.description);
 		const outputTypes = NodeHelpers.getConnectionTypes(outputs);
-		const mainOutputTypes = outputTypes.filter((output) => output === NodeConnectionType.Main);
+		const mainOutputTypes = outputTypes.filter((output) => output === NodeConnectionTypes.Main);
 
 		const errorItems: INodeExecutionData[] = [];
 		const closeFunctions: CloseFunction[] = [];
@@ -2279,7 +2276,7 @@ export class WorkflowExecute {
 					} else {
 						const pairedItemInputIndex = pairedItemData.input || 0;
 
-						const sourceData = executionData.source[NodeConnectionType.Main][pairedItemInputIndex];
+						const sourceData = executionData.source[NodeConnectionTypes.Main][pairedItemInputIndex];
 
 						const constPairedItem = dataProxy.$getPairedItem(
 							sourceData!.previousNode,

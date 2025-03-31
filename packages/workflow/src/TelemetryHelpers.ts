@@ -250,6 +250,10 @@ export function generateNodesGraph(
 			nodeItem.agent = (node.parameters.agent as string) ?? 'conversationalAgent';
 		} else if (node.type === MERGE_NODE_TYPE) {
 			nodeItem.operation = node.parameters.mode as string;
+
+			if (options?.isCloudDeployment && node.parameters.mode === 'combineBySql') {
+				nodeItem.sql = node.parameters.query as string;
+			}
 		} else if (node.type === HTTP_REQUEST_NODE_TYPE && node.typeVersion === 1) {
 			try {
 				nodeItem.domain = new URL(node.parameters.url as string).hostname;

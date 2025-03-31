@@ -94,6 +94,7 @@ export const LICENSE_FEATURES = {
 	ASK_AI: 'feat:askAi',
 	COMMUNITY_NODES_CUSTOM_REGISTRY: 'feat:communityNodes:customRegistry',
 	AI_CREDITS: 'feat:aiCredits',
+	FOLDERS: 'feat:folders',
 } as const;
 
 export const LICENSE_QUOTAS = {
@@ -194,3 +195,5 @@ export const WsStatusCodes = {
 } as const;
 
 export const FREE_AI_CREDITS_CREDENTIAL_NAME = 'n8n free OpenAI API credits';
+
+export const EVALUATION_METRICS_NODE = `${NODE_PACKAGE_PREFIX}base.evaluationMetrics`;

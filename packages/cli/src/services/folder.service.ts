@@ -2,12 +2,14 @@ import type { CreateFolderDto, DeleteFolderDto, UpdateFolderDto } from '@n8n/api
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
+import { UserError, PROJECT_ROOT } from 'n8n-workflow';
 
 import { Folder } from '@/databases/entities/folder';
 import { FolderTagMappingRepository } from '@/databases/repositories/folder-tag-mapping.repository';
 import { FolderRepository } from '@/databases/repositories/folder.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
+import type { ListQuery } from '@/requests';
 
 export interface SimpleFolderNode {
 	id: string;
@@ -46,13 +48,31 @@ export class FolderService {
 		return folder;
 	}
 
-	async updateFolder(folderId: string, projectId: string, { name, tagIds }: UpdateFolderDto) {
+	async updateFolder(
+		folderId: string,
+		projectId: string,
+		{ name, tagIds, parentFolderId }: UpdateFolderDto,
+	) {
 		await this.findFolderInProjectOrFail(folderId, projectId);
 		if (name) {
 			await this.folderRepository.update({ id: folderId }, { name });
 		}
 		if (tagIds) {
 			await this.folderTagMappingRepository.overwriteTags(folderId, tagIds);
+		}
+
+		if (parentFolderId) {
+			if (folderId === parentFolderId) {
+				throw new UserError('Cannot set a folder as its own parent');
+			}
+
+			if (parentFolderId !== PROJECT_ROOT) {
+				await this.findFolderInProjectOrFail(parentFolderId, projectId);
+			}
+			await this.folderRepository.update(
+				{ id: folderId },
+				{ parentFolder: parentFolderId !== PROJECT_ROOT ? { id: parentFolderId } : null },
+			);
 		}
 	}
 
@@ -114,7 +134,13 @@ export class FolderService {
 			return;
 		}
 
-		await this.findFolderInProjectOrFail(transferToFolderId, projectId);
+		if (folderId === transferToFolderId) {
+			throw new UserError('Cannot transfer folder contents to the folder being deleted');
+		}
+
+		if (transferToFolderId !== PROJECT_ROOT) {
+			await this.findFolderInProjectOrFail(transferToFolderId, projectId);
+		}
 
 		return await this.folderRepository.manager.transaction(async (tx) => {
 			await this.folderRepository.moveAllToFolder(folderId, transferToFolderId, tx);
@@ -122,6 +148,14 @@ export class FolderService {
 			await tx.delete(Folder, { id: folderId });
 			return;
 		});
+	}
+
+	async transferAllFoldersToProject(
+		fromProjectId: string,
+		toProjectId: string,
+		tx?: EntityManager,
+	) {
+		return await this.folderRepository.transferAllFoldersToProject(fromProjectId, toProjectId, tx);
 	}
 
 	private transformFolderPathToTree(flatPath: FolderPathRow[]): SimpleFolderNode[] {
@@ -155,5 +189,72 @@ export class FolderService {
 		});
 
 		return rootNode ? [rootNode] : [];
+	}
+
+	async getFolderAndWorkflowCount(
+		folderId: string,
+		projectId: string,
+	): Promise<{ totalSubFolders: number; totalWorkflows: number }> {
+		await this.findFolderInProjectOrFail(folderId, projectId);
+
+		const baseQuery = this.folderRepository
+			.createQueryBuilder('folder')
+			.select('folder.id', 'id')
+			.where('folder.id = :folderId', { folderId });
+
+		const recursiveQuery = this.folderRepository
+			.createQueryBuilder('f')
+			.select('f.id', 'id')
+			.innerJoin('folder_path', 'fp', 'f.parentFolderId = fp.id');
+
+		// Count all folders in the hierarchy (excluding the root folder)
+		const subFolderCountQuery = this.folderRepository
+			.createQueryBuilder('folder')
+			.addCommonTableExpression(
+				`${baseQuery.getQuery()} UNION ALL ${recursiveQuery.getQuery()}`,
+				'folder_path',
+				{ recursive: true },
+			)
+			.select('COUNT(DISTINCT folder.id) - 1', 'count')
+			.where((qb) => {
+				const subQuery = qb.subQuery().select('fp.id').from('folder_path', 'fp').getQuery();
+				return `folder.id IN ${subQuery}`;
+			})
+			.setParameters({
+				folderId,
+			});
+
+		// Count workflows in the folder and all subfolders
+		const workflowCountQuery = this.workflowRepository
+			.createQueryBuilder('workflow')
+			.select('COUNT(workflow.id)', 'count')
+			.where((qb) => {
+				const folderQuery = qb.subQuery().from('folder_path', 'fp').select('fp.id').getQuery();
+				return `workflow.parentFolderId IN ${folderQuery}`;
+			})
+			.addCommonTableExpression(
+				`${baseQuery.getQuery()} UNION ALL ${recursiveQuery.getQuery()}`,
+				'folder_path',
+				{ recursive: true },
+			)
+			.setParameters({
+				folderId,
+			});
+
+		// Execute both queries in parallel
+		const [subFolderResult, workflowResult] = await Promise.all([
+			subFolderCountQuery.getRawOne<{ count: string }>(),
+			workflowCountQuery.getRawOne<{ count: string }>(),
+		]);
+
+		return {
+			totalSubFolders: parseInt(subFolderResult?.count ?? '0', 10),
+			totalWorkflows: parseInt(workflowResult?.count ?? '0', 10),
+		};
+	}
+
+	async getManyAndCount(projectId: string, options: ListQuery.Options) {
+		options.filter = { ...options.filter, projectId };
+		return await this.folderRepository.getManyAndCount(options);
 	}
 }

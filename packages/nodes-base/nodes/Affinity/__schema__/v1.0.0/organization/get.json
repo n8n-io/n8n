@@ -1,11 +1,8 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "integer"
-        },
-        "name": {
-            "type": "string"
+        "crunchbase_uuid": {
+            "type": "null"
         },
         "domain": {
             "type": "string"
@@ -16,28 +13,19 @@
                 "type": "string"
             }
         },
-        "crunchbase_uuid": {
-            "type": "null"
-        },
         "global": {
             "type": "boolean"
         },
-        "person_ids": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
+        "id": {
+            "type": "integer"
         },
         "list_entries": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "id": {
-                        "type": "integer"
-                    },
-                    "list_id": {
-                        "type": "integer"
+                    "created_at": {
+                        "type": "string"
                     },
                     "creator_id": {
                         "type": "integer"
@@ -48,29 +36,24 @@
                     "entity_type": {
                         "type": "integer"
                     },
-                    "created_at": {
-                        "type": "string"
+                    "id": {
+                        "type": "integer"
+                    },
+                    "list_id": {
+                        "type": "integer"
                     }
-                },
-                "required": [
-                    "id",
-                    "list_id",
-                    "creator_id",
-                    "entity_id",
-                    "entity_type",
-                    "created_at"
-                ]
+                }
+            }
+        },
+        "name": {
+            "type": "string"
+        },
+        "person_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
             }
         }
     },
-    "required": [
-        "id",
-        "name",
-        "domain",
-        "domains",
-        "crunchbase_uuid",
-        "global",
-        "person_ids",
-        "list_entries"
-    ]
+    "version": 1
 }

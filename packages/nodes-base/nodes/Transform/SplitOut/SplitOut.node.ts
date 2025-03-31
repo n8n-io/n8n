@@ -1,6 +1,6 @@
 import get from 'lodash/get';
 import unset from 'lodash/unset';
-import { NodeOperationError, deepCopy, NodeConnectionType } from 'n8n-workflow';
+import { NodeOperationError, deepCopy, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IBinaryData,
 	IDataObject,
@@ -25,8 +25,8 @@ export class SplitOut implements INodeType {
 		defaults: {
 			name: 'Split Out',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Fields To Split Out',

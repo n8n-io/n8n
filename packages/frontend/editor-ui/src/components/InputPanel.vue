@@ -14,7 +14,7 @@ import { waitingNodeTooltip } from '@/utils/executionUtils';
 import { uniqBy } from 'lodash-es';
 import { N8nIcon, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
 import type { INodeInputConfiguration, INodeOutputConfiguration, Workflow } from 'n8n-workflow';
-import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
+import { type NodeConnectionType, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { storeToRefs } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { useNDVStore } from '../stores/ndv.store';
@@ -143,8 +143,8 @@ const isActiveNodeConfig = computed(() => {
 
 	return (
 		inputs.length === 0 ||
-		(inputs.every((input) => filterOutConnectionType(input, NodeConnectionType.Main)) &&
-			outputs.find((output) => filterOutConnectionType(output, NodeConnectionType.Main)))
+		(inputs.every((input) => filterOutConnectionType(input, NodeConnectionTypes.Main)) &&
+			outputs.find((output) => filterOutConnectionType(output, NodeConnectionTypes.Main)))
 	);
 });
 

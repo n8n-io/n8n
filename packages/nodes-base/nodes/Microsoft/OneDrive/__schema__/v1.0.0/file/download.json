@@ -10,8 +10,12 @@
         "name": {
             "type": "string"
         },
+        "size": {
+            "type": "integer"
+        },
         "webUrl": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }
