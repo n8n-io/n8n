@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, watch } from 'vue';
-import { useRoute, useRouter, type LocationQuery } from 'vue-router';
+import { useRoute, type LocationQuery } from 'vue-router';
 import type { InsightsSummaryType } from '@n8n/api-types';
 import { useInsightsStore } from '@/features/insights/insights.store';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
@@ -33,7 +33,6 @@ const props = defineProps<{
 }>();
 
 const route = useRoute();
-const router = useRouter();
 const i18n = useI18n();
 
 const insightsStore = useInsightsStore();
@@ -54,30 +53,6 @@ const getDefaultFilter = (query: LocationQuery): Filter => {
 	};
 };
 const filters = computed(() => getDefaultFilter(route.query));
-const updateFilter = async (filter: Filter) =>
-	await router.replace({ query: getDefaultFilter(filter) });
-const timeOptions = [
-	{
-		label: 'Last 7 days',
-		value: '7',
-	},
-	{
-		label: 'Last 30 days',
-		value: '30',
-	},
-	{
-		label: 'Last 60 days',
-		value: '60',
-	},
-	{
-		label: 'Last 90 days',
-		value: '90',
-	},
-	{
-		label: 'Last One year',
-		value: '365',
-	},
-];
 
 watch(
 	() => filters.value.time_span,
@@ -99,23 +74,6 @@ watch(
 		}}</N8nHeading>
 		<InsightsPaywall v-if="!insightsStore.globalInsightsPermissions.list" />
 		<div v-else>
-			<div style="display: flex; justify-content: space-between">
-				<div style="display: flex; gap: 6px">
-					<N8nSelect
-						:model-value="filters.time_span"
-						@update:model-value="(value: string) => updateFilter({ ...filters, time_span: value })"
-					>
-						<N8nOption
-							v-for="option in timeOptions"
-							:key="option.value"
-							:value="option.value"
-							:label="option.label"
-						>
-						</N8nOption>
-					</N8nSelect>
-				</div>
-			</div>
-
 			<div>
 				<InsightsSummary
 					:summary="insightsStore.summary.state"
