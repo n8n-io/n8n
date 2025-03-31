@@ -10,13 +10,13 @@ const locale = useI18n();
 
 <template>
 	<N8nTooltip v-if="consumedTokens !== undefined" :enterable="false">
-		{{
+		<span>{{
 			locale.baseText('runData.aiContentBlock.tokens', {
 				interpolate: {
 					count: formatTokenUsageCount(consumedTokens, 'total'),
 				},
 			})
-		}}
+		}}</span>
 		<template #content>
 			<ConsumedTokensDetails :consumed-tokens="consumedTokens" />
 		</template>

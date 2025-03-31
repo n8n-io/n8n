@@ -250,7 +250,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 					workflowId,
 					data: parse(rawData),
 					status,
-					startedAt: workflowsStore.workflowExecutionData?.startedAt as Date,
+					startedAt: workflowsStore.workflowExecutionData?.startedAt ?? new Date(),
 					stoppedAt: new Date(),
 				};
 			} else {

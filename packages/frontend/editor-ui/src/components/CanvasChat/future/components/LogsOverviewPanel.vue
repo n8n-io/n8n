@@ -6,7 +6,7 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
 import { computed } from 'vue';
-import { ElTree } from 'element-plus';
+import { ElTree, type TreeNode as ElTreeNode } from 'element-plus';
 import {
 	createAiData,
 	getSubtreeTotalConsumedTokens,
@@ -47,8 +47,8 @@ const executionTree = computed<TreeNode[]>(() =>
 );
 const isEmpty = computed(() => workflowsStore.workflowExecutionData === null);
 const switchViewOptions = computed(() => [
-	{ label: 'Details', value: 'details' as const },
-	{ label: 'Overview', value: 'overview' as const },
+	{ label: locale.baseText('logs.overview.header.switch.details'), value: 'details' as const },
+	{ label: locale.baseText('logs.overview.header.switch.overview'), value: 'overview' as const },
 ]);
 const executionStatusText = computed(() => {
 	const execution = workflowsStore.workflowExecutionData;
@@ -101,6 +101,10 @@ function handleSwitchView(value: 'overview' | 'details') {
 		value === 'overview' || executionTree.value.length === 0 ? undefined : executionTree.value[0],
 	);
 }
+
+function handleToggleExpanded(treeNode: ElTreeNode) {
+	treeNode.expanded = !treeNode.expanded;
+}
 </script>
 
 <template>
@@ -133,11 +137,12 @@ function handleSwitchView(value: 'overview' | 'details') {
 			<div v-else :class="$style.scrollable">
 				<N8nText
 					v-if="executionStatusText !== undefined"
+					tag="div"
+					color="text-light"
 					size="small"
-					color="text-base"
 					:class="$style.summary"
 				>
-					<div>{{ executionStatusText }}</div>
+					<span>{{ executionStatusText }}</span>
 					<ConsumedTokenCountText
 						v-if="consumedTokens.totalTokens > 0"
 						:consumed-tokens="consumedTokens"
@@ -160,6 +165,7 @@ function handleSwitchView(value: 'overview' | 'details') {
 							:is-selected="data.node === selected?.node && data.runIndex === selected?.runIndex"
 							:is-compact="selected !== undefined"
 							:should-show-consumed-tokens="consumedTokens.totalTokens > 0"
+							@toggle-expanded="handleToggleExpanded"
 						/>
 					</template>
 				</ElTree>
