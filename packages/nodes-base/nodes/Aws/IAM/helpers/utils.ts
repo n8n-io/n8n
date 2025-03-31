@@ -1,25 +1,33 @@
 import {
 	type IHttpRequestOptions,
-	type ILoadOptionsFunctions,
 	NodeApiError,
 	type IDataObject,
 	type IExecuteSingleFunctions,
 	type IN8nHttpFullResponse,
 	type INodeExecutionData,
-	ApplicationError,
 } from 'n8n-workflow';
 
+import { CURRENT_VERSION } from './constants';
 import type {
 	GetAllGroupsResponseBody,
 	GetAllUsersResponseBody,
 	GetGroupResponseBody,
 	GetUserResponseBody,
-	User,
 } from './types';
 import { searchGroupsForUser } from '../methods/listSearch';
 import { makeAwsRequest } from '../transport';
 
 //IMPROVED
+export async function presendStringifyBody(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	if (requestOptions.body) {
+		requestOptions.body = JSON.stringify(requestOptions.body);
+	}
+	return requestOptions;
+}
+
 export async function searchUsersForGroup(
 	this: IExecuteSingleFunctions,
 	groupName: string,
@@ -30,7 +38,7 @@ export async function searchUsersForGroup(
 
 	const responseData = (await makeAwsRequest.call(this, {
 		method: 'POST',
-		url: `/?Action=GetGroup&Version=2010-05-08&GroupName=${groupName}`,
+		url: `/?Action=GetGroup&Version=${CURRENT_VERSION}&GroupName=${groupName}`,
 	})) as GetGroupResponseBody;
 
 	const users = responseData?.GetGroupResponse?.GetGroupResult?.Users ?? [];
@@ -38,42 +46,29 @@ export async function searchUsersForGroup(
 	return users;
 }
 
-//NOT YET
 export async function processGroupsResponse(
 	this: IExecuteSingleFunctions,
 	items: INodeExecutionData[],
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
 	const includeUsers = this.getNodeParameter('includeUsers', 0) as boolean;
-
 	const responseBody = response.body as GetGroupResponseBody | GetAllGroupsResponseBody;
-
 	const processedItems: INodeExecutionData[] = [];
 
 	if ('GetGroupResponse' in responseBody) {
-		const group = responseBody.GetGroupResponse.GetGroupResult.Group;
+		const groupData = responseBody.GetGroupResponse.GetGroupResult;
+		const group = groupData.Group;
 
-		if (!includeUsers) {
-			return [{ json: group }];
-		}
-
-		const users: IDataObject[] = responseBody.GetGroupResponse.GetGroupResult.Users ?? [];
-		const groupWithUsers = { ...group, Users: users };
-		return [{ json: groupWithUsers }];
+		return [{ json: includeUsers ? { ...group, Users: groupData.Users ?? [] } : group }];
 	}
 
 	if ('ListGroupsResponse' in responseBody) {
 		const groups = responseBody.ListGroupsResponse.ListGroupsResult.Groups ?? [];
 
-		if (!groups.length) {
-			return items;
-		}
+		if (groups.length === 0) return items;
 
 		if (!includeUsers) {
-			for (const group of groups) {
-				processedItems.push({ ...group } as INodeExecutionData);
-			}
-			return processedItems;
+			return groups.map((group) => ({ json: group }));
 		}
 
 		for (const group of groups) {
@@ -81,8 +76,7 @@ export async function processGroupsResponse(
 			if (!groupName) continue;
 
 			const users = await searchUsersForGroup.call(this, groupName);
-
-			processedItems.push({ ...group, Users: users } as unknown as INodeExecutionData);
+			processedItems.push({ json: { ...group, Users: users } });
 		}
 
 		return processedItems;
@@ -96,43 +90,132 @@ export async function processUsersResponse(
 	_items: INodeExecutionData[],
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
-	const actionType = this.getNodeParameter('operation');
-	let responseBody;
-	let data;
+	if (!response.body) return [];
 
-	if (!response.body) {
-		return [];
+	const operation = this.getNodeParameter('operation');
+
+	if (operation === 'get') {
+		const user = (response.body as GetUserResponseBody)?.GetUserResponse?.GetUserResult?.User;
+		return user ? [{ json: user }] : [];
 	}
 
-	if (actionType === 'get') {
-		responseBody = response.body as GetUserResponseBody;
-		data = responseBody.GetUserResponse?.GetUserResult?.User as User;
-	} else if (actionType === 'getAll') {
-		responseBody = response.body as GetAllUsersResponseBody;
-		data = responseBody.ListUsersResponse?.ListUsersResult?.Users as User[];
+	if (operation === 'getAll') {
+		const users =
+			(response.body as GetAllUsersResponseBody)?.ListUsersResponse?.ListUsersResult?.Users ?? [];
+		return users.map((user) => ({ json: user }));
 	}
 
-	if (!data) {
-		return [];
-	}
-
-	if (!Array.isArray(data)) {
-		return [{ json: data }];
-	}
-
-	return data.map((user) => ({ json: user }));
+	return [];
 }
 
-export async function fetchAndValidateUserPaths(
-	this: ILoadOptionsFunctions | IExecuteSingleFunctions,
-	prefix: string,
-): Promise<void> {
-	const opts: IHttpRequestOptions = {
-		method: 'POST',
-		url: '/?Action=ListUsers&Version=2010-05-08',
-	};
+export async function deleteGroupMembers(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const groupName = (this.getNodeParameter('groupName') as IDataObject)?.value as string;
+	if (!groupName)
+		throw new NodeApiError(
+			this.getNode(),
+			{},
+			{
+				message: 'Group is required',
+				description: 'Please provide a value in Group field to delete a group.',
+			},
+		);
 
-	const responseData: IDataObject = await makeAwsRequest.call(this, opts);
+	const users = await searchUsersForGroup.call(this, groupName);
+	if (!users.length) return requestOptions;
+
+	await Promise.all(
+		users.map(async (user) => {
+			const userName = user.UserName;
+			if (!userName) return;
+
+			const removeUserOpts: IHttpRequestOptions = {
+				method: 'POST',
+				url: `/?Action=RemoveUserFromGroup&GroupName=${groupName}&UserName=${userName}&Version=${CURRENT_VERSION}`,
+				ignoreHttpStatusErrors: true,
+			};
+
+			try {
+				await makeAwsRequest.call(this, removeUserOpts);
+			} catch (error) {
+				console.error(`⚠️ Failed to remove user "${userName}" from "${groupName}":`, error);
+			}
+		}),
+	);
+
+	return requestOptions;
+}
+
+export async function validatePath(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const path = this.getNodeParameter('additionalFields.path', '') as string;
+	const newPath = this.getNodeParameter('newPath', '') as string;
+
+	const selectedPath = newPath || path;
+	if (!selectedPath.startsWith('/') || !selectedPath.endsWith('/')) {
+		throw new NodeApiError(
+			this.getNode(),
+			{},
+			{
+				message: 'Invalid path prefix',
+				description: 'Ensure the path is structured correctly, e.g. /division_abc/subdivision_xyz/',
+			},
+		);
+	}
+
+	return requestOptions;
+}
+
+export async function validateLimit(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const returnAll = this.getNodeParameter('returnAll') as boolean;
+
+	if (!returnAll) {
+		const limit = this.getNodeParameter('limit') as number;
+		if (!limit) {
+			throw new NodeApiError(
+				this.getNode(),
+				{},
+				{
+					message: 'Limit has no value provided',
+					description: 'Provide a "Limit" value or enable "Return All" to fetch all results.',
+				},
+			);
+		}
+		requestOptions.url += `&MaxItems=${limit}`;
+	}
+
+	return requestOptions;
+}
+
+export async function validateUserPath(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const prefix = this.getNodeParameter('additionalFields.pathPrefix') as string;
+
+	if (!prefix.startsWith('/') || !prefix.endsWith('/')) {
+		throw new NodeApiError(
+			this.getNode(),
+			{},
+			{
+				message: 'Invalid path prefix',
+				description: 'Ensure the path is structured correctly, e.g. /division_abc/subdivision_xyz/',
+			},
+		);
+	}
+
+	const responseData: IDataObject = await makeAwsRequest.call(this, {
+		method: 'POST',
+		url: `/?Action=ListUsers&Version=${CURRENT_VERSION}`,
+	});
+
 	const responseBody = responseData as GetAllUsersResponseBody;
 
 	const users = responseBody.ListUsersResponse.ListUsersResult.Users;
@@ -162,313 +245,25 @@ export async function fetchAndValidateUserPaths(
 			},
 		);
 	}
+
+	return requestOptions;
 }
 
 export async function removeUserFromGroups(
-	this: ILoadOptionsFunctions,
+	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const userName = (this.getNodeParameter('userName') as IDataObject).value as string;
-	const userGroups = await searchGroupsForUser.call(this, userName);
+	const userName = (this.getNodeParameter('user') as IDataObject).value as string;
+	const userGroups = await searchGroupsForUser.call(this);
 
 	for (const group of userGroups.results) {
 		const groupName = group.value;
 
-		const removeUserOpts: IHttpRequestOptions = {
+		await makeAwsRequest.call(this, {
 			method: 'POST',
-			url: `/?Action=RemoveUserFromGroup&Version=2010-05-08&GroupName=${groupName}&UserName=${userName}`,
-		};
-
-		await makeAwsRequest.call(this, removeUserOpts);
+			url: `/?Action=RemoveUserFromGroup&Version=${CURRENT_VERSION}&GroupName=${groupName}&UserName=${userName}`,
+		});
 	}
 
-	return requestOptions;
-}
-
-export async function preDeleteUser(
-	this: IExecuteSingleFunctions,
-	requestOptions: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
-	const userName = (this.getNodeParameter('userName') as IDataObject).value as string;
-
-	if (!userName) {
-		throw new NodeApiError(
-			this.getNode(),
-			{},
-			{
-				message: 'User is required',
-				description: 'Please provide a value in User field to delete a user.',
-			},
-		);
-	}
-
-	const groupsResult = await searchGroupsForUser.call(this);
-	const groups = groupsResult.results.map((group) => group.value);
-
-	if (!groups || groups.length === 0) {
-		return requestOptions;
-	}
-
-	for (const groupName of groups) {
-		const removeOpts: IHttpRequestOptions = {
-			method: 'POST',
-			url: `/?Action=RemoveUserFromGroup&GroupName=${groupName}&UserName=${userName}&Version=2010-05-08`,
-			ignoreHttpStatusErrors: true,
-		};
-
-		await makeAwsRequest.call(this as unknown as ILoadOptionsFunctions, removeOpts);
-	}
-
-	return requestOptions;
-}
-
-export async function preDeleteGroup(
-	this: IExecuteSingleFunctions,
-	requestOptions: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
-	const groupName = (this.getNodeParameter('groupName') as IDataObject).value as string;
-
-	if (!groupName) {
-		throw new NodeApiError(
-			this.getNode(),
-			{},
-			{
-				message: 'Group is required',
-				description: 'Please provide a value in Group field to delete a group.',
-			},
-		);
-	}
-
-	const users = await searchUsersForGroup.call(this, groupName);
-	const userNames = users.map((user) => user.UserName as string);
-
-	if (!userNames.length) {
-		return requestOptions;
-	}
-
-	for (const userName of userNames) {
-		const removeUserOpts: IHttpRequestOptions = {
-			method: 'POST',
-			url: `/?Action=RemoveUserFromGroup&GroupName=${groupName}&UserName=${userName}&Version=2010-05-08`,
-			ignoreHttpStatusErrors: true,
-		};
-
-		try {
-			await makeAwsRequest.call(this as unknown as ILoadOptionsFunctions, removeUserOpts);
-		} catch (error) {
-			console.error(`⚠️ Failed to remove user "${userName}" from "${groupName}":`, error);
-		}
-	}
-
-	return requestOptions;
-}
-
-export async function presendStringifyBody(
-	this: IExecuteSingleFunctions,
-	requestOptions: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
-	if (requestOptions.body) {
-		requestOptions.body = JSON.stringify(requestOptions.body);
-	}
-	return requestOptions;
-}
-
-export async function presendUserFields(
-	this: IExecuteSingleFunctions,
-	requestOptions: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
-	const additionalFields = this.getNodeParameter('additionalFields', {}) as IDataObject;
-	let url = requestOptions.url;
-	let userName: string;
-
-	if (url.includes('ListUsers')) {
-		const returnAll = this.getNodeParameter('returnAll');
-		if (!returnAll) {
-			const limit = this.getNodeParameter('limit') as number;
-
-			if (!limit) {
-				const specificError = {
-					message: 'Limit has no value provided',
-					description:
-						'Please provide value for "Limit" or switch "Return All" to true to get all results',
-				};
-				throw new NodeApiError(this.getNode(), {}, specificError);
-			} else {
-				url += `&MaxItems=${limit}`;
-			}
-		}
-
-		let prefix = additionalFields.pathPrefix;
-
-		if (prefix && typeof prefix === 'string') {
-			prefix = prefix.trim();
-
-			if (!prefix.startsWith('/') || !prefix.endsWith('/')) {
-				const specificError = {
-					message: 'Invalid path',
-					description:
-						'Ensure the path is structured correctly, e.g. /division_abc/subdivision_xyz/',
-				};
-				throw new NodeApiError(this.getNode(), {}, specificError);
-			}
-
-			url += `&PathPrefix=${encodeURIComponent(prefix)}`;
-
-			await fetchAndValidateUserPaths.call(this, prefix);
-		}
-	} else if (url.includes('CreateUser')) {
-		userName = this.getNodeParameter('userNameNew') as string;
-		url += `&UserName=${userName}`;
-
-		if (additionalFields.permissionsBoundary) {
-			const permissionsBoundary = additionalFields.permissionsBoundary as string;
-
-			const arnPattern = /^arn:aws:iam::\d{12}:policy\/[\w\-+\/=._]+$/;
-			if (arnPattern.test(permissionsBoundary)) {
-				url += `&PermissionsBoundary=${permissionsBoundary}`;
-			} else {
-				const specificError = {
-					message: 'Invalid permissions boundary provided',
-					description:
-						'Permissions boundaries must be provided in ARN format (e.g. arn:aws:iam::123456789012:policy/ExampleBoundaryPolicy)',
-				};
-				throw new NodeApiError(this.getNode(), {}, specificError);
-			}
-		}
-		if (additionalFields.path) {
-			const path = additionalFields.path as string;
-			if (!path.startsWith('/') || !path.endsWith('/')) {
-				const specificError = {
-					message: 'Invalid path format',
-					description:
-						'Ensure the path is structured correctly, e.g. /division_abc/subdivision_xyz/',
-				};
-				throw new NodeApiError(this.getNode(), {}, specificError);
-			}
-			url += `&Path=${path}`;
-		}
-		if (additionalFields.tags) {
-			const additionalTags = additionalFields.tags as IDataObject;
-
-			const tags = Array.isArray(additionalTags.tags) ? additionalTags.tags : [];
-
-			if (tags.length > 0) {
-				let tagString = '';
-				tags.forEach((tag, index) => {
-					const tagIndex = index + 1;
-					tagString += `Tags.member.${tagIndex}.Key=${encodeURIComponent(tag.key)}&Tags.member.${tagIndex}.Value=${encodeURIComponent(tag.value)}&`;
-				});
-
-				tagString = tagString.slice(0, -1);
-
-				url += `&${tagString}`;
-			}
-		}
-	} else if (url.includes('User')) {
-		userName = (this.getNodeParameter('userName') as IDataObject).value as string;
-		url += `&UserName=${userName}`;
-
-		if (url.includes('AddUserToGroup') || url.includes('RemoveUserFromGroup')) {
-			const groupName = (this.getNodeParameter('groupName') as IDataObject).value as string;
-			url += `&GroupName=${groupName}`;
-		}
-
-		if (url.includes('UpdateUser')) {
-			const newUserName = this.getNodeParameter('newUserName');
-
-			if (newUserName) {
-				const username = newUserName as string;
-				url += `&NewUserName=${username}`;
-			}
-			if (additionalFields.newPath) {
-				const path = additionalFields.newPath as string;
-				if (!path.startsWith('/') || !path.endsWith('/')) {
-					const specificError = {
-						message: 'Path could not be updated',
-						description:
-							'Ensure the path is structured correctly, e.g. /division_abc/subdivision_xyz/',
-					};
-					throw new NodeApiError(this.getNode(), {}, specificError);
-				}
-				url += `&NewPath=${path}`;
-			}
-		}
-	}
-	requestOptions.url = url;
-	return requestOptions;
-}
-
-export async function presendGroupFields(
-	this: IExecuteSingleFunctions,
-	requestOptions: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
-	const additionalFields = this.getNodeParameter('additionalFields', {}) as IDataObject;
-	let url = requestOptions.url;
-	let groupName: string | undefined;
-
-	if (url.includes('CreateGroup')) {
-		groupName = this.getNodeParameter('newName') as string;
-		const groupPattern = /^[+=,.@\\-_A-Za-z0-9]+$/;
-		if (groupPattern.test(groupName) && groupName.length <= 128) {
-			url += `&GroupName=${groupName}`;
-		} else {
-			const specificError = {
-				message: 'Invalid group name provided',
-				description:
-					"The group name can have up to 128 characters. Valid characters: '+=,.@-_' characters.",
-			};
-			throw new NodeApiError(this.getNode(), {}, specificError);
-		}
-		if (additionalFields.path) {
-			url += `&Path=${additionalFields.path}`;
-		}
-	} else if (url.includes('GetGroup') || url.includes('DeleteGroup')) {
-		groupName = (this.getNodeParameter('groupName') as IDataObject).value as string;
-		url += `&GroupName=${groupName}`;
-	} else if (url.includes('UpdateGroup')) {
-		groupName = (this.getNodeParameter('groupName') as IDataObject).value as string;
-		const newGroupName = this.getNodeParameter('newGroupName');
-		if (!/^[a-zA-Z0-9+=,.@_-]+$/.test(groupName) || groupName.length > 128) {
-			throw new NodeApiError(
-				this.getNode(),
-				{},
-				{
-					message: 'Invalid Group Name',
-					description:
-						'The group name must be between 1-128 characters and contain only letters, numbers, +=,.@-_',
-				},
-			);
-		}
-		url += `&GroupName=${groupName}`;
-		if (newGroupName) {
-			const name = newGroupName as string;
-			if (!/^[a-zA-Z0-9+=,.@_-]+$/.test(name) || name.length > 128) {
-				throw new NodeApiError(
-					this.getNode(),
-					{},
-					{
-						message: 'Invalid New Name',
-						description:
-							'The new group name must be between 1-128 characters and contain only letters, numbers, +=,.@-_',
-					},
-				);
-			}
-			url += `&NewGroupName=${name}`;
-		}
-		if (typeof additionalFields.newPath === 'string' && additionalFields.newPath) {
-			const path = additionalFields.newPath.trim();
-			if (!path.startsWith('/') || !path.endsWith('/')) {
-				const specificError = {
-					message: 'Invalid path',
-					description:
-						'Ensure the path is structured correctly, e.g. /division_abc/subdivision_xyz/',
-				};
-				throw new NodeApiError(this.getNode(), {}, specificError);
-			}
-			url += `&NewPath=${path}`;
-		}
-	}
-
-	requestOptions.url = url;
 	return requestOptions;
 }

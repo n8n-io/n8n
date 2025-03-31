@@ -1,5 +1,4 @@
 import {
-	NodeApiError,
 	type IDataObject,
 	type IExecuteSingleFunctions,
 	type IHttpRequestOptions,
@@ -8,6 +7,7 @@ import {
 	type INodeListSearchResult,
 } from 'n8n-workflow';
 
+import { CURRENT_VERSION } from '../helpers/constants';
 import type {
 	GetAllGroupsResponseBody,
 	GetAllUsersResponseBody,
@@ -18,8 +18,8 @@ import { makeAwsRequest } from '../transport';
 function formatResults(items: IDataObject[], filter?: string): INodeListSearchItems[] {
 	return items
 		.map((item) => ({
-			name: String(item.UserName ?? item.GroupName ?? ''),
-			value: String(item.UserName ?? item.GroupName ?? ''),
+			name: String(item.GroupName ?? item.UserName ?? ''),
+			value: String(item.GroupName ?? item.UserName ?? ''),
 		}))
 		.filter(({ name }) => !filter || name.includes(filter))
 		.sort((a, b) => a.name.localeCompare(b.name));
@@ -31,7 +31,7 @@ export async function searchUsers(
 ): Promise<INodeListSearchResult> {
 	const opts: IHttpRequestOptions = {
 		method: 'POST',
-		url: '/?Action=ListUsers&Version=2010-05-08',
+		url: `/?Action=ListUsers&Version=${CURRENT_VERSION}`,
 	};
 
 	const responseData = (await makeAwsRequest.call(this, opts)) as GetAllUsersResponseBody;
@@ -42,7 +42,6 @@ export async function searchUsers(
 	}
 
 	const results = formatResults(users, filter);
-
 	return {
 		results,
 	};
@@ -54,11 +53,7 @@ export async function searchGroups(
 ): Promise<INodeListSearchResult> {
 	const opts: IHttpRequestOptions = {
 		method: 'POST',
-		url: '/?Action=ListGroups&Version=2010-05-08',
-		headers: {
-			'Cache-Control': 'no-cache',
-			Pragma: 'no-cache',
-		},
+		url: `/?Action=ListGroups&Version=${CURRENT_VERSION}`,
 	};
 
 	const responseData = (await makeAwsRequest.call(this, opts)) as GetAllGroupsResponseBody;
@@ -80,18 +75,10 @@ export async function searchGroupsForUser(
 	filter?: string,
 	_paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const userName = (this.getNodeParameter('userName') as IDataObject)?.value;
-	if (!userName) {
-		throw new NodeApiError(
-			this.getNode(),
-			{},
-			{ message: 'User name is required to search groups.' },
-		);
-	}
-
+	const userName = (this.getNodeParameter('user') as IDataObject).value as string;
 	const groupsData = (await makeAwsRequest.call(this, {
 		method: 'POST',
-		url: '/?Action=ListGroups&Version=2010-05-08',
+		url: `/?Action=ListGroups&Version=${CURRENT_VERSION}`,
 	})) as GetAllGroupsResponseBody;
 
 	const groups = groupsData.ListGroupsResponse?.ListGroupsResult?.Groups;
@@ -107,7 +94,7 @@ export async function searchGroupsForUser(
 		try {
 			const getGroupResponse = (await makeAwsRequest.call(this, {
 				method: 'POST',
-				url: `/?Action=GetGroup&Version=2010-05-08&GroupName=${encodeURIComponent(groupName)}`,
+				url: `/?Action=GetGroup&Version=${CURRENT_VERSION}&GroupName=${groupName}`,
 			})) as GetGroupResponseBody;
 
 			const groupResult = getGroupResponse.GetGroupResponse?.GetGroupResult;

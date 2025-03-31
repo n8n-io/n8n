@@ -1,0 +1,73 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-40, -120],
+			"id": "7da2ce49-9a9d-4240-b082-ff1b12d101b1",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "group",
+				"operation": "delete",
+				"groupName": {
+					"__rl": true,
+					"value": "NewGroup11111",
+					"mode": "list",
+					"cachedResultName": "NewGroup11111"
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.awsIam",
+			"typeVersion": 1,
+			"position": [140, -120],
+			"id": "d55b2690-be57-4cdc-829b-f9188c45b9df",
+			"name": "deleteGroup",
+			"credentials": {
+				"aws": {
+					"id": "9jaRLOceaJvYwd8S",
+					"name": "AWS US EAST"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"deleteGroup": [
+			{
+				"json": {
+					"DeleteGroupResponse": {
+						"ResponseMetadata": {
+							"RequestId": "4248f440-291b-4fdf-ac0a-0802eea4bdbd"
+						}
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "deleteGroup",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "24815c4f-0c61-47be-b37c-e80777bfe145",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "26f38eb23ad84214537831cfef4032299ffac994ff18d5cb72e82d31ac4ceac4"
+	},
+	"id": "0qqycx08fTBpfbC9",
+	"tags": []
+}

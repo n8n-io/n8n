@@ -1,5 +1,7 @@
 import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
 
+import { validateLimit } from '../../helpers/utils';
+
 const properties: INodeProperties[] = [
 	{
 		displayName: 'Return All',
@@ -15,9 +17,7 @@ const properties: INodeProperties[] = [
 		description: 'Max number of results to return',
 		routing: {
 			send: {
-				property: '$top',
-				type: 'query',
-				value: '={{ $value }}',
+				preSend: [validateLimit],
 			},
 		},
 		type: 'number',

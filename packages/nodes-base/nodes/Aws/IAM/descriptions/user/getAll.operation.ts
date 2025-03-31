@@ -1,5 +1,7 @@
 import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
 
+import { validateLimit, validateUserPath } from '../../helpers/utils';
+
 const properties: INodeProperties[] = [
 	{
 		displayName: 'Return All',
@@ -18,6 +20,11 @@ const properties: INodeProperties[] = [
 			minValue: 1,
 		},
 		validateType: 'number',
+		routing: {
+			send: {
+				preSend: [validateLimit],
+			},
+		},
 	},
 	{
 		displayName: 'Additional Fields',
@@ -34,6 +41,13 @@ const properties: INodeProperties[] = [
 				default: '/',
 				description: 'The path prefix for filtering the results',
 				placeholder: 'e.g. /division_abc/subdivision_xyz/',
+				routing: {
+					send: {
+						preSend: [validateUserPath],
+						property: 'PathPrefix',
+						value: '={{ $value }}',
+					},
+				},
 			},
 		],
 	},

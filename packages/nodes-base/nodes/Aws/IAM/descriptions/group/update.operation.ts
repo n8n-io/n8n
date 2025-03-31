@@ -1,9 +1,11 @@
 import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
 
+import { validatePath } from '../../helpers/utils';
+
 const properties: INodeProperties[] = [
 	{
 		displayName: 'Group',
-		name: 'groupName',
+		name: 'group',
 		default: {
 			mode: 'list',
 			value: '',
@@ -21,7 +23,7 @@ const properties: INodeProperties[] = [
 			},
 			{
 				displayName: 'By Name',
-				name: 'GroupName',
+				name: 'groupName',
 				type: 'string',
 				hint: 'Enter the group name',
 				validation: [
@@ -60,6 +62,13 @@ const properties: INodeProperties[] = [
 				default: '',
 				placeholder: 'e.g. /division_abc/engineering/',
 				description: 'The path to the group, if it is not included, it defaults to a slash (/)',
+				routing: {
+					send: {
+						preSend: [validatePath],
+						property: 'NewPath',
+						type: 'query',
+					},
+				},
 			},
 		],
 		placeholder: 'Add Option',

@@ -1,0 +1,73 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-40, -120],
+			"id": "7da2ce49-9a9d-4240-b082-ff1b12d101b1",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"user": {
+					"__rl": true,
+					"value": "UserTest101",
+					"mode": "userName"
+				},
+				"newUserName": "NewName",
+				"additionalFields": {},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.awsIam",
+			"typeVersion": 1,
+			"position": [180, -120],
+			"id": "64de4a2b-35f3-433a-be5e-bcbf26bc3d6e",
+			"name": "updateUser",
+			"credentials": {
+				"aws": {
+					"id": "9jaRLOceaJvYwd8S",
+					"name": "AWS US EAST"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"updateUser": [
+			{
+				"json": {
+					"UpdateUserResponse": {
+						"ResponseMetadata": {
+							"RequestId": "3fee55bf-1157-4db2-a63c-eab6b6ec1b3b"
+						}
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "updateUser",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "7c32075f-0e34-4f2d-b4a4-dc8c9ff59e36",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "26f38eb23ad84214537831cfef4032299ffac994ff18d5cb72e82d31ac4ceac4"
+	},
+	"id": "0qqycx08fTBpfbC9",
+	"tags": []
+}

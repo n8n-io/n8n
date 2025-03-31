@@ -1,4 +1,10 @@
-import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
+import {
+	type IDataObject,
+	type IExecuteSingleFunctions,
+	type IHttpRequestOptions,
+	updateDisplayOptions,
+	type INodeProperties,
+} from 'n8n-workflow';
 
 const properties: INodeProperties[] = [
 	{
@@ -9,6 +15,20 @@ const properties: INodeProperties[] = [
 			value: '',
 		},
 		description: 'Select the group you want to delete',
+		routing: {
+			send: {
+				preSend: [
+					async function (
+						this: IExecuteSingleFunctions,
+						requestOptions: IHttpRequestOptions,
+					): Promise<IHttpRequestOptions> {
+						const groupName = (this.getNodeParameter('groupName') as IDataObject)?.value as string;
+						requestOptions.url += `&GroupName=${groupName}`;
+						return requestOptions;
+					},
+				],
+			},
+		},
 		modes: [
 			{
 				displayName: 'From list',

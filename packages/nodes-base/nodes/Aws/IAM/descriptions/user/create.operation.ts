@@ -1,9 +1,18 @@
-import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
+import {
+	type IExecuteSingleFunctions,
+	type IHttpRequestOptions,
+	NodeApiError,
+	updateDisplayOptions,
+	type INodeProperties,
+	type IDataObject,
+} from 'n8n-workflow';
+
+import { validatePath } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
 		displayName: 'User Name',
-		name: 'userNameNew',
+		name: 'newUserName',
 		default: '',
 		description: 'The username of the new user to create',
 		placeholder: 'e.g. JohnSmith',
@@ -30,6 +39,13 @@ const properties: INodeProperties[] = [
 				default: '',
 				description: 'The path for the user name',
 				placeholder: 'e.g. /division_abc/subdivision_xyz/',
+				routing: {
+					send: {
+						preSend: [validatePath],
+						property: 'Path',
+						value: '={{ $value }}',
+					},
+				},
 			},
 			{
 				displayName: 'Permissions Boundary',
@@ -40,6 +56,36 @@ const properties: INodeProperties[] = [
 				placeholder: 'e.g. arn:aws:iam::123456789012:policy/ExampleBoundaryPolicy',
 				type: 'string',
 				validateType: 'string',
+				routing: {
+					send: {
+						preSend: [
+							async function (
+								this: IExecuteSingleFunctions,
+								requestOptions: IHttpRequestOptions,
+							): Promise<IHttpRequestOptions> {
+								const permissionsBoundary = this.getNodeParameter(
+									'additionalFields.permissionsBoundary',
+								) as string;
+								if (permissionsBoundary) {
+									const arnPattern = /^arn:aws:iam::\d{12}:policy\/[\w\-+\/=._]+$/;
+									if (!arnPattern.test(permissionsBoundary)) {
+										throw new NodeApiError(
+											this.getNode(),
+											{},
+											{
+												message: 'Invalid permissions boundary',
+												description:
+													'Must be in ARN format, e.g., arn:aws:iam::123456789012:policy/ExamplePolicy',
+											},
+										);
+									}
+									requestOptions.url += `&PermissionsBoundary=${encodeURIComponent(permissionsBoundary)}`;
+								}
+								return requestOptions;
+							},
+						],
+					},
+				},
 			},
 			{
 				displayName: 'Tags',
@@ -73,6 +119,34 @@ const properties: INodeProperties[] = [
 						],
 					},
 				],
+				routing: {
+					send: {
+						preSend: [
+							async function (
+								this: IExecuteSingleFunctions,
+								requestOptions: IHttpRequestOptions,
+							): Promise<IHttpRequestOptions> {
+								const tagsData = this.getNodeParameter('additionalFields.tags') as {
+									tags: IDataObject[];
+								};
+								const tags = tagsData.tags;
+
+								if (Array.isArray(tags)) {
+									const tagParams = tags
+										.map((tag, index) => {
+											console.log(`Processing tag ${index + 1}:`, tag);
+											return `Tags.member.${index + 1}.Key=${tag.key}&Tags.member.${index + 1}.Value=${tag.value}`;
+										})
+										.join('&');
+
+									requestOptions.url += `&${tagParams}`;
+								}
+
+								return requestOptions;
+							},
+						],
+					},
+				},
 			},
 		],
 	},

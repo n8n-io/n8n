@@ -1,4 +1,4 @@
-import type { INodeProperties } from 'n8n-workflow';
+import type { IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties } from 'n8n-workflow';
 
 import * as addToGroup from './addToGroup.operation';
 import * as create from './create.operation';
@@ -7,8 +7,9 @@ import * as get from './get.operation';
 import * as getAll from './getAll.operation';
 import * as removeFromGroup from './removeFromGroup.operation';
 import * as update from './update.operation';
+import { CURRENT_VERSION } from '../../helpers/constants';
 import { handleError } from '../../helpers/errorHandler';
-import { preDeleteUser, presendUserFields, processUsersResponse } from '../../helpers/utils';
+import { processUsersResponse, removeUserFromGroups } from '../../helpers/utils';
 
 export const description: INodeProperties[] = [
 	{
@@ -29,12 +30,9 @@ export const description: INodeProperties[] = [
 				description: 'Add an existing user to a group',
 				action: 'Add user to group',
 				routing: {
-					send: {
-						preSend: [presendUserFields],
-					},
 					request: {
 						method: 'POST',
-						url: '/?Action=AddUserToGroup&Version=2010-05-08',
+						url: `=/?Action=AddUserToGroup&Version=${CURRENT_VERSION}&UserName={{ $parameter["user"] }}&GroupName={{ $parameter["group"] }}`,
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -49,11 +47,19 @@ export const description: INodeProperties[] = [
 				action: 'Create user',
 				routing: {
 					send: {
-						preSend: [presendUserFields],
+						preSend: [
+							async function (
+								this: IExecuteSingleFunctions,
+								requestOptions: IHttpRequestOptions,
+							): Promise<IHttpRequestOptions> {
+								console.log(requestOptions);
+								return requestOptions;
+							},
+						],
 					},
 					request: {
 						method: 'POST',
-						url: '/?Action=CreateUser&Version=2010-05-08',
+						url: `=/?Action=CreateUser&Version=${CURRENT_VERSION}&UserName={{ $parameter["newUserName"] }}`,
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -68,11 +74,11 @@ export const description: INodeProperties[] = [
 				action: 'Delete user',
 				routing: {
 					send: {
-						preSend: [presendUserFields, preDeleteUser],
+						preSend: [removeUserFromGroups],
 					},
 					request: {
 						method: 'POST',
-						url: '/?Action=DeleteUser&Version=2010-05-08',
+						url: `=/?Action=DeleteUser&Version=${CURRENT_VERSION}&UserName={{ $parameter["user"] }}`,
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -86,12 +92,9 @@ export const description: INodeProperties[] = [
 				description: 'Retrieve an user',
 				action: 'Get user',
 				routing: {
-					send: {
-						preSend: [presendUserFields],
-					},
 					request: {
 						method: 'POST',
-						url: '/?Action=GetUser&Version=2010-05-08',
+						url: `=/?Action=GetUser&Version=${CURRENT_VERSION}&UserName={{ $parameter["user"] }}`,
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -112,12 +115,9 @@ export const description: INodeProperties[] = [
 				value: 'getAll',
 				description: 'Retrieve a list of users',
 				routing: {
-					send: {
-						preSend: [presendUserFields],
-					},
 					request: {
 						method: 'POST',
-						url: '/?Action=ListUsers&Version=2010-05-08',
+						url: `=/?Action=ListUsers&Version=${CURRENT_VERSION}`,
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -132,12 +132,9 @@ export const description: INodeProperties[] = [
 				description: 'Remove a user from a group',
 				action: 'Remove user from group',
 				routing: {
-					send: {
-						preSend: [presendUserFields],
-					},
 					request: {
 						method: 'POST',
-						url: '/?Action=RemoveUserFromGroup&Version=2010-05-08',
+						url: `=/?Action=RemoveUserFromGroup&Version=${CURRENT_VERSION}&UserName={{ $parameter["user"] }}&GroupName={{ $parameter["group"] }}`,
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -151,12 +148,9 @@ export const description: INodeProperties[] = [
 				description: 'Update a user',
 				action: 'Update user',
 				routing: {
-					send: {
-						preSend: [presendUserFields],
-					},
 					request: {
 						method: 'POST',
-						url: '/?Action=UpdateUser&Version=2010-05-08',
+						url: `=/?Action=UpdateUser&Version=${CURRENT_VERSION}&NewUserName={{ $parameter["newUserName"] }}&UserName={{ $parameter["user"] }}`,
 						ignoreHttpStatusErrors: true,
 					},
 					output: {

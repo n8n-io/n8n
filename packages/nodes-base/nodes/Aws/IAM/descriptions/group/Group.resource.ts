@@ -1,12 +1,13 @@
-import type { INodeProperties } from 'n8n-workflow';
+import type { IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties } from 'n8n-workflow';
 
 import * as create from './create.operation';
 import * as del from './delete.operation';
 import * as get from './get.operation';
 import * as getAll from './getAll.operation';
 import * as update from './update.operation';
-import { preDeleteGroup, presendGroupFields, processGroupsResponse } from '../../helpers/utils';
+import { CURRENT_VERSION } from '../../helpers/constants';
 import { handleError } from '../../helpers/errorHandler';
+import { deleteGroupMembers, processGroupsResponse } from '../../helpers/utils';
 
 export const description: INodeProperties[] = [
 	{
@@ -26,12 +27,9 @@ export const description: INodeProperties[] = [
 				value: 'create',
 				description: 'Create a new group',
 				routing: {
-					send: {
-						preSend: [presendGroupFields],
-					},
 					request: {
 						method: 'POST',
-						url: '/?Action=CreateGroup&Version=2010-05-08',
+						url: `=/?Action=CreateGroup&Version=${CURRENT_VERSION}&GroupName={{ $parameter["newGroupName"] }}`,
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -46,11 +44,11 @@ export const description: INodeProperties[] = [
 				description: 'Delete an existing group',
 				routing: {
 					send: {
-						preSend: [presendGroupFields, preDeleteGroup],
+						preSend: [deleteGroupMembers],
 					},
 					request: {
 						method: 'POST',
-						url: '/?Action=DeleteGroup&Version=2010-05-08',
+						url: `=/?Action=DeleteGroup&Version=${CURRENT_VERSION}&GroupName={{ $parameter["group"] }}`,
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -65,11 +63,19 @@ export const description: INodeProperties[] = [
 				description: 'Retrieve details of an existing group',
 				routing: {
 					send: {
-						preSend: [presendGroupFields],
+						preSend: [
+							async function (
+								this: IExecuteSingleFunctions,
+								requestOptions: IHttpRequestOptions,
+							): Promise<IHttpRequestOptions> {
+								console.log(requestOptions);
+								return requestOptions;
+							},
+						],
 					},
 					request: {
 						method: 'POST',
-						url: '/?Action=GetGroup&Version=2010-05-08',
+						url: `=/?Action=GetGroup&Version=${CURRENT_VERSION}&GroupName={{ $parameter["group"] }}`,
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -83,12 +89,9 @@ export const description: INodeProperties[] = [
 				value: 'getAll',
 				description: 'Retrieve a list of groups',
 				routing: {
-					send: {
-						preSend: [presendGroupFields],
-					},
 					request: {
 						method: 'POST',
-						url: '/?Action=ListGroups&Version=2010-05-08',
+						url: `/?Action=ListGroups&Version=${CURRENT_VERSION}`,
 						qs: {
 							pageSize:
 								'={{ $parameter["limit"] ? ($parameter["limit"] < 60 ? $parameter["limit"] : 60) : 60 }}',
@@ -106,12 +109,9 @@ export const description: INodeProperties[] = [
 				value: 'update',
 				description: 'Update an existing group',
 				routing: {
-					send: {
-						preSend: [presendGroupFields],
-					},
 					request: {
 						method: 'POST',
-						url: '/?Action=UpdateGroup&Version=2010-05-08',
+						url: `=/?Action=UpdateGroup&Version=${CURRENT_VERSION}&GroupName={{ $parameter["group"] }}&NewGroupName={{ $parameter["newGroupName"] }}`,
 						ignoreHttpStatusErrors: true,
 					},
 					output: {

@@ -3,7 +3,7 @@ import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
 const properties: INodeProperties[] = [
 	{
 		displayName: 'User',
-		name: 'userName',
+		name: 'user',
 		required: true,
 		type: 'resourceLocator',
 		default: {
@@ -23,7 +23,7 @@ const properties: INodeProperties[] = [
 			},
 			{
 				displayName: 'By Name',
-				name: 'UserName',
+				name: 'userName',
 				type: 'string',
 				hint: 'Enter the user name',
 				validation: [

@@ -1,9 +1,11 @@
 import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
 
+import { validatePath } from '../../helpers/utils';
+
 const properties: INodeProperties[] = [
 	{
 		displayName: 'User',
-		name: 'userName',
+		name: 'user',
 		required: true,
 		type: 'resourceLocator',
 		default: {
@@ -23,7 +25,7 @@ const properties: INodeProperties[] = [
 			},
 			{
 				displayName: 'By Name',
-				name: 'UserName',
+				name: 'userName',
 				type: 'string',
 				hint: 'Enter the user name',
 				validation: [
@@ -65,6 +67,13 @@ const properties: INodeProperties[] = [
 				validateType: 'string',
 				default: '/',
 				placeholder: 'e.g. /division_abc/subdivision_xyz/',
+				routing: {
+					send: {
+						preSend: [validatePath],
+						property: 'newPath',
+						value: '={{ $value }}',
+					},
+				},
 			},
 		],
 	},
