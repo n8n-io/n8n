@@ -40,7 +40,7 @@ describe('UpdateApiKeyRequestDto', () => {
 				name: 'scopes with malformed scope',
 				label: 'valid label',
 				scopes: ['user:1'],
-				expectedErrorPath: ['scopes'],
+				expectedErrorPath: ['scopes', 0],
 			},
 			{
 				name: 'scopes with empty array',
