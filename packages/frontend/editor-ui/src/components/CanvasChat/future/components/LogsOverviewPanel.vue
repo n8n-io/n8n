@@ -42,8 +42,8 @@ const executionTree = computed<TreeNode[]>(() =>
 );
 const isEmpty = computed(() => workflowsStore.workflowExecutionData === null);
 const switchViewOptions = computed<Array<{ label: string; value: string }>>(() => [
-	{ label: 'Details', value: 'details' },
-	{ label: 'Overview', value: 'overview' },
+	{ label: locale.baseText('logs.overview.header.switch.details'), value: 'details' },
+	{ label: locale.baseText('logs.overview.header.switch.overview'), value: 'overview' },
 ]);
 const executionStatusText = computed(() => {
 	const execution = workflowsStore.workflowExecutionData;

@@ -980,6 +980,8 @@
 	"logs.overview.header.title": "Logs",
 	"logs.overview.header.actions.clearExecution": "Clear execution",
 	"logs.overview.header.actions.clearExecution.tooltip": "Clear execution data",
+	"logs.overview.header.switch.details": "Details",
+	"logs.overview.header.switch.overview": "Overview",
 	"logs.overview.body.empty.message": "Nothing to display yet. Execute the workflow to see execution logs.",
 	"logs.overview.body.empty.action": "Execute the workflow",
 	"logs.overview.body.summaryText": "{status} in {time}",
