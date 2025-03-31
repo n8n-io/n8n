@@ -30,30 +30,6 @@
 		"getAllUsers": [
 			{
 				"json": {
-					"Arn": "arn:aws:iam::130450532146:user/accounts@that.de",
-					"CreateDate": 1733911052,
-					"PasswordLastUsed": null,
-					"Path": "/",
-					"PermissionsBoundary": null,
-					"Tags": null,
-					"UserId": "AIDAR4X3VE4ZANWXRN2L2",
-					"UserName": "accounts@that.de"
-				}
-			},
-			{
-				"json": {
-					"Arn": "arn:aws:iam::130450532146:user/acounts@this.de",
-					"CreateDate": 1730803738,
-					"PasswordLastUsed": null,
-					"Path": "/",
-					"PermissionsBoundary": null,
-					"Tags": null,
-					"UserId": "AIDAR4X3VE4ZNIPURCVCS",
-					"UserName": "acounts@this.de"
-				}
-			},
-			{
-				"json": {
 					"Arn": "arn:aws:iam::130450532146:user/Johnnn",
 					"CreateDate": 1739198010,
 					"PasswordLastUsed": null,

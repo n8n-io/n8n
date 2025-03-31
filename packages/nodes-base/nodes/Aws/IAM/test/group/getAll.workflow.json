@@ -11,7 +11,7 @@
 		{
 			"parameters": {
 				"resource": "group",
-				"includeUsers": true,
+				"includeUsers": false,
 				"requestOptions": {}
 			},
 			"type": "n8n-nodes-base.awsIam",
@@ -35,8 +35,7 @@
 					"CreateDate": 1733436631,
 					"GroupId": "AGPAR4X3VE4ZAFFY5EDUJ",
 					"GroupName": "Admin7",
-					"Path": "/test/",
-					"Users": []
+					"Path": "/test/"
 				}
 			},
 			{
@@ -45,19 +44,7 @@
 					"CreateDate": 1730804196,
 					"GroupId": "AGPAR4X3VE4ZMVEFLBSRB",
 					"GroupName": "cognito",
-					"Path": "/",
-					"Users": [
-						{
-							"Arn": "arn:aws:iam::130450532146:user/accounts@this.de",
-							"CreateDate": 1733911052,
-							"PasswordLastUsed": null,
-							"Path": "/",
-							"PermissionsBoundary": null,
-							"Tags": null,
-							"UserId": "AIDAR4X3VE4ZANWXRN2L2",
-							"UserName": "accounts@this.de"
-						}
-					]
+					"Path": "/"
 				}
 			},
 			{
@@ -66,60 +53,7 @@
 					"CreateDate": 1741589366,
 					"GroupId": "AGPAR4X3VE4ZF5VE6UF2U",
 					"GroupName": "GroupCreatedAfter",
-					"Path": "/",
-					"Users": []
-				}
-			},
-			{
-				"json": {
-					"Arn": "arn:aws:iam::130450532146:group/New/Path/GroupName",
-					"CreateDate": 1739193696,
-					"GroupId": "AGPAR4X3VE4ZKHNKBQHBZ",
-					"GroupName": "GroupName",
-					"Path": "/New/Path/",
-					"Users": []
-				}
-			},
-			{
-				"json": {
-					"Arn": "arn:aws:iam::130450532146:group/IAM2",
-					"CreateDate": 1733417983,
-					"GroupId": "AGPAR4X3VE4ZO6SWJR3LF",
-					"GroupName": "IAM2",
-					"Path": "/",
-					"Users": [
-						{
-							"Arn": "arn:aws:iam::130450532146:user/accounts@this.de",
-							"CreateDate": 1733911052,
-							"PasswordLastUsed": null,
-							"Path": "/",
-							"PermissionsBoundary": null,
-							"Tags": null,
-							"UserId": "AIDAR4X3VE4ZANWXRN2L2",
-							"UserName": "accounts@this.de"
-						}
-					]
-				}
-			},
-			{
-				"json": {
-					"Arn": "arn:aws:iam::130450532146:group/Knowledgebase",
-					"CreateDate": 1734107519,
-					"GroupId": "AGPAR4X3VE4ZP6BWIJ77V",
-					"GroupName": "Knowledgebase",
-					"Path": "/",
-					"Users": [
-						{
-							"Arn": "arn:aws:iam::130450532146:user/accounts@this.de",
-							"CreateDate": 1733911052,
-							"PasswordLastUsed": null,
-							"Path": "/",
-							"PermissionsBoundary": null,
-							"Tags": null,
-							"UserId": "AIDAR4X3VE4ZANWXRN2L2",
-							"UserName": "accounts@this.de"
-						}
-					]
+					"Path": "/"
 				}
 			}
 		]

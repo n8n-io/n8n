@@ -1,4 +1,4 @@
-import type { IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import * as create from './create.operation';
 import * as del from './delete.operation';
@@ -62,17 +62,6 @@ export const description: INodeProperties[] = [
 				value: 'get',
 				description: 'Retrieve details of an existing group',
 				routing: {
-					send: {
-						preSend: [
-							async function (
-								this: IExecuteSingleFunctions,
-								requestOptions: IHttpRequestOptions,
-							): Promise<IHttpRequestOptions> {
-								console.log(requestOptions);
-								return requestOptions;
-							},
-						],
-					},
 					request: {
 						method: 'POST',
 						url: `=/?Action=GetGroup&Version=${CURRENT_VERSION}&GroupName={{ $parameter["group"] }}`,
@@ -92,10 +81,6 @@ export const description: INodeProperties[] = [
 					request: {
 						method: 'POST',
 						url: `/?Action=ListGroups&Version=${CURRENT_VERSION}`,
-						qs: {
-							pageSize:
-								'={{ $parameter["limit"] ? ($parameter["limit"] < 60 ? $parameter["limit"] : 60) : 60 }}',
-						},
 						ignoreHttpStatusErrors: true,
 					},
 					output: {

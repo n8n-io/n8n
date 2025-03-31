@@ -4,28 +4,28 @@
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [-40, -120],
+			"position": [-80, -100],
 			"id": "7da2ce49-9a9d-4240-b082-ff1b12d101b1",
 			"name": "When clicking ‘Test workflow’"
 		},
 		{
 			"parameters": {
 				"resource": "group",
-				"operation": "update",
+				"operation": "get",
 				"group": {
 					"__rl": true,
-					"value": "GroupNameUpdated",
+					"value": "GroupNameUpdated2",
 					"mode": "list",
-					"cachedResultName": "GroupNameUpdated"
+					"cachedResultName": "GroupNameUpdated2"
 				},
-				"newGroupName": "GroupNameUpdated2",
+				"includeUsers": true,
 				"requestOptions": {}
 			},
 			"type": "n8n-nodes-base.awsIam",
 			"typeVersion": 1,
-			"position": [140, -120],
-			"id": "6299cf80-7aea-4cf6-8604-368a42290da7",
-			"name": "updateGroup",
+			"position": [160, -100],
+			"id": "7990c8f3-738e-4150-855e-a9c0a965b75d",
+			"name": "getGroup",
 			"credentials": {
 				"aws": {
 					"id": "9jaRLOceaJvYwd8S",
@@ -35,14 +35,26 @@
 		}
 	],
 	"pinData": {
-		"updateGroup": [
+		"getGroup": [
 			{
 				"json": {
-					"UpdateGroupResponse": {
-						"ResponseMetadata": {
-							"RequestId": "16ada465-a981-44ab-841f-3ca3247f7405"
+					"Arn": "arn:aws:iam::130450532146:group/New/Path/GroupNameUpdated2",
+					"CreateDate": 1739193696,
+					"GroupId": "AGPAR4X3VE4ZKHNKBQHBZ",
+					"GroupName": "GroupNameUpdated2",
+					"Path": "/New/Path/",
+					"Users": [
+						{
+							"Arn": "arn:aws:iam::130450532146:user/rhis/path/Jonas",
+							"CreateDate": 1739198295,
+							"PasswordLastUsed": null,
+							"Path": "/rhis/path/",
+							"PermissionsBoundary": null,
+							"Tags": null,
+							"UserId": "AIDAR4X3VE4ZDJJFKI6OU",
+							"UserName": "Jonas"
 						}
-					}
+					]
 				}
 			}
 		]
@@ -52,7 +64,7 @@
 			"main": [
 				[
 					{
-						"node": "updateGroup",
+						"node": "getGroup",
 						"type": "main",
 						"index": 0
 					}
@@ -64,7 +76,7 @@
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"versionId": "bce6ece0-c45a-4389-9e39-6edea3d2e0da",
+	"versionId": "47e9f15a-50b7-4f12-ac5b-c7b24bb9a400",
 	"meta": {
 		"templateCredsSetupCompleted": true,
 		"instanceId": "26f38eb23ad84214537831cfef4032299ffac994ff18d5cb72e82d31ac4ceac4"

@@ -112,7 +112,8 @@ export async function deleteGroupMembers(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const groupName = (this.getNodeParameter('groupName') as IDataObject)?.value as string;
+	const groupName = (this.getNodeParameter('group') as IDataObject)?.value as string;
+
 	if (!groupName)
 		throw new NodeApiError(
 			this.getNode(),
@@ -130,21 +131,17 @@ export async function deleteGroupMembers(
 		users.map(async (user) => {
 			const userName = user.UserName;
 			if (!userName) return;
-
-			const removeUserOpts: IHttpRequestOptions = {
-				method: 'POST',
-				url: `/?Action=RemoveUserFromGroup&GroupName=${groupName}&UserName=${userName}&Version=${CURRENT_VERSION}`,
-				ignoreHttpStatusErrors: true,
-			};
-
 			try {
-				await makeAwsRequest.call(this, removeUserOpts);
+				await makeAwsRequest.call(this, {
+					method: 'POST',
+					url: `/?Action=RemoveUserFromGroup&GroupName=${groupName}&UserName=${userName}&Version=${CURRENT_VERSION}`,
+					ignoreHttpStatusErrors: true,
+				});
 			} catch (error) {
 				console.error(`⚠️ Failed to remove user "${userName}" from "${groupName}":`, error);
 			}
 		}),
 	);
-
 	return requestOptions;
 }
 
@@ -153,16 +150,30 @@ export async function validatePath(
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
 	const path = this.getNodeParameter('additionalFields.path', '') as string;
-	const newPath = this.getNodeParameter('newPath', '') as string;
+	const newPath = this.getNodeParameter('additionalFields.newPath', '') as string;
 
 	const selectedPath = newPath || path;
-	if (!selectedPath.startsWith('/') || !selectedPath.endsWith('/')) {
+
+	if (selectedPath.length < 1 || selectedPath.length > 512) {
 		throw new NodeApiError(
 			this.getNode(),
 			{},
 			{
-				message: 'Invalid path prefix',
-				description: 'Ensure the path is structured correctly, e.g. /division_abc/subdivision_xyz/',
+				message: 'Invalid path length',
+				description: 'Path must be between 1 and 512 characters long.',
+			},
+		);
+	}
+
+	const validPathRegex = /^\/[\u0021-\u007E]*\/$/;
+
+	if (!validPathRegex.test(selectedPath) && selectedPath !== '/') {
+		throw new NodeApiError(
+			this.getNode(),
+			{},
+			{
+				message: 'Invalid path format',
+				description: 'Ensure the path follows the pattern: /division_abc/subdivision_xyz/',
 			},
 		);
 	}

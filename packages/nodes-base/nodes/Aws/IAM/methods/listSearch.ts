@@ -1,7 +1,6 @@
 import {
 	type IDataObject,
 	type IExecuteSingleFunctions,
-	type IHttpRequestOptions,
 	type ILoadOptionsFunctions,
 	type INodeListSearchItems,
 	type INodeListSearchResult,
@@ -28,66 +27,82 @@ function formatResults(items: IDataObject[], filter?: string): INodeListSearchIt
 export async function searchUsers(
 	this: ILoadOptionsFunctions,
 	filter?: string,
+	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const opts: IHttpRequestOptions = {
+	const requestParams = paginationToken ? `&Marker=${paginationToken}` : '';
+
+	const responseData = (await makeAwsRequest.call(this, {
 		method: 'POST',
-		url: `/?Action=ListUsers&Version=${CURRENT_VERSION}`,
-	};
+		url: `/?Action=ListUsers&Version=${CURRENT_VERSION}${requestParams}`,
+	})) as GetAllUsersResponseBody;
 
-	const responseData = (await makeAwsRequest.call(this, opts)) as GetAllUsersResponseBody;
-	const users = responseData.ListUsersResponse.ListUsersResult.Users;
+	const users = responseData.ListUsersResponse.ListUsersResult.Users || [];
 
-	if (!users) {
-		return { results: [] };
-	}
+	const nextMarker = responseData.ListUsersResponse.ListUsersResult.IsTruncated
+		? responseData.ListUsersResponse.ListUsersResult.Marker
+		: undefined;
 
-	const results = formatResults(users, filter);
 	return {
-		results,
+		results: formatResults(users, filter),
+		paginationToken: nextMarker,
 	};
 }
 
 export async function searchGroups(
 	this: ILoadOptionsFunctions,
 	filter?: string,
+	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const opts: IHttpRequestOptions = {
+	const requestParams = paginationToken ? `&Marker=${paginationToken}` : '';
+
+	const responseData = (await makeAwsRequest.call(this, {
 		method: 'POST',
-		url: `/?Action=ListGroups&Version=${CURRENT_VERSION}`,
-	};
+		url: `/?Action=ListGroups&Version=${CURRENT_VERSION}${requestParams}`,
+	})) as GetAllGroupsResponseBody;
 
-	const responseData = (await makeAwsRequest.call(this, opts)) as GetAllGroupsResponseBody;
-	const groups = responseData.ListGroupsResponse.ListGroupsResult.Groups;
+	const groups = responseData.ListGroupsResponse.ListGroupsResult.Groups || [];
 
-	if (!groups) {
-		return { results: [] };
-	}
-
-	const results = formatResults(groups, filter);
+	const nextMarker = responseData.ListGroupsResponse.ListGroupsResult.IsTruncated
+		? responseData.ListGroupsResponse.ListGroupsResult.Marker
+		: undefined;
 
 	return {
-		results,
+		results: formatResults(groups, filter),
+		paginationToken: nextMarker,
 	};
 }
 
 export async function searchGroupsForUser(
 	this: ILoadOptionsFunctions | IExecuteSingleFunctions,
 	filter?: string,
-	_paginationToken?: string,
+	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
 	const userName = (this.getNodeParameter('user') as IDataObject).value as string;
-	const groupsData = (await makeAwsRequest.call(this, {
-		method: 'POST',
-		url: `/?Action=ListGroups&Version=${CURRENT_VERSION}`,
-	})) as GetAllGroupsResponseBody;
+	let requestParams = paginationToken ? `&Marker=${paginationToken}` : '';
+	let allGroups: IDataObject[] = [];
+	let nextMarker: string | undefined;
 
-	const groups = groupsData.ListGroupsResponse?.ListGroupsResult?.Groups;
+	do {
+		const groupsData = (await makeAwsRequest.call(this, {
+			method: 'POST',
+			url: `/?Action=ListGroups&Version=${CURRENT_VERSION}${requestParams}`,
+		})) as GetAllGroupsResponseBody;
 
-	if (!groups || groups.length === 0) {
+		const groups = groupsData.ListGroupsResponse?.ListGroupsResult?.Groups || [];
+		nextMarker = groupsData.ListGroupsResponse?.ListGroupsResult?.IsTruncated
+			? groupsData.ListGroupsResponse?.ListGroupsResult?.Marker
+			: undefined;
+
+		allGroups = [...allGroups, ...groups];
+
+		requestParams = nextMarker ? `&Marker=${nextMarker}` : '';
+	} while (nextMarker);
+
+	if (allGroups.length === 0) {
 		return { results: [] };
 	}
 
-	const groupCheckPromises = groups.map(async (group) => {
+	const groupCheckPromises = allGroups.map(async (group) => {
 		const groupName = group.GroupName as string;
 		if (!groupName) return null;
 
@@ -98,7 +113,6 @@ export async function searchGroupsForUser(
 			})) as GetGroupResponseBody;
 
 			const groupResult = getGroupResponse.GetGroupResponse?.GetGroupResult;
-
 			if (groupResult?.Users?.some((user) => user.UserName === userName)) {
 				return { UserName: userName, GroupName: groupName };
 			}
@@ -109,9 +123,8 @@ export async function searchGroupsForUser(
 
 	const validUserGroups = (await Promise.all(groupCheckPromises)).filter(Boolean) as IDataObject[];
 
-	const formattedResults = formatResults(validUserGroups, filter);
-
 	return {
-		results: formattedResults,
+		results: formatResults(validUserGroups, filter),
+		paginationToken: nextMarker,
 	};
 }

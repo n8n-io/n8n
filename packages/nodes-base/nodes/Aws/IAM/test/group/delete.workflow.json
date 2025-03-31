@@ -4,26 +4,26 @@
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [-40, -120],
-			"id": "7da2ce49-9a9d-4240-b082-ff1b12d101b1",
+			"position": [-660, 280],
+			"id": "b4205abf-7102-4e53-8aed-7bd047acfaf4",
 			"name": "When clicking ‘Test workflow’"
 		},
 		{
 			"parameters": {
 				"resource": "group",
 				"operation": "delete",
-				"groupName": {
+				"group": {
 					"__rl": true,
-					"value": "NewGroup11111",
+					"value": "GroupTest1",
 					"mode": "list",
-					"cachedResultName": "NewGroup11111"
+					"cachedResultName": "GroupTest1"
 				},
 				"requestOptions": {}
 			},
 			"type": "n8n-nodes-base.awsIam",
 			"typeVersion": 1,
-			"position": [140, -120],
-			"id": "d55b2690-be57-4cdc-829b-f9188c45b9df",
+			"position": [-460, 280],
+			"id": "fa481cba-5793-48c9-8354-6c5526cdc914",
 			"name": "deleteGroup",
 			"credentials": {
 				"aws": {
@@ -39,7 +39,7 @@
 				"json": {
 					"DeleteGroupResponse": {
 						"ResponseMetadata": {
-							"RequestId": "4248f440-291b-4fdf-ac0a-0802eea4bdbd"
+							"RequestId": "03eee660-ffc4-46ff-81ec-13e4cfc3aee8"
 						}
 					}
 				}
@@ -63,11 +63,11 @@
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"versionId": "24815c4f-0c61-47be-b37c-e80777bfe145",
+	"versionId": "d64557fc-c998-467d-ab64-344400880609",
 	"meta": {
 		"templateCredsSetupCompleted": true,
 		"instanceId": "26f38eb23ad84214537831cfef4032299ffac994ff18d5cb72e82d31ac4ceac4"
 	},
-	"id": "0qqycx08fTBpfbC9",
+	"id": "tHedKT04CupYzeSH",
 	"tags": []
 }

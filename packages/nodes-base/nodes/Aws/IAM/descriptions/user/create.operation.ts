@@ -4,9 +4,9 @@ import {
 	NodeApiError,
 	updateDisplayOptions,
 	type INodeProperties,
-	type IDataObject,
 } from 'n8n-workflow';
 
+import type { Tags } from '../../helpers/types';
 import { validatePath } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
@@ -126,22 +126,17 @@ const properties: INodeProperties[] = [
 								this: IExecuteSingleFunctions,
 								requestOptions: IHttpRequestOptions,
 							): Promise<IHttpRequestOptions> {
-								const tagsData = this.getNodeParameter('additionalFields.tags') as {
-									tags: IDataObject[];
-								};
+								const tagsData = this.getNodeParameter('additionalFields.tags') as Tags;
 								const tags = tagsData.tags;
 
 								if (Array.isArray(tags)) {
 									const tagParams = tags
 										.map((tag, index) => {
-											console.log(`Processing tag ${index + 1}:`, tag);
 											return `Tags.member.${index + 1}.Key=${tag.key}&Tags.member.${index + 1}.Value=${tag.value}`;
 										})
 										.join('&');
-
 									requestOptions.url += `&${tagParams}`;
 								}
-
 								return requestOptions;
 							},
 						],

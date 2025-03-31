@@ -32,6 +32,8 @@ export type GetAllUsersResponseBody = {
 	ListUsersResponse: {
 		ListUsersResult: {
 			Users: IDataObject[];
+			IsTruncated: boolean;
+			Marker: string;
 		};
 	};
 };
@@ -40,6 +42,12 @@ export type GetAllGroupsResponseBody = {
 	ListGroupsResponse: {
 		ListGroupsResult: {
 			Groups: IDataObject[];
+			IsTruncated: boolean;
+			Marker: string;
 		};
 	};
+};
+
+export type Tags = {
+	tags: IDataObject[];
 };
