@@ -237,8 +237,16 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 						sourceData,
 					};
 				})
-				// If a destination node is specified, we don't want to include it in the start nodes
-				.filter((node) => !options.destinationNode || node.name !== options.destinationNode);
+				// If a destination node is specified and it has chat parent, we don't want to include it in the start nodes
+				.filter((node) => {
+					if (
+						options.destinationNode &&
+						workflowsStore.checkIfNodeHasChatParent(options.destinationNode)
+					) {
+						return node.name !== options.destinationNode;
+					}
+					return true;
+				});
 
 			const singleWebhookTrigger = triggers.find((node) =>
 				SINGLE_WEBHOOK_TRIGGERS.includes(node.type),
