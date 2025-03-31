@@ -6,7 +6,7 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
 import { computed, ref } from 'vue';
-import { ElTree } from 'element-plus';
+import { ElTree, type TreeNode as ElTreeNode } from 'element-plus';
 import {
 	createAiData,
 	getSubtreeTotalConsumedTokens,
@@ -91,6 +91,10 @@ function handleClickNode(clicked: TreeNode) {
 		workflow_id: workflow.value.id,
 	});
 }
+
+function handleToggleExpanded(treeNode: ElTreeNode) {
+	treeNode.expanded = !treeNode.expanded;
+}
 </script>
 
 <template>
@@ -151,6 +155,7 @@ function handleClickNode(clicked: TreeNode) {
 								data.node === selectedRun?.node && data.runIndex === selectedRun?.runIndex
 							"
 							:should-show-consumed-tokens="consumedTokens.totalTokens > 0"
+							@toggle-expanded="handleToggleExpanded"
 						/>
 					</template>
 				</ElTree>

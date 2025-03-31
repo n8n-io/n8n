@@ -18,6 +18,8 @@ const props = defineProps<{
 	shouldShowConsumedTokens: boolean;
 }>();
 
+const emit = defineEmits<{ toggleExpanded: [node: ElTreeNode] }>();
+
 const locale = useI18n();
 const workflowsStore = useWorkflowsStore();
 const nodeTypeStore = useNodeTypesStore();
@@ -75,10 +77,6 @@ function isLastChild(level: number) {
 
 	return data === siblings[siblings.length - 1];
 }
-
-function handleClickToggleButton() {
-	props.node.expanded = !props.node.expanded;
-}
 </script>
 
 <template>
@@ -128,7 +126,7 @@ function handleClickToggleButton() {
 					color: 'var(--color-text-base)',
 				}"
 				:class="$style.toggleButton"
-				@click.stop="handleClickToggleButton"
+				@click.stop="emit('toggleExpanded', props.node)"
 			/>
 		</div>
 	</div>
