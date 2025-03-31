@@ -673,10 +673,21 @@ export class ActiveWorkflowManager {
 		const triggerFilter = (nodeType: INodeType) =>
 			!!nodeType.trigger && !nodeType.description.name.includes('manualTrigger');
 
+		// Retrieve unqique webhooks as some nodes have multiple webhooks
+		const workflowWebhooks = WebhookHelpers.getWorkflowWebhooks(
+			workflow,
+			additionalData,
+			undefined,
+			true,
+		);
+
+		const webhookNodeNames = workflowWebhooks.map((webhook) => webhook.node);
+		const uniqueWebhookCount = new Set(webhookNodeNames).size;
+
 		return (
 			workflow.queryNodes(triggerFilter).length +
 			workflow.getPollNodes().length +
-			WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true).length
+			uniqueWebhookCount
 		);
 	}
 
