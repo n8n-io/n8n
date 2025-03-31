@@ -123,7 +123,7 @@ function isLastChild(level: number) {
 				:icon="props.node.expanded ? 'chevron-down' : 'chevron-up'"
 				:style="{
 					visibility: props.data.children.length === 0 ? 'hidden' : '',
-					color: 'var(--color-text-base)',
+					color: 'var(--color-text-base)', // give higher specificity than the style from the component itself
 				}"
 				:class="$style.toggleButton"
 				@click.stop="emit('toggleExpanded', props.node)"
@@ -231,7 +231,6 @@ function isLastChild(level: number) {
 	border: none;
 	background: transparent;
 	margin-inline-end: var(--spacing-5xs);
-	color: var(--color-text-base);
 
 	&:hover {
 		background: transparent;
