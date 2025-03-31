@@ -92,7 +92,7 @@ export class License {
 				autoRenewEnabled: shouldRenew,
 				renewOnInit: shouldRenew,
 				autoRenewOffset,
-				detachFloatableOnShutdown: this.globalConfig.license.detachFloatableOnShutdown,
+				detachFloatingOnShutdown: this.globalConfig.license.detachFloatingOnShutdown,
 				offlineMode,
 				logger: this.logger,
 				loadCertStr: async () => await this.loadCertStr(),
