@@ -370,8 +370,8 @@ export async function execute(
 				// Setting empty values to empty string so that they are not ignored by the API
 				Object.keys(mappingValues).forEach((key) => {
 					if (
-						(key === 'row_number' && mappingValues[key] === null) ||
-						mappingValues[key] === undefined
+						key === 'row_number' &&
+						(mappingValues[key] === null || mappingValues[key] === undefined)
 					) {
 						throw new UserError(
 							'Column to match on (row_number) is not defined. Since the field is used to determine the row to update, it needs to have a value set.',
