@@ -71,7 +71,9 @@ export class HttpRequestV3 implements INodeType {
 				},
 			],
 			properties: mainProperties,
-			usableAsTool: true,
+			usableAsTool: {
+				commonToolProperties: true,
+			},
 		};
 	}
 

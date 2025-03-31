@@ -1,177 +1,212 @@
 import type { INodeProperties } from '../Interfaces';
 
-export const commonToolParameters: INodeProperties[] = [
-	{
-		displayName: 'Optimize Response',
-		name: 'optimizeResponse',
-		type: 'boolean',
-		default: false,
-		noDataExpression: true,
-		description:
-			'Whether to optimize the tool response to reduce amount of data passed to the LLM, which can lead to better result and reduce cost',
-	},
-	{
-		displayName: 'Expected Response Type',
-		name: 'responseType',
-		type: 'options',
-		displayOptions: {
-			show: {
-				optimizeResponse: [true],
-			},
-		},
-		options: [
-			{
-				name: 'JSON',
-				value: 'json',
-			},
-			{
-				name: 'HTML',
-				value: 'html',
-			},
-			{
-				name: 'Text',
-				value: 'text',
-			},
-		],
-		default: 'json',
-	},
-	{
-		displayName: 'Field Containing Data',
-		name: 'dataField',
-		type: 'string',
-		default: '',
-		placeholder: 'e.g. records',
-		description: 'Specify the name of the field in the response containing the data',
-		hint: 'leave blank to use whole response',
-		requiresDataPath: 'single',
-		displayOptions: {
-			show: {
-				optimizeResponse: [true],
-				responseType: ['json'],
-			},
-		},
-	},
-	{
-		displayName: 'Include Fields',
-		name: 'fieldsToInclude',
-		type: 'options',
-		description: 'What fields response object should include',
-		default: 'all',
-		displayOptions: {
-			show: {
-				optimizeResponse: [true],
-				responseType: ['json'],
-			},
-		},
-		options: [
-			{
-				name: 'All',
-				value: 'all',
-				description: 'Include all fields',
-			},
-			{
-				name: 'Selected',
-				value: 'selected',
-				description: 'Include only fields specified below',
-			},
-			{
-				name: 'Except',
-				value: 'except',
-				description: 'Exclude fields specified below',
-			},
-		],
-	},
-	{
-		displayName: 'Fields',
-		name: 'fields',
-		type: 'string',
-		default: '',
-		placeholder: 'e.g. field1,field2',
-		description:
-			'Comma-separated list of the field names. Supports dot notation. You can drag the selected fields from the input panel.',
-		requiresDataPath: 'multiple',
-		displayOptions: {
-			show: {
-				optimizeResponse: [true],
-				responseType: ['json'],
-			},
-			hide: {
-				fieldsToInclude: ['all'],
-			},
-		},
-	},
+const PREFIX = 'commonToolParameters_';
+const FIELDS_ARRAY = [
+	'optimizeResponse',
+	'optimizedFields',
+	'optimizedFieldOptions',
+	'fieldPath',
+	'optimizationType',
+	'removedFields',
+	'removedFieldsOptions',
+	'excludeAllOtherFields',
+	'cssSelector',
+	'onlyContent',
+	'elementsToOmit',
+	'truncateResult',
+	'maxLength',
+] as const;
+
+const FIELDS = Object.fromEntries(
+	FIELDS_ARRAY.map((x) => [x, `${PREFIX}${x}` as const] as const),
+) as { [key in (typeof FIELDS_ARRAY)[number]]: `${typeof PREFIX}${key}` };
+
+const optimizationProps: INodeProperties[] = [
 	{
 		displayName: 'Selector (CSS)',
-		name: 'cssSelector',
+		name: FIELDS.cssSelector,
 		type: 'string',
 		description:
 			'Select specific element (e.g. body) or multiple elements (e.g. div) of the chosen type in the response HTML.',
 		placeholder: 'e.g. body',
 		default: 'body',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				optimizeResponse: [true],
-				responseType: ['html'],
+				[FIELDS.optimizationType]: ['html'],
 			},
 		},
 	},
 	{
 		displayName: 'Return Only Content',
-		name: 'onlyContent',
+		name: FIELDS.onlyContent,
 		type: 'boolean',
 		default: false,
 		description:
 			'Whether to return only content of html elements, stripping html tags and attributes',
 		hint: 'Uses less tokens and may be easier for model to understand',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				optimizeResponse: [true],
-				responseType: ['html'],
+				[FIELDS.optimizationType]: ['html'],
 			},
 		},
 	},
 	{
 		displayName: 'Elements To Omit',
-		name: 'elementsToOmit',
+		name: FIELDS.elementsToOmit,
 		type: 'string',
 		displayOptions: {
 			show: {
-				optimizeResponse: [true],
-				responseType: ['html'],
-				onlyContent: [true],
+				[FIELDS.optimizationType]: ['html'],
+				[FIELDS.onlyContent]: [true],
 			},
 		},
 		default: '',
 		placeholder: 'e.g. img, .className, #ItemId',
 		description: 'Comma-separated list of selectors that would be excluded when extracting content',
+		noDataExpression: true,
 	},
 	{
-		displayName: 'Truncate Response',
-		name: 'truncateResponse',
+		displayName: 'Truncate Result',
+		name: FIELDS.truncateResult,
 		type: 'boolean',
 		default: false,
 		hint: 'Helps save tokens',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				optimizeResponse: [true],
-				responseType: ['text', 'html'],
+				[FIELDS.optimizationType]: ['text', 'html'],
 			},
 		},
 	},
 	{
-		displayName: 'Max Response Characters',
+		displayName: 'Max Result Characters',
 		name: 'maxLength',
 		type: 'number',
 		default: 1000,
 		typeOptions: {
 			minValue: 1,
 		},
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				optimizeResponse: [true],
-				responseType: ['text', 'html'],
-				truncateResponse: [true],
+				[FIELDS.optimizationType]: ['text', 'html'],
+				[FIELDS.truncateResult]: [true],
 			},
 		},
+	},
+];
+
+export const commonToolParameters: INodeProperties[] = [
+	{
+		displayName: 'Optimize Response',
+		name: FIELDS.optimizeResponse,
+		type: 'boolean',
+		default: false,
+		noDataExpression: true,
+		description:
+			'Whether to optimize the tool response to reduce amount of data passed to the LLM. This can lead to better result and reduce cost',
+	},
+	{
+		displayName: 'Selected Fields',
+		name: FIELDS.optimizedFields,
+		type: 'fixedCollection',
+		default: {},
+		placeholder: 'Add Field',
+		description: 'Fields to include and optimize',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				[FIELDS.optimizeResponse]: [true],
+			},
+		},
+		options: [
+			{
+				displayName: 'What is this?',
+				name: FIELDS.optimizedFieldOptions,
+				values: [
+					{
+						displayName: 'Field Path',
+						name: FIELDS.fieldPath,
+						type: 'string',
+						default: '',
+						placeholder: 'data.myArray[0].myField',
+						noDataExpression: true,
+						description: 'The path to the field containing the data to optimize.',
+					},
+					{
+						displayName: 'Optimization',
+						name: FIELDS.optimizationType,
+						type: 'options',
+						default: 'none',
+						description: 'TODO <docs to optimizations>',
+						options: [
+							{
+								name: 'None',
+								value: 'none',
+							},
+							{
+								name: 'HTML',
+								value: 'html',
+							},
+							{
+								name: 'Text',
+								value: 'text',
+							},
+						],
+					},
+					...optimizationProps,
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Exclude All Other Fields',
+		name: FIELDS.excludeAllOtherFields,
+		type: 'boolean',
+		noDataExpression: true,
+		displayOptions: {
+			show: {
+				[FIELDS.optimizeResponse]: [true],
+			},
+		},
+		default: true,
+	},
+	{
+		displayName: 'Excluded Fields',
+		name: FIELDS.removedFields,
+		type: 'fixedCollection',
+		default: {},
+		placeholder: 'Add Field to Exclude',
+		description: '',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				[FIELDS.optimizeResponse]: [true],
+				[FIELDS.excludeAllOtherFields]: [false],
+			},
+		},
+		options: [
+			{
+				displayName: 'But what is this?',
+				name: FIELDS.removedFieldsOptions,
+				values: [
+					{
+						displayName: 'Field Path',
+						name: FIELDS.fieldPath,
+						type: 'string',
+						default: '',
+						noDataExpression: true,
+						placeholder: 'e.g. data.myArray[0].myFieldToRemove',
+						description: 'The path to the field containing the data to remove.',
+					},
+				],
+			},
+		],
 	},
 ];
