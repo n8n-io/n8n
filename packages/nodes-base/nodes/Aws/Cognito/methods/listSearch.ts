@@ -1,11 +1,11 @@
-import {
-	ApplicationError,
-	type IDataObject,
-	type IHttpRequestOptions,
-	type ILoadOptionsFunctions,
-	type INodeListSearchItems,
-	type INodeListSearchResult,
+import type {
+	IDataObject,
+	IHttpRequestOptions,
+	ILoadOptionsFunctions,
+	INodeListSearchItems,
+	INodeListSearchResult,
 } from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
 
 import type { IUserAttribute, IUserPool } from '../helpers/interfaces';
 import { getUsersInGroup } from '../helpers/utils';

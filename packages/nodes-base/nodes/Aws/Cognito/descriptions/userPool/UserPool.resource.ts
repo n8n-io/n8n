@@ -9,7 +9,11 @@ export const description: INodeProperties[] = [
 		name: 'operation',
 		type: 'options',
 		noDataExpression: true,
-		displayOptions: { show: { resource: ['userPool'] } },
+		displayOptions: {
+			show: {
+				resource: ['userPool'],
+			},
+		},
 		options: [
 			{
 				name: 'Get',

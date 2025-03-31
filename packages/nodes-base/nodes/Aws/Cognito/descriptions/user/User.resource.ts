@@ -127,7 +127,7 @@ export const description: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [simplifyData, handleError],
+						postReceive: [handleError, simplifyData],
 					},
 				},
 			},
@@ -149,8 +149,8 @@ export const description: INodeProperties[] = [
 					},
 					output: {
 						postReceive: [
-							simplifyData,
 							handleError,
+							simplifyData,
 							{
 								type: 'rootProperty',
 								properties: {

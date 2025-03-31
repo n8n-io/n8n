@@ -1,4 +1,5 @@
-import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
+import { updateDisplayOptions } from 'n8n-workflow';
 
 const properties: INodeProperties[] = [
 	{
@@ -6,9 +7,17 @@ const properties: INodeProperties[] = [
 		name: 'userPoolId',
 		required: true,
 		type: 'resourceLocator',
-		default: { mode: 'list', value: '' },
+		default: {
+			mode: 'list',
+			value: '',
+		},
 		description: 'The user pool where the users are managed',
-		routing: { send: { type: 'body', property: 'UserPoolId' } },
+		routing: {
+			send: {
+				type: 'body',
+				property: 'UserPoolId',
+			},
+		},
 		modes: [
 			{
 				displayName: 'From list',
@@ -53,8 +62,17 @@ const properties: INodeProperties[] = [
 		},
 		default: 20,
 		description: 'Max number of results to return',
-		displayOptions: { show: { returnAll: [false] } },
-		routing: { send: { type: 'body', property: 'Limit' } },
+		displayOptions: {
+			show: {
+				returnAll: [false],
+			},
+		},
+		routing: {
+			send: {
+				type: 'body',
+				property: 'Limit',
+			},
+		},
 	},
 	{
 		displayName: 'Include User List',

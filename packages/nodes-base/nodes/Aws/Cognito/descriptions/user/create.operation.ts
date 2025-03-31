@@ -1,4 +1,5 @@
-import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
+import { updateDisplayOptions } from 'n8n-workflow';
 
 const properties: INodeProperties[] = [
 	{
@@ -135,7 +136,9 @@ const properties: INodeProperties[] = [
 				displayName: 'Temporary Password',
 				name: 'temporaryPasswordOptions',
 				type: 'string',
-				typeOptions: { password: true },
+				typeOptions: {
+					password: true,
+				},
 				default: '',
 				description:
 					"The user's temporary password that will be valid only once. If not set, Amazon Cognito will automatically generate one for you.",

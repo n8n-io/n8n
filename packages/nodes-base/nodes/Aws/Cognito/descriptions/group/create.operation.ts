@@ -1,10 +1,5 @@
-import {
-	type IExecuteSingleFunctions,
-	type IHttpRequestOptions,
-	NodeApiError,
-	updateDisplayOptions,
-	type INodeProperties,
-} from 'n8n-workflow';
+import type { IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties } from 'n8n-workflow';
+import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
 
 import { validateArn } from '../../helpers/utils';
 

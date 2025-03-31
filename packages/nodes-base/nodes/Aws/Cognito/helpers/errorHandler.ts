@@ -1,11 +1,11 @@
-import {
-	NodeApiError,
-	type IDataObject,
-	type JsonObject,
-	type IExecuteSingleFunctions,
-	type IN8nHttpFullResponse,
-	type INodeExecutionData,
+import type {
+	IDataObject,
+	JsonObject,
+	IExecuteSingleFunctions,
+	IN8nHttpFullResponse,
+	INodeExecutionData,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function handleError(
 	this: IExecuteSingleFunctions,

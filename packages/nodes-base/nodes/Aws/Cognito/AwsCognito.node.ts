@@ -45,16 +45,16 @@ export class AwsCognito implements INodeType {
 				},
 				options: [
 					{
+						name: 'Group',
+						value: 'group',
+					},
+					{
 						name: 'User',
 						value: 'user',
 					},
 					{
 						name: 'User Pool',
 						value: 'userPool',
-					},
-					{
-						name: 'Group',
-						value: 'group',
 					},
 				],
 			},

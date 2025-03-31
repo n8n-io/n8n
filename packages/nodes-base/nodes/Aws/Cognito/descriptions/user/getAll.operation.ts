@@ -1,9 +1,5 @@
-import {
-	type IExecuteSingleFunctions,
-	type IHttpRequestOptions,
-	updateDisplayOptions,
-	type INodeProperties,
-} from 'n8n-workflow';
+import type { IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties } from 'n8n-workflow';
+import { updateDisplayOptions } from 'n8n-workflow';
 
 import type { Filters } from '../../helpers/interfaces';
 import { parseRequestBody } from '../../helpers/utils';
@@ -69,8 +65,17 @@ const properties: INodeProperties[] = [
 		},
 		default: 20,
 		description: 'Max number of results to return',
-		displayOptions: { show: { returnAll: [false] } },
-		routing: { send: { type: 'body', property: 'Limit' } },
+		displayOptions: {
+			show: {
+				returnAll: [false],
+			},
+		},
+		routing: {
+			send: {
+				type: 'body',
+				property: 'Limit',
+			},
+		},
 	},
 	{
 		displayName: 'Simplify',
@@ -84,7 +89,7 @@ const properties: INodeProperties[] = [
 		name: 'filters',
 		type: 'fixedCollection',
 		placeholder: 'Add Filter',
-		default: [],
+		default: {},
 		routing: {
 			send: {
 				preSend: [
@@ -118,16 +123,46 @@ const properties: INodeProperties[] = [
 						default: 'email',
 						description: 'The attribute to search for',
 						options: [
-							{ name: 'Cognito User Status', value: 'cognito:user_status' },
-							{ name: 'Email', value: 'email' },
-							{ name: 'Family Name', value: 'family_name' },
-							{ name: 'Given Name', value: 'given_name' },
-							{ name: 'Name', value: 'name' },
-							{ name: 'Phone Number', value: 'phone_number' },
-							{ name: 'Preferred Username', value: 'preferred_username' },
-							{ name: 'Status (Enabled)', value: 'status' },
-							{ name: 'Sub', value: 'sub' },
-							{ name: 'Username', value: 'username' },
+							{
+								name: 'Cognito User Status',
+								value: 'cognito:user_status',
+							},
+							{
+								name: 'Email',
+								value: 'email',
+							},
+							{
+								name: 'Family Name',
+								value: 'family_name',
+							},
+							{
+								name: 'Given Name',
+								value: 'given_name',
+							},
+							{
+								name: 'Name',
+								value: 'name',
+							},
+							{
+								name: 'Phone Number',
+								value: 'phone_number',
+							},
+							{
+								name: 'Preferred Username',
+								value: 'preferred_username',
+							},
+							{
+								name: 'Status (Enabled)',
+								value: 'status',
+							},
+							{
+								name: 'Sub',
+								value: 'sub',
+							},
+							{
+								name: 'Username',
+								value: 'username',
+							},
 						],
 					},
 					{

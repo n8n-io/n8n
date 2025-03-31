@@ -1,11 +1,10 @@
-import {
-	type IDataObject,
-	type IExecuteSingleFunctions,
-	type IHttpRequestOptions,
-	updateDisplayOptions,
-	type INodeProperties,
-	NodeApiError,
+import type {
+	IDataObject,
+	IExecuteSingleFunctions,
+	IHttpRequestOptions,
+	INodeProperties,
 } from 'n8n-workflow';
+import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
 
 import { validateArn } from '../../helpers/utils';
 

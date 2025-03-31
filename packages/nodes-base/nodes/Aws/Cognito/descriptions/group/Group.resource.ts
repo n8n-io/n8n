@@ -86,7 +86,7 @@ export const description: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [processGroupsResponse, handleError],
+						postReceive: [handleError, processGroupsResponse],
 					},
 				},
 				action: 'Get group',
@@ -109,8 +109,8 @@ export const description: INodeProperties[] = [
 					},
 					output: {
 						postReceive: [
-							processGroupsResponse,
 							handleError,
+							processGroupsResponse,
 							{
 								type: 'rootProperty',
 								properties: {

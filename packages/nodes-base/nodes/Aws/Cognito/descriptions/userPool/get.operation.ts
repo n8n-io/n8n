@@ -1,4 +1,5 @@
-import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
+import { updateDisplayOptions } from 'n8n-workflow';
 
 const properties: INodeProperties[] = [
 	{
@@ -6,7 +7,10 @@ const properties: INodeProperties[] = [
 		name: 'userPoolId',
 		required: true,
 		type: 'resourceLocator',
-		default: { mode: 'list', value: '' },
+		default: {
+			mode: 'list',
+			value: '',
+		},
 		description: 'Select the user pool to retrieve',
 		routing: {
 			send: {

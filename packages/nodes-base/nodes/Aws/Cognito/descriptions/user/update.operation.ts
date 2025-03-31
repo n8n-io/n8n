@@ -1,10 +1,5 @@
-import {
-	type IExecuteSingleFunctions,
-	type IHttpRequestOptions,
-	NodeApiError,
-	updateDisplayOptions,
-	type INodeProperties,
-} from 'n8n-workflow';
+import type { IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties } from 'n8n-workflow';
+import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
 
 import type { IUserAttributeInput } from '../../helpers/interfaces';
 import { parseRequestBody } from '../../helpers/utils';
@@ -175,23 +170,74 @@ const properties: INodeProperties[] = [
 						type: 'options',
 						default: 'address',
 						options: [
-							{ name: 'Address', value: 'address' },
-							{ name: 'Birthdate', value: 'birthdate' },
-							{ name: 'Email', value: 'email' },
-							{ name: 'Family Name', value: 'family_name' },
-							{ name: 'Gender', value: 'gender' },
-							{ name: 'Given Name', value: 'given_name' },
-							{ name: 'Locale', value: 'locale' },
-							{ name: 'Middle Name', value: 'middle_name' },
-							{ name: 'Name', value: 'name' },
-							{ name: 'Nickname', value: 'nickname' },
-							{ name: 'Phone Number', value: 'phone_number' },
-							{ name: 'Preferred Username', value: 'preferred_username' },
-							{ name: 'Profile Picture', value: 'profilepicture' },
-							{ name: 'Updated At', value: 'updated_at' },
-							{ name: 'User Sub', value: 'sub' },
-							{ name: 'Website', value: 'website' },
-							{ name: 'Zone Info', value: 'zoneinfo' },
+							{
+								name: 'Address',
+								value: 'address',
+							},
+							{
+								name: 'Birthdate',
+								value: 'birthdate',
+							},
+							{
+								name: 'Email',
+								value: 'email',
+							},
+							{
+								name: 'Family Name',
+								value: 'family_name',
+							},
+							{
+								name: 'Gender',
+								value: 'gender',
+							},
+							{
+								name: 'Given Name',
+								value: 'given_name',
+							},
+							{
+								name: 'Locale',
+								value: 'locale',
+							},
+							{
+								name: 'Middle Name',
+								value: 'middle_name',
+							},
+							{
+								name: 'Name',
+								value: 'name',
+							},
+							{
+								name: 'Nickname',
+								value: 'nickname',
+							},
+							{
+								name: 'Phone Number',
+								value: 'phone_number',
+							},
+							{
+								name: 'Preferred Username',
+								value: 'preferred_username',
+							},
+							{
+								name: 'Profile Picture',
+								value: 'profilepicture',
+							},
+							{
+								name: 'Updated At',
+								value: 'updated_at',
+							},
+							{
+								name: 'User Sub',
+								value: 'sub',
+							},
+							{
+								name: 'Website',
+								value: 'website',
+							},
+							{
+								name: 'Zone Info',
+								value: 'zoneinfo',
+							},
 						],
 						displayOptions: {
 							show: {
