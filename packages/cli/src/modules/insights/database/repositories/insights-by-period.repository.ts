@@ -356,25 +356,28 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		return { count, rows: aggregatedInsightsByWorkflowParser.parse(rawRows) };
 	}
 
-	async getInsightsByTime(nbDays: number) {
+	async getInsightsByTime({
+		maxAgeInDays,
+		periodUnit,
+	}: { maxAgeInDays: number; periodUnit: PeriodUnit }) {
 		const dateSubQuery =
 			dbType === 'sqlite'
-				? `datetime('now', '-${nbDays} days')`
+				? `datetime('now', '-${maxAgeInDays} days')`
 				: dbType === 'postgresdb'
-					? `CURRENT_DATE - INTERVAL '${nbDays} days'`
-					: `DATE_SUB(CURDATE(), INTERVAL ${nbDays} DAY)`;
+					? `CURRENT_DATE - INTERVAL '${maxAgeInDays} days'`
+					: `DATE_SUB(CURDATE(), INTERVAL ${maxAgeInDays} DAY)`;
 
-		const rawRowsQuery = this.createQueryBuilder('insights')
+		const rawRowsQuery = this.createQueryBuilder()
 			.select([
-				'insights.periodStart AS "periodStart"',
-				`SUM(CASE WHEN insights.type = ${TypeToNumber.runtime_ms} THEN value ELSE 0 END) AS "runTime"`,
-				`SUM(CASE WHEN insights.type = ${TypeToNumber.success} THEN value ELSE 0 END) AS "succeeded"`,
-				`SUM(CASE WHEN insights.type = ${TypeToNumber.failure} THEN value ELSE 0 END) AS "failed"`,
-				`SUM(CASE WHEN insights.type = ${TypeToNumber.time_saved_min} THEN value ELSE 0 END) AS "timeSaved"`,
+				`${this.getPeriodStartExpr(periodUnit)} as "periodStart"`,
+				`SUM(CASE WHEN type = ${TypeToNumber.runtime_ms} THEN value ELSE 0 END) AS "runTime"`,
+				`SUM(CASE WHEN type = ${TypeToNumber.success} THEN value ELSE 0 END) AS "succeeded"`,
+				`SUM(CASE WHEN type = ${TypeToNumber.failure} THEN value ELSE 0 END) AS "failed"`,
+				`SUM(CASE WHEN type = ${TypeToNumber.time_saved_min} THEN value ELSE 0 END) AS "timeSaved"`,
 			])
-			.where(`insights.periodStart >= ${dateSubQuery}`)
-			.addGroupBy('insights.periodStart') // TODO: group by specific time scale (start with day)
-			.orderBy('insights.periodStart', 'ASC');
+			.where(`${this.escapeField('periodStart')} >= ${dateSubQuery}`)
+			.addGroupBy(this.getPeriodStartExpr(periodUnit))
+			.orderBy(this.getPeriodStartExpr(periodUnit), 'ASC');
 
 		const rawRows = await rawRowsQuery.getRawMany();
 

@@ -1,7 +1,4 @@
-import { Container } from '@n8n/di';
-
 import type { User } from '@/databases/entities/user';
-import { InsightsService } from '@/modules/insights/insights.service';
 import { Telemetry } from '@/telemetry';
 import { mockInstance } from '@test/mocking';
 
@@ -20,15 +17,11 @@ const testServer = utils.setupTestServer({
 	enabledFeatures: [],
 });
 
-let insightsService: InsightsService;
-
 beforeAll(async () => {
 	owner = await createUser({ role: 'global:owner' });
 	member = await createUser({ role: 'global:member' });
 	authOwnerAgent = testServer.authAgentFor(owner);
 	authMemberAgent = testServer.authAgentFor(member);
-
-	insightsService = Container.get(InsightsService);
 });
 
 describe('GET /insights/summary', () => {

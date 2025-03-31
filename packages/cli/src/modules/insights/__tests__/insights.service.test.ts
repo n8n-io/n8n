@@ -1036,7 +1036,7 @@ describe('getInsightsByTime', () => {
 	});
 
 	test('returns empty array when no insights exist', async () => {
-		const byTime = await insightsService.getInsightsByTime(14);
+		const byTime = await insightsService.getInsightsByTime({ maxAgeInDays: 14, periodUnit: 'day' });
 		expect(byTime).toEqual([]);
 	});
 
@@ -1048,7 +1048,7 @@ describe('getInsightsByTime', () => {
 			periodStart: DateTime.utc().minus({ days: 30 }),
 		});
 
-		const byTime = await insightsService.getInsightsByTime(14);
+		const byTime = await insightsService.getInsightsByTime({ maxAgeInDays: 14, periodUnit: 'day' });
 		expect(byTime).toEqual([]);
 	});
 
@@ -1061,10 +1061,11 @@ describe('getInsightsByTime', () => {
 				periodUnit: 'day',
 				periodStart: DateTime.utc(),
 			});
+			// Check that hourly data is grouped together with the previous daily data
 			await createCompactedInsightsEvent(workflow, {
 				type: 'failure',
 				value: 2,
-				periodUnit: 'day',
+				periodUnit: 'hour',
 				periodStart: DateTime.utc(),
 			});
 			await createCompactedInsightsEvent(workflow, {
@@ -1088,7 +1089,7 @@ describe('getInsightsByTime', () => {
 		}
 
 		// ACT
-		const byTime = await insightsService.getInsightsByTime(14);
+		const byTime = await insightsService.getInsightsByTime({ maxAgeInDays: 14, periodUnit: 'day' });
 
 		// ASSERT
 		expect(byTime).toHaveLength(3);

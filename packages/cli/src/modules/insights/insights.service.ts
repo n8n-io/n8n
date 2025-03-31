@@ -14,7 +14,7 @@ import { OnShutdown } from '@/decorators/on-shutdown';
 import { InsightsMetadata } from '@/modules/insights/database/entities/insights-metadata';
 import { InsightsRaw } from '@/modules/insights/database/entities/insights-raw';
 
-import type { TypeUnit } from './database/entities/insights-shared';
+import type { PeriodUnit, TypeUnit } from './database/entities/insights-shared';
 import { NumberToType } from './database/entities/insights-shared';
 import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
 import { InsightsRawRepository } from './database/repositories/insights-raw.repository';
@@ -325,8 +325,14 @@ export class InsightsService {
 		};
 	}
 
-	async getInsightsByTime(nbDays: number) {
-		const rows = await this.insightsByPeriodRepository.getInsightsByTime(nbDays);
+	async getInsightsByTime({
+		maxAgeInDays,
+		periodUnit,
+	}: { maxAgeInDays: number; periodUnit: PeriodUnit }) {
+		const rows = await this.insightsByPeriodRepository.getInsightsByTime({
+			maxAgeInDays,
+			periodUnit,
+		});
 
 		return rows.map((r) => {
 			const total = r.succeeded + r.failed;

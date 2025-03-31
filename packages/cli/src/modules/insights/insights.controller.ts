@@ -38,6 +38,9 @@ export class InsightsController {
 	@Get('/by-time')
 	@GlobalScope('insights:list')
 	async getInsightsByTime(): Promise<InsightsByTime[]> {
-		return await this.insightsService.getInsightsByTime(this.maxAgeInDaysFilteredInsights);
+		return await this.insightsService.getInsightsByTime({
+			maxAgeInDays: this.maxAgeInDaysFilteredInsights,
+			periodUnit: 'day',
+		});
 	}
 }
