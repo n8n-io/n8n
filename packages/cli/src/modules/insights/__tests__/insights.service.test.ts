@@ -903,6 +903,14 @@ describe('getInsightsByWorkflow', () => {
 				periodUnit: 'day',
 				periodStart: DateTime.utc().minus({ days: 10 }),
 			});
+			// Out of date range insight (should not be included)
+			// 14 days and 1 minute ago
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 1,
+				periodUnit: 'day',
+				periodStart: DateTime.utc().minus({ days: 14, minutes: 1 }),
+			});
 		}
 
 		// ACT
@@ -1085,6 +1093,14 @@ describe('getInsightsByTime', () => {
 				value: workflow === workflow1 ? 10 : 20,
 				periodUnit: 'day',
 				periodStart: DateTime.utc().minus({ days: 10 }),
+			});
+			/// Out of date range insight (should not be included)
+			// 14 days ago start of the day and minus 1 minute
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 1,
+				periodUnit: 'day',
+				periodStart: DateTime.utc().startOf('day').minus({ days: 14, minutes: 1 }),
 			});
 		}
 

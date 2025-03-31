@@ -362,7 +362,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	}: { maxAgeInDays: number; periodUnit: PeriodUnit }) {
 		const dateSubQuery =
 			dbType === 'sqlite'
-				? `datetime('now', '-${maxAgeInDays} days')`
+				? `date('now', '-${maxAgeInDays} days')`
 				: dbType === 'postgresdb'
 					? `CURRENT_DATE - INTERVAL '${maxAgeInDays} days'`
 					: `DATE_SUB(CURDATE(), INTERVAL ${maxAgeInDays} DAY)`;
