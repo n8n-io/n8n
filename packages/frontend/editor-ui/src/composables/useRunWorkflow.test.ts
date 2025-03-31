@@ -14,7 +14,7 @@ import {
 } from 'n8n-workflow';
 
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
-import type { IStartRunData, IWorkflowData } from '@/Interface';
+import type { IExecutionResponse, IStartRunData, IWorkflowData } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
@@ -23,7 +23,8 @@ import { useI18n } from '@/composables/useI18n';
 import { captor, mock } from 'vitest-mock-extended';
 import { useSettingsStore } from '@/stores/settings.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
-import { createTestNode } from '@/__tests__/mocks';
+import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
+import { waitFor } from '@testing-library/vue';
 
 vi.mock('@/stores/workflows.store', () => ({
 	useWorkflowsStore: vi.fn().mockReturnValue({
@@ -45,6 +46,7 @@ vi.mock('@/stores/workflows.store', () => ({
 		getPinnedDataLastRemovedAt: vi.fn(),
 		incomingConnectionsByNodeName: vi.fn(),
 		outgoingConnectionsByNodeName: vi.fn(),
+		markExecutionAsStopped: vi.fn(),
 	}),
 }));
 
@@ -669,6 +671,43 @@ describe('useRunWorkflow({ router })', () => {
 					nodes: [],
 				},
 			});
+		});
+	});
+
+	describe('stopCurrentExecution()', () => {
+		it('should not prematurely call markExecutionAsStopped() while execution status is still "running"', async () => {
+			const runWorkflowComposable = useRunWorkflow({ router });
+			const executionData: IExecutionResponse = {
+				id: 'test-exec-id',
+				workflowData: createTestWorkflow({ id: 'test-wf-id' }),
+				finished: false,
+				mode: 'manual',
+				status: 'running',
+				startedAt: new Date('2025-04-01T00:00:00.000Z'),
+				createdAt: new Date('2025-04-01T00:00:00.000Z'),
+			};
+			const markStoppedSpy = vi.spyOn(workflowsStore, 'markExecutionAsStopped');
+
+			workflowsStore.workflowExecutionData = executionData;
+			workflowsStore.activeWorkflows = ['test-wf-id'];
+			workflowsStore.activeExecutionId = 'test-exec-id';
+
+			// Exercise - don't wait for returned promise to resolve
+			void runWorkflowComposable.stopCurrentExecution();
+
+			// Assert that markExecutionAsStopped() isn't called yet after a simulated delay
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			expect(markStoppedSpy).not.toHaveBeenCalled();
+
+			// Simulated executionFinished event
+			workflowsStore.workflowExecutionData = {
+				...executionData,
+				status: 'canceled',
+				stoppedAt: new Date('2025-04-01T00:00:99.000Z'),
+			};
+
+			// Assert that markExecutionAsStopped() is called eventually
+			await waitFor(() => expect(markStoppedSpy).toHaveBeenCalled());
 		});
 	});
 });
