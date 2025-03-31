@@ -3,7 +3,7 @@ import {
 	Column,
 	Entity,
 	JoinColumn,
-	OneToOne,
+	ManyToOne,
 	PrimaryGeneratedColumn,
 } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
@@ -28,7 +28,7 @@ export class InsightsByPeriod extends BaseEntity {
 	@Column()
 	metaId: number;
 
-	@OneToOne(() => InsightsMetadata)
+	@ManyToOne(() => InsightsMetadata)
 	@JoinColumn({ name: 'metaId' })
 	metadata: InsightsMetadata;
 

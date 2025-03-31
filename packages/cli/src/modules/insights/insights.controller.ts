@@ -10,7 +10,7 @@ import { InsightsService } from './insights.service';
 
 @RestController('/insights')
 export class InsightsController {
-	private readonly nbDaysFilteredInsights = 14;
+	private readonly maxAgeInDaysFilteredInsights = 14;
 
 	constructor(private readonly insightsService: InsightsService) {}
 
@@ -28,7 +28,7 @@ export class InsightsController {
 		@Query payload: ListInsightsWorkflowQueryDto,
 	): Promise<InsightsByWorkflow> {
 		return await this.insightsService.getInsightsByWorkflow({
-			nbDays: this.nbDaysFilteredInsights,
+			maxAgeInDays: this.maxAgeInDaysFilteredInsights,
 			skip: payload.skip,
 			take: payload.take,
 			sortBy: payload.sortBy,
@@ -38,6 +38,6 @@ export class InsightsController {
 	@Get('/by-time')
 	@GlobalScope('insights:list')
 	async getInsightsByTime(): Promise<InsightsByTime[]> {
-		return await this.insightsService.getInsightsByTime(this.nbDaysFilteredInsights);
+		return await this.insightsService.getInsightsByTime(this.maxAgeInDaysFilteredInsights);
 	}
 }

@@ -2,6 +2,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource, Repository } from '@n8n/typeorm';
+import { DateTime } from 'luxon';
 import { z } from 'zod';
 
 import { sql } from '@/utils/sql';
@@ -25,26 +26,32 @@ const summaryParser = z
 const aggregatedInsightsByWorkflowParser = z
 	.object({
 		workflowId: z.string(),
-		workflowName: z.string().optional(),
-		projectId: z.string().optional(),
-		projectName: z.string().optional(),
-		total: z.union([z.number(), z.string()]),
-		succeeded: z.union([z.number(), z.string()]),
-		failed: z.union([z.number(), z.string()]),
-		failureRate: z.union([z.number(), z.string()]),
-		runTime: z.union([z.number(), z.string()]),
-		averageRunTime: z.union([z.number(), z.string()]),
-		timeSaved: z.union([z.number(), z.string()]),
+		workflowName: z.string(),
+		projectId: z.string(),
+		projectName: z.string(),
+		total: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		succeeded: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		failed: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		failureRate: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		runTime: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		averageRunTime: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		timeSaved: z.union([z.number(), z.string()]).transform((value) => Number(value)),
 	})
 	.array();
 
 const aggregatedInsightsByTimeParser = z
 	.object({
-		periodStart: z.union([z.date(), z.string()]),
-		runTime: z.union([z.number(), z.string()]),
-		succeeded: z.union([z.number(), z.string()]),
-		failed: z.union([z.number(), z.string()]),
-		timeSaved: z.union([z.number(), z.string()]),
+		periodStart: z
+			.union([z.date(), z.string()])
+			.transform((value) =>
+				value instanceof Date
+					? value.toISOString()
+					: DateTime.fromSQL(value.toString(), { zone: 'utc' }).toISO(),
+			),
+		runTime: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		succeeded: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		failed: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		timeSaved: z.union([z.number(), z.string()]).transform((value) => Number(value)),
 	})
 	.array();
 
@@ -295,22 +302,22 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	}
 
 	async getInsightsByWorkflow({
-		nbDays,
+		maxAgeInDays,
 		skip = 0,
 		take = 20,
 		sortBy = 'total:desc',
 	}: {
-		nbDays: number;
+		maxAgeInDays: number;
 		skip?: number;
 		take?: number;
 		sortBy?: string;
 	}) {
 		const dateSubQuery =
 			dbType === 'sqlite'
-				? `datetime('now', '-${nbDays} days')`
+				? `datetime('now', '-${maxAgeInDays} days')`
 				: dbType === 'postgresdb'
-					? `NOW() - INTERVAL '${nbDays} days'`
-					: `DATE_SUB(NOW(), INTERVAL ${nbDays} DAY)`;
+					? `NOW() - INTERVAL '${maxAgeInDays} days'`
+					: `DATE_SUB(NOW(), INTERVAL ${maxAgeInDays} DAY)`;
 
 		const [sortField, sortOrder] = this.parseSortingParams(sortBy);
 		const sumOfExecutions = sql`SUM(CASE WHEN insights.type IN (${TypeToNumber.success.toString()}, ${TypeToNumber.failure.toString()}) THEN value ELSE 0 END)`;

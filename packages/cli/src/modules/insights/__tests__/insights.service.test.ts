@@ -20,7 +20,6 @@ import {
 	createCompactedInsightsEvent,
 	createRawInsightsEvents,
 } from '../database/entities/__tests__/db-utils';
-import type { InsightsMetadata } from '../database/entities/insights-metadata';
 import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
 import { InsightsService } from '../insights.service';
 
@@ -908,7 +907,7 @@ describe('getInsightsByWorkflow', () => {
 
 		// ACT
 		const byWorkflow = await insightsService.getInsightsByWorkflow({
-			nbDays: 14,
+			maxAgeInDays: 14,
 		});
 
 		// ASSERT
@@ -971,7 +970,7 @@ describe('getInsightsByWorkflow', () => {
 
 		// ACT
 		const byWorkflow = await insightsService.getInsightsByWorkflow({
-			nbDays: 14,
+			maxAgeInDays: 14,
 			sortBy: 'runTime:desc',
 		});
 
@@ -994,7 +993,7 @@ describe('getInsightsByWorkflow', () => {
 
 		// ACT
 		const byWorkflow = await insightsService.getInsightsByWorkflow({
-			nbDays: 14,
+			maxAgeInDays: 14,
 			sortBy: 'succeeded:desc',
 			skip: 1,
 			take: 1,
@@ -1009,7 +1008,7 @@ describe('getInsightsByWorkflow', () => {
 	test('compacted data are grouped by workflow correctly even with 0 data (check division by 0)', async () => {
 		// ACT
 		const byWorkflow = await insightsService.getInsightsByWorkflow({
-			nbDays: 14,
+			maxAgeInDays: 14,
 		});
 
 		// ASSERT
@@ -1126,259 +1125,4 @@ describe('getInsightsByTime', () => {
 			timeSaved: 0,
 		});
 	});
-});
-
-describe('getInsightsByWorkflow', () => {
-	let insightsService: InsightsService;
-	beforeAll(async () => {
-		insightsService = Container.get(InsightsService);
-	});
-
-	let project: Project;
-	let workflow1: IWorkflowDb & WorkflowEntity;
-	let workflow2: IWorkflowDb & WorkflowEntity;
-	let workflow3: IWorkflowDb & WorkflowEntity;
-
-	beforeEach(async () => {
-		await truncateAll();
-
-		project = await createTeamProject();
-		workflow1 = await createWorkflow({}, project);
-		workflow2 = await createWorkflow({}, project);
-		workflow3 = await createWorkflow({}, project);
-	});
-
-	test('compacted data are are grouped by workflow correctly', async () => {
-		// ARRANGE
-		for (const workflow of [workflow1, workflow2]) {
-			await createCompactedInsightsEvent(workflow, {
-				type: 'success',
-				value: workflow === workflow1 ? 1 : 2,
-				periodUnit: 'day',
-				periodStart: DateTime.utc(),
-			});
-			await createCompactedInsightsEvent(workflow, {
-				type: 'success',
-				value: 1,
-				periodUnit: 'day',
-				periodStart: DateTime.utc().minus({ day: 2 }),
-			});
-			await createCompactedInsightsEvent(workflow, {
-				type: 'failure',
-				value: 2,
-				periodUnit: 'day',
-				periodStart: DateTime.utc(),
-			});
-			// last 14 days
-			await createCompactedInsightsEvent(workflow, {
-				type: 'success',
-				value: 1,
-				periodUnit: 'day',
-				periodStart: DateTime.utc().minus({ days: 10 }),
-			});
-			await createCompactedInsightsEvent(workflow, {
-				type: 'runtime_ms',
-				value: 123,
-				periodUnit: 'day',
-				periodStart: DateTime.utc().minus({ days: 10 }),
-			});
-		}
-
-		// ACT
-		const byWorkflow = await insightsService.getInsightsByWorkflow({
-			nbDays: 14,
-		});
-
-		// ASSERT
-		expect(byWorkflow.count).toEqual(2);
-		expect(byWorkflow.data).toHaveLength(2);
-
-		// expect first workflow to be workflow 2, because it has a bigger total (default sorting)
-		expect(byWorkflow.data[0]).toEqual({
-			workflowId: workflow2.id,
-			workflowName: workflow2.name,
-			projectId: project.id,
-			projectName: project.name,
-			total: 6,
-			failureRate: 2 / 6,
-			failed: 2,
-			runTime: 123,
-			succeeded: 4,
-			timeSaved: 0,
-			averageRunTime: 123 / 6,
-		});
-
-		expect(byWorkflow.data[1]).toEqual({
-			workflowId: workflow1.id,
-			workflowName: workflow1.name,
-			projectId: project.id,
-			projectName: project.name,
-			total: 5,
-			failureRate: 2 / 5,
-			failed: 2,
-			runTime: 123,
-			succeeded: 3,
-			timeSaved: 0,
-			averageRunTime: 123 / 5,
-		});
-	});
-
-	test('compacted data are grouped by workflow correctly with sorting', async () => {
-		// ARRANGE
-		for (const workflow of [workflow1, workflow2]) {
-			await createCompactedInsightsEvent(workflow, {
-				type: 'success',
-				value: workflow === workflow1 ? 1 : 2,
-				periodUnit: 'day',
-				periodStart: DateTime.utc(),
-			});
-			await createCompactedInsightsEvent(workflow, {
-				type: 'failure',
-				value: 2,
-				periodUnit: 'day',
-				periodStart: DateTime.utc(),
-			});
-			await createCompactedInsightsEvent(workflow, {
-				type: 'runtime_ms',
-				value: workflow === workflow1 ? 2 : 1,
-				periodUnit: 'day',
-				periodStart: DateTime.utc().minus({ days: 10 }),
-			});
-		}
-
-		// ACT
-		const byWorkflow = await insightsService.getInsightsByWorkflow({
-			nbDays: 14,
-			sortBy: 'runTime:desc',
-		});
-
-		// ASSERT
-		expect(byWorkflow.count).toEqual(2);
-		expect(byWorkflow.data).toHaveLength(2);
-		expect(byWorkflow.data[0].workflowId).toEqual(workflow1.id);
-	});
-
-	test('compacted data are grouped by workflow correctly with pagination', async () => {
-		// ARRANGE
-		for (const workflow of [workflow1, workflow2, workflow3]) {
-			await createCompactedInsightsEvent(workflow, {
-				type: 'success',
-				value: workflow === workflow1 ? 1 : workflow === workflow2 ? 2 : 3,
-				periodUnit: 'day',
-				periodStart: DateTime.utc(),
-			});
-		}
-
-		// ACT
-		const byWorkflow = await insightsService.getInsightsByWorkflow({
-			nbDays: 14,
-			sortBy: 'succeeded:desc',
-			skip: 1,
-			take: 1,
-		});
-
-		// ASSERT
-		expect(byWorkflow.count).toEqual(3);
-		expect(byWorkflow.data).toHaveLength(1);
-		expect(byWorkflow.data[0].workflowId).toEqual(workflow2.id);
-	});
-
-	test('compacted data are grouped by workflow correctly even with 0 data (check division by 0)', async () => {
-		// ACT
-		const byWorkflow = await insightsService.getInsightsByWorkflow({
-			nbDays: 14,
-		});
-
-		// ASSERT
-		expect(byWorkflow.count).toEqual(0);
-		expect(byWorkflow.data).toHaveLength(0);
-	});
-});
-
-describe('getInsightsByWorkflow', () => {
-	let insightsService: InsightsService;
-	let insightsRawRepository: InsightsRawRepository;
-	let insightsByPeriodRepository: InsightsByPeriodRepository;
-	let insightsMetadataRepository: InsightsMetadataRepository;
-	beforeAll(async () => {
-		insightsService = Container.get(InsightsService);
-		insightsRawRepository = Container.get(InsightsRawRepository);
-		insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
-		insightsMetadataRepository = Container.get(InsightsMetadataRepository);
-	});
-
-	let project: Project;
-	let workflow: IWorkflowDb & WorkflowEntity;
-	let metadata: InsightsMetadata;
-
-	beforeEach(async () => {
-		await testDb.truncate(['InsightsRaw', 'InsightsMetadata', 'InsightsByPeriod']);
-
-		project = await createTeamProject();
-		workflow = await createWorkflow({}, project);
-		metadata = await createMetadata(workflow);
-	});
-
-	test('compacted data are are grouped by workflow correctly', async () => {
-		// ARRANGE
-		// last 7 days
-		await createCompactedInsightsEvent(workflow, {
-			type: 'success',
-			value: 1,
-			periodUnit: 'day',
-			periodStart: DateTime.utc(),
-		});
-		await createCompactedInsightsEvent(workflow, {
-			type: 'success',
-			value: 1,
-			periodUnit: 'day',
-			periodStart: DateTime.utc().minus({ day: 2 }),
-		});
-		await createCompactedInsightsEvent(workflow, {
-			type: 'failure',
-			value: 2,
-			periodUnit: 'day',
-			periodStart: DateTime.utc(),
-		});
-		// last 14 days
-		await createCompactedInsightsEvent(workflow, {
-			type: 'success',
-			value: 1,
-			periodUnit: 'day',
-			periodStart: DateTime.utc().minus({ days: 10 }),
-		});
-		await createCompactedInsightsEvent(workflow, {
-			type: 'runtime_ms',
-			value: 123,
-			periodUnit: 'day',
-			periodStart: DateTime.utc().minus({ days: 10 }),
-		});
-
-		// ACT
-		const byWorkflow = await insightsService.getInsightsByWorkflow({
-			nbDays: 14,
-		});
-
-		// ASSERT
-		expect(byWorkflow.count).toEqual(1);
-		expect(byWorkflow.data).toHaveLength(1);
-		expect(byWorkflow.data[0]).toEqual({
-			workflowId: workflow.id,
-			workflowName: workflow.name,
-			projectId: project.id,
-			projectName: project.name,
-			total: 5,
-			failureRate: 2 / 5,
-			failed: 2,
-			runTime: 123,
-			succeeded: 3,
-			timeSaved: 0,
-			averageRunTime: 123 / 5,
-		});
-	});
-
-	test.todo('compacted data are grouped by workflow correctly with pagination and sorting');
-	test.todo(
-		'compacted data are grouped by workflow correctly even with 0 data (check division by 0)',
-	);
 });
