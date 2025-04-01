@@ -120,26 +120,6 @@
                 }
             }
         },
-        "SalesPerson": {
-            "type": "object",
-            "properties": {
-                "Email": {
-                    "type": "string"
-                },
-                "FullName": {
-                    "type": "string"
-                },
-                "Guid": {
-                    "type": "string"
-                },
-                "LastModifiedOn": {
-                    "type": "string"
-                },
-                "Obsolete": {
-                    "type": "boolean"
-                }
-            }
-        },
         "SaveAddress": {
             "type": "boolean"
         },
@@ -205,5 +185,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
