@@ -75,38 +75,6 @@
         "org_hidden": {
             "type": "boolean"
         },
-        "org_id": {
-            "type": "object",
-            "properties": {
-                "active_flag": {
-                    "type": "boolean"
-                },
-                "cc_email": {
-                    "type": "string"
-                },
-                "label_ids": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "name": {
-                    "type": "string"
-                },
-                "owner_id": {
-                    "type": "integer"
-                },
-                "owner_name": {
-                    "type": "string"
-                },
-                "people_count": {
-                    "type": "integer"
-                },
-                "value": {
-                    "type": "integer"
-                }
-            }
-        },
         "origin": {
             "type": "string"
         },
@@ -118,6 +86,60 @@
         },
         "person_hidden": {
             "type": "boolean"
+        },
+        "person_id": {
+            "type": "object",
+            "properties": {
+                "active_flag": {
+                    "type": "boolean"
+                },
+                "company_id": {
+                    "type": "integer"
+                },
+                "email": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "label": {
+                                "type": "string"
+                            },
+                            "primary": {
+                                "type": "boolean"
+                            },
+                            "value": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "owner_id": {
+                    "type": "integer"
+                },
+                "phone": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "label": {
+                                "type": "string"
+                            },
+                            "primary": {
+                                "type": "boolean"
+                            },
+                            "value": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "value": {
+                    "type": "integer"
+                }
+            }
         },
         "pipeline_id": {
             "type": "integer"
@@ -173,5 +195,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
