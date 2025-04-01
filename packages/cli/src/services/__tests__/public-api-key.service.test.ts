@@ -1,5 +1,7 @@
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import type { ApiKeyScope } from '@n8n/permissions';
+import type { Response, NextFunction } from 'express';
+import { mock, mockDeep } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 import type { InstanceSettings } from 'n8n-core';
 import { randomString } from 'n8n-workflow';
@@ -278,6 +280,109 @@ describe('PublicApiKeyService', () => {
 			expect(ownerOnlyScopes.some((ownerScope) => apiKeyOnDb.scopes.includes(ownerScope))).toBe(
 				false,
 			);
+		});
+	});
+
+	describe('getApiKeyScopedMiddleware', () => {
+		it('should allow access when API key has required scope', async () => {
+			// Arrange
+			const owner = await createOwnerWithApiKey({
+				scopes: ['workflow:read', 'user:read'],
+			});
+			const [{ apiKey }] = owner.apiKeys;
+
+			const requiredScope = 'workflow:read' as ApiKeyScope;
+
+			const req = mockReqWith(apiKey, '/test', 'GET');
+
+			const res = mockDeep<Response>();
+
+			res.status.mockReturnThis();
+			res.json.mockReturnThis();
+
+			const next = jest.fn() as NextFunction;
+
+			const publicApiKeyService = new PublicApiKeyService(
+				apiKeyRepository,
+				userRepository,
+				jwtService,
+				eventService,
+			);
+
+			// Act
+			const middleware = publicApiKeyService.getApiKeyScopeMiddleware(requiredScope);
+			await middleware(req, res, next);
+
+			// Assert
+			expect(next).toHaveBeenCalled();
+			expect(res.status).not.toHaveBeenCalled();
+			expect(res.json).not.toHaveBeenCalled();
+		});
+
+		it('should deny access when API key does not have required scope', async () => {
+			// Arrange
+			const owner = await createOwnerWithApiKey({
+				scopes: ['user:read'],
+			});
+			const [{ apiKey }] = owner.apiKeys;
+
+			const requiredScope = 'workflow:read' as ApiKeyScope;
+
+			const req = mockReqWith(apiKey, '/test', 'GET');
+
+			const res = mockDeep<Response>();
+
+			res.status.mockReturnThis();
+			res.json.mockReturnThis();
+
+			const next = jest.fn() as NextFunction;
+
+			const publicApiKeyService = new PublicApiKeyService(
+				apiKeyRepository,
+				userRepository,
+				jwtService,
+				eventService,
+			);
+
+			// Act
+			const middleware = publicApiKeyService.getApiKeyScopeMiddleware(requiredScope);
+			await middleware(req, res, next);
+
+			// Assert
+			expect(next).not.toHaveBeenCalled();
+			expect(res.status).toHaveBeenCalledWith(403);
+			expect(res.json).toHaveBeenCalledWith({ message: 'Forbidden' });
+		});
+
+		it('should deny access when API key is invalid', async () => {
+			// Arrange
+			const invalidApiKey = 'invalid-api-key';
+			const requiredScope = 'workflow:read' as ApiKeyScope;
+
+			const req = mockReqWith(invalidApiKey, '/test', 'GET');
+
+			const res = mockDeep<Response>();
+
+			res.status.mockReturnThis();
+			res.json.mockReturnThis();
+
+			const next = jest.fn() as NextFunction;
+
+			const publicApiKeyService = new PublicApiKeyService(
+				apiKeyRepository,
+				userRepository,
+				jwtService,
+				eventService,
+			);
+
+			// Act
+			const middleware = publicApiKeyService.getApiKeyScopeMiddleware(requiredScope);
+			await middleware(req, res, next);
+
+			// Assert
+			expect(next).not.toHaveBeenCalled();
+			expect(res.status).toHaveBeenCalledWith(403);
+			expect(res.json).toHaveBeenCalledWith({ message: 'Forbidden' });
 		});
 	});
 });
