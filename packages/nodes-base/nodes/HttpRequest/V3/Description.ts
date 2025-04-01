@@ -1,5 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+import { optimizeResponseProperties } from '../shared/optimizeResponse';
+
 export const mainProperties: INodeProperties[] = [
 	{
 		displayName: '',
@@ -1167,6 +1169,7 @@ export const mainProperties: INodeProperties[] = [
 			},
 		],
 	},
+	...optimizeResponseProperties,
 	{
 		displayName:
 			"You can view the raw requests this node makes in your browser's developer console",
