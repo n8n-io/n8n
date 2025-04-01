@@ -1,8 +1,8 @@
+import type { WorkflowTestData } from 'n8n-workflow';
 import nock from 'nock';
 
-import { executeWorkflow } from '../ExecuteWorkflow';
-import * as Helpers from '../Helpers';
-import type { WorkflowTestData } from '../types';
+import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
+import * as Helpers from '@test/nodes/Helpers';
 
 const records = [
 	{
@@ -26,7 +26,7 @@ describe('Execute Airtable Node', () => {
 		{
 			description: 'List Airtable Records',
 			input: {
-				workflowData: Helpers.readJsonFileSync('test/nodes/Airtable/workflow.json'),
+				workflowData: Helpers.readJsonFileSync('nodes/Airtable/test/workflow.json'),
 			},
 			output: {
 				nodeData: {
@@ -36,19 +36,9 @@ describe('Execute Airtable Node', () => {
 		},
 	];
 
-	const nodeTypes = Helpers.setup(tests);
-
 	for (const testData of tests) {
 		test(testData.description, async () => {
-			try {
-				// execute workflow
-				await executeWorkflow(testData, nodeTypes);
-			} catch (error) {
-				expect(error).toBeUndefined();
-				expect(error.message).toEqual(
-					'The API Key connection was deprecated by Airtable, please use Access Token or OAuth2 instead.',
-				);
-			}
+			await executeWorkflow(testData);
 		});
 	}
 });
