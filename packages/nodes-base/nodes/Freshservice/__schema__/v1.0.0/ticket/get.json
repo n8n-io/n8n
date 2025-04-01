@@ -56,9 +56,6 @@
                 },
                 "no_of_customers_impacted": {
                     "type": "null"
-                },
-                "ticket_has_been_triaged": {
-                    "type": "null"
                 }
             }
         },
@@ -141,5 +138,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }
