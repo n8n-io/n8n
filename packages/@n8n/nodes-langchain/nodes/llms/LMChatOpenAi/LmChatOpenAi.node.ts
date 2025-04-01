@@ -319,6 +319,14 @@ export class LmChatOpenAi implements INodeType {
 							'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
 						type: 'number',
 					},
+					{
+						displayName: 'Default Tools',
+						name: 'defaultTools',
+						type: 'string',
+						default: '',
+						description:
+							'Comma-separated list of default tool names to include. eg. "web_search_preview"',
+					},
 				],
 			},
 		],
@@ -344,6 +352,7 @@ export class LmChatOpenAi implements INodeType {
 			topP?: number;
 			responseFormat?: 'text' | 'json_object';
 			reasoningEffort?: 'low' | 'medium' | 'high';
+			defaultTools?: string;
 		};
 
 		const configuration: ClientOptions = {};
@@ -362,7 +371,9 @@ export class LmChatOpenAi implements INodeType {
 		if (options.reasoningEffort && ['low', 'medium', 'high'].includes(options.reasoningEffort))
 			modelKwargs.reasoning_effort = options.reasoningEffort;
 
-		const model = new ChatOpenAI({
+		console.log('OPENAI-CHAT: Allocating model now here...', options);
+
+		let model = new ChatOpenAI({
 			openAIApiKey: credentials.apiKey as string,
 			modelName,
 			...options,
@@ -373,6 +384,16 @@ export class LmChatOpenAi implements INodeType {
 			modelKwargs,
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
 		});
+
+		// Apply default tools through binding if requested
+		if (options.defaultTools != null && options.defaultTools != '') {
+			const tools = options.defaultTools
+				.split(',')
+				.map((t) => t.trim())
+				.map((t) => ({ type: t }));
+			console.log('Applying default tools: ', tools);
+			model = model.bindTools(tools) as ChatOpenAI;
+		}
 
 		return {
 			response: model,
