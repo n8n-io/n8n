@@ -64,9 +64,6 @@
                 }
             }
         },
-        "cardRole": {
-            "type": "null"
-        },
         "checkItemStates": {
             "type": "array",
             "items": {
@@ -137,6 +134,12 @@
                 "type": "string"
             }
         },
+        "idMembersVoted": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
         "idShort": {
             "type": "integer"
         },
@@ -197,5 +200,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
