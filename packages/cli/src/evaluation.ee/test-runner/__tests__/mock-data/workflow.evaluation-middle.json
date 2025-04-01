@@ -1,0 +1,85 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "6dde1608-135f-441d-8438-40f605e4dae3",
+			"name": "Execute Workflow Trigger",
+			"type": "n8n-nodes-base.executeWorkflowTrigger",
+			"typeVersion": 1,
+			"position": [-180, -40]
+		},
+		{
+			"parameters": {
+				"metrics": {
+					"assignments": [
+						{
+							"id": "f1cab1e4-dabc-4750-a1f7-6669a60213c9",
+							"name": "metric1",
+							"value": 20,
+							"type": "number"
+						},
+						{
+							"id": "a66ed953-5341-47f6-8565-47640d987f5f",
+							"name": "metric2",
+							"value": 30,
+							"type": "number"
+						}
+					]
+				}
+			},
+			"id": "dfc71b70-7b7a-4dde-914f-cc4ffc99b18c",
+			"name": "Success",
+			"type": "n8n-nodes-base.evaluationMetrics",
+			"typeVersion": 1,
+			"position": [620, -40]
+		},
+		{
+			"parameters": {
+				"metrics": {
+					"assignments": [
+						{
+							"id": "1e1153da-77c0-4cb5-804a-3f4bc40833dd",
+							"name": "metric2",
+							"value": 10,
+							"type": "number"
+						}
+					]
+				}
+			},
+			"id": "5ef5be33-37e0-4c95-81c8-3fd677bdca88",
+			"name": "First Metric",
+			"type": "n8n-nodes-base.evaluationMetrics",
+			"typeVersion": 1,
+			"position": [160, -40]
+		}
+	],
+	"connections": {
+		"Execute Workflow Trigger": {
+			"main": [
+				[
+					{
+						"node": "First Metric",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"First Metric": {
+			"main": [
+				[
+					{
+						"node": "Success",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+	}
+}

@@ -1,21 +1,12 @@
-import { NodeConnectionType } from 'n8n-workflow';
-import nock from 'nock';
+import { NodeConnectionTypes, type WorkflowTestData } from 'n8n-workflow';
 
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import * as Helpers from '@test/nodes/Helpers';
-import type { WorkflowTestData } from '@test/nodes/types';
 
 import { microsoftEntraApiResponse, microsoftEntraNodeResponse } from './mocks';
 
 describe('Microsoft Entra Node', () => {
 	const baseUrl = 'https://graph.microsoft.com/v1.0';
-
-	beforeEach(() => {
-		// https://github.com/nock/nock/issues/2057#issuecomment-663665683
-		if (!nock.isActive()) {
-			nock.activate();
-		}
-	});
 
 	describe('Group description', () => {
 		const tests: WorkflowTestData[] = [
@@ -72,7 +63,7 @@ describe('Microsoft Entra Node', () => {
 									[
 										{
 											node: 'Micosoft Entra ID',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -164,7 +155,7 @@ describe('Microsoft Entra Node', () => {
 									[
 										{
 											node: 'Micosoft Entra ID',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -235,7 +226,7 @@ describe('Microsoft Entra Node', () => {
 									[
 										{
 											node: 'Micosoft Entra ID',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -352,7 +343,7 @@ describe('Microsoft Entra Node', () => {
 									[
 										{
 											node: 'Micosoft Entra ID',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -420,7 +411,7 @@ describe('Microsoft Entra Node', () => {
 									[
 										{
 											node: 'Micosoft Entra ID',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -502,7 +493,7 @@ describe('Microsoft Entra Node', () => {
 									[
 										{
 											node: 'Micosoft Entra ID',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -611,7 +602,7 @@ describe('Microsoft Entra Node', () => {
 									[
 										{
 											node: 'Micosoft Entra ID',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -710,7 +701,7 @@ describe('Microsoft Entra Node', () => {
 									[
 										{
 											node: 'Micosoft Entra ID',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -760,10 +751,8 @@ describe('Microsoft Entra Node', () => {
 			},
 		];
 
-		const nodeTypes = Helpers.setup(tests);
-
 		test.each(tests)('$description', async (testData) => {
-			const { result } = await executeWorkflow(testData, nodeTypes);
+			const { result } = await executeWorkflow(testData);
 
 			const resultNodeData = Helpers.getResultNodeData(result, testData);
 			resultNodeData.forEach(({ nodeName, resultData }) =>

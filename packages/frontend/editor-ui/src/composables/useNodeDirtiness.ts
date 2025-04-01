@@ -11,7 +11,8 @@ import { useHistoryStore } from '@/stores/history.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { CanvasNodeDirtiness, type CanvasNodeDirtinessType } from '@/types';
-import { type INodeConnections, NodeConnectionType } from 'n8n-workflow';
+import type { INodeConnections, NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { computed } from 'vue';
 
 /**
@@ -68,7 +69,7 @@ function shouldCommandMarkDirty(
 			incomingNodes.includes(command.nodeName) &&
 			(command.newState ||
 				Object.keys(getOutgoingConnectors(command.nodeName)).some(
-					(type) => (type as NodeConnectionType) !== NodeConnectionType.Main,
+					(type) => (type as NodeConnectionType) !== NodeConnectionTypes.Main,
 				))
 		);
 	}
@@ -93,7 +94,7 @@ function findLoop(
 	const newVisited = [...visited, nodeName];
 
 	for (const [type, typeConnections] of Object.entries(getIncomingConnections(nodeName))) {
-		if ((type as NodeConnectionType) !== NodeConnectionType.Main) {
+		if ((type as NodeConnectionType) !== NodeConnectionTypes.Main) {
 			continue;
 		}
 
@@ -121,7 +122,7 @@ export function useNodeDirtiness() {
 
 	function getParentSubNodes(nodeName: string) {
 		return Object.entries(workflowsStore.incomingConnectionsByNodeName(nodeName))
-			.filter(([type]) => (type as NodeConnectionType) !== NodeConnectionType.Main)
+			.filter(([type]) => (type as NodeConnectionType) !== NodeConnectionTypes.Main)
 			.flatMap(([, typeConnections]) => typeConnections.flat().filter((conn) => conn !== null));
 	}
 
@@ -193,7 +194,7 @@ export function useNodeDirtiness() {
 			for (const [type, typeConnections] of Object.entries(
 				workflowsStore.outgoingConnectionsByNodeName(nodeName),
 			)) {
-				if ((type as NodeConnectionType) !== NodeConnectionType.Main) {
+				if ((type as NodeConnectionType) !== NodeConnectionTypes.Main) {
 					continue;
 				}
 

@@ -120,12 +120,6 @@ export const schema = {
 		},
 	},
 
-	secure_cookie: {
-		doc: 'This sets the `Secure` flag on n8n auth cookie',
-		format: Boolean,
-		default: true,
-		env: 'N8N_SECURE_COOKIE',
-	},
 	ssl_key: {
 		format: String,
 		default: '',
@@ -369,14 +363,5 @@ export const schema = {
 		default: 0,
 		env: 'N8N_PROXY_HOPS',
 		doc: 'Number of reverse-proxies n8n is running behind',
-	},
-
-	folders: {
-		enabled: {
-			format: Boolean,
-			default: false,
-			env: 'N8N_FOLDERS_ENABLED',
-			doc: 'Temporary env variable to enable folders feature',
-		},
 	},
 };

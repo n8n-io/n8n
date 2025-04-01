@@ -4,11 +4,12 @@ import type {
 	INodeTypeDescription,
 	INodeParameters,
 	INodeProperties,
+	NodeConnectionType,
 	NodeParameterValue,
 } from 'n8n-workflow';
 import {
 	NodeHelpers,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	deepCopy,
 	isINodePropertyCollectionList,
 	isINodePropertiesList,
@@ -139,7 +140,7 @@ const isExecutable = computed(() => {
 		);
 		const inputNames = NodeHelpers.getConnectionTypes(inputs);
 
-		if (!inputNames.includes(NodeConnectionType.Main) && !isTriggerNode.value) {
+		if (!inputNames.includes(NodeConnectionTypes.Main) && !isTriggerNode.value) {
 			return false;
 		}
 	}
