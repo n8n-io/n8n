@@ -16,6 +16,12 @@
         "first_name": {
             "type": "string"
         },
+        "huddle_state": {
+            "type": "string"
+        },
+        "huddle_state_expiration_ts": {
+            "type": "integer"
+        },
         "image_1024": {
             "type": "string"
         },
@@ -71,9 +77,6 @@
                     },
                     "emoji_name": {
                         "type": "string"
-                    },
-                    "unicode": {
-                        "type": "string"
                     }
                 }
             }
@@ -91,5 +94,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
