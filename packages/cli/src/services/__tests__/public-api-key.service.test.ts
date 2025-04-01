@@ -385,4 +385,54 @@ describe('PublicApiKeyService', () => {
 			expect(res.json).toHaveBeenCalledWith({ message: 'Forbidden' });
 		});
 	});
+
+	describe('apiKeyHasValidScopes', () => {
+		it('should return true if API key has the required scope', async () => {
+			// Arrange
+
+			const owner = await createOwnerWithApiKey({
+				scopes: ['workflow:read', 'user:read'],
+			});
+
+			const apiKey = owner.apiKeys[0].apiKey;
+			const requiredScope = 'workflow:read' as ApiKeyScope;
+
+			const publicApiKeyService = new PublicApiKeyService(
+				apiKeyRepository,
+				userRepository,
+				jwtService,
+				eventService,
+			);
+
+			// Act
+			const result = await publicApiKeyService.apiKeyHasValidScopes(apiKey, requiredScope);
+
+			// Assert
+			expect(result).toBe(true);
+		});
+
+		it('should return false if API key does not have the required scope', async () => {
+			// Arrange
+
+			const owner = await createOwnerWithApiKey({
+				scopes: ['user:read'],
+			});
+
+			const apiKey = owner.apiKeys[0].apiKey;
+			const requiredScope = 'workflow:read' as ApiKeyScope;
+
+			const publicApiKeyService = new PublicApiKeyService(
+				apiKeyRepository,
+				userRepository,
+				jwtService,
+				eventService,
+			);
+
+			// Act
+			const result = await publicApiKeyService.apiKeyHasValidScopes(apiKey, requiredScope);
+
+			// Assert
+			expect(result).toBe(false);
+		});
+	});
 });
