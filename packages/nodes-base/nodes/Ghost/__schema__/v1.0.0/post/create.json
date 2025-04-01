@@ -89,9 +89,6 @@
                     "tour": {
                         "type": "null"
                     },
-                    "twitter": {
-                        "type": "null"
-                    },
                     "updated_at": {
                         "type": "string"
                     },
@@ -101,13 +98,7 @@
                 }
             }
         },
-        "canonical_url": {
-            "type": "null"
-        },
         "codeinjection_foot": {
-            "type": "null"
-        },
-        "codeinjection_head": {
             "type": "null"
         },
         "comment_id": {
@@ -264,9 +255,6 @@
                 "tour": {
                     "type": "null"
                 },
-                "twitter": {
-                    "type": "null"
-                },
                 "updated_at": {
                     "type": "string"
                 },
@@ -375,9 +363,6 @@
                     "type": {
                         "type": "string"
                     },
-                    "updated_at": {
-                        "type": "string"
-                    },
                     "visibility": {
                         "type": "string"
                     },
@@ -409,5 +394,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
