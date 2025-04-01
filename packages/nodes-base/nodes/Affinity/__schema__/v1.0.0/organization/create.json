@@ -4,9 +4,6 @@
         "crunchbase_uuid": {
             "type": "null"
         },
-        "domain": {
-            "type": "string"
-        },
         "domains": {
             "type": "array",
             "items": {
@@ -29,5 +26,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }
