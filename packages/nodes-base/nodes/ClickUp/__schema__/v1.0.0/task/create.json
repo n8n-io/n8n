@@ -17,9 +17,6 @@
                     },
                     "initials": {
                         "type": "string"
-                    },
-                    "username": {
-                        "type": "string"
                     }
                 }
             }
@@ -86,6 +83,9 @@
                 }
             }
         },
+        "custom_id": {
+            "type": "null"
+        },
         "custom_item_id": {
             "type": "integer"
         },
@@ -134,6 +134,9 @@
         },
         "orderindex": {
             "type": "string"
+        },
+        "parent": {
+            "type": "null"
         },
         "permission_level": {
             "type": "string"
@@ -235,6 +238,9 @@
         "time_spent": {
             "type": "integer"
         },
+        "top_level_parent": {
+            "type": "null"
+        },
         "url": {
             "type": "string"
         },
@@ -251,13 +257,10 @@
                     },
                     "initials": {
                         "type": "string"
-                    },
-                    "username": {
-                        "type": "string"
                     }
                 }
             }
         }
     },
-    "version": 1
+    "version": 2
 }
