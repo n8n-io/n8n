@@ -36,9 +36,6 @@
         "name": {
             "type": "string"
         },
-        "preview_url": {
-            "type": "string"
-        },
         "self": {
             "type": "string"
         },
@@ -52,5 +49,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }
