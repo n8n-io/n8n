@@ -71,6 +71,9 @@
                 }
             }
         },
+        "job_title": {
+            "type": "null"
+        },
         "label_ids": {
             "type": "array",
             "items": {
@@ -102,6 +105,9 @@
             "type": "null"
         },
         "next_activity_time": {
+            "type": "null"
+        },
+        "notes": {
             "type": "null"
         },
         "notes_count": {
@@ -223,5 +229,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }
