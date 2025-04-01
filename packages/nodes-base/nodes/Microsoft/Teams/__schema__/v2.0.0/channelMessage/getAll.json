@@ -12,9 +12,6 @@
                     "id": {
                         "type": "string"
                     },
-                    "teamsAppId": {
-                        "type": "null"
-                    },
                     "thumbnailUrl": {
                         "type": "null"
                     }
@@ -24,6 +21,9 @@
         "body": {
             "type": "object",
             "properties": {
+                "content": {
+                    "type": "string"
+                },
                 "contentType": {
                     "type": "string"
                 }
@@ -59,9 +59,6 @@
                     "type": "object",
                     "properties": {
                         "@odata.type": {
-                            "type": "string"
-                        },
-                        "displayName": {
                             "type": "string"
                         },
                         "id": {
@@ -204,5 +201,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
