@@ -786,7 +786,7 @@
 	"executionsList.showMessage.retryError.title": "Retry unsuccessful",
 	"executionsList.showMessage.retrySuccess.title": "Retry successful",
 	"executionsList.showMessage.retryWaiting.title": "Retry waiting",
-	"executionsList.showMessage.retryCrushed.title": "Retry crashed",
+	"executionsList.showMessage.retryCrashed.title": "Retry crashed",
 	"executionsList.showMessage.retryCanceled.title": "Retry canceled",
 	"executionsList.showMessage.retryRunning.title": "Retry running",
 	"executionsList.showMessage.stopExecution.message": "Execution ID {activeExecutionId}",

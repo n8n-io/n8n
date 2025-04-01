@@ -240,7 +240,7 @@ export function executionRetryMessage(executionStatus: ExecutionStatus):
 
 	if (executionStatus === 'crashed') {
 		return {
-			title: i18n.baseText('executionsList.showMessage.retryCrushed.title'),
+			title: i18n.baseText('executionsList.showMessage.retryCrashed.title'),
 			type: 'error',
 		};
 	}
