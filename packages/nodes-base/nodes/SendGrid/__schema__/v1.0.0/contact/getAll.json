@@ -1,0 +1,74 @@
+{
+    "type": "object",
+    "properties": {
+        "_metadata": {
+            "type": "object",
+            "properties": {
+                "self": {
+                    "type": "string"
+                }
+            }
+        },
+        "address_line_1": {
+            "type": "string"
+        },
+        "address_line_2": {
+            "type": "string"
+        },
+        "alternate_emails": {
+            "type": "null"
+        },
+        "city": {
+            "type": "string"
+        },
+        "country": {
+            "type": "string"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "facebook": {
+            "type": "string"
+        },
+        "first_name": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "last_name": {
+            "type": "string"
+        },
+        "line": {
+            "type": "string"
+        },
+        "list_ids": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "phone_number": {
+            "type": "string"
+        },
+        "postal_code": {
+            "type": "string"
+        },
+        "state_province_region": {
+            "type": "string"
+        },
+        "unique_name": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "whatsapp": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}
