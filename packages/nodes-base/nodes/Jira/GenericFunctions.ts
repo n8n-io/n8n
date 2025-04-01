@@ -11,6 +11,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
+import type { JiraWebhook } from './types';
+
 export async function jiraSoftwareCloudApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	endpoint: string,
@@ -122,8 +124,9 @@ export function eventExists(currentEvents: string[], webhookEvents: string[]) {
 	return true;
 }
 
-export function getId(url: string) {
-	return url.split('/').pop();
+export function getWebhookId(webhook: JiraWebhook) {
+	if (webhook.id) return webhook.id.toString();
+	return webhook.self?.split('/').pop();
 }
 
 export function simplifyIssueOutput(responseData: {
