@@ -1,26 +1,13 @@
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 import { mock } from 'jest-mock-extended';
-import type { Producer, RecordMetadata } from 'kafkajs';
+import type { Producer } from 'kafkajs';
 import { Kafka as apacheKafka } from 'kafkajs';
-import type { IExecuteFunctions } from 'n8n-workflow';
-
 import path from 'path';
-import { getWorkflowFilenames, testWorkflows } from '../../test/nodes/Helpers';
 
-jest.mock('kafkajs', () => {
-	const originalModule = jest.requireActual('kafkajs');
-	return {
-		...originalModule,
-		Kafka: jest.fn(),
-		logLevel: { ERROR: 0 },
-	};
-});
+import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
 
-jest.mock('@kafkajs/confluent-schema-registry', () => {
-	return {
-		SchemaRegistry: jest.fn(),
-	};
-});
+jest.mock('kafkajs');
+jest.mock('@kafkajs/confluent-schema-registry');
 
 describe('Kafka Node', () => {
 	let mockProducer: jest.Mocked<Producer>;
@@ -31,16 +18,15 @@ describe('Kafka Node', () => {
 	let mockProducerDisconnect: jest.Mock;
 	let mockRegistryEncode: jest.Mock;
 
-	beforeEach(() => {
+	beforeAll(() => {
 		mockProducerConnect = jest.fn();
-		mockProducerSend = jest
-			.fn()
-			.mockResolvedValue([{ partition: 0, errorCode: 0 }] as RecordMetadata[]);
+		mockProducerSend = jest.fn().mockImplementation(async () => []);
 		mockProducerDisconnect = jest.fn();
 
 		mockProducer = mock<Producer>({
 			connect: mockProducerConnect,
 			send: mockProducerSend,
+			sendBatch: mockProducerSend,
 			disconnect: mockProducerDisconnect,
 		});
 
@@ -48,7 +34,7 @@ describe('Kafka Node', () => {
 			producer: jest.fn().mockReturnValue(mockProducer),
 		});
 
-		mockRegistryEncode = jest.fn().mockResolvedValue(Buffer.from('encoded-data'));
+		mockRegistryEncode = jest.fn((_id, input) => Buffer.from(JSON.stringify(input)));
 		mockRegistry = mock<SchemaRegistry>({
 			encode: mockRegistryEncode,
 		});
@@ -58,7 +44,62 @@ describe('Kafka Node', () => {
 	});
 
 	const workflows = getWorkflowFilenames(path.join(__dirname, 'test'));
-
-	console.log(workflows);
 	testWorkflows(workflows);
+
+	test('should publish the correct kafka messages', async () => {
+		expect(mockProducerSend).toHaveBeenCalledTimes(2);
+		expect(mockProducerSend).toHaveBeenCalledWith({
+			acks: 1,
+			compression: 1,
+			timeout: 1000,
+			topicMessages: [
+				{
+					messages: [
+						{
+							headers: { header: 'value' },
+							key: 'messageKey',
+							value: '{"name":"First item","code":1}',
+						},
+					],
+					topic: 'test-topic',
+				},
+				{
+					messages: [
+						{
+							headers: { header: 'value' },
+							key: 'messageKey',
+							value: '{"name":"Second item","code":2}',
+						},
+					],
+					topic: 'test-topic',
+				},
+			],
+		});
+		expect(mockProducerSend).toHaveBeenCalledWith({
+			acks: 0,
+			compression: 0,
+			topicMessages: [
+				{
+					messages: [
+						{
+							headers: { headerKey: 'headerValue' },
+							key: null,
+							value: Buffer.from(JSON.stringify({ foo: 'bar' })),
+						},
+					],
+					topic: 'test-topic',
+				},
+				{
+					messages: [
+						{
+							headers: { headerKey: 'headerValue' },
+							key: null,
+							value: Buffer.from(JSON.stringify({ foo: 'bar' })),
+						},
+					],
+					topic: 'test-topic',
+				},
+			],
+		});
+	});
 });

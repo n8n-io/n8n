@@ -16,20 +16,8 @@ import { testTriggerNode } from '@test/nodes/TriggerHelpers';
 
 import { KafkaTrigger } from './KafkaTrigger.node';
 
-jest.mock('kafkajs', () => {
-	const originalModule = jest.requireActual('kafkajs');
-	return {
-		...originalModule,
-		Kafka: jest.fn(),
-		logLevel: { ERROR: 0 },
-	};
-});
-
-jest.mock('@kafkajs/confluent-schema-registry', () => {
-	return {
-		SchemaRegistry: jest.fn(),
-	};
-});
+jest.mock('kafkajs');
+jest.mock('@kafkajs/confluent-schema-registry');
 
 describe('KafkaTrigger Node', () => {
 	let mockKafka: jest.Mocked<Kafka>;
