@@ -21,12 +21,6 @@
                 }
             }
         },
-        "pdf_url": {
-            "type": "null"
-        },
-        "pdf_url_compressed": {
-            "type": "null"
-        },
         "render_pdf": {
             "type": "boolean"
         },
@@ -61,5 +55,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }
