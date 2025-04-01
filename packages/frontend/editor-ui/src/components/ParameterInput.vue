@@ -346,6 +346,7 @@ const getIssues = computed<string[]>(() => {
 		node.value.parameters,
 		newPath.join('.'),
 		node.value,
+		nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
 	);
 
 	if (props.parameter.type === 'credentialsSelect' && displayValue.value === '') {
