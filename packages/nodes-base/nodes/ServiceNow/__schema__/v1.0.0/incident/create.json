@@ -43,6 +43,17 @@
         "calendar_stc": {
             "type": "string"
         },
+        "caller_id": {
+            "type": "object",
+            "properties": {
+                "link": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
         "category": {
             "type": "string"
         },
@@ -65,9 +76,6 @@
             "type": "string"
         },
         "closed_by": {
-            "type": "string"
-        },
-        "cmdb_ci": {
             "type": "string"
         },
         "comments": {
@@ -278,17 +286,6 @@
         "task_effective_number": {
             "type": "string"
         },
-        "task_for": {
-            "type": "object",
-            "properties": {
-                "link": {
-                    "type": "string"
-                },
-                "value": {
-                    "type": "string"
-                }
-            }
-        },
         "time_worked": {
             "type": "string"
         },
@@ -332,5 +329,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
