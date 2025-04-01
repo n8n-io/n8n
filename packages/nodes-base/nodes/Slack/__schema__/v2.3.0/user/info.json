@@ -7,6 +7,9 @@
         "deleted": {
             "type": "boolean"
         },
+        "has_2fa": {
+            "type": "boolean"
+        },
         "id": {
             "type": "string"
         },
@@ -48,6 +51,9 @@
                 },
                 "display_name_normalized": {
                     "type": "string"
+                },
+                "fields": {
+                    "type": "null"
                 },
                 "first_name": {
                     "type": "string"
@@ -159,5 +165,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
