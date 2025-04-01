@@ -1,10 +1,7 @@
 {
     "type": "object",
     "properties": {
-        "createdAt": {
-            "type": "string"
-        },
-        "creator": {
+        "assignee": {
             "type": "object",
             "properties": {
                 "displayName": {
@@ -14,6 +11,9 @@
                     "type": "string"
                 }
             }
+        },
+        "createdAt": {
+            "type": "string"
         },
         "id": {
             "type": "string"
@@ -39,5 +39,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
