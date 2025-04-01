@@ -7,4 +7,5 @@ export default defineConfig({
 	dts: false,
 	bundle: false,
 	sourcemap: true,
+	silent: true,
 });
