@@ -1376,6 +1376,7 @@ export interface IDisplayOptions {
 	};
 	show?: {
 		'@version'?: Array<number | DisplayCondition>;
+		'@tool'?: [boolean];
 		[key: string]: Array<NodeParameterValue | DisplayCondition> | undefined;
 	};
 
@@ -1387,6 +1388,7 @@ export interface ICredentialsDisplayOptions {
 	};
 	show?: {
 		'@version'?: number[];
+		'@tool'?: [boolean];
 		[key: string]: NodeParameterValue[] | undefined;
 	};
 

@@ -106,7 +106,9 @@ export function useNodeHelpers() {
 		node: INodeUi | null,
 		displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
 	) {
-		return NodeHelpers.displayParameterPath(nodeValues, parameter, path, node, displayKey);
+		return NodeHelpers.displayParameterPath(nodeValues, parameter, path, node, displayKey, () =>
+			node?.type ? nodeTypesStore.getNodeType(node.type, node.typeVersion) : null,
+		);
 	}
 
 	function getNodeIssues(

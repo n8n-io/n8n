@@ -2,6 +2,17 @@ import type { INodeProperties } from 'n8n-workflow';
 
 export const mainProperties: INodeProperties[] = [
 	{
+		displayName: 'Alive',
+		type: 'notice',
+		name: 'alive',
+		default: 'hello',
+		displayOptions: {
+			show: {
+				'@tool': [true],
+			},
+		},
+	},
+	{
 		displayName: '',
 		name: 'curlImport',
 		type: 'curlImport',
