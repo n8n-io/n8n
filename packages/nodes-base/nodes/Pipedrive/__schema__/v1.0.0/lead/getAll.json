@@ -7,9 +7,6 @@
         "cc_email": {
             "type": "string"
         },
-        "channel_id": {
-            "type": "null"
-        },
         "creator_id": {
             "type": "integer"
         },
@@ -47,5 +44,5 @@
             "type": "boolean"
         }
     },
-    "version": 1
+    "version": 2
 }
