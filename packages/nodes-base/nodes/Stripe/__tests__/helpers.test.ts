@@ -1,4 +1,4 @@
-const helpers = require('../../../nodes/Stripe/helpers');
+import * as helpers from '../helpers';
 
 describe('adjustMetadata', () => {
 	it('it should adjust multiple metadata values', async () => {
