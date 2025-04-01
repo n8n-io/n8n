@@ -5,14 +5,17 @@ import { readFile } from 'fs/promises';
 
 const packagesDir = resolve(__dirname, '..');
 const aiNodesDir = resolve(packagesDir, '@n8n', 'nodes-langchain');
+const cliDir = resolve(packagesDir, 'cli');
 
-const aiNodesFiles = await glob('nodes/**/*.ts', { cwd: aiNodesDir });
-const aiNodesFilesContents = aiNodesFiles.map((filePath) =>
-	readFile(resolve(aiNodesDir, filePath), 'utf-8'),
-);
+const externalFiles = [
+	...(await glob('nodes/**/*.ts', { cwd: aiNodesDir, absolute: true })),
+	...(await glob('test/integration/**/*.ts', { cwd: cliDir, absolute: true })),
+];
 
-// Files used in @n8n/nodes-langchain package
-const aiNodesPackageImports = (await Promise.all(aiNodesFilesContents)).reduce(
+const externalFilesContents = externalFiles.map((filePath) => readFile(filePath, 'utf-8'));
+
+// Files used in other packages
+const externalPackageImports = (await Promise.all(externalFilesContents)).reduce(
 	(acc, fileContents) => {
 		const regex = /from\s+['"](n8n-nodes-base[^'"]+)['"]/g;
 		let match;
@@ -25,8 +28,8 @@ const aiNodesPackageImports = (await Promise.all(aiNodesFilesContents)).reduce(
 	new Set<string>(),
 );
 
-const aiNodesPackageDependencies = Array.from(aiNodesPackageImports).map(
-	(i) => i.replace('n8n-nodes-base/dist/', '') + '.ts',
+const externalPackageDependencies = Array.from(externalPackageImports).map(
+	(i) => i.replace(/^n8n-nodes-base\/(dist\/)?/, '') + '.ts',
 );
 
 const commonIgnoredFiles = ['!**/*.d.ts', '!**/*.test.ts'];
@@ -36,18 +39,24 @@ export default defineConfig([
 		entry: [
 			'{credentials,nodes,test,types,utils}/**/*.ts',
 			...commonIgnoredFiles,
-			...aiNodesPackageDependencies.map((path) => `!${path}`),
+			...externalPackageDependencies.map((path) => `!${path}`),
 		],
 		format: ['cjs'],
 		dts: false,
 		bundle: false,
 		sourcemap: true,
+		silent: true,
 	},
 	{
-		entry: [...aiNodesPackageDependencies, ...commonIgnoredFiles],
+		entry: [...externalPackageDependencies, ...commonIgnoredFiles],
 		format: ['cjs'],
-		dts: true,
+		dts: {
+			compilerOptions: {
+				composite: false,
+			},
+		},
 		bundle: false,
 		sourcemap: true,
+		silent: true,
 	},
 ]);

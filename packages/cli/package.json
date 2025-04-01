@@ -54,7 +54,7 @@
   ],
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
-    "@redocly/cli": "^1.25.5",
+    "@redocly/cli": "^1.28.5",
     "@types/aws4": "^1.5.1",
     "@types/bcryptjs": "^2.4.2",
     "@types/compression": "1.0.1",
@@ -71,7 +71,7 @@
     "@types/shelljs": "^0.8.11",
     "@types/sshpk": "^1.17.1",
     "@types/superagent": "^8.1.7",
-    "@types/swagger-ui-express": "^4.1.6",
+    "@types/swagger-ui-express": "^4.1.8",
     "@types/syslog-client": "^1.1.2",
     "@types/uuid": "catalog:",
     "@types/validator": "^13.7.0",
@@ -82,6 +82,7 @@
     "concurrently": "^8.2.0",
     "ioredis-mock": "^8.8.1",
     "mjml": "^4.15.3",
+    "openapi-types": "^12.1.3",
     "ts-essentials": "^7.0.3"
   },
   "dependencies": {
@@ -118,7 +119,7 @@
     "express": "4.21.1",
     "express-async-errors": "3.1.1",
     "express-handlebars": "7.1.2",
-    "express-openapi-validator": "5.3.7",
+    "express-openapi-validator": "5.4.7",
     "express-prom-bundle": "6.6.0",
     "express-rate-limit": "7.2.0",
     "fast-glob": "catalog:",
@@ -145,7 +146,6 @@
     "nodemailer": "6.9.9",
     "oauth-1.0a": "2.2.6",
     "open": "7.4.2",
-    "openapi-types": "12.1.3",
     "otpauth": "9.1.1",
     "p-cancelable": "2.1.1",
     "p-lazy": "3.1.0",
