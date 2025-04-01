@@ -1,0 +1,198 @@
+{
+    "type": "object",
+    "properties": {
+        "attribute_set_id": {
+            "type": "integer"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "custom_attributes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "attribute_code": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "extension_attributes": {
+            "type": "object",
+            "properties": {
+                "category_links": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "category_id": {
+                                "type": "string"
+                            },
+                            "position": {
+                                "type": "integer"
+                            }
+                        }
+                    }
+                },
+                "website_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "id": {
+            "type": "integer"
+        },
+        "media_gallery_entries": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "disabled": {
+                        "type": "boolean"
+                    },
+                    "file": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "media_type": {
+                        "type": "string"
+                    },
+                    "position": {
+                        "type": "integer"
+                    },
+                    "types": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "name": {
+            "type": "string"
+        },
+        "options": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "is_require": {
+                        "type": "boolean"
+                    },
+                    "option_id": {
+                        "type": "integer"
+                    },
+                    "product_sku": {
+                        "type": "string"
+                    },
+                    "sort_order": {
+                        "type": "integer"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "values": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "option_type_id": {
+                                    "type": "integer"
+                                },
+                                "price": {
+                                    "type": "integer"
+                                },
+                                "price_type": {
+                                    "type": "string"
+                                },
+                                "sort_order": {
+                                    "type": "integer"
+                                },
+                                "title": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "product_links": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "link_type": {
+                        "type": "string"
+                    },
+                    "linked_product_sku": {
+                        "type": "string"
+                    },
+                    "linked_product_type": {
+                        "type": "string"
+                    },
+                    "position": {
+                        "type": "integer"
+                    },
+                    "sku": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "sku": {
+            "type": "string"
+        },
+        "status": {
+            "type": "integer"
+        },
+        "tier_prices": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "customer_group_id": {
+                        "type": "integer"
+                    },
+                    "extension_attributes": {
+                        "type": "object",
+                        "properties": {
+                            "percentage_value": {
+                                "type": "integer"
+                            },
+                            "website_id": {
+                                "type": "integer"
+                            }
+                        }
+                    },
+                    "qty": {
+                        "type": "integer"
+                    },
+                    "value": {
+                        "type": "number"
+                    }
+                }
+            }
+        },
+        "type_id": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "visibility": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}
