@@ -7,17 +7,6 @@
         "height": {
             "type": "integer"
         },
-        "modifications": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
         "pdf_url": {
             "type": "null"
         },
@@ -51,12 +40,9 @@
         "webhook_response_code": {
             "type": "null"
         },
-        "webhook_url": {
-            "type": "null"
-        },
         "width": {
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }
