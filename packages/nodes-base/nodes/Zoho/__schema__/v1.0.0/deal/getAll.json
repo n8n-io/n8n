@@ -76,17 +76,6 @@
         "$state": {
             "type": "string"
         },
-        "Account_Name": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
         "Created_By": {
             "type": "object",
             "properties": {
@@ -113,9 +102,6 @@
         "Locked__s": {
             "type": "boolean"
         },
-        "Modified_Time": {
-            "type": "string"
-        },
         "Owner": {
             "type": "object",
             "properties": {
@@ -131,5 +117,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }
