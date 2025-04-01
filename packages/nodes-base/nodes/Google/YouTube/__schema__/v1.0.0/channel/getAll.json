@@ -170,24 +170,7 @@
                     "type": "string"
                 }
             }
-        },
-        "topicDetails": {
-            "type": "object",
-            "properties": {
-                "topicCategories": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "topicIds": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
         }
     },
-    "version": 1
+    "version": 2
 }
