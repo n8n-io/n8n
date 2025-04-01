@@ -108,7 +108,7 @@ export function autoDetectResponseMode(
 	workflowStartNode: INode,
 	workflow: Workflow,
 	method: string,
-) {
+): WebhookResponseMode | undefined {
 	if (workflowStartNode.type === FORM_TRIGGER_NODE_TYPE && method === 'POST') {
 		const connectedNodes = workflow.getChildNodes(workflowStartNode.name);
 
@@ -354,22 +354,17 @@ export async function executeWebhook(
 		additionalData.executionId = executionId;
 	}
 
-	// Get the responseMode
-	let responseMode;
-
 	//check if response mode should be set automatically, e.g. multipage form
-	responseMode = autoDetectResponseMode(workflowStartNode, workflow, req.method);
-
-	if (!responseMode) {
-		responseMode = workflow.expression.getSimpleParameterValue(
+	const responseMode =
+		autoDetectResponseMode(workflowStartNode, workflow, req.method) ??
+		(workflow.expression.getSimpleParameterValue(
 			workflowStartNode,
 			webhookData.webhookDescription.responseMode,
 			executionMode,
 			additionalKeys,
 			undefined,
 			'onReceived',
-		) as WebhookResponseMode;
-	}
+		) as WebhookResponseMode);
 
 	const responseCode = workflow.expression.getSimpleParameterValue(
 		workflowStartNode,
