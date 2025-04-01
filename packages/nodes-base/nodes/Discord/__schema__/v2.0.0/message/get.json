@@ -131,6 +131,31 @@
                     "description": {
                         "type": "string"
                     },
+                    "fields": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "inline": {
+                                    "type": "boolean"
+                                },
+                                "name": {
+                                    "type": "string"
+                                },
+                                "value": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "footer": {
+                        "type": "object",
+                        "properties": {
+                            "text": {
+                                "type": "string"
+                            }
+                        }
+                    },
                     "thumbnail": {
                         "type": "object",
                         "properties": {
@@ -238,5 +263,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }
