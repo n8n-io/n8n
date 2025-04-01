@@ -1,8 +1,15 @@
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { Logger } from 'n8n-core';
+import { FormTrigger } from 'n8n-nodes-base/nodes/Form/FormTrigger.node';
+import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 import { NodeApiError, Workflow } from 'n8n-workflow';
-import type { IWebhookData, IWorkflowBase, WorkflowActivateMode } from 'n8n-workflow';
+import type {
+	IWebhookData,
+	IWorkflowBase,
+	WorkflowActivateMode,
+	INodeTypeData,
+} from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -44,7 +51,18 @@ beforeAll(async () => {
 
 	activeWorkflowManager = Container.get(ActiveWorkflowManager);
 
-	await utils.initNodeTypes();
+	const nodes: INodeTypeData = {
+		'n8n-nodes-base.scheduleTrigger': {
+			type: new ScheduleTrigger(),
+			sourcePath: '',
+		},
+		'n8n-nodes-base.formTrigger': {
+			type: new FormTrigger(),
+			sourcePath: '',
+		},
+	};
+
+	await utils.initNodeTypes(nodes);
 
 	const owner = await createOwner();
 	createActiveWorkflow = async () => await createWorkflow({ active: true }, owner);
