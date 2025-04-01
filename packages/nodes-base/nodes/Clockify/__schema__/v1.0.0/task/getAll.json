@@ -1,0 +1,39 @@
+{
+    "type": "object",
+    "properties": {
+        "assigneeId": {
+            "type": "null"
+        },
+        "assigneeIds": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "billable": {
+            "type": "boolean"
+        },
+        "costRate": {
+            "type": "null"
+        },
+        "estimate": {
+            "type": "string"
+        },
+        "hourlyRate": {
+            "type": "null"
+        },
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "projectId": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}
