@@ -10,12 +10,6 @@
         "amount_refunded": {
             "type": "integer"
         },
-        "application_fee": {
-            "type": "null"
-        },
-        "application_fee_amount": {
-            "type": "null"
-        },
         "captured": {
             "type": "boolean"
         },
@@ -24,12 +18,6 @@
         },
         "currency": {
             "type": "string"
-        },
-        "destination": {
-            "type": "null"
-        },
-        "dispute": {
-            "type": "null"
         },
         "disputed": {
             "type": "boolean"
@@ -100,9 +88,6 @@
         },
         "paid": {
             "type": "boolean"
-        },
-        "payment_intent": {
-            "type": "string"
         },
         "payment_method": {
             "type": "string"
@@ -194,9 +179,6 @@
                         },
                         "regulated_status": {
                             "type": "string"
-                        },
-                        "three_d_secure": {
-                            "type": "null"
                         }
                     }
                 },
@@ -300,27 +282,15 @@
         "shipping": {
             "type": "null"
         },
-        "source": {
-            "type": "null"
-        },
         "source_transfer": {
             "type": "null"
         },
         "statement_descriptor": {
             "type": "null"
         },
-        "statement_descriptor_suffix": {
-            "type": "null"
-        },
         "status": {
             "type": "string"
-        },
-        "transfer_data": {
-            "type": "null"
-        },
-        "transfer_group": {
-            "type": "null"
         }
     },
-    "version": 1
+    "version": 2
 }
