@@ -3,4 +3,10 @@ export interface LogEntryIdentity {
 	runIndex: number;
 }
 
-export type LogsPanelState = 'closed' | 'attached' | 'floating';
+export const LOGS_PANEL_STATE = {
+	CLOSED: 'closed',
+	ATTACHED: 'attached',
+	FLOATING: 'floating',
+} as const;
+
+export type LogsPanelState = (typeof LOGS_PANEL_STATE)[keyof typeof LOGS_PANEL_STATE];

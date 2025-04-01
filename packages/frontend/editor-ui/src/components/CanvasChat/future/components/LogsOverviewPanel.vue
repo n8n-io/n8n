@@ -19,6 +19,7 @@ import { upperFirst } from 'lodash-es';
 import { useTelemetry } from '@/composables/useTelemetry';
 import ConsumedTokenCountText from '@/components/CanvasChat/future/components/ConsumedTokenCountText.vue';
 import { type LogEntryIdentity } from '@/components/CanvasChat/types/logs';
+import LogsOverviewRow from '@/components/CanvasChat/future/components/LogsOverviewRow.vue';
 
 const { node, isOpen, selected } = defineProps<{
 	isOpen: boolean;
