@@ -21,9 +21,6 @@
                     "id": {
                         "type": "integer"
                     },
-                    "label": {
-                        "type": "null"
-                    },
                     "name": {
                         "type": "string"
                     },
@@ -212,5 +209,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
