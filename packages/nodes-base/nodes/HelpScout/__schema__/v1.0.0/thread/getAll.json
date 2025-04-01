@@ -1,0 +1,215 @@
+{
+    "type": "object",
+    "properties": {
+        "_embedded": {
+            "type": "object",
+            "properties": {
+                "attachments": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "_links": {
+                                "type": "object",
+                                "properties": {
+                                    "data": {
+                                        "type": "object",
+                                        "properties": {
+                                            "href": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "self": {
+                                        "type": "object",
+                                        "properties": {
+                                            "href": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "web": {
+                                        "type": "object",
+                                        "properties": {
+                                            "href": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "filename": {
+                                "type": "string"
+                            },
+                            "height": {
+                                "type": "integer"
+                            },
+                            "id": {
+                                "type": "integer"
+                            },
+                            "mimeType": {
+                                "type": "string"
+                            },
+                            "size": {
+                                "type": "integer"
+                            },
+                            "width": {
+                                "type": "integer"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "_links": {
+            "type": "object",
+            "properties": {
+                "assignedTo": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "createdByCustomer": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "createdByUser": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "customer": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "action": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "assignedTo": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "first": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "last": {
+                    "type": "string"
+                }
+            }
+        },
+        "body": {
+            "type": "string"
+        },
+        "cc": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "createdAt": {
+            "type": "string"
+        },
+        "createdBy": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "first": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "last": {
+                    "type": "string"
+                },
+                "photoUrl": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "customer": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "first": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "last": {
+                    "type": "string"
+                },
+                "photoUrl": {
+                    "type": "string"
+                }
+            }
+        },
+        "id": {
+            "type": "integer"
+        },
+        "savedReplyId": {
+            "type": "integer"
+        },
+        "source": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "via": {
+                    "type": "string"
+                }
+            }
+        },
+        "state": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "to": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "type": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}
