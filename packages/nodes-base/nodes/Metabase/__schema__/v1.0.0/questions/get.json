@@ -4,11 +4,23 @@
         "archived": {
             "type": "boolean"
         },
+        "archived_directly": {
+            "type": "boolean"
+        },
         "cache_invalidated_at": {
             "type": "null"
         },
         "cache_ttl": {
             "type": "null"
+        },
+        "can_delete": {
+            "type": "boolean"
+        },
+        "can_manage_db": {
+            "type": "boolean"
+        },
+        "can_restore": {
+            "type": "boolean"
         },
         "can_run_adhoc_query": {
             "type": "boolean"
@@ -77,9 +89,6 @@
                 },
                 "is_superuser": {
                     "type": "boolean"
-                },
-                "last_login": {
-                    "type": "string"
                 }
             }
         },
@@ -173,5 +182,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }
