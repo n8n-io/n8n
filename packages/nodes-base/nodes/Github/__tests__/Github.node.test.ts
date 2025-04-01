@@ -62,9 +62,9 @@ describe('Test Github Node', () => {
 			jest.useFakeTimers({ doNotFake: ['nextTick'], now });
 			await initBinaryDataService();
 		});
+
 		beforeEach(async () => {
 			const baseUrl = 'https://api.github.com';
-			nock.cleanAll();
 			nock(baseUrl)
 				.persist()
 				.defaultReplyHeaders({ 'Content-Type': 'application/json' })
@@ -83,9 +83,6 @@ describe('Test Github Node', () => {
 				.reply(200, {});
 		});
 
-		afterEach(() => {
-			nock.cleanAll();
-		});
 		testWorkflows(workflows);
 	});
 });

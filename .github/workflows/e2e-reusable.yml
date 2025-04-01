@@ -89,7 +89,7 @@ jobs:
             /home/runner/.cache/Cypress
             /github/home/.pnpm-store
             ./packages/**/dist
-          key: ${{ github.sha }}-base:build
+          key: ${{ github.sha }}-ui
 
       - name: Install dependencies
         if: steps.cache-build-artifacts.outputs.cache-hit != 'true'
@@ -139,7 +139,7 @@ jobs:
             /home/runner/.cache/Cypress
             /github/home/.pnpm-store
             ./packages/**/dist
-          key: ${{ github.sha }}-base:build
+          key: ${{ github.sha }}-ui
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

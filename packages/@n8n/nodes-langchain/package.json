@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "1.85.0",
+  "version": "1.86.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -162,7 +162,7 @@
     "@langchain/qdrant": "0.1.1",
     "@langchain/redis": "0.1.0",
     "@langchain/textsplitters": "0.1.0",
-    "@mozilla/readability": "0.5.0",
+    "@mozilla/readability": "0.6.0",
     "@n8n/json-schema-to-zod": "workspace:*",
     "@n8n/typeorm": "0.3.20-12",
     "@n8n/typescript-config": "workspace:*",
