@@ -33,13 +33,14 @@ import type {
 	WebhookResponseData,
 } from 'n8n-workflow';
 import {
-	ApplicationError,
 	BINARY_ENCODING,
 	createDeferredPromise,
 	ExecutionCancelledError,
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	NodeOperationError,
+	OperationalError,
+	UnexpectedError,
 	WAIT_NODE_TYPE,
 } from 'n8n-workflow';
 import assert from 'node:assert';
@@ -392,7 +393,7 @@ export async function executeWebhook(
 		// the default that people know as early as possible (probably already testing phase)
 		// that something does not resolve properly.
 		const errorMessage = `The response mode '${responseMode}' is not valid!`;
-		responseCallback(new ApplicationError(errorMessage), {});
+		responseCallback(new UnexpectedError(errorMessage), {});
 		throw new InternalServerError(errorMessage);
 	}
 
@@ -479,7 +480,7 @@ export async function executeWebhook(
 				},
 			});
 
-			responseCallback(new ApplicationError(errorMessage), {});
+			responseCallback(new UnexpectedError(errorMessage), {});
 			didSendResponse = true;
 
 			// Add error to execution data that it can be logged and send to Editor-UI
@@ -715,7 +716,7 @@ export async function executeWebhook(
 							// Return the JSON data of the first entry
 
 							if (returnData.data!.main[0]![0] === undefined) {
-								responseCallback(new ApplicationError('No item to return got found'), {});
+								responseCallback(new OperationalError('No item to return got found'), {});
 								didSendResponse = true;
 								return undefined;
 							}
@@ -769,13 +770,13 @@ export async function executeWebhook(
 							data = returnData.data!.main[0]![0];
 
 							if (data === undefined) {
-								responseCallback(new ApplicationError('No item was found to return'), {});
+								responseCallback(new OperationalError('No item was found to return'), {});
 								didSendResponse = true;
 								return undefined;
 							}
 
 							if (data.binary === undefined) {
-								responseCallback(new ApplicationError('No binary data was found to return'), {});
+								responseCallback(new OperationalError('No binary data was found to return'), {});
 								didSendResponse = true;
 								return undefined;
 							}
@@ -791,7 +792,7 @@ export async function executeWebhook(
 
 							if (responseBinaryPropertyName === undefined && !didSendResponse) {
 								responseCallback(
-									new ApplicationError("No 'responseBinaryPropertyName' is set"),
+									new OperationalError("No 'responseBinaryPropertyName' is set"),
 									{},
 								);
 								didSendResponse = true;
@@ -802,7 +803,7 @@ export async function executeWebhook(
 							];
 							if (binaryData === undefined && !didSendResponse) {
 								responseCallback(
-									new ApplicationError(
+									new OperationalError(
 										`The binary property '${responseBinaryPropertyName}' which should be returned does not exist`,
 									),
 									{},
@@ -851,8 +852,7 @@ export async function executeWebhook(
 				.catch((e) => {
 					if (!didSendResponse) {
 						responseCallback(
-							new ApplicationError('There was a problem executing the workflow', {
-								level: 'warning',
+							new OperationalError('There was a problem executing the workflow', {
 								cause: e,
 							}),
 							{},
@@ -869,8 +869,7 @@ export async function executeWebhook(
 		const error =
 			e instanceof UnprocessableRequestError
 				? e
-				: new ApplicationError('There was a problem executing the workflow', {
-						level: 'warning',
+				: new OperationalError('There was a problem executing the workflow', {
 						cause: e,
 					});
 		if (didSendResponse) throw error;
