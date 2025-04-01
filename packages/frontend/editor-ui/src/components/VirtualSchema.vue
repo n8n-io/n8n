@@ -450,10 +450,12 @@ const onDragEnd = (el: HTMLElement) => {
 									<template #link>
 										<NodeExecuteButton
 											:node-name="item.nodeName"
+											:text="true"
 											telemetry-source="inputs"
 											hide-icon
 											label="Execute previous nodes"
 											size="small"
+											:style="{ padding: 0 }"
 										/>
 									</template>
 								</i18n-t>
