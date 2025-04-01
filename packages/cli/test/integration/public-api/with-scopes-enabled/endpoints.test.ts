@@ -5,6 +5,7 @@ import validator from 'validator';
 import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import { TagRepository } from '@/databases/repositories/tag.repository';
 import { getOwnerOnlyApiKeyScopes } from '@/public-api/permissions.ee';
 import { affixRoleToSaveCredential, createCredentials } from '@test-integration/db/credentials';
 import { createErrorExecution, createSuccessfulExecution } from '@test-integration/db/executions';
@@ -18,6 +19,7 @@ import {
 	createUser,
 	getUserById,
 } from '@test-integration/db/users';
+import { createVariable, getVariableOrFail } from '@test-integration/db/variables';
 import { createWorkflow } from '@test-integration/db/workflows';
 import { randomName } from '@test-integration/random';
 import type { CredentialPayload, SaveCredentialFunction } from '@test-integration/types';
@@ -25,7 +27,6 @@ import { setupTestServer } from '@test-integration/utils';
 
 import * as testDb from '../../shared/test-db';
 import * as utils from '../../shared/utils/';
-import { TagRepository } from '@/databases/repositories/tag.repository';
 
 let saveCredential: SaveCredentialFunction;
 
@@ -42,7 +43,7 @@ const credentialPayload = (): CredentialPayload => ({
 describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 	const testServer = setupTestServer({
 		endpointGroups: ['publicApi'],
-		enabledFeatures: ['feat:advancedPermissions', 'feat:apiKeyScopes'],
+		enabledFeatures: ['feat:advancedPermissions', 'feat:apiKeyScopes', 'feat:variables'],
 		quotas: {
 			'quota:users': -1,
 		},
@@ -66,6 +67,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 			'Execution',
 			'SharedWorkflow',
 			'Tag',
+			'Variables',
 		]);
 	});
 
@@ -840,6 +842,105 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					const response = await authMemberAgent.get(`/tags/${tag.id}`);
 
 					expect(response.statusCode).toBe(403);
+				});
+			});
+		});
+
+		describe('variables', () => {
+			describe('GET /variables', () => {
+				test('should retrieve all variables when API key has "variable:list" scope', async () => {
+					/**
+					 * Arrange
+					 */
+					testServer.license.enable('feat:variables');
+					const owner = await createOwnerWithApiKey();
+					const variables = await Promise.all([
+						createVariable(),
+						createVariable(),
+						createVariable(),
+					]);
+
+					/**
+					 * Act
+					 */
+					const response = await testServer.publicApiAgentFor(owner).get('/variables');
+
+					/**
+					 * Assert
+					 */
+					expect(response.status).toBe(200);
+					expect(response.body).toHaveProperty('data');
+					expect(response.body).toHaveProperty('nextCursor');
+					expect(Array.isArray(response.body.data)).toBe(true);
+					expect(response.body.data.length).toBe(variables.length);
+
+					variables.forEach(({ id, key, value }) => {
+						expect(response.body.data).toContainEqual(expect.objectContaining({ id, key, value }));
+					});
+				});
+				test('should fail to retrieve all variables when API key doesn\'t have "variable:read" scope', async () => {
+					/**
+					 * Arrange
+					 */
+					const owner = await createOwnerWithApiKey({ scopes: ['credential:create'] });
+					await Promise.all([createVariable(), createVariable(), createVariable()]);
+
+					/**
+					 * Act
+					 */
+					const response = await testServer.publicApiAgentFor(owner).get('/variables');
+
+					/**
+					 * Assert
+					 */
+					expect(response.status).toBe(403);
+				});
+			});
+
+			describe('POST /variables', () => {
+				test('should create variable when API key has "variable:create" scope', async () => {
+					/**
+					 * Arrange
+					 */
+					const owner = await createOwnerWithApiKey();
+					const variablePayload = { key: 'key', value: 'value' };
+
+					/**
+					 * Act
+					 */
+					const response = await testServer
+						.publicApiAgentFor(owner)
+						.post('/variables')
+						.send(variablePayload);
+
+					/**
+					 * Assert
+					 */
+					expect(response.status).toBe(201);
+					await expect(getVariableOrFail(response.body.id)).resolves.toEqual(
+						expect.objectContaining(variablePayload),
+					);
+				});
+
+				test('should fail to create variable when API key doesn\'t have "variable:create" scope', async () => {
+					/**
+					 * Arrange
+					 */
+					const owner = await createOwnerWithApiKey({ scopes: ['credential:create'] });
+					const variablePayload = { key: 'key', value: 'value' };
+
+					/**
+					 * Act
+					 */
+					const response = await testServer
+						.publicApiAgentFor(owner)
+						.post('/variables')
+						.send(variablePayload);
+
+					/**
+					 * Assert
+					 */
+					expect(response.status).toBe(403);
 				});
 			});
 		});
