@@ -80,12 +80,9 @@
         "status": {
             "type": "string"
         },
-        "summary": {
-            "type": "string"
-        },
         "updated": {
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
