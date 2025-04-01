@@ -1,0 +1,226 @@
+{
+    "type": "object",
+    "properties": {
+        "absolute_magnitude_h": {
+            "type": "number"
+        },
+        "close_approach_data": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "close_approach_date": {
+                        "type": "string"
+                    },
+                    "close_approach_date_full": {
+                        "type": "string"
+                    },
+                    "epoch_date_close_approach": {
+                        "type": "integer"
+                    },
+                    "miss_distance": {
+                        "type": "object",
+                        "properties": {
+                            "astronomical": {
+                                "type": "string"
+                            },
+                            "kilometers": {
+                                "type": "string"
+                            },
+                            "lunar": {
+                                "type": "string"
+                            },
+                            "miles": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "orbiting_body": {
+                        "type": "string"
+                    },
+                    "relative_velocity": {
+                        "type": "object",
+                        "properties": {
+                            "kilometers_per_hour": {
+                                "type": "string"
+                            },
+                            "kilometers_per_second": {
+                                "type": "string"
+                            },
+                            "miles_per_hour": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "designation": {
+            "type": "string"
+        },
+        "estimated_diameter": {
+            "type": "object",
+            "properties": {
+                "feet": {
+                    "type": "object",
+                    "properties": {
+                        "estimated_diameter_max": {
+                            "type": "number"
+                        },
+                        "estimated_diameter_min": {
+                            "type": "number"
+                        }
+                    }
+                },
+                "kilometers": {
+                    "type": "object",
+                    "properties": {
+                        "estimated_diameter_max": {
+                            "type": "number"
+                        },
+                        "estimated_diameter_min": {
+                            "type": "number"
+                        }
+                    }
+                },
+                "meters": {
+                    "type": "object",
+                    "properties": {
+                        "estimated_diameter_max": {
+                            "type": "number"
+                        },
+                        "estimated_diameter_min": {
+                            "type": "number"
+                        }
+                    }
+                },
+                "miles": {
+                    "type": "object",
+                    "properties": {
+                        "estimated_diameter_max": {
+                            "type": "number"
+                        },
+                        "estimated_diameter_min": {
+                            "type": "number"
+                        }
+                    }
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "is_potentially_hazardous_asteroid": {
+            "type": "boolean"
+        },
+        "is_sentry_object": {
+            "type": "boolean"
+        },
+        "links": {
+            "type": "object",
+            "properties": {
+                "self": {
+                    "type": "string"
+                }
+            }
+        },
+        "name": {
+            "type": "string"
+        },
+        "name_limited": {
+            "type": "string"
+        },
+        "nasa_jpl_url": {
+            "type": "string"
+        },
+        "neo_reference_id": {
+            "type": "string"
+        },
+        "orbital_data": {
+            "type": "object",
+            "properties": {
+                "aphelion_distance": {
+                    "type": "string"
+                },
+                "ascending_node_longitude": {
+                    "type": "string"
+                },
+                "data_arc_in_days": {
+                    "type": "integer"
+                },
+                "eccentricity": {
+                    "type": "string"
+                },
+                "epoch_osculation": {
+                    "type": "string"
+                },
+                "equinox": {
+                    "type": "string"
+                },
+                "first_observation_date": {
+                    "type": "string"
+                },
+                "inclination": {
+                    "type": "string"
+                },
+                "jupiter_tisserand_invariant": {
+                    "type": "string"
+                },
+                "last_observation_date": {
+                    "type": "string"
+                },
+                "mean_anomaly": {
+                    "type": "string"
+                },
+                "mean_motion": {
+                    "type": "string"
+                },
+                "minimum_orbit_intersection": {
+                    "type": "string"
+                },
+                "observations_used": {
+                    "type": "integer"
+                },
+                "orbit_class": {
+                    "type": "object",
+                    "properties": {
+                        "orbit_class_description": {
+                            "type": "string"
+                        },
+                        "orbit_class_range": {
+                            "type": "string"
+                        },
+                        "orbit_class_type": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "orbit_determination_date": {
+                    "type": "string"
+                },
+                "orbit_id": {
+                    "type": "string"
+                },
+                "orbit_uncertainty": {
+                    "type": "string"
+                },
+                "orbital_period": {
+                    "type": "string"
+                },
+                "perihelion_argument": {
+                    "type": "string"
+                },
+                "perihelion_distance": {
+                    "type": "string"
+                },
+                "perihelion_time": {
+                    "type": "string"
+                },
+                "semi_major_axis": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 1
+}
