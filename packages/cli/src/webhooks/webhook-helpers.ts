@@ -508,10 +508,6 @@ export async function executeWebhook(
 			};
 		}
 
-		const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-			$executionId: executionId,
-		};
-
 		if (webhookData.webhookDescription.responseHeaders !== undefined) {
 			const responseHeaders = workflow.expression.getComplexParameterValue(
 				workflowStartNode,
@@ -716,10 +712,6 @@ export async function executeWebhook(
 						didSendResponse = true;
 						return data;
 					}
-
-					const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-						$executionId: executionId,
-					};
 
 					if (!didSendResponse) {
 						let data: IDataObject | IDataObject[] | undefined;
