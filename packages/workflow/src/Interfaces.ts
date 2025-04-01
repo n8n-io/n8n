@@ -1388,7 +1388,6 @@ export interface ICredentialsDisplayOptions {
 	};
 	show?: {
 		'@version'?: number[];
-		'@tool'?: [boolean];
 		[key: string]: NodeParameterValue[] | undefined;
 	};
 

@@ -4778,6 +4778,74 @@ describe('displayParameter', () => {
 			false,
 		],
 		[
+			'Should return true if @tool and @version conditions are both met',
+			{
+				...defaultTestInput,
+				node: {
+					...testNode,
+					typeVersion: 2,
+				},
+				nodeTypeDescription: {
+					...testNodeType,
+					codex: {
+						subcategories: {
+							AI: ['Tools'],
+						},
+					},
+				},
+				parameter: {
+					...defaultTestInput.parameter,
+					displayOptions: {
+						show: {
+							'@tool': [true],
+							'@version': [
+								{
+									_cnd: {
+										gte: 2,
+									},
+								},
+							],
+						},
+					},
+				},
+			},
+			true,
+		],
+		[
+			'Should return false if @tool is true but @version condition is not met',
+			{
+				...defaultTestInput,
+				node: {
+					...testNode,
+					typeVersion: 1,
+				},
+				nodeTypeDescription: {
+					...testNodeType,
+					codex: {
+						subcategories: {
+							AI: ['Tools'],
+						},
+					},
+				},
+				parameter: {
+					...defaultTestInput.parameter,
+					displayOptions: {
+						show: {
+							'@tool': [true],
+							'@version': [
+								{
+									_cnd: {
+										gte: 2,
+									},
+								},
+							],
+						},
+					},
+				},
+			},
+			false,
+		],
+		[
 			'Should return true if no disabledOptions are defined',
 			{
 				...defaultTestInput,
@@ -4818,6 +4886,40 @@ describe('displayParameter', () => {
 				displayKey: 'disabledOptions',
 			},
 			true,
+		],
+		[
+			'Should return true if nodeValuesRoot contains a matching value for displayOptions.show',
+			{
+				...defaultTestInput,
+				nodeValues: {},
+				nodeValuesRoot: { condition: 'value1' },
+				parameter: {
+					...defaultTestInput.parameter,
+					displayOptions: {
+						show: {
+							'/condition': ['value1'],
+						},
+					},
+				},
+			},
+			true,
+		],
+		[
+			'Should return false if nodeValuesRoot does not contain a matching value for displayOptions.show',
+			{
+				...defaultTestInput,
+				nodeValues: { condition: 'value1' },
+				nodeValuesRoot: { anotherKey: 'value1' },
+				parameter: {
+					...defaultTestInput.parameter,
+					displayOptions: {
+						show: {
+							'/condition': ['value1'],
+						},
+					},
+				},
+			},
+			false,
 		],
 	];
 
