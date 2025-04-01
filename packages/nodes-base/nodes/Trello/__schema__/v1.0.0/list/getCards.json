@@ -58,9 +58,6 @@
                 }
             }
         },
-        "cardRole": {
-            "type": "null"
-        },
         "checkItemStates": {
             "type": "array",
             "items": {
@@ -85,9 +82,6 @@
                     "type": "string"
                 },
                 "idPlugin": {
-                    "type": "null"
-                },
-                "idUploadedBackground": {
                     "type": "null"
                 },
                 "size": {
@@ -194,5 +188,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
