@@ -6,23 +6,17 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "content_scan_version": {
+                        "type": "integer"
+                    },
                     "content_type": {
                         "type": "string"
                     },
                     "filename": {
                         "type": "string"
                     },
-                    "height": {
-                        "type": "integer"
-                    },
                     "id": {
                         "type": "string"
-                    },
-                    "placeholder": {
-                        "type": "string"
-                    },
-                    "placeholder_version": {
-                        "type": "integer"
                     },
                     "proxy_url": {
                         "type": "string"
@@ -32,9 +26,6 @@
                     },
                     "url": {
                         "type": "string"
-                    },
-                    "width": {
-                        "type": "integer"
                     }
                 }
             }
@@ -90,6 +81,17 @@
                         "items": {
                             "type": "object",
                             "properties": {
+                                "custom_id": {
+                                    "type": "string"
+                                },
+                                "emoji": {
+                                    "type": "object",
+                                    "properties": {
+                                        "name": {
+                                            "type": "string"
+                                        }
+                                    }
+                                },
                                 "id": {
                                     "type": "integer"
                                 },
@@ -101,9 +103,6 @@
                                 },
                                 "type": {
                                     "type": "integer"
-                                },
-                                "url": {
-                                    "type": "string"
                                 }
                             }
                         }
@@ -125,20 +124,6 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "author": {
-                        "type": "object",
-                        "properties": {
-                            "name": {
-                                "type": "string"
-                            },
-                            "url": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "color": {
-                        "type": "integer"
-                    },
                     "description": {
                         "type": "string"
                     },
@@ -146,9 +131,6 @@
                         "type": "object",
                         "properties": {
                             "name": {
-                                "type": "string"
-                            },
-                            "url": {
                                 "type": "string"
                             }
                         }
@@ -187,29 +169,6 @@
                     },
                     "url": {
                         "type": "string"
-                    },
-                    "video": {
-                        "type": "object",
-                        "properties": {
-                            "flags": {
-                                "type": "integer"
-                            },
-                            "height": {
-                                "type": "integer"
-                            },
-                            "placeholder": {
-                                "type": "string"
-                            },
-                            "placeholder_version": {
-                                "type": "integer"
-                            },
-                            "url": {
-                                "type": "string"
-                            },
-                            "width": {
-                                "type": "integer"
-                            }
-                        }
                     }
                 }
             }
@@ -242,6 +201,9 @@
                     },
                     "banner_color": {
                         "type": "null"
+                    },
+                    "bot": {
+                        "type": "boolean"
                     },
                     "clan": {
                         "type": "null"
@@ -283,5 +245,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }
