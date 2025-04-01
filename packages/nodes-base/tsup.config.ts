@@ -1,4 +1,3 @@
-// eslint-disable-next-line import/no-extraneous-dependencies
 import { defineConfig } from 'tsup';
 import glob from 'fast-glob';
 import { resolve } from 'path';
@@ -32,7 +31,6 @@ const aiNodesPackageDependencies = Array.from(aiNodesPackageImports).map(
 
 const commonIgnoredFiles = ['!**/*.d.ts', '!**/*.test.ts'];
 
-// eslint-disable-next-line import/no-default-export
 export default defineConfig([
 	{
 		entry: [
@@ -43,11 +41,13 @@ export default defineConfig([
 		format: ['cjs'],
 		dts: false,
 		bundle: false,
+		sourcemap: true,
 	},
 	{
 		entry: [...aiNodesPackageDependencies, ...commonIgnoredFiles],
 		format: ['cjs'],
 		dts: true,
 		bundle: false,
+		sourcemap: true,
 	},
 ]);
