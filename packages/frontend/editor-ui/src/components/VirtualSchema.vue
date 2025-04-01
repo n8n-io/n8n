@@ -450,10 +450,10 @@ const onDragEnd = (el: HTMLElement) => {
 									<template #link>
 										<NodeExecuteButton
 											:node-name="item.nodeName"
-											:text="true"
+											text
 											telemetry-source="inputs"
 											hide-icon
-											label="Execute previous nodes"
+											:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
 											size="small"
 											:style="{ padding: 0 }"
 										/>
