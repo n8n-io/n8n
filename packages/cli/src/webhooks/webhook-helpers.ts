@@ -205,6 +205,54 @@ export function getResponseOnReceived(
 	return callbackData;
 }
 
+export function setupResponseNodePromise(
+	responsePromise: IDeferredPromise<IN8nHttpFullResponse>,
+	res: express.Response,
+	responseCallback: (error: Error | null, data: IWebhookResponseCallbackData) => void,
+	workflowStartNode: INode,
+	executionId: string | undefined,
+	workflow: Workflow,
+): void {
+	void responsePromise.promise
+		.then(async (response: IN8nHttpFullResponse) => {
+			const binaryData = (response.body as IDataObject)?.binaryData as IBinaryData;
+			if (binaryData?.id) {
+				res.header(response.headers);
+				const stream = await Container.get(BinaryDataService).getAsStream(binaryData.id);
+				stream.pipe(res, { end: false });
+				await finished(stream);
+				responseCallback(null, { noWebhookResponse: true });
+			} else if (Buffer.isBuffer(response.body)) {
+				res.header(response.headers);
+				res.end(response.body);
+				responseCallback(null, { noWebhookResponse: true });
+			} else {
+				// TODO: This probably needs some more changes depending on the options on the
+				//       Webhook Response node
+
+				let data: IWebhookResponseCallbackData = {
+					data: response.body as IDataObject,
+					headers: response.headers,
+					responseCode: response.statusCode,
+				};
+
+				data = handleFormRedirectionCase(data, workflowStartNode);
+
+				responseCallback(null, data);
+			}
+
+			process.nextTick(() => res.end());
+		})
+		.catch(async (error) => {
+			Container.get(ErrorReporter).error(error);
+			Container.get(Logger).error(
+				`Error with Webhook-Response for execution "${executionId}": "${error.message}"`,
+				{ executionId, workflowId: workflow.id },
+			);
+			responseCallback(error, {});
+		});
+}
+
 /**
  * Executes a webhook
  */
@@ -541,49 +589,14 @@ export async function executeWebhook(
 		let responsePromise: IDeferredPromise<IN8nHttpFullResponse> | undefined;
 		if (responseMode === 'responseNode') {
 			responsePromise = createDeferredPromise<IN8nHttpFullResponse>();
-			responsePromise.promise
-				.then(async (response: IN8nHttpFullResponse) => {
-					if (didSendResponse) {
-						return;
-					}
-
-					const binaryData = (response.body as IDataObject)?.binaryData as IBinaryData;
-					if (binaryData?.id) {
-						res.header(response.headers);
-						const stream = await Container.get(BinaryDataService).getAsStream(binaryData.id);
-						stream.pipe(res, { end: false });
-						await finished(stream);
-						responseCallback(null, { noWebhookResponse: true });
-					} else if (Buffer.isBuffer(response.body)) {
-						res.header(response.headers);
-						res.end(response.body);
-						responseCallback(null, { noWebhookResponse: true });
-					} else {
-						// TODO: This probably needs some more changes depending on the options on the
-						//       Webhook Response node
-
-						let data: IWebhookResponseCallbackData = {
-							data: response.body as IDataObject,
-							headers: response.headers,
-							responseCode: response.statusCode,
-						};
-
-						data = handleFormRedirectionCase(data, workflowStartNode);
-
-						responseCallback(null, data);
-					}
-
-					process.nextTick(() => res.end());
-					didSendResponse = true;
-				})
-				.catch(async (error) => {
-					Container.get(ErrorReporter).error(error);
-					Container.get(Logger).error(
-						`Error with Webhook-Response for execution "${executionId}": "${error.message}"`,
-						{ executionId, workflowId: workflow.id },
-					);
-					responseCallback(error, {});
-				});
+			setupResponseNodePromise(
+				responsePromise,
+				res,
+				responseCallback,
+				workflowStartNode,
+				executionId,
+				workflow,
+			);
 		}
 
 		if (

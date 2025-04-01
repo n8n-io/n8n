@@ -1,13 +1,31 @@
+import type express from 'express';
 import { mock, type MockProxy } from 'jest-mock-extended';
-import type { Workflow, INode, IDataObject, IWebhookResponseData } from 'n8n-workflow';
-import { FORM_NODE_TYPE, WAIT_NODE_TYPE } from 'n8n-workflow';
+import { BinaryDataService, ErrorReporter, Logger } from 'n8n-core';
+import type {
+	Workflow,
+	INode,
+	IDataObject,
+	IWebhookResponseData,
+	IDeferredPromise,
+	IN8nHttpFullResponse,
+} from 'n8n-workflow';
+import { createDeferredPromise, FORM_NODE_TYPE, WAIT_NODE_TYPE } from 'n8n-workflow';
+import type { Readable } from 'stream';
+import { finished } from 'stream/promises';
+
+import { mockInstance } from '@test/mocking';
 
 import {
 	autoDetectResponseMode,
 	handleFormRedirectionCase,
 	getResponseOnReceived,
+	setupResponseNodePromise,
 } from '../webhook-helpers';
 import type { IWebhookResponseCallbackData } from '../webhook.types';
+
+jest.mock('stream/promises', () => ({
+	finished: jest.fn(),
+}));
 
 describe('autoDetectResponseMode', () => {
 	let workflow: MockProxy<Workflow>;
@@ -140,5 +158,125 @@ describe('getResponseOnReceived', () => {
 			data: { message: 'Workflow was started' },
 			responseCode,
 		});
+	});
+});
+
+describe('setupResponseNodePromise', () => {
+	const workflowId = 'test-workflow-id';
+	const executionId = 'test-execution-id';
+	const res = mock<express.Response>();
+	const responseCallback = jest.fn();
+	const workflowStartNode = mock<INode>();
+	const workflow = mock<Workflow>({ id: workflowId });
+	const binaryDataService = mockInstance(BinaryDataService);
+	const errorReporter = mockInstance(ErrorReporter);
+	const logger = mockInstance(Logger);
+
+	let responsePromise: IDeferredPromise<IN8nHttpFullResponse>;
+
+	beforeEach(() => {
+		jest.resetAllMocks();
+
+		responsePromise = createDeferredPromise<IN8nHttpFullResponse>();
+
+		res.header.mockReturnValue(res);
+		res.end.mockReturnValue(res);
+	});
+
+	test('should handle regular response object', async () => {
+		setupResponseNodePromise(
+			responsePromise,
+			res,
+			responseCallback,
+			workflowStartNode,
+			executionId,
+			workflow,
+		);
+
+		responsePromise.resolve({
+			body: { data: 'test data' },
+			headers: { 'content-type': 'application/json' },
+			statusCode: 200,
+		});
+		await new Promise(process.nextTick);
+
+		expect(responseCallback).toHaveBeenCalledWith(null, {
+			data: { data: 'test data' },
+			headers: { 'content-type': 'application/json' },
+			responseCode: 200,
+		});
+		expect(res.end).toHaveBeenCalled();
+	});
+
+	test('should handle binary data with ID', async () => {
+		const mockStream = mock<Readable>();
+		binaryDataService.getAsStream.mockResolvedValue(mockStream);
+
+		setupResponseNodePromise(
+			responsePromise,
+			res,
+			responseCallback,
+			workflowStartNode,
+			executionId,
+			workflow,
+		);
+
+		responsePromise.resolve({
+			body: { binaryData: { id: 'binary-123' } },
+			headers: { 'content-type': 'image/jpeg' },
+			statusCode: 200,
+		});
+		await new Promise(process.nextTick);
+
+		expect(binaryDataService.getAsStream).toHaveBeenCalledWith('binary-123');
+		expect(res.header).toHaveBeenCalledWith({ 'content-type': 'image/jpeg' });
+		expect(mockStream.pipe).toHaveBeenCalledWith(res, { end: false });
+		expect(finished).toHaveBeenCalledWith(mockStream);
+		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+	});
+
+	test('should handle buffer response', async () => {
+		setupResponseNodePromise(
+			responsePromise,
+			res,
+			responseCallback,
+			workflowStartNode,
+			executionId,
+			workflow,
+		);
+
+		const buffer = Buffer.from('test buffer');
+		responsePromise.resolve({
+			body: buffer,
+			headers: { 'content-type': 'text/plain' },
+			statusCode: 200,
+		});
+		await new Promise(process.nextTick);
+
+		expect(res.header).toHaveBeenCalledWith({ 'content-type': 'text/plain' });
+		expect(res.end).toHaveBeenCalledWith(buffer);
+		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+	});
+
+	test('should handle errors properly', async () => {
+		setupResponseNodePromise(
+			responsePromise,
+			res,
+			responseCallback,
+			workflowStartNode,
+			executionId,
+			workflow,
+		);
+
+		const error = new Error('Test error');
+		responsePromise.reject(error);
+		await new Promise(process.nextTick);
+
+		expect(errorReporter.error).toHaveBeenCalledWith(error);
+		expect(logger.error).toHaveBeenCalledWith(
+			`Error with Webhook-Response for execution "${executionId}": "${error.message}"`,
+			{ executionId, workflowId },
+		);
+		expect(responseCallback).toHaveBeenCalledWith(error, {});
 	});
 });
