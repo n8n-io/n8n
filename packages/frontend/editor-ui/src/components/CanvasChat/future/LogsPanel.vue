@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { computed, ref, useTemplateRef, watch } from 'vue';
-import { N8nIconButton, N8nResizeWrapper, N8nTooltip } from '@n8n/design-system';
+import { N8nResizeWrapper } from '@n8n/design-system';
 import { useChatState } from '@/components/CanvasChat/composables/useChatState';
 import { useResize } from '@/components/CanvasChat/composables/useResize';
 import { usePiPWindow } from '@/components/CanvasChat/composables/usePiPWindow';
@@ -9,19 +9,15 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/constants';
 import LogsOverviewPanel from '@/components/CanvasChat/future/components/LogsOverviewPanel.vue';
 import { useCanvasStore } from '@/stores/canvas.store';
-import { useI18n } from '@/composables/useI18n';
-import { useStyles } from '@/composables/useStyles';
 import ChatMessagesPanel from '@/components/CanvasChat/components/ChatMessagesPanel.vue';
 import LogsDetailsPanel from '@/components/CanvasChat/future/components/LogDetailsPanel.vue';
 import { type LogEntryIdentity } from '@/components/CanvasChat/types/logs';
-import { useMounted } from '@vueuse/core';
+import LogsPanelActions from '@/components/CanvasChat/future/components/LogsPanelActions.vue';
 
 const workflowsStore = useWorkflowsStore();
 const canvasStore = useCanvasStore();
 const panelState = computed(() => workflowsStore.chatPanelState);
 const container = ref<HTMLElement>();
-const overviewPanelActions = useTemplateRef<HTMLElement>('overviewPanelActions');
-const detailsPanelActions = useTemplateRef<HTMLElement>('detailsPanelActions');
 const selectedLogEntry = ref<LogEntryIdentity | undefined>(undefined);
 const pipContainer = useTemplateRef('pipContainer');
 const pipContent = useTemplateRef('pipContent');
@@ -31,7 +27,6 @@ const hasChat = computed(() =>
 		[CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE].includes(node.type),
 	),
 );
-const locales = useI18n();
 
 const telemetry = useTelemetry();
 
@@ -40,16 +35,7 @@ const { rootStyles, height, chatWidth, onWindowResize, onResizeDebounced, onResi
 
 const { currentSessionId, messages, connectedNode, sendMessage, refreshSession, displayExecution } =
 	useChatState(ref(false), onWindowResize);
-const appStyles = useStyles();
-const tooltipZIndex = computed(() => appStyles.APP_Z_INDEXES.ASK_ASSISTANT_FLOATING_BUTTON + 100);
-const isMounted = useMounted();
-const panelActionsContainer = computed(() =>
-	isMounted
-		? selectedLogEntry.value
-			? detailsPanelActions.value
-			: overviewPanelActions.value
-		: null,
-);
+const isLogDetailsOpen = computed(() => selectedLogEntry.value !== undefined);
 
 const { canPopOut, isPoppedOut, pipWindow } = usePiPWindow({
 	initialHeight: 400,
@@ -66,18 +52,14 @@ const { canPopOut, isPoppedOut, pipWindow } = usePiPWindow({
 		workflowsStore.setPanelState('attached');
 	},
 });
+const logsPanelActionsProps = computed<InstanceType<typeof LogsPanelActions>['$props']>(() => ({
+	panelState: panelState.value,
+	showPopOutButton: canPopOut.value && !isPoppedOut.value,
+	onPopOut,
+	onToggleOpen,
+}));
 
-const popOutButtonText = computed(() => locales.baseText('runData.panel.actions.popOut'));
-
-const toggleButtonText = computed(() =>
-	locales.baseText(
-		panelState.value === 'attached'
-			? 'runData.panel.actions.collapse'
-			: 'runData.panel.actions.open',
-	),
-);
-
-function handleToggleOpen() {
+function onToggleOpen() {
 	if (panelState.value === 'closed') {
 		telemetry.track('User toggled log view', { new_state: 'attached' });
 		workflowsStore.setPanelState('attached');
@@ -139,7 +121,7 @@ watch([panelState, height], ([state, h]) => {
 							:past-chat-messages="previousChatMessages"
 							:show-close-button="false"
 							:is-new-logs-enabled="true"
-							@close="handleToggleOpen"
+							@close="onToggleOpen"
 							@refresh-session="refreshSession"
 							@display-execution="displayExecution"
 							@send-message="sendMessage"
@@ -154,51 +136,23 @@ watch([panelState, height], ([state, h]) => {
 						@click-header="handleClickHeader"
 						@select="handleSelectLogEntry"
 					>
-						<template #actions><div ref="overviewPanelActions" /></template>
+						<template #actions>
+							<LogsPanelActions v-if="!isLogDetailsOpen" v-bind="logsPanelActionsProps" />
+						</template>
 					</LogsOverviewPanel>
 					<LogsDetailsPanel
 						v-if="selectedLogEntry"
 						:class="$style.logDetails"
 						:is-open="panelState !== 'closed'"
 						@click-header="handleClickHeader"
-						><template #actions><div ref="detailsPanelActions" /></template
-					></LogsDetailsPanel>
+					>
+						<template #actions>
+							<LogsPanelActions v-if="isLogDetailsOpen" v-bind="logsPanelActionsProps" />
+						</template>
+					</LogsDetailsPanel>
 				</div>
 			</N8nResizeWrapper>
 		</div>
-		<Teleport v-if="panelActionsContainer !== null" :to="panelActionsContainer">
-			<div>
-				<N8nTooltip
-					v-if="canPopOut && !isPoppedOut"
-					:z-index="tooltipZIndex"
-					:content="popOutButtonText"
-				>
-					<N8nIconButton
-						icon="pop-out"
-						type="secondary"
-						size="small"
-						icon-size="medium"
-						:aria-label="popOutButtonText"
-						@click="onPopOut"
-					/>
-				</N8nTooltip>
-				<N8nTooltip
-					v-if="panelState !== 'floating'"
-					:z-index="tooltipZIndex"
-					:content="toggleButtonText"
-				>
-					<N8nIconButton
-						type="secondary"
-						size="small"
-						icon-size="medium"
-						:icon="panelState === 'attached' ? 'chevron-down' : 'chevron-up'"
-						:aria-label="toggleButtonText"
-						style="color: var(--color-text-base)"
-						@click.stop="handleToggleOpen"
-					/>
-				</N8nTooltip>
-			</div>
-		</Teleport>
 	</div>
 </template>
 
