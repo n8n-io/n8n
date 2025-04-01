@@ -15,6 +15,7 @@ import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { getLdapLoginLabel } from '@/ldap.ee/helpers.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { ModulesConfig } from '@/modules/modules.config';
 import { isApiEnabled } from '@/public-api';
 import type { CommunityPackagesService } from '@/services/community-packages.service';
 import { getSamlLoginLabel } from '@/sso.ee/saml/saml-helpers';
@@ -44,6 +45,7 @@ export class FrontendService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly urlService: UrlService,
 		private readonly securityConfig: SecurityConfig,
+		private readonly modulesConfig: ModulesConfig,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
@@ -103,7 +105,7 @@ export class FrontendService {
 			versionCli: N8N_VERSION,
 			concurrency: config.getEnv('executions.concurrency.productionLimit'),
 			authCookie: {
-				secure: config.getEnv('secure_cookie'),
+				secure: this.globalConfig.auth.cookie.secure,
 			},
 			releaseChannel: this.globalConfig.generic.releaseChannel,
 			oauthCallbackUrls: {
@@ -235,6 +237,9 @@ export class FrontendService {
 			folders: {
 				enabled: false,
 			},
+			insights: {
+				enabled: this.modulesConfig.modules.includes('insights'),
+			},
 		};
 	}
 
@@ -362,7 +367,7 @@ export class FrontendService {
 
 		this.settings.enterprise.projects.team.limit = this.license.getTeamProjectLimit();
 
-		this.settings.folders.enabled = config.get('folders.enabled');
+		this.settings.folders.enabled = this.license.isFoldersEnabled();
 
 		return this.settings;
 	}

@@ -109,7 +109,7 @@
 
 	thead {
 		color: var.$table-header-font-color;
-		font-weight: 500;
+		font-weight: var(--font-weight-medium);
 
 		&.is-group {
 			th {

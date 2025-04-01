@@ -1,26 +1,11 @@
 {
     "type": "object",
     "properties": {
-        "text": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
-        },
-        "ts": {
-            "type": "string"
-        },
-        "thread_ts": {
-            "type": "string"
-        },
         "blocks": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "type": {
-                        "type": "string"
-                    },
                     "block_id": {
                         "type": "string"
                     },
@@ -29,47 +14,86 @@
                         "items": {
                             "type": "object",
                             "properties": {
-                                "type": {
-                                    "type": "string"
-                                },
                                 "elements": {
                                     "type": "array",
                                     "items": {
                                         "type": "object",
                                         "properties": {
+                                            "text": {
+                                                "type": "string"
+                                            },
                                             "type": {
                                                 "type": "string"
                                             },
-                                            "text": {
+                                            "url": {
+                                                "type": "string"
+                                            },
+                                            "user_id": {
                                                 "type": "string"
                                             }
-                                        },
-                                        "required": [
-                                            "type"
-                                        ]
+                                        }
                                     }
+                                },
+                                "type": {
+                                    "type": "string"
                                 }
-                            },
-                            "required": [
-                                "type"
-                            ]
+                            }
                         }
+                    },
+                    "type": {
+                        "type": "string"
                     }
-                },
-                "required": [
-                    "type",
-                    "block_id"
-                ]
+                }
             }
         },
-        "user": {
+        "bot_id": {
             "type": "string"
         },
         "client_msg_id": {
             "type": "string"
         },
+        "is_locked": {
+            "type": "boolean"
+        },
+        "latest_reply": {
+            "type": "string"
+        },
+        "parent_user_id": {
+            "type": "string"
+        },
+        "reply_count": {
+            "type": "integer"
+        },
+        "reply_users": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "reply_users_count": {
+            "type": "integer"
+        },
+        "subscribed": {
+            "type": "boolean"
+        },
         "team": {
             "type": "string"
+        },
+        "text": {
+            "type": "string"
+        },
+        "thread_ts": {
+            "type": "string"
+        },
+        "ts": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "user": {
+            "type": "string"
         }
-    }
+    },
+    "version": 1
 }

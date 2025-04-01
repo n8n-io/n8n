@@ -39,6 +39,7 @@ import type { IExecutionResponse } from '@/Interface';
 import { clearPopupWindowState, hasTrimmedData, hasTrimmedItem } from '../utils/executionUtils';
 import { usePostHog } from '@/stores/posthog.store';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
+import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
 
 export function usePushConnection({ router }: { router: ReturnType<typeof useRouter> }) {
 	const workflowHelpers = useWorkflowHelpers({ router });
@@ -239,10 +240,19 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 
 			let showedSuccessToast = false;
 
-			let executionData: Pick<IExecutionResponse, 'workflowId' | 'data' | 'status'>;
+			let executionData: Pick<
+				IExecutionResponse,
+				'workflowId' | 'data' | 'status' | 'startedAt' | 'stoppedAt'
+			>;
 			if (receivedData.type === 'executionFinished' && receivedData.data.rawData) {
 				const { workflowId, status, rawData } = receivedData.data;
-				executionData = { workflowId, data: parse(rawData), status };
+				executionData = {
+					workflowId,
+					data: parse(rawData),
+					status,
+					startedAt: workflowsStore.workflowExecutionData?.startedAt ?? new Date(),
+					stoppedAt: new Date(),
+				};
 			} else {
 				uiStore.setProcessingExecutionResults(true);
 
@@ -277,6 +287,8 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 						workflowId: execution.workflowId,
 						data: parse(execution.data as unknown as string),
 						status: execution.status,
+						startedAt: workflowsStore.workflowExecutionData?.startedAt as Date,
+						stoppedAt: receivedData.type === 'executionFinished' ? new Date() : undefined,
 					};
 				} catch {
 					uiStore.setProcessingExecutionResults(false);
@@ -547,6 +559,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 
 			workflowsStore.updateNodeExecutionData(pushData);
 			void assistantStore.onNodeExecution(pushData);
+			void useSchemaPreviewStore().trackSchemaPreviewExecution(pushData);
 		} else if (receivedData.type === 'nodeExecuteBefore') {
 			// A node started to be executed. Set it as executing.
 			const pushData = receivedData.data;

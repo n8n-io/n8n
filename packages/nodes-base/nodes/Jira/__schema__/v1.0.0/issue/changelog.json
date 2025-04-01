@@ -1,68 +1,53 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
         "author": {
             "type": "object",
             "properties": {
-                "self": {
-                    "type": "string"
-                },
                 "accountId": {
-                    "type": "string"
-                },
-                "avatarUrls": {
-                    "type": "object",
-                    "properties": {
-                        "48x48": {
-                            "type": "string"
-                        },
-                        "24x24": {
-                            "type": "string"
-                        },
-                        "16x16": {
-                            "type": "string"
-                        },
-                        "32x32": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "48x48",
-                        "24x24",
-                        "16x16",
-                        "32x32"
-                    ]
-                },
-                "displayName": {
-                    "type": "string"
-                },
-                "active": {
-                    "type": "boolean"
-                },
-                "timeZone": {
                     "type": "string"
                 },
                 "accountType": {
                     "type": "string"
                 },
+                "active": {
+                    "type": "boolean"
+                },
+                "avatarUrls": {
+                    "type": "object",
+                    "properties": {
+                        "16x16": {
+                            "type": "string"
+                        },
+                        "24x24": {
+                            "type": "string"
+                        },
+                        "32x32": {
+                            "type": "string"
+                        },
+                        "48x48": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "displayName": {
+                    "type": "string"
+                },
                 "emailAddress": {
                     "type": "string"
+                },
+                "self": {
+                    "type": "string"
+                },
+                "timeZone": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "self",
-                "accountId",
-                "avatarUrls",
-                "displayName",
-                "active",
-                "timeZone",
-                "accountType"
-            ]
+            }
         },
         "created": {
+            "type": "string"
+        },
+        "id": {
             "type": "string"
         },
         "items": {
@@ -73,27 +58,15 @@
                     "field": {
                         "type": "string"
                     },
-                    "fieldtype": {
-                        "type": "string"
-                    },
                     "fieldId": {
                         "type": "string"
+                    },
+                    "fieldtype": {
+                        "type": "string"
                     }
-                },
-                "required": [
-                    "field",
-                    "fieldtype",
-                    "from",
-                    "fromString",
-                    "to"
-                ]
+                }
             }
         }
     },
-    "required": [
-        "id",
-        "author",
-        "created",
-        "items"
-    ]
+    "version": 1
 }

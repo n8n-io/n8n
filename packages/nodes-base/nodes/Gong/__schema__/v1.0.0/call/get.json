@@ -4,97 +4,122 @@
         "metaData": {
             "type": "object",
             "properties": {
-                "id": {
-                    "type": "string"
+                "customData": {
+                    "type": "null"
                 },
-                "url": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "scheduled": {
-                    "type": "string"
-                },
-                "started": {
+                "direction": {
                     "type": "string"
                 },
                 "duration": {
                     "type": "integer"
                 },
-                "primaryUserId": {
+                "id": {
                     "type": "string"
                 },
-                "direction": {
-                    "type": "string"
+                "isPrivate": {
+                    "type": "boolean"
                 },
-                "system": {
-                    "type": "string"
-                },
-                "scope": {
+                "language": {
                     "type": "string"
                 },
                 "media": {
                     "type": "string"
                 },
-                "language": {
+                "meetingUrl": {
                     "type": "string"
                 },
-                "workspaceId": {
+                "primaryUserId": {
                     "type": "string"
-                },
-                "customData": {
-                    "type": "null"
                 },
                 "purpose": {
                     "type": "null"
                 },
-                "meetingUrl": {
+                "scheduled": {
                     "type": "string"
                 },
-                "isPrivate": {
-                    "type": "boolean"
+                "scope": {
+                    "type": "string"
+                },
+                "started": {
+                    "type": "string"
+                },
+                "system": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                },
+                "workspaceId": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "id",
-                "url",
-                "title",
-                "scheduled",
-                "started",
-                "duration",
-                "primaryUserId",
-                "direction",
-                "system",
-                "scope",
-                "media",
-                "language",
-                "workspaceId",
-                "sdrDisposition",
-                "clientUniqueId",
-                "customData",
-                "purpose",
-                "meetingUrl",
-                "isPrivate",
-                "calendarEventId"
-            ]
+            }
         },
-        "media": {
-            "type": "object",
-            "properties": {
-                "audioUrl": {
-                    "type": "string"
-                },
-                "videoUrl": {
-                    "type": "string"
+        "parties": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "affiliation": {
+                        "type": "string"
+                    },
+                    "emailAddress": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "methods": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "phoneNumber": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "userId": {
+                        "type": "string"
+                    }
                 }
-            },
-            "required": [
-                "audioUrl"
-            ]
+            }
+        },
+        "transcript": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "sentences": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "end": {
+                                    "type": "integer"
+                                },
+                                "start": {
+                                    "type": "integer"
+                                },
+                                "text": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "speakerId": {
+                        "type": "string"
+                    }
+                }
+            }
         }
     },
-    "required": [
-        "metaData"
-    ]
+    "version": 1
 }

@@ -68,8 +68,8 @@ import {
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { NodeConnectionType, jsonParse } from 'n8n-workflow';
-import type { IDataObject, ExecutionSummary, IConnection } from 'n8n-workflow';
+import { NodeConnectionTypes, jsonParse } from 'n8n-workflow';
+import type { NodeConnectionType, IDataObject, ExecutionSummary, IConnection } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -112,6 +112,8 @@ import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWo
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtils';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
+import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
+import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionButtonVisible';
 
 defineOptions({
 	name: 'NodeView',
@@ -175,6 +177,7 @@ const { runWorkflow, runEntireWorkflow, stopCurrentExecution, stopWaitingForWebh
 const {
 	updateNodePosition,
 	updateNodesPosition,
+	tidyUp,
 	revertUpdateNodePosition,
 	renameNode,
 	revertRenameNode,
@@ -270,7 +273,7 @@ const keyBindingsEnabled = computed(() => {
 	return !ndvStore.activeNode && uiStore.activeModals.length === 0;
 });
 
-const isChatOpen = computed(() => workflowsStore.isChatPanelOpen);
+const isChatOpen = computed(() => workflowsStore.chatPanelState !== 'closed');
 
 /**
  * Initialization
@@ -579,6 +582,10 @@ const allTriggerNodesDisabled = computed(() => {
 	const disabledTriggerNodes = triggerNodes.value.filter((node) => node.disabled);
 	return disabledTriggerNodes.length === triggerNodes.value.length;
 });
+
+function onTidyUp(event: CanvasLayoutEvent) {
+	tidyUp(event);
+}
 
 function onUpdateNodesPosition(events: CanvasNodeMoveEvent[]) {
 	updateNodesPosition(events, { trackHistory: true });
@@ -983,19 +990,19 @@ async function onAddNodesAndConnections(
 	const mappedConnections: CanvasConnectionCreateData[] = connections.map(({ from, to }) => {
 		const fromNode = editableWorkflow.value.nodes[offsetIndex + from.nodeIndex];
 		const toNode = editableWorkflow.value.nodes[offsetIndex + to.nodeIndex];
-		const type = from.type ?? to.type ?? NodeConnectionType.Main;
+		const type = from.type ?? to.type ?? NodeConnectionTypes.Main;
 
 		return {
 			source: fromNode.id,
 			sourceHandle: createCanvasConnectionHandleString({
 				mode: CanvasConnectionMode.Output,
-				type: isValidNodeConnectionType(type) ? type : NodeConnectionType.Main,
+				type: isValidNodeConnectionType(type) ? type : NodeConnectionTypes.Main,
 				index: from.outputIndex ?? 0,
 			}),
 			target: toNode.id,
 			targetHandle: createCanvasConnectionHandleString({
 				mode: CanvasConnectionMode.Input,
-				type: isValidNodeConnectionType(type) ? type : NodeConnectionType.Main,
+				type: isValidNodeConnectionType(type) ? type : NodeConnectionTypes.Main,
 				index: to.inputIndex ?? 0,
 			}),
 			data: {
@@ -1116,16 +1123,8 @@ const isStopExecutionButtonVisible = computed(
 const isStopWaitingForWebhookButtonVisible = computed(
 	() => isWorkflowRunning.value && isExecutionWaitingForWebhook.value,
 );
-const isClearExecutionButtonVisible = computed(
-	() =>
-		!isReadOnlyRoute.value &&
-		!isReadOnlyEnvironment.value &&
-		!isWorkflowRunning.value &&
-		!allTriggerNodesDisabled.value &&
-		workflowExecutionData.value,
-);
 
-const workflowExecutionData = computed(() => workflowsStore.workflowExecutionData);
+const isClearExecutionButtonVisible = useClearExecutionButtonVisible();
 
 async function onRunWorkflowToNode(id: string) {
 	const node = workflowsStore.getNodeById(id);
@@ -1613,8 +1612,10 @@ function showAddFirstStepIfEnabled() {
 watch(
 	() => route.name,
 	async (newRouteName, oldRouteName) => {
-		// it's navigating from and existing workflow to a new workflow
-		const force = newRouteName === VIEWS.NEW_WORKFLOW && oldRouteName === VIEWS.WORKFLOW;
+		// When navigating from an existing workflow to a new workflow or the other way around we should load the new workflow
+		const force =
+			(newRouteName === VIEWS.NEW_WORKFLOW && oldRouteName === VIEWS.WORKFLOW) ||
+			(newRouteName === VIEWS.WORKFLOW && oldRouteName === VIEWS.NEW_WORKFLOW);
 		await initializeRoute(force);
 	},
 );
@@ -1769,6 +1770,7 @@ onBeforeUnmount(() => {
 		@create:workflow="onCreateWorkflow"
 		@viewport-change="onViewportChange"
 		@drag-and-drop="onDragAndDrop"
+		@tidy-up="onTidyUp"
 	>
 		<Suspense>
 			<LazySetupWorkflowCredentialsButton :class="$style.setupCredentialsButtonWrapper" />
@@ -1799,7 +1801,7 @@ onBeforeUnmount(() => {
 				@click="onStopWaitingForWebhook"
 			/>
 			<CanvasClearExecutionDataButton
-				v-if="isClearExecutionButtonVisible"
+				v-if="isClearExecutionButtonVisible && !settingsStore.isNewLogsEnabled"
 				@click="onClearExecutionData"
 			/>
 		</div>
