@@ -10,9 +10,6 @@
         "auto_bill_enabled": {
             "type": "boolean"
         },
-        "balance": {
-            "type": "integer"
-        },
         "client_id": {
             "type": "string"
         },
@@ -188,9 +185,6 @@
                     "task_id": {
                         "type": "string"
                     },
-                    "tax_amount": {
-                        "type": "integer"
-                    },
                     "tax_id": {
                         "type": "string"
                     },
@@ -202,9 +196,6 @@
                     },
                     "tax_name3": {
                         "type": "string"
-                    },
-                    "tax_rate1": {
-                        "type": "integer"
                     },
                     "tax_rate2": {
                         "type": "integer"
@@ -297,5 +288,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
