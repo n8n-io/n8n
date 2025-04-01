@@ -6,12 +6,6 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "content_scan_version": {
-                        "type": "integer"
-                    },
-                    "content_type": {
-                        "type": "string"
-                    },
                     "filename": {
                         "type": "string"
                     },
@@ -91,16 +85,10 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "color": {
-                        "type": "integer"
-                    },
                     "content_scan_version": {
                         "type": "integer"
                     },
                     "description": {
-                        "type": "string"
-                    },
-                    "title": {
                         "type": "string"
                     },
                     "type": {
@@ -118,11 +106,20 @@
         "mention_everyone": {
             "type": "boolean"
         },
+        "mention_roles": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
         "mentions": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
+                    "avatar": {
+                        "type": "string"
+                    },
                     "avatar_decoration_data": {
                         "type": "null"
                     },
@@ -137,6 +134,9 @@
                     },
                     "flags": {
                         "type": "integer"
+                    },
+                    "global_name": {
+                        "type": "string"
                     },
                     "id": {
                         "type": "string"
@@ -166,5 +166,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }
