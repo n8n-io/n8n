@@ -1,0 +1,84 @@
+{
+    "type": "object",
+    "properties": {
+        "artists": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "external_urls": {
+                        "type": "object",
+                        "properties": {
+                            "spotify": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "href": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "uri": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "available_markets": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "disc_number": {
+            "type": "integer"
+        },
+        "duration_ms": {
+            "type": "integer"
+        },
+        "explicit": {
+            "type": "boolean"
+        },
+        "external_urls": {
+            "type": "object",
+            "properties": {
+                "spotify": {
+                    "type": "string"
+                }
+            }
+        },
+        "href": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "is_local": {
+            "type": "boolean"
+        },
+        "name": {
+            "type": "string"
+        },
+        "preview_url": {
+            "type": "string"
+        },
+        "track_number": {
+            "type": "integer"
+        },
+        "type": {
+            "type": "string"
+        },
+        "uri": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}
