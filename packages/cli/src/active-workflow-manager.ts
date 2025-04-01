@@ -681,13 +681,15 @@ export class ActiveWorkflowManager {
 			true,
 		);
 
-		const webhookNodeNames = workflowWebhooks.map((webhook) => webhook.node);
-		const uniqueWebhookCount = new Set(webhookNodeNames).size;
+		const uniqueWebhooks = workflowWebhooks.reduce<Set<string>>((acc, webhook) => {
+			acc.add(webhook.node);
+			return acc;
+		}, new Set());
 
 		return (
 			workflow.queryNodes(triggerFilter).length +
 			workflow.getPollNodes().length +
-			uniqueWebhookCount
+			uniqueWebhooks.size
 		);
 	}
 
