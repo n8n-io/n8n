@@ -154,7 +154,30 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "AccountCode": {
+                        "type": "string"
+                    },
+                    "AccountID": {
+                        "type": "string"
+                    },
                     "Description": {
+                        "type": "string"
+                    },
+                    "Item": {
+                        "type": "object",
+                        "properties": {
+                            "Code": {
+                                "type": "string"
+                            },
+                            "ItemID": {
+                                "type": "string"
+                            },
+                            "Name": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "ItemCode": {
                         "type": "string"
                     },
                     "LineItemID": {
@@ -182,5 +205,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
