@@ -20,6 +20,7 @@ import { initializeAuthenticatedFeatures, initializeCore } from '@/init';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { projectsRoutes } from '@/routes/projects.routes';
 import TestDefinitionRunDetailView from './views/TestDefinition/TestDefinitionRunDetailView.vue';
+import SettingsExtensionView from './views/SettingsExtensionView.vue';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
@@ -672,6 +673,13 @@ export const routes: RouteRecordRaw[] = [
 				},
 				meta: {
 					middleware: ['authenticated'],
+				},
+			},
+			{
+				path: 'settings/:extensionId',
+				name: VIEWS.SETTINGS_EXTENSION,
+				components: {
+					settingsView: SettingsExtensionView,
 				},
 			},
 			{

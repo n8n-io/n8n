@@ -9,6 +9,7 @@ import { useRootStore } from '@/stores/root.store';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from '@/composables/useI18n';
+import { useExtensionsStore, type Extension } from '@/stores/extensions.store';
 
 const emit = defineEmits<{
 	return: [];
@@ -23,6 +24,7 @@ const { canUserAccessRouteByName } = useUserHelpers(router, route);
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
+const extensionsStore = useExtensionsStore();
 
 const sidebarMenuItems = computed<IMenuItem[]>(() => {
 	const menuItems: IMenuItem[] = [
@@ -119,6 +121,22 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 		position: 'top',
 		available: canUserAccessRouteByName(VIEWS.COMMUNITY_NODES),
 		route: { to: { name: VIEWS.COMMUNITY_NODES } },
+	});
+
+	const extensionItems = extensionsStore.getAllSettingsExtensions();
+	extensionItems.forEach((extension: Extension) => {
+		menuItems.push({
+			id: `settings-${extension.id}`,
+			icon: extension.contributes.settingsPage[0].icon.name,
+			label: extension.displayName,
+			position: 'top',
+			route: {
+				to: {
+					name: VIEWS.SETTINGS_EXTENSION,
+					params: { extensionId: extension.id },
+				},
+			},
+		});
 	});
 
 	return menuItems;

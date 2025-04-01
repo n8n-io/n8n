@@ -18,6 +18,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { useStyles } from './composables/useStyles';
+import { useExtensionsStore } from './stores/extensions.store';
 
 const route = useRoute();
 const rootStore = useRootStore();
@@ -25,6 +26,7 @@ const assistantStore = useAssistantStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
+const extensionsStore = useExtensionsStore();
 
 const { setAppZIndexes } = useStyles();
 
@@ -43,6 +45,7 @@ const assistantSidebarWidth = computed(() => assistantStore.chatWidth);
 onMounted(async () => {
 	setAppZIndexes();
 	logHiringBanner();
+	extensionsStore.loadExtensions();
 	loading.value = false;
 	window.addEventListener('resize', updateGridWidth);
 	await updateGridWidth();

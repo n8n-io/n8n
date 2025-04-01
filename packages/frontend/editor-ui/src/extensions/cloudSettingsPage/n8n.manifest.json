@@ -1,0 +1,28 @@
+{
+	"id": "cloud-settings-page",
+	"name": "@milorad/cloud-settings-page",
+	"displayName": "Cloud Dashboard",
+	"description": "View and manage your cloud settings from the main settings page.",
+	"version": "1.0.0",
+	"author": "Milorad Filipovic",
+	"category": "Example",
+	"tags": [],
+	"minSDKVersion": "1.0.0",
+	"maxSDKVersion": "1.3.0",
+	"permissions": {
+		"frontend": [],
+		"backend": []
+	},
+	"events": [],
+	"setup": {
+		"frontend": "./frontend.ts"
+	},
+	"contributes": {
+		"settingsPage": [
+			{
+				"icon": { "type": "icon", "name": "cloud" },
+				"label": "Current Workflow Settings"
+			}
+		]
+	}
+}

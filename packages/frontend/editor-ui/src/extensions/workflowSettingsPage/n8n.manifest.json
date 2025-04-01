@@ -1,0 +1,29 @@
+{
+	"id": "workflow-settings-page",
+	"name": "@milorad/custom-settings-page",
+	"displayName": "Workflow Settings",
+	"description": "Edit current workflow settings from the main settings page.",
+	"version": "1.0.0",
+	"author": "Milorad Filipovic",
+	"category": "Example",
+	"tags": [],
+	"minSDKVersion": "1.0.0",
+	"maxSDKVersion": "1.3.0",
+	"permissions": {
+		"frontend": [],
+		"backend": []
+	},
+	"events": ["workflow:started"],
+	"setup": {
+		"backend": "./backend.ts",
+		"frontend": "./frontend.ts"
+	},
+	"contributes": {
+		"settingsPage": [
+			{
+				"icon": { "type": "icon", "name": "cog" },
+				"label": "Current Workflow Settings"
+			}
+		]
+	}
+}

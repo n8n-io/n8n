@@ -550,7 +550,10 @@ export const enum VIEWS {
 	PROJECTS_EXECUTIONS = 'ProjectsExecutions',
 	FOLDERS = 'Folders',
 	PROJECTS_FOLDERS = 'ProjectsFolders',
+	SETTINGS_EXTENSION = 'SettingsExtensions',
 }
+
+export const SETTINGS_EXTENSIONS_CONTAINER_ID = 'settings-extension-view';
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
 
@@ -697,6 +700,7 @@ export const enum STORES {
 	API_KEYS = 'apiKeys',
 	TEST_DEFINITION = 'testDefinition',
 	FOLDERS = 'folders',
+	EXTENSIONS = 'extensions',
 }
 
 export const enum SignInType {
