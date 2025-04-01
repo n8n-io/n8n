@@ -903,13 +903,23 @@ describe('getInsightsByWorkflow', () => {
 				periodUnit: 'day',
 				periodStart: DateTime.utc().minus({ days: 10 }),
 			});
+
+			// Barely in range insight (should be included)
+			// 14 days ago start of the day
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 1,
+				periodUnit: 'hour',
+				periodStart: DateTime.utc().minus({ days: 13, hours: 23 }),
+			});
+
 			// Out of date range insight (should not be included)
 			// 14 days and 1 minute ago
 			await createCompactedInsightsEvent(workflow, {
 				type: 'success',
 				value: 1,
 				periodUnit: 'day',
-				periodStart: DateTime.utc().minus({ days: 14, minutes: 1 }),
+				periodStart: DateTime.utc().minus({ days: 14 }),
 			});
 		}
 
@@ -928,28 +938,27 @@ describe('getInsightsByWorkflow', () => {
 			workflowName: workflow2.name,
 			projectId: project.id,
 			projectName: project.name,
-			total: 6,
+			total: 7,
+			failureRate: 2 / 7,
 			failed: 2,
 			runTime: 123,
-			succeeded: 4,
+			succeeded: 5,
 			timeSaved: 0,
-			averageRunTime: 123 / 6,
+			averageRunTime: 123 / 7,
 		});
-		// Expect rates to be close to js rate because db engines have different precision
-		expect(byWorkflow.data[0].failureRate).toBeCloseTo(2 / 6);
 
 		expect(byWorkflow.data[1]).toEqual({
 			workflowId: workflow1.id,
 			workflowName: workflow1.name,
 			projectId: project.id,
 			projectName: project.name,
-			total: 5,
-			failureRate: 2 / 5,
+			total: 6,
+			failureRate: 2 / 6,
 			failed: 2,
 			runTime: 123,
-			succeeded: 3,
+			succeeded: 4,
 			timeSaved: 0,
-			averageRunTime: 123 / 5,
+			averageRunTime: 123 / 6,
 		});
 	});
 
@@ -1094,13 +1103,23 @@ describe('getInsightsByTime', () => {
 				periodUnit: 'day',
 				periodStart: DateTime.utc().minus({ days: 10 }),
 			});
-			/// Out of date range insight (should not be included)
+
+			// Barely in range insight (should be included)
+			// 14 days ago start of the day
+			await createCompactedInsightsEvent(workflow, {
+				type: workflow === workflow1 ? 'success' : 'failure',
+				value: 1,
+				periodUnit: 'hour',
+				periodStart: DateTime.utc().minus({ days: 13, hours: 23 }),
+			});
+
+			// Out of date range insight (should not be included)
 			// 14 days ago start of the day and minus 1 minute
 			await createCompactedInsightsEvent(workflow, {
 				type: 'success',
 				value: 1,
 				periodUnit: 'day',
-				periodStart: DateTime.utc().startOf('day').minus({ days: 14, minutes: 1 }),
+				periodStart: DateTime.utc().minus({ days: 14 }),
 			});
 		}
 
@@ -1108,19 +1127,20 @@ describe('getInsightsByTime', () => {
 		const byTime = await insightsService.getInsightsByTime({ maxAgeInDays: 14, periodUnit: 'day' });
 
 		// ASSERT
-		expect(byTime).toHaveLength(3);
+		expect(byTime).toHaveLength(4);
 
 		// expect date to be sorted by oldest first
-		expect(byTime[0].date).toEqual(DateTime.utc().minus({ days: 10 }).startOf('day').toISO());
-		expect(byTime[1].date).toEqual(DateTime.utc().minus({ days: 2 }).startOf('day').toISO());
-		expect(byTime[2].date).toEqual(DateTime.utc().startOf('day').toISO());
+		expect(byTime[0].date).toEqual(DateTime.utc().minus({ days: 14 }).startOf('day').toISO());
+		expect(byTime[1].date).toEqual(DateTime.utc().minus({ days: 10 }).startOf('day').toISO());
+		expect(byTime[2].date).toEqual(DateTime.utc().minus({ days: 2 }).startOf('day').toISO());
+		expect(byTime[3].date).toEqual(DateTime.utc().startOf('day').toISO());
 
 		expect(byTime[0].values).toEqual({
 			total: 2,
-			succeeded: 2,
-			failed: 0,
-			failureRate: 0,
-			averageRunTime: 15,
+			succeeded: 1,
+			failed: 1,
+			failureRate: 0.5,
+			averageRunTime: 0,
 			timeSaved: 0,
 		});
 
@@ -1129,11 +1149,20 @@ describe('getInsightsByTime', () => {
 			succeeded: 2,
 			failed: 0,
 			failureRate: 0,
-			averageRunTime: 0,
+			averageRunTime: 15,
 			timeSaved: 0,
 		});
 
 		expect(byTime[2].values).toEqual({
+			total: 2,
+			succeeded: 2,
+			failed: 0,
+			failureRate: 0,
+			averageRunTime: 0,
+			timeSaved: 0,
+		});
+
+		expect(byTime[3].values).toEqual({
 			total: 7,
 			succeeded: 3,
 			failed: 4,
