@@ -18,7 +18,13 @@
                 "href": {
                     "type": "string"
                 },
+                "id": {
+                    "type": "string"
+                },
                 "type": {
+                    "type": "string"
+                },
+                "uri": {
                     "type": "string"
                 }
             }
@@ -229,5 +235,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }
