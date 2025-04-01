@@ -103,15 +103,15 @@
                 },
                 "type": {
                     "type": "string"
-                },
-                "uid": {
-                    "type": "string"
                 }
             }
         },
         "metadata": {
             "type": "object",
             "properties": {
+                "body": {
+                    "type": "string"
+                },
                 "cc": {
                     "type": "array",
                     "items": {
@@ -131,9 +131,6 @@
                             }
                         }
                     }
-                },
-                "html": {
-                    "type": "string"
                 },
                 "ownerIdsCc": {
                     "type": "array",
@@ -182,5 +179,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }
