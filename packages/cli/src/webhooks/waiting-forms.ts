@@ -89,7 +89,7 @@ export class WaitingForms extends WaitingWebhooks {
 				}
 			}
 			res.send(status);
-			return { noWebhookResponse: true };
+			return;
 		}
 
 		if (!execution) {
@@ -103,7 +103,7 @@ export class WaitingForms extends WaitingWebhooks {
 		}
 
 		if (execution.status === 'running') {
-			return { noWebhookResponse: true };
+			return;
 		}
 
 		let lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;

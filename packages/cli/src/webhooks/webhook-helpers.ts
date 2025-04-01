@@ -252,6 +252,9 @@ export async function executeWebhook(
 		200,
 	) as number;
 
+	// This parameter is used for two different purposes:
+	// 1. as arbitrary string input defined in the workflow in the "respond immediately" mode,
+	// 2. as well as WebhookResponseData config in all the other modes
 	const responseDataParam = workflow.expression.getComplexParameterValue(
 		workflowStartNode,
 		webhookData.webhookDescription.responseData,
@@ -365,10 +368,6 @@ export async function executeWebhook(
 			responsePromise.reject(new ApplicationError(errorMessage));
 			return;
 		}
-
-		const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-			$executionId: executionId,
-		};
 
 		const responseHeadersParam = webhookData.webhookDescription.responseHeaders;
 		if (webhookData.webhookDescription.responseHeaders !== undefined) {
@@ -656,10 +655,6 @@ export async function executeWebhook(
 					});
 					return data;
 				}
-
-				const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-					$executionId: executionId,
-				};
 
 				let responseData: IDataObject | IDataObject[] | undefined;
 
