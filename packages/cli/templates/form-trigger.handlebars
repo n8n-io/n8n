@@ -437,141 +437,125 @@
 					<hr>
 				{{/if}}
 
-				{{#if validForm}}
-					<form class='card' action='#' method='POST' name='n8n-form' id='n8n-form' novalidate>
-						<div class='form-header'>
-							<h1>{{formTitle}}</h1>
-							<p style="white-space: pre-line">{{{formDescription}}} </p>
-						</div>
-
-						<div class='inputs-wrapper'>
-							{{#each formFields}}
-								{{#if isMultiSelect}}
-									<div>
-										<label class='form-label {{inputRequired}}'>{{label}}</label>
-										<div class='multiselect {{inputRequired}}' id='{{id}}'>
-											{{#each multiSelectOptions}}
-												<div class='multiselect-option'>
-													<input type='checkbox' class='multiselect-checkbox' id='{{id}}' />
-													<label for='{{id}}'>{{label}}</label>
-												</div>
-											{{/each}}
-										</div>
-										<p class='{{errorId}} error-hidden'>
-											This field is required
-										</p>
-									</div>
-								{{/if}}
-
-								{{#if isSelect}}
-									<div class='form-group'>
-										<label class='form-label {{inputRequired}}' for='{{id}}'>{{label}}</label>
-										<div class='select-input'>
-											<select id='{{id}}' name='{{id}}' class='{{inputRequired}}'>
-												<option value='' disabled selected>Select an option ...</option>
-												{{#each selectOptions}}
-													<option value='{{this}}'>{{this}}</option>
-												{{/each}}
-											</select>
-										</div>
-										<p class='{{errorId}} error-hidden'>
-											This field is required
-										</p>
-									</div>
-								{{/if}}
-
-								{{#if isHtml}}
-									<div class="form-group html">
-										{{{html}}}
-										<input type="hidden" id="{{id}}" name="{{id}}" value="{{html}}" />
-									</div>
-								{{/if}}
-
-								{{#if isHidden}}
-									<input type="hidden" id="{{id}}" name="{{id}}" value="{{hiddenValue}}" />
-								{{/if}}
-
-								{{#if isTextarea}}
-									<div class='form-group'>
-										<label class='form-label {{inputRequired}}' for='{{id}}'>{{label}}</label>
-										<textarea
-											class='form-input {{inputRequired}}'
-											id='{{id}}'
-											name='{{id}}'
-											placeholder="{{placeholder}}"
-										>{{defaultValue}}</textarea>
-										<p class='{{errorId}} error-hidden'>
-											This field is required
-										</p>
-									</div>
-								{{/if}}
-
-								{{#if isFileInput}}
-									<div class='form-group file-input-wrapper'>
-										<label class='form-label {{inputRequired}}' for='{{id}}'>{{label}}</label>
-										<input
-											class='form-input {{inputRequired}}'
-											type='file'
-											id='{{id}}'
-											name='{{id}}'
-											accept='{{acceptFileTypes}}'
-											{{multipleFiles}}
-											placeholder="{{placeholder}}"
-										/>
-										<button class="clear-button">&times;</button>
-										<p class='{{errorId}} error-hidden'>
-											This field is required
-										</p>
-									</div>
-								{{/if}}
-
-								{{#if isInput}}
-									<div class='form-group'>
-										<label class='form-label {{inputRequired}}' for='{{id}}'>{{label}}</label>
-										<input
-											class='form-input {{inputRequired}}'
-											type='{{type}}'
-											id='{{id}}'
-											name='{{id}}'
-											value="{{defaultValue}}"
-											placeholder="{{placeholder}}"
-										/>
-										<p class='{{errorId}} error-hidden'>
-											This field is required
-										</p>
-									</div>
-								{{/if}}
-							{{/each}}
-						</div>
-
-						<button id='submit-btn' type='submit'>
-							<span><svg
-									xmlns='http://www.w3.org/2000/svg'
-									height='18px'
-									viewBox='0 0 512 512'
-								>
-									<path
-										d='M304 48a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zm0 416a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zM48 304a48 48 0 1 0 0-96 48 48 0 1 0 0 96zm464-48a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zM142.9 437A48 48 0 1 0 75 369.1 48 48 0 1 0 142.9 437zm0-294.2A48 48 0 1 0 75 75a48 48 0 1 0 67.9 67.9zM369.1 437A48 48 0 1 0 437 369.1 48 48 0 1 0 369.1 437z'
-									/>
-								</svg></span>
-							{{ buttonLabel }}
-						</button>
-					</form>
-				{{else}}
-					<div class='card'>
-						<div class='form-header'>
-							{{#if testRun}}
-								<h1>Please add at least one field to your form</h1>
-							{{else}}
-								<h1>Problem loading form</h1>
-								<p>
-									This usually occurs if the n8n workflow serving this form is deactivated or no
-									longer exist
-								</p>
-							{{/if}}
-						</div>
+				<form class='card' action='#' method='POST' name='n8n-form' id='n8n-form' novalidate>
+					<div class='form-header'>
+						<h1>{{formTitle}}</h1>
+						<p style="white-space: pre-line">{{{formDescription}}} </p>
 					</div>
-				{{/if}}
+
+					<div class='inputs-wrapper'>
+						{{#each formFields}}
+							{{#if isMultiSelect}}
+								<div>
+									<label class='form-label {{inputRequired}}'>{{label}}</label>
+									<div class='multiselect {{inputRequired}}' id='{{id}}'>
+										{{#each multiSelectOptions}}
+											<div class='multiselect-option'>
+												<input type='checkbox' class='multiselect-checkbox' id='{{id}}' />
+												<label for='{{id}}'>{{label}}</label>
+											</div>
+										{{/each}}
+									</div>
+									<p class='{{errorId}} error-hidden'>
+										This field is required
+									</p>
+								</div>
+							{{/if}}
+
+							{{#if isSelect}}
+								<div class='form-group'>
+									<label class='form-label {{inputRequired}}' for='{{id}}'>{{label}}</label>
+									<div class='select-input'>
+										<select id='{{id}}' name='{{id}}' class='{{inputRequired}}'>
+											<option value='' disabled selected>Select an option ...</option>
+											{{#each selectOptions}}
+												<option value='{{this}}'>{{this}}</option>
+											{{/each}}
+										</select>
+									</div>
+									<p class='{{errorId}} error-hidden'>
+										This field is required
+									</p>
+								</div>
+							{{/if}}
+
+							{{#if isHtml}}
+								<div class="form-group html">
+									{{{html}}}
+									<input type="hidden" id="{{id}}" name="{{id}}" value="{{html}}" />
+								</div>
+							{{/if}}
+
+							{{#if isHidden}}
+								<input type="hidden" id="{{id}}" name="{{id}}" value="{{hiddenValue}}" />
+							{{/if}}
+
+							{{#if isTextarea}}
+								<div class='form-group'>
+									<label class='form-label {{inputRequired}}' for='{{id}}'>{{label}}</label>
+									<textarea
+										class='form-input {{inputRequired}}'
+										id='{{id}}'
+										name='{{id}}'
+										placeholder="{{placeholder}}"
+									>{{defaultValue}}</textarea>
+									<p class='{{errorId}} error-hidden'>
+										This field is required
+									</p>
+								</div>
+							{{/if}}
+
+							{{#if isFileInput}}
+								<div class='form-group file-input-wrapper'>
+									<label class='form-label {{inputRequired}}' for='{{id}}'>{{label}}</label>
+									<input
+										class='form-input {{inputRequired}}'
+										type='file'
+										id='{{id}}'
+										name='{{id}}'
+										accept='{{acceptFileTypes}}'
+										{{multipleFiles}}
+										placeholder="{{placeholder}}"
+									/>
+									<button class="clear-button">&times;</button>
+									<p class='{{errorId}} error-hidden'>
+										This field is required
+									</p>
+								</div>
+							{{/if}}
+
+							{{#if isInput}}
+								<div class='form-group'>
+									<label class='form-label {{inputRequired}}' for='{{id}}'>{{label}}</label>
+									<input
+										class='form-input {{inputRequired}}'
+										type='{{type}}'
+										id='{{id}}'
+										name='{{id}}'
+										value="{{defaultValue}}"
+										placeholder="{{placeholder}}"
+									/>
+									<p class='{{errorId}} error-hidden'>
+										This field is required
+									</p>
+								</div>
+							{{/if}}
+						{{/each}}
+					</div>
+
+					<button id='submit-btn' type='submit'>
+						<span><svg
+								xmlns='http://www.w3.org/2000/svg'
+								height='18px'
+								viewBox='0 0 512 512'
+							>
+								<path
+									d='M304 48a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zm0 416a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zM48 304a48 48 0 1 0 0-96 48 48 0 1 0 0 96zm464-48a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zM142.9 437A48 48 0 1 0 75 369.1 48 48 0 1 0 142.9 437zm0-294.2A48 48 0 1 0 75 75a48 48 0 1 0 67.9 67.9zM369.1 437A48 48 0 1 0 437 369.1 48 48 0 1 0 369.1 437z'
+								/>
+							</svg></span>
+						{{ buttonLabel }}
+					</button>
+				</form>
 
 				<div class='card' id='submitted-form' style='display: none;'>
 					<div class='form-header'>

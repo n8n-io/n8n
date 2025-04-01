@@ -1,5 +1,7 @@
 import nock from 'nock';
 
+import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
+
 import {
 	createResponse,
 	fieldsResponse,
@@ -7,18 +9,9 @@ import {
 	getResponse,
 	updateResponse,
 } from './apiResponses';
-import {
-	setup,
-	equalityTest,
-	workflowToTests,
-	getWorkflowFilenames,
-} from '../../../../test/nodes/Helpers';
 
 describe('Baserow > Workflows', () => {
 	describe('Run workflow', () => {
-		const workflows = getWorkflowFilenames(__dirname);
-		const tests = workflowToTests(workflows);
-
 		beforeAll(() => {
 			const mock = nock('https://api.baserow.io');
 			// Baserow > Get Token
@@ -54,10 +47,7 @@ describe('Baserow > Workflows', () => {
 			mock.delete('/api/database/rows/table/482710/3/').reply(200, {});
 		});
 
-		const nodeTypes = setup(tests);
-
-		for (const testData of tests) {
-			test(testData.description, async () => await equalityTest(testData, nodeTypes));
-		}
+		const workflows = getWorkflowFilenames(__dirname);
+		testWorkflows(workflows);
 	});
 });

@@ -1,8 +1,13 @@
-const pgPromise = require('pg-promise');
+import { mock } from 'jest-mock-extended';
+import pgPromise from 'pg-promise';
 
-const PostgresFun = require('../../../nodes/Postgres/v1/genericFunctions');
+import * as PostgresFun from '../v1/genericFunctions';
+import type { PgpDatabase } from '../v2/helpers/interfaces';
 
 type NodeParams = Record<string, string | {}>;
+
+const pgp = pgPromise();
+const db = mock<PgpDatabase>();
 
 describe('pgUpdate', () => {
 	it('runs query to update db', async () => {
@@ -16,9 +21,6 @@ describe('pgUpdate', () => {
 			returnFields: '*',
 		};
 		const getNodeParam = (key: string) => nodeParams[key];
-		const pgp = pgPromise();
-		const any = jest.fn();
-		const db = { any };
 
 		const items = [
 			{
@@ -44,9 +46,6 @@ describe('pgUpdate', () => {
 			returnFields: '*',
 		};
 		const getNodeParam = (key: string) => nodeParams[key];
-		const pgp = pgPromise();
-		const any = jest.fn();
-		const db = { any };
 
 		const items = [
 			{
@@ -72,9 +71,6 @@ describe('pgUpdate', () => {
 			returnFields: '*',
 		};
 		const getNodeParam = (key: string) => nodeParams[key];
-		const pgp = pgPromise();
-		const any = jest.fn();
-		const db = { any };
 
 		const items = [
 			{
@@ -100,9 +96,6 @@ describe('pgUpdate', () => {
 			returnFields: '*',
 		};
 		const getNodeParam = (key: string) => nodeParams[key];
-		const pgp = pgPromise();
-		const any = jest.fn();
-		const db = { any };
 
 		const items = [
 			{
@@ -129,9 +122,6 @@ describe('pgInsert', () => {
 			additionalFields: {},
 		};
 		const getNodeParam = (key: string) => nodeParams[key];
-		const pgp = pgPromise();
-		const any = jest.fn();
-		const db = { any };
 
 		const items = [
 			{
@@ -139,7 +129,7 @@ describe('pgInsert', () => {
 			},
 		];
 
-		await PostgresFun.pgInsert(getNodeParam, pgp, db, items);
+		await PostgresFun.pgInsert(getNodeParam, pgp, db, items, false);
 
 		expect(db.any).toHaveBeenCalledWith(
 			'insert into "myschema"."mytable"("id","name","age") values(1234,\'test\',34) RETURNING *',
@@ -156,9 +146,6 @@ describe('pgInsert', () => {
 			additionalFields: {},
 		};
 		const getNodeParam = (key: string) => nodeParams[key];
-		const pgp = pgPromise();
-		const any = jest.fn();
-		const db = { any };
 
 		const items = [
 			{
@@ -166,7 +153,7 @@ describe('pgInsert', () => {
 			},
 		];
 
-		await PostgresFun.pgInsert(getNodeParam, pgp, db, items);
+		await PostgresFun.pgInsert(getNodeParam, pgp, db, items, false);
 
 		expect(db.any).toHaveBeenCalledWith(
 			'insert into "myschema"."mytable"("id","name","age") values(1234::int,\'test\'::text,34) RETURNING *',
