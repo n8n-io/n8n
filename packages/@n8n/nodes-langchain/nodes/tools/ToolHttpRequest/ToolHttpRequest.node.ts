@@ -38,7 +38,7 @@ import {
 
 export class ToolHttpRequest implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'HTTP Request Tool',
+		displayName: 'HTTP Request Tool [OLD]',
 		name: 'toolHttpRequest',
 		icon: { light: 'file:httprequest.svg', dark: 'file:httprequest.dark.svg' },
 		group: ['output'],

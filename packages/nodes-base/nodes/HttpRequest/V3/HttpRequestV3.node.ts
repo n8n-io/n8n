@@ -55,7 +55,7 @@ export class HttpRequestV3 implements INodeType {
 			subtitle: '={{$parameter["method"] + ": " + $parameter["url"]}}',
 			version: [3, 4, 4.1, 4.2],
 			defaults: {
-				name: 'HTTP Request',
+				name: 'HTTP Request [NEW]',
 				color: '#0004F5',
 			},
 			usableAsTool: true,
