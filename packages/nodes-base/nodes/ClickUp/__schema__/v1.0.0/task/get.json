@@ -9,9 +9,6 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "color": {
-                        "type": "string"
-                    },
                     "email": {
                         "type": "string"
                     },
@@ -50,12 +47,6 @@
                     "id": {
                         "type": "string"
                     },
-                    "is_folder": {
-                        "type": "null"
-                    },
-                    "mimetype": {
-                        "type": "string"
-                    },
                     "orientation": {
                         "type": "null"
                     },
@@ -63,9 +54,6 @@
                         "type": "string"
                     },
                     "resolved_comments": {
-                        "type": "integer"
-                    },
-                    "size": {
                         "type": "integer"
                     },
                     "source": {
@@ -118,12 +106,88 @@
                 }
             }
         },
+        "checklists": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "creator": {
+                        "type": "integer"
+                    },
+                    "date_created": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "assignee": {
+                                    "type": "null"
+                                },
+                                "date_created": {
+                                    "type": "string"
+                                },
+                                "due_date": {
+                                    "type": "null"
+                                },
+                                "due_date_time": {
+                                    "type": "boolean"
+                                },
+                                "group_assignee": {
+                                    "type": "null"
+                                },
+                                "id": {
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "type": "string"
+                                },
+                                "orderindex": {
+                                    "type": "null"
+                                },
+                                "parent": {
+                                    "type": "null"
+                                },
+                                "resolved": {
+                                    "type": "boolean"
+                                },
+                                "sent_due_date_notif": {
+                                    "type": "null"
+                                },
+                                "start_date": {
+                                    "type": "null"
+                                },
+                                "start_date_time": {
+                                    "type": "boolean"
+                                }
+                            }
+                        }
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "orderindex": {
+                        "type": "integer"
+                    },
+                    "resolved": {
+                        "type": "integer"
+                    },
+                    "task_id": {
+                        "type": "string"
+                    },
+                    "unresolved": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
         "creator": {
             "type": "object",
             "properties": {
-                "color": {
-                    "type": "string"
-                },
                 "email": {
                     "type": "string"
                 },
@@ -158,30 +222,7 @@
                     "type_config": {
                         "type": "object",
                         "properties": {
-                            "field_inverted_name": {
-                                "type": "string"
-                            },
-                            "fields": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "field": {
-                                            "type": "string"
-                                        },
-                                        "hidden": {
-                                            "type": "boolean"
-                                        },
-                                        "name": {
-                                            "type": "string"
-                                        },
-                                        "width": {
-                                            "type": "integer"
-                                        }
-                                    }
-                                }
-                            },
-                            "linked_subcategory_access": {
+                            "new_drop_down": {
                                 "type": "boolean"
                             },
                             "options": {
@@ -190,6 +231,9 @@
                                     "type": "object",
                                     "properties": {
                                         "id": {
+                                            "type": "string"
+                                        },
+                                        "label": {
                                             "type": "string"
                                         },
                                         "name": {
@@ -201,10 +245,7 @@
                                     }
                                 }
                             },
-                            "subcategory_id": {
-                                "type": "string"
-                            },
-                            "subcategory_inverted_name": {
+                            "sorting": {
                                 "type": "string"
                             }
                         }
@@ -226,9 +267,6 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "chain_id": {
-                        "type": "null"
-                    },
                     "date_created": {
                         "type": "string"
                     },
@@ -241,14 +279,14 @@
                     "type": {
                         "type": "integer"
                     },
-                    "userid": {
-                        "type": "string"
-                    },
                     "workspace_id": {
                         "type": "string"
                     }
                 }
             }
+        },
+        "description": {
+            "type": "string"
         },
         "folder": {
             "type": "object",
@@ -264,6 +302,29 @@
                 },
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "group_assignees": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "color": {
+                        "type": "null"
+                    },
+                    "email": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "initials": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -304,6 +365,20 @@
                 },
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "locations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -353,9 +428,6 @@
                 },
                 "seo_optimized": {
                     "type": "boolean"
-                },
-                "token": {
-                    "type": "null"
                 }
             }
         },
@@ -410,6 +482,9 @@
         "team_id": {
             "type": "string"
         },
+        "text_content": {
+            "type": "string"
+        },
         "time_spent": {
             "type": "integer"
         },
@@ -437,5 +512,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }
