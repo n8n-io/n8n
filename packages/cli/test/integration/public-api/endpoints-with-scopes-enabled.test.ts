@@ -2,9 +2,12 @@ import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
 import validator from 'validator';
 
+import type { TagEntity } from '@/databases/entities/tag-entity';
 import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { getOwnerOnlyApiKeyScopes } from '@/public-api/permissions.ee';
 import { affixRoleToSaveCredential, createCredentials } from '@test-integration/db/credentials';
@@ -25,8 +28,8 @@ import { randomName } from '@test-integration/random';
 import type { CredentialPayload, SaveCredentialFunction } from '@test-integration/types';
 import { setupTestServer } from '@test-integration/utils';
 
-import * as testDb from '../../shared/test-db';
-import * as utils from '../../shared/utils/';
+import * as testDb from '../shared/test-db';
+import * as utils from '../shared/utils';
 
 let saveCredential: SaveCredentialFunction;
 
@@ -75,7 +78,10 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 			'Tag',
 			'Variables',
 			'Project',
+			'Workflow',
+			'WorkflowHistory',
 		]);
+		// globalConfig.tags.disabled = false;
 	});
 
 	describe('with "feat:apiKeyScopes" enabled', () => {
@@ -326,6 +332,8 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					};
 
 					const response = await authOwnerAgent.post('/credentials').send(payload);
+
+					console.log(response.body);
 
 					expect(response.statusCode).toBe(403);
 				});
@@ -1142,6 +1150,543 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					 * Assert
 					 */
 					expect(response.status).toBe(403);
+				});
+			});
+		});
+
+		describe('workflows', () => {
+			describe('POST /workflows', () => {
+				test('should create workflow when API key has "workflow:create" scope', async () => {
+					const member = await createMemberWithApiKey();
+					const memberPersonalProject = await Container.get(
+						ProjectRepository,
+					).getPersonalProjectForUserOrFail(member.id);
+					const authMemberAgent = testServer.publicApiAgentFor(member);
+
+					const payload = {
+						name: 'testing',
+						nodes: [
+							{
+								id: 'uuid-1234',
+								parameters: {},
+								name: 'Start',
+								type: 'n8n-nodes-base.start',
+								typeVersion: 1,
+								position: [240, 300],
+							},
+						],
+						connections: {},
+						staticData: null,
+						settings: {
+							saveExecutionProgress: true,
+							saveManualExecutions: true,
+							saveDataErrorExecution: 'all',
+							saveDataSuccessExecution: 'all',
+							executionTimeout: 3600,
+							timezone: 'America/New_York',
+							executionOrder: 'v1',
+						},
+					};
+
+					const response = await authMemberAgent.post('/workflows').send(payload);
+
+					expect(response.statusCode).toBe(200);
+
+					const {
+						id,
+						name,
+						nodes,
+						connections,
+						staticData,
+						active,
+						settings,
+						createdAt,
+						updatedAt,
+					} = response.body;
+
+					expect(id).toBeDefined();
+					expect(name).toBe(payload.name);
+					expect(connections).toEqual(payload.connections);
+					expect(settings).toEqual(payload.settings);
+					expect(staticData).toEqual(payload.staticData);
+					expect(nodes).toEqual(payload.nodes);
+					expect(active).toBe(false);
+					expect(createdAt).toBeDefined();
+					expect(updatedAt).toEqual(createdAt);
+
+					// check if created workflow in DB
+					const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
+						where: {
+							projectId: memberPersonalProject.id,
+							workflowId: response.body.id,
+						},
+						relations: ['workflow'],
+					});
+
+					expect(sharedWorkflow?.workflow.name).toBe(name);
+					expect(sharedWorkflow?.workflow.createdAt.toISOString()).toBe(createdAt);
+					expect(sharedWorkflow?.role).toEqual('workflow:owner');
+				});
+
+				test('should fail to create a workflow when API key doesn\'t have "workflow:create" scope', async () => {
+					const member = await createMemberWithApiKey({ scopes: ['credential:create'] });
+					const authMemberAgent = testServer.publicApiAgentFor(member);
+
+					const payload = {
+						name: 'testing',
+						nodes: [
+							{
+								id: 'uuid-1234',
+								parameters: {},
+								name: 'Start',
+								type: 'n8n-nodes-base.start',
+								typeVersion: 1,
+								position: [240, 300],
+							},
+						],
+						connections: {},
+						staticData: null,
+						settings: {
+							saveExecutionProgress: true,
+							saveManualExecutions: true,
+							saveDataErrorExecution: 'all',
+							saveDataSuccessExecution: 'all',
+							executionTimeout: 3600,
+							timezone: 'America/New_York',
+							executionOrder: 'v1',
+						},
+					};
+
+					const response = await authMemberAgent.post('/workflows').send(payload);
+
+					expect(response.statusCode).toBe(403);
+				});
+			});
+
+			describe('GET /workflows', () => {
+				test('should retrieve all workflows when API key has "workflow:list" scope', async () => {
+					const member = await createMemberWithApiKey();
+
+					const authMemberAgent = testServer.publicApiAgentFor(member);
+
+					await Promise.all([
+						createWorkflow({}, member),
+						createWorkflow({}, member),
+						createWorkflow({}, member),
+					]);
+
+					const response = await authMemberAgent.get('/workflows');
+
+					expect(response.statusCode).toBe(200);
+					expect(response.body.data.length).toBe(3);
+					expect(response.body.nextCursor).toBeNull();
+
+					for (const workflow of response.body.data) {
+						const {
+							id,
+							connections,
+							active,
+							staticData,
+							nodes,
+							settings,
+							name,
+							createdAt,
+							updatedAt,
+							tags,
+						} = workflow;
+
+						expect(id).toBeDefined();
+						expect(name).toBeDefined();
+						expect(connections).toBeDefined();
+						expect(active).toBe(false);
+						expect(staticData).toBeDefined();
+						expect(nodes).toBeDefined();
+						expect(tags).toBeDefined();
+						expect(settings).toBeDefined();
+						expect(createdAt).toBeDefined();
+						expect(updatedAt).toBeDefined();
+					}
+				});
+
+				test('should fail to retrieve all workflows when API key doesn\'t have "workflow:create" scope', async () => {
+					const member = await createMemberWithApiKey({ scopes: ['credential:create'] });
+
+					const authMemberAgent = testServer.publicApiAgentFor(member);
+
+					await Promise.all([
+						createWorkflow({}, member),
+						createWorkflow({}, member),
+						createWorkflow({}, member),
+					]);
+
+					const response = await authMemberAgent.get('/workflows');
+
+					expect(response.statusCode).toBe(403);
+				});
+			});
+
+			describe('GET /workflows/:id', () => {
+				test('should retrieve a workflow when API key has "workflow:read" scope', async () => {
+					const member = await createMemberWithApiKey();
+
+					const authMemberAgent = testServer.publicApiAgentFor(member);
+
+					const workflow = await createWorkflow({}, member);
+
+					const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
+
+					expect(response.statusCode).toBe(200);
+
+					const {
+						id,
+						connections,
+						active,
+						staticData,
+						nodes,
+						settings,
+						name,
+						createdAt,
+						updatedAt,
+						tags,
+					} = response.body;
+
+					expect(id).toEqual(workflow.id);
+					expect(name).toEqual(workflow.name);
+					expect(connections).toEqual(workflow.connections);
+					expect(active).toBe(false);
+					expect(staticData).toEqual(workflow.staticData);
+					expect(nodes).toEqual(workflow.nodes);
+					expect(tags).toEqual([]);
+					expect(settings).toEqual(workflow.settings);
+					expect(createdAt).toEqual(workflow.createdAt.toISOString());
+					expect(updatedAt).toEqual(workflow.updatedAt.toISOString());
+				});
+
+				test('should fail to retrieve a workflow when API key doesn\'t have "workflow:read" scope', async () => {
+					const member = await createMemberWithApiKey({ scopes: ['credential:create'] });
+
+					const authMemberAgent = testServer.publicApiAgentFor(member);
+
+					const workflow = await createWorkflow({}, member);
+
+					const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
+
+					expect(response.statusCode).toBe(403);
+				});
+			});
+
+			describe('DELETE /workflows/:id', () => {
+				test('should delete a workflow when API key has "workflow:delete" scope', async () => {
+					const member = await createMemberWithApiKey();
+					const authMemberAgent = testServer.publicApiAgentFor(member);
+					const workflow = await createWorkflow({}, member);
+
+					const response = await authMemberAgent.delete(`/workflows/${workflow.id}`);
+
+					expect(response.statusCode).toBe(200);
+
+					const {
+						id,
+						connections,
+						active,
+						staticData,
+						nodes,
+						settings,
+						name,
+						createdAt,
+						updatedAt,
+					} = response.body;
+
+					expect(id).toEqual(workflow.id);
+					expect(name).toEqual(workflow.name);
+					expect(connections).toEqual(workflow.connections);
+					expect(active).toBe(false);
+					expect(staticData).toEqual(workflow.staticData);
+					expect(nodes).toEqual(workflow.nodes);
+					expect(settings).toEqual(workflow.settings);
+					expect(createdAt).toEqual(workflow.createdAt.toISOString());
+					expect(updatedAt).toEqual(workflow.updatedAt.toISOString());
+
+					// make sure the workflow actually deleted from the db
+					const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOneBy({
+						workflowId: workflow.id,
+					});
+
+					expect(sharedWorkflow).toBeNull();
+				});
+
+				test('should fail to delete a workflow when API key doesn\'t have "workflow:delete" scope', async () => {
+					const member = await createMemberWithApiKey({ scopes: ['credential:create'] });
+					const authMemberAgent = testServer.publicApiAgentFor(member);
+					const workflow = await createWorkflow({}, member);
+
+					const response = await authMemberAgent.delete(`/workflows/${workflow.id}`);
+
+					expect(response.statusCode).toBe(403);
+				});
+			});
+
+			describe('PUT /workflows/:id', () => {
+				test('should update workflow when API key has "workflow:update" scope', async () => {
+					const member = await createMemberWithApiKey();
+
+					const memberPersonalProject = await Container.get(
+						ProjectRepository,
+					).getPersonalProjectForUserOrFail(member.id);
+
+					const authMemberAgent = testServer.publicApiAgentFor(member);
+
+					const workflow = await createWorkflow({}, member);
+					const payload = {
+						name: 'name updated',
+						nodes: [
+							{
+								id: 'uuid-1234',
+								parameters: {},
+								name: 'Start',
+								type: 'n8n-nodes-base.start',
+								typeVersion: 1,
+								position: [240, 300],
+							},
+							{
+								id: 'uuid-1234',
+								parameters: {},
+								name: 'Cron',
+								type: 'n8n-nodes-base.cron',
+								typeVersion: 1,
+								position: [400, 300],
+							},
+						],
+						connections: {},
+						staticData: '{"id":1}',
+						settings: {
+							saveExecutionProgress: false,
+							saveManualExecutions: false,
+							saveDataErrorExecution: 'all',
+							saveDataSuccessExecution: 'all',
+							executionTimeout: 3600,
+							timezone: 'America/New_York',
+						},
+					};
+
+					const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send(payload);
+
+					const {
+						id,
+						name,
+						nodes,
+						connections,
+						staticData,
+						active,
+						settings,
+						createdAt,
+						updatedAt,
+					} = response.body;
+
+					expect(response.statusCode).toBe(200);
+
+					expect(id).toBe(workflow.id);
+					expect(name).toBe(payload.name);
+					expect(connections).toEqual(payload.connections);
+					expect(settings).toEqual(payload.settings);
+					expect(staticData).toMatchObject(JSON.parse(payload.staticData));
+					expect(nodes).toEqual(payload.nodes);
+					expect(active).toBe(false);
+					expect(createdAt).toBe(workflow.createdAt.toISOString());
+					expect(updatedAt).not.toBe(workflow.updatedAt.toISOString());
+
+					// check updated workflow in DB
+					const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
+						where: {
+							projectId: memberPersonalProject.id,
+							workflowId: response.body.id,
+						},
+						relations: ['workflow'],
+					});
+
+					expect(sharedWorkflow?.workflow.name).toBe(payload.name);
+					expect(sharedWorkflow?.workflow.updatedAt.getTime()).toBeGreaterThan(
+						workflow.updatedAt.getTime(),
+					);
+				});
+
+				test('should fail to update workflow when API key doesn\'t have "workflow:update" scope', async () => {
+					const member = await createMemberWithApiKey({ scopes: ['credential:create'] });
+
+					const authMemberAgent = testServer.publicApiAgentFor(member);
+
+					const workflow = await createWorkflow({}, member);
+					const payload = {
+						name: 'name updated',
+						nodes: [
+							{
+								id: 'uuid-1234',
+								parameters: {},
+								name: 'Start',
+								type: 'n8n-nodes-base.start',
+								typeVersion: 1,
+								position: [240, 300],
+							},
+							{
+								id: 'uuid-1234',
+								parameters: {},
+								name: 'Cron',
+								type: 'n8n-nodes-base.cron',
+								typeVersion: 1,
+								position: [400, 300],
+							},
+						],
+						connections: {},
+						staticData: '{"id":1}',
+						settings: {
+							saveExecutionProgress: false,
+							saveManualExecutions: false,
+							saveDataErrorExecution: 'all',
+							saveDataSuccessExecution: 'all',
+							executionTimeout: 3600,
+							timezone: 'America/New_York',
+						},
+					};
+
+					const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send(payload);
+
+					expect(response.statusCode).toBe(403);
+				});
+			});
+
+			describe('GET /workflows/:id/tags', () => {
+				test('should retrieve all workflow tags when API key has "workflowTags:list" scope', async () => {
+					const member = await createMemberWithApiKey();
+					const authMemberAgent = testServer.publicApiAgentFor(member);
+
+					const tags = await Promise.all([await createTag({}), await createTag({})]);
+
+					const workflow = await createWorkflow({ tags }, member);
+
+					const response = await authMemberAgent.get(`/workflows/${workflow.id}/tags`);
+
+					expect(response.statusCode).toBe(200);
+					expect(response.body.length).toBe(2);
+
+					for (const tag of response.body) {
+						const { id, name, createdAt, updatedAt } = tag;
+
+						expect(id).toBeDefined();
+						expect(name).toBeDefined();
+						expect(createdAt).toBeDefined();
+						expect(updatedAt).toBeDefined();
+
+						tags.forEach((tag: TagEntity) => {
+							expect(tags.some((savedTag) => savedTag.id === tag.id)).toBe(true);
+						});
+					}
+				});
+
+				test('should fail to retrieve all workflow tags when API key doesn\'t have "workflowTags:list" scope', async () => {
+					const member = await createMemberWithApiKey({ scopes: ['credential:create'] });
+					const authMemberAgent = testServer.publicApiAgentFor(member);
+
+					const tags = await Promise.all([await createTag({}), await createTag({})]);
+
+					const workflow = await createWorkflow({ tags }, member);
+
+					const response = await authMemberAgent.get(`/workflows/${workflow.id}/tags`);
+
+					expect(response.statusCode).toBe(403);
+				});
+			});
+
+			describe('PUT /workflows/:id/tags', () => {
+				test('should update workflow tags when API key has "workflowTags:update" scope', async () => {
+					const member = await createMemberWithApiKey();
+
+					const memberPersonalProject = await Container.get(
+						ProjectRepository,
+					).getPersonalProjectForUserOrFail(member.id);
+
+					const authMemberAgent = testServer.publicApiAgentFor(member);
+
+					const workflow = await createWorkflow({}, member);
+					const tags = await Promise.all([await createTag({}), await createTag({})]);
+
+					const payload = [
+						{
+							id: tags[0].id,
+						},
+						{
+							id: tags[1].id,
+						},
+					];
+
+					const response = await authMemberAgent
+						.put(`/workflows/${workflow.id}/tags`)
+						.send(payload);
+
+					expect(response.statusCode).toBe(200);
+					expect(response.body.length).toBe(2);
+
+					for (const tag of response.body) {
+						const { id, name, createdAt, updatedAt } = tag;
+
+						expect(id).toBeDefined();
+						expect(name).toBeDefined();
+						expect(createdAt).toBeDefined();
+						expect(updatedAt).toBeDefined();
+
+						tags.forEach((tag: TagEntity) => {
+							expect(tags.some((savedTag) => savedTag.id === tag.id)).toBe(true);
+						});
+					}
+
+					// Check the association in DB
+					const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
+						where: {
+							projectId: memberPersonalProject.id,
+							workflowId: workflow.id,
+						},
+						relations: ['workflow.tags'],
+					});
+
+					expect(sharedWorkflow?.workflow.tags).toBeDefined();
+					expect(sharedWorkflow?.workflow.tags?.length).toBe(2);
+					if (sharedWorkflow?.workflow.tags !== undefined) {
+						for (const tag of sharedWorkflow?.workflow.tags) {
+							const { id, name, createdAt, updatedAt } = tag;
+
+							expect(id).toBeDefined();
+							expect(name).toBeDefined();
+							expect(createdAt).toBeDefined();
+							expect(updatedAt).toBeDefined();
+
+							tags.forEach((tag: TagEntity) => {
+								expect(tags.some((savedTag) => savedTag.id === tag.id)).toBe(true);
+							});
+						}
+					}
+				});
+
+				test('should fail to update workflow tags when API key doesn\'t have "workflowTags:update" scope', async () => {
+					const member = await createMemberWithApiKey({ scopes: ['credential:create'] });
+
+					const authMemberAgent = testServer.publicApiAgentFor(member);
+
+					const workflow = await createWorkflow({}, member);
+					const tags = await Promise.all([await createTag({}), await createTag({})]);
+
+					const payload = [
+						{
+							id: tags[0].id,
+						},
+						{
+							id: tags[1].id,
+						},
+					];
+
+					const response = await authMemberAgent
+						.put(`/workflows/${workflow.id}/tags`)
+						.send(payload);
+
+					expect(response.statusCode).toBe(403);
 				});
 			});
 		});
