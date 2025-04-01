@@ -86,38 +86,6 @@
         "open_deals_count": {
             "type": "integer"
         },
-        "org_id": {
-            "type": "object",
-            "properties": {
-                "active_flag": {
-                    "type": "boolean"
-                },
-                "cc_email": {
-                    "type": "string"
-                },
-                "label_ids": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "name": {
-                    "type": "string"
-                },
-                "owner_id": {
-                    "type": "integer"
-                },
-                "owner_name": {
-                    "type": "string"
-                },
-                "people_count": {
-                    "type": "integer"
-                },
-                "value": {
-                    "type": "integer"
-                }
-            }
-        },
         "owner_id": {
             "type": "object",
             "properties": {
@@ -155,9 +123,6 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "label": {
-                        "type": "string"
-                    },
                     "primary": {
                         "type": "boolean"
                     },
@@ -195,5 +160,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }
