@@ -106,8 +106,16 @@ export function useNodeHelpers() {
 		node: INodeUi | null,
 		displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
 	) {
-		return NodeHelpers.displayParameterPath(nodeValues, parameter, path, node, displayKey, () =>
-			node?.type ? nodeTypesStore.getNodeType(node.type, node.typeVersion) : null,
+		const nodeTypeDescription = node?.type
+			? nodeTypesStore.getNodeType(node.type, node.typeVersion)
+			: null;
+		return NodeHelpers.displayParameterPath(
+			nodeValues,
+			parameter,
+			path,
+			node,
+			nodeTypeDescription,
+			displayKey,
 		);
 	}
 
@@ -139,7 +147,7 @@ export function useNodeHelpers() {
 
 			// Add potential parameter issues
 			if (!ignoreIssues.includes('parameters')) {
-				nodeIssues = NodeHelpers.getNodeParametersIssues(nodeType.properties, node);
+				nodeIssues = NodeHelpers.getNodeParametersIssues(nodeType.properties, node, nodeType);
 			}
 
 			if (!ignoreIssues.includes('credentials')) {
@@ -289,6 +297,7 @@ export function useNodeHelpers() {
 		const fullNodeIssues: INodeIssues | null = NodeHelpers.getNodeParametersIssues(
 			localNodeType.properties,
 			node,
+			nodeType ?? null,
 		);
 
 		let newIssues: INodeIssueObjectProperty | null = null;

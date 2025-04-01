@@ -38,8 +38,7 @@ function findPropertyFromParameterName(
 					i,
 					currentParamPath,
 					node,
-					'displayOptions',
-					() => nodeType.description,
+					nodeType.description,
 				),
 		);
 	};
