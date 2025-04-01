@@ -1,6 +1,20 @@
 {
     "type": "object",
     "properties": {
+        "Address": {
+            "type": "object",
+            "properties": {
+                "geocodeAccuracy": {
+                    "type": "null"
+                },
+                "latitude": {
+                    "type": "null"
+                },
+                "longitude": {
+                    "type": "null"
+                }
+            }
+        },
         "attributes": {
             "type": "object",
             "properties": {
@@ -32,9 +46,6 @@
         },
         "Id": {
             "type": "string"
-        },
-        "IndividualId": {
-            "type": "null"
         },
         "IsConverted": {
             "type": "boolean"
@@ -88,5 +99,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
