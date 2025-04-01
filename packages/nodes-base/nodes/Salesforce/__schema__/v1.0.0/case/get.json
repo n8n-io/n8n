@@ -51,9 +51,6 @@
         "LastModifiedDate": {
             "type": "string"
         },
-        "MasterRecordId": {
-            "type": "null"
-        },
         "OwnerId": {
             "type": "string"
         },
@@ -67,5 +64,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
