@@ -16,6 +16,9 @@
                 "type": "string"
             }
         },
+        "contract_address": {
+            "type": "string"
+        },
         "description": {
             "type": "object",
             "properties": {
@@ -75,9 +78,6 @@
                 },
                 "twitter_screen_name": {
                     "type": "string"
-                },
-                "whitepaper": {
-                    "type": "string"
                 }
             }
         },
@@ -97,5 +97,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
