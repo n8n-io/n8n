@@ -16,9 +16,6 @@
                         "id": {
                             "type": "integer"
                         },
-                        "last_name": {
-                            "type": "string"
-                        },
                         "type": {
                             "type": "string"
                         },
@@ -128,5 +125,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }
