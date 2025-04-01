@@ -673,7 +673,7 @@ export class ActiveWorkflowManager {
 		const triggerFilter = (nodeType: INodeType) =>
 			!!nodeType.trigger && !nodeType.description.name.includes('manualTrigger');
 
-		// Retrieve unqique webhooks as some nodes have multiple webhooks
+		// Retrieve unique webhooks as some nodes have multiple webhooks
 		const workflowWebhooks = WebhookHelpers.getWorkflowWebhooks(
 			workflow,
 			additionalData,
