@@ -669,6 +669,7 @@
 	"dataMapping.tableView.tableColumnsExceeded.tooltip.link": "JSON view",
 	"dataMapping.schemaView.emptyData": "No fields - item(s) exist, but they're empty",
 	"dataMapping.schemaView.emptyDataWithBinary": "Only binary data exists. View it using the 'Binary' tab",
+	"dataMapping.schemaView.executeSchema": "{link} to see schema",
 	"dataMapping.schemaView.disabled": "This node is disabled and will just pass data through",
 	"dataMapping.schemaView.noMatches": "No results for '{search}'",
 	"dataMapping.schemaView.preview": "Usually outputs the following fields. Execute the node to see the actual ones. {link}",
