@@ -1,6 +1,14 @@
 {
     "type": "object",
     "properties": {
+        "address": {
+            "type": "object",
+            "properties": {
+                "country": {
+                    "type": "string"
+                }
+            }
+        },
         "balance": {
             "type": "integer"
         },
@@ -9,6 +17,9 @@
         },
         "delinquent": {
             "type": "boolean"
+        },
+        "discount": {
+            "type": "null"
         },
         "id": {
             "type": "string"
@@ -27,6 +38,9 @@
         "livemode": {
             "type": "boolean"
         },
+        "next_invoice_sequence": {
+            "type": "integer"
+        },
         "object": {
             "type": "string"
         },
@@ -40,5 +54,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
