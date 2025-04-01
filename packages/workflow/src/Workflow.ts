@@ -112,7 +112,7 @@ export class Workflow {
 				true,
 				false,
 				node,
-				this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description,
+				nodeType.description,
 			);
 			node.parameters = nodeParameters !== null ? nodeParameters : {};
 		}
