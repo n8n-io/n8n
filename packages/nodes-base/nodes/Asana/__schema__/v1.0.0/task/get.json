@@ -29,6 +29,20 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "created_by": {
+                        "type": "object",
+                        "properties": {
+                            "gid": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "resource_type": {
+                                "type": "string"
+                            }
+                        }
+                    },
                     "description": {
                         "type": "string"
                     },
@@ -66,29 +80,6 @@
                     },
                     "is_value_read_only": {
                         "type": "boolean"
-                    },
-                    "multi_enum_values": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "color": {
-                                    "type": "string"
-                                },
-                                "enabled": {
-                                    "type": "boolean"
-                                },
-                                "gid": {
-                                    "type": "string"
-                                },
-                                "name": {
-                                    "type": "string"
-                                },
-                                "resource_type": {
-                                    "type": "string"
-                                }
-                            }
-                        }
                     },
                     "name": {
                         "type": "string"
@@ -134,8 +125,58 @@
         "hearted": {
             "type": "boolean"
         },
+        "hearts": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "gid": {
+                        "type": "string"
+                    },
+                    "user": {
+                        "type": "object",
+                        "properties": {
+                            "gid": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "resource_type": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "liked": {
             "type": "boolean"
+        },
+        "likes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "gid": {
+                        "type": "string"
+                    },
+                    "user": {
+                        "type": "object",
+                        "properties": {
+                            "gid": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "resource_type": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         },
         "memberships": {
             "type": "array",
@@ -249,5 +290,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }
