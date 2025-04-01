@@ -61,6 +61,9 @@
         "permalink": {
             "type": "string"
         },
+        "permalink_public": {
+            "type": "string"
+        },
         "pretty_type": {
             "type": "string"
         },
@@ -92,5 +95,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
