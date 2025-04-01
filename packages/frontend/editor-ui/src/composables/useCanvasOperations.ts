@@ -175,11 +175,15 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	}
 
 	function trackTidyUp({ result, source, target }: CanvasLayoutEvent) {
-		telemetry.track('User tidied up canvas', {
-			source,
-			target,
-			nodes_count: result.nodes.length,
-		});
+		telemetry.track(
+			'User tidied up canvas',
+			{
+				source,
+				target,
+				nodes_count: result.nodes.length,
+			},
+			{ withPostHog: true },
+		);
 	}
 
 	function updateNodesPosition(

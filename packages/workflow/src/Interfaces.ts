@@ -2090,6 +2090,11 @@ export type KnownNodesAndCredentials = {
 	credentials: Record<string, CredentialLoadingDetails>;
 };
 
+export interface LoadedNodesAndCredentials {
+	nodes: INodeTypeData;
+	credentials: ICredentialTypeData;
+}
+
 export interface LoadedClass<T> {
 	sourcePath: string;
 	type: T;

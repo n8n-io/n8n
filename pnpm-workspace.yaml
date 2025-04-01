@@ -24,6 +24,7 @@ catalog:
   nanoid: 3.3.8
   picocolors: 1.0.1
   reflect-metadata: 0.2.2
+  rimraf: ^6.0.1
   tsup: ^8.4.0
   uuid: 10.0.0
   xml2js: 0.6.2
@@ -50,3 +51,4 @@ catalogs:
     vue-tsc: ^2.2.8
     vue-markdown-render: ^2.2.1
     highlight.js: ^11.8.0
+    'element-plus': 2.4.3

@@ -131,6 +131,18 @@ BQIDAQAB
 			},
 		},
 	},
+	microsoftExcelOAuth2Api: {
+		scope: 'openid',
+		oauthTokenData: {
+			access_token: 'token',
+		},
+	},
+	microsoftTeamsOAuth2Api: {
+		scope: 'openid',
+		oauthTokenData: {
+			access_token: 'token',
+		},
+	},
 	n8nApi: {
 		apiKey: 'key123',
 		baseUrl: 'https://test.app.n8n.cloud/api/v1',
@@ -244,5 +256,8 @@ BQIDAQAB
 		allowUnauthorizedCerts: false,
 		username: 'nodeqa',
 		password: 'fake-password',
+	},
+	discordWebhookApi: {
+		webhookUri: 'https://discord.com/webhook',
 	},
 } as const;

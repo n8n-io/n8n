@@ -18,13 +18,12 @@ import type {
 	KnownNodesAndCredentials,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	INodeTypeData,
-	ICredentialTypeData,
 	LoadedClass,
 	ICredentialType,
 	INodeType,
 	IVersionedNodeType,
 	INodeProperties,
+	LoadedNodesAndCredentials,
 } from 'n8n-workflow';
 import { deepCopy, NodeConnectionTypes, UnexpectedError, UserError } from 'n8n-workflow';
 import path from 'path';
@@ -38,11 +37,6 @@ import {
 	inE2ETests,
 } from '@/constants';
 import { isContainedWithin } from '@/utils/path-util';
-
-interface LoadedNodesAndCredentials {
-	nodes: INodeTypeData;
-	credentials: ICredentialTypeData;
-}
 
 @Service()
 export class LoadNodesAndCredentials {

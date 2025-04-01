@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-loop-func */
+import type { WorkflowTestData } from 'n8n-workflow';
+
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import * as Helpers from '@test/nodes/Helpers';
-import type { WorkflowTestData } from '@test/nodes/types';
 
 describe('Test ReadWriteFile Node', () => {
 	beforeEach(async () => {
@@ -84,11 +85,9 @@ describe('Test ReadWriteFile Node', () => {
 		},
 	];
 
-	const nodeTypes = Helpers.setup(tests);
-
 	for (const testData of tests) {
 		test(testData.description, async () => {
-			const { result } = await executeWorkflow(testData, nodeTypes);
+			const { result } = await executeWorkflow(testData);
 
 			const resultNodeData = Helpers.getResultNodeData(result, testData);
 			resultNodeData.forEach(({ nodeName, resultData }) => {
