@@ -89,6 +89,7 @@ describe('workflowExecuteAfterHandler', () => {
 
 		// ACT
 		await insightsService.workflowExecuteAfterHandler(ctx, run);
+		await insightsService.flushEvents();
 
 		// ASSERT
 		const metadata = await insightsMetadataRepository.findOneBy({ workflowId: workflow.id });
@@ -147,6 +148,7 @@ describe('workflowExecuteAfterHandler', () => {
 
 		// ACT
 		await insightsService.workflowExecuteAfterHandler(ctx, run);
+		await insightsService.flushEvents();
 
 		// ASSERT
 		const metadata = await insightsMetadataRepository.findOneBy({ workflowId: workflow.id });
@@ -173,6 +175,7 @@ describe('workflowExecuteAfterHandler', () => {
 
 		// ACT
 		await insightsService.workflowExecuteAfterHandler(ctx, run);
+		await insightsService.flushEvents();
 
 		// ASSERT
 		const metadata = await insightsMetadataRepository.findOneBy({ workflowId: workflow.id });
@@ -202,6 +205,7 @@ describe('workflowExecuteAfterHandler', () => {
 
 		// ACT
 		await insightsService.workflowExecuteAfterHandler(ctx, run);
+		await insightsService.flushEvents();
 
 		// ASSERT
 		const metadata = await insightsMetadataRepository.findOneBy({ workflowId: workflow.id });
@@ -263,12 +267,30 @@ describe('workflowExecuteAfterHandler', () => {
 		const sharedWorkflowRepositoryMock: jest.Mocked<SharedWorkflowRepository> = {
 			manager: entityManagerMock,
 		} as unknown as jest.Mocked<SharedWorkflowRepository>;
+		const insightsRawRepository: jest.Mocked<InsightsRawRepository> = mock<InsightsRawRepository>();
+
+		// Mock the transaction function
+		const trxMock = {
+			findOne: jest.fn().mockResolvedValue({
+				projectId: 'project-id',
+				project: { name: 'project-name' },
+			}),
+			findOneBy: jest.fn(),
+			upsert: jest.fn(),
+			insert: jest.fn(),
+		};
+
+		entityManagerMock.transaction.mockImplementation(
+			jest.fn(async (runInTransaction: (entityManager: EntityManager) => Promise<void>) => {
+				await runInTransaction(trxMock as unknown as EntityManager);
+			}) as unknown as EntityManager['transaction'],
+		);
 
 		beforeAll(async () => {
 			insightsService = new InsightsService(
 				sharedWorkflowRepositoryMock,
 				Container.get(InsightsByPeriodRepository),
-				Container.get(InsightsRawRepository),
+				insightsRawRepository,
 			);
 		});
 
@@ -276,15 +298,15 @@ describe('workflowExecuteAfterHandler', () => {
 		let workflow: IWorkflowDb & WorkflowEntity;
 
 		beforeEach(async () => {
-			await truncateAll();
-
 			project = await createTeamProject();
 			workflow = await createWorkflow({}, project);
 		});
 
 		test('reuses cached metadata for subsequent executions of the same workflow', async () => {
 			// ARRANGE
-			const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
+			const ctx = mock<ExecutionLifecycleHooks>({
+				workflowData: { ...workflow, settings: undefined },
+			});
 			const startedAt = DateTime.utc();
 			const stoppedAt = startedAt.plus({ seconds: 5 });
 			const run = mock<IRun>({
@@ -294,31 +316,16 @@ describe('workflowExecuteAfterHandler', () => {
 				stoppedAt: stoppedAt.toJSDate(),
 			});
 
-			// Mock the transaction function
-			const trxMock = {
-				findOne: jest.fn().mockResolvedValue({
-					projectId: 'project-id',
-					project: { name: 'project-name' },
-				}),
-				upsert: jest.fn(),
-				findOneBy: jest.fn().mockResolvedValue({
-					metaId: 'meta-id',
-					workflowName: workflow.name,
-					projectId: 'project-id',
-					projectName: 'project-name',
-				}),
-				insert: jest.fn(),
-			};
-
-			// Use jest.spyOn to mock the transaction method
-			entityManagerMock.transaction.mockImplementation(
-				jest.fn(async (runInTransaction: (entityManager: EntityManager) => Promise<void>) => {
-					await runInTransaction(trxMock as unknown as EntityManager);
-				}) as unknown as EntityManager['transaction'],
-			);
+			trxMock.findOneBy = jest.fn().mockResolvedValue({
+				metaId: 'meta-id',
+				workflowName: workflow.name,
+				projectId: 'project-id',
+				projectName: 'project-name',
+			});
 
 			// ACT
 			await insightsService.workflowExecuteAfterHandler(ctx, run);
+			await insightsService.flushEvents();
 
 			// ASSERT
 			expect(trxMock.findOne).toHaveBeenCalledWith(expect.anything(), {
@@ -358,31 +365,16 @@ describe('workflowExecuteAfterHandler', () => {
 				stoppedAt: stoppedAt.toJSDate(),
 			});
 
-			// Mock the transaction function
-			const trxMock = {
-				findOne: jest.fn().mockResolvedValue({
-					projectId: 'project-id',
-					project: { name: 'project-name' },
-				}),
-				upsert: jest.fn(),
-				findOneBy: jest.fn().mockResolvedValue({
-					metaId: 'meta-id',
-					workflowName: workflow.name,
-					projectId: 'project-id',
-					projectName: 'project-name',
-				}),
-				insert: jest.fn(),
-			};
-
-			// Use jest.spyOn to mock the transaction method
-			entityManagerMock.transaction.mockImplementation(
-				jest.fn(async (runInTransaction: (entityManager: EntityManager) => Promise<void>) => {
-					await runInTransaction(trxMock as unknown as EntityManager);
-				}) as unknown as EntityManager['transaction'],
-			);
+			trxMock.findOneBy = jest.fn().mockResolvedValue({
+				metaId: 'meta-id',
+				workflowName: workflow.name,
+				projectId: 'project-id',
+				projectName: 'project-name',
+			});
 
 			// ACT
 			await insightsService.workflowExecuteAfterHandler(ctx, run);
+			await insightsService.flushEvents();
 
 			// ASSERT
 			expect(trxMock.findOne).toHaveBeenCalled();
@@ -409,6 +401,106 @@ describe('workflowExecuteAfterHandler', () => {
 				}),
 				['workflowId'],
 			);
+		});
+	});
+
+	describe('workflowExecuteAfterHandler - flushEvents', () => {
+		let insightsService: InsightsService;
+		let entityManagerMock = mock<EntityManager>();
+		const sharedWorkflowRepositoryMock: jest.Mocked<SharedWorkflowRepository> = {
+			manager: entityManagerMock,
+		} as unknown as jest.Mocked<SharedWorkflowRepository>;
+		const insightsRawRepository: jest.Mocked<InsightsRawRepository> = mock<InsightsRawRepository>();
+
+		// Mock the transaction function
+		const trxMock = {
+			findOne: jest.fn().mockResolvedValue({
+				projectId: 'project-id',
+				project: { name: 'project-name' },
+			}),
+			findOneBy: jest.fn().mockResolvedValue({
+				metaId: 'meta-id',
+				workflowName: 'workflow-name',
+				projectId: 'project-id',
+				projectName: 'project-name',
+			}),
+			upsert: jest.fn(),
+			insert: jest.fn(),
+		};
+
+		entityManagerMock.transaction.mockImplementation(
+			jest.fn(async (runInTransaction: (entityManager: EntityManager) => Promise<void>) => {
+				await runInTransaction(trxMock as unknown as EntityManager);
+			}) as unknown as EntityManager['transaction'],
+		);
+
+		beforeAll(async () => {
+			insightsService = new InsightsService(
+				sharedWorkflowRepositoryMock,
+				Container.get(InsightsByPeriodRepository),
+				insightsRawRepository,
+			);
+		});
+
+		test('flushes events to the database once buffer is full', async () => {
+			// ARRANGE
+			const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
+			const startedAt = DateTime.utc();
+			const stoppedAt = startedAt.plus({ seconds: 5 });
+			const run = mock<IRun>({
+				mode: 'trigger',
+				status: 'success',
+				startedAt: startedAt.toJSDate(),
+				stoppedAt: stoppedAt.toJSDate(),
+			});
+
+			// ACT
+			for (let i = 0; i < 33; i++) {
+				await insightsService.workflowExecuteAfterHandler(ctx, run);
+			}
+
+			// ASSERT
+			expect(insightsRawRepository.insert).not.toHaveBeenCalled();
+
+			// ACT
+			await insightsService.workflowExecuteAfterHandler(ctx, run);
+
+			// ASSERT
+			expect(insightsRawRepository.insert).toHaveBeenCalledTimes(1);
+		});
+
+		test('flushes events to the database after a timeout', async () => {
+			// ARRANGE
+			jest.useFakeTimers();
+			insightsRawRepository.insert.mockClear();
+			insightsService.initializeFlushing();
+			const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
+			const startedAt = DateTime.utc();
+			const stoppedAt = startedAt.plus({ seconds: 5 });
+			const run = mock<IRun>({
+				mode: 'trigger',
+				status: 'success',
+				startedAt: startedAt.toJSDate(),
+				stoppedAt: stoppedAt.toJSDate(),
+			});
+
+			try {
+				// ACT
+				for (let i = 0; i < 33; i++) {
+					await insightsService.workflowExecuteAfterHandler(ctx, run);
+				}
+
+				// ASSERT
+				expect(insightsRawRepository.insert).not.toHaveBeenCalled();
+
+				// ACT
+				jest.advanceTimersByTime(31 * 1000);
+
+				// ASSERT
+				expect(insightsRawRepository.insert).toHaveBeenCalledTimes(1);
+			} finally {
+				jest.useRealTimers();
+			}
 		});
 	});
 });

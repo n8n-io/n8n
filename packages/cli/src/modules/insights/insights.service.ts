@@ -55,7 +55,13 @@ const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
 export class InsightsService {
 	private readonly cachedMetadata: Record<string, InsightsMetadata> = {};
 
+	private readonly insightsRawToInsertBuffer: InsightsRaw[] = [];
+
 	private compactInsightsTimer: NodeJS.Timer | undefined;
+
+	private flushInsightsRawBufferTimer: NodeJS.Timer | undefined;
+
+	private isFlushingInsightsRawBuffer = false;
 
 	constructor(
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
@@ -63,6 +69,7 @@ export class InsightsService {
 		private readonly insightsRawRepository: InsightsRawRepository,
 	) {
 		this.initializeCompaction();
+		this.initializeFlushing();
 	}
 
 	initializeCompaction() {
@@ -76,12 +83,30 @@ export class InsightsService {
 		);
 	}
 
+	initializeFlushing() {
+		if (this.flushInsightsRawBufferTimer !== undefined) {
+			clearInterval(this.flushInsightsRawBufferTimer);
+		}
+		this.flushInsightsRawBufferTimer = setInterval(
+			async () => await this.flushEvents(),
+			config.flushIntervalSeconds * 1000,
+		);
+	}
+
 	@OnShutdown()
-	shutdown() {
+	async shutdown() {
 		if (this.compactInsightsTimer !== undefined) {
 			clearInterval(this.compactInsightsTimer);
 			this.compactInsightsTimer = undefined;
 		}
+
+		if (this.flushInsightsRawBufferTimer !== undefined) {
+			clearInterval(this.flushInsightsRawBufferTimer);
+			this.flushInsightsRawBufferTimer = undefined;
+		}
+
+		// Flush remaining events on shutdown
+		await this.flushEvents();
 	}
 
 	async workflowExecuteAfterHandler(ctx: ExecutionLifecycleHooks, fullRunData: IRun) {
@@ -91,6 +116,7 @@ export class InsightsService {
 
 		const status = fullRunData.status === 'success' ? 'success' : 'failure';
 
+		let metadata = this.cachedMetadata[ctx.workflowData.id];
 		await this.sharedWorkflowRepository.manager.transaction(async (trx) => {
 			const sharedWorkflow = await trx.findOne(SharedWorkflow, {
 				where: { workflowId: ctx.workflowData.id, role: 'workflow:owner' },
@@ -103,7 +129,6 @@ export class InsightsService {
 				);
 			}
 
-			let metadata = this.cachedMetadata[ctx.workflowData.id];
 			if (
 				metadata === undefined ||
 				metadata.projectId !== sharedWorkflow.projectId ||
@@ -133,38 +158,64 @@ export class InsightsService {
 				}
 				this.cachedMetadata[ctx.workflowData.id] = metadata = upsertMetadata;
 			}
-
-			const events: InsightsRaw[] = [];
-			// success or failure event
-			{
-				const event = new InsightsRaw();
-				event.metaId = metadata.metaId;
-				event.type = status;
-				event.value = 1;
-				events.push(event);
-			}
-
-			// run time event
-			if (fullRunData.stoppedAt) {
-				const value = fullRunData.stoppedAt.getTime() - fullRunData.startedAt.getTime();
-				const event = new InsightsRaw();
-				event.metaId = metadata.metaId;
-				event.type = 'runtime_ms';
-				event.value = value;
-				events.push(event);
-			}
-
-			// time saved event
-			if (status === 'success' && ctx.workflowData.settings?.timeSavedPerExecution) {
-				const event = new InsightsRaw();
-				event.metaId = metadata.metaId;
-				event.type = 'time_saved_min';
-				event.value = ctx.workflowData.settings.timeSavedPerExecution;
-				events.push(event);
-			}
-
-			await trx.insert(InsightsRaw, events);
 		});
+
+		const events: InsightsRaw[] = [];
+		// success or failure event
+		{
+			const event = new InsightsRaw();
+			event.metaId = metadata.metaId;
+			event.type = status;
+			event.value = 1;
+			events.push(event);
+		}
+
+		// run time event
+		if (fullRunData.stoppedAt) {
+			const value = fullRunData.stoppedAt.getTime() - fullRunData.startedAt.getTime();
+			const event = new InsightsRaw();
+			event.metaId = metadata.metaId;
+			event.type = 'runtime_ms';
+			event.value = value;
+			events.push(event);
+		}
+
+		// time saved event
+		if (status === 'success' && ctx.workflowData.settings?.timeSavedPerExecution) {
+			const event = new InsightsRaw();
+			event.metaId = metadata.metaId;
+			event.type = 'time_saved_min';
+			event.value = ctx.workflowData.settings.timeSavedPerExecution;
+			events.push(event);
+		}
+
+		this.pushEvent(events);
+	}
+
+	pushEvent(events: InsightsRaw[]) {
+		this.insightsRawToInsertBuffer.push(...events);
+		if (
+			this.insightsRawToInsertBuffer.length >= config.flushBatchSize &&
+			!this.isFlushingInsightsRawBuffer
+		) {
+			// Fire and forget flush to avoid blocking the workflow execute after handler
+			void this.flushEvents();
+		}
+	}
+
+	async flushEvents() {
+		// Prevent flushing if we are already flushing or if there are no events to flush
+		if (this.isFlushingInsightsRawBuffer || this.insightsRawToInsertBuffer.length === 0) {
+			return;
+		}
+
+		// Set isFlushing flag to prevent concurrent flushes
+		this.isFlushingInsightsRawBuffer = true;
+
+		await this.insightsRawRepository.insert(this.insightsRawToInsertBuffer);
+		this.insightsRawToInsertBuffer.length = 0;
+
+		this.isFlushingInsightsRawBuffer = false;
 	}
 
 	async compactInsights() {
