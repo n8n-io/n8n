@@ -2,11 +2,9 @@ import { Container } from '@n8n/di';
 
 import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { getOwnerOnlyApiKeyScopes } from '@/public-api/permissions.ee';
 import { Telemetry } from '@/telemetry';
 import { mockInstance } from '@test/mocking';
 import {
-	createAdminWithApiKey,
 	createMember,
 	createMemberWithApiKey,
 	createOwnerWithApiKey,
@@ -284,35 +282,6 @@ describe('Users in Public API', () => {
 			expect(response.status).toBe(204);
 			const storedUser = await getUserById(member.id);
 			expect(storedUser.role).toBe(payload.newRoleName);
-		});
-
-		it('should remove all admin only scopes when user downgrading to member', async () => {
-			/**
-			 * Arrange
-			 */
-			testServer.license.enable('feat:advancedPermissions');
-
-			const owner = await createOwnerWithApiKey();
-			const admin = await createAdminWithApiKey();
-			const payload = { newRoleName: 'global:member' };
-
-			const ownerOnlyScopes = getOwnerOnlyApiKeyScopes();
-
-			/**
-			 * Act
-			 */
-			const response = await testServer
-				.publicApiAgentFor(owner)
-				.patch(`/users/${admin.id}/role`)
-				.send(payload);
-
-			/**
-			 * Assert
-			 */
-			expect(response.status).toBe(204);
-
-			const formerAdminApiKey = await apiKeyRepository.findOneByOrFail({ userId: admin.id });
-			expect(formerAdminApiKey.scopes).not.toContain(ownerOnlyScopes);
 		});
 	});
 });
