@@ -143,9 +143,6 @@
                             "selected": {
                                 "type": "boolean"
                             },
-                            "source-label": {
-                                "type": "null"
-                            },
                             "source-type": {
                                 "type": "string"
                             },
@@ -233,5 +230,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }
