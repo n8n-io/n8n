@@ -8,6 +8,9 @@ import type {
 	IWebhookResponseData,
 	IDeferredPromise,
 	IN8nHttpFullResponse,
+	IWorkflowBase,
+	IRunExecutionData,
+	IExecuteData,
 } from 'n8n-workflow';
 import { createDeferredPromise, FORM_NODE_TYPE, WAIT_NODE_TYPE } from 'n8n-workflow';
 import type { Readable } from 'stream';
@@ -20,6 +23,7 @@ import {
 	handleFormRedirectionCase,
 	getResponseOnReceived,
 	setupResponseNodePromise,
+	prepareExecutionData,
 } from '../webhook-helpers';
 import type { IWebhookResponseCallbackData } from '../webhook.types';
 
@@ -278,5 +282,126 @@ describe('setupResponseNodePromise', () => {
 			{ executionId, workflowId },
 		);
 		expect(responseCallback).toHaveBeenCalledWith(error, {});
+	});
+});
+
+describe('prepareExecutionData', () => {
+	const workflowStartNode = mock<INode>({ name: 'Start' });
+	const webhookResultData: IWebhookResponseData = {
+		workflowData: [[{ json: { data: 'test' } }]],
+	};
+	const workflowData = mock<IWorkflowBase>({
+		id: 'workflow1',
+		pinData: { nodeA: [{ json: { pinned: true } }] },
+	});
+
+	test('should create new execution data when not provided', () => {
+		const { runExecutionData, pinData } = prepareExecutionData(
+			'manual',
+			workflowStartNode,
+			webhookResultData,
+			undefined,
+		);
+
+		const nodeExecuteData = runExecutionData.executionData?.nodeExecutionStack?.[0];
+		expect(nodeExecuteData).toBeDefined();
+		expect(nodeExecuteData?.node).toBe(workflowStartNode);
+		expect(nodeExecuteData?.data.main).toBe(webhookResultData.workflowData);
+		expect(pinData).toBeUndefined();
+	});
+
+	test('should update existing runExecutionData when executionId is defined', () => {
+		const executionId = 'test-execution-id';
+		const nodeExecutionStack: IExecuteData[] = [
+			{
+				node: workflowStartNode,
+				data: { main: [[{ json: { oldData: true } }]] },
+				source: null,
+			},
+		];
+		const existingRunExecutionData = {
+			startData: {},
+			resultData: { runData: {} },
+			executionData: {
+				contextData: {},
+				nodeExecutionStack,
+				waitingExecution: {},
+			},
+		} as IRunExecutionData;
+
+		prepareExecutionData(
+			'manual',
+			workflowStartNode,
+			webhookResultData,
+			existingRunExecutionData,
+			undefined,
+			undefined,
+			executionId,
+		);
+
+		expect(nodeExecutionStack[0]?.data.main).toBe(webhookResultData.workflowData);
+	});
+
+	test('should set destination node when provided', () => {
+		const { runExecutionData } = prepareExecutionData(
+			'manual',
+			workflowStartNode,
+			webhookResultData,
+			undefined,
+			{},
+			'targetNode',
+		);
+
+		expect(runExecutionData.startData?.destinationNode).toBe('targetNode');
+	});
+
+	test('should update execution data with execution data merge', () => {
+		const runExecutionDataMerge = {
+			resultData: {
+				error: { message: 'Test error' },
+			},
+		};
+
+		const { runExecutionData } = prepareExecutionData(
+			'manual',
+			workflowStartNode,
+			webhookResultData,
+			undefined,
+			runExecutionDataMerge,
+		);
+
+		expect(runExecutionData.resultData.error).toEqual({ message: 'Test error' });
+	});
+
+	test('should set pinData when execution mode is manual', () => {
+		const { runExecutionData, pinData } = prepareExecutionData(
+			'manual',
+			workflowStartNode,
+			webhookResultData,
+			undefined,
+			{},
+			undefined,
+			undefined,
+			workflowData,
+		);
+
+		expect(pinData).toBe(workflowData.pinData);
+		expect(runExecutionData.resultData.pinData).toBe(workflowData.pinData);
+	});
+
+	test('should not set pinData when execution mode is not manual or evaluation', () => {
+		const { runExecutionData, pinData } = prepareExecutionData(
+			'webhook',
+			workflowStartNode,
+			webhookResultData,
+			undefined,
+			{},
+			undefined,
+			undefined,
+			workflowData,
+		);
+
+		expect(pinData).toBeUndefined();
+		expect(runExecutionData.resultData.pinData).toBeUndefined();
 	});
 });

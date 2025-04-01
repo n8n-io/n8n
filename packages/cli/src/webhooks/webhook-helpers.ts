@@ -253,6 +253,65 @@ export function setupResponseNodePromise(
 		});
 }
 
+export function prepareExecutionData(
+	executionMode: WorkflowExecuteMode,
+	workflowStartNode: INode,
+	webhookResultData: IWebhookResponseData,
+	runExecutionData: IRunExecutionData | undefined,
+	runExecutionDataMerge: object = {},
+	destinationNode?: string,
+	executionId?: string,
+	workflowData?: IWorkflowBase,
+): { runExecutionData: IRunExecutionData; pinData: IPinData | undefined } {
+	// Initialize the data of the webhook node
+	const nodeExecutionStack: IExecuteData[] = [
+		{
+			node: workflowStartNode,
+			data: {
+				main: webhookResultData.workflowData ?? [],
+			},
+			source: null,
+		},
+	];
+
+	runExecutionData ??= {
+		startData: {},
+		resultData: {
+			runData: {},
+		},
+		executionData: {
+			contextData: {},
+			nodeExecutionStack,
+			waitingExecution: {},
+		},
+	} as IRunExecutionData;
+
+	if (destinationNode && runExecutionData.startData) {
+		runExecutionData.startData.destinationNode = destinationNode;
+	}
+
+	if (executionId !== undefined) {
+		// Set the data the webhook node did return on the waiting node if executionId
+		// already exists as it means that we are restarting an existing execution.
+		runExecutionData.executionData!.nodeExecutionStack[0].data.main =
+			webhookResultData.workflowData ?? [];
+	}
+
+	if (Object.keys(runExecutionDataMerge).length !== 0) {
+		// If data to merge got defined add it to the execution data
+		Object.assign(runExecutionData, runExecutionDataMerge);
+	}
+
+	let pinData: IPinData | undefined;
+	const usePinData = ['manual', 'evaluation'].includes(executionMode);
+	if (usePinData) {
+		pinData = workflowData?.pinData;
+		runExecutionData.resultData.pinData = pinData;
+	}
+
+	return { runExecutionData, pinData };
+}
+
 /**
  * Executes a webhook
  */
@@ -525,52 +584,18 @@ export async function executeWebhook(
 			didSendResponse = true;
 		}
 
-		// Initialize the data of the webhook node
-		const nodeExecutionStack: IExecuteData[] = [];
-		nodeExecutionStack.push({
-			node: workflowStartNode,
-			data: {
-				main: webhookResultData.workflowData,
-			},
-			source: null,
-		});
-
-		runExecutionData =
-			runExecutionData ||
-			({
-				startData: {},
-				resultData: {
-					runData: {},
-				},
-				executionData: {
-					contextData: {},
-					nodeExecutionStack,
-					waitingExecution: {},
-				},
-			} as IRunExecutionData);
-
-		if (destinationNode && runExecutionData.startData) {
-			runExecutionData.startData.destinationNode = destinationNode;
-		}
-
-		if (executionId !== undefined) {
-			// Set the data the webhook node did return on the waiting node if executionId
-			// already exists as it means that we are restarting an existing execution.
-			runExecutionData.executionData!.nodeExecutionStack[0].data.main =
-				webhookResultData.workflowData;
-		}
-
-		if (Object.keys(runExecutionDataMerge).length !== 0) {
-			// If data to merge got defined add it to the execution data
-			Object.assign(runExecutionData, runExecutionDataMerge);
-		}
-
-		let pinData: IPinData | undefined;
-		const usePinData = ['manual', 'evaluation'].includes(executionMode);
-		if (usePinData) {
-			pinData = workflowData.pinData;
-			runExecutionData.resultData.pinData = pinData;
-		}
+		// Prepare execution data
+		const { runExecutionData: preparedRunExecutionData, pinData } = prepareExecutionData(
+			executionMode,
+			workflowStartNode,
+			webhookResultData,
+			runExecutionData,
+			runExecutionDataMerge,
+			destinationNode,
+			executionId,
+			workflowData,
+		);
+		runExecutionData = preparedRunExecutionData;
 
 		const runData: IWorkflowExecutionDataProcess = {
 			executionMode,
@@ -659,7 +684,7 @@ export async function executeWebhook(
 						return undefined;
 					}
 
-					if (usePinData) {
+					if (pinData) {
 						data.data.resultData.pinData = pinData;
 					}
 
