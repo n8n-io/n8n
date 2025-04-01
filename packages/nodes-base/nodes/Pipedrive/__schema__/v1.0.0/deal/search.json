@@ -4,24 +4,22 @@
         "currency": {
             "type": "string"
         },
-        "id": {
-            "type": "integer"
-        },
-        "notes": {
+        "custom_fields": {
             "type": "array",
             "items": {
                 "type": "string"
             }
         },
-        "organization": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                }
+        "id": {
+            "type": "integer"
+        },
+        "is_archived": {
+            "type": "boolean"
+        },
+        "notes": {
+            "type": "array",
+            "items": {
+                "type": "string"
             }
         },
         "owner": {
@@ -32,14 +30,11 @@
                 }
             }
         },
-        "person": {
+        "pipeline": {
             "type": "object",
             "properties": {
                 "id": {
                     "type": "integer"
-                },
-                "name": {
-                    "type": "string"
                 }
             }
         },
@@ -70,5 +65,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }
