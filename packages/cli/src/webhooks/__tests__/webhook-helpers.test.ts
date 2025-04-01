@@ -1,8 +1,12 @@
 import { mock, type MockProxy } from 'jest-mock-extended';
-import type { Workflow, INode, IDataObject } from 'n8n-workflow';
+import type { Workflow, INode, IDataObject, IWebhookResponseData } from 'n8n-workflow';
 import { FORM_NODE_TYPE, WAIT_NODE_TYPE } from 'n8n-workflow';
 
-import { autoDetectResponseMode, handleFormRedirectionCase } from '../webhook-helpers';
+import {
+	autoDetectResponseMode,
+	handleFormRedirectionCase,
+	getResponseOnReceived,
+} from '../webhook-helpers';
 import type { IWebhookResponseCallbackData } from '../webhook.types';
 
 describe('autoDetectResponseMode', () => {
@@ -93,5 +97,48 @@ describe('handleFormRedirectionCase', () => {
 		});
 		const result = handleFormRedirectionCase(data, workflowStartNode);
 		expect(result).toEqual(data);
+	});
+});
+
+describe('getResponseOnReceived', () => {
+	const responseCode = 200;
+	const webhookResultData = mock<IWebhookResponseData>();
+
+	beforeEach(() => {
+		jest.resetAllMocks();
+	});
+
+	test('should return response with no data when responseData is "noData"', () => {
+		const callbackData = getResponseOnReceived('noData', webhookResultData, responseCode);
+
+		expect(callbackData).toEqual({ responseCode });
+	});
+
+	test('should return response with responseData when it is defined', () => {
+		const responseData = JSON.stringify({ foo: 'bar' });
+
+		const callbackData = getResponseOnReceived(responseData, webhookResultData, responseCode);
+
+		expect(callbackData).toEqual({ data: responseData, responseCode });
+	});
+
+	test('should return response with webhookResponse when responseData is falsy but webhookResponse exists', () => {
+		const webhookResponse = { success: true };
+		webhookResultData.webhookResponse = webhookResponse;
+
+		const callbackData = getResponseOnReceived(undefined, webhookResultData, responseCode);
+
+		expect(callbackData).toEqual({ data: webhookResponse, responseCode });
+	});
+
+	test('should return default response message when responseData and webhookResponse are falsy', () => {
+		webhookResultData.webhookResponse = undefined;
+
+		const callbackData = getResponseOnReceived(undefined, webhookResultData, responseCode);
+
+		expect(callbackData).toEqual({
+			data: { message: 'Workflow was started' },
+			responseCode,
+		});
 	});
 });

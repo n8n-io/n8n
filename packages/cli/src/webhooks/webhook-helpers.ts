@@ -30,6 +30,7 @@ import type {
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
 	IWorkflowBase,
+	WebhookResponseData,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -182,6 +183,28 @@ export const handleFormRedirectionCase = (
 const { formDataFileSizeMax } = Container.get(GlobalConfig).endpoints;
 const parseFormData = createMultiFormDataParser(formDataFileSizeMax);
 
+/** Return webhook response when responseMode is set to "onReceived" */
+export function getResponseOnReceived(
+	responseData: WebhookResponseData | string | undefined,
+	webhookResultData: IWebhookResponseData,
+	responseCode: number,
+): IWebhookResponseCallbackData {
+	const callbackData: IWebhookResponseCallbackData = { responseCode };
+	// Return response directly and do not wait for the workflow to finish
+	if (responseData === 'noData') {
+		// Return without data
+	} else if (responseData) {
+		// Return the data specified in the response data option
+		callbackData.data = responseData as unknown as IDataObject;
+	} else if (webhookResultData.webhookResponse !== undefined) {
+		// Data to respond with is given
+		callbackData.data = webhookResultData.webhookResponse;
+	} else {
+		callbackData.data = { message: 'Workflow was started' };
+	}
+	return callbackData;
+}
+
 /**
  * Executes a webhook
  */
@@ -255,6 +278,9 @@ export async function executeWebhook(
 		200,
 	) as number;
 
+	// This parameter is used for two different purposes:
+	// 1. as arbitrary string input defined in the workflow in the "respond immediately" mode,
+	// 2. as well as WebhookResponseData config in all the other modes
 	const responseData = workflow.expression.getComplexParameterValue(
 		workflowStartNode,
 		webhookData.webhookDescription.responseData,
@@ -262,7 +288,7 @@ export async function executeWebhook(
 		additionalKeys,
 		undefined,
 		'firstEntryJson',
-	);
+	) as WebhookResponseData | string | undefined;
 
 	if (!['onReceived', 'lastNode', 'responseNode', 'formPage'].includes(responseMode)) {
 		// If the mode is not known we error. Is probably best like that instead of using
@@ -446,33 +472,8 @@ export async function executeWebhook(
 		// Now that we know that the workflow should run we can return the default response
 		// directly if responseMode it set to "onReceived" and a response should be sent
 		if (responseMode === 'onReceived' && !didSendResponse) {
-			// Return response directly and do not wait for the workflow to finish
-			if (responseData === 'noData') {
-				// Return without data
-				responseCallback(null, {
-					responseCode,
-				});
-			} else if (responseData) {
-				// Return the data specified in the response data option
-				responseCallback(null, {
-					data: responseData as IDataObject,
-					responseCode,
-				});
-			} else if (webhookResultData.webhookResponse !== undefined) {
-				// Data to respond with is given
-				responseCallback(null, {
-					data: webhookResultData.webhookResponse,
-					responseCode,
-				});
-			} else {
-				responseCallback(null, {
-					data: {
-						message: 'Workflow was started',
-					},
-					responseCode,
-				});
-			}
-
+			const callbackData = getResponseOnReceived(responseData, webhookResultData, responseCode);
+			responseCallback(null, callbackData);
 			didSendResponse = true;
 		}
 
