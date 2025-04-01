@@ -4,6 +4,7 @@ import { VersionedNodeType } from 'n8n-workflow';
 import { FormTriggerV1 } from './v1/FormTriggerV1.node';
 import { FormTriggerV2 } from './v2/FormTriggerV2.node';
 
+// revert this
 export class FormTrigger extends VersionedNodeType {
 	constructor() {
 		const baseDescription: INodeTypeBaseDescription = {
