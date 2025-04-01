@@ -4,13 +4,14 @@ export type TableHeader<T> = {
 	key?: DeepKeys<T> | string;
 	value?: DeepKeys<T> | AccessorFn<T>;
 	disableSort?: boolean;
+	minWidth?: number;
+	align?: 'end' | 'start' | 'center';
 } & (
 	| { title: string; key?: never; value?: never } // Ensures an object with only `title` is valid
 	| { key: DeepKeys<T> }
 	| { value: DeepKeys<T>; key?: string }
 	| { key: string; value: AccessorFn<T> }
 );
-
 export type TableSortBy = SortingState;
 </script>
 
@@ -19,6 +20,7 @@ import type {
 	AccessorFn,
 	Cell,
 	CellContext,
+	CoreColumn,
 	DeepKeys,
 	PaginationState,
 	SortingState,
@@ -52,6 +54,8 @@ const emit = defineEmits<{
 			sortBy: Array<{ id: string; desc: boolean }>;
 		},
 	];
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	'click:row': [event: MouseEvent, payload: { item: T }];
 }>();
 
 const data = shallowRef<T[]>(props.items.concat());
@@ -87,6 +91,18 @@ function isAccessorColumn(
 	return typeof column.value === 'function';
 }
 
+type ColumnMeta = {
+	cellProps: {
+		align?: 'end' | 'start' | 'center';
+	};
+};
+
+const getColumnMeta = (column: CoreColumn<T, unknown>) => {
+	return (column.columnDef.meta ?? {}) as ColumnMeta;
+};
+
+const MIN_COLUMN_WIDTH = 75;
+
 function getValueAccessor(column: Required<TableHeader<T>>) {
 	if (isAccessorColumn(column)) {
 		return columnHelper.accessor(column.value, {
@@ -94,6 +110,12 @@ function getValueAccessor(column: Required<TableHeader<T>>) {
 			cell: itemKeySlot,
 			header: () => getHeaderTitle(column),
 			enableSorting: !column.disableSort,
+			minSize: column.minWidth ?? MIN_COLUMN_WIDTH,
+			meta: {
+				cellProps: {
+					align: column.align,
+				},
+			},
 		});
 	} else {
 		return columnHelper.accessor(column.value, {
@@ -101,6 +123,12 @@ function getValueAccessor(column: Required<TableHeader<T>>) {
 			cell: itemKeySlot,
 			header: () => getHeaderTitle(column),
 			enableSorting: !column.disableSort,
+			minSize: column.minWidth ?? MIN_COLUMN_WIDTH,
+			meta: {
+				cellProps: {
+					align: column.align,
+				},
+			},
 		});
 	}
 }
@@ -119,6 +147,12 @@ function mapHeaders(columns: Array<TableHeader<T>>) {
 				cell: itemKeySlot,
 				header: () => getHeaderTitle(column),
 				enableSorting: !column.disableSort,
+				minSize: column.minWidth ?? MIN_COLUMN_WIDTH,
+				meta: {
+					cellProps: {
+						align: column.align,
+					},
+				},
 			});
 		}
 
@@ -267,9 +301,15 @@ const table = useVueTable({
 						<template v-else-if="table.getRowModel().rows.length">
 							<template v-for="row in table.getRowModel().rows" :key="row.id">
 								<slot name="item" v-bind="{ item: row.original, cells: row.getVisibleCells() }">
-									<tr>
+									<tr @click="emit('click:row', $event, { item: row.original })">
 										<template v-for="cell in row.getVisibleCells()" :key="cell.id">
-											<td>
+											<td
+												:class="{
+													[`cell-align--${getColumnMeta(cell.column).cellProps.align}`]: Boolean(
+														getColumnMeta(cell.column).cellProps.align,
+													),
+												}"
+											>
 												<FlexRender
 													:render="cell.column.columnDef.cell"
 													:props="cell.getContext()"
@@ -327,13 +367,9 @@ const table = useVueTable({
 		}
 	}
 
-	th,
-	td {
+	th {
 		position: relative;
 		text-align: left;
-		// white-space: nowrap;
-		// overflow: hidden;
-		// text-overflow: ellipsis;
 	}
 
 	th {
@@ -492,5 +528,15 @@ th.loading-row {
 
 th:hover:not(:last-child) > .resizer {
 	display: block;
+}
+
+.cell-align {
+	&--end {
+		text-align: end;
+	}
+
+	&--center {
+		text-align: center;
+	}
 }
 </style>
