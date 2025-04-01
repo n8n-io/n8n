@@ -291,10 +291,6 @@ export class KafkaTrigger implements INodeType {
 					if (responsePromise) {
 						await responsePromise.promise;
 					}
-
-					if (this.getMode() === 'manual') {
-						await closeFunction();
-					}
 				},
 			});
 		};
