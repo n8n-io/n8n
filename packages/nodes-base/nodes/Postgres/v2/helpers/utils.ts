@@ -616,3 +616,30 @@ export const convertArraysToPostgresFormat = (
 		}
 	}
 };
+
+export function addExecutionHints(
+	context: IExecuteFunctions,
+	items: INodeExecutionData[],
+	operation: string,
+	executeOnce: boolean | undefined,
+) {
+	if (operation === 'select' && items.length > 1 && !executeOnce) {
+		context.addExecutionHints({
+			message: `This node ran ${items.length} times, once for each input item. To run for the first item only, enable 'execute once' in the node settings`,
+			location: 'outputPane',
+		});
+	}
+
+	if (
+		operation === 'executeQuery' &&
+		items.length > 1 &&
+		(context.getNodeParameter('options.queryBatching', 0, 'single') as string) === 'single' &&
+		(context.getNodeParameter('query', 0, '') as string).toLowerCase().startsWith('insert')
+	) {
+		context.addExecutionHints({
+			message:
+				"Inserts were batched for performance. If you need to preserve item matching, consider changing 'Query batching' to 'Independent' in the options.",
+			location: 'outputPane',
+		});
+	}
+}
