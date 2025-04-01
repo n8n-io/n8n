@@ -335,11 +335,6 @@ export async function executeWebhook(
 		workflowStartNode.type,
 		workflowStartNode.typeVersion,
 	);
-	if (nodeType === undefined) {
-		const errorMessage = `The type of the webhook node "${workflowStartNode.name}" is not known`;
-		responseCallback(new ApplicationError(errorMessage), {});
-		throw new InternalServerError(errorMessage);
-	}
 
 	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
 		$executionId: executionId,
