@@ -15,6 +15,9 @@
                 }
             }
         },
+        "assignedTo": {
+            "type": "string"
+        },
         "attributionSource": {
             "type": "object",
             "properties": {
@@ -41,6 +44,9 @@
                 "sourceId": {
                     "type": "string"
                 },
+                "sourceName": {
+                    "type": "string"
+                },
                 "timestamp": {
                     "type": "string"
                 }
@@ -63,11 +69,8 @@
         "dateUpdated": {
             "type": "string"
         },
-        "email": {
-            "type": "string"
-        },
-        "emailLowerCase": {
-            "type": "string"
+        "dnd": {
+            "type": "boolean"
         },
         "firstName": {
             "type": "string"
@@ -75,11 +78,28 @@
         "firstNameLowerCase": {
             "type": "string"
         },
+        "followers": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
         "fullNameLowerCase": {
             "type": "string"
         },
         "id": {
             "type": "string"
+        },
+        "lastAttributionSource": {
+            "type": "object",
+            "properties": {
+                "medium": {
+                    "type": "string"
+                },
+                "sessionSource": {
+                    "type": "string"
+                }
+            }
         },
         "lastName": {
             "type": "string"
@@ -103,5 +123,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
