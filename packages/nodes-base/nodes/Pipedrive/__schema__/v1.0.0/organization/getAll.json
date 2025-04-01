@@ -10,6 +10,9 @@
         "add_time": {
             "type": "string"
         },
+        "annual_revenue": {
+            "type": "null"
+        },
         "cc_email": {
             "type": "string"
         },
@@ -42,6 +45,9 @@
         },
         "id": {
             "type": "integer"
+        },
+        "industry": {
+            "type": "null"
         },
         "label_ids": {
             "type": "array",
@@ -118,5 +124,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }
