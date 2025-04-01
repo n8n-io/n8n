@@ -10,15 +10,9 @@
         "email": {
             "type": "string"
         },
-        "height": {
-            "type": "number"
-        },
         "id": {
             "type": "string"
-        },
-        "weight": {
-            "type": "number"
         }
     },
-    "version": 1
+    "version": 2
 }
