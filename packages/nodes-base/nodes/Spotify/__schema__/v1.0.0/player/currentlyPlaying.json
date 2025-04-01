@@ -14,6 +14,28 @@
                 }
             }
         },
+        "context": {
+            "type": "object",
+            "properties": {
+                "external_urls": {
+                    "type": "object",
+                    "properties": {
+                        "spotify": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "href": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "uri": {
+                    "type": "string"
+                }
+            }
+        },
         "currently_playing_type": {
             "type": "string"
         },
@@ -179,5 +201,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }
