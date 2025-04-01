@@ -1,6 +1,3 @@
-import { Container } from '@n8n/di';
-
-import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { Telemetry } from '@/telemetry';
 import { mockInstance } from '@test/mocking';
@@ -16,13 +13,11 @@ import * as testDb from '../shared/test-db';
 
 describe('Users in Public API', () => {
 	const testServer = setupTestServer({ endpointGroups: ['publicApi'] });
-	let apiKeyRepository: ApiKeyRepository;
 
 	mockInstance(Telemetry);
 
 	beforeAll(async () => {
 		await testDb.init();
-		apiKeyRepository = Container.get(ApiKeyRepository);
 	});
 
 	beforeEach(async () => {
