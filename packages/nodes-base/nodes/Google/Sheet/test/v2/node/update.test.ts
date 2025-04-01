@@ -204,4 +204,46 @@ describe('Google Sheet - Update', () => {
 			'USER_ENTERED',
 		);
 	});
+
+	describe('row_number input error', () => {
+		it.each([{ rowNumber: undefined }, { rowNumber: null }])(
+			'displays a helpful error message when row_number is $rowNumber',
+			async ({ rowNumber }) => {
+				mockExecuteFunctions.getInputData.mockReturnValueOnce([
+					{
+						json: {
+							row_number: rowNumber,
+							name: 'name',
+							text: 'txt',
+						},
+						pairedItem: {
+							item: 0,
+							input: undefined,
+						},
+					},
+				]);
+
+				mockExecuteFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+					const params: { [key: string]: string | object } = {
+						options: {},
+						'options.cellFormat': 'USER_ENTERED',
+						'columns.matchingColumns': ['row_number'],
+						'columns.value': {
+							row_number: rowNumber, // TODO: Test for undefined
+						},
+						dataMode: 'defineBelow',
+					};
+					return params[parameterName];
+				});
+
+				mockGoogleSheet.getData.mockResolvedValueOnce([['macarena'], ['boomboom']]);
+
+				mockGoogleSheet.getColumnValues.mockResolvedValueOnce([]);
+
+				await expect(execute.call(mockExecuteFunctions, mockGoogleSheet, 'Sheet1')).rejects.toThrow(
+					'Column to match on (row_number) is not defined. Since the field is used to determine the row to update, it needs to have a value set.',
+				);
+			},
+		);
+	});
 });
