@@ -9,7 +9,7 @@ import { TagRepository } from '@/databases/repositories/tag.repository';
 import { getOwnerOnlyApiKeyScopes } from '@/public-api/permissions.ee';
 import { affixRoleToSaveCredential, createCredentials } from '@test-integration/db/credentials';
 import { createErrorExecution, createSuccessfulExecution } from '@test-integration/db/executions';
-import { createTeamProject } from '@test-integration/db/projects';
+import { createTeamProject, getProjectByNameOrFail } from '@test-integration/db/projects';
 import { createTag } from '@test-integration/db/tags';
 import {
 	createAdminWithApiKey,
@@ -43,9 +43,15 @@ const credentialPayload = (): CredentialPayload => ({
 describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 	const testServer = setupTestServer({
 		endpointGroups: ['publicApi'],
-		enabledFeatures: ['feat:advancedPermissions', 'feat:apiKeyScopes', 'feat:variables'],
+		enabledFeatures: [
+			'feat:advancedPermissions',
+			'feat:apiKeyScopes',
+			'feat:variables',
+			'feat:projectRole:admin',
+		],
 		quotas: {
 			'quota:users': -1,
+			'quota:maxTeamProjects': -1,
 		},
 	});
 	let apiKeyRepository: ApiKeyRepository;
@@ -68,6 +74,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 			'SharedWorkflow',
 			'Tag',
 			'Variables',
+			'Project',
 		]);
 	});
 
@@ -936,6 +943,200 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 						.publicApiAgentFor(owner)
 						.post('/variables')
 						.send(variablePayload);
+
+					/**
+					 * Assert
+					 */
+					expect(response.status).toBe(403);
+				});
+			});
+		});
+
+		describe('projects', () => {
+			describe('POST /projects', () => {
+				test('should create project when API key has "project:create" scope', async () => {
+					/**
+					 * Arrange
+					 */
+					const owner = await createOwnerWithApiKey();
+					const projectPayload = { name: 'some-project' };
+
+					/**
+					 * Act
+					 */
+					const response = await testServer
+						.publicApiAgentFor(owner)
+						.post('/projects')
+						.send(projectPayload);
+
+					/**
+					 * Assert
+					 */
+					expect(response.status).toBe(201);
+					expect(response.body).toEqual({
+						name: 'some-project',
+						icon: null,
+						type: 'team',
+						id: expect.any(String),
+						createdAt: expect.any(String),
+						updatedAt: expect.any(String),
+						role: 'project:admin',
+						scopes: expect.any(Array),
+					});
+					await expect(getProjectByNameOrFail(projectPayload.name)).resolves.not.toThrow();
+				});
+
+				test('should fail to create project when API key doesn\'t have "project:create" scope', async () => {
+					/**
+					 * Arrange
+					 */
+					const owner = await createOwnerWithApiKey({ scopes: ['credential:create'] });
+					const projectPayload = { name: 'some-project' };
+
+					/**
+					 * Act
+					 */
+					const response = await testServer
+						.publicApiAgentFor(owner)
+						.post('/projects')
+						.send(projectPayload);
+
+					/**
+					 * Assert
+					 */
+					expect(response.status).toBe(403);
+				});
+			});
+
+			describe('GET /projects', () => {
+				test('should return all projects when API key has "project:list" scope', async () => {
+					/**
+					 * Arrange
+					 */
+					const owner = await createOwnerWithApiKey();
+					const projects = await Promise.all([
+						createTeamProject(),
+						createTeamProject(),
+						createTeamProject(),
+					]);
+
+					/**
+					 * Act
+					 */
+					const response = await testServer.publicApiAgentFor(owner).get('/projects');
+
+					/**
+					 * Assert
+					 */
+					expect(response.status).toBe(200);
+					expect(response.body).toHaveProperty('data');
+					expect(response.body).toHaveProperty('nextCursor');
+					expect(Array.isArray(response.body.data)).toBe(true);
+					expect(response.body.data.length).toBe(projects.length + 1); // +1 for the owner's personal project
+
+					projects.forEach(({ id, name }) => {
+						expect(response.body.data).toContainEqual(expect.objectContaining({ id, name }));
+					});
+				});
+				test('should fail to create project when API key doesn\'t have "project:list" scope', async () => {
+					/**
+					 * Arrange
+					 */
+					const owner = await createOwnerWithApiKey({ scopes: ['credential:create'] });
+					await Promise.all([createTeamProject(), createTeamProject(), createTeamProject()]);
+
+					/**
+					 * Act
+					 */
+					const response = await testServer.publicApiAgentFor(owner).get('/projects');
+
+					/**
+					 * Assert
+					 */
+					expect(response.status).toBe(403);
+				});
+			});
+
+			describe('DELETE /projects/:id', () => {
+				test('should delete a project when API key has "project:delete" scope', async () => {
+					/**
+					 * Arrange
+					 */
+					const owner = await createOwnerWithApiKey();
+					const project = await createTeamProject();
+
+					/**
+					 * Act
+					 */
+					const response = await testServer
+						.publicApiAgentFor(owner)
+						.delete(`/projects/${project.id}`);
+
+					/**
+					 * Assert
+					 */
+					expect(response.status).toBe(204);
+					await expect(getProjectByNameOrFail(project.id)).rejects.toThrow();
+				});
+
+				test('should fail to delete a project when API key doesn\'t have "project:delete" scope', async () => {
+					/**
+					 * Arrange
+					 */
+					const owner = await createOwnerWithApiKey({ scopes: ['credential:create'] });
+					const project = await createTeamProject();
+
+					/**
+					 * Act
+					 */
+					const response = await testServer
+						.publicApiAgentFor(owner)
+						.delete(`/projects/${project.id}`);
+
+					/**
+					 * Assert
+					 */
+					expect(response.status).toBe(403);
+				});
+			});
+
+			describe('PUT /projects/:id', () => {
+				test('should update a project when API key has "project:update" scope', async () => {
+					/**
+					 * Arrange
+					 */
+					const owner = await createOwnerWithApiKey();
+					const project = await createTeamProject('old-name');
+
+					/**
+					 * Act
+					 */
+					const response = await testServer
+						.publicApiAgentFor(owner)
+						.put(`/projects/${project.id}`)
+						.send({ name: 'new-name' });
+
+					/**
+					 * Assert
+					 */
+					expect(response.status).toBe(204);
+					await expect(getProjectByNameOrFail('new-name')).resolves.not.toThrow();
+				});
+
+				test('should fail to update a project when API key doesn\'t have "project:update" scope', async () => {
+					/**
+					 * Arrange
+					 */
+					const owner = await createOwnerWithApiKey({ scopes: ['credential:create'] });
+					const project = await createTeamProject('old-name');
+
+					/**
+					 * Act
+					 */
+					const response = await testServer
+						.publicApiAgentFor(owner)
+						.put(`/projects/${project.id}`)
+						.send({ name: 'new-name' });
 
 					/**
 					 * Assert
