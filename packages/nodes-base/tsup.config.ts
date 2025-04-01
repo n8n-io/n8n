@@ -42,12 +42,18 @@ export default defineConfig([
 		dts: false,
 		bundle: false,
 		sourcemap: true,
+		silent: true,
 	},
 	{
 		entry: [...aiNodesPackageDependencies, ...commonIgnoredFiles],
 		format: ['cjs'],
-		dts: true,
+		dts: {
+			compilerOptions: {
+				composite: false,
+			},
+		},
 		bundle: false,
 		sourcemap: true,
+		silent: true,
 	},
 ]);
