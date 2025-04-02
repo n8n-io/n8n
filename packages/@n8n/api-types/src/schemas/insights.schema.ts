@@ -49,9 +49,9 @@ export const insightsByWorkflowDataSchemas = {
 		z
 			.object({
 				workflowId: z.string(),
-				workflowName: z.string().optional(),
-				projectId: z.string().optional(),
-				projectName: z.string().optional(),
+				workflowName: z.string(),
+				projectId: z.string(),
+				projectName: z.string(),
 				total: z.number(),
 				succeeded: z.number(),
 				failed: z.number(),
