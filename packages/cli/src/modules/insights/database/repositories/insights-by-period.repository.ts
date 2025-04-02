@@ -312,7 +312,10 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		const [sortField, sortOrder] = this.parseSortingParams(sortBy);
 		const sumOfExecutions = sql`SUM(CASE WHEN insights.type IN (${TypeToNumber.success.toString()}, ${TypeToNumber.failure.toString()}) THEN value ELSE 0 END)`;
 
+		const cte = sql`SELECT ${this.getAgeLimitQuery(maxAgeInDays)} AS start_date`;
+
 		const rawRowsQuery = this.createQueryBuilder('insights')
+			.addCommonTableExpression(cte, 'date_range')
 			.select([
 				'metadata.workflowId AS "workflowId"',
 				'metadata.workflowName AS "workflowName"',
@@ -333,7 +336,9 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 							END AS "averageRunTime"`,
 			])
 			.innerJoin('insights.metadata', 'metadata')
-			.where(`insights.periodStart >= ${this.getAgeLimitQuery(maxAgeInDays)}`)
+			// Use a cross join with the CTE
+			.innerJoin('date_range', 'date_range', '1=1')
+			.where('insights.periodStart >= date_range.start_date')
 			.groupBy('metadata.workflowId')
 			.addGroupBy('metadata.workflowName')
 			.addGroupBy('metadata.projectId')
@@ -350,7 +355,9 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		maxAgeInDays,
 		periodUnit,
 	}: { maxAgeInDays: number; periodUnit: PeriodUnit }) {
+		const cte = sql`SELECT ${this.getAgeLimitQuery(maxAgeInDays)} AS start_date`;
 		const rawRowsQuery = this.createQueryBuilder()
+			.addCommonTableExpression(cte, 'date_range')
 			.select([
 				`${this.getPeriodStartExpr(periodUnit)} as "periodStart"`,
 				`SUM(CASE WHEN type = ${TypeToNumber.runtime_ms} THEN value ELSE 0 END) AS "runTime"`,
@@ -358,7 +365,8 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 				`SUM(CASE WHEN type = ${TypeToNumber.failure} THEN value ELSE 0 END) AS "failed"`,
 				`SUM(CASE WHEN type = ${TypeToNumber.time_saved_min} THEN value ELSE 0 END) AS "timeSaved"`,
 			])
-			.where(`${this.escapeField('periodStart')} >= ${this.getAgeLimitQuery(maxAgeInDays)}`)
+			.innerJoin('date_range', 'date_range', '1=1')
+			.where(`${this.escapeField('periodStart')} >= date_range.start_date`)
 			.addGroupBy(this.getPeriodStartExpr(periodUnit))
 			.orderBy(this.getPeriodStartExpr(periodUnit), 'ASC');
 
