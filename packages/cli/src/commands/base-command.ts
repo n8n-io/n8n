@@ -70,7 +70,7 @@ export abstract class BaseCommand extends Command {
 	protected needsCommunityPackages = false;
 
 	protected async loadModules() {
-		for (const moduleName of this.modulesService.getModules()) {
+		for (const moduleName of this.modulesService.getModulesToLoad()) {
 			await import(`../modules/${moduleName}/${moduleName}.module`);
 			this.logger.debug(`Loaded module "${moduleName}"`);
 		}

@@ -17,13 +17,13 @@ describe('ModulesService', () => {
 
 	it('should initialize with empty modules if no environment variable is set', () => {
 		const service = Container.get(ModulesService);
-		expect(service.getModules()).toEqual([]);
+		expect(service.getModulesToLoad()).toEqual([]);
 	});
 
 	it('should initialize with empty modules if database type is postgres', () => {
 		dbConfig.type = 'postgresdb';
 		const service = Container.get(ModulesService);
-		expect(service.getModules()).toEqual([]);
+		expect(service.getModulesToLoad()).toEqual([]);
 	});
 
 	it('should initialize with default modules for sqlite with pool size', () => {
@@ -31,28 +31,28 @@ describe('ModulesService', () => {
 		dbConfig.sqlite.poolSize = 1;
 		console.log('sqlite pool size', dbConfig.sqlite.poolSize);
 		const service = Container.get(ModulesService);
-		expect(service.getModules()).toEqual(['insights']);
+		expect(service.getModulesToLoad()).toEqual(['insights']);
 	});
 
 	it('should parse valid module names from environment variable', () => {
 		dbConfig.type = 'mariadb';
 		process.env.N8N_ENABLED_MODULES = 'insights';
 		const service = Container.get(ModulesService);
-		expect(service.getModules()).toEqual(['insights']);
+		expect(service.getModulesToLoad()).toEqual(['insights']);
 	});
 
 	it('should disable valid module names from environment variable', () => {
 		dbConfig.type = 'mariadb';
 		process.env.N8N_DISABLED_MODULES = 'insights';
 		const service = Container.get(ModulesService);
-		expect(service.getModules()).toEqual([]);
+		expect(service.getModulesToLoad()).toEqual([]);
 	});
 
 	it('should force disable insights module for sqlite without pool size', () => {
 		dbConfig.type = 'sqlite';
 		process.env.N8N_ENABLED_MODULES = 'insights';
 		const service = Container.get(ModulesService);
-		expect(service.getModules()).toEqual([]);
+		expect(service.getModulesToLoad()).toEqual([]);
 	});
 
 	it('should throw UnexpectedError for invalid module names', () => {
@@ -64,7 +64,7 @@ describe('ModulesService', () => {
 		process.env.N8N_ENABLED_MODULES = 'insights';
 		process.env.N8N_DISABLED_MODULES = 'insights';
 		const service = Container.get(ModulesService);
-		expect(() => service.getModules()).toThrow(UnexpectedError);
+		expect(() => service.getModulesToLoad()).toThrow(UnexpectedError);
 	});
 
 	it('should throw UnexpectedError if any enabled module name is invalid', () => {
