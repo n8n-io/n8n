@@ -748,7 +748,6 @@ describe('compaction', () => {
 			// ASSERT
 			expect(compactedRows).toBe(1); // Only the event within the threshold should be compacted
 			const insightsByPeriods = await insightsByPeriodRepository.find();
-			console.log(insightsByPeriods);
 			const dailyInsights = insightsByPeriods.filter((insight) => insight.periodUnit === 'day');
 			expect(dailyInsights).toHaveLength(1); // The event beyond the threshold should remain
 			expect(dailyInsights[0].periodStart.toISOString()).toEqual(
