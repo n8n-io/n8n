@@ -44,6 +44,7 @@ export class McpTrigger extends Node {
 				httpMethod: 'GET',
 				responseMode: 'onReceived',
 				path: MCP_TRIGGER_PATH_IDENTIFIER,
+				ndvHideMethod: true,
 			},
 			{
 				name: 'default',
@@ -93,8 +94,11 @@ export class McpTrigger extends Node {
 				connectedTools.map((tool) => tool.name),
 			);
 
-			await serverData.handlePostMessage(req, resp, connectedTools);
-			return { noWebhookResponse: true, workflowData: [[{ json: { blub: 789 } }]] };
+			const wasToolCall = await serverData.handlePostMessage(req, resp, connectedTools);
+			console.log('Was this a tool-call?', wasToolCall);
+			if (wasToolCall)
+				return { noWebhookResponse: true, workflowData: [[{ json: { blub: 789 } }]] };
+			return { noWebhookResponse: true };
 		}
 
 		const testData = {
