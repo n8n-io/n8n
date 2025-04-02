@@ -21,6 +21,7 @@ import {
 	createRawInsightsEvents,
 } from '../database/entities/__tests__/db-utils';
 import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
+import { InsightsConfig } from '../insights.config';
 import { InsightsService } from '../insights.service';
 
 // Initialize DB once for all tests
@@ -708,6 +709,91 @@ describe('compaction', () => {
 
 			// ASSERT
 			expect(compactedRows).toBe(0);
+		});
+	});
+
+	describe('compaction threshold configuration', () => {
+		test('insights by period older than the hourly to daily threshold are not compacted', async () => {
+			// ARRANGE
+			const insightsService = Container.get(InsightsService);
+			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+			const config = Container.get(InsightsConfig);
+
+			const project = await createTeamProject();
+			const workflow = await createWorkflow({}, project);
+
+			const thresholdDays = config.compactionHourlyToDailyThresholdDays;
+
+			// Create insights by period within and beyond the threshold
+			const withinThresholdTimestamp = DateTime.utc().minus({ days: thresholdDays - 1 });
+			const beyondThresholdTimestamp = DateTime.utc().minus({ days: thresholdDays + 1 });
+
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 1,
+				periodUnit: 'hour',
+				periodStart: withinThresholdTimestamp,
+			});
+
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 1,
+				periodUnit: 'hour',
+				periodStart: beyondThresholdTimestamp,
+			});
+
+			// ACT
+			const compactedRows = await insightsService.compactHourToDay();
+
+			// ASSERT
+			expect(compactedRows).toBe(1); // Only the event within the threshold should be compacted
+			const insightsByPeriods = await insightsByPeriodRepository.find();
+			const dailyInsights = insightsByPeriods.filter((insight) => insight.periodUnit === 'day');
+			expect(dailyInsights).toHaveLength(1); // The event beyond the threshold should remain
+			expect(dailyInsights[0].periodStart.toISOString()).toEqual(
+				beyondThresholdTimestamp.startOf('day').toISO(),
+			);
+		});
+
+		test('insights by period older than the daily to weekly threshold are not compacted', async () => {
+			// ARRANGE
+			const insightsService = Container.get(InsightsService);
+			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+			const config = Container.get(InsightsConfig);
+
+			const project = await createTeamProject();
+			const workflow = await createWorkflow({}, project);
+
+			const thresholdDays = config.compactionDailyToWeeklyThresholdDays;
+
+			// Create insights by period within and beyond the threshold
+			const withinThresholdTimestamp = DateTime.utc().minus({ days: thresholdDays - 1 });
+			const beyondThresholdTimestamp = DateTime.utc().minus({ days: thresholdDays + 1 });
+
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 1,
+				periodUnit: 'day',
+				periodStart: withinThresholdTimestamp,
+			});
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 1,
+				periodUnit: 'day',
+				periodStart: beyondThresholdTimestamp,
+			});
+
+			// ACT
+			const compactedRows = await insightsService.compactDayToWeek();
+
+			// ASSERT
+			expect(compactedRows).toBe(1); // Only the event within the threshold should be compacted
+			const insightsByPeriods = await insightsByPeriodRepository.find();
+			const weeklyInsights = insightsByPeriods.filter((insight) => insight.periodUnit === 'week');
+			expect(weeklyInsights).toHaveLength(1); // The event beyond the threshold should remain
+			expect(weeklyInsights[0].periodStart.toISOString()).toEqual(
+				beyondThresholdTimestamp.startOf('week').toISO(),
+			);
 		});
 	});
 });
