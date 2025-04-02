@@ -239,13 +239,11 @@ describe('usePushConnection()', () => {
 			it("enqueues messages if we don't have the active execution id yet", async () => {
 				uiStore.isActionActive.workflowRunning = true;
 				const event: PushMessage = {
-					type: 'executionStarted',
+					type: 'nodeExecuteAfter',
 					data: {
 						executionId: '1',
-						mode: 'manual',
-						startedAt: new Date(),
-						workflowId: '1',
-						flattedRunData: stringify({}),
+						nodeName: '1',
+						data: stringify({}),
 					},
 				};
 
