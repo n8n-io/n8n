@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import { Tool } from '@langchain/core/tools';
+import { DynamicTool } from 'langchain/tools';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -12,31 +12,15 @@ import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 // A thinking tool, see https://www.anthropic.com/engineering/claude-think-tool
-interface ThinkToolParams {
-	subject: string;
-}
 
-class ThinkTool extends Tool {
-	static lc_name(): string {
-		return 'ThinkTool';
-	}
-
-	name = 'think';
-
-	description =
-		'Use the tool to think about something. It will not obtain new information or change the database, but just append the thought to the log. Use it when complex reasoning or some cache memory is needed.';
-
-	protected subject: string;
-
-	constructor(params?: ThinkToolParams) {
-		super();
-		this.subject = params?.subject ?? '';
-	}
-
-	async _call(input: string): Promise<string> {
-		return input;
-	}
-}
+const thinkingTool = new DynamicTool({
+	name: 'thinking_tool',
+	description:
+		'Use the tool to think about something. It will not obtain new information or change the database, but just append the thought to the log. Use it when complex reasoning or some cache memory is needed.',
+	func: async (subject: string) => {
+		return subject;
+	},
+});
 
 export class ToolThink implements INodeType {
 	description: INodeTypeDescription = {
@@ -74,7 +58,7 @@ export class ToolThink implements INodeType {
 
 	async supplyData(this: ISupplyDataFunctions): Promise<SupplyData> {
 		return {
-			response: logWrapper(new ThinkTool(), this),
+			response: logWrapper(thinkingTool, this),
 		};
 	}
 }
