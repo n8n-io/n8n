@@ -2,13 +2,14 @@ import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource, Repository } from '@n8n/typeorm';
+import { DateTime } from 'luxon';
 import { z } from 'zod';
 
 import { sql } from '@/utils/sql';
 
 import { InsightsByPeriod } from '../entities/insights-by-period';
 import type { PeriodUnit } from '../entities/insights-shared';
-import { PeriodUnitToNumber } from '../entities/insights-shared';
+import { PeriodUnitToNumber, TypeToNumber } from '../entities/insights-shared';
 
 const dbType = Container.get(GlobalConfig).database.type;
 
@@ -19,6 +20,38 @@ const summaryParser = z
 
 		// depending on db engine, sum(value) can be a number or a string - because of big numbers
 		total_value: z.union([z.number(), z.string()]),
+	})
+	.array();
+
+const aggregatedInsightsByWorkflowParser = z
+	.object({
+		workflowId: z.string(),
+		workflowName: z.string(),
+		projectId: z.string(),
+		projectName: z.string(),
+		total: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		succeeded: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		failed: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		failureRate: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		runTime: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		averageRunTime: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		timeSaved: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+	})
+	.array();
+
+const aggregatedInsightsByTimeParser = z
+	.object({
+		periodStart: z
+			.union([z.date(), z.string()])
+			.transform((value) =>
+				value instanceof Date
+					? value.toISOString()
+					: DateTime.fromSQL(value.toString(), { zone: 'utc' }).toISO(),
+			),
+		runTime: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		succeeded: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		failed: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		timeSaved: z.union([z.number(), z.string()]).transform((value) => Number(value)),
 	})
 	.array();
 
@@ -207,6 +240,18 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		return result;
 	}
 
+	private getAgeLimitQuery(maxAgeInDays: number) {
+		if (maxAgeInDays === 0) {
+			return dbType === 'sqlite' ? "datetime('now')" : 'NOW()';
+		}
+
+		return dbType === 'sqlite'
+			? `datetime('now', '-${maxAgeInDays} days')`
+			: dbType === 'postgresdb'
+				? `NOW() - INTERVAL '${maxAgeInDays} days'`
+				: `DATE_SUB(NOW(), INTERVAL ${maxAgeInDays} DAY)`;
+	}
+
 	async getPreviousAndCurrentPeriodTypeAggregates(): Promise<
 		Array<{
 			period: 'previous' | 'current';
@@ -214,27 +259,12 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			total_value: string | number;
 		}>
 	> {
-		const cte =
-			dbType === 'sqlite'
-				? sql`
-						SELECT
-							datetime('now', '-7 days') AS current_start,
-							datetime('now') AS current_end,
-							datetime('now', '-14 days') AS previous_start
-					`
-				: dbType === 'postgresdb'
-					? sql`
-								SELECT
-								(NOW() - INTERVAL '7 days')::timestamptz AS current_start,
-								NOW()::timestamptz AS current_end,
-								(NOW() - INTERVAL '14 days')::timestamptz AS previous_start
-							`
-					: sql`
-								SELECT
-									DATE_SUB(NOW(), INTERVAL 7 DAY) AS current_start,
-									NOW() AS current_end,
-									DATE_SUB(NOW(), INTERVAL 14 DAY) AS previous_start
-							`;
+		const cte = sql`
+			SELECT
+				${this.getAgeLimitQuery(7)} AS current_start,
+				${this.getAgeLimitQuery(0)} AS current_end,
+				${this.getAgeLimitQuery(14)}  AS previous_start
+		`;
 
 		const rawRows = await this.createQueryBuilder('insights')
 			.addCommonTableExpression(cte, 'date_ranges')
@@ -261,5 +291,87 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			.getRawMany();
 
 		return summaryParser.parse(rawRows);
+	}
+
+	private parseSortingParams(sortBy: string): [string, 'ASC' | 'DESC'] {
+		const [column, order] = sortBy.split(':');
+		return [column, order.toUpperCase() as 'ASC' | 'DESC'];
+	}
+
+	async getInsightsByWorkflow({
+		maxAgeInDays,
+		skip = 0,
+		take = 20,
+		sortBy = 'total:desc',
+	}: {
+		maxAgeInDays: number;
+		skip?: number;
+		take?: number;
+		sortBy?: string;
+	}) {
+		const [sortField, sortOrder] = this.parseSortingParams(sortBy);
+		const sumOfExecutions = sql`SUM(CASE WHEN insights.type IN (${TypeToNumber.success.toString()}, ${TypeToNumber.failure.toString()}) THEN value ELSE 0 END)`;
+
+		const cte = sql`SELECT ${this.getAgeLimitQuery(maxAgeInDays)} AS start_date`;
+
+		const rawRowsQuery = this.createQueryBuilder('insights')
+			.addCommonTableExpression(cte, 'date_range')
+			.select([
+				'metadata.workflowId AS "workflowId"',
+				'metadata.workflowName AS "workflowName"',
+				'metadata.projectId AS "projectId"',
+				'metadata.projectName AS "projectName"',
+				`SUM(CASE WHEN insights.type = ${TypeToNumber.success} THEN value ELSE 0 END) AS "succeeded"`,
+				`SUM(CASE WHEN insights.type = ${TypeToNumber.failure} THEN value ELSE 0 END) AS "failed"`,
+				`SUM(CASE WHEN insights.type IN (${TypeToNumber.success}, ${TypeToNumber.failure}) THEN value ELSE 0 END) AS "total"`,
+				sql`CASE
+								WHEN ${sumOfExecutions} = 0 THEN 0
+								ELSE 1.0 * SUM(CASE WHEN insights.type = ${TypeToNumber.failure.toString()} THEN value ELSE 0 END) / ${sumOfExecutions}
+							END AS "failureRate"`,
+				`SUM(CASE WHEN insights.type = ${TypeToNumber.runtime_ms} THEN value ELSE 0 END) AS "runTime"`,
+				`SUM(CASE WHEN insights.type = ${TypeToNumber.time_saved_min} THEN value ELSE 0 END) AS "timeSaved"`,
+				sql`CASE
+								WHEN ${sumOfExecutions} = 0	THEN 0
+								ELSE 1.0 * SUM(CASE WHEN insights.type = ${TypeToNumber.runtime_ms.toString()} THEN value ELSE 0 END) / ${sumOfExecutions}
+							END AS "averageRunTime"`,
+			])
+			.innerJoin('insights.metadata', 'metadata')
+			// Use a cross join with the CTE
+			.innerJoin('date_range', 'date_range', '1=1')
+			.where('insights.periodStart >= date_range.start_date')
+			.groupBy('metadata.workflowId')
+			.addGroupBy('metadata.workflowName')
+			.addGroupBy('metadata.projectId')
+			.addGroupBy('metadata.projectName')
+			.orderBy(this.escapeField(sortField), sortOrder);
+
+		const count = (await rawRowsQuery.getRawMany()).length;
+		const rawRows = await rawRowsQuery.offset(skip).limit(take).getRawMany();
+
+		return { count, rows: aggregatedInsightsByWorkflowParser.parse(rawRows) };
+	}
+
+	async getInsightsByTime({
+		maxAgeInDays,
+		periodUnit,
+	}: { maxAgeInDays: number; periodUnit: PeriodUnit }) {
+		const cte = sql`SELECT ${this.getAgeLimitQuery(maxAgeInDays)} AS start_date`;
+		const rawRowsQuery = this.createQueryBuilder()
+			.addCommonTableExpression(cte, 'date_range')
+			.select([
+				`${this.getPeriodStartExpr(periodUnit)} as "periodStart"`,
+				`SUM(CASE WHEN type = ${TypeToNumber.runtime_ms} THEN value ELSE 0 END) AS "runTime"`,
+				`SUM(CASE WHEN type = ${TypeToNumber.success} THEN value ELSE 0 END) AS "succeeded"`,
+				`SUM(CASE WHEN type = ${TypeToNumber.failure} THEN value ELSE 0 END) AS "failed"`,
+				`SUM(CASE WHEN type = ${TypeToNumber.time_saved_min} THEN value ELSE 0 END) AS "timeSaved"`,
+			])
+			.innerJoin('date_range', 'date_range', '1=1')
+			.where(`${this.escapeField('periodStart')} >= date_range.start_date`)
+			.addGroupBy(this.getPeriodStartExpr(periodUnit))
+			.orderBy(this.getPeriodStartExpr(periodUnit), 'ASC');
+
+		const rawRows = await rawRowsQuery.getRawMany();
+
+		return aggregatedInsightsByTimeParser.parse(rawRows);
 	}
 }
