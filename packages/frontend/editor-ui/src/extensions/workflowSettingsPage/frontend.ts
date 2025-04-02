@@ -4,6 +4,7 @@ const setup = async (context: N8nExtensionContext) => {
 	const panel = await context.createViewPanel({
 		name: 'Workflow Settings',
 		id: 'workflow-settings',
+		enableScripts: true,
 	});
 
 	window.addEventListener('message', async (event) => {
@@ -23,8 +24,8 @@ const setup = async (context: N8nExtensionContext) => {
         const button = document.getElementById('proceed-button');
 				button.addEventListener('click', () => {
 					window.parent.postMessage({
-          type: 'showPrompt'
-        }, '*');
+          	type: 'showPrompt'
+        	}, '*');
 				});
     </script>
 	`,

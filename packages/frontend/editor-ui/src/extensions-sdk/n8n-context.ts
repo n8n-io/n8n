@@ -11,6 +11,7 @@ export type N8nExtensionContext = {
 	createViewPanel: (options: {
 		id: string;
 		name: string;
+		enableScripts?: boolean;
 	}) => Promise<HTMLIFrameElement>;
 	setPanelContent: (pane: HTMLIFrameElement, content: string) => void;
 	showToast: (options: {
@@ -26,8 +27,12 @@ export type N8nExtensionContext = {
 };
 
 const n8nExtensionContext: N8nExtensionContext = {
-	createViewPanel: async ({ id, name }) => {
-		const extensionFrame = extensionIFrameManager.createSettingsExtensionIframe(id, name);
+	createViewPanel: async ({ id, name, enableScripts }) => {
+		const extensionFrame = extensionIFrameManager.createSettingsExtensionIframe(
+			id,
+			name,
+			enableScripts,
+		);
 		await extensionIFrameManager.collectStyles();
 		extensionIFrameManager.registerIframe(id, extensionFrame);
 

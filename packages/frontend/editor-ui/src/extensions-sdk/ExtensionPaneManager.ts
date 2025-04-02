@@ -133,7 +133,11 @@ export class ExtensionIframeManager {
 		}
 	}
 
-	createSettingsExtensionIframe(id: string, name: string): HTMLIFrameElement {
+	createSettingsExtensionIframe(
+		id: string,
+		name: string,
+		enableScripts?: boolean,
+	): HTMLIFrameElement {
 		const settingsExtensionContainer = document.getElementById(SETTINGS_EXTENSIONS_CONTAINER_ID);
 
 		if (!settingsExtensionContainer) {
@@ -209,7 +213,11 @@ export class ExtensionIframeManager {
 		// Create iframe with the Blob URL as src
 		const extensionIFrame = document.createElement('iframe');
 		extensionIFrame.id = id;
-		extensionIFrame.sandbox = 'allow-scripts';
+		if (enableScripts) {
+			extensionIFrame.sandbox = 'allow-scripts';
+		} else {
+			extensionIFrame.sandbox = '';
+		}
 		extensionIFrame.src = blobURL;
 		settingsExtensionContainer.appendChild(extensionIFrame);
 
