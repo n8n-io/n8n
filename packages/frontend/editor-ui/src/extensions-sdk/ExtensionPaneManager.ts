@@ -77,7 +77,6 @@ export class ExtensionIframeManager {
 
 			// Store the collected styles
 			this.styleCache = combinedStyles;
-			console.log('Collected styles from parent document');
 
 			// Send updated styles to all registered iframes
 			this.sendStylesToAllIframes();
@@ -95,8 +94,7 @@ export class ExtensionIframeManager {
 
 	private sendStylesToIframe(frameId: string): void {
 		const iframe = this.iframes.get(frameId);
-		if (iframe && iframe.contentWindow) {
-			console.log(`Sending styles to frame ${frameId}`);
+		if (iframe?.contentWindow) {
 			iframe.contentWindow.postMessage(
 				{
 					type: 'setStyles',
@@ -144,49 +142,65 @@ export class ExtensionIframeManager {
 			);
 		}
 
-		// Create HTML content with the message handler
+		// Create boilerplate HTML content for the iframe
+		// This includes a script to handle method calls and content updates
+		// and a style element for injecting styles from the parent app
 		const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>${name}</title>
+			<!DOCTYPE html>
+			<html>
+			<head>
+				<title>${name}</title>
 				<style id="parent-app-styles">
-          /* Styles will be injected here via postMessage */
-        </style>
-        <script>
-          // Message handler for content updates
-          window.addEventListener('message', (event) => {
-            if (event.data.type === 'setContent') {
-              // Get the container element where content should be inserted
-              const container = document.getElementById('plugin-content');
-              if (container) {
-                container.innerHTML = event.data.payload;
-              }
-            }
-						else if (event.data.type === 'setStyles') {
-              // Update styles when style update is received
-              const styleElement = document.getElementById('parent-app-styles');
-              if (styleElement) {
-                styleElement.textContent = event.data.payload;
-                console.log('Updated styles in iframe');
-              }
-            }
-          });
+					/* Styles will be injected here via postMessage */
+				</style>
+				<script>
+					// Content update handler
+					window.addEventListener('message', (event) => {
+						if (event.data.type === 'setContent') {
+							const container = document.getElementById('plugin-content');
+							if (container) {
+								container.innerHTML = event.data.payload;
 
-          // Notify parent when ready
-          window.addEventListener('load', () => {
-            window.parent.postMessage({
-              type: 'iframeReady',
-              frameId: '${id}'
-            }, '*');
-          });
-        </script>
-      </head>
-      <body>
-        <div id="plugin-content"></div>
-      </body>
-      </html>
-    `;
+								// Execute scripts
+								const scripts = container.querySelectorAll('script');
+								scripts.forEach(oldScript => {
+									const newScript = document.createElement('script');
+
+									Array.from(oldScript.attributes).forEach(attr => {
+										newScript.setAttribute(attr.name, attr.value);
+									});
+
+									newScript.textContent = oldScript.textContent;
+									oldScript.parentNode.replaceChild(newScript, oldScript);
+								});
+							}
+						}
+						else if (event.data.type === 'setStyles') {
+							const styleElement = document.getElementById('parent-app-styles');
+							if (styleElement) {
+								styleElement.textContent = event.data.payload;
+							}
+						}
+						else if (event.data.type === 'registerMethods') {
+							// Store available methods in a global for autocompletion purposes
+							window.availableMethods = event.data.methods;
+						}
+					});
+
+					// Notify parent when ready
+					window.addEventListener('load', () => {
+						window.parent.postMessage({
+							type: 'iframeReady',
+							frameId: '${id}'
+						}, '*');
+					});
+				</script>
+			</head>
+			<body>
+				<div id="plugin-content"></div>
+			</body>
+			</html>
+			`;
 
 		// Create a Blob URL from the HTML content
 		const blob = new Blob([htmlContent], { type: 'text/html' });

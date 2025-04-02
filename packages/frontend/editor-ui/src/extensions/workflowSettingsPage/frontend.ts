@@ -6,6 +6,12 @@ const setup = async (context: N8nExtensionContext) => {
 		id: 'workflow-settings',
 	});
 
+	window.addEventListener('message', async (event) => {
+		if (event.data && event.data.type === 'showPrompt') {
+			await showPrompt();
+		}
+	});
+
 	context.setPanelContent(
 		panel,
 		`
@@ -14,12 +20,12 @@ const setup = async (context: N8nExtensionContext) => {
 			<button id="proceed-button" class="button">Proceed</button>
 		</div>
 		<script>
-				console.log('Script loaded in iframe');
         const button = document.getElementById('proceed-button');
 				button.addEventListener('click', () => {
-					console.log('Button clicked', window.parent);
-				}
-				);
+					window.parent.postMessage({
+          type: 'showPrompt'
+        }, '*');
+				});
     </script>
 	`,
 	);
@@ -47,7 +53,7 @@ const setup = async (context: N8nExtensionContext) => {
 			});
 		}
 	};
-	await showPrompt();
+	// await showPrompt();
 };
 
 export { setup };
