@@ -557,12 +557,6 @@ const activeTaskMetadata = computed((): ITaskMetadata | null => {
 	return workflowRunData.value?.[node.value.name]?.[props.runIndex]?.metadata ?? null;
 });
 
-const hasRelatedExecution = computed(() => {
-	return Boolean(
-		activeTaskMetadata.value?.subExecution ?? activeTaskMetadata.value?.parentExecution,
-	);
-});
-
 const hasInputOverwrite = computed((): boolean => {
 	if (!node.value) {
 		return false;
