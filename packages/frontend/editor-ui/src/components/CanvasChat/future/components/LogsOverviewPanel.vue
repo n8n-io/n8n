@@ -5,7 +5,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { ElTree, type TreeNode as ElTreeNode } from 'element-plus';
 import {
 	createAiData,
@@ -18,10 +18,16 @@ import { type INodeUi } from '@/Interface';
 import { upperFirst } from 'lodash-es';
 import { useTelemetry } from '@/composables/useTelemetry';
 import ConsumedTokenCountText from '@/components/CanvasChat/future/components/ConsumedTokenCountText.vue';
+import { type LogEntryIdentity } from '@/components/CanvasChat/types/logs';
+import LogsOverviewRow from '@/components/CanvasChat/future/components/LogsOverviewRow.vue';
 
-const { node, isOpen } = defineProps<{ isOpen: boolean; node: INodeUi | null }>();
+const { node, isOpen, selected } = defineProps<{
+	isOpen: boolean;
+	node: INodeUi | null;
+	selected?: LogEntryIdentity;
+}>();
 
-const emit = defineEmits<{ clickHeader: [] }>();
+const emit = defineEmits<{ clickHeader: []; select: [LogEntryIdentity | undefined] }>();
 
 defineSlots<{ actions: {} }>();
 
@@ -41,9 +47,9 @@ const executionTree = computed<TreeNode[]>(() =>
 		: [],
 );
 const isEmpty = computed(() => workflowsStore.workflowExecutionData === null);
-const switchViewOptions = computed<Array<{ label: string; value: string }>>(() => [
-	{ label: locale.baseText('logs.overview.header.switch.details'), value: 'details' },
-	{ label: locale.baseText('logs.overview.header.switch.overview'), value: 'overview' },
+const switchViewOptions = computed(() => [
+	{ label: locale.baseText('logs.overview.header.switch.details'), value: 'details' as const },
+	{ label: locale.baseText('logs.overview.header.switch.overview'), value: 'overview' as const },
 ]);
 const executionStatusText = computed(() => {
 	const execution = workflowsStore.workflowExecutionData;
@@ -70,20 +76,18 @@ const consumedTokens = computed(() =>
 	getTotalConsumedTokens(...executionTree.value.map(getSubtreeTotalConsumedTokens)),
 );
 
-const selectedRun = ref<{ node: string; runIndex: number } | undefined>(undefined);
-
 function onClearExecutionData() {
 	workflowsStore.setWorkflowExecutionData(null);
 	nodeHelpers.updateNodesExecutionIssues();
 }
 
 function handleClickNode(clicked: TreeNode) {
-	if (selectedRun.value?.node === clicked.node && selectedRun.value.runIndex === clicked.runIndex) {
-		selectedRun.value = undefined;
+	if (selected?.node === clicked.node && selected.runIndex === clicked.runIndex) {
+		emit('select', undefined);
 		return;
 	}
 
-	selectedRun.value = { node: clicked.node, runIndex: clicked.runIndex };
+	emit('select', { node: clicked.node, runIndex: clicked.runIndex });
 	telemetry.track('User selected node in log view', {
 		node_type: workflowsStore.nodesByName[clicked.node].type,
 		node_id: workflowsStore.nodesByName[clicked.node].id,
@@ -92,15 +96,23 @@ function handleClickNode(clicked: TreeNode) {
 	});
 }
 
+function handleSwitchView(value: 'overview' | 'details') {
+	emit(
+		'select',
+		value === 'overview' || executionTree.value.length === 0 ? undefined : executionTree.value[0],
+	);
+}
+
 function handleToggleExpanded(treeNode: ElTreeNode) {
 	treeNode.expanded = !treeNode.expanded;
 }
 </script>
 
 <template>
-	<div :class="$style.container">
+	<div :class="$style.container" data-test-id="logs-overview">
 		<PanelHeader
 			:title="locale.baseText('logs.overview.header.title')"
+			data-test-id="logs-overview-header"
 			@click="emit('clickHeader')"
 		>
 			<template #actions>
@@ -120,8 +132,19 @@ function handleToggleExpanded(treeNode: ElTreeNode) {
 				<slot name="actions" />
 			</template>
 		</PanelHeader>
-		<div v-if="isOpen" :class="[$style.content, isEmpty ? $style.empty : '']">
-			<N8nText v-if="isEmpty" tag="p" size="medium" color="text-base" :class="$style.emptyText">
+		<div
+			v-if="isOpen"
+			:class="[$style.content, isEmpty ? $style.empty : '']"
+			data-test-id="logs-overview-body"
+		>
+			<N8nText
+				v-if="isEmpty"
+				tag="p"
+				size="medium"
+				color="text-base"
+				:class="$style.emptyText"
+				data-test-id="logs-overview-empty"
+			>
 				{{ locale.baseText('logs.overview.body.empty.message') }}
 			</N8nText>
 			<div v-else :class="$style.scrollable">
@@ -140,6 +163,7 @@ function handleToggleExpanded(treeNode: ElTreeNode) {
 				</N8nText>
 				<ElTree
 					v-if="executionTree.length > 0"
+					node-key="id"
 					:class="$style.tree"
 					:indent="0"
 					:data="executionTree"
@@ -151,9 +175,8 @@ function handleToggleExpanded(treeNode: ElTreeNode) {
 						<LogsOverviewRow
 							:data="data"
 							:node="elTreeNode"
-							:is-selected="
-								data.node === selectedRun?.node && data.runIndex === selectedRun?.runIndex
-							"
+							:is-selected="data.node === selected?.node && data.runIndex === selected?.runIndex"
+							:is-compact="selected !== undefined"
 							:should-show-consumed-tokens="consumedTokens.totalTokens > 0"
 							@toggle-expanded="handleToggleExpanded"
 						/>
@@ -162,8 +185,9 @@ function handleToggleExpanded(treeNode: ElTreeNode) {
 				<N8nRadioButtons
 					size="medium"
 					:class="$style.switchViewButtons"
-					:model-value="selectedRun ? 'details' : 'overview'"
+					:model-value="selected ? 'details' : 'overview'"
 					:options="switchViewOptions"
+					@update:model-value="handleSwitchView"
 				/>
 			</div>
 		</div>
@@ -178,6 +202,7 @@ function handleToggleExpanded(treeNode: ElTreeNode) {
 	flex-direction: column;
 	align-items: stretch;
 	overflow: hidden;
+	background-color: var(--color-foreground-xlight);
 }
 
 .content {
