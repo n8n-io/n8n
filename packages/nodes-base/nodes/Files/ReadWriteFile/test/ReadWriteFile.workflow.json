@@ -9,10 +9,7 @@
 			"name": "When clicking \"Execute Workflow\"",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [
-				700,
-				320
-			]
+			"position": [700, 320]
 		},
 		{
 			"parameters": {
@@ -23,10 +20,7 @@
 			"name": "Read from Disk",
 			"type": "n8n-nodes-base.readWriteFile",
 			"typeVersion": 1,
-			"position": [
-				920,
-				320
-			]
+			"position": [920, 320]
 		},
 		{
 			"parameters": {
@@ -38,10 +32,7 @@
 			"name": "Write to Disk",
 			"type": "n8n-nodes-base.readWriteFile",
 			"typeVersion": 1,
-			"position": [
-				1140,
-				320
-			]
+			"position": [1140, 320]
 		}
 	],
 	"connections": {

@@ -1,8 +1,8 @@
 {
-    "type": "object",
-    "properties": {
-        "type": {
-            "type": "string"
-        }
-    }
+	"type": "object",
+	"properties": {
+		"type": {
+			"type": "string"
+		}
+	}
 }

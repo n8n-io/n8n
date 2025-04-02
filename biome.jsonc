@@ -12,7 +12,8 @@
 			"**/dist",
 			"**/package.json",
 			"**/pnpm-lock.yaml",
-			"**/CHANGELOG.md"
+			"**/CHANGELOG.md",
+			"**/cypress/**/*"
 		]
 	},
 	"formatter": {

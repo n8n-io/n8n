@@ -1,13 +1,13 @@
 {
-    "type": "object",
-    "properties": {
-        "data": {
-            "type": "object",
-            "properties": {
-                "approved": {
-                    "type": "boolean"
-                }
-            }
-        }
-    }
+	"type": "object",
+	"properties": {
+		"data": {
+			"type": "object",
+			"properties": {
+				"approved": {
+					"type": "boolean"
+				}
+			}
+		}
+	}
 }

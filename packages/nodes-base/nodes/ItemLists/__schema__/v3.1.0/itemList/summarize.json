@@ -1,15 +1,15 @@
 {
-    "type": "object",
-    "properties": {
-        "appended_message_content": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "content": {
-            "type": "string"
-        }
-    },
-    "version": 1
+	"type": "object",
+	"properties": {
+		"appended_message_content": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			}
+		},
+		"content": {
+			"type": "string"
+		}
+	},
+	"version": 1
 }

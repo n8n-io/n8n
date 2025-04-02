@@ -3,13 +3,13 @@ import { GlobalConfig, SecurityConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
-import uniq from 'lodash/uniq';
+import * as lodash from 'lodash';
 import { InstanceSettings, Logger } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription } from 'n8n-workflow';
-import path from 'path';
+import * as path from 'path';
 
 import config from '@/config';
-import { inE2ETests, LICENSE_FEATURES, N8N_VERSION } from '@/constants';
+import { inE2ETests, N8N_VERSION } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { getLdapLoginLabel } from '@/ldap.ee/helpers.ee';
@@ -404,7 +404,7 @@ export class FrontendService {
 			}
 
 			if (overwrittenProperties.length) {
-				credential.__overwrittenProperties = uniq(overwrittenProperties);
+				credential.__overwrittenProperties = lodash.uniq(overwrittenProperties);
 			}
 		}
 	}

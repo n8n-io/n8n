@@ -16,6 +16,10 @@ export class PostHogClient {
 	) {}
 
 	async init() {
+		// Completely disable PostHog tracking
+		return;
+
+		// Original code below which will never execute
 		const { enabled, posthogConfig } = this.globalConfig.diagnostics;
 		if (!enabled) {
 			return;
@@ -27,8 +31,8 @@ export class PostHogClient {
 		});
 
 		const logLevel = this.globalConfig.logging.level;
-		if (logLevel === 'debug') {
-			this.postHog.debug(true);
+		if (logLevel === 'debug' && this.postHog) {
+			this.postHog!.debug(true);
 		}
 	}
 

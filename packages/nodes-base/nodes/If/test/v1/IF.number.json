@@ -7,10 +7,7 @@
 			"name": "On clicking 'execute'",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [
-				-5180,
-				3020
-			]
+			"position": [-5180, 3020]
 		},
 		{
 			"parameters": {
@@ -20,10 +17,7 @@
 			"name": "Code",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 1,
-			"position": [
-				-4980,
-				3020
-			]
+			"position": [-4980, 3020]
 		},
 		{
 			"parameters": {
@@ -40,10 +34,7 @@
 			"name": "IF Smaller",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 1,
-			"position": [
-				-4760,
-				2480
-			]
+			"position": [-4760, 2480]
 		},
 		{
 			"parameters": {
@@ -61,10 +52,7 @@
 			"name": "IF Smaller or Equal",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 1,
-			"position": [
-				-4760,
-				2660
-			]
+			"position": [-4760, 2660]
 		},
 		{
 			"parameters": {},
@@ -72,10 +60,7 @@
 			"name": "On True Smaller",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-4560,
-				2460
-			]
+			"position": [-4560, 2460]
 		},
 		{
 			"parameters": {},
@@ -83,10 +68,7 @@
 			"name": "On False Smaller",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-4320,
-				2500
-			]
+			"position": [-4320, 2500]
 		},
 		{
 			"parameters": {},
@@ -94,10 +76,7 @@
 			"name": "On True Smaller or Equal",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-4560,
-				2640
-			]
+			"position": [-4560, 2640]
 		},
 		{
 			"parameters": {
@@ -115,10 +94,7 @@
 			"name": "IF Equal",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 1,
-			"position": [
-				-4760,
-				2840
-			]
+			"position": [-4760, 2840]
 		},
 		{
 			"parameters": {},
@@ -126,10 +102,7 @@
 			"name": "On True Equal",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-4560,
-				2820
-			]
+			"position": [-4560, 2820]
 		},
 		{
 			"parameters": {},
@@ -137,10 +110,7 @@
 			"name": "On False Equal",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-4320,
-				2860
-			]
+			"position": [-4320, 2860]
 		},
 		{
 			"parameters": {
@@ -158,10 +128,7 @@
 			"name": "IF Not Equal",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 1,
-			"position": [
-				-4760,
-				3020
-			]
+			"position": [-4760, 3020]
 		},
 		{
 			"parameters": {},
@@ -169,10 +136,7 @@
 			"name": "On True Not Equal",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-4560,
-				3000
-			]
+			"position": [-4560, 3000]
 		},
 		{
 			"parameters": {},
@@ -180,10 +144,7 @@
 			"name": "On False Not Equal",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-4320,
-				3040
-			]
+			"position": [-4320, 3040]
 		},
 		{
 			"parameters": {
@@ -201,10 +162,7 @@
 			"name": "IF Larger",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 1,
-			"position": [
-				-4760,
-				3200
-			]
+			"position": [-4760, 3200]
 		},
 		{
 			"parameters": {},
@@ -212,10 +170,7 @@
 			"name": "On True Larger",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-4560,
-				3180
-			]
+			"position": [-4560, 3180]
 		},
 		{
 			"parameters": {},
@@ -223,10 +178,7 @@
 			"name": "On False Larger",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-4320,
-				3220
-			]
+			"position": [-4320, 3220]
 		},
 		{
 			"parameters": {
@@ -244,10 +196,7 @@
 			"name": "IF Larger or Equal",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 1,
-			"position": [
-				-4760,
-				3400
-			]
+			"position": [-4760, 3400]
 		},
 		{
 			"parameters": {},
@@ -255,10 +204,7 @@
 			"name": "On True Larger or Equal",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-4560,
-				3380
-			]
+			"position": [-4560, 3380]
 		},
 		{
 			"parameters": {
@@ -275,10 +221,7 @@
 			"name": "IF Is Empty",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 1,
-			"position": [
-				-4760,
-				3600
-			]
+			"position": [-4760, 3600]
 		},
 		{
 			"parameters": {},
@@ -286,10 +229,7 @@
 			"name": "On False  Is Empty",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-4320,
-				3620
-			]
+			"position": [-4320, 3620]
 		},
 		{
 			"parameters": {
@@ -306,10 +246,7 @@
 			"name": "IF Is Not Empty",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 1,
-			"position": [
-				-4760,
-				3780
-			]
+			"position": [-4760, 3780]
 		},
 		{
 			"parameters": {},
@@ -317,10 +254,7 @@
 			"name": "On True Is Not Empty",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-4560,
-				3760
-			]
+			"position": [-4560, 3760]
 		}
 	],
 	"pinData": {

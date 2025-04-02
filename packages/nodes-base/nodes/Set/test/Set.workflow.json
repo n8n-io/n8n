@@ -7,10 +7,7 @@
 			"name": "When clicking \"Execute Workflow\"",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [
-				900,
-				2560
-			]
+			"position": [900, 2560]
 		},
 		{
 			"parameters": {
@@ -40,10 +37,7 @@
 			"name": "Set",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 1,
-			"position": [
-				1380,
-				2200
-			]
+			"position": [1380, 2200]
 		},
 		{
 			"parameters": {
@@ -53,10 +47,7 @@
 			"name": "Code",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 1,
-			"position": [
-				1120,
-				2560
-			]
+			"position": [1120, 2560]
 		},
 		{
 			"parameters": {
@@ -87,10 +78,7 @@
 			"name": "Set Keep Only Set",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 1,
-			"position": [
-				1380,
-				2380
-			]
+			"position": [1380, 2380]
 		},
 		{
 			"parameters": {
@@ -120,10 +108,7 @@
 			"name": "Set to Array",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 1,
-			"position": [
-				1380,
-				2940
-			]
+			"position": [1380, 2940]
 		},
 		{
 			"parameters": {
@@ -153,10 +138,7 @@
 			"name": "Set to Object",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 1,
-			"position": [
-				1380,
-				2560
-			]
+			"position": [1380, 2560]
 		},
 		{
 			"parameters": {
@@ -188,10 +170,7 @@
 			"name": "Set Disable Dot Notation",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 1,
-			"position": [
-				1380,
-				2740
-			]
+			"position": [1380, 2740]
 		}
 	],
 	"pinData": {
@@ -201,9 +180,7 @@
 					"nested": {
 						"foo": "bar"
 					},
-					"list": [
-						"foo"
-					],
+					"list": ["foo"],
 					"boolean": true,
 					"number": 1,
 					"string": "foo"
@@ -228,9 +205,7 @@
 						"number": 1,
 						"string": "foo"
 					},
-					"list": [
-						"foo"
-					]
+					"list": ["foo"]
 				}
 			}
 		],
@@ -240,9 +215,7 @@
 					"nested": {
 						"foo": "bar"
 					},
-					"list": [
-						"foo"
-					],
+					"list": ["foo"],
 					"nested.boolean": true,
 					"nested.number": 1,
 					"nested.string": "foo"
@@ -255,12 +228,7 @@
 					"nested": {
 						"foo": "bar"
 					},
-					"list": [
-						"foo",
-						"bar",
-						true,
-						1
-					]
+					"list": ["foo", "bar", true, 1]
 				}
 			}
 		]

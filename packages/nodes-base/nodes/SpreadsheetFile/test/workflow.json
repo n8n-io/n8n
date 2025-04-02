@@ -6,10 +6,7 @@
 			"name": "When clicking \"Execute Workflow\"",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [
-				620,
-				640
-			]
+			"position": [620, 640]
 		},
 		{
 			"parameters": {
@@ -19,10 +16,7 @@
 			"name": "Read From File",
 			"type": "n8n-nodes-base.spreadsheetFile",
 			"typeVersion": 1,
-			"position": [
-				1260,
-				640
-			]
+			"position": [1260, 640]
 		},
 		{
 			"parameters": {
@@ -32,10 +26,7 @@
 			"name": "Read Binary File",
 			"type": "n8n-nodes-base.readBinaryFiles",
 			"typeVersion": 1,
-			"position": [
-				840,
-				640
-			]
+			"position": [840, 640]
 		},
 		{
 			"parameters": {
@@ -47,10 +38,7 @@
 			"name": "Write To File CSV",
 			"type": "n8n-nodes-base.spreadsheetFile",
 			"typeVersion": 1,
-			"position": [
-				1580,
-				280
-			]
+			"position": [1580, 280]
 		},
 		{
 			"parameters": {
@@ -62,10 +50,7 @@
 			"name": "Write To File HTML",
 			"type": "n8n-nodes-base.spreadsheetFile",
 			"typeVersion": 1,
-			"position": [
-				1580,
-				460
-			]
+			"position": [1580, 460]
 		},
 		{
 			"parameters": {
@@ -77,10 +62,7 @@
 			"name": "Write To File ODS",
 			"type": "n8n-nodes-base.spreadsheetFile",
 			"typeVersion": 1,
-			"position": [
-				1580,
-				640
-			]
+			"position": [1580, 640]
 		},
 		{
 			"parameters": {
@@ -92,10 +74,7 @@
 			"name": "Write To File RTF",
 			"type": "n8n-nodes-base.spreadsheetFile",
 			"typeVersion": 1,
-			"position": [
-				1580,
-				820
-			]
+			"position": [1580, 820]
 		},
 		{
 			"parameters": {
@@ -106,10 +85,7 @@
 			"name": "Write To File XLS",
 			"type": "n8n-nodes-base.spreadsheetFile",
 			"typeVersion": 1,
-			"position": [
-				1580,
-				1020
-			]
+			"position": [1580, 1020]
 		},
 		{
 			"parameters": {
@@ -121,10 +97,7 @@
 			"name": "Read From File Range",
 			"type": "n8n-nodes-base.spreadsheetFile",
 			"typeVersion": 1,
-			"position": [
-				1060,
-				520
-			]
+			"position": [1060, 520]
 		},
 		{
 			"parameters": {
@@ -136,10 +109,7 @@
 			"name": "Read From File no Header Row",
 			"type": "n8n-nodes-base.spreadsheetFile",
 			"typeVersion": 1,
-			"position": [
-				1060,
-				320
-			]
+			"position": [1060, 320]
 		},
 		{
 			"parameters": {
@@ -151,10 +121,7 @@
 			"name": "Read From File Raw Data",
 			"type": "n8n-nodes-base.spreadsheetFile",
 			"typeVersion": 1,
-			"position": [
-				1060,
-				740
-			]
+			"position": [1060, 740]
 		},
 		{
 			"parameters": {
@@ -166,10 +133,7 @@
 			"name": "Read From File Read as String",
 			"type": "n8n-nodes-base.spreadsheetFile",
 			"typeVersion": 1,
-			"position": [
-				1060,
-				940
-			]
+			"position": [1060, 940]
 		},
 		{
 			"parameters": {
@@ -182,10 +146,7 @@
 			"name": "Read CSV with Row Limit",
 			"type": "n8n-nodes-base.spreadsheetFile",
 			"typeVersion": 2,
-			"position": [
-				-60,
-				1340
-			]
+			"position": [-60, 1340]
 		}
 	],
 	"connections": {

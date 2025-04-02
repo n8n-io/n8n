@@ -69,10 +69,7 @@
 			"name": "With Async Functions",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 1,
-			"position": [
-				460,
-				1200
-			]
+			"position": [460, 1200]
 		},
 		{
 			"parameters": {
@@ -83,10 +80,7 @@
 			"name": "With Promises",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 1,
-			"position": [
-				460,
-				1380
-			]
+			"position": [460, 1380]
 		}
 	],
 	"pinData": {

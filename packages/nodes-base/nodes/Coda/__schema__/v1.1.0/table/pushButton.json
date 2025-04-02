@@ -1,15 +1,15 @@
 {
-    "type": "object",
-    "properties": {
-        "columnId": {
-            "type": "string"
-        },
-        "requestId": {
-            "type": "string"
-        },
-        "rowId": {
-            "type": "string"
-        }
-    },
-    "version": 1
+	"type": "object",
+	"properties": {
+		"columnId": {
+			"type": "string"
+		},
+		"requestId": {
+			"type": "string"
+		},
+		"rowId": {
+			"type": "string"
+		}
+	},
+	"version": 1
 }

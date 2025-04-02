@@ -1,15 +1,12 @@
 {
-    "type": "object",
-    "properties": {
-        "status": {
-            "type": "integer"
-        },
-        "message": {
-            "type": "string"
-        }
-    },
-    "required": [
-        "status",
-        "message"
-    ]
+	"type": "object",
+	"properties": {
+		"status": {
+			"type": "integer"
+		},
+		"message": {
+			"type": "string"
+		}
+	},
+	"required": ["status", "message"]
 }

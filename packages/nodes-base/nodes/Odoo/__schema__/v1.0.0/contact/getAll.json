@@ -1,9 +1,9 @@
 {
-    "type": "object",
-    "properties": {
-        "id": {
-            "type": "integer"
-        }
-    },
-    "version": 1
+	"type": "object",
+	"properties": {
+		"id": {
+			"type": "integer"
+		}
+	},
+	"version": 1
 }

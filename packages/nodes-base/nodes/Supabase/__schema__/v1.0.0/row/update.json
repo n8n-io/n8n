@@ -1,8 +1,8 @@
 {
-    "type": "object",
-    "properties": {
-        "created_at": {
-            "type": "string"
-        }
-    }
+	"type": "object",
+	"properties": {
+		"created_at": {
+			"type": "string"
+		}
+	}
 }

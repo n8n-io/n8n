@@ -208,7 +208,8 @@ export class License {
 		this.logger.debug('License shut down');
 	}
 
-	isFeatureEnabled(feature: BooleanLicenseFeature) {
+	isFeatureEnabled(_feature: BooleanLicenseFeature) {
+		// Since we're bypassing the license manager, always return true
 		return true;
 	}
 
@@ -255,7 +256,8 @@ export class License {
 	}
 
 	isDebugInEditorLicensed() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.DEBUG_IN_EDITOR);
+		//return this.isFeatureEnabled(LICENSE_FEATURES.DEBUG_IN_EDITOR);
+		return true;
 	}
 
 	isBinaryDataS3Licensed() {
@@ -264,7 +266,8 @@ export class License {
 	}
 
 	isMultiMainLicensed() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
+		//return this.isFeatureEnabled(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
+		return true;
 	}
 
 	isVariablesEnabled() {
@@ -292,7 +295,8 @@ export class License {
 	}
 
 	isWorkerViewLicensed() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.WORKER_VIEW);
+		//return this.isFeatureEnabled(LICENSE_FEATURES.WORKER_VIEW);
+		return true;
 	}
 
 	isProjectRoleAdminLicensed() {
@@ -311,11 +315,13 @@ export class License {
 	}
 
 	isCustomNpmRegistryEnabled() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY);
+		//return this.isFeatureEnabled(LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY);
+		return true;
 	}
 
 	isFoldersEnabled() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.FOLDERS);
+		//return this.isFeatureEnabled(LICENSE_FEATURES.FOLDERS);
+		return true;
 	}
 
 	getCurrentEntitlements() {
