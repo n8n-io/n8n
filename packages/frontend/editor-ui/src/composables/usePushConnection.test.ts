@@ -2,7 +2,7 @@ import { stringify } from 'flatted';
 import { useRouter } from 'vue-router';
 import { createPinia, setActivePinia } from 'pinia';
 import type { PushMessage, PushPayload } from '@n8n/api-types';
-import type { ITaskData, WorkflowOperationError, IRunData, ExecutionStatus } from 'n8n-workflow';
+import type { ITaskData, WorkflowOperationError, IRunData } from 'n8n-workflow';
 
 import { usePushConnection } from '@/composables/usePushConnection';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
