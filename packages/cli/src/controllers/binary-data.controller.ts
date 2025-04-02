@@ -42,7 +42,7 @@ export class BinaryDataController {
 				res.setHeader('Content-Type', mimeType);
 
 				// Sandbox html files when viewed in a browser
-				if (mimeType === 'text/html' && action === 'view') {
+				if (mimeType.includes('html') && action === 'view') {
 					res.header('Content-Security-Policy', 'sandbox');
 				}
 			}
