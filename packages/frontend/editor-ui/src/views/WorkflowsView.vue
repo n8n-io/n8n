@@ -478,7 +478,9 @@ const fetchWorkflows = async () => {
 				name: filters.value.search || undefined,
 				active: activeFilter,
 				tags: tags.length ? tags : undefined,
-				parentFolderId: parentFolder ?? (isOverviewPage.value ? undefined : '0'), // Sending 0 will only show one level of folders
+				parentFolderId:
+					parentFolder ??
+					(isOverviewPage.value ? undefined : filters?.value.search ? undefined : '0'), // Sending 0 will only show one level of folders
 			},
 			fetchFolders,
 		);

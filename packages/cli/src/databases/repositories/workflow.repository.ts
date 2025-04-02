@@ -268,7 +268,8 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			options.filter?.parentFolderId &&
 			typeof options.filter?.parentFolderId === 'string' &&
 			options.filter.parentFolderId !== PROJECT_ROOT &&
-			typeof options.filter?.projectId === 'string'
+			typeof options.filter?.projectId === 'string' &&
+			typeof options.filter.name === 'string'
 		) {
 			const folderIds = await this.folderRepository.getAllFolderIdsInHierarchy(
 				options.filter.parentFolderId,
@@ -277,6 +278,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 			options.filter.parentFolderIds = [options.filter.parentFolderId, ...folderIds];
 			options.filter.folderIds = folderIds;
+			delete options.filter.parentFolderId;
 		}
 
 		const [workflowsAndFolders, count] = await Promise.all([
@@ -411,7 +413,13 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		qb: SelectQueryBuilder<WorkflowEntity>,
 		filter: ListQuery.Options['filter'],
 	): void {
-		if (
+		if (filter?.parentFolderId === PROJECT_ROOT) {
+			qb.andWhere('workflow.parentFolderId IS NULL');
+		} else if (filter?.parentFolderId) {
+			qb.andWhere('workflow.parentFolderId = :parentFolderId', {
+				parentFolderId: filter.parentFolderId,
+			});
+		} else if (
 			filter?.parentFolderIds &&
 			Array.isArray(filter.parentFolderIds) &&
 			filter.parentFolderIds.length > 0
