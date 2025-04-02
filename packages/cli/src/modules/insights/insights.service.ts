@@ -250,9 +250,9 @@ export class InsightsService {
 		const previousTotal = previousSuccesses + previousFailures;
 
 		const currentFailureRate =
-			currentTotal > 0 ? Math.round((currentFailures / currentTotal) * 100) / 100 : 0;
+			currentTotal > 0 ? Math.round((currentFailures / currentTotal) * 1000) / 1000 : 0;
 		const previousFailureRate =
-			previousTotal > 0 ? Math.round((previousFailures / previousTotal) * 100) / 100 : 0;
+			previousTotal > 0 ? Math.round((previousFailures / previousTotal) * 1000) / 1000 : 0;
 
 		const currentTotalRuntime = getValueByType('current', 'runtime_ms') ?? 0;
 		const previousTotalRuntime = getValueByType('previous', 'runtime_ms') ?? 0;
