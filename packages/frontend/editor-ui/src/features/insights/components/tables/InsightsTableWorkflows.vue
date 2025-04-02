@@ -1,62 +1,130 @@
 <script lang="ts" setup="">
-import { computed, ref } from 'vue';
+import { INSIGHTS_UNIT_MAPPING } from '@/features/insights/insights.constants';
+import {
+	transformInsightsAverageRunTime,
+	transformInsightsFailureRate,
+	transformInsightsTimeSaved,
+} from '@/features/insights/insights.utils';
 import type { InsightsByWorkflow } from '@n8n/api-types';
+import { N8nTooltip } from '@n8n/design-system';
+import N8nDataTableServer, {
+	type TableHeader,
+} from '@n8n/design-system/components/N8nDataTableServer/N8nDataTableServer.vue';
+import { smartDecimal } from '@n8n/utils/number/smartDecimal';
+import { computed, ref } from 'vue';
 
 const props = defineProps<{
 	data: InsightsByWorkflow;
+	loading?: boolean;
 }>();
 
-const currentPage = ref();
-const columns = ref([
+type Item = InsightsByWorkflow['data'][number];
+
+const rows = computed(() => props.data.data);
+
+const headers = ref<Array<TableHeader<Item>>>([
 	{
-		id: 'workflowName',
-		path: 'workflowName',
-		label: 'Name',
+		title: 'Name',
+		key: 'workflowName',
+		width: 400,
+		disableSort: true,
 	},
 	{
-		id: 'total',
-		path: 'total',
-		label: 'Executions',
+		title: 'Total executions',
+		key: 'total',
 	},
 	{
-		id: 'failed',
-		path: 'failed',
-		label: 'Failures',
+		title: 'Total failed executions',
+		key: 'failed',
 	},
 	{
-		id: 'failureRate',
-		path: 'failureRate',
-		label: 'Failure rate',
+		title: 'Average run time',
+		key: 'failureRate',
+		value(row) {
+			return (
+				smartDecimal(transformInsightsFailureRate(row.failureRate)) +
+				INSIGHTS_UNIT_MAPPING.failureRate
+			);
+		},
 	},
 	{
-		id: 'timeSaved',
-		path: 'timeSaved',
-		label: 'Time saved',
+		title: 'Time saved',
+		key: 'timeSaved',
+		value(row) {
+			return (
+				smartDecimal(transformInsightsTimeSaved(row.timeSaved)) + INSIGHTS_UNIT_MAPPING.timeSaved
+			);
+		},
 	},
 	{
-		id: 'averageRunTime',
-		path: 'averageRunTime',
-		label: 'Run time',
+		title: 'Run time',
+		key: 'averageRunTime',
+		value(row) {
+			return (
+				smartDecimal(transformInsightsAverageRunTime(row.averageRunTime)) +
+				INSIGHTS_UNIT_MAPPING.averageRunTime
+			);
+		},
 	},
 	{
-		id: 'projectName',
-		path: 'projectName',
-		label: 'Project name',
+		title: 'Project name',
+		key: 'projectName',
+		disableSort: true,
 	},
 ]);
-const rows = computed(() => props.data.data);
+
+const sortTableBy = ref([{ id: 'total', desc: true }]);
+const currentPage = ref(0);
+const itemsPerPage = ref(20);
+
+const emit = defineEmits<{
+	'update:options': [
+		payload: {
+			page: number;
+			itemsPerPage: number;
+			sortBy: Array<{ id: string; desc: boolean }>;
+		},
+	];
+}>();
 </script>
 
 <template>
 	<div>
 		<N8nHeading bold tag="h3" size="medium" class="mb-s">Workflow insights</N8nHeading>
-		<N8nDatatable
-			:columns
-			:rows
-			:current-page="currentPage"
-			@update:current-page="($event: number) => (currentPage = $event)"
-		/>
+		<N8nDataTableServer
+			v-model:sort-by="sortTableBy"
+			v-model:page="currentPage"
+			v-model:items-per-page="itemsPerPage"
+			:items="rows"
+			:headers="headers"
+			:items-length="data.count"
+			:loading="loading"
+			@update:options="emit('update:options', $event)"
+		>
+			<template #[`item.workflowName`]="{ item }">
+				<N8nTooltip :content="item.workflowName" placement="top">
+					<div class="ellipsis">
+						{{ item.workflowName }}
+					</div>
+				</N8nTooltip>
+			</template>
+			<template #[`item.projectName`]="{ item }">
+				<N8nTooltip v-if="item.projectName" :content="item.projectName" placement="top">
+					<div class="ellipsis">
+						{{ item.projectName }}
+					</div>
+				</N8nTooltip>
+				<template v-else> - </template>
+			</template>
+		</N8nDataTableServer>
 	</div>
 </template>
 
-<style lang="scss" module></style>
+<style lang="scss" scoped>
+.ellipsis {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	line-height: 1.2;
+}
+</style>

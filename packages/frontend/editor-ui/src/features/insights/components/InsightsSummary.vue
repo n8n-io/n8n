@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import { computed, useCssModule } from 'vue';
-import { useRoute } from 'vue-router';
-import type { InsightsSummary } from '@n8n/api-types';
-import { smartDecimal } from '@n8n/utils/number/smartDecimal';
-import { VIEWS } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
-import type { InsightsSummaryDisplay } from '@/features/insights/insights.types';
+import { VIEWS } from '@/constants';
 import {
 	INSIGHT_IMPACT_TYPES,
 	INSIGHTS_UNIT_IMPACT_MAPPING,
 } from '@/features/insights/insights.constants';
+import type { InsightsSummaryDisplay } from '@/features/insights/insights.types';
+import type { InsightsSummary } from '@n8n/api-types';
+import { smartDecimal } from '@n8n/utils/number/smartDecimal';
+import { computed, useCssModule } from 'vue';
+import { useRoute } from 'vue-router';
 
 const props = defineProps<{
 	summary: InsightsSummaryDisplay;
@@ -237,7 +237,7 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 
 .loading {
 	display: flex;
-	height: 91px;
+	min-height: 91px;
 	align-self: stretch;
 	align-items: stretch;
 
