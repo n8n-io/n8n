@@ -15,7 +15,7 @@ export type JiraServerInfo = {
 	baseUrl: string;
 	version: string;
 	versionNumbers: number[];
-	deploymentType: string;
+	deploymentType?: 'Cloud' | 'Server';
 	buildNumber: number;
 	buildDate: string;
 	databaseBuildNumber: number;

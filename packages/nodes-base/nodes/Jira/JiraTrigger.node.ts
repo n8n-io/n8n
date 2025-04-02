@@ -13,9 +13,10 @@ import {
 	allEvents,
 	eventExists,
 	getWebhookId,
+	getWebhookEndpoint,
 	jiraSoftwareCloudApiRequest,
 } from './GenericFunctions';
-import type { JiraServerInfo, JiraWebhook } from './types';
+import type { JiraWebhook } from './types';
 
 export class JiraTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -417,17 +418,7 @@ export class JiraTrigger implements INodeType {
 
 				const events = this.getNodeParameter('events') as string[];
 
-				const version = await (
-					jiraSoftwareCloudApiRequest.call(
-						this,
-						'/api/2/serverInfo',
-						'GET',
-					) as Promise<JiraServerInfo>
-				)
-					.then((info) => info.versionNumbers?.[0] ?? 1)
-					.catch(() => 1);
-
-				const endpoint = version >= 10 ? '/jira-webhook/1.0/webhooks' : '/webhooks/1.0/webhook';
+				const endpoint = await getWebhookEndpoint.call(this);
 				webhookData.endpoint = endpoint;
 
 				const webhooks: JiraWebhook[] = await jiraSoftwareCloudApiRequest.call(

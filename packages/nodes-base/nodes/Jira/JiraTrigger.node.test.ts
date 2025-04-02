@@ -169,6 +169,69 @@ describe('JiraTrigger', () => {
 				}),
 			);
 		});
+
+		test('should register a webhook subscription on Jira Cloud', async () => {
+			const trigger = new JiraTrigger();
+
+			const mockExistsRequest = jest
+				.fn()
+				.mockResolvedValueOnce({ deploymentType: 'Cloud', versionNumbers: [1000, 0, 1] })
+				.mockResolvedValueOnce([]);
+
+			const exists = await trigger.webhookMethods.default?.checkExists.call(
+				mockHookFunctions(mockExistsRequest),
+			);
+
+			expect(mockExistsRequest).toHaveBeenCalledTimes(2);
+			expect(mockExistsRequest).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({ uri: 'https://jira.local/rest/api/2/serverInfo' }),
+			);
+			expect(mockExistsRequest).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({ uri: 'https://jira.local/rest/webhooks/1.0/webhook' }),
+			);
+			expect(staticData.endpoint).toBe('/webhooks/1.0/webhook');
+			expect(exists).toBe(false);
+
+			const mockCreateRequest = jest.fn().mockResolvedValueOnce({ id: 1 });
+
+			const created = await trigger.webhookMethods.default?.create.call(
+				mockHookFunctions(mockCreateRequest),
+			);
+
+			expect(mockCreateRequest).toHaveBeenCalledTimes(1);
+			expect(mockCreateRequest).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					method: 'POST',
+					uri: 'https://jira.local/rest/webhooks/1.0/webhook',
+					body: expect.objectContaining({
+						events: ['jira:issue_created'],
+						excludeBody: false,
+						filters: {},
+						name: 'n8n-webhook:https://n8n.local/webhook/id',
+						url: 'https://n8n.local/webhook/id',
+					}),
+				}),
+			);
+			expect(created).toBe(true);
+
+			const mockDeleteRequest = jest.fn().mockResolvedValueOnce({});
+			const deleted = await trigger.webhookMethods.default?.delete.call(
+				mockHookFunctions(mockDeleteRequest),
+			);
+
+			expect(deleted).toBe(true);
+			expect(mockDeleteRequest).toHaveBeenCalledTimes(1);
+			expect(mockDeleteRequest).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					method: 'DELETE',
+					uri: 'https://jira.local/rest/webhooks/1.0/webhook/1',
+				}),
+			);
+		});
 	});
 
 	describe('Webhook', () => {
