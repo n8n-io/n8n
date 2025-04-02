@@ -124,12 +124,15 @@ export class McpServerData {
 				throw new Error('Tool not found');
 			}
 
-			// TODO: fix this ts-ignore
 			// TODO: Add propper logging / n8n logger wrapper stuff
-			// @ts-ignore
-			const result = await requestedTool.invoke(request.params.arguments);
-			console.log('Tool Call Result', result);
-			return { toolResult: result };
+			try {
+				const result = await requestedTool.invoke(request.params.arguments);
+				// TODO: Refactor this to no longer use the legacy tool result, but
+				return { toolResult: result };
+			} catch (error) {
+				console.log(error);
+				return { isError: true, content: [{ type: 'text', text: `Error: ${error.message}` }] };
+			}
 		});
 
 		server.onclose = () => {
