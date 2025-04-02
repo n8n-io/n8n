@@ -13,14 +13,8 @@ import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 // A thinking tool, see https://www.anthropic.com/engineering/claude-think-tool
 
-const thinkingTool = new DynamicTool({
-	name: 'thinking_tool',
-	description:
-		'Use the tool to think about something. It will not obtain new information or change the database, but just append the thought to the log. Use it when complex reasoning or some cache memory is needed.',
-	func: async (subject: string) => {
-		return subject;
-	},
-});
+const defaultToolDescription =
+	'Use the tool to think about something. It will not obtain new information or change the database, but just append the thought to the log. Use it when complex reasoning or some cache memory is needed.';
 
 export class ToolThink implements INodeType {
 	description: INodeTypeDescription = {
@@ -48,17 +42,38 @@ export class ToolThink implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: [NodeConnectionTypes.AiTool],
 		outputNames: ['Tool'],
-		properties: [getConnectionHintNoticeField([NodeConnectionTypes.AiAgent])],
+		properties: [
+			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
+			{
+				displayName: 'Think Tool Description',
+				name: 'description',
+				type: 'string',
+				default: defaultToolDescription,
+				placeholder: '[Describe your thinking tool here, explaining how it will help the AI think]',
+				description: "The thinking tool's description",
+				typeOptions: {
+					rows: 3,
+				},
+				required: true,
+			},
+		],
 	};
 
-	async supplyData(this: ISupplyDataFunctions): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
+		const description = this.getNodeParameter('description', itemIndex) as string;
+		const tool = new DynamicTool({
+			name: 'thinking_tool',
+			description,
+			func: async (subject: string) => {
+				return subject;
+			},
+		});
+
 		return {
-			response: logWrapper(thinkingTool, this),
+			response: logWrapper(tool, this),
 		};
 	}
 }
