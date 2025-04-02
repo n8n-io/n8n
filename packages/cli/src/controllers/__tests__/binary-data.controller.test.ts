@@ -107,6 +107,36 @@ describe('BinaryDataController', () => {
 			);
 		});
 
+		it('should set Content-Security-Policy for HTML in view mode', async () => {
+			request.query = {
+				id: 'filesystem:123',
+				action: 'view',
+				fileName: 'test.html',
+				mimeType: 'text/html',
+			};
+
+			binaryDataService.getAsStream.mockResolvedValue(mock());
+
+			await controller.get(request, response);
+
+			expect(response.header).toHaveBeenCalledWith('Content-Security-Policy', 'sandbox');
+		});
+
+		it('should not set Content-Security-Policy for HTML in download mode', async () => {
+			request.query = {
+				id: 'filesystem:123',
+				action: 'download',
+				fileName: 'test.html',
+				mimeType: 'text/html',
+			};
+
+			binaryDataService.getAsStream.mockResolvedValue(mock());
+
+			await controller.get(request, response);
+
+			expect(response.header).not.toHaveBeenCalledWith('Content-Security-Policy', 'sandbox');
+		});
+
 		it('should return the file stream on success', async () => {
 			request.query = { id: 'filesystem:123', action: 'view' };
 
