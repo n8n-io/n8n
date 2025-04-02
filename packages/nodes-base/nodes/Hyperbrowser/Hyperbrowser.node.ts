@@ -34,6 +34,7 @@ export class Hyperbrowser implements INodeType {
 				required: true,
 			},
 		],
+		usableAsTool: true,
 		properties: [
 			{
 				displayName: 'Operation',
