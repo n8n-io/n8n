@@ -49,10 +49,6 @@ const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
 
 @Service()
 export class InsightsService {
-	private readonly maxAgeInDaysForHourlyData = 90;
-
-	private readonly maxAgeInDaysForDailyData = 180;
-
 	private compactInsightsTimer: NodeJS.Timer | undefined;
 
 	constructor(
@@ -195,7 +191,7 @@ export class InsightsService {
 		const batchQuery = this.insightsByPeriodRepository.getPeriodInsightsBatchQuery({
 			periodUnitToCompactFrom: 'hour',
 			compactionBatchSize: config.compactionBatchSize,
-			maxAgeInDays: this.maxAgeInDaysForHourlyData,
+			maxAgeInDays: config.compactionHourlyToDailyThresholdDays,
 		});
 
 		return await this.insightsByPeriodRepository.compactSourceDataIntoInsightPeriod({
@@ -210,7 +206,7 @@ export class InsightsService {
 		const batchQuery = this.insightsByPeriodRepository.getPeriodInsightsBatchQuery({
 			periodUnitToCompactFrom: 'day',
 			compactionBatchSize: config.compactionBatchSize,
-			maxAgeInDays: this.maxAgeInDaysForDailyData,
+			maxAgeInDays: config.compactionDailyToWeeklyThresholdDays,
 		});
 
 		return await this.insightsByPeriodRepository.compactSourceDataIntoInsightPeriod({
