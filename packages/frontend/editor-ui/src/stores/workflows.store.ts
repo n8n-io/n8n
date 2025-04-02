@@ -140,6 +140,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const workflowExecutionData = ref<IExecutionResponse | null>(null);
 	const workflowExecutionPairedItemMappings = ref<Record<string, Set<string>>>({});
 	const activeExecutionId = ref<string | null>(null);
+	const previousExecutionId = ref<string | null>(null);
 	const subWorkflowExecutionError = ref<Error | null>(null);
 	const executionWaitingForWebhook = ref(false);
 	const workflowsById = ref<Record<string, IWorkflowDb>>({});
@@ -281,6 +282,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const connectionsByDestinationNode = computed(() =>
 		Workflow.getConnectionsByDestination(workflow.value.connections),
 	);
+
+	function setActiveExecutionId(id: string | null) {
+		previousExecutionId.value = activeExecutionId.value;
+		activeExecutionId.value = id;
+	}
 
 	function getWorkflowResultDataByNodeName(nodeName: string): ITaskData[] | null {
 		if (getWorkflowRunData.value === null) {
@@ -608,7 +614,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowSettings({ ...defaults.settings });
 		setWorkflowTagIds([]);
 
-		activeExecutionId.value = null;
+		setActiveExecutionId(null);
 		executingNode.value.length = 0;
 		executionWaitingForWebhook.value = false;
 	}
@@ -1675,7 +1681,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function markExecutionAsStopped() {
-		activeExecutionId.value = null;
+		setActiveExecutionId(null);
 		clearNodeExecutionQueue();
 		executionWaitingForWebhook.value = false;
 		uiStore.removeActiveAction('workflowRunning');
@@ -1700,6 +1706,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowExecutionData,
 		workflowExecutionPairedItemMappings,
 		activeExecutionId,
+		previousExecutionId,
+		setActiveExecutionId,
 		subWorkflowExecutionError,
 		executionWaitingForWebhook,
 		executingNode,

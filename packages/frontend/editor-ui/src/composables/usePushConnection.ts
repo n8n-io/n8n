@@ -151,6 +151,12 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 			return false;
 		}
 
+		if (receivedData.type === 'executionStarted') {
+			if (!workflowsStore.activeExecutionId) {
+				workflowsStore.setActiveExecutionId(receivedData.data.executionId);
+			}
+		}
+
 		if (
 			receivedData.type === 'nodeExecuteAfter' ||
 			receivedData.type === 'nodeExecuteBefore' ||
@@ -228,8 +234,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 			}
 
 			const { executionId } = receivedData.data;
-			const { activeExecutionId } = workflowsStore;
-			if (executionId !== activeExecutionId) {
+			if (executionId !== workflowsStore.activeExecutionId) {
 				// The workflow which did finish execution did either not get started
 				// by this session or we do not have the execution id yet.
 				if (isRetry !== true) {
@@ -322,7 +327,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				runDataExecutedErrorMessage = i18n.baseText(
 					'executionsList.showMessage.stopExecution.message',
 					{
-						interpolate: { activeExecutionId },
+						interpolate: { activeExecutionId: workflowsStore.activeExecutionId },
 					},
 				);
 			}
@@ -523,6 +528,8 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 					iRunExecutionData.resultData.runData[lastNodeExecuted][0].data!.main[0]!.length;
 			}
 
+			workflowsStore.setActiveExecutionId(null);
+
 			void useExternalHooks().run('pushConnection.executionFinished', {
 				itemsCount,
 				nodeName: iRunExecutionData.resultData.lastNodeExecuted,
@@ -578,7 +585,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 
 			if (pushData.workflowId === workflowsStore.workflowId) {
 				workflowsStore.executionWaitingForWebhook = false;
-				workflowsStore.activeExecutionId = pushData.executionId;
+				workflowsStore.setActiveExecutionId(pushData.executionId);
 			}
 
 			void processWaitingPushMessages();
