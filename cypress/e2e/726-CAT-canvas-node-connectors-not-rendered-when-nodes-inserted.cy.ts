@@ -1,8 +1,8 @@
+import * as workflow from '../composables/workflow';
 import { EDIT_FIELDS_SET_NODE_NAME, LOOP_OVER_ITEMS_NODE_NAME } from '../constants';
 import { NodeCreator } from '../pages/features/node-creator';
 import { NDV } from '../pages/ndv';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
-
 const nodeCreatorFeature = new NodeCreator();
 const WorkflowPage = new WorkflowPageClass();
 const NDVModal = new NDV();
@@ -18,7 +18,7 @@ describe('CAT-726 Node connectors not rendered when nodes inserted on the canvas
 		nodeCreatorFeature.getters.getCreatorItem(EDIT_FIELDS_SET_NODE_NAME).click();
 		NDVModal.actions.close();
 
-		WorkflowPage.actions.executeWorkflow();
+		workflow.executeWorkflowAndWait();
 
 		cy.getByTestId('edge-label').realHover();
 		cy.getByTestId('add-connection-button').realClick();
