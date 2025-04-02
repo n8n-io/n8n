@@ -7,8 +7,8 @@
 			"host": "s3.us-east-1.amazonaws.com",
 			"bucketName": "remdol-n8n",
 			"bucketRegion": "us-east-1",
-			"accessKey": "***REMOVED***",
-			"accessSecret": "***REMOVED***"
+			"accessKey": "ACCESS_KEY",
+			"accessSecret": "ACCESS_SECRET"
 		}
 	},
 	"binaryDataManager": {
