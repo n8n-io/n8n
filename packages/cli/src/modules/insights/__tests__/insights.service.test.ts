@@ -892,7 +892,7 @@ describe('getInsightsByWorkflow', () => {
 			});
 
 			// Barely in range insight (should be included)
-			// 14 days ago start of the day
+			// 1 hour before 14 days ago
 			await createCompactedInsightsEvent(workflow, {
 				type: 'success',
 				value: 1,
@@ -901,7 +901,7 @@ describe('getInsightsByWorkflow', () => {
 			});
 
 			// Out of date range insight (should not be included)
-			// 14 days and 1 minute ago
+			// 14 days ago
 			await createCompactedInsightsEvent(workflow, {
 				type: 'success',
 				value: 1,
@@ -1090,7 +1090,7 @@ describe('getInsightsByTime', () => {
 			});
 
 			// Barely in range insight (should be included)
-			// 14 days ago start of the day
+			// 1 hour before 14 days ago
 			await createCompactedInsightsEvent(workflow, {
 				type: workflow === workflow1 ? 'success' : 'failure',
 				value: 1,
@@ -1099,7 +1099,7 @@ describe('getInsightsByTime', () => {
 			});
 
 			// Out of date range insight (should not be included)
-			// 14 days ago start of the day and minus 1 minute
+			// 14 days ago
 			await createCompactedInsightsEvent(workflow, {
 				type: 'success',
 				value: 1,
