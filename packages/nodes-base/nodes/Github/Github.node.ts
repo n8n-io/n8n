@@ -690,7 +690,7 @@ export class Github implements INodeType {
 						'@version': [{ _cnd: { lte: 1 } }],
 					},
 				},
-				description: 'The git reference for the workflow dispatch (branch, tag, or commit SHA)',
+				description: 'The git reference for the workflow dispatch (branch or tag name)',
 			},
 			{
 				displayName: 'Ref',
