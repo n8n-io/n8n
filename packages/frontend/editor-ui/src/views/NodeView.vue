@@ -114,6 +114,7 @@ import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
 import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionButtonVisible';
+import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
 
 defineOptions({
 	name: 'NodeView',
@@ -273,7 +274,7 @@ const keyBindingsEnabled = computed(() => {
 	return !ndvStore.activeNode && uiStore.activeModals.length === 0;
 });
 
-const isChatOpen = computed(() => workflowsStore.chatPanelState !== 'closed');
+const isChatOpen = computed(() => workflowsStore.chatPanelState !== LOGS_PANEL_STATE.CLOSED);
 
 /**
  * Initialization
