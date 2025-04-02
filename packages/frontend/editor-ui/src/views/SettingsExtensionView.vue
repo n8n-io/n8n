@@ -15,15 +15,19 @@ const extension = computed<Extension | null>(() => {
 	return extensionsStore.extensions.find((extension) => extension.id === extensionId) ?? null;
 });
 
-// watch(
-// 	() => extension.value,
-// 	async (newExtension) => {
-// 		if (newExtension) {
-// 			await extensionsStore.setupExtension(newExtension.id);
-// 		}
-// 	},
-// 	{ immediate: true },
-// );
+watch(
+	() => extension.value,
+	async (newExtension, oldExtension) => {
+		// TODO: Add better teardown logic
+		const oldExtensionIFrame = document.querySelector(`[extensionID="${oldExtension?.id}"] iframe`);
+		if (oldExtensionIFrame) {
+			oldExtensionIFrame.remove();
+		}
+		if (newExtension) {
+			await extensionsStore.setupExtension(newExtension.id);
+		}
+	},
+);
 
 onMounted(async () => {
 	if (!extension.value) {

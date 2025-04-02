@@ -1,13 +1,17 @@
 import { useToast } from '@/composables/useToast';
 import type { ElMessageBoxOptions } from 'element-plus';
-import { SETTINGS_EXTENSIONS_CONTAINER_ID } from '@/constants';
 import { useMessage } from '@/composables/useMessage';
+import { ExtensionIframeManager } from './ExtensionPaneManager';
+
+const extensionIFrameManager = new ExtensionIframeManager({
+	watchStyleChanges: false,
+});
 
 export type N8nExtensionContext = {
 	createViewPanel: (options: {
 		id: string;
 		name: string;
-	}) => HTMLIFrameElement;
+	}) => Promise<HTMLIFrameElement>;
 	showToast: (options: {
 		message: string;
 		type: 'success' | 'error' | 'info';
@@ -21,18 +25,11 @@ export type N8nExtensionContext = {
 };
 
 const n8nExtensionContext: N8nExtensionContext = {
-	createViewPanel: ({ id, name }) => {
-		const settingsExtensionContainer = document.getElementById(SETTINGS_EXTENSIONS_CONTAINER_ID);
-		if (!settingsExtensionContainer) {
-			throw new Error(
-				`Settings extension container with id "${SETTINGS_EXTENSIONS_CONTAINER_ID}" not found`,
-			);
-		}
-		const extensionIFrame = document.createElement('iframe');
-		extensionIFrame.id = id;
-		settingsExtensionContainer.appendChild(extensionIFrame);
-
-		return extensionIFrame;
+	createViewPanel: async ({ id, name }) => {
+		const extensionFrame = extensionIFrameManager.createSettingsExtensionIframe(id, name);
+		await extensionIFrameManager.collectStyles();
+		extensionIFrameManager.registerIframe(id, extensionFrame);
+		return extensionFrame;
 	},
 	showToast: ({ message, type }) => {
 		const toast = useToast();

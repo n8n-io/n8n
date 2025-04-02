@@ -1,3 +1,4 @@
+import { useToast } from '@/composables/useToast';
 import { STORES } from '@/constants';
 import n8n from '@/extensions-sdk';
 import { defineStore } from 'pinia';
@@ -20,10 +21,13 @@ export type Extension = {
 	};
 	contributes: unknown;
 	path: string;
+	initialized?: boolean;
 };
 
 export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 	const extensions = ref<Extension[]>([]);
+
+	const toast = useToast();
 
 	const loadExtensions = () => {
 		// Load all manifests from the extensions directory
@@ -68,7 +72,11 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 			return;
 		}
 		if (!extension.setup.frontend) {
-			console.warn(`Extension "${id}" does not have a setup function`);
+			toast.showError(
+				new Error(`Extension "${extension.name}" does not have a frontend setup`),
+				'Error loading extension',
+			);
+			return;
 		}
 
 		const basePath = extension.path.replace('n8n.manifest.json', '');
@@ -77,6 +85,7 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 		const extensionModule = await import(mainPath);
 		const context = n8n;
 		extensionModule.setup(context.n8n.extensionContext);
+		extension.initialized = true;
 	};
 
 	return {

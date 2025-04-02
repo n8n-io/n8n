@@ -2,7 +2,7 @@
 	"id": "workflow-settings-page",
 	"name": "@milorad/custom-settings-page",
 	"displayName": "Workflow Settings",
-	"description": "Edit current workflow settings from the main settings page.",
+	"description": "Edit your workflow settings from the main settings page.",
 	"version": "1.0.0",
 	"author": "Milorad Filipovic",
 	"category": "Example",

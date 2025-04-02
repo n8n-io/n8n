@@ -2,7 +2,7 @@
 	"id": "cloud-settings-page",
 	"name": "@milorad/cloud-settings-page",
 	"displayName": "Cloud Dashboard",
-	"description": "View and manage your cloud settings from the main settings page.",
+	"description": "View and manage your cloud settings straight from n8n UI",
 	"version": "1.0.0",
 	"author": "Milorad Filipovic",
 	"category": "Example",
@@ -14,9 +14,7 @@
 		"backend": []
 	},
 	"events": [],
-	"setup": {
-		"frontend": "./frontend.ts"
-	},
+	"setup": {},
 	"contributes": {
 		"settingsPage": [
 			{
