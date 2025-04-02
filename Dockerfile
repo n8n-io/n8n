@@ -15,6 +15,8 @@ RUN npm install -g axios
 RUN npm install -g openai
 RUN npm install -g node-fetch
 RUN npm install -g firebase-admin
+RUN npm install -g cheerio
+
 
 
 # Also install the packages locally where n8n can find them
