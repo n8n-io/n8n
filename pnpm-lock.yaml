@@ -527,7 +527,7 @@ importers:
         version: 3.666.0(@aws-sdk/client-sts@3.666.0)
       '@getzep/zep-cloud':
         specifier: 1.0.12
-        version: 1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(d1e86e144e3517fab3dbb7a92ab7f45a))
+        version: 1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(fd386e1130022c8548c06dd951c5cbf0))
       '@getzep/zep-js':
         specifier: 0.9.0
         version: 0.9.0
@@ -554,7 +554,7 @@ importers:
         version: 0.3.2(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0))(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 0.3.24
-        version: 0.3.24(14647e509198b6d5542cb42df21485e1)
+        version: 0.3.24(a04a643b073c1ba3ea97b63ddf599935)
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
@@ -592,8 +592,8 @@ importers:
         specifier: 0.1.0
         version: 0.1.0(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))
       '@mozilla/readability':
-        specifier: 0.5.0
-        version: 0.5.0
+        specifier: 0.6.0
+        version: 0.6.0
       '@n8n/json-schema-to-zod':
         specifier: workspace:*
         version: link:../json-schema-to-zod
@@ -647,7 +647,7 @@ importers:
         version: 23.0.1
       langchain:
         specifier: 0.3.11
-        version: 0.3.11(d1e86e144e3517fab3dbb7a92ab7f45a)
+        version: 0.3.11(fd386e1130022c8548c06dd951c5cbf0)
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
@@ -965,8 +965,8 @@ importers:
         specifier: 7.1.2
         version: 7.1.2
       express-openapi-validator:
-        specifier: 5.3.7
-        version: 5.3.7(express@4.21.1)
+        specifier: 5.4.7
+        version: 5.4.7(express@4.21.1)
       express-prom-bundle:
         specifier: 6.6.0
         version: 6.6.0(prom-client@13.2.0)
@@ -1045,9 +1045,6 @@ importers:
       open:
         specifier: 7.4.2
         version: 7.4.2
-      openapi-types:
-        specifier: 12.1.3
-        version: 12.1.3
       otpauth:
         specifier: 9.1.1
         version: 9.1.1
@@ -1140,8 +1137,8 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/typescript-config
       '@redocly/cli':
-        specifier: ^1.25.5
-        version: 1.25.5(encoding@0.1.13)(enzyme@3.11.0)
+        specifier: ^1.28.5
+        version: 1.28.5(encoding@0.1.13)
       '@types/aws4':
         specifier: ^1.5.1
         version: 1.11.2
@@ -1191,8 +1188,8 @@ importers:
         specifier: ^8.1.7
         version: 8.1.7
       '@types/swagger-ui-express':
-        specifier: ^4.1.6
-        version: 4.1.6
+        specifier: ^4.1.8
+        version: 4.1.8
       '@types/syslog-client':
         specifier: ^1.1.2
         version: 1.1.2
@@ -1223,6 +1220,9 @@ importers:
       mjml:
         specifier: ^4.15.3
         version: 4.15.3(encoding@0.1.13)
+      openapi-types:
+        specifier: ^12.1.3
+        version: 12.1.3
       ts-essentials:
         specifier: ^7.0.3
         version: 7.0.3(typescript@5.8.2)
@@ -2347,8 +2347,8 @@ packages:
   '@anthropic-ai/sdk@0.37.0':
     resolution: {integrity: sha512-tHjX2YbkUBwEgg0JZU3EFSSAQPoK4qQR/NFYa8Vtzd5UAyXzZksCw2In69Rml4R/TyHPBfRYaLK35XiOe33pjw==}
 
-  '@apidevtools/json-schema-ref-parser@11.7.0':
-    resolution: {integrity: sha512-pRrmXMCwnmrkS3MLgAIW5dXRzeTv6GLjkjb4HmxNnvAKXN1Nfzp4KmGADBQvlVUcqi+a5D+hfGDLLnd5NnYxog==}
+  '@apidevtools/json-schema-ref-parser@11.9.3':
+    resolution: {integrity: sha512-60vepv88RwcJtSHrD6MjIL6Ta3SOYbgfnkHb+ppAVK+o9mXprRtulx7VlRl3lN3bbvysAfCS7WMVfhUYemB0IQ==}
     engines: {node: '>= 16'}
 
   '@authenio/xml-encryption@2.0.2':
@@ -3288,13 +3288,6 @@ packages:
       dotenv: ^16.4.5
       openai: ^4.62.1
       zod: ^3.23.8
-
-  '@cfaester/enzyme-adapter-react-18@0.8.0':
-    resolution: {integrity: sha512-3Z3ThTUouHwz8oIyhTYQljEMNRFtlVyc3VOOHCbxs47U6cnXs8K9ygi/c1tv49s7MBlTXeIcuN+Ttd9aPtILFQ==}
-    peerDependencies:
-      enzyme: ^3.11.0
-      react: '>=18'
-      react-dom: '>=18'
 
   '@cfworker/json-schema@4.1.0':
     resolution: {integrity: sha512-/vYKi/qMxwNsuIJ9WGWwM2rflY40ZenK3Kh4uR5vB9/Nz12Y7IUN/Xf4wDA7vzPfw0VNh3b/jz4+MjcVgARKJg==}
@@ -4512,8 +4505,8 @@ packages:
   '@mongodb-js/saslprep@1.1.9':
     resolution: {integrity: sha512-tVkljjeEaAhCqTzajSdgbQ6gE6f3oneVwa3iXR6csiEwXXOFsiC6Uh9iAjAhXPtqa/XMDHWjjeNH/77m/Yq2dw==}
 
-  '@mozilla/readability@0.5.0':
-    resolution: {integrity: sha512-Z+CZ3QaosfFaTqvhQsIktyGrjFjSC0Fa4EMph4mqKnWhmyoGICsV/8QK+8HpXut6zV7zwfWwqDmEjtk1Qf6EgQ==}
+  '@mozilla/readability@0.6.0':
+    resolution: {integrity: sha512-juG5VWh4qAivzTAeMzvY9xs9HY5rAcr2E4I7tiSSCokRFi7XIZCAu92ZkSTsIj1OPceCifL3cpfteP3pDT9/QQ==}
     engines: {node: '>=14.0.0'}
 
   '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.2':
@@ -5009,17 +5002,17 @@ packages:
   '@redocly/ajv@8.11.2':
     resolution: {integrity: sha512-io1JpnwtIcvojV7QKDUSIuMN/ikdOUd1ReEnUnMKGfDVridQZ31J0MmIuqwuRjWDZfmvr+Q0MqCcfHM2gTivOg==}
 
-  '@redocly/cli@1.25.5':
-    resolution: {integrity: sha512-sFh4A8wqwuig7mF/nYNVIyxSfKKZikWC+uVH6OB1IepYQXNsHFaLAU1VaNI9gS5mMvWmYx5SEuSCVB9LaNFBhw==}
-    engines: {node: '>=14.19.0', npm: '>=7.0.0'}
+  '@redocly/cli@1.28.5':
+    resolution: {integrity: sha512-06EIhhqW9tmrlGutpZFFqjnNTIX7wXHvP7BBw6vKJjy6nd++9nHz+B8feeeoJHC7Q2vK7XoCuOMDzqY6BNCCug==}
+    engines: {node: '>=18.17.0', npm: '>=9.5.0'}
     hasBin: true
 
-  '@redocly/config@0.12.1':
-    resolution: {integrity: sha512-RW3rSirfsPdr0uvATijRDU3f55SuZV3m7/ppdTDvGw4IB0cmeZRkFmqTrchxMqWP50Gfg1tpHnjdxUCNo0E2qg==}
+  '@redocly/config@0.20.3':
+    resolution: {integrity: sha512-Nyyv1Bj7GgYwj/l46O0nkH1GTKWbO3Ixe7KFcn021aZipkZd+z8Vlu1BwkhqtVgivcKaClaExtWU/lDHkjBzag==}
 
-  '@redocly/openapi-core@1.25.5':
-    resolution: {integrity: sha512-BNgXjqesJu4L5f8F73c2hkkH5IdvjYCKYFgIl+m9oNgqGRIPBJjtiEGOx7jkQ6nElN4311z7Z4aTECtklaaHwg==}
-    engines: {node: '>=14.19.0', npm: '>=7.0.0'}
+  '@redocly/openapi-core@1.28.5':
+    resolution: {integrity: sha512-eAuL+x1oBbodJksPm4UpFU57A6z1n1rx9JNpD87CObwtbRf5EzW29Ofd0t057bPGcHc8cYZtZzJ69dcRQ9xGdg==}
+    engines: {node: '>=18.17.0', npm: '>=9.5.0'}
 
   '@replit/codemirror-indentation-markers@6.5.3':
     resolution: {integrity: sha512-hL5Sfvw3C1vgg7GolLe/uxX5T3tmgOA3ZzqlMv47zjU1ON51pzNWiVbS22oh6crYhtVhv8b3gdXwoYp++2ilHw==}
@@ -6171,8 +6164,8 @@ packages:
   '@types/supertest@6.0.2':
     resolution: {integrity: sha512-137ypx2lk/wTQbW6An6safu9hXmajAifU/s7szAHLN/FeIm5w7yR0Wkl9fdJMRSHwOn4HLAI0DaB2TOORuhPDg==}
 
-  '@types/swagger-ui-express@4.1.6':
-    resolution: {integrity: sha512-UVSiGYXa5IzdJJG3hrc86e8KdZWLYxyEsVoUI4iPXc7CO4VZ3AfNP8d/8+hrDRIqz+HAaSMtZSqAsF3Nq2X/Dg==}
+  '@types/swagger-ui-express@4.1.8':
+    resolution: {integrity: sha512-AhZV8/EIreHFmBV5wAs0gzJUNq9JbbSXgJLQubCC0jtIo6prnI9MIRRxnU4MZX9RB9yXxF1V4R7jtLl/Wcj31g==}
 
   '@types/syslog-client@1.1.2':
     resolution: {integrity: sha512-X8MwGedXYNmYltPDaZQCM9X6cSdfFbJZWhrU81gWKsg+Q6mSgRWs/12Mq9nHaUV4wqMYDNrnytbwbMUiVnWegw==}
@@ -6789,10 +6782,6 @@ packages:
   array-union@2.1.0:
     resolution: {integrity: sha512-HGyxoOTYUyCM6stUe6EJgnd4EoewAI7zMdfqO+kGjnlZmBDz/cR5pf8r/cR4Wq60sL/p0IkcjUEEPwS3GFrIyw==}
     engines: {node: '>=8'}
-
-  array.prototype.filter@1.0.4:
-    resolution: {integrity: sha512-r+mCJ7zXgXElgR4IRC+fkvNCeoaavWBs6EdCso5Tbcf+iEMKzBU/His60lt34WEZ9vlb8wDkZvQGcVI5GwkfoQ==}
-    engines: {node: '>= 0.4'}
 
   array.prototype.findlastindex@1.2.3:
     resolution: {integrity: sha512-LzLoiOMAxvy+Gd3BAq3B7VeIgPdo+Q8hthvKtXybMvRV0jrXfJM/t8mw7nNlpEcVlVUnCnM2KSX4XU5HmpodOA==}
@@ -7551,9 +7540,6 @@ packages:
   core-js-compat@3.41.0:
     resolution: {integrity: sha512-RFsU9LySVue9RTwdDVX/T0e2Y6jRYWXERKElIjpuEOEnxaXffI0X7RUwVzfYLfzuLXSNJDYoRYUAmRUcyln20A==}
 
-  core-js@3.39.0:
-    resolution: {integrity: sha512-raM0ew0/jJUqkJ0E6e8UDtl+y/7ktFivgWvqw8dNSQeNWoSDLvQ1H/RN3aPXB9tBd4/FhyR4RDPGhsNIMsAn7g==}
-
   core-js@3.40.0:
     resolution: {integrity: sha512-7vsMc/Lty6AGnn7uFpYT56QesI5D2Y/UkgKounk87OP9Z2H9Z8kj6jzcSGAxFmUtDOS0ntK6lbQz+Nsa0Jj6mQ==}
 
@@ -7955,9 +7941,6 @@ packages:
     resolution: {integrity: sha512-WkrWp9GR4KXfKGYzOLmTuGVi1UWFfws377n9cc55/tb6DuqyF6pcQ5AbiHEshaDpY9v6oaSr2XCDidGmMwdzIA==}
     engines: {node: '>=8'}
 
-  discontinuous-range@1.0.0:
-    resolution: {integrity: sha512-c68LpLbO+7kP/b1Hr1qs8/BJ09F5khZGTxqxZuhzxpmwJKOgRFHJWIb9/KmqnqHhLdO55aOxFH/EGBvUQbL/RQ==}
-
   dlv@1.1.3:
     resolution: {integrity: sha512-+HlytyjlPKnIG8XuRG8WvmBP8xs8P71y+SKKS6ZXWoEgLuePxtDoUEiH7WkdePWrQ5JBpE6aoVqfZfJUQkjXwA==}
 
@@ -8143,12 +8126,6 @@ packages:
     resolution: {integrity: sha512-+h1lkLKhZMTYjog1VEpJNG7NZJWcuc2DDk/qsqSTRRCOXiLjeQ1d1/udrUGhqMxUgAlwKNZ0cf2uqan5GLuS2A==}
     engines: {node: '>=6'}
 
-  enzyme-shallow-equal@1.0.7:
-    resolution: {integrity: sha512-/um0GFqUXnpM9SvKtje+9Tjoz3f1fpBC3eXRFrNs8kpYn69JljciYP7KZTqM/YQbUY9KUjvKB4jo/q+L6WGGvg==}
-
-  enzyme@3.11.0:
-    resolution: {integrity: sha512-Dw8/Gs4vRjxY6/6i9wU0V+utmQO9kvh9XLnz3LIudviOnVYDEe2ec+0k+NQoMamn1VrjKgCUOWj5jG/5M5M0Qw==}
-
   epub2@3.0.2:
     resolution: {integrity: sha512-rhvpt27CV5MZfRetfNtdNwi3XcNg1Am0TwfveJkK8YWeHItHepQ8Js9J06v8XRIjuTrCW/NSGYMTy55Of7BfNQ==}
 
@@ -8169,9 +8146,6 @@ packages:
   es-aggregate-error@1.0.12:
     resolution: {integrity: sha512-j0PupcmELoVbYS2NNrsn5zcLLEsryQwP02x8fRawh7c2eEaPHwJFAxltZsqV7HJjsF57+SMpYyVRWgbVLfOagg==}
     engines: {node: '>= 0.4'}
-
-  es-array-method-boxes-properly@1.0.0:
-    resolution: {integrity: sha512-wd6JXUmyHmt8T5a2xreUwKcGPq6f1f+WwIJkijUqiGcJz1qqnZgP6XIK+QyIWU5lT7imeNxUll48bziG+TSYcA==}
 
   es-define-property@1.0.0:
     resolution: {integrity: sha512-jxayLKShrEqqzJ0eumQbVhTYQM27CfT1T35+gCgDFoL82JLsXqTJ76zv6A0YLOgEnLUMvLzsDsGIrl8NFpT2gQ==}
@@ -8505,8 +8479,8 @@ packages:
     resolution: {integrity: sha512-ss9d3mBChOLTEtyfzXCsxlItUxpgS3i4cb/F70G6Q5ohQzmD12XB4x/Y9U6YboeeYBJZt7WQ5yUNu7ZSQ/EGyQ==}
     engines: {node: '>=v16'}
 
-  express-openapi-validator@5.3.7:
-    resolution: {integrity: sha512-AFlIXvICrPWJvWtrsfpL212kyvmyzThcZ1ASnnsRqmzxSo/3SV+J7M1oEsFYbqo7AYQPGtSBKy7eheGM6wPwag==}
+  express-openapi-validator@5.4.7:
+    resolution: {integrity: sha512-hg1o3+vtsRDLsdBlKBp1Zgyk4WxMtdVwGJGruEj53UIcOiMDgny/diHJmg/MLwPC2OpxLpOCTRFidlVSNAsLPg==}
     peerDependencies:
       express: '*'
 
@@ -9018,10 +8992,6 @@ packages:
     resolution: {integrity: sha512-f2dvO0VU6Oej7RkWJGrehjbzMAjFp5/VKPp5tTpWIV4JHHZK1/BxbFRtf/siA2SWTe09caDmVtYYzWEIbBS4zw==}
     engines: {node: '>= 0.4.0'}
 
-  has@1.0.4:
-    resolution: {integrity: sha512-qdSAmqLF6209RFj4VVItywPMbm3vWylknmB3nvNiUIs72xAimcM8nVYxYr7ncvZq5qzk9MKIZR8ijqD/1QuYjQ==}
-    engines: {node: '>= 0.4.0'}
-
   hash-sum@2.0.0:
     resolution: {integrity: sha512-WdZTbAByD+pHfl/g9QSsBIIwy8IT+EsPiKDs0KNX+zSHhdDLFKdZu0BQHljvO+0QI/BasbMSUa8wYNCZTvhslg==}
 
@@ -9060,9 +9030,6 @@ packages:
 
   hosted-git-info@2.8.9:
     resolution: {integrity: sha512-mxIDAb9Lsm6DoOJ7xH+5+X4y1LU/4Hi50L9C5sIswK3JzULS4bwk1FvjdBgvYR4bzT4tuUQiC15FE2f5HbLvYw==}
-
-  html-element-map@1.3.1:
-    resolution: {integrity: sha512-6XMlxrAFX4UEEGxctfFnmrFaaZFNf9i5fNuV5wZ3WWQ4FVaNP1aX1LkX9j2mfEx1NpjeE/rL3nmgEn23GdFmrg==}
 
   html-encoding-sniffer@3.0.0:
     resolution: {integrity: sha512-oWv4T4yJ52iKrufjnyZPkrN0CH3QnrUqdB6In1g5Fe1mia8GmF36gnfNySxoZtxD5+NmYw1EElVXiBk93UeskA==}
@@ -9419,9 +9386,6 @@ packages:
   is-string@1.0.7:
     resolution: {integrity: sha512-tE2UXzivje6ofPW7l23cjDOMa09gb7xlAqG6jG5ej6uPV32TlWP3NKPigtaGeHNu9fohccRYvIiZMfOOnOYUtg==}
     engines: {node: '>= 0.4'}
-
-  is-subset@0.1.1:
-    resolution: {integrity: sha512-6Ybun0IkarhmEqxXCNw/C0bna6Zb/TkfUX9UbwJtK6ObwAVCxmAP308WWTHviM/zAqXk05cdhYsUsZeGQh99iw==}
 
   is-symbol@1.0.4:
     resolution: {integrity: sha512-C/CPBqKWnvdcxqIARxyOh4v1UUEOCHpgDa0WYgpKDFMszcrPcffg5uhwSgPCLD2WWxmq6isisz87tzT01tuGhg==}
@@ -10104,12 +10068,6 @@ packages:
   lodash.defaults@4.2.0:
     resolution: {integrity: sha512-qjxPLHd3r5DnsdGacqOMU6pb/avJzdh9tFX2ymgoZE27BmjXrNy/y4LoaiTeAb+O3gL8AfpJGtqfX/ae2leYYQ==}
 
-  lodash.escape@4.0.1:
-    resolution: {integrity: sha512-nXEOnb/jK9g0DYMr1/Xvq6l5xMD7GDG55+GSYIYmS0G4tBk/hURD4JR9WCavs04t33WmJx9kCyp9vJ+mr4BOUw==}
-
-  lodash.flattendeep@4.4.0:
-    resolution: {integrity: sha512-uHaJFihxmJcEX3kT4I23ABqKKalJ/zDrDg0lsFtc1h+3uw49SIJ5beyhx5ExVRti3AvKoOJngIj7xz3oylPdWQ==}
-
   lodash.get@4.4.2:
     resolution: {integrity: sha512-z+Uw/vLuy6gQe8cfaFWD7p0wVv8fJl3mbzXh33RS+0oW2wvUqiRXiQ69gLWSLpgB5/6sU+r6BlQR0MBILadqTQ==}
     deprecated: This package is deprecated. Use the optional chaining (?.) operator instead.
@@ -10122,10 +10080,6 @@ packages:
 
   lodash.isboolean@3.0.3:
     resolution: {integrity: sha512-Bz5mupy2SVbPHURB98VAcw+aHh4vRV5IPNhILUCsOzRmsTmSQ17jIuqopAentWoehktxGd9e/hbIXq980/1QJg==}
-
-  lodash.isequal@4.5.0:
-    resolution: {integrity: sha512-pDo3lu8Jhfjqls6GkMgpahsF9kCyayhgykjyLMNFTKWrpVdAQtYyB4muAMWozBB4ig/dtWAmsMxLEI8wuz+DYQ==}
-    deprecated: This package is deprecated. Use require('node:util').isDeepStrictEqual instead.
 
   lodash.isinteger@4.0.4:
     resolution: {integrity: sha512-DBwtEWN2caHQ9/imiNeEA5ys1JoRtRfY3d7V9wkqtbycnAmTvRRmbHKDV4a0EYc678/dia0jrte4tjYwVBaZUA==}
@@ -10674,9 +10628,6 @@ packages:
       socks:
         optional: true
 
-  moo@0.5.2:
-    resolution: {integrity: sha512-iSAJLHYKnX41mKcJKjqvnAN9sf0LMDTXDEvFv+ffuRR9a1MIuXLjMNL6EsnDHSkKLTWNqQQ5uo61P4EbU4NU+Q==}
-
   mqtt-packet@9.0.0:
     resolution: {integrity: sha512-8v+HkX+fwbodsWAZIZTI074XIoxVBOmPeggQuDFCGg1SqNcC+uoRMWu7J6QlJPqIUIJXmjNYYHxBBLr1Y/Df4w==}
 
@@ -10754,10 +10705,6 @@ packages:
 
   natural-compare@1.4.0:
     resolution: {integrity: sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==}
-
-  nearley@2.20.1:
-    resolution: {integrity: sha512-+Mc8UaAebFzgV+KpI5n7DasuuQCHA89dmwm7JXw3TV43ukfNQ9DnBH3Mdb2g/I4Fdxc26pwimBWvjIw0UAILSQ==}
-    hasBin: true
 
   negotiator@0.6.3:
     resolution: {integrity: sha512-+EUsqGPLsM+j/zdChZjsnX51g4XrHFOIXwfnCVPGlQk/k5giakcKsuxCObBRu6DSm9opw/O6slWbJdghQM4bBg==}
@@ -10987,10 +10934,6 @@ packages:
     resolution: {integrity: sha512-TyxmjUoZggd4OrrU1W66FMDG6CuqJxsFvymeyXI51+vQLN67zYfZseptRge703kKQdo4uccgAKebXFcRCzk4+g==}
     engines: {node: '>= 0.4'}
 
-  object.entries@1.1.8:
-    resolution: {integrity: sha512-cmopxi8VwRIAw/fkijJohSfpef5PdN0pMQJN6VC/ZKvn0LIknWD8KtgY6KlQdEc4tIjcQ3HxSMmnvtzIscdaYQ==}
-    engines: {node: '>= 0.4'}
-
   object.fromentries@2.0.7:
     resolution: {integrity: sha512-UPbPHML6sL8PI/mOqPwsH4G6iyXcCGzLin8KvEPenOZN5lpCNBZZQ+V62vdjB1mQHrmqGQt5/OJzemUA+KJmEA==}
     engines: {node: '>= 0.4'}
@@ -11000,10 +10943,6 @@ packages:
 
   object.values@1.1.7:
     resolution: {integrity: sha512-aU6xnDFYT3x17e/f0IiiwlGPTy2jzMySGfUB4fq6z7CV8l85CWHDk5ErhyhpfDHhrOMwGFhSQkhMGHaIotA6Ng==}
-    engines: {node: '>= 0.4'}
-
-  object.values@1.2.0:
-    resolution: {integrity: sha512-yBYjY9QX2hnRmZHAjG/f13MzmBzxzYgQhFrke06TTyKY5zSTEqkOeukBzIdVA3j3ulu8Qa3MbVFShV7T2RmGtQ==}
     engines: {node: '>= 0.4'}
 
   obuf@1.1.2:
@@ -11720,16 +11659,6 @@ packages:
     resolution: {integrity: sha512-cihC68OcGiQOjGiXuo5Jk6XHANTHl1K4JLk/xlEJRTIXfy19Sg6XzB95XonYgr+1rB88bCpr7WZE7D7AlZow4g==}
     hasBin: true
 
-  raf@3.4.1:
-    resolution: {integrity: sha512-Sq4CW4QhwOHE8ucn6J34MqtZCeWFP2aQSmrlroYgqAV1PjStIhJXxYuTgUIfkEk7zTLjmIjLmU5q+fbD1NnOJA==}
-
-  railroad-diagrams@1.0.0:
-    resolution: {integrity: sha512-cz93DjNeLY0idrCNOH6PviZGRN9GJhsdm9hpn1YCS879fj4W+x5IFJhhkRZcwVgMmFF7R82UA/7Oh+R8lLZg6A==}
-
-  randexp@0.4.6:
-    resolution: {integrity: sha512-80WNmd9DA0tmZrw9qQa62GPPWfuXJknrmVmLcxvq4uZBdYqb1wYoKTmnlGUchvVWe0XiLupYkBoXVOxz3C8DYQ==}
-    engines: {node: '>=0.12'}
-
   random-bytes@1.0.0:
     resolution: {integrity: sha512-iv7LhNVO047HzYR3InF6pUcUsPQiHTM1Qal51DcGSuZFBil1aBBWG5eHPNek7bvILMaYJ/8RU1e8w1AMdHmLQQ==}
     engines: {node: '>= 0.8'}
@@ -11772,11 +11701,6 @@ packages:
 
   react-is@18.2.0:
     resolution: {integrity: sha512-xWGDIW6x921xtzPkhiULtthJHoJvBbF3q26fzloPCK0hsvxtPVelvftw3zjbHWSkR2km9Z+4uxbDDK/6Zw9B8w==}
-
-  react-shallow-renderer@16.15.0:
-    resolution: {integrity: sha512-oScf2FqQ9LFVQgA73vr86xl2NaOIX73rh+YFqcOp68CWj56tSfgtGKrEbyhCj0rSijyG9M1CYprTh39fBi5hzA==}
-    peerDependencies:
-      react: ^16.0.0 || ^17.0.0 || ^18.0.0
 
   react-tabs@6.0.2:
     resolution: {integrity: sha512-aQXTKolnM28k3KguGDBSAbJvcowOQr23A+CUJdzJtOSDOtTwzEaJA+1U4KwhNL9+Obe+jFS7geuvA7ICQPXOnQ==}
@@ -11866,14 +11790,14 @@ packages:
   redis@4.6.14:
     resolution: {integrity: sha512-GrNg/e33HtsQwNXL7kJT+iNFPSwE1IPmd7wzV3j4f2z0EYxZfZE7FVTmUysgAtqQQtg5NXF5SNLR9OdO/UHOfw==}
 
-  redoc@2.1.5:
-    resolution: {integrity: sha512-POSbVg+7WLf+/5/c6GWLxL7+9t2D+1WlZdLN0a6qaCQc+ih3XYzteRBkXEN5kjrYrRNjdspfxTZkDLN5WV3Tzg==}
+  redoc@2.4.0:
+    resolution: {integrity: sha512-rFlfzFVWS9XJ6aYAs/bHnLhHP5FQEhwAHDBVgwb9L2FqDQ8Hu8rQ1G84iwaWXxZfPP9UWn7JdWkxI6MXr2ZDjw==}
     engines: {node: '>=6.9', npm: '>=3.0.0'}
     peerDependencies:
       core-js: ^3.1.4
       mobx: ^6.0.4
-      react: ^16.8.4 || ^17.0.0 || ^18.0.0
-      react-dom: ^16.8.4 || ^17.0.0 || ^18.0.0
+      react: ^16.8.4 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      react-dom: ^16.8.4 || ^17.0.0 || ^18.0.0 || ^19.0.0
       styled-components: ^4.1.1 || ^5.1.1 || ^6.0.5
 
   reflect-metadata@0.2.2:
@@ -11982,10 +11906,6 @@ packages:
     resolution: {integrity: sha512-l+sSefzHpj5qimhFSE5a8nufZYAM3sBSVMAPtYkmC+4EH2anSGaEMXSD0izRQbu9nfyQ9y5JrVmp7E8oZrUjvA==}
     engines: {node: '>=8'}
 
-  ret@0.1.15:
-    resolution: {integrity: sha512-TTlYpa+OL+vMMNG24xSlQGEJ3B/RzEfUlLct7b5G/ytav+wPrplCpVMFuwzXbkecJrb6IYo1iFb0S9v37754mg==}
-    engines: {node: '>=0.12'}
-
   retry-axios@2.6.0:
     resolution: {integrity: sha512-pOLi+Gdll3JekwuFjXO3fTq+L9lzMQGcSq7M5gIjExcl3Gu1hd4XXuf5o3+LuSBsaULQH7DiNbsqPd1chVpQGQ==}
     engines: {node: '>=10.7.0'}
@@ -12056,9 +11976,6 @@ packages:
 
   rss-parser@3.13.0:
     resolution: {integrity: sha512-7jWUBV5yGN3rqMMj7CZufl/291QAhvrrGpDNE4k/02ZchL0npisiYYqULF71jCEKoIiHvK/Q2e6IkDwPziT7+w==}
-
-  rst-selector-parser@2.2.3:
-    resolution: {integrity: sha512-nDG1rZeP6oFTLN6yNDV/uiAvs1+FS/KlrEwh7+y7dpuApDBy6bI2HTBcc0/V8lv9OTqfyD34eF7au2pm8aBbhA==}
 
   run-async@2.4.1:
     resolution: {integrity: sha512-tvVnVv01b8c1RrA6Ep7JkStj85Guv/YrMcwqYQnwjsAS2cTmmPGBBjAjpCW7RrSodNSoE2/qg9O4bceNvUuDgQ==}
@@ -13910,7 +13827,7 @@ snapshots:
       - encoding
       - supports-color
 
-  '@apidevtools/json-schema-ref-parser@11.7.0':
+  '@apidevtools/json-schema-ref-parser@11.9.3':
     dependencies:
       '@jsdevtools/ono': 7.1.3
       '@types/json-schema': 7.0.15
@@ -15702,17 +15619,6 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@cfaester/enzyme-adapter-react-18@0.8.0(enzyme@3.11.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
-    dependencies:
-      enzyme: 3.11.0
-      enzyme-shallow-equal: 1.0.7
-      function.prototype.name: 1.1.6
-      has: 1.0.4
-      react: 18.2.0
-      react-dom: 18.2.0(react@18.2.0)
-      react-is: 18.2.0
-      react-shallow-renderer: 16.15.0(react@18.2.0)
-
   '@cfworker/json-schema@4.1.0': {}
 
   '@chromatic-com/storybook@3.2.5(react@18.2.0)(storybook@8.6.4(prettier@3.3.3))':
@@ -16036,7 +15942,7 @@ snapshots:
   '@gar/promisify@1.1.3':
     optional: true
 
-  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(d1e86e144e3517fab3dbb7a92ab7f45a))':
+  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(fd386e1130022c8548c06dd951c5cbf0))':
     dependencies:
       form-data: 4.0.0
       node-fetch: 2.7.0(encoding@0.1.13)
@@ -16045,7 +15951,7 @@ snapshots:
       zod: 3.24.1
     optionalDependencies:
       '@langchain/core': 0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
-      langchain: 0.3.11(d1e86e144e3517fab3dbb7a92ab7f45a)
+      langchain: 0.3.11(fd386e1130022c8548c06dd951c5cbf0)
     transitivePeerDependencies:
       - encoding
 
@@ -16553,7 +16459,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@0.3.24(14647e509198b6d5542cb42df21485e1)':
+  '@langchain/community@0.3.24(a04a643b073c1ba3ea97b63ddf599935)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.49.1)(deepmerge@4.3.1)(dotenv@16.4.5)(encoding@0.1.13)(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))(zod@3.24.1)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -16564,7 +16470,7 @@ snapshots:
       flat: 5.0.2
       ibm-cloud-sdk-core: 5.1.0
       js-yaml: 4.1.0
-      langchain: 0.3.11(d1e86e144e3517fab3dbb7a92ab7f45a)
+      langchain: 0.3.11(fd386e1130022c8548c06dd951c5cbf0)
       langsmith: 0.2.15(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
       openai: 4.78.1(encoding@0.1.13)(zod@3.24.1)
       uuid: 10.0.0
@@ -16579,12 +16485,12 @@ snapshots:
       '@aws-sdk/credential-provider-node': 3.666.0(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0))(@aws-sdk/client-sts@3.666.0)
       '@azure/storage-blob': 12.18.0(encoding@0.1.13)
       '@browserbasehq/sdk': 2.0.0(encoding@0.1.13)
-      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(d1e86e144e3517fab3dbb7a92ab7f45a))
+      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(fd386e1130022c8548c06dd951c5cbf0))
       '@getzep/zep-js': 0.9.0
       '@google-ai/generativelanguage': 2.6.0(encoding@0.1.13)
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)
       '@huggingface/inference': 2.8.0
-      '@mozilla/readability': 0.5.0
+      '@mozilla/readability': 0.6.0
       '@pinecone-database/pinecone': 4.0.0
       '@qdrant/js-client-rest': 1.11.0(typescript@5.8.2)
       '@smithy/eventstream-codec': 2.2.0
@@ -16851,7 +16757,7 @@ snapshots:
     dependencies:
       sparse-bitfield: 3.0.3
 
-  '@mozilla/readability@0.5.0': {}
+  '@mozilla/readability@0.6.0': {}
 
   '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.2':
     optional: true
@@ -17472,23 +17378,22 @@ snapshots:
       require-from-string: 2.0.2
       uri-js-replace: 1.0.1
 
-  '@redocly/cli@1.25.5(encoding@0.1.13)(enzyme@3.11.0)':
+  '@redocly/cli@1.28.5(encoding@0.1.13)':
     dependencies:
-      '@redocly/openapi-core': 1.25.5(encoding@0.1.13)
+      '@redocly/openapi-core': 1.28.5
       abort-controller: 3.0.0
       chokidar: 4.0.1
       colorette: 1.4.0
-      core-js: 3.39.0
+      core-js: 3.40.0
       form-data: 4.0.0
       get-port-please: 3.1.2
       glob: 7.2.3
       handlebars: 4.7.8
       mobx: 6.12.0
-      node-fetch: 2.7.0(encoding@0.1.13)
       pluralize: 8.0.0
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
-      redoc: 2.1.5(core-js@3.39.0)(encoding@0.1.13)(enzyme@3.11.0)(mobx@6.12.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(styled-components@6.1.8(react-dom@18.2.0(react@18.2.0))(react@18.2.0))
+      redoc: 2.4.0(core-js@3.40.0)(encoding@0.1.13)(mobx@6.12.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(styled-components@6.1.8(react-dom@18.2.0(react@18.2.0))(react@18.2.0))
       semver: 7.6.0
       simple-websocket: 9.1.0
       styled-components: 6.1.8(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
@@ -17496,28 +17401,24 @@ snapshots:
     transitivePeerDependencies:
       - bufferutil
       - encoding
-      - enzyme
       - react-native
       - supports-color
       - utf-8-validate
 
-  '@redocly/config@0.12.1': {}
+  '@redocly/config@0.20.3': {}
 
-  '@redocly/openapi-core@1.25.5(encoding@0.1.13)':
+  '@redocly/openapi-core@1.28.5':
     dependencies:
       '@redocly/ajv': 8.11.2
-      '@redocly/config': 0.12.1
+      '@redocly/config': 0.20.3
       colorette: 1.4.0
       https-proxy-agent: 7.0.5
       js-levenshtein: 1.1.6
       js-yaml: 4.1.0
-      lodash.isequal: 4.5.0
       minimatch: 5.1.5
-      node-fetch: 2.7.0(encoding@0.1.13)
       pluralize: 8.0.0
       yaml-ast-parser: 0.0.43
     transitivePeerDependencies:
-      - encoding
       - supports-color
 
   '@replit/codemirror-indentation-markers@6.5.3(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.3)':
@@ -19018,7 +18919,7 @@ snapshots:
       '@types/methods': 1.1.4
       '@types/superagent': 8.1.7
 
-  '@types/swagger-ui-express@4.1.6':
+  '@types/swagger-ui-express@4.1.8':
     dependencies:
       '@types/express': 4.17.21
       '@types/serve-static': 1.15.0
@@ -19787,15 +19688,6 @@ snapshots:
 
   array-union@2.1.0: {}
 
-  array.prototype.filter@1.0.4:
-    dependencies:
-      call-bind: 1.0.7
-      define-properties: 1.2.1
-      es-abstract: 1.23.3
-      es-array-method-boxes-properly: 1.0.0
-      es-object-atoms: 1.0.0
-      is-string: 1.0.7
-
   array.prototype.findlastindex@1.2.3:
     dependencies:
       call-bind: 1.0.7
@@ -20304,7 +20196,7 @@ snapshots:
       assertion-error: 2.0.1
       check-error: 2.1.1
       deep-eql: 5.0.2
-      loupe: 3.1.2
+      loupe: 3.1.3
       pathval: 2.0.0
 
   chalk@3.0.0:
@@ -20695,8 +20587,6 @@ snapshots:
   core-js-compat@3.41.0:
     dependencies:
       browserslist: 4.24.4
-
-  core-js@3.39.0: {}
 
   core-js@3.40.0: {}
 
@@ -21120,8 +21010,6 @@ snapshots:
     dependencies:
       path-type: 4.0.0
 
-  discontinuous-range@1.0.0: {}
-
   dlv@1.1.3: {}
 
   doctrine@2.1.0:
@@ -21315,36 +21203,6 @@ snapshots:
   env-paths@2.2.1:
     optional: true
 
-  enzyme-shallow-equal@1.0.7:
-    dependencies:
-      hasown: 2.0.2
-      object-is: 1.1.6
-
-  enzyme@3.11.0:
-    dependencies:
-      array.prototype.flat: 1.3.2
-      cheerio: 1.0.0
-      enzyme-shallow-equal: 1.0.7
-      function.prototype.name: 1.1.6
-      has: 1.0.4
-      html-element-map: 1.3.1
-      is-boolean-object: 1.1.2
-      is-callable: 1.2.7
-      is-number-object: 1.0.7
-      is-regex: 1.1.4
-      is-string: 1.0.7
-      is-subset: 0.1.1
-      lodash.escape: 4.0.1
-      lodash.isequal: 4.5.0
-      object-inspect: 1.13.2
-      object-is: 1.1.6
-      object.assign: 4.1.5
-      object.entries: 1.1.8
-      object.values: 1.2.0
-      raf: 3.4.1
-      rst-selector-parser: 2.2.3
-      string.prototype.trim: 1.2.9
-
   epub2@3.0.2(ts-toolbelt@9.6.0):
     dependencies:
       adm-zip: 0.5.10
@@ -21465,8 +21323,6 @@ snapshots:
       globalthis: 1.0.3
       has-property-descriptors: 1.0.2
       set-function-name: 2.0.2
-
-  es-array-method-boxes-properly@1.0.0: {}
 
   es-define-property@1.0.0:
     dependencies:
@@ -21915,9 +21771,9 @@ snapshots:
       graceful-fs: 4.2.11
       handlebars: 4.7.8
 
-  express-openapi-validator@5.3.7(express@4.21.1):
+  express-openapi-validator@5.4.7(express@4.21.1):
     dependencies:
-      '@apidevtools/json-schema-ref-parser': 11.7.0
+      '@apidevtools/json-schema-ref-parser': 11.9.3
       '@types/multer': 1.4.12
       ajv: 8.17.1
       ajv-draft-04: 1.0.0(ajv@8.17.1)
@@ -22567,8 +22423,6 @@ snapshots:
     dependencies:
       function-bind: 1.1.2
 
-  has@1.0.4: {}
-
   hash-sum@2.0.0: {}
 
   hasown@2.0.2:
@@ -22597,11 +22451,6 @@ snapshots:
       parse-passwd: 1.0.0
 
   hosted-git-info@2.8.9: {}
-
-  html-element-map@1.3.1:
-    dependencies:
-      array.prototype.filter: 1.0.4
-      call-bind: 1.0.7
 
   html-encoding-sniffer@3.0.0:
     dependencies:
@@ -22740,7 +22589,7 @@ snapshots:
       '@types/debug': 4.1.12
       '@types/node': 18.16.16
       '@types/tough-cookie': 4.0.2
-      axios: 1.8.2
+      axios: 1.8.2(debug@4.4.0)
       camelcase: 6.3.0
       debug: 4.4.0(supports-color@8.1.1)
       dotenv: 16.4.5
@@ -22750,7 +22599,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.2
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.8.2(debug@4.4.0))
+      retry-axios: 2.6.0(axios@1.8.2)
       tough-cookie: 4.1.3
     transitivePeerDependencies:
       - supports-color
@@ -23014,8 +22863,6 @@ snapshots:
   is-string@1.0.7:
     dependencies:
       has-tostringtag: 1.0.2
-
-  is-subset@0.1.1: {}
 
   is-symbol@1.0.4:
     dependencies:
@@ -23737,7 +23584,7 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langchain@0.3.11(d1e86e144e3517fab3dbb7a92ab7f45a):
+  langchain@0.3.11(fd386e1130022c8548c06dd951c5cbf0):
     dependencies:
       '@langchain/core': 0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
       '@langchain/openai': 0.3.17(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
@@ -23939,10 +23786,6 @@ snapshots:
 
   lodash.defaults@4.2.0: {}
 
-  lodash.escape@4.0.1: {}
-
-  lodash.flattendeep@4.4.0: {}
-
   lodash.get@4.4.2: {}
 
   lodash.includes@4.3.0: {}
@@ -23950,8 +23793,6 @@ snapshots:
   lodash.isarguments@3.1.0: {}
 
   lodash.isboolean@3.0.3: {}
-
-  lodash.isequal@4.5.0: {}
 
   lodash.isinteger@4.0.4: {}
 
@@ -24669,8 +24510,6 @@ snapshots:
       gcp-metadata: 5.3.0(encoding@0.1.13)
       socks: 2.8.3
 
-  moo@0.5.2: {}
-
   mqtt-packet@9.0.0:
     dependencies:
       bl: 6.0.12
@@ -24787,13 +24626,6 @@ snapshots:
   native-duplexpair@1.0.0: {}
 
   natural-compare@1.4.0: {}
-
-  nearley@2.20.1:
-    dependencies:
-      commander: 2.20.3
-      moo: 0.5.2
-      railroad-diagrams: 1.0.0
-      randexp: 0.4.6
 
   negotiator@0.6.3: {}
 
@@ -25049,12 +24881,6 @@ snapshots:
       define-properties: 1.2.1
       es-abstract: 1.23.3
 
-  object.entries@1.1.8:
-    dependencies:
-      call-bind: 1.0.7
-      define-properties: 1.2.1
-      es-object-atoms: 1.0.0
-
   object.fromentries@2.0.7:
     dependencies:
       call-bind: 1.0.7
@@ -25073,12 +24899,6 @@ snapshots:
       call-bind: 1.0.7
       define-properties: 1.2.1
       es-abstract: 1.22.5
-
-  object.values@1.2.0:
-    dependencies:
-      call-bind: 1.0.7
-      define-properties: 1.2.1
-      es-object-atoms: 1.0.0
 
   obuf@1.1.2: {}
 
@@ -25810,17 +25630,6 @@ snapshots:
     dependencies:
       utf8: 2.1.2
 
-  raf@3.4.1:
-    dependencies:
-      performance-now: 2.1.0
-
-  railroad-diagrams@1.0.0: {}
-
-  randexp@0.4.6:
-    dependencies:
-      discontinuous-range: 1.0.0
-      ret: 0.1.15
-
   random-bytes@1.0.0: {}
 
   randombytes@2.1.0:
@@ -25866,12 +25675,6 @@ snapshots:
   react-is@17.0.2: {}
 
   react-is@18.2.0: {}
-
-  react-shallow-renderer@16.15.0(react@18.2.0):
-    dependencies:
-      object-assign: 4.1.1
-      react: 18.2.0
-      react-is: 18.2.0
 
   react-tabs@6.0.2(react@18.2.0):
     dependencies:
@@ -26008,12 +25811,11 @@ snapshots:
       '@redis/search': 1.1.6(@redis/client@1.5.16)
       '@redis/time-series': 1.0.5(@redis/client@1.5.16)
 
-  redoc@2.1.5(core-js@3.39.0)(encoding@0.1.13)(enzyme@3.11.0)(mobx@6.12.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(styled-components@6.1.8(react-dom@18.2.0(react@18.2.0))(react@18.2.0)):
+  redoc@2.4.0(core-js@3.40.0)(encoding@0.1.13)(mobx@6.12.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(styled-components@6.1.8(react-dom@18.2.0(react@18.2.0))(react@18.2.0)):
     dependencies:
-      '@cfaester/enzyme-adapter-react-18': 0.8.0(enzyme@3.11.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
-      '@redocly/openapi-core': 1.25.5(encoding@0.1.13)
+      '@redocly/openapi-core': 1.28.5
       classnames: 2.5.1
-      core-js: 3.39.0
+      core-js: 3.40.0
       decko: 1.2.0
       dompurify: 3.1.7
       eventemitter3: 5.0.1
@@ -26039,7 +25841,6 @@ snapshots:
       url-template: 2.0.8
     transitivePeerDependencies:
       - encoding
-      - enzyme
       - react-native
       - supports-color
 
@@ -26151,9 +25952,7 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  ret@0.1.15: {}
-
-  retry-axios@2.6.0(axios@1.8.2(debug@4.4.0)):
+  retry-axios@2.6.0(axios@1.8.2):
     dependencies:
       axios: 1.8.2
 
@@ -26240,11 +26039,6 @@ snapshots:
     dependencies:
       entities: 2.2.0
       xml2js: 0.5.0
-
-  rst-selector-parser@2.2.3:
-    dependencies:
-      lodash.flattendeep: 4.4.0
-      nearley: 2.20.1
 
   run-async@2.4.1: {}
 
@@ -28206,7 +28000,7 @@ snapshots:
   yargs@17.0.1:
     dependencies:
       cliui: 7.0.4
-      escalade: 3.1.1
+      escalade: 3.2.0
       get-caller-file: 2.0.5
       require-directory: 2.1.1
       string-width: 4.2.3
