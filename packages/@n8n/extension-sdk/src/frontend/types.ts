@@ -1,13 +1,13 @@
 import type { RouteRecordRaw } from 'vue-router';
 import type { App } from 'vue';
 
-export type FrontendModuleContext = {
+export type FrontendExtensionContext = {
 	app: App;
 	defineRoutes: (routes: RouteRecordRaw[]) => void;
 };
 
-export type FrontendModuleSetupFn = (context: FrontendModuleContext) => void;
+export type FrontendExtensionSetupFn = (context: FrontendExtensionContext) => void;
 
-export type FrontendModule = {
-	setup: FrontendModuleSetupFn;
+export type FrontendExtension = {
+	setup: FrontendExtensionSetupFn;
 };

@@ -1,7 +1,7 @@
-export type BackendModuleContext = {};
+export type BackendExtensionContext = {};
 
-export type BackendModuleSetupFn = (context: BackendModule) => void;
+export type BackendExtensionSetupFn = (context: BackendExtension) => void;
 
-export type BackendModule = {
-	setup: BackendModuleSetupFn;
+export type BackendExtension = {
+	setup: BackendExtensionSetupFn;
 };
