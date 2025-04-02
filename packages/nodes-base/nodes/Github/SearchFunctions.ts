@@ -126,37 +126,34 @@ export async function getRefs(
 	const page = paginationToken ? +paginationToken : 1;
 	const per_page = 100;
 
+	const responseData = await githubApiRequest.call(
+		this,
+		'GET',
+		`/repos/${owner}/${repository}/git/refs`,
+		{},
+		{ page, per_page },
+	);
+
 	const refs: INodeListSearchItems[] = [];
 
-	// Fetch branches
-	const branches = await githubApiRequest.call(
-		this,
-		'GET',
-		`/repos/${owner}/${repository}/branches`,
-		{},
-		{ page, per_page },
-	);
-	for (const branch of branches) {
-		refs.push({
-			name: branch.name,
-			value: branch.name,
-			description: `Branch: ${branch.name}`,
-		});
-	}
+	for (const ref of responseData) {
+		const refPath = ref.ref.split('/');
+		const refType = refPath[1];
+		const refName = refPath.slice(2).join('/');
 
-	// Fetch tags
-	const tags = await githubApiRequest.call(
-		this,
-		'GET',
-		`/repos/${owner}/${repository}/tags`,
-		{},
-		{ page, per_page },
-	);
-	for (const tag of tags) {
+		let description = '';
+		if (refType === 'heads') {
+			description = `Branch: ${refName}`;
+		} else if (refType === 'tags') {
+			description = `Tag: ${refName}`;
+		} else {
+			description = `${refType}: ${refName}`;
+		}
+
 		refs.push({
-			name: tag.name,
-			value: tag.name,
-			description: `Tag: ${tag.name}`,
+			name: refName,
+			value: refName,
+			description,
 		});
 	}
 
@@ -166,6 +163,6 @@ export async function getRefs(
 		);
 		return { results: filteredRefs };
 	}
-	const nextPaginationToken = page * per_page < refs.length ? page + 1 : undefined;
+	const nextPaginationToken = responseData.length === per_page ? page + 1 : undefined;
 	return { results: refs, paginationToken: nextPaginationToken };
 }
