@@ -1,11 +1,8 @@
-import { CreateOrUpdateApiKeyRequestDto } from '@n8n/api-types';
+import { CreateApiKeyRequestDto, UpdateApiKeyRequestDto } from '@n8n/api-types';
 import type { RequestHandler } from 'express';
 
-import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
 import { Body, Delete, Get, Param, Patch, Post, RestController } from '@/decorators';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
-import { License } from '@/license';
 import { isApiEnabled } from '@/public-api';
 import { AuthenticatedRequest } from '@/requests';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
@@ -23,8 +20,6 @@ export class ApiKeysController {
 	constructor(
 		private readonly eventService: EventService,
 		private readonly publicApiKeyService: PublicApiKeyService,
-		private readonly apiKeysRepository: ApiKeyRepository,
-		private readonly license: License,
 	) {}
 
 	/**
@@ -34,16 +29,11 @@ export class ApiKeysController {
 	async createAPIKey(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Body payload: CreateOrUpdateApiKeyRequestDto,
+		@Body { label, expiresAt }: CreateApiKeyRequestDto,
 	) {
-		const currentNumberOfApiKeys = await this.apiKeysRepository.countBy({ userId: req.user.id });
-
-		if (currentNumberOfApiKeys >= this.license.getApiKeysPerUserLimit()) {
-			throw new BadRequestError('You have reached the maximum number of API keys allowed.');
-		}
-
 		const newApiKey = await this.publicApiKeyService.createPublicApiKeyForUser(req.user, {
-			label: payload.label,
+			label,
+			expiresAt,
 		});
 
 		this.eventService.emit('public-api-key-created', { user: req.user, publicApi: false });
@@ -52,6 +42,7 @@ export class ApiKeysController {
 			...newApiKey,
 			apiKey: this.publicApiKeyService.redactApiKey(newApiKey.apiKey),
 			rawApiKey: newApiKey.apiKey,
+			expiresAt,
 		};
 	}
 
@@ -84,10 +75,10 @@ export class ApiKeysController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('id') apiKeyId: string,
-		@Body payload: CreateOrUpdateApiKeyRequestDto,
+		@Body { label }: UpdateApiKeyRequestDto,
 	) {
 		await this.publicApiKeyService.updateApiKeyForUser(req.user, apiKeyId, {
-			label: payload.label,
+			label,
 		});
 
 		return { success: true };

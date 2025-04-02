@@ -1,0 +1,250 @@
+{
+    "type": "object",
+    "properties": {
+        "appCreator": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "data": {
+            "type": "object",
+            "properties": {
+                "board": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "shortLink": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "card": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "string"
+                        },
+                        "idShort": {
+                            "type": "integer"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "shortLink": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "list": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "text": {
+                    "type": "string"
+                }
+            }
+        },
+        "date": {
+            "type": "string"
+        },
+        "display": {
+            "type": "object",
+            "properties": {
+                "entities": {
+                    "type": "object",
+                    "properties": {
+                        "card": {
+                            "type": "object",
+                            "properties": {
+                                "hideIfContext": {
+                                    "type": "boolean"
+                                },
+                                "id": {
+                                    "type": "string"
+                                },
+                                "shortLink": {
+                                    "type": "string"
+                                },
+                                "text": {
+                                    "type": "string"
+                                },
+                                "type": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "comment": {
+                            "type": "object",
+                            "properties": {
+                                "text": {
+                                    "type": "string"
+                                },
+                                "type": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "contextOn": {
+                            "type": "object",
+                            "properties": {
+                                "hideIfContext": {
+                                    "type": "boolean"
+                                },
+                                "idContext": {
+                                    "type": "string"
+                                },
+                                "translationKey": {
+                                    "type": "string"
+                                },
+                                "type": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "memberCreator": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "string"
+                                },
+                                "text": {
+                                    "type": "string"
+                                },
+                                "type": {
+                                    "type": "string"
+                                },
+                                "username": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                },
+                "translationKey": {
+                    "type": "string"
+                }
+            }
+        },
+        "entities": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "hideIfContext": {
+                        "type": "boolean"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "idContext": {
+                        "type": "string"
+                    },
+                    "shortLink": {
+                        "type": "string"
+                    },
+                    "text": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "username": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "idMemberCreator": {
+            "type": "string"
+        },
+        "limits": {
+            "type": "object",
+            "properties": {
+                "reactions": {
+                    "type": "object",
+                    "properties": {
+                        "perAction": {
+                            "type": "object",
+                            "properties": {
+                                "disableAt": {
+                                    "type": "integer"
+                                },
+                                "status": {
+                                    "type": "string"
+                                },
+                                "warnAt": {
+                                    "type": "integer"
+                                }
+                            }
+                        },
+                        "uniquePerAction": {
+                            "type": "object",
+                            "properties": {
+                                "disableAt": {
+                                    "type": "integer"
+                                },
+                                "status": {
+                                    "type": "string"
+                                },
+                                "warnAt": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "memberCreator": {
+            "type": "object",
+            "properties": {
+                "activityBlocked": {
+                    "type": "boolean"
+                },
+                "avatarHash": {
+                    "type": "string"
+                },
+                "avatarUrl": {
+                    "type": "string"
+                },
+                "fullName": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "initials": {
+                    "type": "string"
+                },
+                "nonPublicAvailable": {
+                    "type": "boolean"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "type": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

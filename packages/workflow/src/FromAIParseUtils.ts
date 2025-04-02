@@ -34,9 +34,61 @@ export function generateZodSchema(placeholder: FromAIArgument): z.ZodTypeAny {
 		case 'boolean':
 			schema = z.boolean();
 			break;
-		case 'json':
-			schema = z.record(z.any());
+		case 'json': {
+			interface CustomSchemaDef extends z.ZodTypeDef {
+				jsonSchema?: {
+					anyOf: [
+						{
+							type: 'object';
+							minProperties: number;
+							additionalProperties: boolean;
+						},
+						{
+							type: 'array';
+							minItems: number;
+						},
+					];
+				};
+			}
+
+			// Create a custom schema to validate that the incoming data is either a non-empty object or a non-empty array.
+			const customSchema = z.custom<Record<string, unknown> | unknown[]>(
+				(data: unknown) => {
+					if (data === null || typeof data !== 'object') return false;
+					if (Array.isArray(data)) {
+						return data.length > 0;
+					}
+					return Object.keys(data).length > 0;
+				},
+				{
+					message: 'Value must be a non-empty object or a non-empty array',
+				},
+			);
+
+			// Cast the custom schema to a type that includes our JSON metadata.
+			const typedSchema = customSchema as z.ZodType<
+				Record<string, unknown> | unknown[],
+				CustomSchemaDef
+			>;
+
+			// Attach the updated `jsonSchema` metadata to the internal definition.
+			typedSchema._def.jsonSchema = {
+				anyOf: [
+					{
+						type: 'object',
+						minProperties: 1,
+						additionalProperties: true,
+					},
+					{
+						type: 'array',
+						minItems: 1,
+					},
+				],
+			};
+
+			schema = typedSchema;
 			break;
+		}
 		default:
 			schema = z.string();
 	}

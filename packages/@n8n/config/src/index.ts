@@ -1,4 +1,5 @@
 import { AiAssistantConfig } from './configs/aiAssistant.config';
+import { AuthConfig } from './configs/auth.config';
 import { CacheConfig } from './configs/cache.config';
 import { CredentialsConfig } from './configs/credentials.config';
 import { DatabaseConfig } from './configs/database.config';
@@ -14,6 +15,7 @@ import { LicenseConfig } from './configs/license.config';
 import { LoggingConfig } from './configs/logging.config';
 import { MultiMainSetupConfig } from './configs/multi-main-setup.config';
 import { NodesConfig } from './configs/nodes.config';
+import { PartialExecutionsConfig } from './configs/partial-executions.config';
 import { PublicApiConfig } from './configs/public-api.config';
 import { TaskRunnersConfig } from './configs/runners.config';
 import { ScalingModeConfig } from './configs/scaling-mode.config';
@@ -30,13 +32,17 @@ export { Config, Env, Nested } from './decorators';
 export { TaskRunnersConfig } from './configs/runners.config';
 export { SecurityConfig } from './configs/security.config';
 export { ExecutionsConfig } from './configs/executions.config';
-export { FrontendBetaFeatures, FrontendConfig } from './configs/frontend.config';
 export { S3Config } from './configs/external-storage.config';
 export { LOG_SCOPES } from './configs/logging.config';
 export type { LogScope } from './configs/logging.config';
+export { WorkflowsConfig } from './configs/workflows.config';
+export * from './custom-types';
 
 @Config
 export class GlobalConfig {
+	@Nested
+	auth: AuthConfig;
+
 	@Nested
 	database: DatabaseConfig;
 
@@ -134,4 +140,7 @@ export class GlobalConfig {
 
 	@Nested
 	tags: TagsConfig;
+
+	@Nested
+	partialExecutions: PartialExecutionsConfig;
 }

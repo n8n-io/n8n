@@ -7,9 +7,9 @@ import * as process from 'node:process';
 
 import { OnShutdown } from '@/decorators/on-shutdown';
 
-import { TaskRunnerAuthService } from './auth/task-runner-auth.service';
 import { forwardToLogger } from './forward-to-logger';
 import { NodeProcessOomDetector } from './node-process-oom-detector';
+import { TaskBrokerAuthService } from './task-broker/auth/task-broker-auth.service';
 import { TaskRunnerLifecycleEvents } from './task-runner-lifecycle-events';
 import { TypedEmitter } from '../typed-emitter';
 
@@ -63,12 +63,13 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		'N8N_VERSION',
 		'ENVIRONMENT',
 		'DEPLOYMENT_NAME',
+		'NODE_PATH',
 	] as const;
 
 	constructor(
 		logger: Logger,
 		private readonly runnerConfig: TaskRunnersConfig,
-		private readonly authService: TaskRunnerAuthService,
+		private readonly authService: TaskBrokerAuthService,
 		private readonly runnerLifecycleEvents: TaskRunnerLifecycleEvents,
 	) {
 		super();

@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "properties": {
+        "canUploadPhoto": {
+            "type": "integer"
+        },
+        "displayName": {
+            "type": "string"
+        },
+        "firstName": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "lastName": {
+            "type": "string"
+        },
+        "photoUploaded": {
+            "type": "boolean"
+        },
+        "photoUrl": {
+            "type": "string"
+        },
+        "pronouns": {
+            "type": "null"
+        }
+    },
+    "version": 1
+}

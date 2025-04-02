@@ -1,7 +1,7 @@
 import type { ProjectRole } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { combineScopes, type Resource, type Scope } from '@n8n/permissions';
-import { ApplicationError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import type { ProjectRelation } from '@/databases/entities/project-relation';
@@ -199,7 +199,7 @@ export class RoleService {
 		}
 
 		if (!('active' in entity) && !('type' in entity)) {
-			throw new ApplicationError('Cannot detect if entity is a workflow or credential.');
+			throw new UnexpectedError('Cannot detect if entity is a workflow or credential.');
 		}
 
 		entity.scopes = this.combineResourceScopes(

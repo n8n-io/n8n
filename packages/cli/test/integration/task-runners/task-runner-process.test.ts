@@ -1,9 +1,9 @@
 import { Container } from '@n8n/di';
 
-import { TaskBroker } from '@/task-runners/task-broker.service';
+import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
+import { TaskBroker } from '@/task-runners/task-broker/task-broker.service';
 import { TaskRunnerProcess } from '@/task-runners/task-runner-process';
 import { TaskRunnerProcessRestartLoopDetector } from '@/task-runners/task-runner-process-restart-loop-detector';
-import { TaskRunnerWsServer } from '@/task-runners/task-runner-ws-server';
 import { retryUntil } from '@test-integration/retry-until';
 import { setupBrokerTestServer } from '@test-integration/utils/task-broker-test-server';
 
@@ -13,7 +13,7 @@ describe('TaskRunnerProcess', () => {
 	});
 	const runnerProcess = Container.get(TaskRunnerProcess);
 	const taskBroker = Container.get(TaskBroker);
-	const taskRunnerService = Container.get(TaskRunnerWsServer);
+	const taskRunnerService = Container.get(TaskBrokerWsServer);
 
 	beforeAll(async () => {
 		await taskRunnerServer.start();

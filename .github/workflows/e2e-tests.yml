@@ -56,7 +56,7 @@ jobs:
     if: ${{ github.event.inputs.success-url != '' }}
     steps:
       - name: Notify Slack on failure
-        uses: act10ns/slack@v2.0.0
+        uses: act10ns/slack@ed1309ab9862e57e9e583e51c7889486b9a00b0f # v2.0.0
         if: failure()
         with:
           status: ${{ job.status }}

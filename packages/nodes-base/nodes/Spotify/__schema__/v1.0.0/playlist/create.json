@@ -1,0 +1,106 @@
+{
+    "type": "object",
+    "properties": {
+        "collaborative": {
+            "type": "boolean"
+        },
+        "description": {
+            "type": "string"
+        },
+        "external_urls": {
+            "type": "object",
+            "properties": {
+                "spotify": {
+                    "type": "string"
+                }
+            }
+        },
+        "followers": {
+            "type": "object",
+            "properties": {
+                "href": {
+                    "type": "null"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "href": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "owner": {
+            "type": "object",
+            "properties": {
+                "display_name": {
+                    "type": "null"
+                },
+                "external_urls": {
+                    "type": "object",
+                    "properties": {
+                        "spotify": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "href": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "uri": {
+                    "type": "string"
+                }
+            }
+        },
+        "primary_color": {
+            "type": "null"
+        },
+        "public": {
+            "type": "boolean"
+        },
+        "snapshot_id": {
+            "type": "string"
+        },
+        "tracks": {
+            "type": "object",
+            "properties": {
+                "href": {
+                    "type": "string"
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "next": {
+                    "type": "null"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "previous": {
+                    "type": "null"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "type": {
+            "type": "string"
+        },
+        "uri": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

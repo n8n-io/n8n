@@ -49,8 +49,8 @@ The most important directories:
   execution, active webhooks and
   workflows. **Contact n8n before
   starting on any changes here**
-- [/packages/design-system](/packages/design-system) - Vue frontend components
-- [/packages/editor-ui](/packages/editor-ui) - Vue frontend workflow editor
+- [/packages/frontend/@n8n/design-system](/packages/design-system) - Vue frontend components
+- [/packages/frontend/editor-ui](/packages/editor-ui) - Vue frontend workflow editor
 - [/packages/node-dev](/packages/node-dev) - CLI to create new n8n-nodes
 - [/packages/nodes-base](/packages/nodes-base) - Base n8n nodes
 - [/packages/workflow](/packages/workflow) - Workflow code with interfaces which
@@ -85,7 +85,7 @@ This automatically sets up file-links between modules which depend on each other
 
 We recommend enabling [Node.js corepack](https://nodejs.org/docs/latest-v16.x/api/corepack.html) with `corepack enable`.
 
-With Node.js v16.17 or newer, you can install the latest version of pnpm: `corepack prepare pnpm@latest --activate`. If you use an older version install at least version 7.18 of pnpm via: `corepack prepare pnpm@7.18.0 --activate`.
+With Node.js v16.17 or newer, you can install the latest version of pnpm: `corepack prepare pnpm@latest --activate`. If you use an older version install at least version 9.15 of pnpm via: `corepack prepare pnpm@9.15.5 --activate`.
 
 **IMPORTANT**: If you have installed Node.js via homebrew, you'll need to run `brew install corepack`, since homebrew explicitly removes `npm` and `corepack` from [the `node` formula](https://github.com/Homebrew/homebrew-core/blob/master/Formula/node.rb#L66).
 
@@ -250,6 +250,8 @@ pnpm test
 If that gets executed in one of the package folders it will only run the tests
 of this package. If it gets executed in the n8n-root folder it will run all
 tests of all packages.
+
+If you made a change which requires an update on a `.test.ts.snap` file, pass `-u` to the command to run tests or press `u` in watch mode.
 
 #### E2E tests
 

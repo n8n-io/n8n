@@ -6,7 +6,7 @@ import {
 	type INodePropertyOptions,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { certificateFields, certificateOperations } from './CertificateDescription';
@@ -35,8 +35,9 @@ export class VenafiTlsProtectCloud implements INodeType {
 		defaults: {
 			name: 'Venafi TLS Protect Cloud',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'venafiTlsProtectCloudApi',

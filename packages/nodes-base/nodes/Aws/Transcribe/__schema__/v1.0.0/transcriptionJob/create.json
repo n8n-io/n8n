@@ -1,0 +1,26 @@
+{
+    "type": "object",
+    "properties": {
+        "IdentifyLanguage": {
+            "type": "boolean"
+        },
+        "Media": {
+            "type": "object",
+            "properties": {
+                "MediaFileUri": {
+                    "type": "string"
+                }
+            }
+        },
+        "StartTime": {
+            "type": "number"
+        },
+        "TranscriptionJobName": {
+            "type": "string"
+        },
+        "TranscriptionJobStatus": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

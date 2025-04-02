@@ -90,8 +90,8 @@ describe('Sub-workflow creation and typed usage', () => {
 		clickExecuteNode();
 
 		const expected = [
-			['-1', 'A String', '0:11:true2:3', 'aKey:-1', '[empty object]', 'false'],
-			['-1', 'Another String', '[empty array]', 'aDifferentKey:-1', '[empty array]', 'false'],
+			['-1', 'A String', '0:11:true2:3', 'aKey:-1', '[empty object]', 'true'],
+			['-1', 'Another String', '[empty array]', 'aDifferentKey:-1', '[empty array]', 'true'],
 		];
 		assertOutputTableContent(expected);
 
@@ -110,8 +110,8 @@ describe('Sub-workflow creation and typed usage', () => {
 		clickExecuteNode();
 
 		const expected2 = [
-			['-1', '5', '0:11:true2:3', 'aKey:-1', '[empty object]', 'false'],
-			['-1', '5', '[empty array]', 'aDifferentKey:-1', '[empty array]', 'false'],
+			['-1', '5', '0:11:true2:3', 'aKey:-1', '[empty object]', 'true'],
+			['-1', '5', '[empty array]', 'aDifferentKey:-1', '[empty array]', 'true'],
 		];
 
 		assertOutputTableContent(expected2);
@@ -167,8 +167,8 @@ describe('Sub-workflow creation and typed usage', () => {
 				);
 
 				assertOutputTableContent([
-					['[null]', '[null]', '[null]', '[null]', '[null]', 'false'],
-					['[null]', '[null]', '[null]', '[null]', '[null]', 'false'],
+					['[null]', '[null]', '[null]', '[null]', '[null]', 'true'],
+					['[null]', '[null]', '[null]', '[null]', '[null]', 'true'],
 				]);
 
 				clickExecuteNode();

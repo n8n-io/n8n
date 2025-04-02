@@ -1,0 +1,62 @@
+{
+    "type": "object",
+    "properties": {
+        "communication_disabled_until": {
+            "type": "null"
+        },
+        "deaf": {
+            "type": "boolean"
+        },
+        "flags": {
+            "type": "integer"
+        },
+        "joined_at": {
+            "type": "string"
+        },
+        "mute": {
+            "type": "boolean"
+        },
+        "pending": {
+            "type": "boolean"
+        },
+        "roles": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "user": {
+            "type": "object",
+            "properties": {
+                "accent_color": {
+                    "type": "null"
+                },
+                "banner": {
+                    "type": "null"
+                },
+                "banner_color": {
+                    "type": "null"
+                },
+                "clan": {
+                    "type": "null"
+                },
+                "discriminator": {
+                    "type": "string"
+                },
+                "flags": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "public_flags": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 1
+}

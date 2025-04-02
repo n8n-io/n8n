@@ -14,7 +14,6 @@ describe('n8n Form Trigger', () => {
 		workflowPage.getters.nodeCreatorNodeItems().contains('On form submission').click();
 		ndv.getters.parameterInput('formTitle').type('Test Form');
 		ndv.getters.parameterInput('formDescription').type('Test Form Description');
-		ndv.getters.parameterInput('fieldLabel').type('Test Field 1');
 		ndv.getters.backToCanvas().click();
 		workflowPage.getters.nodeIssuesByName('On form submission').should('not.exist');
 	});
@@ -26,9 +25,10 @@ describe('n8n Form Trigger', () => {
 		});
 		ndv.getters.parameterInput('formTitle').type('Test Form');
 		ndv.getters.parameterInput('formDescription').type('Test Form Description');
-		//fill up first field of type number
+		cy.get('[data-test-id="fixed-collection-add"]').click();
 		ndv.getters.parameterInput('fieldLabel').type('Test Field 1');
 		ndv.getters.parameterInput('fieldType').click();
+		//fill up first field of type number
 		getVisibleSelect().contains('Number').click();
 		cy.get(
 			'[data-test-id="parameter-input-requiredField"] > .parameter-input > .el-switch > .el-switch__core',
@@ -63,11 +63,13 @@ describe('n8n Form Trigger', () => {
 		cy.contains('button', 'Add Field Option').click();
 		cy.contains('label', 'Field Options')
 			.parent()
+			.parent()
 			.nextAll()
 			.find('[data-test-id="parameter-input-field"]')
 			.eq(0)
 			.type('Option 1');
 		cy.contains('label', 'Field Options')
+			.parent()
 			.parent()
 			.nextAll()
 			.find('[data-test-id="parameter-input-field"]')

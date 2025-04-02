@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "properties": {
+        "createdAt": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "emailBlacklisted": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "listIds": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "modifiedAt": {
+            "type": "string"
+        },
+        "smsBlacklisted": {
+            "type": "boolean"
+        }
+    },
+    "version": 1
+}

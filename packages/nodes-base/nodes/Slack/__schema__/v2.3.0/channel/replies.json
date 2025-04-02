@@ -1,0 +1,99 @@
+{
+    "type": "object",
+    "properties": {
+        "blocks": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "block_id": {
+                        "type": "string"
+                    },
+                    "elements": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "elements": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "text": {
+                                                "type": "string"
+                                            },
+                                            "type": {
+                                                "type": "string"
+                                            },
+                                            "url": {
+                                                "type": "string"
+                                            },
+                                            "user_id": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                },
+                                "type": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "bot_id": {
+            "type": "string"
+        },
+        "client_msg_id": {
+            "type": "string"
+        },
+        "is_locked": {
+            "type": "boolean"
+        },
+        "latest_reply": {
+            "type": "string"
+        },
+        "parent_user_id": {
+            "type": "string"
+        },
+        "reply_count": {
+            "type": "integer"
+        },
+        "reply_users": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "reply_users_count": {
+            "type": "integer"
+        },
+        "subscribed": {
+            "type": "boolean"
+        },
+        "team": {
+            "type": "string"
+        },
+        "text": {
+            "type": "string"
+        },
+        "thread_ts": {
+            "type": "string"
+        },
+        "ts": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "user": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

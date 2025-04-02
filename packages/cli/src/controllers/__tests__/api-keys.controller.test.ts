@@ -3,9 +3,7 @@ import { mock } from 'jest-mock-extended';
 
 import type { ApiKey } from '@/databases/entities/api-key';
 import type { User } from '@/databases/entities/user';
-import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
 import { EventService } from '@/events/event.service';
-import { License } from '@/license';
 import type { AuthenticatedRequest } from '@/requests';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 import { mockInstance } from '@test/mocking';
@@ -15,8 +13,7 @@ import { ApiKeysController } from '../api-keys.controller';
 describe('ApiKeysController', () => {
 	const publicApiKeyService = mockInstance(PublicApiKeyService);
 	const eventService = mockInstance(EventService);
-	mockInstance(ApiKeyRepository);
-	mockInstance(License);
+
 	const controller = Container.get(ApiKeysController);
 
 	let req: AuthenticatedRequest;
@@ -79,7 +76,9 @@ describe('ApiKeysController', () => {
 				updatedAt: new Date(),
 			} as ApiKey;
 
-			publicApiKeyService.getRedactedApiKeysForUser.mockResolvedValue([apiKeyData]);
+			publicApiKeyService.getRedactedApiKeysForUser.mockResolvedValue([
+				{ ...apiKeyData, expiresAt: null },
+			]);
 
 			// Act
 
@@ -87,7 +86,7 @@ describe('ApiKeysController', () => {
 
 			// Assert
 
-			expect(apiKeys).toEqual([apiKeyData]);
+			expect(apiKeys).toEqual([{ ...apiKeyData, expiresAt: null }]);
 			expect(publicApiKeyService.getRedactedApiKeysForUser).toHaveBeenCalledWith(
 				expect.objectContaining({ id: req.user.id }),
 			);

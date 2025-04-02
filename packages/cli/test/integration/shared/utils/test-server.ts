@@ -281,13 +281,18 @@ export const setupTestServer = ({
 						break;
 
 					case 'evaluation':
-						await import('@/evaluation.ee/metrics.controller');
 						await import('@/evaluation.ee/test-definitions.controller.ee');
 						await import('@/evaluation.ee/test-runs.controller.ee');
 						break;
 
 					case 'ai':
 						await import('@/controllers/ai.controller');
+
+					case 'folder':
+						await import('@/controllers/folder.controller');
+
+					case 'insights':
+						await import('@/modules/insights/insights.controller');
 				}
 			}
 

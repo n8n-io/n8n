@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 	ITriggerResponse,
 } from 'n8n-workflow';
-import { NodeConnectionType, jsonParse } from 'n8n-workflow';
+import { NodeConnectionTypes, jsonParse } from 'n8n-workflow';
 
 export class SseTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -35,7 +35,7 @@ export class SseTrigger implements INodeType {
 				"Once you’ve finished building your workflow, <a data-key='activate'>activate</a> it to have it also listen continuously (you just won’t see those executions here).",
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'URL',

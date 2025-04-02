@@ -8,7 +8,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type IRequestOptions,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { adminFields, adminOperations } from './descriptions/AdministratorDescription';
@@ -34,8 +34,9 @@ export class Onfleet implements INodeType {
 		defaults: {
 			name: 'Onfleet',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'onfleetApi',

@@ -54,6 +54,33 @@ BQIDAQAB
 	airtableApi: {
 		apiKey: 'key123',
 	},
+	azureStorageOAuth2Api: {
+		grantType: 'authorizationCode',
+		authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+		accessTokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+		clientId: 'CLIENTID',
+		clientSecret: 'CLIENTSECRET',
+		scope: 'https://storage.azure.com/user_impersonation',
+		authQueryParameters: 'response_mode=query',
+		authentication: 'body',
+		oauthTokenData: {
+			token_type: 'Bearer',
+			scope: 'https://storage.azure.com/user_impersonation',
+			expires_in: 4730,
+			ext_expires_in: 4730,
+			access_token: 'ACCESSTOKEN',
+			callbackQueryString: {
+				session_state: 'SESSIONSTATE',
+			},
+		},
+		account: 'myaccount',
+		baseUrl: 'https://myaccount.blob.core.windows.net',
+	},
+	azureStorageSharedKeyApi: {
+		account: 'devstoreaccount1',
+		key: 'Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==',
+		baseUrl: 'https://myaccount.blob.core.windows.net',
+	},
 	gongApi: {
 		baseUrl: 'https://api.gong.io',
 		accessKey: 'accessKey123',
@@ -102,6 +129,18 @@ BQIDAQAB
 			callbackQueryString: {
 				session_state: 'SESSIONSTATE',
 			},
+		},
+	},
+	microsoftExcelOAuth2Api: {
+		scope: 'openid',
+		oauthTokenData: {
+			access_token: 'token',
+		},
+	},
+	microsoftTeamsOAuth2Api: {
+		scope: 'openid',
+		oauthTokenData: {
+			access_token: 'token',
 		},
 	},
 	n8nApi: {
@@ -206,5 +245,13 @@ BQIDAQAB
 		scope:
 			'user-read-playback-state playlist-read-collaborative user-modify-playback-state playlist-modify-public user-read-currently-playing playlist-read-private user-read-recently-played playlist-modify-private user-library-read user-follow-read',
 		server: 'https://api.spotify.com/',
+	},
+	baserowApi: {
+		host: 'https://api.baserow.io',
+		username: 'nathan@n8n.io',
+		password: 'fake-password',
+	},
+	discordWebhookApi: {
+		webhookUri: 'https://discord.com/webhook',
 	},
 } as const;

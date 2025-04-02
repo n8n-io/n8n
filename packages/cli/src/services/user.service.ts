@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
 import type { IUserSettings } from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 
 import type { User, AssignableRole } from '@/databases/entities/user';
 import { UserRepository } from '@/databases/repositories/user.repository';
@@ -68,7 +68,7 @@ export class UserService {
 		};
 
 		if (options?.withInviteUrl && !options?.inviterId) {
-			throw new ApplicationError('Inviter ID is required to generate invite URL');
+			throw new UnexpectedError('Inviter ID is required to generate invite URL');
 		}
 
 		if (options?.withInviteUrl && options?.inviterId && publicUser.isPending) {

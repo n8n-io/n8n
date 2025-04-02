@@ -36,7 +36,7 @@ describe('User Management', { disableAutoLogin: true }, () => {
 
 	it('should login and logout', () => {
 		cy.visit('/');
-		cy.get('input[name="email"]').type(INSTANCE_OWNER.email);
+		cy.get('input[name="emailOrLdapLoginId"]').type(INSTANCE_OWNER.email);
 		cy.get('input[name="password"]').type(INSTANCE_OWNER.password);
 		cy.getByTestId('form-submit-button').click();
 		mainSidebar.getters.logo().should('be.visible');
@@ -47,7 +47,7 @@ describe('User Management', { disableAutoLogin: true }, () => {
 		mainSidebar.actions.openUserMenu();
 		cy.getByTestId('user-menu-item-logout').click();
 
-		cy.get('input[name="email"]').type(INSTANCE_MEMBERS[0].email);
+		cy.get('input[name="emailOrLdapLoginId"]').type(INSTANCE_MEMBERS[0].email);
 		cy.get('input[name="password"]').type(INSTANCE_MEMBERS[0].password);
 		cy.getByTestId('form-submit-button').click();
 		mainSidebar.getters.logo().should('be.visible');

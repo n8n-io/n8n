@@ -1,0 +1,126 @@
+{
+    "type": "object",
+    "properties": {
+        "agreedToTerms": {
+            "type": "boolean"
+        },
+        "aliases": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "archived": {
+            "type": "boolean"
+        },
+        "changePasswordAtNextLogin": {
+            "type": "boolean"
+        },
+        "creationTime": {
+            "type": "string"
+        },
+        "customerId": {
+            "type": "string"
+        },
+        "emails": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "address": {
+                        "type": "string"
+                    },
+                    "primary": {
+                        "type": "boolean"
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "etag": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "includeInGlobalAddressList": {
+            "type": "boolean"
+        },
+        "ipWhitelisted": {
+            "type": "boolean"
+        },
+        "isAdmin": {
+            "type": "boolean"
+        },
+        "isDelegatedAdmin": {
+            "type": "boolean"
+        },
+        "isEnforcedIn2Sv": {
+            "type": "boolean"
+        },
+        "isEnrolledIn2Sv": {
+            "type": "boolean"
+        },
+        "isMailboxSetup": {
+            "type": "boolean"
+        },
+        "kind": {
+            "type": "string"
+        },
+        "languages": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "languageCode": {
+                        "type": "string"
+                    },
+                    "preference": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "lastLoginTime": {
+            "type": "string"
+        },
+        "name": {
+            "type": "object",
+            "properties": {
+                "familyName": {
+                    "type": "string"
+                },
+                "fullName": {
+                    "type": "string"
+                },
+                "givenName": {
+                    "type": "string"
+                }
+            }
+        },
+        "nonEditableAliases": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "orgUnitPath": {
+            "type": "string"
+        },
+        "primaryEmail": {
+            "type": "string"
+        },
+        "suspended": {
+            "type": "boolean"
+        },
+        "thumbnailPhotoEtag": {
+            "type": "string"
+        },
+        "thumbnailPhotoUrl": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}
