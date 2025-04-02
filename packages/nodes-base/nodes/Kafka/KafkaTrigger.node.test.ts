@@ -287,6 +287,7 @@ describe('KafkaTrigger Node', () => {
 				'content-type': Buffer.from('application/json'),
 				'correlation-id': '123456',
 				'with-array-value': ['1', '2', '3'],
+				empty: undefined,
 			},
 		});
 
@@ -300,6 +301,7 @@ describe('KafkaTrigger Node', () => {
 							'content-type': 'application/json',
 							'correlation-id': '123456',
 							'with-array-value': '1,2,3',
+							empty: '',
 						},
 					},
 				},

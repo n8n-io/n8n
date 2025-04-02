@@ -265,13 +265,12 @@ export class KafkaTrigger implements INodeType {
 					}
 
 					if (options.returnHeaders && message.headers) {
-						const headers: { [key: string]: string } = {};
-						for (const key of Object.keys(message.headers)) {
-							const header = message.headers[key];
-							headers[key] = header?.toString('utf8') ?? '';
-						}
-
-						data.headers = headers;
+						data.headers = Object.fromEntries(
+							Object.entries(message.headers).map(([headerKey, headerValue]) => [
+								headerKey,
+								headerValue?.toString('utf8') ?? '',
+							]),
+						);
 					}
 
 					data.message = value;
