@@ -36,7 +36,7 @@ export class McpTrigger extends Node {
 				"Once you’ve finished building your workflow, <a data-key='activate'>activate</a> it to have it also listen continuously (you just won’t see those executions here).",
 		},
 		inputs: [NodeConnectionTypes.AiTool],
-		outputs: [NodeConnectionTypes.Main],
+		outputs: [],
 		properties: [],
 		webhooks: [
 			{
