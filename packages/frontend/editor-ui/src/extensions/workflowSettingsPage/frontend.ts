@@ -18,7 +18,7 @@ const setup = async (context: N8nExtensionContext) => {
 		`
 		<p>Click the button below to proceed.</p>
 		<div>
-			<button id="proceed-button" class="button">Proceed</button>
+			<button id="proceed-button" class="button-ext primary">Proceed</button>
 		</div>
 		<script>
         const button = document.getElementById('proceed-button');
