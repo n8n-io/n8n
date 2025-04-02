@@ -23,22 +23,19 @@ import {
 import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
 import { InsightsService } from '../insights.service';
 
-async function truncateAll() {
-	const insightsRawRepository = Container.get(InsightsRawRepository);
-	const insightsMetadataRepository = Container.get(InsightsMetadataRepository);
-	const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
-	for (const repo of [
-		insightsRawRepository,
-		insightsMetadataRepository,
-		insightsByPeriodRepository,
-	]) {
-		await repo.delete({});
-	}
-}
-
 // Initialize DB once for all tests
 beforeAll(async () => {
-	await testDb.init();
+	await testDb.init(['insights']);
+});
+
+beforeEach(async () => {
+	await testDb.truncate([
+		'InsightsRaw',
+		'InsightsByPeriod',
+		'InsightsMetadata',
+		'Workflow',
+		'Project',
+	]);
 });
 
 // Terminate DB once after all tests complete
@@ -60,8 +57,6 @@ describe('workflowExecuteAfterHandler', () => {
 	let workflow: IWorkflowDb & WorkflowEntity;
 
 	beforeEach(async () => {
-		await truncateAll();
-
 		project = await createTeamProject();
 		workflow = await createWorkflow(
 			{
@@ -261,10 +256,6 @@ describe('workflowExecuteAfterHandler', () => {
 });
 
 describe('compaction', () => {
-	beforeEach(async () => {
-		await truncateAll();
-	});
-
 	describe('compactRawToHour', () => {
 		type TestData = {
 			name: string;
@@ -731,8 +722,6 @@ describe('getInsightsSummary', () => {
 	let workflow: IWorkflowDb & WorkflowEntity;
 
 	beforeEach(async () => {
-		await truncateAll();
-
 		project = await createTeamProject();
 		workflow = await createWorkflow({}, project);
 	});
@@ -861,8 +850,6 @@ describe('getInsightsByWorkflow', () => {
 	let workflow3: IWorkflowDb & WorkflowEntity;
 
 	beforeEach(async () => {
-		await truncateAll();
-
 		project = await createTeamProject();
 		workflow1 = await createWorkflow({}, project);
 		workflow2 = await createWorkflow({}, project);
@@ -1045,8 +1032,6 @@ describe('getInsightsByTime', () => {
 	let workflow2: IWorkflowDb & WorkflowEntity;
 
 	beforeEach(async () => {
-		await truncateAll();
-
 		project = await createTeamProject();
 		workflow1 = await createWorkflow({}, project);
 		workflow2 = await createWorkflow({}, project);
