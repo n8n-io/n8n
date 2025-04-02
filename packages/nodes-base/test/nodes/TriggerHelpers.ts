@@ -105,7 +105,7 @@ export async function testVersionedWebhookTriggerNode(
 	return await testWebhookTriggerNode(getNodeVersion(Trigger, version), options);
 }
 
-async function testWebhookTriggerNode(
+export async function testWebhookTriggerNode(
 	Trigger: (new () => INodeType) | INodeType,
 	options: TestWebhookTriggerNodeOptions = {},
 ) {
