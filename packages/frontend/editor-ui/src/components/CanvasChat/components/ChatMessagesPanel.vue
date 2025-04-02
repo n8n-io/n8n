@@ -140,6 +140,7 @@ async function copySessionId() {
 	<div :class="$style.chat" data-test-id="workflow-lm-chat-dialog">
 		<PanelHeader
 			v-if="isNewLogsEnabled"
+			data-test-id="chat-header"
 			:title="locale.baseText('chat.window.title')"
 			@click="emit('clickHeader')"
 		>
