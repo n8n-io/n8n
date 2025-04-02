@@ -11,7 +11,7 @@ import { Server as WSServer } from 'ws';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
-import { TRIMMED_TASK_DATA_CONNECTIONS } from '@/constants';
+import { inProduction, TRIMMED_TASK_DATA_CONNECTIONS } from '@/constants';
 import type { User } from '@/databases/entities/user';
 import { OnShutdown } from '@/decorators/on-shutdown';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -68,15 +68,28 @@ export class Push extends TypedEmitter<PushEvents> {
 			ws,
 			query: { pushRef },
 			user,
+			headers,
 		} = req;
 
+		let connectionError = '';
 		if (!pushRef) {
+			connectionError = 'The query parameter "pushRef" is missing!';
+		} else if (
+			inProduction &&
+			headers.origin &&
+			headers.host &&
+			!headers.origin.endsWith(headers.host)
+		) {
+			connectionError = 'Invalid origin!';
+		}
+
+		if (connectionError) {
 			if (ws) {
-				ws.send('The query parameter "pushRef" is missing!');
+				ws.send(connectionError);
 				ws.close(1008);
 				return;
 			}
-			throw new BadRequestError('The query parameter "pushRef" is missing!');
+			throw new BadRequestError(connectionError);
 		}
 
 		if (req.ws) {
