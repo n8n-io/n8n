@@ -53,6 +53,12 @@ const properties: INodeProperties[] = [
 			value: '',
 		},
 		description: 'Select the user you want to retrieve',
+		routing: {
+			send: {
+				type: 'body',
+				property: 'Username',
+			},
+		},
 		modes: [
 			{
 				displayName: 'From List',

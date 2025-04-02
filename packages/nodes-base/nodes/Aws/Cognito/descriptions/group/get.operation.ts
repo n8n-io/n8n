@@ -47,7 +47,7 @@ const properties: INodeProperties[] = [
 	},
 	{
 		displayName: 'Group',
-		name: 'groupName',
+		name: 'group',
 		required: true,
 		type: 'resourceLocator',
 		default: {
@@ -73,7 +73,7 @@ const properties: INodeProperties[] = [
 			},
 			{
 				displayName: 'By Name',
-				name: 'GroupName',
+				name: 'groupName',
 				type: 'string',
 				hint: 'Enter the group name',
 				validation: [

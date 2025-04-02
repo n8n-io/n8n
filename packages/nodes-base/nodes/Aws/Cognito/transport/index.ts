@@ -25,5 +25,9 @@ export async function awsApiRequest(
 		},
 	};
 
-	return this.helpers.httpRequestWithAuthentication.call(this, credentialsType, requestOptions);
+	return await this.helpers.httpRequestWithAuthentication.call(
+		this,
+		credentialsType,
+		requestOptions,
+	);
 }

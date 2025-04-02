@@ -8,139 +8,29 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, NodeApiError, NodeOperationError, OperationalError } from 'n8n-workflow';
 
-import type { IListUsersResponse, IUser, IUserAttribute, IUserPool } from './interfaces';
+import type { IUserPool } from './interfaces';
+import { searchUsersForGroup } from '../methods/listSearch';
 import { awsApiRequest } from '../transport';
 
 const validateEmail = (email: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 const validatePhoneNumber = (phone: string): boolean => /^\+[0-9]\d{1,14}$/.test(phone);
 
-// Todo: jsonParse could be used directly
 export function parseRequestBody(body: unknown): IDataObject {
-	if (!body) {
-		return {};
-	}
-
 	if (typeof body === 'string') {
 		try {
 			return jsonParse(body);
 		} catch {
-			throw new OperationalError('Failed to parse requestOptions body');
+			throw new OperationalError('Failed to parse request body: Invalid JSON format.');
 		}
 	}
 
-	if (typeof body === 'object') {
+	if (body && typeof body === 'object') {
 		return body as IDataObject;
 	}
 
-	throw new OperationalError('Invalid body type for requestOptions');
-}
-
-export function mapUserAttributes(userAttributes?: IUserAttribute[]): Record<string, string> {
-	if (!userAttributes?.length) {
-		return {};
-	}
-
-	return userAttributes.reduce<Record<string, string>>((acc, { Name, Value }) => {
-		if (Name?.trim()) {
-			// Todo: is this line necessary?
-			acc[Name === 'sub' ? 'Sub' : Name] = Value ?? '';
-		}
-		return acc;
-	}, {});
-}
-
-// Todo: split up simplify for each resource and operation, because it doesn't seem they have any common functionality
-// Todo: is it required to .slice(0, 6)? Why not return all?
-export async function simplifyData(
-	this: IExecuteSingleFunctions,
-	items: INodeExecutionData[],
-	_response: IN8nHttpFullResponse,
-): Promise<INodeExecutionData[]> {
-	const simple = this.getNodeParameter('simple') as boolean;
-
-	if (!simple) {
-		return items;
-	}
-
-	const resource = this.getNodeParameter('resource') as string;
-	const operation = this.getNodeParameter('operation') as string;
-
-	const simplifiedItems = items
-		.map((item) => {
-			const data = item.json?.UserPool as IDataObject | undefined;
-			const userData = item.json as IDataObject | undefined;
-			const users = item.json?.Users as IDataObject[] | undefined;
-			switch (resource) {
-				case 'userPool':
-					if (data) {
-						const {
-							AccountRecoverySetting,
-							AdminCreateUserConfig,
-							EmailConfiguration,
-							LambdaConfig,
-							Policies,
-							SchemaAttributes,
-							UserAttributeUpdateSettings,
-							UserPoolTags,
-							UserPoolTier,
-							VerificationMessageTemplate,
-							...selectedData
-						} = data;
-						return {
-							json: {
-								UserPool: {
-									...selectedData,
-								},
-							},
-						};
-					}
-					break;
-
-				case 'user':
-					if (userData) {
-						if (operation === 'get') {
-							const attributesArray = Array.isArray(userData.UserAttributes)
-								? userData.UserAttributes.slice(0, 6)
-								: [];
-							const userAttributes = mapUserAttributes(attributesArray);
-							const { UserAttributes, ...selectedData } = userData;
-							return {
-								json: {
-									...selectedData,
-									...userAttributes,
-								},
-							};
-						} else if (operation === 'getAll') {
-							if (users && Array.isArray(users)) {
-								const processedUsers: IDataObject[] = [];
-								users.forEach((user) => {
-									const attributesArray = Array.isArray(user.Attributes)
-										? user.Attributes.slice(0, 6)
-										: [];
-									const { Attributes, ...selectedData } = user;
-									const userAttributes = mapUserAttributes(attributesArray);
-									processedUsers.push({
-										...selectedData,
-										...userAttributes,
-									});
-								});
-								return {
-									json: {
-										Users: processedUsers,
-									},
-								};
-							}
-						}
-					}
-					break;
-			}
-
-			return undefined;
-		})
-		.filter((item) => item !== undefined)
-		.flat();
-
-	return simplifiedItems;
+	throw new OperationalError(
+		`Invalid request body type: Expected string or object, received ${typeof body}`,
+	);
 }
 
 export async function preSendStringifyBody(
@@ -153,29 +43,42 @@ export async function preSendStringifyBody(
 	return requestOptions;
 }
 
-// Todo: the nested functions makes the function less readable. Move the functions to the root level.
-// Todo: is it necessary to call this function for get requests? Doesn't the response contain any error message for this?
-export async function preSendUserFields(
-	this: IExecuteSingleFunctions,
-	requestOptions: IHttpRequestOptions,
-	paginationToken?: string,
-): Promise<IHttpRequestOptions> {
-	const operation = this.getNodeParameter('operation') as string;
-	const userPoolId = this.getNodeParameter('userPoolId', undefined, {
-		extractValue: true,
-	}) as string;
+export async function getUserPool(
+	this: IExecuteSingleFunctions | ILoadOptionsFunctions,
+	userPoolId: string,
+): Promise<IUserPool> {
+	if (!userPoolId) {
+		throw new NodeOperationError(this.getNode(), 'User Pool ID is required');
+	}
 
-	const { UserPool } = (await awsApiRequest.call(this, {
+	const response = (await awsApiRequest.call(this, {
 		url: '',
 		method: 'POST',
 		headers: { 'X-Amz-Target': 'AWSCognitoIdentityProviderService.DescribeUserPool' },
 		body: JSON.stringify({ UserPoolId: userPoolId }),
-	})) as { UserPool?: IUserPool };
+	})) as unknown as IUserPool;
 
-	const usernameAttributes = UserPool?.UsernameAttributes ?? [];
+	if (!response?.UserPool) {
+		throw new NodeOperationError(this.getNode(), 'User Pool not found in response');
+	}
+
+	return response;
+}
+
+export async function preSendUserFields(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+	_paginationToken?: string,
+): Promise<IHttpRequestOptions> {
+	const userPoolId = this.getNodeParameter('userPoolId', undefined, {
+		extractValue: true,
+	}) as string;
+
+	const userPool = await getUserPool.call(this, userPoolId);
+	const usernameAttributes = userPool?.UserPool.UsernameAttributes ?? [];
+
 	const isEmailAuth = usernameAttributes.includes('email');
 	const isPhoneAuth = usernameAttributes.includes('phone_number');
-	const isEmailOrPhone = isEmailAuth || isPhoneAuth;
 
 	const getValidatedNewUserName = (): string => {
 		const newUsername = this.getNodeParameter('newUserName') as string;
@@ -196,34 +99,10 @@ export async function preSendUserFields(
 		return newUsername;
 	};
 
-	const getUserNameFromExistingUsers = async (): Promise<string | undefined> => {
-		const userSub = this.getNodeParameter('userName', undefined, {
-			extractValue: true,
-		}) as string;
-
-		const { Users } = (await awsApiRequest.call(this as unknown as ILoadOptionsFunctions, {
-			url: '',
-			method: 'POST',
-			headers: { 'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListUsers' },
-			body: JSON.stringify({
-				UserPoolId: userPoolId,
-				MaxResults: 60,
-				NextToken: paginationToken,
-			}),
-		})) as unknown as IListUsersResponse;
-
-		const matchedUser = Users?.find(
-			(user: IUser) => user.Attributes.find((attr) => attr.Name === 'sub')?.Value === userSub,
-		);
-
-		// Todo: why call API when it is not required for this check: isEmailOrPhone ? userSub
-		return isEmailOrPhone ? userSub : matchedUser?.Username;
-	};
-
-	const finalUserName =
-		operation === 'create' ? getValidatedNewUserName() : await getUserNameFromExistingUsers();
+	const finalUserName = getValidatedNewUserName();
 
 	const body = parseRequestBody(requestOptions.body);
+
 	return {
 		...requestOptions,
 		body: JSON.stringify({
@@ -233,55 +112,25 @@ export async function preSendUserFields(
 	};
 }
 
-// Todo: use interface for user
-// Todo: paginationToken not used
-export async function getUsersInGroup(
-	this: IExecuteSingleFunctions | ILoadOptionsFunctions,
-	groupName: string,
-	userPoolId: string,
-): Promise<IDataObject> {
-	if (!userPoolId) {
-		throw new NodeOperationError(this.getNode(), 'User Pool ID is required');
+export async function processGroupResponse(
+	this: IExecuteSingleFunctions,
+	_items: INodeExecutionData[],
+	response: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
+	const userPoolId = this.getNodeParameter('userPoolId', undefined, {
+		extractValue: true,
+	}) as string;
+	const include = this.getNodeParameter('includeUsers') as boolean;
+	const body = parseRequestBody(response.body);
+
+	if (!include) {
+		return [{ json: body.Group as IDataObject }];
 	}
 
-	const responseData: IDataObject = await awsApiRequest.call(this, {
-		url: '',
-		method: 'POST',
-		headers: {
-			'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListUsersInGroup',
-		},
-		body: JSON.stringify({
-			UserPoolId: userPoolId,
-			GroupName: groupName,
-			MaxResults: 60,
-		}),
-	});
-	const users = responseData.Users as IDataObject[];
+	const group = body.Group as IDataObject;
+	const users = await searchUsersForGroup.call(this, group.GroupName as string, userPoolId);
 
-	if (!users.length) {
-		return { results: [] };
-	}
-
-	const results = users
-		.map(({ Username, Enabled, UserCreateDate, UserLastModifiedDate, UserStatus, Attributes }) => {
-			const userAttributes = Array.isArray(Attributes)
-				? Object.fromEntries(
-						Attributes.slice(0, 6).map(({ Name, Value }) => [Name === 'sub' ? 'Sub' : Name, Value]),
-					)
-				: {};
-
-			return {
-				Enabled,
-				...userAttributes,
-				UserCreateDate,
-				UserLastModifiedDate,
-				UserStatus,
-				Username,
-			};
-		})
-		.sort((a, b) => a.Username.toLowerCase().localeCompare(b.Username.toLowerCase()));
-
-	return { results, paginationToken: responseData.NextToken };
+	return [{ json: { ...group, Users: users.results ?? [] } }];
 }
 
 export async function processGroupsResponse(
@@ -296,25 +145,20 @@ export async function processGroupsResponse(
 	const body = parseRequestBody(response.body);
 
 	if (!include) {
-		// Todo: what does items include when !body?.Group ? Other places return empty array instead of items
-		return body?.Group ? [{ json: body.Group as IDataObject }] : items;
+		return items;
 	}
 
-	if (body?.Group) {
-		const group = body.Group as IDataObject;
-		const users = await getUsersInGroup.call(this, group.GroupName as string, userPoolId);
-
-		return [{ json: { ...group, Users: users.results ?? [] } }];
-	}
-
-	// Todo: this will not get called because of previous if (body?.Group)
 	const processedGroups: IDataObject[] = [];
 	const groups = Array.isArray(body?.Groups) ? body.Groups : [];
 	for (const group of groups) {
-		const usersResponse = await getUsersInGroup.call(this, group.GroupName as string, userPoolId);
+		const usersResponse = await searchUsersForGroup.call(
+			this,
+			group.GroupName as string,
+			userPoolId,
+		);
 		processedGroups.push({
 			...group,
-			Users: usersResponse ?? [],
+			Users: usersResponse.results ?? [],
 		});
 	}
 
@@ -338,4 +182,88 @@ export async function validateArn(
 	}
 
 	return requestOptions;
+}
+
+export async function simplifyUserPool(
+	this: IExecuteSingleFunctions,
+	items: INodeExecutionData[],
+	_response: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
+	return items
+		.map((item) => {
+			const data = item.json?.UserPool as IDataObject | undefined;
+			if (!data) return undefined;
+
+			const {
+				AccountRecoverySetting,
+				AdminCreateUserConfig,
+				EmailConfiguration,
+				LambdaConfig,
+				Policies,
+				SchemaAttributes,
+				UserAttributeUpdateSettings,
+				UserPoolTags,
+				UserPoolTier,
+				VerificationMessageTemplate,
+				...selectedData
+			} = data;
+
+			return { json: { UserPool: { ...selectedData } } };
+		})
+		.filter(Boolean) as INodeExecutionData[];
+}
+
+export async function simplifyUser(
+	this: IExecuteSingleFunctions,
+	items: INodeExecutionData[],
+	_response: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
+	const simple = this.getNodeParameter('simple') as boolean;
+	if (!simple) return items;
+	return items
+		.map((item) => {
+			const userData = item.json as IDataObject | undefined;
+			if (!userData) return undefined;
+
+			const attributesArray = Array.isArray(userData.UserAttributes) ? userData.UserAttributes : [];
+
+			const userAttributes = Object.fromEntries(
+				(attributesArray ?? [])
+					.filter(({ Name }) => Name?.trim())
+					.map(({ Name, Value }) => [Name, Value ?? '']),
+			);
+			const { UserAttributes, ...selectedData } = userData;
+
+			return { json: { ...selectedData, ...userAttributes } };
+		})
+		.filter(Boolean) as INodeExecutionData[];
+}
+
+export async function simplifyUsers(
+	this: IExecuteSingleFunctions,
+	items: INodeExecutionData[],
+	_response: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
+	const simple = this.getNodeParameter('simple') as boolean;
+	if (!simple) return items;
+	return items
+		.map((item) => {
+			const users = item.json?.Users as IDataObject[] | undefined;
+			if (!users) return undefined;
+
+			const processedUsers = users.map((user) => {
+				const attributesArray = Array.isArray(user.Attributes) ? user.Attributes : [];
+				const userAttributes = Object.fromEntries(
+					(attributesArray ?? [])
+						.filter(({ Name }) => Name?.trim())
+						.map(({ Name, Value }) => [Name, Value ?? '']),
+				);
+				const { Attributes, ...selectedData } = user;
+
+				return { ...selectedData, ...userAttributes };
+			});
+
+			return { json: { Users: processedUsers } };
+		})
+		.filter(Boolean) as INodeExecutionData[];
 }

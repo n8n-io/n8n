@@ -5,6 +5,10 @@ export interface IUserAttribute {
 
 export interface IUser {
 	Username: string;
+	Enabled: boolean;
+	UserCreateDate: string;
+	UserLastModifiedDate: string;
+	UserStatus: string;
 	Attributes: IUserAttribute[];
 }
 
@@ -21,7 +25,9 @@ export interface IUserAttributeInput {
 }
 
 export interface IUserPool {
-	UsernameAttributes: string[];
+	UserPool: {
+		UsernameAttributes: string[];
+	};
 }
 
 export interface Filters {

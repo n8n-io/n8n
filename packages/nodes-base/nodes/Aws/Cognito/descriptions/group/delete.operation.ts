@@ -47,7 +47,7 @@ const properties: INodeProperties[] = [
 	},
 	{
 		displayName: 'Group',
-		name: 'groupName',
+		name: 'group',
 		default: {
 			mode: 'list',
 			value: '',
@@ -65,7 +65,7 @@ const properties: INodeProperties[] = [
 			},
 			{
 				displayName: 'By Name',
-				name: 'GroupName',
+				name: 'groupName',
 				type: 'string',
 				hint: 'Enter the group name',
 				validation: [

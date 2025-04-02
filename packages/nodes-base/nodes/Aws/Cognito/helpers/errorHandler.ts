@@ -16,10 +16,10 @@ export async function handleError(
 		const resource = this.getNodeParameter('resource') as string;
 		const operation = this.getNodeParameter('operation') as string;
 		const responseBody = response.body as IDataObject;
-		const errorType = (responseBody.__type || response.headers?.['x-amzn-errortype']) as
+		const errorType = (responseBody.__type ?? response.headers?.['x-amzn-errortype']) as
 			| string
 			| undefined;
-		const errorMessage = (responseBody.message || response.headers?.['x-amzn-errormessage']) as
+		const errorMessage = (responseBody.message ?? response.headers?.['x-amzn-errormessage']) as
 			| string
 			| undefined;
 
@@ -77,9 +77,8 @@ export async function handleError(
 				},
 				addToGroup: {
 					condition: (errType, errMsg) => {
-						// Todo: these are not the property names
-						const user = this.getNodeParameter('user.value', '') as string;
-						const group = this.getNodeParameter('group.value', '') as string;
+						const user = (this.getNodeParameter('user') as IDataObject).value as string;
+						const group = (this.getNodeParameter('group') as IDataObject).value as string;
 						return (
 							(errType === 'UserNotFoundException' &&
 								typeof errMsg === 'string' &&
@@ -105,9 +104,8 @@ export async function handleError(
 				},
 				removeFromGroup: {
 					condition: (errType, errMsg) => {
-						// Todo: these are not the property names
-						const user = this.getNodeParameter('user.value', '') as string;
-						const group = this.getNodeParameter('group.value', '') as string;
+						const user = (this.getNodeParameter('user') as IDataObject).value as string;
+						const group = (this.getNodeParameter('group') as IDataObject).value as string;
 						return (
 							(errType === 'UserNotFoundException' &&
 								typeof errMsg === 'string' &&

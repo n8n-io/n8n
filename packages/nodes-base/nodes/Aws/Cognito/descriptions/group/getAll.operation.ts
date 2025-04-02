@@ -51,6 +51,22 @@ const properties: INodeProperties[] = [
 		default: false,
 		description: 'Whether to return all results or only up to a given limit',
 		type: 'boolean',
+		routing: {
+			operations: {
+				pagination: {
+					type: 'generic',
+					properties: {
+						continue: '={{ !!$response.body?.NextToken }}',
+
+						request: {
+							body: {
+								NextToken: '={{ $response.body?.NextToken }}',
+							},
+						},
+					},
+				},
+			},
+		},
 	},
 	{
 		displayName: 'Limit',

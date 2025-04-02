@@ -1,7 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 import * as get from './get.operation';
-import { simplifyData } from '../../helpers/utils';
+import { simplifyUserPool } from '../../helpers/utils';
 
 export const description: INodeProperties[] = [
 	{
@@ -28,7 +28,7 @@ export const description: INodeProperties[] = [
 					},
 					output: {
 						postReceive: [
-							simplifyData,
+							simplifyUserPool,
 							{
 								type: 'rootProperty',
 								properties: {

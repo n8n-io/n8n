@@ -6,7 +6,7 @@ import * as get from './get.operation';
 import * as getAll from './getAll.operation';
 import * as update from './update.operation';
 import { handleError } from '../../helpers/errorHandler';
-import { processGroupsResponse } from '../../helpers/utils';
+import { processGroupResponse, processGroupsResponse } from '../../helpers/utils';
 
 export const description: INodeProperties[] = [
 	{
@@ -86,7 +86,7 @@ export const description: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [handleError, processGroupsResponse],
+						postReceive: [handleError, processGroupResponse],
 					},
 				},
 				action: 'Get group',
@@ -100,10 +100,6 @@ export const description: INodeProperties[] = [
 						method: 'POST',
 						headers: {
 							'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListGroups',
-						},
-						qs: {
-							pageSize:
-								'={{ $parameter["limit"] ? ($parameter["limit"] < 60 ? $parameter["limit"] : 60) : 60 }}',
 						},
 						ignoreHttpStatusErrors: true,
 					},
