@@ -90,7 +90,7 @@ export class EmbeddingsGoogleVertex implements INodeType {
 			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
 			{
 				displayName:
-					'Each model is using different dimensional density for embeddings. Please make sure to use the same dimensionality for your vector store. The default model is using 768-dimensional embeddings.',
+					'Each model is using different dimensional density for embeddings. Please make sure to use the same dimensionality for your vector store. The default model is using 768-dimensional embeddings. You can find available models <a href="https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/text-embeddings-api">here</a>.',
 				name: 'notice',
 				type: 'notice',
 				default: '',
@@ -123,14 +123,13 @@ export class EmbeddingsGoogleVertex implements INodeType {
 				name: 'modelName',
 				type: 'string',
 				description:
-					'The model which will generate the completion. <a href="https://cloud.google.com/vertex-ai/generative-ai/docs/learn/models">Learn more</a>.',
+					'The model which will generate the embeddings. <a href="https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/text-embeddings-api">Learn more</a>.',
 				default: 'text-embedding-005',
 			},
 		],
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		this.logger.debug('Supply data for embeddings Google Vertex');
 		const credentials = await this.getCredentials('googleApi');
 		const privateKey = formatPrivateKey(credentials.privateKey as string);
 		const email = (credentials.email as string).trim();
