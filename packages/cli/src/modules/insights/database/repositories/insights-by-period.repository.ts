@@ -240,6 +240,18 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		return result;
 	}
 
+	private getAgeLimitQuery(maxAgeInDays: number) {
+		if (maxAgeInDays === 0) {
+			return dbType === 'sqlite' ? "datetime('now')" : 'NOW()';
+		}
+
+		return dbType === 'sqlite'
+			? `datetime('now', '-${maxAgeInDays} days')`
+			: dbType === 'postgresdb'
+				? `NOW() - INTERVAL '${maxAgeInDays} days'`
+				: `DATE_SUB(NOW(), INTERVAL ${maxAgeInDays} DAY)`;
+	}
+
 	async getPreviousAndCurrentPeriodTypeAggregates(): Promise<
 		Array<{
 			period: 'previous' | 'current';
@@ -247,27 +259,12 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			total_value: string | number;
 		}>
 	> {
-		const cte =
-			dbType === 'sqlite'
-				? sql`
-						SELECT
-							datetime('now', '-7 days') AS current_start,
-							datetime('now') AS current_end,
-							datetime('now', '-14 days') AS previous_start
-					`
-				: dbType === 'postgresdb'
-					? sql`
-								SELECT
-								(NOW() - INTERVAL '7 days')::timestamptz AS current_start,
-								NOW()::timestamptz AS current_end,
-								(NOW() - INTERVAL '14 days')::timestamptz AS previous_start
-							`
-					: sql`
-								SELECT
-									DATE_SUB(NOW(), INTERVAL 7 DAY) AS current_start,
-									NOW() AS current_end,
-									DATE_SUB(NOW(), INTERVAL 14 DAY) AS previous_start
-							`;
+		const cte = sql`
+			SELECT
+				${this.getAgeLimitQuery(7)} AS current_start,
+				${this.getAgeLimitQuery(0)} AS current_end,
+				${this.getAgeLimitQuery(14)}  AS previous_start
+		`;
 
 		const rawRows = await this.createQueryBuilder('insights')
 			.addCommonTableExpression(cte, 'date_ranges')
@@ -312,13 +309,6 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		take?: number;
 		sortBy?: string;
 	}) {
-		const dateSubQuery =
-			dbType === 'sqlite'
-				? `datetime('now', '-${maxAgeInDays} days')`
-				: dbType === 'postgresdb'
-					? `NOW() - INTERVAL '${maxAgeInDays} days'`
-					: `DATE_SUB(NOW(), INTERVAL ${maxAgeInDays} DAY)`;
-
 		const [sortField, sortOrder] = this.parseSortingParams(sortBy);
 		const sumOfExecutions = sql`SUM(CASE WHEN insights.type IN (${TypeToNumber.success.toString()}, ${TypeToNumber.failure.toString()}) THEN value ELSE 0 END)`;
 
@@ -343,7 +333,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 							END AS "averageRunTime"`,
 			])
 			.innerJoin('insights.metadata', 'metadata')
-			.where(`insights.periodStart >= ${dateSubQuery}`)
+			.where(`insights.periodStart >= ${this.getAgeLimitQuery(maxAgeInDays)}`)
 			.groupBy('metadata.workflowId')
 			.addGroupBy('metadata.workflowName')
 			.addGroupBy('metadata.projectId')
@@ -360,13 +350,6 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		maxAgeInDays,
 		periodUnit,
 	}: { maxAgeInDays: number; periodUnit: PeriodUnit }) {
-		const dateSubQuery =
-			dbType === 'sqlite'
-				? `date('now', '-${maxAgeInDays} days')`
-				: dbType === 'postgresdb'
-					? `CURRENT_DATE - INTERVAL '${maxAgeInDays} days'`
-					: `DATE_SUB(CURDATE(), INTERVAL ${maxAgeInDays} DAY)`;
-
 		const rawRowsQuery = this.createQueryBuilder()
 			.select([
 				`${this.getPeriodStartExpr(periodUnit)} as "periodStart"`,
@@ -375,7 +358,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 				`SUM(CASE WHEN type = ${TypeToNumber.failure} THEN value ELSE 0 END) AS "failed"`,
 				`SUM(CASE WHEN type = ${TypeToNumber.time_saved_min} THEN value ELSE 0 END) AS "timeSaved"`,
 			])
-			.where(`${this.escapeField('periodStart')} >= ${dateSubQuery}`)
+			.where(`${this.escapeField('periodStart')} >= ${this.getAgeLimitQuery(maxAgeInDays)}`)
 			.addGroupBy(this.getPeriodStartExpr(periodUnit))
 			.orderBy(this.getPeriodStartExpr(periodUnit), 'ASC');
 
