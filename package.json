@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.85.0",
+  "version": "1.86.0",
   "private": true,
   "engines": {
     "node": ">=20.15",
@@ -22,6 +22,7 @@
     "dev:fe:editor": "turbo run dev --parallel --env-mode=loose --filter=n8n-editor-ui",
     "dev:e2e": "cd cypress && pnpm run test:e2e:dev",
     "dev:e2e:v1": "cd cypress && pnpm run test:e2e:dev:v1",
+    "debug:flaky:e2e": "cd cypress && pnpm run test:flaky",
     "dev:e2e:server": "run-p start dev:fe:editor",
     "clean": "turbo run clean --parallel",
     "reset": "node scripts/ensure-zx.mjs && zx scripts/reset.mjs",

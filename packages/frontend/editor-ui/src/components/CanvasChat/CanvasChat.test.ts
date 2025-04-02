@@ -24,6 +24,7 @@ import { useToast } from '@/composables/useToast';
 import type { IExecutionResponse, INodeUi } from '@/Interface';
 import type { ChatMessage } from '@n8n/chat/types';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { LOGS_PANEL_STATE } from './types/logs';
 
 vi.mock('@/composables/useToast', () => {
 	const showMessage = vi.fn();
@@ -174,7 +175,7 @@ describe('CanvasChat', () => {
 
 			return matchedNode;
 		});
-		workflowsStore.chatPanelState = 'attached';
+		workflowsStore.chatPanelState = LOGS_PANEL_STATE.ATTACHED;
 		workflowsStore.isLogsPanelOpen = true;
 		workflowsStore.getWorkflowExecution = mockWorkflowExecution as unknown as IExecutionResponse;
 		workflowsStore.getPastChatMessages = ['Previous message 1', 'Previous message 2'];
@@ -197,7 +198,7 @@ describe('CanvasChat', () => {
 		});
 
 		it('should not render chat when panel is closed', async () => {
-			workflowsStore.chatPanelState = 'closed';
+			workflowsStore.chatPanelState = LOGS_PANEL_STATE.CLOSED;
 			const { queryByTestId } = renderComponent();
 			await waitFor(() => {
 				expect(queryByTestId('canvas-chat')).not.toBeInTheDocument();
@@ -387,7 +388,7 @@ describe('CanvasChat', () => {
 				isLoading: computed(() => false),
 			});
 
-			workflowsStore.chatPanelState = 'attached';
+			workflowsStore.chatPanelState = LOGS_PANEL_STATE.ATTACHED;
 			workflowsStore.allowFileUploads = true;
 		});
 
@@ -549,7 +550,7 @@ describe('CanvasChat', () => {
 			});
 
 			// Close chat panel
-			workflowsStore.chatPanelState = 'closed';
+			workflowsStore.chatPanelState = LOGS_PANEL_STATE.CLOSED;
 			await waitFor(() => {
 				expect(canvasStore.setPanelHeight).toHaveBeenCalledWith(0);
 			});
@@ -559,14 +560,14 @@ describe('CanvasChat', () => {
 			const { unmount, rerender } = renderComponent();
 
 			// Set initial state
-			workflowsStore.chatPanelState = 'attached';
+			workflowsStore.chatPanelState = LOGS_PANEL_STATE.ATTACHED;
 			workflowsStore.isLogsPanelOpen = true;
 
 			// Unmount and remount
 			unmount();
 			await rerender({});
 
-			expect(workflowsStore.chatPanelState).toBe('attached');
+			expect(workflowsStore.chatPanelState).toBe(LOGS_PANEL_STATE.ATTACHED);
 			expect(workflowsStore.isLogsPanelOpen).toBe(true);
 		});
 	});
@@ -592,10 +593,10 @@ describe('CanvasChat', () => {
 				getChatMessages: getChatMessagesSpy,
 			});
 
-			workflowsStore.chatPanelState = 'closed';
+			workflowsStore.chatPanelState = LOGS_PANEL_STATE.CLOSED;
 			const { rerender } = renderComponent();
 
-			workflowsStore.chatPanelState = 'attached';
+			workflowsStore.chatPanelState = LOGS_PANEL_STATE.ATTACHED;
 			await rerender({});
 
 			expect(getChatMessagesSpy).toHaveBeenCalled();

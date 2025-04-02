@@ -1,7 +1,7 @@
 import { ExpressionError } from 'n8n-workflow';
 import {
 	completeExpressionSyntax,
-	isStringWithExpressionSyntax,
+	shouldConvertToExpression,
 	removeExpressionPrefix,
 	stringifyExpressionResult,
 	unwrapExpression,
@@ -79,25 +79,33 @@ describe('Utils: Expressions', () => {
 			expect(completeExpressionSyntax(true)).toBe(true);
 			expect(completeExpressionSyntax(null)).toBe(null);
 		});
+
+		it('should return unchanged value if special editor type', () => {
+			expect(completeExpressionSyntax('test {{ ', true)).toBe('test {{ ');
+		});
 	});
 
-	describe('isStringWithExpressionSyntax', () => {
+	describe('shouldConvertToExpression', () => {
 		it('should return true for strings with expression syntax', () => {
-			expect(isStringWithExpressionSyntax('test {{ value }}')).toBe(true);
+			expect(shouldConvertToExpression('test {{ value }}')).toBe(true);
 		});
 
 		it('should return false for strings without expression syntax', () => {
-			expect(isStringWithExpressionSyntax('just a string')).toBe(false);
+			expect(shouldConvertToExpression('just a string')).toBe(false);
 		});
 
 		it('should return false for strings starting with "="', () => {
-			expect(isStringWithExpressionSyntax('=expression {{ value }}')).toBe(false);
+			expect(shouldConvertToExpression('=expression {{ value }}')).toBe(false);
 		});
 
 		it('should return false for non-string values', () => {
-			expect(isStringWithExpressionSyntax(123)).toBe(false);
-			expect(isStringWithExpressionSyntax(true)).toBe(false);
-			expect(isStringWithExpressionSyntax(null)).toBe(false);
+			expect(shouldConvertToExpression(123)).toBe(false);
+			expect(shouldConvertToExpression(true)).toBe(false);
+			expect(shouldConvertToExpression(null)).toBe(false);
+		});
+
+		it('should return false if special editor type', () => {
+			expect(shouldConvertToExpression('test {{ value }}', true)).toBe(false);
 		});
 	});
 });
