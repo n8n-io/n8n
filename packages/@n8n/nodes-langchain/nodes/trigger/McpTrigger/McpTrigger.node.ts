@@ -52,6 +52,7 @@ export class McpTrigger extends Node {
 				responseMode: 'onReceived',
 				path: MCP_TRIGGER_PATH_IDENTIFIER + '/messages',
 				ndvHideUrl: true,
+				startExecutionEarly: true,
 			},
 		],
 	};

@@ -292,6 +292,15 @@ export async function executeWebhook(
 		);
 	}
 
+	const startExecutionEarly = workflow.expression.getSimpleParameterValue(
+		workflowStartNode,
+		webhookData.webhookDescription.startExecutionEarly,
+		executionMode,
+		additionalKeys,
+		undefined,
+		false,
+	) as boolean;
+
 	let didSendResponse = false;
 	let runExecutionDataMerge = {};
 	try {
@@ -320,6 +329,31 @@ export async function executeWebhook(
 					await parseBody(req);
 				}
 			}
+		}
+
+		if (startExecutionEarly) {
+			// Initialize the data of the webhook node
+			const nodeExecutionStack: IExecuteData[] = [];
+			nodeExecutionStack.push({
+				node: workflowStartNode,
+				data: {
+					main: [],
+				},
+				source: null,
+			});
+			runExecutionData =
+				runExecutionData ||
+				({
+					startData: {},
+					resultData: {
+						runData: {},
+					},
+					executionData: {
+						contextData: {},
+						nodeExecutionStack,
+						waitingExecution: {},
+					},
+				} as IRunExecutionData);
 		}
 
 		try {

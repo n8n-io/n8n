@@ -144,7 +144,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			{ json: this.additionalData.httpRequest?.body || {} },
 		];
-		const runExecutionData: IRunExecutionData = {
+		const runExecutionData: IRunExecutionData = this.runExecutionData ?? {
 			resultData: {
 				runData: {},
 			},
