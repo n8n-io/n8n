@@ -264,6 +264,21 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	}
 
 	async getWorkflowsAndFoldersWithCount(workflowIds: string[], options: ListQuery.Options = {}) {
+		if (
+			options.filter?.parentFolderId &&
+			typeof options.filter?.parentFolderId === 'string' &&
+			options.filter.parentFolderId !== PROJECT_ROOT &&
+			typeof options.filter?.projectId === 'string'
+		) {
+			const folderIds = await this.folderRepository.getAllFolderIdsInHierarchy(
+				options.filter.parentFolderId,
+				options.filter.projectId,
+			);
+
+			options.filter.parentFolderIds = [options.filter.parentFolderId, ...folderIds];
+			options.filter.folderIds = folderIds;
+		}
+
 		const [workflowsAndFolders, count] = await Promise.all([
 			this.getWorkflowsAndFoldersUnion(workflowIds, options),
 			this.getWorkflowsAndFoldersCount(workflowIds, options),
@@ -396,11 +411,13 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		qb: SelectQueryBuilder<WorkflowEntity>,
 		filter: ListQuery.Options['filter'],
 	): void {
-		if (filter?.parentFolderId === PROJECT_ROOT) {
-			qb.andWhere('workflow.parentFolderId IS NULL');
-		} else if (filter?.parentFolderId) {
-			qb.andWhere('workflow.parentFolderId = :parentFolderId', {
-				parentFolderId: filter.parentFolderId,
+		if (
+			filter?.parentFolderIds &&
+			Array.isArray(filter.parentFolderIds) &&
+			filter.parentFolderIds.length > 0
+		) {
+			qb.andWhere('workflow.parentFolderId IN (:...parentFolderIds)', {
+				parentFolderIds: filter.parentFolderIds,
 			});
 		}
 	}
