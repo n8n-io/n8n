@@ -12,7 +12,13 @@ import type * as express from 'express';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { FlushingSSEServerTransport } from './FlushingSSEServerTransport';
+import type { CompressionResponse } from './FlushingSSEServerTransport';
 
+/**
+ * Parses the JSONRPC message and checks whether the method used was a tool
+ * call. This is necessary in order to not have executions for listing tools
+ * and other commands sent by the MCP client
+ */
 function wasToolCall(body: string) {
 	try {
 		const message: unknown = JSON.parse(body);
@@ -40,7 +46,7 @@ export class McpServerData {
 		this.server = this.setUpServer();
 	}
 
-	async connectTransport(postUrl: string, resp: express.Response): Promise<void> {
+	async connectTransport(postUrl: string, resp: CompressionResponse): Promise<void> {
 		const transport = new FlushingSSEServerTransport(postUrl, resp);
 		this.transports[transport.sessionId] = transport;
 		resp.on('close', () => {
@@ -49,14 +55,12 @@ export class McpServerData {
 		await this.server.connect(transport);
 
 		// Make sure we flush the compression middleware, so that it's not waiting for more content to be added to the buffer
-		// @ts-expect-error 2339
 		if (resp.flush) {
-			// @ts-expect-error 2339
 			resp.flush();
 		}
 	}
 
-	async handlePostMessage(req: express.Request, resp: express.Response, connectedTools: Tool[]) {
+	async handlePostMessage(req: express.Request, resp: CompressionResponse, connectedTools: Tool[]) {
 		const sessionId = req.query.sessionId as string;
 		const transport = this.transports[sessionId];
 		this._tools[sessionId] = connectedTools;
@@ -66,9 +70,7 @@ export class McpServerData {
 			resp.status(400).send('No transport found for sessionId');
 		}
 
-		// @ts-expect-error 2339
 		if (resp.flush) {
-			// @ts-expect-error 2339
 			resp.flush();
 		}
 
@@ -78,7 +80,6 @@ export class McpServerData {
 	}
 
 	setUpServer(): Server {
-		console.log('Setting up server in class');
 		const server = new Server(
 			{
 				name: 'n8n-mcp-server',
@@ -118,7 +119,6 @@ export class McpServerData {
 			const requestedTool: Tool | undefined = this._tools[extra.sessionId].filter(
 				(tool) => tool.name === request.params.name,
 			)?.[0];
-			console.log('Requested tool', requestedTool.name);
 			if (!requestedTool) {
 				// eslint-disable-next-line n8n-local-rules/no-plain-errors
 				throw new Error('Tool not found');
@@ -130,7 +130,7 @@ export class McpServerData {
 				// TODO: Refactor this to no longer use the legacy tool result, but
 				return { toolResult: result };
 			} catch (error) {
-				console.log(error);
+				console.error(error);
 				return { isError: true, content: [{ type: 'text', text: `Error: ${error.message}` }] };
 			}
 		});

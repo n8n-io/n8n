@@ -1,18 +1,27 @@
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
-import type { ServerResponse } from 'node:http';
+//import type { ServerResponse } from 'node:http';
+import type { Response } from 'express';
+
+export type CompressionResponse = Response & {
+	/**
+	 * `flush()` is defined in the compression middleware.
+	 * This is necessary because the compression middleware sometimes waits
+	 * for a certain amount of data before sending the data to the client
+	 */
+	flush: () => void;
+};
 
 export class FlushingSSEServerTransport extends SSEServerTransport {
-	private _mySseResponse?: ServerResponse;
+	private _mySseResponse?: CompressionResponse;
 
-	constructor(_endpoint: string, res: ServerResponse) {
+	constructor(_endpoint: string, res: CompressionResponse) {
 		super(_endpoint, res);
 		this._mySseResponse = res;
 	}
 
 	async send(message: JSONRPCMessage): Promise<void> {
 		await super.send(message);
-		// @ts-expect-error 2339
-		this._mySseResponse.flush();
+		this._mySseResponse?.flush();
 	}
 }

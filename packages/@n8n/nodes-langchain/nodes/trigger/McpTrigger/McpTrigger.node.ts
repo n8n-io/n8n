@@ -6,6 +6,7 @@ import { getConnectedTools } from '@utils/helpers';
 
 import { McpServers } from './McpServer';
 import type { McpServerData } from './McpServer';
+import type { CompressionResponse } from './FlushingSSEServerTransport';
 
 const MCP_TRIGGER_PATH_IDENTIFIER = 'mcp';
 
@@ -58,54 +59,32 @@ export class McpTrigger extends Node {
 	};
 
 	async webhook(context: IWebhookFunctions): Promise<IWebhookResponseData> {
-		// const { typeVersion: nodeVersion, type: nodeType } = context.getNode();
 		const webhookName = context.getWebhookName();
 
-		console.log('webhookName:', webhookName);
 		const req = context.getRequestObject();
-		const resp = context.getResponseObject();
-
-		// TODO:
-		// X Figure out how long to keep the McpServers open
-		// - Figure out how to connect the McpServers to the right triggers
-		//   `-> how do we want to keep the correct tools etc.? Do we wire that up in `.connect()`? Or do we create separate server per endpoint?
-		// - Figure out why vector store doesn't work?
-		// - Logging etc.
-		// - Figure out what the execution should be? Should there be an execution?
-		// - Make it work without some of the ts-ignores etc.
+		const resp = context.getResponseObject() as unknown as CompressionResponse;
 
 		const serverData: McpServerData = McpServers.instance.serverData;
-		console.log(serverData.id);
+
 		if (webhookName === 'setup' && serverData.server) {
-			//await serverData.setUpTools(connectedTools);
+			// Sets up the transport and opens the long-lived connection. This resp
+			// will stay streaming, and is the channel that sends the events
 			const postUrl = new URL(context.getNodeWebhookUrl('default') ?? '/mcp/messages').pathname;
-			console.log(`Setting up SSEServerTransport and connecting, with postUrl: ${postUrl}`);
 			await serverData.connectTransport(postUrl, resp);
-			console.log('done setting up');
+
 			return { noWebhookResponse: true };
 		} else if (webhookName === 'default') {
-			console.log('MESSAGES');
-			console.log(req.rawBody.toString());
-
-			// @ts-expect-error 2345
+			// This is the command-channel, and is actually executing the tools. This
+			// sends the response back through the long-lived connection setup in the
+			// 'setup' call
 			const connectedTools = await getConnectedTools(context, true);
 
-			console.log(
-				'tools',
-				connectedTools.map((tool) => tool.name),
-			);
-
 			const wasToolCall = await serverData.handlePostMessage(req, resp, connectedTools);
-			console.log('Was this a tool-call?', wasToolCall);
-			if (wasToolCall)
-				return { noWebhookResponse: true, workflowData: [[{ json: { blub: 789 } }]] };
+
+			if (wasToolCall) return { noWebhookResponse: true, workflowData: [[{ json: {} }]] };
 			return { noWebhookResponse: true };
 		}
 
-		const testData = {
-			blub: 134,
-		};
-
-		return { workflowData: [[{ json: testData }]] };
+		return { workflowData: [[{ json: {} }]] };
 	}
 }
