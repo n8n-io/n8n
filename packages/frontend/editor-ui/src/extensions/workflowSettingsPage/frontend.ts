@@ -6,32 +6,48 @@ const setup = async (context: N8nExtensionContext) => {
 		id: 'workflow-settings',
 	});
 
-	const panelDocument = panel.contentDocument;
-	panelDocument?.open();
-	panelDocument?.write('Hello from the workflow settings extension!');
-	panelDocument?.close();
-
-	const promptResponsePromise = context.confirm(
-		'Are you sure you want to proceed?',
-		'Confirmation',
-		{
-			confirmButtonText: 'Yeah sure',
-			cancelButtonText: 'No way',
-		},
+	context.setPanelContent(
+		panel,
+		`
+		<p>Click the button below to proceed.</p>
+		<div>
+			<button id="proceed-button" class="button">Proceed</button>
+		</div>
+		<script>
+				console.log('Script loaded in iframe');
+        const button = document.getElementById('proceed-button');
+				button.addEventListener('click', () => {
+					console.log('Button clicked', window.parent);
+				}
+				);
+    </script>
+	`,
 	);
-	const promptResponse = await promptResponsePromise;
 
-	if (promptResponse === 'confirm') {
-		context.showToast({
-			type: 'success',
-			message: 'Workflow settings extension loaded successfully!',
-		});
-	} else {
-		context.showToast({
-			type: 'error',
-			message: 'Thanks, see you next time!',
-		});
-	}
+	const showPrompt = async () => {
+		const promptResponsePromise = context.confirm(
+			'Are you sure you want to proceed?',
+			'Confirmation',
+			{
+				confirmButtonText: 'Yeah sure',
+				cancelButtonText: 'No way',
+			},
+		);
+		const promptResponse = await promptResponsePromise;
+
+		if (promptResponse === 'confirm') {
+			context.showToast({
+				type: 'success',
+				message: 'Workflow settings extension loaded successfully!',
+			});
+		} else {
+			context.showToast({
+				type: 'error',
+				message: 'Thanks, see you next time!',
+			});
+		}
+	};
+	await showPrompt();
 };
 
 export { setup };
