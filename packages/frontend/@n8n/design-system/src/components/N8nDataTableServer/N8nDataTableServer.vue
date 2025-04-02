@@ -5,6 +5,7 @@ export type TableHeader<T> = {
 	value?: DeepKeys<T> | AccessorFn<T>;
 	disableSort?: boolean;
 	minWidth?: number;
+	width?: number;
 	align?: 'end' | 'start' | 'center';
 } & (
 	| { title: string; key?: never; value?: never } // Ensures an object with only `title` is valid
@@ -20,24 +21,46 @@ import type {
 	AccessorFn,
 	Cell,
 	CellContext,
+	ColumnDef,
 	CoreColumn,
+	CoreOptions,
 	DeepKeys,
 	PaginationState,
+	Row,
+	RowSelectionState,
 	SortingState,
 	Updater,
 } from '@tanstack/vue-table';
 import { createColumnHelper, FlexRender, getCoreRowModel, useVueTable } from '@tanstack/vue-table';
-import { computed, shallowRef, useSlots, watch } from 'vue';
+import { ElCheckbox } from 'element-plus';
+import { get } from 'lodash-es';
+import { computed, h, ref, shallowRef, useSlots, watch } from 'vue';
 
 import N8nPagination from '../N8nPagination';
 
-const props = defineProps<{
-	items: T[];
-	headers: Array<TableHeader<T>>;
-	itemsLength: number;
-	loading?: boolean;
-	multiSort?: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		items: T[];
+		headers: Array<TableHeader<T>>;
+		itemsLength: number;
+		loading?: boolean;
+		multiSort?: boolean;
+
+		showSelect?: boolean;
+		/**
+		 * For the selection feature to work, the data table must be able to differentiate each row in the data set. This is done using the item-value prop. It designates a property on the item that should contain a unique value. By default the property it looks for is id.
+		 * You can also supply a function, if for example the unique value needs to be a composite of several properties. The function receives each item as its first argument
+		 */
+		itemValue?: CoreOptions<T>['getRowId'] | string;
+		returnObject?: boolean;
+
+		itemSelectable?: boolean | DeepKeys<T> | ((row: T) => boolean);
+	}>(),
+	{
+		itemSelectable: undefined,
+		itemValue: 'id',
+	},
+);
 
 const slots = useSlots();
 defineSlots<{
@@ -111,6 +134,7 @@ function getValueAccessor(column: Required<TableHeader<T>>) {
 			header: () => getHeaderTitle(column),
 			enableSorting: !column.disableSort,
 			minSize: column.minWidth ?? MIN_COLUMN_WIDTH,
+			size: column.width,
 			meta: {
 				cellProps: {
 					align: column.align,
@@ -124,6 +148,7 @@ function getValueAccessor(column: Required<TableHeader<T>>) {
 			header: () => getHeaderTitle(column),
 			enableSorting: !column.disableSort,
 			minSize: column.minWidth ?? MIN_COLUMN_WIDTH,
+			size: column.width,
 			meta: {
 				cellProps: {
 					align: column.align,
@@ -148,6 +173,7 @@ function mapHeaders(columns: Array<TableHeader<T>>) {
 				header: () => getHeaderTitle(column),
 				enableSorting: !column.disableSort,
 				minSize: column.minWidth ?? MIN_COLUMN_WIDTH,
+				size: column.width,
 				meta: {
 					cellProps: {
 						align: column.align,
@@ -159,12 +185,13 @@ function mapHeaders(columns: Array<TableHeader<T>>) {
 		return columnHelper.display({
 			id: `display_column_${index}`,
 			header: () => getHeaderTitle(column),
+			size: column.width,
 		});
 	});
 }
 
 const columnsDefinition = computed(() => {
-	return mapHeaders(props.headers);
+	return [...(props.showSelect ? [selectColumn] : []), ...mapHeaders(props.headers)];
 });
 
 const page = defineModel<number>('page', { default: 0 });
@@ -199,6 +226,79 @@ function handleSortingChange(updaterOrValue: Updater<SortingState>) {
 	});
 }
 
+const SELECT_COLUMN_ID = 'data-table-select';
+const selectColumn: ColumnDef<T> = {
+	id: SELECT_COLUMN_ID,
+	enableResizing: false,
+	size: 38,
+	enablePinning: true,
+	header: ({ table }) => {
+		const checkboxRef = ref<typeof ElCheckbox>();
+		return h(ElCheckbox, {
+			ref: checkboxRef,
+			modelValue: table.getIsAllRowsSelected(),
+			indeterminate: table.getIsSomeRowsSelected(),
+			onChange: () => {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				const input = checkboxRef.value?.$el.getElementsByTagName('input')[0];
+				if (!input) return;
+				table.getToggleAllRowsSelectedHandler()?.({ target: input });
+			},
+		});
+	},
+	cell: ({ row }) => {
+		const checkboxRef = ref<typeof ElCheckbox>();
+		return h(ElCheckbox, {
+			ref: checkboxRef,
+			modelValue: row.getIsSelected(),
+			disabled: !row.getCanSelect(),
+			onChange: () => {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				const input = checkboxRef.value?.$el.getElementsByTagName('input')[0];
+				if (!input) return;
+				row.getToggleSelectedHandler()?.({ target: input });
+			},
+		});
+	},
+	meta: {
+		cellProps: {
+			align: undefined,
+		},
+	},
+};
+
+function getRowId(originalRow: T, index: number, parent?: Row<T>): string {
+	if (typeof props.itemValue === 'function') {
+		return props.itemValue(originalRow, index, parent);
+	}
+
+	return String(get(originalRow, props.itemValue));
+}
+
+function handleRowSelectionChange(updaterOrValue: Updater<RowSelectionState>) {
+	if (typeof updaterOrValue === 'function') {
+		rowSelection.value = updaterOrValue(rowSelection.value);
+	} else {
+		rowSelection.value = updaterOrValue;
+	}
+
+	if (props.returnObject) {
+		selection.value = Object.keys(rowSelection.value).map((id) => table.getRow(id).original);
+	} else {
+		selection.value = Object.keys(rowSelection.value);
+	}
+}
+
+const selection = defineModel<string[] | T[]>('selection');
+const rowSelection = ref(
+	(selection.value ?? []).reduce<RowSelectionState>((acc, item, index) => {
+		const key = typeof item === 'string' ? item : getRowId(item, index);
+		acc[key] = true;
+
+		return acc;
+	}, {}),
+);
+
 const columnHelper = createColumnHelper<T>();
 const table = useVueTable({
 	data,
@@ -212,6 +312,9 @@ const table = useVueTable({
 		},
 		get pagination() {
 			return pagination.value;
+		},
+		get rowSelection() {
+			return rowSelection.value;
 		},
 	},
 	getCoreRowModel: getCoreRowModel(),
@@ -231,6 +334,22 @@ const table = useVueTable({
 	manualPagination: true,
 	columnResizeMode: 'onChange',
 	columnResizeDirection: 'ltr',
+	getRowId,
+	enableRowSelection: (row) => {
+		if (typeof props.itemSelectable === 'undefined') {
+			return true;
+		}
+		if (typeof props.itemSelectable === 'boolean') {
+			return props.itemSelectable;
+		}
+
+		if (typeof props.itemSelectable === 'function') {
+			return props.itemSelectable(row.original);
+		}
+
+		return Boolean(get(row.original, props.itemSelectable));
+	},
+	onRowSelectionChange: handleRowSelectionChange,
 });
 </script>
 
@@ -372,8 +491,12 @@ const table = useVueTable({
 		text-align: left;
 	}
 
-	th {
+	thead {
 		background-color: var(--color-background-light-base);
+		border-bottom: 1px solid var(--color-foreground-base);
+	}
+
+	th {
 		color: var(--color-text-base);
 		font-weight: 600;
 		font-size: 12px;
@@ -381,7 +504,6 @@ const table = useVueTable({
 		text-transform: capitalize;
 		height: 36px;
 		white-space: nowrap;
-		border-bottom: 1px solid var(--color-foreground-base);
 
 		&:first-child {
 			padding-left: 16px;
@@ -401,16 +523,15 @@ const table = useVueTable({
 		}
 	}
 
-	tr {
+	tbody tr {
 		background-color: var(--color-background-xlight);
+		border-bottom: 1px solid var(--color-foreground-base);
 	}
 
 	td {
 		color: var(--color-text-dark);
 		padding: 0 8px;
 		height: 48px;
-
-		border-bottom: 1px solid var(--color-foreground-base);
 
 		&:first-child {
 			padding-left: 16px;

@@ -26,18 +26,19 @@ const headers = ref<Array<TableHeader<Item>>>([
 	{
 		title: 'Name',
 		key: 'workflowName',
+		width: 400,
 		disableSort: true,
 	},
 	{
-		title: 'Executions',
+		title: 'Total executions',
 		key: 'total',
 	},
 	{
-		title: 'Failures',
+		title: 'Total failed executions',
 		key: 'failed',
 	},
 	{
-		title: 'Failure rate',
+		title: 'Average run time',
 		key: 'failureRate',
 		value(row) {
 			return (
@@ -108,11 +109,12 @@ const emit = defineEmits<{
 				</N8nTooltip>
 			</template>
 			<template #[`item.projectName`]="{ item }">
-				<N8nTooltip :content="item.projectName" placement="top">
+				<N8nTooltip v-if="item.projectName" :content="item.projectName" placement="top">
 					<div class="ellipsis">
 						{{ item.projectName }}
 					</div>
 				</N8nTooltip>
+				<template v-else> - </template>
 			</template>
 		</N8nDataTableServer>
 	</div>
