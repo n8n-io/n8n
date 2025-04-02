@@ -1,20 +1,96 @@
 import { mock } from 'jest-mock-extended';
+import { DateTime } from 'luxon';
 import type {
 	FormFieldsParameter,
+	IDataObject,
 	INode,
+	INodeExecutionData,
 	IWebhookFunctions,
 	MultiPartFormData,
+	NodeTypeAndVersion,
 } from 'n8n-workflow';
-import { DateTime } from 'luxon';
-import { formWebhook, prepareFormData, prepareFormReturnItem, resolveRawData } from '../utils';
+
+import {
+	formWebhook,
+	createDescriptionMetadata,
+	prepareFormData,
+	prepareFormReturnItem,
+	resolveRawData,
+	isFormConnected,
+	sanitizeHtml,
+	validateResponseModeConfiguration,
+	prepareFormFields,
+	addFormResponseDataToReturnItem,
+} from '../utils';
+
+describe('FormTrigger, parseFormDescription', () => {
+	it('should remove HTML tags and truncate to 150 characters', () => {
+		const descriptions = [
+			{ description: '<p>This is a test description</p>', expected: 'This is a test description' },
+			{ description: 'Test description', expected: 'Test description' },
+			{
+				description:
+					'Beneath the golden hues of a setting sun, waves crashed against the rugged shore, carrying whispers of ancient tales etched in natures timeless and soothing song.',
+				expected:
+					'Beneath the golden hues of a setting sun, waves crashed against the rugged shore, carrying whispers of ancient tales etched in natures timeless and so',
+			},
+			{
+				description:
+					'<p>Beneath the golden hues of a setting sun, waves crashed against the rugged shore, carrying whispers of ancient tales etched in natures timeless and soothing song.</p>',
+				expected:
+					'Beneath the golden hues of a setting sun, waves crashed against the rugged shore, carrying whispers of ancient tales etched in natures timeless and so',
+			},
+		];
+
+		descriptions.forEach(({ description, expected }) => {
+			expect(createDescriptionMetadata(description)).toBe(expected);
+		});
+	});
+});
+
+describe('FormTrigger, sanitizeHtml', () => {
+	it('should remove forbidden HTML tags', () => {
+		const givenHtml = [
+			{
+				html: '<script>alert("hello world")</script>',
+				expected: '',
+			},
+			{
+				html: '<style>body { color: red; }</style>',
+				expected: '',
+			},
+			{
+				html: '<input type="text" value="test">',
+				expected: '',
+			},
+		];
+
+		givenHtml.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
+		});
+	});
+});
 
 describe('FormTrigger, formWebhook', () => {
+	const executeFunctions = mock<IWebhookFunctions>();
+	executeFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
+	executeFunctions.getNodeParameter.calledWith('options').mockReturnValue({});
+	executeFunctions.getNodeParameter.calledWith('formTitle').mockReturnValue('Test Form');
+	executeFunctions.getNodeParameter
+		.calledWith('formDescription')
+		.mockReturnValue('Test Description');
+	executeFunctions.getNodeParameter.calledWith('responseMode').mockReturnValue('onReceived');
+	executeFunctions.getRequestObject.mockReturnValue({ method: 'GET', query: {} } as any);
+	executeFunctions.getMode.mockReturnValue('manual');
+	executeFunctions.getInstanceId.mockReturnValue('instanceId');
+	executeFunctions.getBodyData.mockReturnValue({ data: {}, files: {} });
+	executeFunctions.getChildNodes.mockReturnValue([]);
+
 	beforeEach(() => {
 		jest.clearAllMocks();
 	});
 
 	it('should call response render', async () => {
-		const executeFunctions = mock<IWebhookFunctions>();
 		const mockRender = jest.fn();
 
 		const formFields: FormFieldsParameter = [
@@ -33,22 +109,22 @@ describe('FormTrigger, formWebhook', () => {
 				acceptFileTypes: '.pdf,.doc',
 				multipleFiles: false,
 			},
+			{
+				fieldLabel: 'Custom HTML',
+				fieldType: 'html',
+				html: '<div>Test HTML</div>',
+				requiredField: false,
+			},
+			{
+				fieldName: 'Powerpuff Girl',
+				fieldValue: 'Blossom',
+				fieldType: 'hiddenField',
+				fieldLabel: '',
+			},
 		];
 
-		executeFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
-		executeFunctions.getNodeParameter.calledWith('options').mockReturnValue({});
-		executeFunctions.getNodeParameter.calledWith('formTitle').mockReturnValue('Test Form');
-		executeFunctions.getNodeParameter
-			.calledWith('formDescription')
-			.mockReturnValue('Test Description');
-		executeFunctions.getNodeParameter.calledWith('responseMode').mockReturnValue('onReceived');
 		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
 		executeFunctions.getResponseObject.mockReturnValue({ render: mockRender } as any);
-		executeFunctions.getRequestObject.mockReturnValue({ method: 'GET', query: {} } as any);
-		executeFunctions.getMode.mockReturnValue('manual');
-		executeFunctions.getInstanceId.mockReturnValue('instanceId');
-		executeFunctions.getBodyData.mockReturnValue({ data: {}, files: {} });
-		executeFunctions.getChildNodes.mockReturnValue([]);
 
 		await formWebhook(executeFunctions);
 
@@ -56,6 +132,7 @@ describe('FormTrigger, formWebhook', () => {
 			appendAttribution: true,
 			buttonLabel: 'Submit',
 			formDescription: 'Test Description',
+			formDescriptionMetadata: 'Test Description',
 			formFields: [
 				{
 					defaultValue: '',
@@ -98,6 +175,27 @@ describe('FormTrigger, formWebhook', () => {
 					multipleFiles: '',
 					placeholder: undefined,
 				},
+				{
+					id: 'field-4',
+					errorId: 'error-field-4',
+					label: 'Custom HTML',
+					inputRequired: '',
+					defaultValue: '',
+					placeholder: undefined,
+					html: '<div>Test HTML</div>',
+					isHtml: true,
+				},
+				{
+					id: 'field-5',
+					errorId: 'error-field-5',
+					hiddenName: 'Powerpuff Girl',
+					hiddenValue: 'Blossom',
+					label: 'Powerpuff Girl',
+					isHidden: true,
+					inputRequired: '',
+					defaultValue: '',
+					placeholder: undefined,
+				},
 			],
 			formSubmittedText: 'Your response has been recorded',
 			formTitle: 'Test Form',
@@ -105,12 +203,57 @@ describe('FormTrigger, formWebhook', () => {
 				'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger&utm_campaign=instanceId',
 			testRun: true,
 			useResponseData: false,
-			validForm: true,
 		});
 	});
 
+	it('should sanitize form descriptions', async () => {
+		const mockRender = jest.fn();
+
+		const formDescription = [
+			{ description: 'Test Description', expected: 'Test Description' },
+			{ description: '<i>hello</i>', expected: '<i>hello</i>' },
+			{ description: '<script>alert("hello world")</script>', expected: '' },
+		];
+		const formFields: FormFieldsParameter = [
+			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
+		];
+
+		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
+		executeFunctions.getResponseObject.mockReturnValue({ render: mockRender } as any);
+
+		for (const { description, expected } of formDescription) {
+			executeFunctions.getNodeParameter.calledWith('formDescription').mockReturnValue(description);
+
+			await formWebhook(executeFunctions);
+
+			expect(mockRender).toHaveBeenCalledWith('form-trigger', {
+				appendAttribution: true,
+				buttonLabel: 'Submit',
+				formDescription: expected,
+				formDescriptionMetadata: createDescriptionMetadata(expected),
+				formFields: [
+					{
+						defaultValue: '',
+						errorId: 'error-field-0',
+						id: 'field-0',
+						inputRequired: 'form-required',
+						isInput: true,
+						label: 'Name',
+						placeholder: undefined,
+						type: 'text',
+					},
+				],
+				formSubmittedText: 'Your response has been recorded',
+				formTitle: 'Test Form',
+				n8nWebsiteLink:
+					'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger&utm_campaign=instanceId',
+				testRun: true,
+				useResponseData: false,
+			});
+		}
+	});
+
 	it('should return workflowData on POST request', async () => {
-		const executeFunctions = mock<IWebhookFunctions>();
 		const mockStatus = jest.fn();
 		const mockEnd = jest.fn();
 
@@ -124,15 +267,9 @@ describe('FormTrigger, formWebhook', () => {
 			'field-1': '30',
 		};
 
-		executeFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
-		executeFunctions.getNodeParameter.calledWith('options').mockReturnValue({});
-		executeFunctions.getNodeParameter.calledWith('responseMode').mockReturnValue('onReceived');
-		executeFunctions.getChildNodes.mockReturnValue([]);
 		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
 		executeFunctions.getResponseObject.mockReturnValue({ status: mockStatus, end: mockEnd } as any);
 		executeFunctions.getRequestObject.mockReturnValue({ method: 'POST' } as any);
-		executeFunctions.getMode.mockReturnValue('manual');
-		executeFunctions.getInstanceId.mockReturnValue('instanceId');
 		executeFunctions.getBodyData.mockReturnValue({ data: bodyData, files: {} });
 
 		const result = await formWebhook(executeFunctions);
@@ -183,9 +320,21 @@ describe('FormTrigger, prepareFormData', () => {
 				acceptFileTypes: '.jpg,.png',
 				multipleFiles: true,
 			},
+			{
+				fieldLabel: 'username',
+				fieldName: 'username',
+				fieldValue: 'powerpuffgirl125',
+				fieldType: 'hiddenField',
+			},
+			{
+				fieldLabel: 'villain',
+				fieldName: 'villain',
+				fieldValue: 'Mojo Dojo',
+				fieldType: 'hiddenField',
+			},
 		];
 
-		const query = { Name: 'John Doe', Email: 'john@example.com' };
+		const query = { Name: 'John Doe', Email: 'john@example.com', villain: 'princess morbucks' };
 
 		const result = prepareFormData({
 			formTitle: 'Test Form',
@@ -202,9 +351,9 @@ describe('FormTrigger, prepareFormData', () => {
 
 		expect(result).toEqual({
 			testRun: false,
-			validForm: true,
 			formTitle: 'Test Form',
 			formDescription: 'This is a test form',
+			formDescriptionMetadata: 'This is a test form',
 			formSubmittedText: 'Thank you for your submission',
 			n8nWebsiteLink:
 				'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger&utm_campaign=test-instance',
@@ -250,6 +399,28 @@ describe('FormTrigger, prepareFormData', () => {
 					acceptFileTypes: '.jpg,.png',
 					multipleFiles: 'multiple',
 				},
+				{
+					id: 'field-4',
+					errorId: 'error-field-4',
+					label: 'username',
+					inputRequired: '',
+					defaultValue: '',
+					placeholder: undefined,
+					hiddenName: 'username',
+					hiddenValue: 'powerpuffgirl125',
+					isHidden: true,
+				},
+				{
+					id: 'field-5',
+					errorId: 'error-field-5',
+					label: 'villain',
+					inputRequired: '',
+					defaultValue: 'princess morbucks',
+					placeholder: undefined,
+					hiddenName: 'villain',
+					isHidden: true,
+					hiddenValue: 'princess morbucks',
+				},
 			],
 			useResponseData: true,
 			appendAttribution: true,
@@ -281,9 +452,9 @@ describe('FormTrigger, prepareFormData', () => {
 
 		expect(result).toEqual({
 			testRun: true,
-			validForm: true,
 			formTitle: 'Test Form',
 			formDescription: 'This is a test form',
+			formDescriptionMetadata: 'This is a test form',
 			formSubmittedText: 'Your response has been recorded',
 			n8nWebsiteLink: 'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger',
 			formFields: [
@@ -340,7 +511,6 @@ describe('FormTrigger, prepareFormData', () => {
 			query: {},
 		});
 
-		expect(result.validForm).toBe(false);
 		expect(result.formFields).toEqual([]);
 	});
 
@@ -573,6 +743,22 @@ describe('prepareFormReturnItem', () => {
 
 		expect(result.json.formQueryParameters).toEqual(staticData);
 	});
+
+	it('should return html if field name is set', async () => {
+		mockContext.getBodyData.mockReturnValue({
+			data: { 'field-0': '<div>hi</div>', 'field-1': '<h1><haha/hi>' },
+			files: {},
+		});
+
+		const formFields = [
+			{ fieldLabel: '', elementName: 'greeting', fieldType: 'html' },
+			{ fieldLabel: '', elementName: '', fieldType: 'html' },
+		];
+		const result = await prepareFormReturnItem(mockContext, formFields, 'production');
+
+		expect(result.json.greeting).toBe('<div>hi</div>');
+		expect(result.json.formMode).toBe('production');
+	});
 });
 
 describe('resolveRawData', () => {
@@ -718,5 +904,201 @@ describe('resolveRawData', () => {
 		expect(resolveRawData(mockContext, input)).toBe(
 			'Address object: {"street":"123 Main St","zipCode":"10001","country":"USA"}.',
 		);
+	});
+});
+
+describe('FormTrigger, isFormConnected', () => {
+	it('should return false if Wait node is connected but resume parameter is not form', async () => {
+		const result = isFormConnected([
+			mock<NodeTypeAndVersion>({
+				type: 'n8n-nodes-base.wait',
+				parameters: {
+					resume: 'timeInterval',
+				},
+			}),
+		]);
+		expect(result).toBe(false);
+	});
+	it('should return true if Wait node is connected and resume parameter is form', async () => {
+		const result = isFormConnected([
+			mock<NodeTypeAndVersion>({
+				type: 'n8n-nodes-base.wait',
+				parameters: {
+					resume: 'form',
+				},
+			}),
+		]);
+		expect(result).toBe(true);
+	});
+	it('should return true if Form node is connected', async () => {
+		const result = isFormConnected([
+			mock<NodeTypeAndVersion>({
+				type: 'n8n-nodes-base.form',
+			}),
+		]);
+		expect(result).toBe(true);
+	});
+});
+
+describe('validateResponseModeConfiguration', () => {
+	let webhookFunctions: ReturnType<typeof mock<IWebhookFunctions>>;
+
+	beforeEach(() => {
+		webhookFunctions = mock<IWebhookFunctions>();
+
+		webhookFunctions.getNode.mockReturnValue({
+			name: 'TestNode',
+			typeVersion: 2.2,
+		} as INode);
+
+		webhookFunctions.getChildNodes.mockReturnValue([]);
+	});
+
+	test('throws error if responseMode is "responseNode" but no Respond to Webhook node is connected', () => {
+		webhookFunctions.getNodeParameter.mockReturnValue('responseNode');
+
+		expect(() => validateResponseModeConfiguration(webhookFunctions)).toThrow(
+			'No Respond to Webhook node found in the workflow',
+		);
+	});
+
+	test('throws error if "Respond to Webhook" node is connected but "responseMode" is not "responseNode" in typeVersion <= 2.1', () => {
+		webhookFunctions.getNodeParameter.mockReturnValue('onReceived');
+		webhookFunctions.getNode.mockReturnValue({
+			name: 'TestNode',
+			typeVersion: 2.1,
+		} as INode);
+		webhookFunctions.getChildNodes.mockReturnValue([
+			{ type: 'n8n-nodes-base.respondToWebhook' } as NodeTypeAndVersion,
+		]);
+
+		expect(() => validateResponseModeConfiguration(webhookFunctions)).toThrow(
+			'TestNode node not correctly configured',
+		);
+	});
+
+	test('throws error if "Respond to Webhook" node is connected, version >= 2.2', () => {
+		webhookFunctions.getNodeParameter.mockReturnValue('responseNode');
+		webhookFunctions.getChildNodes.mockReturnValue([
+			{ type: 'n8n-nodes-base.respondToWebhook' } as NodeTypeAndVersion,
+		]);
+
+		expect(() => validateResponseModeConfiguration(webhookFunctions)).toThrow(
+			'The "Respond to Webhook" node is not supported in workflows initiated by the "n8n Form Trigger"',
+		);
+	});
+
+	test('does not throw an error mode in not "responseNode" and no "Respond to Webhook" node is connected', () => {
+		webhookFunctions.getNodeParameter.mockReturnValue('onReceived');
+
+		expect(() => validateResponseModeConfiguration(webhookFunctions)).not.toThrow();
+	});
+
+	describe('prepareFormFields', () => {
+		it('should resolve expressions in html fields', async () => {
+			webhookFunctions.evaluateExpression.mockImplementation((expression) => {
+				if (expression === '{{ $json.formMode }}') {
+					return 'Title';
+				}
+			});
+
+			const result = prepareFormFields(webhookFunctions, [
+				{
+					fieldLabel: 'Custom HTML',
+					fieldType: 'html',
+					elementName: 'test',
+					html: '<h1>{{ $json.formMode }}</h1>',
+				},
+			]);
+
+			expect(result[0].html).toBe('<h1>Title</h1>');
+		});
+		it('should prepare hiddenField', async () => {
+			const result = prepareFormFields(webhookFunctions, [
+				{
+					fieldLabel: '',
+					fieldName: 'test',
+					fieldType: 'hiddenField',
+				},
+			]);
+
+			expect(result[0]).toEqual({
+				fieldLabel: 'test',
+				fieldName: 'test',
+				fieldType: 'hiddenField',
+			});
+		});
+	});
+});
+
+describe('addFormResponseDataToReturnItem', () => {
+	let returnItem: INodeExecutionData;
+
+	beforeEach(() => {
+		returnItem = { json: {} };
+	});
+
+	test('should use fieldName if fieldLabel is missing', () => {
+		const formFields: FormFieldsParameter = [
+			{ fieldName: 'Alternative Field', fieldType: 'hiddenField' },
+		] as FormFieldsParameter;
+		const bodyData: IDataObject = { 'field-0': 'Test Value' };
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json['Alternative Field']).toBe('Test Value');
+	});
+
+	it('should handle null values', () => {
+		const formFields: FormFieldsParameter = [{ fieldLabel: 'Test Field', fieldType: 'text' }];
+		const bodyData: IDataObject = {};
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json['Test Field']).toBeNull();
+	});
+
+	it('should process html fields and set elementName', () => {
+		const formFields: FormFieldsParameter = [
+			{ fieldLabel: 'HTML Field', elementName: 'htmlElement', fieldType: 'html' },
+		];
+		const bodyData: IDataObject = { 'field-0': '<p>HTML Content</p>' };
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json.htmlElement).toBe('<p>HTML Content</p>');
+	});
+
+	it('should parse number fields correctly', () => {
+		const formFields: FormFieldsParameter = [{ fieldLabel: 'Number Field', fieldType: 'number' }];
+		const bodyData: IDataObject = { 'field-0': '42' };
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json['Number Field']).toBe(42);
+	});
+
+	it('should trim text fields', () => {
+		const formFields: FormFieldsParameter = [{ fieldLabel: 'Text Field', fieldType: 'text' }];
+		const bodyData: IDataObject = { 'field-0': '   hello world   ' };
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json['Text Field']).toBe('hello world');
+	});
+
+	it('should parse multiselect fields from JSON', () => {
+		const formFields: FormFieldsParameter = [
+			{ fieldLabel: 'Multi Field', fieldType: 'text', multiselect: true },
+		];
+		const bodyData: IDataObject = { 'field-0': '["option1", "option2"]' };
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json['Multi Field']).toEqual(['option1', 'option2']);
+	});
+
+	it('should convert single file values to an array if multipleFiles is true', () => {
+		const formFields: FormFieldsParameter = [
+			{ fieldLabel: 'File Field', fieldType: 'file', multipleFiles: true },
+		];
+		const bodyData: IDataObject = { 'field-0': 'file1.pdf' };
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json['File Field']).toEqual(['file1.pdf']);
 	});
 });

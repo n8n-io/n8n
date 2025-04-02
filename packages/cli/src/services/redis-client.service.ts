@@ -1,10 +1,10 @@
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import ioRedis from 'ioredis';
 import type { Cluster, RedisOptions } from 'ioredis';
-import { Service } from 'typedi';
+import { Logger } from 'n8n-core';
 
 import { Debounce } from '@/decorators/debounce';
-import { Logger } from '@/logging/logger.service';
 import { TypedEmitter } from '@/typed-emitter';
 
 import type { RedisClientType } from '../scaling/redis/redis.types';
@@ -131,7 +131,7 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 	}
 
 	private getOptions({ extraOptions }: { extraOptions?: RedisOptions }) {
-		const { username, password, db, tls } = this.globalConfig.queue.bull.redis;
+		const { username, password, db, tls, dualStack } = this.globalConfig.queue.bull.redis;
 
 		/**
 		 * Disabling ready check allows quick reconnection to Redis if Redis becomes
@@ -152,6 +152,8 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 			retryStrategy: this.retryStrategy(),
 			...extraOptions,
 		};
+
+		if (dualStack) options.family = 0;
 
 		if (tls) options.tls = {}; // enable TLS with default Node.js settings
 

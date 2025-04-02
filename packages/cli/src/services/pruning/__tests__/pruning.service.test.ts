@@ -1,4 +1,4 @@
-import type { PruningConfig } from '@n8n/config';
+import type { ExecutionsConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
@@ -17,11 +17,10 @@ describe('PruningService', () => {
 		it('should start pruning on main instance that is the leader', () => {
 			const pruningService = new PruningService(
 				mockLogger(),
-				mock<InstanceSettings>({ isLeader: true }),
+				mock<InstanceSettings>({ isLeader: true, isMultiMain: true }),
 				mock(),
 				mock(),
 				mock<OrchestrationService>({
-					isMultiMainSetupEnabled: true,
 					multiMainSetup: mock<MultiMainSetup>(),
 				}),
 				mock(),
@@ -36,11 +35,10 @@ describe('PruningService', () => {
 		it('should not start pruning on main instance that is a follower', () => {
 			const pruningService = new PruningService(
 				mockLogger(),
-				mock<InstanceSettings>({ isLeader: false }),
+				mock<InstanceSettings>({ isLeader: false, isMultiMain: true }),
 				mock(),
 				mock(),
 				mock<OrchestrationService>({
-					isMultiMainSetupEnabled: true,
 					multiMainSetup: mock<MultiMainSetup>(),
 				}),
 				mock(),
@@ -55,11 +53,10 @@ describe('PruningService', () => {
 		it('should register leadership events if main on multi-main setup', () => {
 			const pruningService = new PruningService(
 				mockLogger(),
-				mock<InstanceSettings>({ isLeader: true }),
+				mock<InstanceSettings>({ isLeader: true, isMultiMain: true }),
 				mock(),
 				mock(),
 				mock<OrchestrationService>({
-					isMultiMainSetupEnabled: true,
 					multiMainSetup: mock<MultiMainSetup>({ on: jest.fn() }),
 				}),
 				mock(),
@@ -85,14 +82,13 @@ describe('PruningService', () => {
 		it('should return `true` based on config if leader main', () => {
 			const pruningService = new PruningService(
 				mockLogger(),
-				mock<InstanceSettings>({ isLeader: true, instanceType: 'main' }),
+				mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
 				mock(),
 				mock(),
 				mock<OrchestrationService>({
-					isMultiMainSetupEnabled: true,
 					multiMainSetup: mock<MultiMainSetup>(),
 				}),
-				mock<PruningConfig>({ isEnabled: true }),
+				mock<ExecutionsConfig>({ pruneData: true }),
 			);
 
 			expect(pruningService.isEnabled).toBe(true);
@@ -101,14 +97,13 @@ describe('PruningService', () => {
 		it('should return `false` based on config if leader main', () => {
 			const pruningService = new PruningService(
 				mockLogger(),
-				mock<InstanceSettings>({ isLeader: true, instanceType: 'main' }),
+				mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
 				mock(),
 				mock(),
 				mock<OrchestrationService>({
-					isMultiMainSetupEnabled: true,
 					multiMainSetup: mock<MultiMainSetup>(),
 				}),
-				mock<PruningConfig>({ isEnabled: false }),
+				mock<ExecutionsConfig>({ pruneData: false }),
 			);
 
 			expect(pruningService.isEnabled).toBe(false);
@@ -117,14 +112,13 @@ describe('PruningService', () => {
 		it('should return `false` if non-main even if config is enabled', () => {
 			const pruningService = new PruningService(
 				mockLogger(),
-				mock<InstanceSettings>({ isLeader: false, instanceType: 'worker' }),
+				mock<InstanceSettings>({ isLeader: false, instanceType: 'worker', isMultiMain: true }),
 				mock(),
 				mock(),
 				mock<OrchestrationService>({
-					isMultiMainSetupEnabled: true,
 					multiMainSetup: mock<MultiMainSetup>(),
 				}),
-				mock<PruningConfig>({ isEnabled: true }),
+				mock<ExecutionsConfig>({ pruneData: true }),
 			);
 
 			expect(pruningService.isEnabled).toBe(false);
@@ -133,14 +127,18 @@ describe('PruningService', () => {
 		it('should return `false` if follower main even if config is enabled', () => {
 			const pruningService = new PruningService(
 				mockLogger(),
-				mock<InstanceSettings>({ isLeader: false, isFollower: true, instanceType: 'main' }),
+				mock<InstanceSettings>({
+					isLeader: false,
+					isFollower: true,
+					instanceType: 'main',
+					isMultiMain: true,
+				}),
 				mock(),
 				mock(),
 				mock<OrchestrationService>({
-					isMultiMainSetupEnabled: true,
 					multiMainSetup: mock<MultiMainSetup>(),
 				}),
-				mock<PruningConfig>({ isEnabled: true }),
+				mock<ExecutionsConfig>({ pruneData: true }),
 			);
 
 			expect(pruningService.isEnabled).toBe(false);
@@ -151,14 +149,13 @@ describe('PruningService', () => {
 		it('should not start pruning if service is disabled', () => {
 			const pruningService = new PruningService(
 				mockLogger(),
-				mock<InstanceSettings>({ isLeader: true, instanceType: 'main' }),
+				mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
 				mock(),
 				mock(),
 				mock<OrchestrationService>({
-					isMultiMainSetupEnabled: true,
 					multiMainSetup: mock<MultiMainSetup>(),
 				}),
-				mock<PruningConfig>({ isEnabled: false }),
+				mock<ExecutionsConfig>({ pruneData: false }),
 			);
 
 			const scheduleRollingSoftDeletionsSpy = jest.spyOn(
@@ -179,14 +176,13 @@ describe('PruningService', () => {
 		it('should start pruning if service is enabled and DB is migrated', () => {
 			const pruningService = new PruningService(
 				mockLogger(),
-				mock<InstanceSettings>({ isLeader: true, instanceType: 'main' }),
+				mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
 				mock(),
 				mock(),
 				mock<OrchestrationService>({
-					isMultiMainSetupEnabled: true,
 					multiMainSetup: mock<MultiMainSetup>(),
 				}),
-				mock<PruningConfig>({ isEnabled: true }),
+				mock<ExecutionsConfig>({ pruneData: true }),
 			);
 
 			const scheduleRollingSoftDeletionsSpy = jest

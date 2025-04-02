@@ -67,7 +67,6 @@ export async function codaApiRequestAllItems(
 	do {
 		responseData = await codaApiRequest.call(this, method, resource, body, query, uri);
 		uri = responseData.nextPageLink;
-		// @ts-ignore
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.nextPageLink !== undefined && responseData.nextPageLink !== '');
 

@@ -19,9 +19,10 @@ export type FormTriggerInput = {
 
 export type FormTriggerData = {
 	testRun: boolean;
-	validForm: boolean;
 	formTitle: string;
 	formDescription?: string;
+	formDescriptionMetadata?: string;
+	formSubmittedHeader?: string;
 	formSubmittedText?: string;
 	redirectUrl?: string;
 	n8nWebsiteLink: string;
@@ -29,6 +30,7 @@ export type FormTriggerData = {
 	useResponseData?: boolean;
 	appendAttribution?: boolean;
 	buttonLabel?: string;
+	dangerousCustomCss?: string;
 };
 
 export const FORM_TRIGGER_AUTHENTICATION_PROPERTY = 'authentication';

@@ -1,9 +1,11 @@
-import { Container } from 'typedi';
+import { Container } from '@n8n/di';
+import { mockInstance } from 'n8n-core/test/utils';
+import type { IWorkflowBase } from 'n8n-workflow';
 
 import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
 import type { User } from '@/databases/entities/user';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { TestDefinitionRepository } from '@/databases/repositories/test-definition.repository.ee';
+import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { createAnnotationTags } from '@test-integration/db/executions';
 
 import { createUserShell } from './../shared/db/users';
@@ -12,10 +14,13 @@ import * as testDb from './../shared/test-db';
 import type { SuperAgentTest } from './../shared/types';
 import * as utils from './../shared/utils/';
 
+const testRunner = mockInstance(TestRunnerService);
+
 let authOwnerAgent: SuperAgentTest;
-let workflowUnderTest: WorkflowEntity;
-let evaluationWorkflow: WorkflowEntity;
-let otherWorkflow: WorkflowEntity;
+let workflowUnderTest: IWorkflowBase;
+let workflowUnderTest2: IWorkflowBase;
+let evaluationWorkflow: IWorkflowBase;
+let otherWorkflow: IWorkflowBase;
 let ownerShell: User;
 let annotationTag: AnnotationTagEntity;
 const testServer = utils.setupTestServer({ endpointGroups: ['evaluation'] });
@@ -29,6 +34,7 @@ beforeEach(async () => {
 	await testDb.truncate(['TestDefinition', 'Workflow', 'AnnotationTag']);
 
 	workflowUnderTest = await createWorkflow({ name: 'workflow-under-test' }, ownerShell);
+	workflowUnderTest2 = await createWorkflow({ name: 'workflow-under-test-2' }, ownerShell);
 	evaluationWorkflow = await createWorkflow({ name: 'evaluation-workflow' }, ownerShell);
 	otherWorkflow = await createWorkflow({ name: 'other-workflow' });
 	annotationTag = (await createAnnotationTags(['test-tag']))[0];
@@ -89,6 +95,44 @@ describe('GET /evaluation/test-definitions', () => {
 		expect(resp.statusCode).toBe(200);
 		expect(resp.body.data.count).toBe(15);
 		expect(resp.body.data.testDefinitions).toHaveLength(5);
+	});
+
+	test('should retrieve test definitions list for a workflow', async () => {
+		// Add a bunch of test definitions for two different workflows
+		const testDefinitions = [];
+
+		for (let i = 0; i < 15; i++) {
+			const newTest = Container.get(TestDefinitionRepository).create({
+				name: `test-${i}`,
+				workflow: { id: workflowUnderTest.id },
+			});
+
+			const newTest2 = Container.get(TestDefinitionRepository).create({
+				name: `test-${i * 2}`,
+				workflow: { id: workflowUnderTest2.id },
+			});
+
+			testDefinitions.push(newTest, newTest2);
+		}
+
+		await Container.get(TestDefinitionRepository).save(testDefinitions);
+
+		// Fetch test definitions of a second workflow
+		let resp = await authOwnerAgent.get(
+			`/evaluation/test-definitions?filter=${JSON.stringify({ workflowId: workflowUnderTest2.id })}`,
+		);
+
+		expect(resp.statusCode).toBe(200);
+		expect(resp.body.data.count).toBe(15);
+	});
+
+	test('should return error if user has no access to the workflowId specified in filter', async () => {
+		let resp = await authOwnerAgent.get(
+			`/evaluation/test-definitions?filter=${JSON.stringify({ workflowId: otherWorkflow.id })}`,
+		);
+
+		expect(resp.statusCode).toBe(403);
+		expect(resp.body.message).toBe('User does not have access to the workflow');
 	});
 });
 
@@ -163,9 +207,36 @@ describe('POST /evaluation/test-definitions', () => {
 		});
 
 		expect(resp.statusCode).toBe(200);
-		expect(resp.body.data.name).toBe('test');
-		expect(resp.body.data.workflowId).toBe(workflowUnderTest.id);
-		expect(resp.body.data.evaluationWorkflowId).toBe(evaluationWorkflow.id);
+		expect(resp.body.data).toEqual(
+			expect.objectContaining({
+				name: 'test',
+				workflowId: workflowUnderTest.id,
+				evaluationWorkflowId: evaluationWorkflow.id,
+			}),
+		);
+	});
+
+	test('should create test definition with all fields', async () => {
+		const resp = await authOwnerAgent.post('/evaluation/test-definitions').send({
+			name: 'test',
+			description: 'test description',
+			workflowId: workflowUnderTest.id,
+			evaluationWorkflowId: evaluationWorkflow.id,
+			annotationTagId: annotationTag.id,
+		});
+
+		expect(resp.statusCode).toBe(200);
+		expect(resp.body.data).toEqual(
+			expect.objectContaining({
+				name: 'test',
+				description: 'test description',
+				workflowId: workflowUnderTest.id,
+				evaluationWorkflowId: evaluationWorkflow.id,
+				annotationTag: expect.objectContaining({
+					id: annotationTag.id,
+				}),
+			}),
+		);
 	});
 
 	test('should return error if name is empty', async () => {
@@ -323,6 +394,58 @@ describe('PATCH /evaluation/test-definitions/:id', () => {
 		expect(resp.statusCode).toBe(400);
 		expect(resp.body.message).toBe('Annotation tag not found');
 	});
+
+	test('should update pinned nodes', async () => {
+		const newTest = Container.get(TestDefinitionRepository).create({
+			name: 'test',
+			workflow: { id: workflowUnderTest.id },
+		});
+		await Container.get(TestDefinitionRepository).save(newTest);
+
+		const resp = await authOwnerAgent.patch(`/evaluation/test-definitions/${newTest.id}`).send({
+			mockedNodes: [
+				{
+					id: 'uuid-1234',
+					name: 'Schedule Trigger',
+				},
+			],
+		});
+
+		expect(resp.statusCode).toBe(200);
+		expect(resp.body.data.mockedNodes).toEqual([{ id: 'uuid-1234', name: 'Schedule Trigger' }]);
+	});
+
+	test('should return error if pinned nodes are invalid', async () => {
+		const newTest = Container.get(TestDefinitionRepository).create({
+			name: 'test',
+			workflow: { id: workflowUnderTest.id },
+		});
+		await Container.get(TestDefinitionRepository).save(newTest);
+
+		const resp = await authOwnerAgent.patch(`/evaluation/test-definitions/${newTest.id}`).send({
+			mockedNodes: ['Simple string'],
+		});
+
+		expect(resp.statusCode).toBe(400);
+	});
+
+	test('should return error if pinned nodes are not in the workflow', async () => {
+		const newTest = Container.get(TestDefinitionRepository).create({
+			name: 'test',
+			workflow: { id: workflowUnderTest.id },
+		});
+		await Container.get(TestDefinitionRepository).save(newTest);
+
+		const resp = await authOwnerAgent.patch(`/evaluation/test-definitions/${newTest.id}`).send({
+			mockedNodes: [
+				{
+					name: 'Invalid Node',
+				},
+			],
+		});
+
+		expect(resp.statusCode).toBe(400);
+	});
 });
 
 describe('DELETE /evaluation/test-definitions/:id', () => {
@@ -357,5 +480,26 @@ describe('DELETE /evaluation/test-definitions/:id', () => {
 
 		expect(resp.statusCode).toBe(404);
 		expect(resp.body.message).toBe('Test definition not found');
+	});
+});
+
+describe('POST /evaluation/test-definitions/:id/run', () => {
+	test('should trigger the test run', async () => {
+		const newTest = Container.get(TestDefinitionRepository).create({
+			name: 'test',
+			workflow: { id: workflowUnderTest.id },
+		});
+		await Container.get(TestDefinitionRepository).save(newTest);
+
+		const resp = await authOwnerAgent.post(`/evaluation/test-definitions/${newTest.id}/run`);
+
+		expect(resp.statusCode).toBe(202);
+		expect(resp.body).toEqual(
+			expect.objectContaining({
+				success: true,
+			}),
+		);
+
+		expect(testRunner.runTest).toHaveBeenCalledTimes(1);
 	});
 });

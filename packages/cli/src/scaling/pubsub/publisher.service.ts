@@ -1,9 +1,9 @@
+import { Service } from '@n8n/di';
 import type { Redis as SingleNodeClient, Cluster as MultiNodeClient } from 'ioredis';
-import { InstanceSettings } from 'n8n-core';
-import { Service } from 'typedi';
+import { InstanceSettings, Logger } from 'n8n-core';
+import type { LogMetadata } from 'n8n-workflow';
 
 import config from '@/config';
-import { Logger } from '@/logging/logger.service';
 import { RedisClientService } from '@/services/redis-client.service';
 
 import type { PubSub } from './pubsub.types';
@@ -45,7 +45,7 @@ export class Publisher {
 	// #region Publishing
 
 	/** Publish a command into the `n8n.commands` channel. */
-	async publishCommand(msg: Omit<PubSub.Command, 'senderId'>) {
+	async publishCommand(msg: PubSub.Command) {
 		// @TODO: Once this class is only ever used in scaling mode, remove next line.
 		if (config.getEnv('executions.mode') !== 'queue') return;
 
@@ -59,7 +59,18 @@ export class Publisher {
 			}),
 		);
 
-		this.logger.debug(`Published ${msg.command} to command channel`);
+		let msgName = msg.command;
+
+		const metadata: LogMetadata = { msg: msg.command, channel: 'n8n.commands' };
+
+		if (msg.command === 'relay-execution-lifecycle-event') {
+			const { data, type } = msg.payload;
+			msgName += ` (${type})`;
+			metadata.type = type;
+			if ('executionId' in data) metadata.executionId = data.executionId;
+		}
+
+		this.logger.debug(`Published pubsub msg: ${msgName}`, metadata);
 	}
 
 	/** Publish a response to a command into the `n8n.worker-response` channel. */

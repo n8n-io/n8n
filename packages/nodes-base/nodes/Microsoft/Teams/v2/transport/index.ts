@@ -7,6 +7,7 @@ import type {
 	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
+
 import { capitalize } from '../../../../../utils/utilities';
 
 export async function microsoftApiRequest(
@@ -32,7 +33,6 @@ export async function microsoftApiRequest(
 		if (Object.keys(headers).length !== 0) {
 			options.headers = Object.assign({}, options.headers, headers);
 		}
-		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'microsoftTeamsOAuth2Api', options);
 	} catch (error) {
 		const errorOptions: IDataObject = {};

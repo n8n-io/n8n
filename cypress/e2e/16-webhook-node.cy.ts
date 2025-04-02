@@ -1,5 +1,6 @@
 import { nanoid } from 'nanoid';
 
+import { simpleWebhookCall, waitForWebhook } from '../composables/webhooks';
 import { BACKEND_BASE_URL, EDIT_FIELDS_SET_NODE_NAME } from '../constants';
 import { WorkflowPage, NDV, CredentialsModal } from '../pages';
 import { cowBase64 } from '../support/binaryTestFiles';
@@ -8,81 +9,6 @@ import { getVisibleSelect } from '../utils';
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 const credentialsModal = new CredentialsModal();
-
-export const waitForWebhook = 500;
-
-interface SimpleWebhookCallOptions {
-	method: string;
-	webhookPath: string;
-	responseCode?: number;
-	respondWith?: string;
-	executeNow?: boolean;
-	responseData?: string;
-	authentication?: string;
-}
-
-export const simpleWebhookCall = (options: SimpleWebhookCallOptions) => {
-	const {
-		authentication,
-		method,
-		webhookPath,
-		responseCode,
-		respondWith,
-		responseData,
-		executeNow = true,
-	} = options;
-
-	workflowPage.actions.addInitialNodeToCanvas('Webhook');
-	workflowPage.actions.openNode('Webhook');
-
-	cy.getByTestId('parameter-input-httpMethod').click();
-	getVisibleSelect().find('.option-headline').contains(method).click();
-	cy.getByTestId('parameter-input-path')
-		.find('.parameter-input')
-		.find('input')
-		.clear()
-		.type(webhookPath);
-
-	if (authentication) {
-		cy.getByTestId('parameter-input-authentication').click();
-		getVisibleSelect().find('.option-headline').contains(authentication).click();
-	}
-
-	if (responseCode) {
-		cy.get('.param-options').click();
-		getVisibleSelect().contains('Response Code').click();
-		cy.get('.parameter-item-wrapper > .parameter-input-list-wrapper').children().click();
-		getVisibleSelect().contains('201').click();
-	}
-
-	if (respondWith) {
-		cy.getByTestId('parameter-input-responseMode').click();
-		getVisibleSelect().find('.option-headline').contains(respondWith).click();
-	}
-
-	if (responseData) {
-		cy.getByTestId('parameter-input-responseData').click();
-		getVisibleSelect().find('.option-headline').contains(responseData).click();
-	}
-
-	const callEndpoint = (cb: (response: Cypress.Response<unknown>) => void) => {
-		cy.request(method, `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`).then(cb);
-	};
-
-	if (executeNow) {
-		ndv.actions.execute();
-		cy.wait(waitForWebhook);
-
-		callEndpoint((response) => {
-			expect(response.status).to.eq(200);
-			ndv.getters.outputPanel().contains('headers');
-		});
-	}
-
-	return {
-		callEndpoint,
-	};
-};
 
 describe('Webhook Trigger node', () => {
 	beforeEach(() => {
@@ -250,7 +176,7 @@ describe('Webhook Trigger node', () => {
 		});
 		// add credentials
 		workflowPage.getters.nodeCredentialsSelect().click();
-		getVisibleSelect().find('li').last().click();
+		workflowPage.getters.nodeCredentialsCreateOption().click();
 		credentialsModal.getters.credentialsEditModal().should('be.visible');
 		credentialsModal.actions.fillCredentialsForm();
 
@@ -293,7 +219,7 @@ describe('Webhook Trigger node', () => {
 		});
 		// add credentials
 		workflowPage.getters.nodeCredentialsSelect().click();
-		getVisibleSelect().find('li').last().click();
+		workflowPage.getters.nodeCredentialsCreateOption().click();
 		credentialsModal.getters.credentialsEditModal().should('be.visible');
 		credentialsModal.actions.fillCredentialsForm();
 

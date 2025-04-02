@@ -1,3 +1,5 @@
+import * as credentialsComposables from '../composables/credentialsComposables';
+import { saveCredential } from '../composables/modals/credential-modal';
 import * as projects from '../composables/projects';
 import { INSTANCE_MEMBERS, INSTANCE_OWNER, INSTANCE_ADMIN, NOTION_NODE_NAME } from '../constants';
 import {
@@ -37,7 +39,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 	it('should create C1, W1, W2, share W1 with U3, as U2', () => {
 		cy.signinAsMember(0);
 
-		cy.visit(credentialsPage.url);
+		credentialsComposables.loadCredentialsPage(credentialsPage.url);
 		credentialsPage.getters.emptyListCreateCredentialButton().click();
 		credentialsModal.getters.newCredentialTypeOption('Notion API').click();
 		credentialsModal.getters.newCredentialTypeButton().click();
@@ -70,7 +72,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 	it('should create C2, share C2 with U1 and U2, as U3', () => {
 		cy.signinAsMember(1);
 
-		cy.visit(credentialsPage.url);
+		credentialsComposables.loadCredentialsPage(credentialsPage.url);
 		credentialsPage.getters.emptyListCreateCredentialButton().click();
 		credentialsModal.getters.newCredentialTypeOption('Airtable Personal Access Token API').click();
 		credentialsModal.getters.newCredentialTypeButton().click();
@@ -88,7 +90,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 
 		cy.visit(workflowsPage.url);
 		workflowsPage.getters.workflowCards().should('have.length', 1);
-		workflowsPage.getters.workflowCard('Workflow W1').click();
+		workflowsPage.getters.workflowCardContent('Workflow W1').click();
 		workflowPage.actions.addNodeToCanvas('Airtable', true, true);
 		ndv.getters.credentialInput().find('input').should('have.value', 'Credential C2');
 		ndv.actions.close();
@@ -104,7 +106,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 
 		cy.visit(workflowsPage.url);
 		workflowsPage.getters.workflowCards().should('have.length', 2);
-		workflowsPage.getters.workflowCard('Workflow W1').click();
+		workflowsPage.getters.workflowCardContent('Workflow W1').click();
 		workflowPage.actions.addNodeToCanvas('Airtable', true, true);
 		ndv.getters.credentialInput().find('input').should('have.value', 'Credential C2');
 		ndv.actions.close();
@@ -133,7 +135,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 
 		cy.visit(workflowsPage.url);
 		workflowsPage.getters.workflowCards().should('have.length', 2);
-		workflowsPage.getters.workflowCard('Workflow W1').click();
+		workflowsPage.getters.workflowCardContent('Workflow W1').click();
 		workflowPage.actions.openNode('Notion');
 		ndv.getters
 			.credentialInput()
@@ -144,14 +146,14 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 
 		cy.waitForLoad();
 		cy.visit(workflowsPage.url);
-		workflowsPage.getters.workflowCard('Workflow W2').click('top');
+		workflowsPage.getters.workflowCardContent('Workflow W2').click('top');
 		workflowPage.actions.executeWorkflow();
 	});
 
 	it('should automatically test C2 when opened by U2 sharee', () => {
 		cy.signinAsMember(0);
 
-		cy.visit(credentialsPage.url);
+		credentialsComposables.loadCredentialsPage(credentialsPage.url);
 		credentialsPage.getters.credentialCard('Credential C2').click();
 		credentialsModal.getters.testSuccessTag().should('be.visible');
 	});
@@ -159,7 +161,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 	it('should work for admin role on credentials created by others (also can share it with themselves)', () => {
 		cy.signinAsMember(0);
 
-		cy.visit(credentialsPage.url);
+		credentialsComposables.loadCredentialsPage(credentialsPage.url);
 		credentialsPage.getters.createCredentialButton().click();
 		credentialsModal.getters.newCredentialTypeOption('Notion API').click();
 		credentialsModal.getters.newCredentialTypeButton().click({ force: true });
@@ -170,7 +172,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 
 		cy.signout();
 		cy.signinAsAdmin();
-		cy.visit(credentialsPage.url);
+		credentialsComposables.loadCredentialsPage(credentialsPage.url);
 		credentialsPage.getters.credentialCard('Credential C3').click();
 		credentialsModal.getters.testSuccessTag().should('be.visible');
 		cy.get('input').should('not.have.length');
@@ -225,8 +227,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 			.filter(':contains("Development")')
 			.should('have.length', 1)
 			.click();
-		credentialsModal.getters.saveButton().click();
-		credentialsModal.getters.saveButton().should('have.text', 'Saved');
+		saveCredential();
 		credentialsModal.actions.close();
 
 		projects.getProjectTabWorkflows().click();
@@ -252,8 +253,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		credentialsModal.actions.changeTab('Sharing');
 		credentialsModal.getters.usersSelect().click();
 		getVisibleSelect().find('li').should('have.length', 4).first().click();
-		credentialsModal.getters.saveButton().click();
-		credentialsModal.getters.saveButton().should('have.text', 'Saved');
+		saveCredential();
 		credentialsModal.actions.close();
 
 		credentialsPage.getters
@@ -274,7 +274,7 @@ describe('Credential Usage in Cross Shared Workflows', () => {
 		cy.changeQuota('maxTeamProjects', -1);
 		cy.reload();
 		cy.signinAsOwner();
-		cy.visit(credentialsPage.url);
+		credentialsComposables.loadCredentialsPage(credentialsPage.url);
 	});
 
 	it('should only show credentials from the same team project', () => {
@@ -298,10 +298,9 @@ describe('Credential Usage in Cross Shared Workflows', () => {
 		workflowsPage.actions.createWorkflowFromCard();
 		workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
 
-		// Only the credential in this project (+ the 'Create new' option) should
-		// be in the dropdown
+		// Only the credential in this project should be in the dropdown
 		workflowPage.getters.nodeCredentialsSelect().click();
-		getVisibleSelect().find('li').should('have.length', 2);
+		getVisibleSelect().find('li').should('have.length', 1);
 	});
 
 	it('should only show credentials in their personal project for members', () => {
@@ -319,17 +318,16 @@ describe('Credential Usage in Cross Shared Workflows', () => {
 
 		// As the member, create a new notion credential and a workflow
 		cy.signinAsMember();
-		cy.visit(credentialsPage.url);
+		credentialsComposables.loadCredentialsPage(credentialsPage.url);
 		credentialsPage.getters.createCredentialButton().click();
 		credentialsModal.actions.createNewCredential('Notion API');
 		cy.visit(workflowsPage.url);
 		workflowsPage.actions.createWorkflowFromCard();
 		workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
 
-		// Only the own credential the shared one (+ the 'Create new' option)
-		// should be in the dropdown
+		// Only the own credential the shared one should be in the dropdown
 		workflowPage.getters.nodeCredentialsSelect().click();
-		getVisibleSelect().find('li').should('have.length', 3);
+		getVisibleSelect().find('li').should('have.length', 2);
 	});
 
 	it('should only show credentials in their personal project for members if the workflow was shared with them', () => {
@@ -349,17 +347,16 @@ describe('Credential Usage in Cross Shared Workflows', () => {
 
 		// As the member, create a new notion credential
 		cy.signinAsMember();
-		cy.visit(credentialsPage.url);
+		credentialsComposables.loadCredentialsPage(credentialsPage.url);
 		credentialsPage.getters.emptyListCreateCredentialButton().click();
 		credentialsModal.actions.createNewCredential('Notion API');
 		cy.visit(workflowsPage.url);
-		workflowsPage.getters.workflowCard(workflowName).click();
+		workflowsPage.getters.workflowCardContent(workflowName).click();
 		workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
 
-		// Only the own credential the shared one (+ the 'Create new' option)
-		// should be in the dropdown
+		// Only the own credential the shared one should be in the dropdown
 		workflowPage.getters.nodeCredentialsSelect().click();
-		getVisibleSelect().find('li').should('have.length', 2);
+		getVisibleSelect().find('li').should('have.length', 1);
 	});
 
 	it("should show all credentials from all personal projects the workflow's been shared into for the global owner", () => {
@@ -367,20 +364,20 @@ describe('Credential Usage in Cross Shared Workflows', () => {
 
 		// As member 1, create a new notion credential. This should not show up.
 		cy.signinAsMember(1);
-		cy.visit(credentialsPage.url);
+		credentialsComposables.loadCredentialsPage(credentialsPage.url);
 		credentialsPage.getters.emptyListCreateCredentialButton().click();
 		credentialsModal.actions.createNewCredential('Notion API');
 
 		// As admin, create a new notion credential. This should show up.
 		cy.signinAsAdmin();
-		cy.visit(credentialsPage.url);
+		credentialsComposables.loadCredentialsPage(credentialsPage.url);
 		credentialsPage.getters.createCredentialButton().click();
 		credentialsModal.actions.createNewCredential('Notion API');
 
 		// As member 0, create a new notion credential and a workflow and share it
 		// with the global owner and the admin.
 		cy.signinAsMember();
-		cy.visit(credentialsPage.url);
+		credentialsComposables.loadCredentialsPage(credentialsPage.url);
 		credentialsPage.getters.emptyListCreateCredentialButton().click();
 		credentialsModal.actions.createNewCredential('Notion API');
 		cy.visit(workflowsPage.url);
@@ -394,23 +391,23 @@ describe('Credential Usage in Cross Shared Workflows', () => {
 		// As the global owner, create a new notion credential and open the shared
 		// workflow
 		cy.signinAsOwner();
-		cy.visit(credentialsPage.url);
+		credentialsComposables.loadCredentialsPage(credentialsPage.url);
+
 		credentialsPage.getters.createCredentialButton().click();
 		credentialsModal.actions.createNewCredential('Notion API');
 		cy.visit(workflowsPage.url);
-		workflowsPage.getters.workflowCard(workflowName).click();
+		workflowsPage.getters.workflowCardContent(workflowName).click();
 		workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
 
-		// Only the personal credentials of the workflow owner and the global owner
-		// should show up.
+		// Only the personal credentials of the workflow owner and the global owner should show up.
 		workflowPage.getters.nodeCredentialsSelect().click();
-		getVisibleSelect().find('li').should('have.length', 4);
+		getVisibleSelect().find('li').should('have.length', 3);
 	});
 
 	it('should show all personal credentials if the global owner owns the workflow', () => {
 		// As member 0, create a new notion credential.
 		cy.signinAsMember();
-		cy.visit(credentialsPage.url);
+		credentialsComposables.loadCredentialsPage(credentialsPage.url);
 		credentialsPage.getters.emptyListCreateCredentialButton().click();
 		credentialsModal.actions.createNewCredential('Notion API');
 
@@ -422,6 +419,6 @@ describe('Credential Usage in Cross Shared Workflows', () => {
 
 		// Show all personal credentials
 		workflowPage.getters.nodeCredentialsSelect().click();
-		getVisibleSelect().find('li').should('have.have.length', 2);
+		getVisibleSelect().find('li').should('have.have.length', 1);
 	});
 });

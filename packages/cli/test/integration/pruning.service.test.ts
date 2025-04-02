@@ -1,12 +1,11 @@
-import { PruningConfig } from '@n8n/config';
+import { ExecutionsConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { BinaryDataService, InstanceSettings } from 'n8n-core';
-import type { ExecutionStatus } from 'n8n-workflow';
-import Container from 'typedi';
+import type { ExecutionStatus, IWorkflowBase } from 'n8n-workflow';
 
-import { TIME } from '@/constants';
+import { Time } from '@/constants';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { PruningService } from '@/services/pruning/pruning.service';
 
@@ -21,25 +20,25 @@ import { mockInstance, mockLogger } from '../shared/mocking';
 
 describe('softDeleteOnPruningCycle()', () => {
 	let pruningService: PruningService;
-	const instanceSettings = new InstanceSettings(mock());
+	const instanceSettings = Container.get(InstanceSettings);
 	instanceSettings.markAsLeader();
 
 	const now = new Date();
-	const yesterday = new Date(Date.now() - TIME.DAY);
-	let workflow: WorkflowEntity;
-	let pruningConfig: PruningConfig;
+	const yesterday = new Date(Date.now() - 1 * Time.days.toMilliseconds);
+	let workflow: IWorkflowBase;
+	let executionsConfig: ExecutionsConfig;
 
 	beforeAll(async () => {
 		await testDb.init();
 
-		pruningConfig = Container.get(PruningConfig);
+		executionsConfig = Container.get(ExecutionsConfig);
 		pruningService = new PruningService(
 			mockLogger(),
 			instanceSettings,
 			Container.get(ExecutionRepository),
 			mockInstance(BinaryDataService),
 			mock(),
-			pruningConfig,
+			executionsConfig,
 		);
 
 		workflow = await createWorkflow();
@@ -62,8 +61,8 @@ describe('softDeleteOnPruningCycle()', () => {
 
 	describe('when EXECUTIONS_DATA_PRUNE_MAX_COUNT is set', () => {
 		beforeAll(() => {
-			pruningConfig.maxAge = 336;
-			pruningConfig.maxCount = 1;
+			executionsConfig.pruneDataMaxAge = 336;
+			executionsConfig.pruneDataMaxCount = 1;
 		});
 
 		test('should mark as deleted based on EXECUTIONS_DATA_PRUNE_MAX_COUNT', async () => {
@@ -163,8 +162,8 @@ describe('softDeleteOnPruningCycle()', () => {
 
 	describe('when EXECUTIONS_DATA_MAX_AGE is set', () => {
 		beforeAll(() => {
-			pruningConfig.maxAge = 1;
-			pruningConfig.maxCount = 0;
+			executionsConfig.pruneDataMaxAge = 1;
+			executionsConfig.pruneDataMaxCount = 0;
 		});
 
 		test('should mark as deleted based on EXECUTIONS_DATA_MAX_AGE', async () => {

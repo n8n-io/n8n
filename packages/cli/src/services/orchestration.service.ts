@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container, Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import Container, { Service } from 'typedi';
 
 import config from '@/config';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -22,29 +22,6 @@ export class OrchestrationService {
 
 	isInitialized = false;
 
-	private isMultiMainSetupLicensed = false;
-
-	setMultiMainSetupLicensed(newState: boolean) {
-		this.isMultiMainSetupLicensed = newState;
-	}
-
-	get isMultiMainSetupEnabled() {
-		return (
-			config.getEnv('executions.mode') === 'queue' &&
-			this.globalConfig.multiMainSetup.enabled &&
-			this.instanceSettings.instanceType === 'main' &&
-			this.isMultiMainSetupLicensed
-		);
-	}
-
-	get isSingleMainSetup() {
-		return !this.isMultiMainSetupEnabled;
-	}
-
-	sanityCheck() {
-		return this.isInitialized && config.get('executions.mode') === 'queue';
-	}
-
 	async init() {
 		if (this.isInitialized) return;
 
@@ -56,7 +33,7 @@ export class OrchestrationService {
 			this.subscriber = Container.get(Subscriber);
 		}
 
-		if (this.isMultiMainSetupEnabled) {
+		if (this.instanceSettings.isMultiMain) {
 			await this.multiMainSetup.init();
 		} else {
 			this.instanceSettings.markAsLeader();
@@ -69,7 +46,7 @@ export class OrchestrationService {
 	async shutdown() {
 		if (!this.isInitialized) return;
 
-		if (this.isMultiMainSetupEnabled) await this.multiMainSetup.shutdown();
+		if (this.instanceSettings.isMultiMain) await this.multiMainSetup.shutdown();
 
 		this.publisher.shutdown();
 		this.subscriber.shutdown();

@@ -1,3 +1,8 @@
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import { HumanMessage } from '@langchain/core/messages';
+import { SystemMessagePromptTemplate, ChatPromptTemplate } from '@langchain/core/prompts';
+import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -6,15 +11,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import { HumanMessage } from '@langchain/core/messages';
-import { SystemMessagePromptTemplate, ChatPromptTemplate } from '@langchain/core/prompts';
-import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
 import { z } from 'zod';
-import { getTracingConfig } from '../../../utils/tracing';
+
+import { getTracingConfig } from '@utils/tracing';
 
 const DEFAULT_SYSTEM_PROMPT_TEMPLATE =
 	'You are highly intelligent and accurate sentiment analyzer. Analyze the sentiment of the provided text. Categorize it into one of the following: {categories}. Use the provided formatting instructions. Only output the JSON.';
@@ -25,7 +24,7 @@ const configuredOutputs = (parameters: INodeParameters, defaultCategories: strin
 	const categories = (options?.categories as string) ?? defaultCategories;
 	const categoriesArray = categories.split(',').map((cat) => cat.trim());
 
-	const ret = categoriesArray.map((cat) => ({ type: NodeConnectionType.Main, displayName: cat }));
+	const ret = categoriesArray.map((cat) => ({ type: 'main', displayName: cat }));
 	return ret;
 };
 
@@ -55,11 +54,11 @@ export class SentimentAnalysis implements INodeType {
 			name: 'Sentiment Analysis',
 		},
 		inputs: [
-			{ displayName: '', type: NodeConnectionType.Main },
+			{ displayName: '', type: NodeConnectionTypes.Main },
 			{
 				displayName: 'Model',
 				maxConnections: 1,
-				type: NodeConnectionType.AiLanguageModel,
+				type: NodeConnectionTypes.AiLanguageModel,
 				required: true,
 			},
 		],
@@ -141,7 +140,7 @@ export class SentimentAnalysis implements INodeType {
 		const items = this.getInputData();
 
 		const llm = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
+			NodeConnectionTypes.AiLanguageModel,
 			0,
 		)) as BaseLanguageModel;
 

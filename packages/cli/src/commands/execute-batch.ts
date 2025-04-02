@@ -1,18 +1,17 @@
 /* eslint-disable @typescript-eslint/no-loop-func */
+import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
 import fs from 'fs';
 import { diff } from 'json-diff';
 import pick from 'lodash/pick';
-import type { IRun, ITaskData, IWorkflowExecutionDataProcess } from 'n8n-workflow';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import type { IRun, ITaskData, IWorkflowBase, IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import os from 'os';
 import { sep } from 'path';
-import { Container } from 'typedi';
 
 import { ActiveExecutions } from '@/active-executions';
 import type { User } from '@/databases/entities/user';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { IWorkflowDb } from '@/interfaces';
 import { OwnershipService } from '@/services/ownership.service';
 import { findCliWorkflowStart } from '@/utils';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -275,7 +274,7 @@ export class ExecuteBatch extends BaseCommand {
 			query.andWhere('workflows.id not in (:...skipIds)', { skipIds });
 		}
 
-		const allWorkflows = (await query.getMany()) as IWorkflowDb[];
+		const allWorkflows = (await query.getMany()) as IWorkflowBase[];
 
 		if (ExecuteBatch.debug) {
 			process.stdout.write(`Found ${allWorkflows.length} workflows to execute.\n`);
@@ -378,7 +377,7 @@ export class ExecuteBatch extends BaseCommand {
 		});
 	}
 
-	private async runTests(allWorkflows: IWorkflowDb[]): Promise<IResult> {
+	private async runTests(allWorkflows: IWorkflowBase[]): Promise<IResult> {
 		const result: IResult = {
 			totalWorkflows: allWorkflows.length,
 			slackMessage: '',
@@ -401,7 +400,7 @@ export class ExecuteBatch extends BaseCommand {
 			const promisesArray = [];
 			for (let i = 0; i < ExecuteBatch.concurrency; i++) {
 				const promise = new Promise(async (resolve) => {
-					let workflow: IWorkflowDb | undefined;
+					let workflow: IWorkflowBase | undefined;
 					while (allWorkflows.length > 0) {
 						workflow = allWorkflows.shift();
 						if (ExecuteBatch.cancelled) {
@@ -473,7 +472,7 @@ export class ExecuteBatch extends BaseCommand {
 									this.updateStatus();
 								}
 							} else {
-								throw new ApplicationError('Wrong execution status - cannot proceed');
+								throw new UnexpectedError('Wrong execution status - cannot proceed');
 							}
 						});
 					}
@@ -563,7 +562,7 @@ export class ExecuteBatch extends BaseCommand {
 		}
 	}
 
-	async startThread(workflowData: IWorkflowDb): Promise<IExecutionResult> {
+	async startThread(workflowData: IWorkflowBase): Promise<IExecutionResult> {
 		// This will be the object returned by the promise.
 		// It will be updated according to execution progress below.
 		const executionResult: IExecutionResult = {
@@ -822,6 +821,11 @@ export class ExecuteBatch extends BaseCommand {
 					}
 				}
 			} catch (e) {
+				this.errorReporter.error(e, {
+					extra: {
+						workflowId: workflowData.id,
+					},
+				});
 				executionResult.error = `Workflow failed to execute: ${(e as Error).message}`;
 				executionResult.executionStatus = 'error';
 			}

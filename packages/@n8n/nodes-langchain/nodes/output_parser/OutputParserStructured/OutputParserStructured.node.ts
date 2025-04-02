@@ -6,24 +6,21 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 	NodeOperationError,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 import type { z } from 'zod';
 
-import {
-	inputSchemaField,
-	jsonSchemaExampleField,
-	schemaTypeField,
-} from '../../../utils/descriptions';
-import { N8nStructuredOutputParser } from '../../../utils/output_parsers/N8nOutputParser';
-import { convertJsonSchemaToZod, generateSchema } from '../../../utils/schemaParsing';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { inputSchemaField, jsonSchemaExampleField, schemaTypeField } from '@utils/descriptions';
+import { N8nStructuredOutputParser } from '@utils/output_parsers/N8nOutputParser';
+import { convertJsonSchemaToZod, generateSchema } from '@utils/schemaParsing';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 export class OutputParserStructured implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Structured Output Parser',
 		name: 'outputParserStructured',
 		icon: 'fa:code',
+		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1, 1.2],
 		defaultVersion: 1.2,
@@ -49,10 +46,10 @@ export class OutputParserStructured implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiOutputParser],
+		outputs: [NodeConnectionTypes.AiOutputParser],
 		outputNames: ['Output Parser'],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
 			{ ...schemaTypeField, displayOptions: { show: { '@version': [{ _cnd: { gte: 1.2 } }] } } },
 			{
 				...jsonSchemaExampleField,

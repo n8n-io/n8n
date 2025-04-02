@@ -9,9 +9,8 @@ import * as assistant from './assistant';
 import * as audio from './audio';
 import * as file from './file';
 import * as image from './image';
-import * as text from './text';
-
 import type { OpenAiType } from './node.type';
+import * as text from './text';
 import { getCustomErrorMessage } from '../helpers/error-handling';
 
 export async function router(this: IExecuteFunctions) {

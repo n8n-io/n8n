@@ -7,10 +7,9 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { apiRequest, getImageBySize, getSecretToken } from './GenericFunctions';
-
 import type { IEvent } from './IEvent';
 
 export class TelegramTrigger implements INodeType {
@@ -19,15 +18,15 @@ export class TelegramTrigger implements INodeType {
 		name: 'telegramTrigger',
 		icon: 'file:telegram.svg',
 		group: ['trigger'],
-		version: [1, 1.1],
-		defaultVersion: 1.1,
+		version: [1, 1.1, 1.2],
+		defaultVersion: 1.2,
 		subtitle: '=Updates: {{$parameter["updates"].join(", ")}}',
 		description: 'Starts the workflow on a Telegram update',
 		defaults: {
 			name: 'Telegram Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'telegramApi',
@@ -169,6 +168,32 @@ export class TelegramTrigger implements INodeType {
 						default: 'large',
 						description: 'The size of the image to be downloaded',
 					},
+					{
+						displayName: 'Restrict to Chat IDs',
+						name: 'chatIds',
+						type: 'string',
+						default: '',
+						description:
+							'The chat IDs to restrict the trigger to. Multiple can be defined separated by comma.',
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.1 } }],
+							},
+						},
+					},
+					{
+						displayName: 'Restrict to User IDs',
+						name: 'userIds',
+						type: 'string',
+						default: '',
+						description:
+							'The user IDs to restrict the trigger to. Multiple can be defined separated by comma.',
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.1 } }],
+							},
+						},
+					},
 				],
 			},
 		],
@@ -238,7 +263,10 @@ export class TelegramTrigger implements INodeType {
 			const headerSecretBuffer = Buffer.from(
 				String(headerData['x-telegram-bot-api-secret-token'] ?? ''),
 			);
-			if (!crypto.timingSafeEqual(secretBuffer, headerSecretBuffer)) {
+			if (
+				secretBuffer.byteLength !== headerSecretBuffer.byteLength ||
+				!crypto.timingSafeEqual(secretBuffer, headerSecretBuffer)
+			) {
 				const res = this.getResponseObject();
 				res.status(403).json({ message: 'Provided secret is not valid' });
 				return {
@@ -276,7 +304,7 @@ export class TelegramTrigger implements INodeType {
 					) as IDataObject;
 
 					// When the image is sent from the desktop app telegram does not resize the image
-					// So return the only image avaiable
+					// So return the only image available
 					// Basically the Image Size parameter would work just when the images comes from the mobile app
 					if (image === undefined) {
 						image = bodyData[key]!.photo![0];
@@ -328,6 +356,24 @@ export class TelegramTrigger implements INodeType {
 						],
 					],
 				};
+			}
+		}
+
+		if (nodeVersion >= 1.2) {
+			if (additionalFields.chatIds) {
+				const chatIds = additionalFields.chatIds as string;
+				const splitIds = chatIds.split(',').map((chatId) => chatId.trim());
+				if (!splitIds.includes(String(bodyData.message?.chat?.id))) {
+					return {};
+				}
+			}
+
+			if (additionalFields.userIds) {
+				const userIds = additionalFields.userIds as string;
+				const splitIds = userIds.split(',').map((userId) => userId.trim());
+				if (!splitIds.includes(String(bodyData.message?.from?.id))) {
+					return {};
+				}
 			}
 		}
 

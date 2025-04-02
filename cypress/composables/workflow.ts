@@ -1,11 +1,14 @@
 import { getManualChatModal } from './modals/chat-modal';
+import { clickGetBackToCanvas, getParameterInputByName } from './ndv';
 import { ROUTES } from '../constants';
+import type { OpenContextMenuOptions } from '../types';
 
 /**
  * Types
  */
 
 export type EndpointType =
+	| 'main'
 	| 'ai_chain'
 	| 'ai_document'
 	| 'ai_embedding'
@@ -22,9 +25,75 @@ export type EndpointType =
  * Getters
  */
 
-export function getAddInputEndpointByType(nodeName: string, endpointType: EndpointType) {
-	return cy.get(
-		`.add-input-endpoint[data-jtk-scope-${endpointType}][data-endpoint-name="${nodeName}"]`,
+export function getCanvas() {
+	return cy.getByTestId('canvas');
+}
+
+export function getCanvasPane() {
+	return cy.ifCanvasVersion(
+		() => cy.getByTestId('node-view-background'),
+		() => getCanvas().find('.vue-flow__pane'),
+	);
+}
+
+export function getContextMenu() {
+	return cy.getByTestId('context-menu').find('.el-dropdown-menu');
+}
+
+export function getContextMenuAction(action: string) {
+	return cy.getByTestId(`context-menu-item-${action}`);
+}
+
+export function getInputPlusHandle(nodeName: string) {
+	return cy.ifCanvasVersion(
+		() => cy.get(`.add-input-endpoint[data-endpoint-name="${nodeName}"]`),
+		() =>
+			cy.get(
+				`[data-test-id="canvas-node-input-handle"][data-node-name="${nodeName}"] [data-test-id="canvas-handle-plus"]`,
+			),
+	);
+}
+
+export function getInputPlusHandleByType(nodeName: string, endpointType: EndpointType) {
+	return cy.ifCanvasVersion(
+		() =>
+			cy.get(
+				`.add-input-endpoint[data-jtk-scope-${endpointType}][data-endpoint-name="${nodeName}"]`,
+			),
+		() =>
+			cy.get(
+				`[data-test-id="canvas-node-input-handle"][data-connection-type="${endpointType}"][data-node-name="${nodeName}"] [data-test-id="canvas-handle-plus"]`,
+			),
+	);
+}
+
+export function getOutputHandle(nodeName: string) {
+	return cy.ifCanvasVersion(
+		() => cy.get(`.add-output-endpoint[data-endpoint-name="${nodeName}"]`),
+		() => cy.get(`[data-test-id="canvas-node-output-handle"][data-node-name="${nodeName}"]`),
+	);
+}
+
+export function getOutputPlusHandle(nodeName: string) {
+	return cy.ifCanvasVersion(
+		() => cy.get(`.add-output-endpoint[data-endpoint-name="${nodeName}"]`),
+		() =>
+			cy.get(
+				`[data-test-id="canvas-node-output-handle"][data-node-name="${nodeName}"] [data-test-id="canvas-handle-plus"]`,
+			),
+	);
+}
+
+export function getOutputPlusHandleByType(nodeName: string, endpointType: EndpointType) {
+	return cy.ifCanvasVersion(
+		() =>
+			cy.get(
+				`.add-output-endpoint[data-jtk-scope-${endpointType}][data-endpoint-name="${nodeName}"]`,
+			),
+		() =>
+			cy.get(
+				`[data-test-id="canvas-node-output-handle"][data-connection-type="${endpointType}"][data-node-name="${nodeName}"] [data-test-id="canvas-handle-plus"]`,
+			),
 	);
 }
 
@@ -32,8 +101,8 @@ export function getNodeCreatorItems() {
 	return cy.getByTestId('item-iterator-item');
 }
 
-export function getExecuteWorkflowButton() {
-	return cy.getByTestId('execute-workflow-button');
+export function getExecuteWorkflowButton(triggerNodeName?: string) {
+	return cy.getByTestId(`execute-workflow-button${triggerNodeName ? `-${triggerNodeName}` : ''}`);
 }
 
 export function getManualChatButton() {
@@ -45,7 +114,21 @@ export function getNodes() {
 }
 
 export function getNodeByName(name: string) {
-	return cy.getByTestId('canvas-node').filter(`[data-name="${name}"]`).eq(0);
+	return cy.ifCanvasVersion(
+		() => cy.getByTestId('canvas-node').filter(`[data-name="${name}"]`).eq(0),
+		() => cy.getByTestId('canvas-node').filter(`[data-node-name="${name}"]`).eq(0),
+	);
+}
+
+export function getNodeRenderedTypeByName(name: string) {
+	return cy.ifCanvasVersion(
+		() => getNodeByName(name),
+		() => getNodeByName(name).find('[data-canvas-node-render-type]'),
+	);
+}
+
+export function getWorkflowHistoryCloseButton() {
+	return cy.getByTestId('workflow-history-close-button');
 }
 
 export function disableNode(name: string) {
@@ -55,10 +138,24 @@ export function disableNode(name: string) {
 }
 
 export function getConnectionBySourceAndTarget(source: string, target: string) {
+	return cy.ifCanvasVersion(
+		() =>
+			cy
+				.get('.jtk-connector')
+				.filter(`[data-source-node="${source}"][data-target-node="${target}"]`)
+				.eq(0),
+		() =>
+			cy
+				.getByTestId('edge')
+				.filter(`[data-source-node-name="${source}"][data-target-node-name="${target}"]`)
+				.eq(0),
+	);
+}
+
+export function getConnectionLabelBySourceAndTarget(source: string, target: string) {
 	return cy
-		.get('.jtk-connector')
-		.filter(`[data-source-node="${source}"][data-target-node="${target}"]`)
-		.eq(0);
+		.getByTestId('edge-label')
+		.filter(`[data-source-node-name="${source}"][data-target-node-name="${target}"]`);
 }
 
 export function getNodeCreatorSearchBar() {
@@ -70,10 +167,19 @@ export function getNodeCreatorPlusButton() {
 }
 
 export function getCanvasNodes() {
-	return cy.ifCanvasVersion(
-		() => cy.getByTestId('canvas-node'),
-		() => cy.getByTestId('canvas-node').not('[data-node-type="n8n-nodes-internal.addNodes"]'),
-	);
+	return cy.getByTestId('canvas-node');
+}
+
+export function getCanvasNodeByName(nodeName: string) {
+	return getCanvasNodes().filter(`:contains(${nodeName})`);
+}
+
+export function getSaveButton() {
+	return cy.getByTestId('workflow-save-button');
+}
+
+export function getZoomToFitButton() {
+	return cy.getByTestId('zoom-to-fit');
 }
 
 /**
@@ -115,13 +221,13 @@ export function navigateToNewWorkflowPage(preventNodeViewUnload = true) {
 	});
 }
 
-export function addSupplementalNodeToParent(
+function connectNodeToParent(
 	nodeName: string,
 	endpointType: EndpointType,
 	parentNodeName: string,
 	exactMatch = false,
 ) {
-	getAddInputEndpointByType(parentNodeName, endpointType).click({ force: true });
+	getInputPlusHandleByType(parentNodeName, endpointType).click({ force: true });
 	if (exactMatch) {
 		getNodeCreatorItems()
 			.contains(new RegExp('^' + nodeName + '$', 'g'))
@@ -129,7 +235,28 @@ export function addSupplementalNodeToParent(
 	} else {
 		getNodeCreatorItems().contains(nodeName).click();
 	}
-	getConnectionBySourceAndTarget(parentNodeName, nodeName).should('exist');
+}
+
+export function addSupplementalNodeToParent(
+	nodeName: string,
+	endpointType: EndpointType,
+	parentNodeName: string,
+	exactMatch = false,
+) {
+	connectNodeToParent(nodeName, endpointType, parentNodeName, exactMatch);
+
+	cy.ifCanvasVersion(
+		() => {
+			getConnectionBySourceAndTarget(parentNodeName, nodeName).should('exist');
+		},
+		() => {
+			if (endpointType === 'main') {
+				getConnectionBySourceAndTarget(parentNodeName, nodeName).should('exist');
+			} else {
+				getConnectionBySourceAndTarget(nodeName, parentNodeName).should('exist');
+			}
+		},
+	);
 }
 
 export function addLanguageModelNodeToParent(
@@ -148,6 +275,15 @@ export function addToolNodeToParent(nodeName: string, parentNodeName: string) {
 	addSupplementalNodeToParent(nodeName, 'ai_tool', parentNodeName);
 }
 
+export function addVectorStoreToolToParent(nodeName: string, parentNodeName: string) {
+	connectNodeToParent(nodeName, 'ai_tool', parentNodeName, false);
+	getParameterInputByName('mode')
+		.find('input')
+		.should('have.value', 'Retrieve Documents (As Tool for AI Agent)');
+	clickGetBackToCanvas();
+	getConnectionBySourceAndTarget(nodeName, parentNodeName).should('exist');
+}
+
 export function addOutputParserNodeToParent(nodeName: string, parentNodeName: string) {
 	addSupplementalNodeToParent(nodeName, 'ai_outputParser', parentNodeName);
 }
@@ -158,8 +294,8 @@ export function addRetrieverNodeToParent(nodeName: string, parentNodeName: strin
 	addSupplementalNodeToParent(nodeName, 'ai_retriever', parentNodeName);
 }
 
-export function clickExecuteWorkflowButton() {
-	getExecuteWorkflowButton().click();
+export function clickExecuteWorkflowButton(triggerNodeName?: string) {
+	getExecuteWorkflowButton(triggerNodeName).click();
 }
 
 export function clickManualChatButton() {
@@ -169,4 +305,56 @@ export function clickManualChatButton() {
 
 export function openNode(nodeName: string) {
 	getNodeByName(nodeName).dblclick();
+}
+
+export function saveWorkflowOnButtonClick() {
+	cy.intercept('POST', '/rest/workflows').as('createWorkflow');
+	getSaveButton().should('contain', 'Save');
+	getSaveButton().click();
+	getSaveButton().should('contain', 'Saved');
+	cy.url().should('not.have.string', '/new');
+}
+
+export function pasteWorkflow(workflow: object) {
+	cy.get('body').paste(JSON.stringify(workflow));
+}
+
+export function clickZoomToFit() {
+	getZoomToFitButton().click();
+}
+
+export function deleteNode(name: string) {
+	getCanvasNodeByName(name).first().click();
+	cy.get('body').type('{del}');
+}
+
+export function openContextMenu(
+	nodeName?: string,
+	{ method = 'right-click', anchor = 'center' }: OpenContextMenuOptions = {},
+) {
+	let target;
+	if (nodeName) {
+		target =
+			method === 'right-click' ? getNodeRenderedTypeByName(nodeName) : getNodeByName(nodeName);
+	} else {
+		target = getCanvasPane();
+	}
+
+	if (method === 'right-click') {
+		target.rightclick(nodeName ? anchor : 'topLeft', { force: true });
+	} else {
+		target.realHover();
+		target.find('[data-test-id="overflow-node-button"]').click({ force: true });
+	}
+
+	cy.ifCanvasVersion(
+		() => {},
+		() => {
+			getContextMenu().should('be.visible');
+		},
+	);
+}
+
+export function clickContextMenuAction(action: string) {
+	getContextMenuAction(action).click({ force: true });
 }

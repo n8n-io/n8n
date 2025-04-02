@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import { Service } from '@n8n/di';
 
 import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
@@ -87,12 +87,14 @@ export class OwnershipService {
 					id: project.id,
 					type: project.type,
 					name: project.name,
+					icon: project.icon,
 				};
 			} else {
 				entity.sharedWithProjects.push({
 					id: project.id,
 					type: project.type,
 					name: project.name,
+					icon: project.icon,
 				});
 			}
 		}

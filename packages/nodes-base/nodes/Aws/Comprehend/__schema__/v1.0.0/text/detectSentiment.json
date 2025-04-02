@@ -1,0 +1,26 @@
+{
+    "type": "object",
+    "properties": {
+        "Sentiment": {
+            "type": "string"
+        },
+        "SentimentScore": {
+            "type": "object",
+            "properties": {
+                "Mixed": {
+                    "type": "number"
+                },
+                "Negative": {
+                    "type": "number"
+                },
+                "Neutral": {
+                    "type": "number"
+                },
+                "Positive": {
+                    "type": "number"
+                }
+            }
+        }
+    },
+    "version": 1
+}

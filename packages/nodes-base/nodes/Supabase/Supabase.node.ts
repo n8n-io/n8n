@@ -11,7 +11,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import {
 	buildGetQuery,
@@ -21,7 +21,6 @@ import {
 	supabaseApiRequest,
 	validateCredentials,
 } from './GenericFunctions';
-
 import { rowFields, rowOperations } from './RowDescription';
 
 export type FieldsUiValues = Array<{
@@ -41,8 +40,8 @@ export class Supabase implements INodeType {
 		defaults: {
 			name: 'Supabase',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		usableAsTool: true,
 		credentials: [
 			{
@@ -294,8 +293,8 @@ export class Supabase implements INodeType {
 
 						if (keys.length !== 0) {
 							if (matchType === 'allFilters') {
-								const data = keys.reduce((obj, value) => buildQuery(obj, value), {});
-								Object.assign(qs, data);
+								const data = keys.map((key) => buildOrQuery(key));
+								Object.assign(qs, { and: `(${data.join(',')})` });
 							}
 							if (matchType === 'anyFilter') {
 								const data = keys.map((key) => buildOrQuery(key));

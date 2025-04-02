@@ -1,16 +1,50 @@
-import nock from 'nock';
-import { WorkflowExecute } from 'n8n-core';
-import type { INodeTypes, IRun, IRunExecutionData } from 'n8n-workflow';
+import { Container } from '@n8n/di';
+import { mock } from 'jest-mock-extended';
+import { ExecutionLifecycleHooks, WorkflowExecute } from 'n8n-core';
+import type {
+	IRun,
+	IRunExecutionData,
+	IWorkflowExecuteAdditionalData,
+	WorkflowTestData,
+} from 'n8n-workflow';
 import { createDeferredPromise, Workflow } from 'n8n-workflow';
-import * as Helpers from './Helpers';
-import type { WorkflowTestData } from './types';
+import nock from 'nock';
 
-export async function executeWorkflow(testData: WorkflowTestData, nodeTypes: INodeTypes) {
+import { CredentialsHelper } from './credentials-helper';
+import { NodeTypes } from './node-types';
+
+// This is (temporarily) needed to setup LoadNodesAndCredentials
+import './Helpers';
+
+export async function executeWorkflow(testData: WorkflowTestData) {
+	const nodeTypes = Container.get(NodeTypes);
+
 	if (testData.nock) {
 		const { baseUrl, mocks } = testData.nock;
 		const agent = nock(baseUrl);
-		mocks.forEach(({ method, path, statusCode, requestBody, responseBody }) =>
-			agent[method](path, requestBody).reply(statusCode, responseBody),
+		mocks.forEach(
+			({
+				method,
+				path,
+				statusCode,
+				requestBody,
+				requestHeaders,
+				responseBody,
+				responseHeaders,
+			}) => {
+				let mock = agent[method](path, requestBody);
+
+				// nock interceptor reqheaders option is ignored, so we chain matchHeader()
+				// agent[method](path, requestBody, { reqheaders: requestHeaders }).reply(statusCode, responseBody, responseHeaders)
+				// https://github.com/nock/nock/issues/2545
+				if (requestHeaders && Object.keys(requestHeaders).length > 0) {
+					Object.entries(requestHeaders).forEach(([key, value]) => {
+						mock = mock.matchHeader(key, value);
+					});
+				}
+
+				mock.reply(statusCode, responseBody, responseHeaders);
+			},
 		);
 	}
 	const executionMode = testData.trigger?.mode ?? 'manual';
@@ -24,7 +58,18 @@ export async function executeWorkflow(testData: WorkflowTestData, nodeTypes: INo
 	});
 	const waitPromise = createDeferredPromise<IRun>();
 	const nodeExecutionOrder: string[] = [];
-	const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
+
+	const hooks = new ExecutionLifecycleHooks('trigger', '1', mock());
+	hooks.addHandler('nodeExecuteAfter', (nodeName) => {
+		nodeExecutionOrder.push(nodeName);
+	});
+	hooks.addHandler('workflowExecuteAfter', (fullRunData) => waitPromise.resolve(fullRunData));
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({
+		credentialsHelper: Container.get(CredentialsHelper),
+		hooks,
+		// Get from node.parameters
+		currentNodeParameters: undefined,
+	});
 
 	let executionData: IRun;
 	const runExecutionData: IRunExecutionData = {

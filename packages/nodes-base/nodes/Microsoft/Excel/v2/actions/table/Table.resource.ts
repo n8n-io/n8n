@@ -1,7 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import * as append from './append.operation';
 import * as addTable from './addTable.operation';
+import * as append from './append.operation';
 import * as convertToRange from './convertToRange.operation';
 import * as deleteTable from './deleteTable.operation';
 import * as getColumns from './getColumns.operation';

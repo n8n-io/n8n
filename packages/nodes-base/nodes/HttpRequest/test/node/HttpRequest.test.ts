@@ -1,22 +1,13 @@
-import { parse as parseUrl } from 'url';
 import nock from 'nock';
-import {
-	initBinaryDataService,
-	setup,
-	equalityTest,
-	workflowToTests,
-	getWorkflowFilenames,
-} from '@test/nodes/Helpers';
+import { parse as parseUrl } from 'url';
+
+import { initBinaryDataService, getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
 
 describe('Test HTTP Request Node', () => {
-	const workflows = getWorkflowFilenames(__dirname);
-	const tests = workflowToTests(workflows);
-
 	const baseUrl = 'https://dummyjson.com';
 
 	beforeAll(async () => {
 		await initBinaryDataService();
-		nock.disableNetConnect();
 
 		function getPaginationReturnData(this: nock.ReplyFnContext, limit = 10, skip = 0) {
 			const nextUrl = `${baseUrl}/users?skip=${skip + limit}&limit=${limit}`;
@@ -192,13 +183,6 @@ describe('Test HTTP Request Node', () => {
 			});
 	});
 
-	afterAll(() => {
-		nock.restore();
-	});
-
-	const nodeTypes = setup(tests);
-
-	for (const testData of tests) {
-		test(testData.description, async () => await equalityTest(testData, nodeTypes));
-	}
+	const workflows = getWorkflowFilenames(__dirname);
+	testWorkflows(workflows);
 });

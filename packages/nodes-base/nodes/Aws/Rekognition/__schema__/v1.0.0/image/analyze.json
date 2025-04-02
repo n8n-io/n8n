@@ -1,0 +1,68 @@
+{
+    "type": "object",
+    "properties": {
+        "TextDetections": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "Confidence": {
+                        "type": "number"
+                    },
+                    "DetectedText": {
+                        "type": "string"
+                    },
+                    "Geometry": {
+                        "type": "object",
+                        "properties": {
+                            "BoundingBox": {
+                                "type": "object",
+                                "properties": {
+                                    "Height": {
+                                        "type": "number"
+                                    },
+                                    "Left": {
+                                        "type": "number"
+                                    },
+                                    "Top": {
+                                        "type": "number"
+                                    },
+                                    "Width": {
+                                        "type": "number"
+                                    }
+                                }
+                            },
+                            "Polygon": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "X": {
+                                            "type": "number"
+                                        },
+                                        "Y": {
+                                            "type": "number"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "Id": {
+                        "type": "integer"
+                    },
+                    "ParentId": {
+                        "type": "integer"
+                    },
+                    "Type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "TextModelVersion": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

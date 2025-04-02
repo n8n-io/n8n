@@ -8,7 +8,7 @@
  */
 export const retryUntil = async (
 	assertion: () => Promise<void> | void,
-	{ interval = 20, timeout = 1000 } = {},
+	{ intervalMs = 200, timeoutMs = 5000 } = {},
 ) => {
 	return await new Promise((resolve, reject) => {
 		const startTime = Date.now();
@@ -18,13 +18,13 @@ export const retryUntil = async (
 				try {
 					resolve(await assertion());
 				} catch (error) {
-					if (Date.now() - startTime > timeout) {
+					if (Date.now() - startTime > timeoutMs) {
 						reject(error);
 					} else {
 						tryAgain();
 					}
 				}
-			}, interval);
+			}, intervalMs);
 		};
 
 		tryAgain();

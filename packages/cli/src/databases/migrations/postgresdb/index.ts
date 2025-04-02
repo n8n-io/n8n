@@ -43,6 +43,8 @@ import { AddMissingPrimaryKeyOnExecutionData1690787606731 } from './169078760673
 import { MigrateToTimestampTz1694091729095 } from './1694091729095-MigrateToTimestampTz';
 import { AddActivatedAtUserSetting1717498465931 } from './1717498465931-AddActivatedAtUserSetting';
 import { FixExecutionMetadataSequence1721377157740 } from './1721377157740-FixExecutionMetadataSequence';
+import { MigrateTestDefinitionKeyToString1731582748663 } from './1731582748663-MigrateTestDefinitionKeyToString';
+import { UpdateParentFolderIdColumn1740445074052 } from './1740445074052-UpdateParentFolderIdColumn';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
@@ -68,7 +70,19 @@ import { CreateProcessedDataTable1726606152711 } from '../common/1726606152711-C
 import { SeparateExecutionCreationFromStart1727427440136 } from '../common/1727427440136-SeparateExecutionCreationFromStart';
 import { AddMissingPrimaryKeyOnAnnotationTagMapping1728659839644 } from '../common/1728659839644-AddMissingPrimaryKeyOnAnnotationTagMapping';
 import { UpdateProcessedDataValueColumnToText1729607673464 } from '../common/1729607673464-UpdateProcessedDataValueColumnToText';
+import { AddProjectIcons1729607673469 } from '../common/1729607673469-AddProjectIcons';
 import { CreateTestDefinitionTable1730386903556 } from '../common/1730386903556-CreateTestDefinitionTable';
+import { AddDescriptionToTestDefinition1731404028106 } from '../common/1731404028106-AddDescriptionToTestDefinition';
+import { CreateTestMetricTable1732271325258 } from '../common/1732271325258-CreateTestMetricTable';
+import { CreateTestRun1732549866705 } from '../common/1732549866705-CreateTestRunTable';
+import { AddMockedNodesColumnToTestDefinition1733133775640 } from '../common/1733133775640-AddMockedNodesColumnToTestDefinition';
+import { AddManagedColumnToCredentialsTable1734479635324 } from '../common/1734479635324-AddManagedColumnToCredentialsTable';
+import { AddStatsColumnsToTestRun1736172058779 } from '../common/1736172058779-AddStatsColumnsToTestRun';
+import { CreateTestCaseExecutionTable1736947513045 } from '../common/1736947513045-CreateTestCaseExecutionTable';
+import { AddErrorColumnsToTestRuns1737715421462 } from '../common/1737715421462-AddErrorColumnsToTestRuns';
+import { CreateFolderTable1738709609940 } from '../common/1738709609940-CreateFolderTable';
+import { CreateAnalyticsTables1739549398681 } from '../common/1739549398681-CreateAnalyticsTables';
+import { RenameAnalyticsToInsights1741167584277 } from '../common/1741167584277-RenameAnalyticsToInsights';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -140,4 +154,18 @@ export const postgresMigrations: Migration[] = [
 	AddMissingPrimaryKeyOnAnnotationTagMapping1728659839644,
 	UpdateProcessedDataValueColumnToText1729607673464,
 	CreateTestDefinitionTable1730386903556,
+	AddDescriptionToTestDefinition1731404028106,
+	MigrateTestDefinitionKeyToString1731582748663,
+	CreateTestMetricTable1732271325258,
+	CreateTestRun1732549866705,
+	AddMockedNodesColumnToTestDefinition1733133775640,
+	AddManagedColumnToCredentialsTable1734479635324,
+	AddProjectIcons1729607673469,
+	AddStatsColumnsToTestRun1736172058779,
+	CreateTestCaseExecutionTable1736947513045,
+	AddErrorColumnsToTestRuns1737715421462,
+	CreateFolderTable1738709609940,
+	CreateAnalyticsTables1739549398681,
+	UpdateParentFolderIdColumn1740445074052,
+	RenameAnalyticsToInsights1741167584277,
 ];

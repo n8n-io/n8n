@@ -1,16 +1,12 @@
 import type { ErrorLike } from './error-like';
 import { SerializableError } from './serializable-error';
 
-const VM_WRAPPER_FN_NAME = 'VmCodeWrapper';
-
 export class ExecutionError extends SerializableError {
 	description: string | null = null;
 
 	itemIndex: number | undefined = undefined;
 
 	context: { itemIndex: number } | undefined = undefined;
-
-	stack = '';
 
 	lineNumber: number | undefined = undefined;
 
@@ -22,7 +18,12 @@ export class ExecutionError extends SerializableError {
 			this.context = { itemIndex: this.itemIndex };
 		}
 
-		this.stack = error.stack ?? '';
+		// Override the stack trace with the given error's stack trace. Since
+		// node v22 it's not writable, so we can't assign it directly
+		Object.defineProperty(this, 'stack', {
+			value: error.stack,
+			enumerable: true,
+		});
 
 		this.populateFromStack();
 	}
@@ -31,7 +32,7 @@ export class ExecutionError extends SerializableError {
 	 * Populate error `message` and `description` from error `stack`.
 	 */
 	private populateFromStack() {
-		const stackRows = this.stack.split('\n');
+		const stackRows = (this.stack ?? '').split('\n');
 
 		if (stackRows.length === 0) {
 			this.message = 'Unknown error';
@@ -39,8 +40,7 @@ export class ExecutionError extends SerializableError {
 		}
 
 		const messageRow = stackRows.find((line) => line.includes('Error:'));
-		const lineNumberRow = stackRows.find((line) => line.includes(`at ${VM_WRAPPER_FN_NAME} `));
-		const lineNumberDisplay = this.toLineNumberDisplay(lineNumberRow);
+		const lineNumberDisplay = this.toLineNumberDisplay(stackRows);
 
 		if (!messageRow) {
 			this.message = `Unknown error ${lineNumberDisplay}`;
@@ -59,26 +59,34 @@ export class ExecutionError extends SerializableError {
 		this.message = `${errorDetails} ${lineNumberDisplay}`;
 	}
 
-	private toLineNumberDisplay(lineNumberRow?: string) {
-		if (!lineNumberRow) return '';
+	private toLineNumberDisplay(stackRows: string[]) {
+		if (!stackRows || stackRows.length === 0) return '';
 
-		// TODO: This doesn't work if there is a function definition in the code
-		// and the error is thrown from that function.
-
-		const regex = new RegExp(
-			`at ${VM_WRAPPER_FN_NAME} \\(evalmachine\\.<anonymous>:(?<lineNumber>\\d+):`,
+		const userFnLine = stackRows.find(
+			(row) => row.match(/\(evalmachine\.<anonymous>:\d+:\d+\)/) && !row.includes('VmCodeWrapper'),
 		);
-		const errorLineNumberMatch = lineNumberRow.match(regex);
-		if (!errorLineNumberMatch?.groups?.lineNumber) return null;
 
-		const lineNumber = errorLineNumberMatch.groups.lineNumber;
-		if (!lineNumber) return '';
+		if (userFnLine) {
+			const match = userFnLine.match(/evalmachine\.<anonymous>:(\d+):/);
+			if (match) this.lineNumber = Number(match[1]);
+		}
 
-		this.lineNumber = Number(lineNumber);
+		if (this.lineNumber === undefined) {
+			const topLevelLine = stackRows.find(
+				(row) => row.includes('VmCodeWrapper') && row.includes('evalmachine.<anonymous>'),
+			);
+
+			if (topLevelLine) {
+				const match = topLevelLine.match(/evalmachine\.<anonymous>:(\d+):/);
+				if (match) this.lineNumber = Number(match[1]);
+			}
+		}
+
+		if (this.lineNumber === undefined) return '';
 
 		return this.itemIndex === undefined
-			? `[line ${lineNumber}]`
-			: `[line ${lineNumber}, for item ${this.itemIndex}]`;
+			? `[line ${this.lineNumber}]`
+			: `[line ${this.lineNumber}, for item ${this.itemIndex}]`;
 	}
 
 	private toErrorDetailsAndType(messageRow?: string) {

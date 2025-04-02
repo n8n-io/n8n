@@ -1,17 +1,19 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+
+import type { ChatMistralAIInput } from '@langchain/mistralai';
+import { ChatMistralAI } from '@langchain/mistralai';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
-import type { ChatMistralAIInput } from '@langchain/mistralai';
-import { ChatMistralAI } from '@langchain/mistralai';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { N8nLlmTracing } from '../N8nLlmTracing';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatMistralCloud implements INodeType {
 	description: INodeTypeDescription = {
@@ -42,7 +44,7 @@ export class LmChatMistralCloud implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiLanguageModel],
+		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
 			{
@@ -55,7 +57,7 @@ export class LmChatMistralCloud implements INodeType {
 			baseURL: 'https://api.mistral.ai/v1',
 		},
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
 			{
 				displayName: 'Model',
 				name: 'model',

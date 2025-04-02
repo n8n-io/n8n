@@ -1,7 +1,8 @@
 import { TaskRunnersConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import set from 'lodash/set';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type CodeExecutionMode,
 	type CodeNodeEditorLanguage,
 	type IExecuteFunctions,
@@ -9,7 +10,6 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
-import Container from 'typedi';
 
 import { javascriptCodeDescription } from './descriptions/JavascriptCodeDescription';
 import { pythonCodeDescription } from './descriptions/PythonCodeDescription';
@@ -17,7 +17,7 @@ import { JavaScriptSandbox } from './JavaScriptSandbox';
 import { JsTaskRunnerSandbox } from './JsTaskRunnerSandbox';
 import { PythonSandbox } from './PythonSandbox';
 import { getSandboxContext } from './Sandbox';
-import { standardizeOutput } from './utils';
+import { addPostExecutionWarning, standardizeOutput } from './utils';
 
 const { CODE_ENABLE_STDOUT } = process.env;
 
@@ -33,8 +33,8 @@ export class Code implements INodeType {
 		defaults: {
 			name: 'Code',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		parameterPane: 'wide',
 		properties: [
 			{
@@ -111,10 +111,11 @@ export class Code implements INodeType {
 		if (runnersConfig.enabled && language === 'javaScript') {
 			const code = this.getNodeParameter(codeParameterName, 0) as string;
 			const sandbox = new JsTaskRunnerSandbox(code, nodeMode, workflowMode, this);
+			const numInputItems = this.getInputData().length;
 
 			return nodeMode === 'runOnceForAllItems'
 				? [await sandbox.runCodeAllItems()]
-				: [await sandbox.runCodeForEachItem()];
+				: [await sandbox.runCodeForEachItem(numInputItems)];
 		}
 
 		const getSandbox = (index = 0) => {
@@ -132,7 +133,7 @@ export class Code implements INodeType {
 			sandbox.on(
 				'output',
 				workflowMode === 'manual'
-					? this.sendMessageToUI
+					? this.sendMessageToUI.bind(this)
 					: CODE_ENABLE_STDOUT === 'true'
 						? (...args) =>
 								console.log(`[Workflow "${this.getWorkflow().id}"][Node "${node.name}"]`, ...args)
@@ -140,6 +141,8 @@ export class Code implements INodeType {
 			);
 			return sandbox;
 		};
+
+		const inputDataItems = this.getInputData();
 
 		// ----------------------------------
 		//        runOnceForAllItems
@@ -162,6 +165,7 @@ export class Code implements INodeType {
 				standardizeOutput(item.json);
 			}
 
+			addPostExecutionWarning(this, items, inputDataItems?.length);
 			return [items];
 		}
 
@@ -171,9 +175,7 @@ export class Code implements INodeType {
 
 		const returnData: INodeExecutionData[] = [];
 
-		const items = this.getInputData();
-
-		for (let index = 0; index < items.length; index++) {
+		for (let index = 0; index < inputDataItems.length; index++) {
 			const sandbox = getSandbox(index);
 			let result: INodeExecutionData | undefined;
 			try {
@@ -200,6 +202,7 @@ export class Code implements INodeType {
 			}
 		}
 
+		addPostExecutionWarning(this, returnData, inputDataItems?.length);
 		return [returnData];
 	}
 }

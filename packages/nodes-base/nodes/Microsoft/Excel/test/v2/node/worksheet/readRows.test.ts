@@ -1,52 +1,31 @@
 import nock from 'nock';
-import type { IHttpRequestMethods } from 'n8n-workflow';
-import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
 
-jest.mock('../../../../v2/transport', () => {
-	const originalModule = jest.requireActual('../../../../v2/transport');
-	return {
-		...originalModule,
-		microsoftApiRequest: jest.fn(async function (method: IHttpRequestMethods, resource: string) {
-			{
-				if (method === 'GET' && resource.includes('usedRange')) {
-					return {
-						values: [
-							['id', 'name', 'age', 'data'],
-							[1, 'Sam', 33, 'data 1'],
-							[2, 'Jon', 44, 'data 2'],
-							[3, 'Ron', 55, 'data 3'],
-						],
-					};
-				}
-
-				return {
-					values: [
-						['id', 'name', 'age', 'data'],
-						[1, 'Sam', 33, 'data 1'],
-						[2, 'Jon', 44, 'data 2'],
-					],
-				};
-			}
-		}),
-	};
-});
+import { testWorkflows } from '@test/nodes/Helpers';
 
 describe('Test MicrosoftExcelV2, worksheet => readRows', () => {
+	nock('https://graph.microsoft.com/v1.0/me')
+		.get(
+			'/drive/items/01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I/workbook/worksheets/%7BA0883CFE-D27E-4ECC-B94B-981830AAD55B%7D/usedRange',
+		)
+		.reply(200, {
+			values: [
+				['id', 'name', 'age', 'data'],
+				[1, 'Sam', 33, 'data 1'],
+				[2, 'Jon', 44, 'data 2'],
+				[3, 'Ron', 55, 'data 3'],
+			],
+		})
+		.get(
+			"/drive/items/01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I/workbook/worksheets/%7BA0883CFE-D27E-4ECC-B94B-981830AAD55B%7D/range(address='A1:D3')",
+		)
+		.reply(200, {
+			values: [
+				['id', 'name', 'age', 'data'],
+				[1, 'Sam', 33, 'data 1'],
+				[2, 'Jon', 44, 'data 2'],
+			],
+		});
+
 	const workflows = ['nodes/Microsoft/Excel/test/v2/node/worksheet/readRows.workflow.json'];
-	const tests = workflowToTests(workflows);
-
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.unmock('../../../../v2/transport');
-	});
-
-	const nodeTypes = setup(tests);
-
-	for (const testData of tests) {
-		test(testData.description, async () => await equalityTest(testData, nodeTypes));
-	}
+	testWorkflows(workflows);
 });

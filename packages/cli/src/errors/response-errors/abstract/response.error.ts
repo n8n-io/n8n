@@ -1,9 +1,9 @@
-import { ApplicationError } from 'n8n-workflow';
+import { BaseError } from 'n8n-workflow';
 
 /**
  * Special Error which allows to return also an error code and http status code
  */
-export abstract class ResponseError extends ApplicationError {
+export abstract class ResponseError extends BaseError {
 	/**
 	 * Creates an instance of ResponseError.
 	 * Must be used inside a block with `ResponseHelper.send()`.
@@ -16,8 +16,17 @@ export abstract class ResponseError extends ApplicationError {
 		readonly errorCode: number = httpStatusCode,
 		// The error hint the response
 		readonly hint: string | undefined = undefined,
+		cause?: unknown,
 	) {
-		super(message);
+		super(message, { cause });
 		this.name = 'ResponseError';
+
+		if (httpStatusCode >= 400 && httpStatusCode < 500) {
+			this.level = 'warning'; // client errors (4xx)
+		} else if (httpStatusCode >= 502 && httpStatusCode <= 504) {
+			this.level = 'info'; // transient errors (502, 503, 504)
+		} else {
+			this.level = 'error'; // other 5xx
+		}
 	}
 }

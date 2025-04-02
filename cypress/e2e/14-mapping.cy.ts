@@ -41,7 +41,9 @@ describe('Data mapping', () => {
 		ndv.actions.mapDataFromHeader(1, 'value');
 		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.timestamp }}');
 		ndv.getters.inlineExpressionEditorInput().type('{esc}');
-		ndv.getters.parameterExpressionPreview('value').should('include.text', '2024');
+		ndv.getters
+			.parameterExpressionPreview('value')
+			.should('include.text', new Date().getFullYear());
 
 		ndv.actions.mapDataFromHeader(2, 'value');
 		ndv.getters
@@ -113,6 +115,8 @@ describe('Data mapping', () => {
 	});
 
 	it('maps expressions from json view', () => {
+		// ADO-3063 - followup to make this viewport global
+		cy.viewport('macbook-16');
 		cy.fixture('Test_workflow_3.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
@@ -121,17 +125,17 @@ describe('Data mapping', () => {
 		workflowPage.actions.openNode('Set');
 		ndv.actions.switchInputMode('JSON');
 
+		ndv.getters.inputDataContainer().should('exist');
+
 		ndv.getters
 			.inputDataContainer()
-			.should('exist')
 			.find('.json-data')
 			.should(
 				'have.text',
 				'[{"input": [{"count": 0,"with space": "!!","with.dot": "!!","with"quotes": "!!"}]},{"input": [{"count": 1}]}]',
-			)
-			.find('span')
-			.contains('"count"')
-			.realMouseDown();
+			);
+
+		ndv.getters.inputDataContainer().find('span').contains('"count"').realMouseDown();
 
 		ndv.actions.mapToParameter('value');
 		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.input[0].count }}');
@@ -185,7 +189,6 @@ describe('Data mapping', () => {
 		workflowPage.actions.openNode('Set1');
 
 		ndv.actions.executePrevious();
-		ndv.actions.expandSchemaViewNode(SCHEDULE_TRIGGER_NODE_NAME);
 
 		const dataPill = ndv.getters
 			.inputDataContainer()

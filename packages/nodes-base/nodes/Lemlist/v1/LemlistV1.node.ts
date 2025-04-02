@@ -1,3 +1,5 @@
+import isEmpty from 'lodash/isEmpty';
+import omit from 'lodash/omit';
 import {
 	type IExecuteFunctions,
 	type IDataObject,
@@ -6,12 +8,9 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type INodeTypeBaseDescription,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import isEmpty from 'lodash/isEmpty';
-import omit from 'lodash/omit';
-import { lemlistApiRequest, lemlistApiRequestAllItems } from '../GenericFunctions';
 import {
 	activityFields,
 	activityOperations,
@@ -24,6 +23,7 @@ import {
 	unsubscribeFields,
 	unsubscribeOperations,
 } from './descriptions';
+import { lemlistApiRequest, lemlistApiRequestAllItems } from '../GenericFunctions';
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Lemlist',
 	name: 'lemlist',
@@ -35,8 +35,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Lemlist',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{
 			name: 'lemlistApi',

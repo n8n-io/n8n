@@ -1,4 +1,13 @@
-import { Column, Entity, Index, JoinColumn, JoinTable, ManyToMany, OneToMany } from '@n8n/typeorm';
+import {
+	Column,
+	Entity,
+	Index,
+	JoinColumn,
+	JoinTable,
+	ManyToMany,
+	ManyToOne,
+	OneToMany,
+} from '@n8n/typeorm';
 import { Length } from 'class-validator';
 import { IConnections, IDataObject, IWorkflowSettings, WorkflowFEMeta } from 'n8n-workflow';
 import type { IBinaryKeyData, INode, IPairedItemData } from 'n8n-workflow';
@@ -6,6 +15,7 @@ import type { IBinaryKeyData, INode, IPairedItemData } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/interfaces';
 
 import { WithTimestampsAndStringId, dbType, jsonColumnType } from './abstract-entity';
+import { type Folder } from './folder';
 import type { SharedWorkflow } from './shared-workflow';
 import type { TagEntity } from './tag-entity';
 import type { WorkflowStatistics } from './workflow-statistics';
@@ -80,7 +90,7 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 		nullable: true,
 		transformer: sqlite.jsonColumn,
 	})
-	pinData: ISimplifiedPinData;
+	pinData?: ISimplifiedPinData;
 
 	@Column({ length: 36 })
 	versionId: string;
@@ -88,9 +98,12 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	@Column({ default: 0 })
 	triggerCount: number;
 
-	display() {
-		return `"${this.name}" (ID: ${this.id})`;
-	}
+	@ManyToOne('Folder', 'workflows', {
+		nullable: true,
+		onDelete: 'CASCADE',
+	})
+	@JoinColumn({ name: 'parentFolderId' })
+	parentFolder: Folder | null;
 }
 
 /**

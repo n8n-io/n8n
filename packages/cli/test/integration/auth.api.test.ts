@@ -1,4 +1,4 @@
-import { Container } from 'typedi';
+import { Container } from '@n8n/di';
 import validator from 'validator';
 
 import config from '@/config';
@@ -43,7 +43,7 @@ describe('POST /login', () => {
 
 	test('should log user in', async () => {
 		const response = await testServer.authlessAgent.post('/login').send({
-			email: owner.email,
+			emailOrLdapLoginId: owner.email,
 			password: ownerPassword,
 		});
 
@@ -87,9 +87,9 @@ describe('POST /login', () => {
 		await mfaService.enableMfa(owner.id);
 
 		const response = await testServer.authlessAgent.post('/login').send({
-			email: owner.email,
+			emailOrLdapLoginId: owner.email,
 			password: ownerPassword,
-			mfaToken: mfaService.totp.generateTOTP(secret),
+			mfaCode: mfaService.totp.generateTOTP(secret),
 		});
 
 		expect(response.statusCode).toBe(200);
@@ -131,7 +131,7 @@ describe('POST /login', () => {
 		});
 
 		const response = await testServer.authlessAgent.post('/login').send({
-			email: member.email,
+			emailOrLdapLoginId: member.email,
 			password,
 		});
 		expect(response.statusCode).toBe(403);
@@ -146,6 +146,18 @@ describe('POST /login', () => {
 
 		const response = await testServer.authAgentFor(ownerUser).get('/login');
 		expect(response.statusCode).toBe(200);
+	});
+
+	test('should fail with invalid email in the payload is the current authentication method is "email"', async () => {
+		config.set('userManagement.authenticationMethod', 'email');
+
+		const response = await testServer.authlessAgent.post('/login').send({
+			emailOrLdapLoginId: 'invalid-email',
+			password: ownerPassword,
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('Invalid email address');
 	});
 });
 

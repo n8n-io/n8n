@@ -1,4 +1,8 @@
-import { NodeConnectionType } from 'n8n-workflow';
+import type { Document } from '@langchain/core/documents';
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import type { TextSplitter } from '@langchain/textsplitters';
+import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
+import { loadSummarizationChain } from 'langchain/chains';
 import type {
 	INodeTypeBaseDescription,
 	IExecuteFunctions,
@@ -6,29 +10,27 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	IDataObject,
+	INodeInputConfiguration,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { loadSummarizationChain } from 'langchain/chains';
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import type { Document } from '@langchain/core/documents';
-import type { TextSplitter } from '@langchain/textsplitters';
-import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
-import { N8nJsonLoader } from '../../../../utils/N8nJsonLoader';
-import { N8nBinaryLoader } from '../../../../utils/N8nBinaryLoader';
-import { getTemplateNoticeField } from '../../../../utils/sharedFields';
-import { REFINE_PROMPT_TEMPLATE, DEFAULT_PROMPT_TEMPLATE } from '../prompt';
+import { N8nBinaryLoader } from '@utils/N8nBinaryLoader';
+import { N8nJsonLoader } from '@utils/N8nJsonLoader';
+import { getTemplateNoticeField } from '@utils/sharedFields';
+import { getTracingConfig } from '@utils/tracing';
+
 import { getChainPromptsArgs } from '../helpers';
-import { getTracingConfig } from '../../../../utils/tracing';
+import { REFINE_PROMPT_TEMPLATE, DEFAULT_PROMPT_TEMPLATE } from '../prompt';
 
 function getInputs(parameters: IDataObject) {
 	const chunkingMode = parameters?.chunkingMode;
 	const operationMode = parameters?.operationMode;
-	const inputs = [
-		{ displayName: '', type: NodeConnectionType.Main },
+	const inputs: INodeInputConfiguration[] = [
+		{ displayName: '', type: 'main' },
 		{
 			displayName: 'Model',
 			maxConnections: 1,
-			type: NodeConnectionType.AiLanguageModel,
+			type: 'ai_languageModel',
 			required: true,
 		},
 	];
@@ -36,7 +38,7 @@ function getInputs(parameters: IDataObject) {
 	if (operationMode === 'documentLoader') {
 		inputs.push({
 			displayName: 'Document',
-			type: NodeConnectionType.AiDocument,
+			type: 'ai_document',
 			required: true,
 			maxConnections: 1,
 		});
@@ -46,7 +48,7 @@ function getInputs(parameters: IDataObject) {
 	if (chunkingMode === 'advanced') {
 		inputs.push({
 			displayName: 'Text Splitter',
-			type: NodeConnectionType.AiTextSplitter,
+			type: 'ai_textSplitter',
 			required: false,
 			maxConnections: 1,
 		});
@@ -68,7 +70,7 @@ export class ChainSummarizationV2 implements INodeType {
 			},
 			// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 			inputs: `={{ ((parameter) => { ${getInputs.toString()}; return getInputs(parameter) })($parameter) }}`,
-			outputs: [NodeConnectionType.Main],
+			outputs: [NodeConnectionTypes.Main],
 			credentials: [],
 			properties: [
 				getTemplateNoticeField(1951),
@@ -320,16 +322,16 @@ export class ChainSummarizationV2 implements INodeType {
 			| 'simple'
 			| 'advanced';
 
-		const model = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
-			0,
-		)) as BaseLanguageModel;
-
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
+				const model = (await this.getInputConnectionData(
+					NodeConnectionTypes.AiLanguageModel,
+					0,
+				)) as BaseLanguageModel;
+
 				const summarizationMethodAndPrompts = this.getNodeParameter(
 					'options.summarizationMethodAndPrompts.values',
 					itemIndex,
@@ -355,7 +357,7 @@ export class ChainSummarizationV2 implements INodeType {
 				// Use dedicated document loader input to load documents
 				if (operationMode === 'documentLoader') {
 					const documentInput = (await this.getInputConnectionData(
-						NodeConnectionType.AiDocument,
+						NodeConnectionTypes.AiDocument,
 						0,
 					)) as N8nJsonLoader | Array<Document<Record<string, unknown>>>;
 
@@ -389,7 +391,7 @@ export class ChainSummarizationV2 implements INodeType {
 						// In advanced mode user can connect text splitter node so we just retrieve it
 						case 'advanced':
 							textSplitter = (await this.getInputConnectionData(
-								NodeConnectionType.AiTextSplitter,
+								NodeConnectionTypes.AiTextSplitter,
 								0,
 							)) as TextSplitter | undefined;
 							break;
@@ -410,9 +412,12 @@ export class ChainSummarizationV2 implements INodeType {
 					}
 
 					const processedItem = await processor.processItem(item, itemIndex);
-					const response = await chain.call({
-						input_documents: processedItem,
-					});
+					const response = await chain.invoke(
+						{
+							input_documents: processedItem,
+						},
+						{ signal: this.getExecutionCancelSignal() },
+					);
 					returnData.push({ json: { response } });
 				}
 			} catch (error) {

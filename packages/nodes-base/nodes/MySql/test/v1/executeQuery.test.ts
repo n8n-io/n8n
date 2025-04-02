@@ -1,44 +1,22 @@
-import type { INodeTypes } from 'n8n-workflow';
+import { mock } from 'jest-mock-extended';
+import type { Connection, QueryResult } from 'mysql2/promise';
+import type { WorkflowTestData } from 'n8n-workflow';
 
-import nock from 'nock';
-import { getResultNodeData, setup, workflowToTests } from '@test/nodes/Helpers';
-import type { WorkflowTestData } from '@test/nodes/types';
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
+import { getResultNodeData, workflowToTests } from '@test/nodes/Helpers';
 
-const queryMock = jest.fn(async function () {
-	return [{ success: true }];
-});
-
-jest.mock('../../v1/GenericFunctions', () => {
-	const originalModule = jest.requireActual('../../v1/GenericFunctions');
-	return {
-		...originalModule,
-		createConnection: jest.fn(async function () {
-			return {
-				query: queryMock,
-				end: jest.fn(),
-			};
-		}),
-	};
-});
+const mockConnection = mock<Connection>();
+const createConnection = jest.fn().mockReturnValue(mockConnection);
+jest.mock('mysql2/promise', () => ({ createConnection }));
 
 describe('Test MySqlV1, executeQuery', () => {
+	mockConnection.query.mockResolvedValue([{ success: true } as unknown as QueryResult, []]);
+
 	const workflows = ['nodes/MySql/test/v1/executeQuery.workflow.json'];
 	const tests = workflowToTests(workflows);
 
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.unmock('../../v1/GenericFunctions');
-	});
-
-	const nodeTypes = setup(tests);
-
-	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {
-		const { result } = await executeWorkflow(testData, types);
+	const testNode = async (testData: WorkflowTestData) => {
+		const { result } = await executeWorkflow(testData);
 
 		const resultNodeData = getResultNodeData(result, testData);
 
@@ -46,8 +24,8 @@ describe('Test MySqlV1, executeQuery', () => {
 			return expect(resultData).toEqual(testData.output.nodeData[nodeName]);
 		});
 
-		expect(queryMock).toHaveBeenCalledTimes(1);
-		expect(queryMock).toHaveBeenCalledWith(
+		expect(mockConnection.query).toHaveBeenCalledTimes(1);
+		expect(mockConnection.query).toHaveBeenCalledWith(
 			"select * from family_parents where (parent_email = 'parent1@mail.com' or parent_email = 'parent2@mail.com') and parent_email <> '';",
 		);
 
@@ -55,6 +33,6 @@ describe('Test MySqlV1, executeQuery', () => {
 	};
 
 	for (const testData of tests) {
-		test(testData.description, async () => await testNode(testData, nodeTypes));
+		test(testData.description, async () => await testNode(testData));
 	}
 });

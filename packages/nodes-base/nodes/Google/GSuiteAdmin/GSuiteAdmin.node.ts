@@ -7,13 +7,11 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
-
-import { userFields, userOperations } from './UserDescription';
-
 import { groupFields, groupOperations } from './GroupDescripion';
+import { userFields, userOperations } from './UserDescription';
 
 export class GSuiteAdmin implements INodeType {
 	description: INodeTypeDescription = {
@@ -28,8 +26,9 @@ export class GSuiteAdmin implements INodeType {
 		defaults: {
 			name: 'Google Workspace Admin',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'gSuiteAdminOAuth2Api',

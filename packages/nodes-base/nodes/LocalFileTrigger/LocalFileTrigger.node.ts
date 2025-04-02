@@ -1,13 +1,12 @@
+import { watch } from 'chokidar';
 import {
 	type ITriggerFunctions,
 	type IDataObject,
 	type INodeType,
 	type INodeTypeDescription,
 	type ITriggerResponse,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
-
-import { watch } from 'chokidar';
 
 export class LocalFileTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -36,7 +35,7 @@ export class LocalFileTrigger implements INodeType {
 				"Once you’ve finished building your workflow, <a data-key='activate'>activate</a> it to have it also listen continuously (you just won’t see those executions here).",
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Trigger On',

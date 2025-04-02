@@ -1,16 +1,17 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { AzureChatOpenAI } from '@langchain/openai';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { ChatOpenAI } from '@langchain/openai';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { N8nLlmTracing } from '../N8nLlmTracing';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatAzureOpenAi implements INodeType {
 	description: INodeTypeDescription = {
@@ -41,7 +42,7 @@ export class LmChatAzureOpenAi implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiLanguageModel],
+		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
 			{
@@ -50,7 +51,7 @@ export class LmChatAzureOpenAi implements INodeType {
 			},
 		],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
 			{
 				displayName:
 					'If using JSON response format, you must include word "json" in the prompt in your chain or agent. Also, make sure to select latest models released post November 2023.',
@@ -168,6 +169,7 @@ export class LmChatAzureOpenAi implements INodeType {
 			apiKey: string;
 			resourceName: string;
 			apiVersion: string;
+			endpoint?: string;
 		}>('azureOpenAiApi');
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
@@ -182,11 +184,13 @@ export class LmChatAzureOpenAi implements INodeType {
 			responseFormat?: 'text' | 'json_object';
 		};
 
-		const model = new ChatOpenAI({
+		const model = new AzureChatOpenAI({
 			azureOpenAIApiDeploymentName: modelName,
-			azureOpenAIApiInstanceName: credentials.resourceName,
+			// instance name only needed to set base url
+			azureOpenAIApiInstanceName: !credentials.endpoint ? credentials.resourceName : undefined,
 			azureOpenAIApiKey: credentials.apiKey,
 			azureOpenAIApiVersion: credentials.apiVersion,
+			azureOpenAIEndpoint: credentials.endpoint,
 			...options,
 			timeout: options.timeout ?? 60000,
 			maxRetries: options.maxRetries ?? 2,

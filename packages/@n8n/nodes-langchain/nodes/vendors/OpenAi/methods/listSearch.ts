@@ -4,9 +4,9 @@ import type {
 	INodeListSearchItems,
 	INodeListSearchResult,
 } from 'n8n-workflow';
-
-import type { Model } from 'openai/resources/models';
 import type { Assistant } from 'openai/resources/beta/assistants';
+import type { Model } from 'openai/resources/models';
+
 import { apiRequest } from '../transport';
 
 export async function fileSearch(
@@ -76,9 +76,17 @@ export async function modelSearch(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
+	const credentials = await this.getCredentials<{ url: string }>('openAiApi');
+	const url = credentials.url && new URL(credentials.url);
+	const isCustomAPI = url && url.hostname !== 'api.openai.com';
+
 	return await getModelSearch(
 		(model) =>
-			model.id.startsWith('gpt-') || model.id.startsWith('ft:') || model.id.startsWith('o1'),
+			isCustomAPI ||
+			model.id.startsWith('gpt-') ||
+			model.id.startsWith('ft:') ||
+			model.id.startsWith('o1') ||
+			model.id.startsWith('o3'),
 	)(this, filter);
 }
 

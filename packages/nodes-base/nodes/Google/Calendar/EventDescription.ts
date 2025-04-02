@@ -112,6 +112,7 @@ export const eventFields: INodeProperties[] = [
 			show: {
 				operation: ['create'],
 				resource: ['event'],
+				'@version': [{ _cnd: { lt: 1.3 } }],
 			},
 		},
 		default: '',
@@ -126,10 +127,43 @@ export const eventFields: INodeProperties[] = [
 			show: {
 				operation: ['create'],
 				resource: ['event'],
+				'@version': [{ _cnd: { lt: 1.3 } }],
 			},
 		},
 		default: '',
 		description: 'End time of the event',
+	},
+	{
+		displayName: 'Start',
+		name: 'start',
+		type: 'dateTime',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: ['create'],
+				resource: ['event'],
+				'@version': [{ _cnd: { gte: 1.3 } }],
+			},
+		},
+		default: '={{ $now }}',
+		description:
+			'Start time of the event, use <a href="https://docs.n8n.io/code/cookbook/luxon/" target="_blank">expression</a> to set a date, or switch to fixed mode to choose date from widget',
+	},
+	{
+		displayName: 'End',
+		name: 'end',
+		type: 'dateTime',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: ['create'],
+				resource: ['event'],
+				'@version': [{ _cnd: { gte: 1.3 } }],
+			},
+		},
+		default: "={{ $now.plus(1, 'hour') }}",
+		description:
+			'End time of the event, use <a href="https://docs.n8n.io/code/cookbook/luxon/" target="_blank">expression</a> to set a date, or switch to fixed mode to choose date from widget',
 	},
 	{
 		displayName: 'Use Default Reminders',
@@ -554,6 +588,19 @@ export const eventFields: INodeProperties[] = [
 					'The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned.',
 			},
 			{
+				displayName: 'Return Next Instance of Recurring Event',
+				name: 'returnNextInstance',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to return the next instance of a recurring event instead of the event itself',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.3 } }],
+					},
+				},
+			},
+			{
 				displayName: 'Timezone',
 				name: 'timeZone',
 				type: 'resourceLocator',
@@ -630,6 +677,36 @@ export const eventFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
+		displayName: 'After',
+		name: 'timeMin',
+		type: 'dateTime',
+		default: '={{ $now }}',
+		description:
+			'At least some part of the event must be after this time, use <a href="https://docs.n8n.io/code/cookbook/luxon/" target="_blank">expression</a> to set a date, or switch to fixed mode to choose date from widget',
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 1.3 } }],
+				operation: ['getAll'],
+				resource: ['event'],
+			},
+		},
+	},
+	{
+		displayName: 'Before',
+		name: 'timeMax',
+		type: 'dateTime',
+		default: '={{ $now.plus({ week: 1 }) }}',
+		description:
+			'At least some part of the event must be before this time, use <a href="https://docs.n8n.io/code/cookbook/luxon/" target="_blank">expression</a> to set a date, or switch to fixed mode to choose date from widget',
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 1.3 } }],
+				operation: ['getAll'],
+				resource: ['event'],
+			},
+		},
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -647,14 +724,39 @@ export const eventFields: INodeProperties[] = [
 				name: 'timeMin',
 				type: 'dateTime',
 				default: '',
-				description: 'At least some part of the event must be after this time',
+				description:
+					'At least some part of the event must be after this time, use <a href="https://docs.n8n.io/code/cookbook/luxon/" target="_blank">expression</a> to set a date, or switch to fixed mode to choose date from widget',
+				displayOptions: {
+					hide: {
+						'@version': [{ _cnd: { gte: 1.3 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Before',
 				name: 'timeMax',
 				type: 'dateTime',
 				default: '',
-				description: 'At least some part of the event must be before this time',
+				description:
+					'At least some part of the event must be before this time, use <a href="https://docs.n8n.io/code/cookbook/luxon/" target="_blank">expression</a> to set a date, or switch to fixed mode to choose date from widget',
+				displayOptions: {
+					hide: {
+						'@version': [{ _cnd: { gte: 1.3 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Expand Events',
+				name: 'singleEvents',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to expand recurring events into instances and only return single one-off events and instances of recurring events, but not the underlying recurring events themselves',
+				displayOptions: {
+					hide: {
+						'@version': [{ _cnd: { gte: 1.3 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Fields',
@@ -709,6 +811,34 @@ export const eventFields: INodeProperties[] = [
 					'Free text search terms to find events that match these terms in any field, except for extended properties',
 			},
 			{
+				displayName: 'Recurring Event Handling',
+				name: 'recurringEventHandling',
+				type: 'options',
+				default: 'expand',
+				options: [
+					{
+						name: 'All Occurrences',
+						value: 'expand',
+						description: 'Return all instances of recurring event for specified time range',
+					},
+					{
+						name: 'First Occurrence',
+						value: 'first',
+						description: 'Return event with specified recurrence rule',
+					},
+					{
+						name: 'Next Occurrence',
+						value: 'next',
+						description: 'Return next instance of recurring event',
+					},
+				],
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.3 } }],
+					},
+				},
+			},
+			{
 				displayName: 'Show Deleted',
 				name: 'showDeleted',
 				type: 'boolean',
@@ -723,14 +853,7 @@ export const eventFields: INodeProperties[] = [
 				default: false,
 				description: 'Whether to include hidden invitations in the result',
 			},
-			{
-				displayName: 'Single Events',
-				name: 'singleEvents',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether to expand recurring events into instances and only return single one-off events and instances of recurring events, but not the underlying recurring events themselves',
-			},
+
 			{
 				displayName: 'Timezone',
 				name: 'timeZone',
@@ -796,6 +919,30 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		default: '',
+	},
+	{
+		displayName: 'Modify',
+		name: 'modifyTarget',
+		type: 'options',
+		options: [
+			{
+				name: 'Recurring Event Instance',
+				value: 'instance',
+			},
+			{
+				name: 'Recurring Event',
+				value: 'event',
+			},
+		],
+		default: 'instance',
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 1.3 } }],
+				resource: ['event'],
+				operation: ['update'],
+				eventId: [{ _cnd: { includes: '_' } }],
+			},
+		},
 	},
 	{
 		displayName: 'Use Default Reminders',

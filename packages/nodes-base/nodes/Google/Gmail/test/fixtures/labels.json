@@ -1,0 +1,14 @@
+[
+	{
+		"id": "CHAT",
+		"name": "CHAT",
+		"messageListVisibility": "hide",
+		"labelListVisibility": "labelHide",
+		"type": "system"
+	},
+	{
+		"id": "SENT",
+		"name": "SENT",
+		"type": "system"
+	}
+]

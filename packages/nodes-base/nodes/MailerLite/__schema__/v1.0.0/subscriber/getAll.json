@@ -1,0 +1,93 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "sent": {
+            "type": "integer"
+        },
+        "opened": {
+            "type": "integer"
+        },
+        "clicked": {
+            "type": "integer"
+        },
+        "type": {
+            "type": "string"
+        },
+        "country_id": {
+            "type": "string"
+        },
+        "signup_ip": {
+            "type": "null"
+        },
+        "signup_timestamp": {
+            "type": "null"
+        },
+        "confirmation_ip": {
+            "type": "null"
+        },
+        "confirmation_timestamp": {
+            "type": "null"
+        },
+        "fields": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "key": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "key",
+                    "value",
+                    "type"
+                ]
+            }
+        },
+        "date_subscribe": {
+            "type": "string"
+        },
+        "date_created": {
+            "type": "string"
+        },
+        "date_updated": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "id",
+        "name",
+        "email",
+        "sent",
+        "opened",
+        "opened_rate",
+        "clicked",
+        "clicked_rate",
+        "type",
+        "country_id",
+        "signup_ip",
+        "signup_timestamp",
+        "confirmation_ip",
+        "confirmation_timestamp",
+        "fields",
+        "date_subscribe",
+        "date_unsubscribe",
+        "date_created",
+        "date_updated"
+    ]
+}

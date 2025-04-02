@@ -6,12 +6,10 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-
-import { sendyApiRequest } from './GenericFunctions';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { campaignFields, campaignOperations } from './CampaignDescription';
-
+import { sendyApiRequest } from './GenericFunctions';
 import { subscriberFields, subscriberOperations } from './SubscriberDescription';
 
 export class Sendy implements INodeType {
@@ -27,8 +25,9 @@ export class Sendy implements INodeType {
 		defaults: {
 			name: 'Sendy',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'sendyApi',
