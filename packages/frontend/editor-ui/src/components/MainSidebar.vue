@@ -111,6 +111,7 @@ const mainMenuItems = computed(() => [
 		customIconSize: 'medium',
 		position: 'bottom',
 		route: { to: { name: VIEWS.INSIGHTS } },
+		available: hasPermission(['rbac'], { rbac: { scope: 'insights:list' } }),
 	},
 	{
 		id: 'help',

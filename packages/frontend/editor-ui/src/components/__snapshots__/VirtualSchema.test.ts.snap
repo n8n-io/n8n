@@ -2005,32 +2005,40 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
         
         
         <div
-          class="schema-item draggable"
-          data-test-id="run-data-schema-item"
-          data-v-0f5e7239=""
           data-v-d00cba9a=""
-          type="item"
         >
           <div
-            class="toggle-container"
-            data-v-0f5e7239=""
-          >
-            <!--v-if-->
-          </div>
-          <!--v-if-->
-          <!--v-if-->
-          <span
-            class="content text"
-            data-test-id="run-data-schema-item-value"
-            data-v-0f5e7239=""
+            class="n8n-text size-small regular"
+            data-v-d00cba9a=""
           >
             
-            <span>
-              <!--v-if-->
-              No fields - item(s) exist, but they're empty
+            <span
+              data-v-d00cba9a=""
+            >
+              
+              
+              <button
+                aria-live="polite"
+                class="button button primary small text el-tooltip__trigger el-tooltip__trigger"
+                style="padding: 0px;"
+                title="Runs the current node. Will also run previous nodes if they have not been run yet"
+                transparent-background="false"
+              >
+                <!--v-if-->
+                <span>
+                  
+                  Execute previous nodes
+                  
+                </span>
+              </button>
+              <!--teleport start-->
+              <!--teleport end-->
+              
+              
+               to see schema
             </span>
             
-          </span>
+          </div>
         </div>
         
         

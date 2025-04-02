@@ -5,15 +5,23 @@ import type { ListInsightsWorkflowQueryDto } from '@n8n/api-types';
 import * as insightsApi from '@/features/insights/insights.api';
 import { useRootStore } from '@/stores/root.store';
 import { useUsersStore } from '@/stores/users.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { transformInsightsSummary } from '@/features/insights/insights.utils';
 import { getResourcePermissions } from '@/permissions';
 
 export const useInsightsStore = defineStore('insights', () => {
 	const rootStore = useRootStore();
 	const usersStore = useUsersStore();
+	const settingsStore = useSettingsStore();
 
 	const globalInsightsPermissions = computed(
 		() => getResourcePermissions(usersStore.currentUser?.globalScopes).insights,
+	);
+
+	const isInsightsEnabled = computed(() => settingsStore.settings.insights.enabled);
+
+	const isSummaryEnabled = computed(
+		() => globalInsightsPermissions.value.list && isInsightsEnabled.value,
 	);
 
 	const summary = useAsyncState(
@@ -45,9 +53,11 @@ export const useInsightsStore = defineStore('insights', () => {
 	);
 
 	return {
+		globalInsightsPermissions,
+		isInsightsEnabled,
+		isSummaryEnabled,
 		summary,
 		charts,
 		table,
-		globalInsightsPermissions,
 	};
 });

@@ -4,7 +4,7 @@ import InsightsSummary from '@/features/insights/components/InsightsSummary.vue'
 import { useInsightsStore } from '@/features/insights/insights.store';
 import type { InsightsSummaryType } from '@n8n/api-types';
 import { computed, defineAsyncComponent, watch } from 'vue';
-import { useRoute, useRouter, type LocationQuery } from 'vue-router';
+import { useRoute, type LocationQuery } from 'vue-router';
 
 const InsightsPaywall = defineAsyncComponent(
 	async () => await import('@/features/insights/components/InsightsPaywall.vue'),
@@ -33,7 +33,6 @@ const props = defineProps<{
 }>();
 
 const route = useRoute();
-const router = useRouter();
 const i18n = useI18n();
 
 const insightsStore = useInsightsStore();
@@ -54,30 +53,6 @@ const getDefaultFilter = (query: LocationQuery): Filter => {
 	};
 };
 const filters = computed(() => getDefaultFilter(route.query));
-const updateFilter = async (filter: Filter) =>
-	await router.replace({ query: getDefaultFilter(filter) });
-const timeOptions = [
-	{
-		label: 'Last 7 days',
-		value: '7',
-	},
-	{
-		label: 'Last 30 days',
-		value: '30',
-	},
-	{
-		label: 'Last 60 days',
-		value: '60',
-	},
-	{
-		label: 'Last 90 days',
-		value: '90',
-	},
-	{
-		label: 'Last One year',
-		value: '365',
-	},
-];
 
 const transformFilter = ({ id, desc }: { id: string; desc: boolean }) => {
 	// TODO: remove exclude once failureRate is added to the BE
@@ -110,7 +85,10 @@ const fetchPaginatedTableData = ({
 watch(
 	() => filters.value.time_span,
 	() => {
-		void insightsStore.summary.execute();
+		if (insightsStore.isSummaryEnabled) {
+			void insightsStore.summary.execute();
+		}
+
 		void insightsStore.charts.execute();
 		void insightsStore.table.execute();
 	},
@@ -125,50 +103,32 @@ watch(
 		<N8nHeading bold tag="h2" size="xlarge">{{
 			i18n.baseText('insights.dashboard.title')
 		}}</N8nHeading>
-		<InsightsPaywall v-if="!insightsStore.globalInsightsPermissions.list" />
-		<div v-else>
-			<div style="display: flex; justify-content: space-between">
-				<div style="display: flex; gap: 6px">
-					<N8nSelect
-						:model-value="filters.time_span"
-						@update:model-value="(value: string) => updateFilter({ ...filters, time_span: value })"
-					>
-						<N8nOption
-							v-for="option in timeOptions"
-							:key="option.value"
-							:value="option.value"
-							:label="option.label"
-						>
-						</N8nOption>
-					</N8nSelect>
+		<div>
+			<InsightsSummary
+				v-if="insightsStore.isSummaryEnabled"
+				:summary="insightsStore.summary.state"
+				:loading="insightsStore.summary.isLoading"
+				:class="$style.insightsBanner"
+			/>
+			<div v-if="insightsStore.isInsightsEnabled" :class="$style.insightsContent">
+				<div :class="$style.insightsChartWrapper">
+					<template v-if="insightsStore.charts.isLoading"> loading </template>
+					<component
+						:is="chartComponents[props.insightType]"
+						v-else
+						:type="props.insightType"
+						:data="insightsStore.charts.state"
+					/>
+				</div>
+				<div :class="$style.insightsTableWrapper">
+					<InsightsTableWorkflows
+						:data="insightsStore.table.state"
+						:loading="insightsStore.table.isLoading"
+						@update:options="fetchPaginatedTableData"
+					/>
 				</div>
 			</div>
-
-			<div>
-				<InsightsSummary
-					:summary="insightsStore.summary.state"
-					:loading="insightsStore.summary.isLoading"
-					:class="$style.insightsBanner"
-				/>
-				<div :class="$style.insightsContent">
-					<div :class="$style.insightsChartWrapper">
-						<template v-if="insightsStore.charts.isLoading"> loading </template>
-						<component
-							:is="chartComponents[props.insightType]"
-							v-else
-							:type="props.insightType"
-							:data="insightsStore.charts.state"
-						/>
-					</div>
-					<div :class="$style.insightsTableWrapper">
-						<InsightsTableWorkflows
-							:data="insightsStore.table.state"
-							:loading="insightsStore.table.isLoading"
-							@update:options="fetchPaginatedTableData"
-						/>
-					</div>
-				</div>
-			</div>
+			<InsightsPaywall v-else data-test-id="insights-dashboard-unlicensed" />
 		</div>
 	</div>
 </template>
@@ -181,6 +141,7 @@ watch(
 	flex-direction: column;
 	gap: 30px;
 	overflow: auto;
+	max-width: var(--content-container-width);
 }
 
 .insightsBanner {

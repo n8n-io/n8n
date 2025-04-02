@@ -101,7 +101,7 @@ export async function initializeAuthenticatedFeatures(
 		}
 	}
 
-	if (insightsStore.globalInsightsPermissions.list) {
+	if (insightsStore.isSummaryEnabled) {
 		void insightsStore.summary.execute();
 	}
 
