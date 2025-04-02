@@ -1,0 +1,13 @@
+diff --git a/dist/index.node.js b/dist/index.node.js
+index bb108cbc210af5b99e864fd1dd8c555e948ecf7a..fdd0b8d7e610c0c02fe4ef3ae558cbe868b85f0b 100644
+--- a/dist/index.node.js
++++ b/dist/index.node.js
+@@ -16,7 +16,7 @@ function getRandomValues(size) {
+  * @returns The random string
+  */
+ function random(size) {
+-    const mask = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~";
++    const mask = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._";
+     let result = "";
+     const randomUints = getRandomValues(size);
+     for (let i = 0; i < size; i++) {

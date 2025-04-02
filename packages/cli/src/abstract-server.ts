@@ -22,6 +22,8 @@ import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
 
 import { ServiceUnavailableError } from './errors/response-errors/service-unavailable.error';
+import { LiveMCPManager } from './mcp/live-mcp-manager';
+import { TestMCPManager } from './mcp/test-mcp-manager';
 
 @Service()
 export abstract class AbstractServer {
@@ -57,6 +59,14 @@ export abstract class AbstractServer {
 
 	protected testWebhooksEnabled = false;
 
+	protected liveMcpEnabled = true;
+
+	protected testMcpEnabled = false;
+
+	protected endpointMcp: string;
+
+	protected endpointMcpTest: string;
+
 	readonly uniqueInstanceId: string;
 
 	constructor() {
@@ -73,15 +83,19 @@ export abstract class AbstractServer {
 		this.sslKey = config.getEnv('ssl_key');
 		this.sslCert = config.getEnv('ssl_cert');
 
-		this.restEndpoint = this.globalConfig.endpoints.rest;
+		const { endpoints } = this.globalConfig;
+		this.restEndpoint = endpoints.rest;
 
-		this.endpointForm = this.globalConfig.endpoints.form;
-		this.endpointFormTest = this.globalConfig.endpoints.formTest;
-		this.endpointFormWaiting = this.globalConfig.endpoints.formWaiting;
+		this.endpointForm = endpoints.form;
+		this.endpointFormTest = endpoints.formTest;
+		this.endpointFormWaiting = endpoints.formWaiting;
 
-		this.endpointWebhook = this.globalConfig.endpoints.webhook;
-		this.endpointWebhookTest = this.globalConfig.endpoints.webhookTest;
-		this.endpointWebhookWaiting = this.globalConfig.endpoints.webhookWaiting;
+		this.endpointWebhook = endpoints.webhook;
+		this.endpointWebhookTest = endpoints.webhookTest;
+		this.endpointWebhookWaiting = endpoints.webhookWaiting;
+
+		this.endpointMcp = endpoints.mcp;
+		this.endpointMcpTest = endpoints.mcpTest;
 
 		this.logger = Container.get(Logger);
 	}
@@ -191,6 +205,12 @@ export abstract class AbstractServer {
 			// Register a handler for live webhooks
 			this.app.all(`/${this.endpointWebhook}/*path`, liveWebhooksRequestHandler);
 
+			// Register a handler for live MCP
+			const liveMCPManager = Container.get(LiveMCPManager);
+			this.app.all(`/${this.endpointMcp}/*path`, (req, res) =>
+				liveMCPManager.handleRequest(req, res),
+			);
+
 			// Register a handler for waiting forms
 			this.app.all(
 				`/${this.endpointFormWaiting}/:path/{:suffix}`,
@@ -210,6 +230,12 @@ export abstract class AbstractServer {
 			// Register a handler
 			this.app.all(`/${this.endpointFormTest}/*path`, testWebhooksRequestHandler);
 			this.app.all(`/${this.endpointWebhookTest}/*path`, testWebhooksRequestHandler);
+
+			// Register a handler for test MCP
+			const testMCPManager = Container.get(TestMCPManager);
+			this.app.all(`/${this.endpointMcp}/*path`, (req, res) =>
+				testMCPManager.handleRequest(req, res),
+			);
 		}
 
 		// Block bots from scanning the application

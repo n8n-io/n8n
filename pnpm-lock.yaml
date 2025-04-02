@@ -170,9 +170,9 @@ patchedDependencies:
   eslint-plugin-n8n-local-rules:
     hash: e0fd59254ab02473c6940fa25fcc8102ebc7d371c015ec53333a43f48af33cc2
     path: patches/eslint-plugin-n8n-local-rules.patch
-  pkce-challenge@3.0.0:
-    hash: 4fa087c659ab74f146b6e9ff6ecee9f497d1d8a57d5a2bbb9c0c7a0356b3c33b
-    path: patches/pkce-challenge@3.0.0.patch
+  pkce-challenge@4.1.0:
+    hash: 0ee9925f4423f9bdae913a5d469c9b2c38e1cab099286bd8dcbcc10a5281d6ba
+    path: patches/pkce-challenge@4.1.0.patch
   pyodide@0.23.4:
     hash: c1002dacf7f6d0827d23aaf6cf2845e1b0c351339306c4ad660b8cd72077976c
     path: patches/pyodide@0.23.4.patch
@@ -1080,8 +1080,8 @@ importers:
         specifier: 'catalog:'
         version: 1.0.1
       pkce-challenge:
-        specifier: 3.0.0
-        version: 3.0.0(patch_hash=4fa087c659ab74f146b6e9ff6ecee9f497d1d8a57d5a2bbb9c0c7a0356b3c33b)
+        specifier: 4.1.0
+        version: 4.1.0(patch_hash=0ee9925f4423f9bdae913a5d469c9b2c38e1cab099286bd8dcbcc10a5281d6ba)
       posthog-node:
         specifier: 3.2.1
         version: 3.2.1
@@ -1995,6 +1995,9 @@ importers:
       '@kafkajs/confluent-schema-registry':
         specifier: 3.8.0
         version: 3.8.0
+      '@modelcontextprotocol/sdk':
+        specifier: 1.8.0
+        version: 1.8.0
       '@n8n/config':
         specifier: workspace:*
         version: link:../@n8n/config
@@ -2038,8 +2041,8 @@ importers:
         specifier: 2.1.0
         version: 2.1.0
       eventsource:
-        specifier: 2.0.2
-        version: 2.0.2
+        specifier: 3.0.6
+        version: 3.0.6
       fast-glob:
         specifier: 'catalog:'
         version: 3.2.12
@@ -2206,9 +2209,6 @@ importers:
       '@types/cheerio':
         specifier: ^0.22.15
         version: 0.22.31
-      '@types/eventsource':
-        specifier: ^1.1.2
-        version: 1.1.9
       '@types/express':
         specifier: 'catalog:'
         version: 5.0.1
@@ -4567,6 +4567,10 @@ packages:
     peerDependencies:
       zod: '>= 3'
 
+  '@modelcontextprotocol/sdk@1.8.0':
+    resolution: {integrity: sha512-e06W7SwrontJDHwCawNO5SGxG+nU9AAx+jpHHZqGl/WrDBdWOpvirC+s58VpJTB5QemI4jTRcjWT4Pt3Q1NPQQ==}
+    engines: {node: '>=18'}
+
   '@mongodb-js/saslprep@1.1.9':
     resolution: {integrity: sha512-tVkljjeEaAhCqTzajSdgbQ6gE6f3oneVwa3iXR6csiEwXXOFsiC6Uh9iAjAhXPtqa/XMDHWjjeNH/77m/Yq2dw==}
 
@@ -5964,9 +5968,6 @@ packages:
 
   '@types/estree@1.0.6':
     resolution: {integrity: sha512-AYnb1nQyY49te+VRAVgmzfcgjYS91mY5P0TKUDCLEM+gNnA+3T6rWITXRLYCpahpqSQbN5cE+gHpnPyXjHWxcw==}
-
-  '@types/eventsource@1.1.9':
-    resolution: {integrity: sha512-F3K4oyM12o8W9jxuJmW+1sc8kdw0Hj0t+26urwkcolPJTgkfppEfIdftdcXmUU2QPBIwcrYO6diqgIqgCDf1FA==}
 
   '@types/express-serve-static-core@5.0.6':
     resolution: {integrity: sha512-3xhRnjJPkULekpSzgtoNYYcTWgEZkp4myc+Saevii5JPnHNvHMRlBSHDbs7Bh1iPPoVTERHEZXyhyLbMEsExsA==}
@@ -7630,6 +7631,10 @@ packages:
   core-util-is@1.0.3:
     resolution: {integrity: sha512-ZQBvi1DcpJ4GDqanjucZ2Hj3wEO5pZDS89BWbkcrvdxksJorwUDDZamX9ldFkp9aw2lmBDLgkObEA4DWNJ9FYQ==}
 
+  cors@2.8.5:
+    resolution: {integrity: sha512-KIHbLJqu73RGr/hnbrO9uBeixNGuvSQjul/jdFvS/KFSIH1hWVd1ng7zOHx+YrEfInLG7q4n6GHQ9cDtxv/P6g==}
+    engines: {node: '>= 0.10'}
+
   cpu-features@0.0.10:
     resolution: {integrity: sha512-9IkYqtX3YHPCzoVg1Py+o9057a3i0fp7S530UWokCSaFVTc7CwXPRiOjRjBQQ18ZCNafx78YfnG+HALxtVmOGA==}
     engines: {node: '>=10.0.0'}
@@ -8512,9 +8517,13 @@ packages:
     resolution: {integrity: sha512-mQw+2fkQbALzQ7V0MY0IqdnXNOeTtP4r0lN9z7AAawCXgqea7bDii20AYrIBrFd/Hx0M2Ocz6S111CaFkUcb0Q==}
     engines: {node: '>=0.8.x'}
 
-  eventsource@2.0.2:
-    resolution: {integrity: sha512-IzUmBGPR3+oUG9dUeXynyNmf91/3zUSJg1lCktzKw47OXuhco54U3r9B7O4XX+Rb1Itm9OZ2b0RkTs10bICOxA==}
-    engines: {node: '>=12.0.0'}
+  eventsource-parser@3.0.1:
+    resolution: {integrity: sha512-VARTJ9CYeuQYb0pZEPbzi740OWFgpHe7AYJ2WFZVnUDUQp5Dk2yJUgF36YsZ81cOyxT0QxmXD2EQpapAouzWVA==}
+    engines: {node: '>=18.0.0'}
+
+  eventsource@3.0.6:
+    resolution: {integrity: sha512-l19WpE2m9hSuyP06+FbuUUf1G+R0SFLrtQfbRb9PRr+oimOfxQhgGCbVaXg5IvZyyTThJsxh6L/srkMiCeBPDA==}
+    engines: {node: '>=18.0.0'}
 
   execa@4.1.0:
     resolution: {integrity: sha512-j5W0//W7f8UxAn8hXVnwG8tLwdiUy4FJLcSupCg6maBYZDpyBvTApK7KyuI4bKj8KOh1r2YH+6ucuYtJv1bTZA==}
@@ -11422,8 +11431,9 @@ packages:
     resolution: {integrity: sha512-saLsH7WeYYPiD25LDuLRRY/i+6HaPYr6G1OUlN39otzkSTxKnubR9RTxS3/Kk50s1g2JTgFwWQDQyplC5/SHZg==}
     engines: {node: '>= 6'}
 
-  pkce-challenge@3.0.0:
-    resolution: {integrity: sha512-sQ8sJJJuLhA5pFnoxayMCrFnBMNj7DDpa+TWxOXl4B24oXHlVSADi/3Bowm66QuzWkBuF6DhmaelCdlC2JKwsg==}
+  pkce-challenge@4.1.0:
+    resolution: {integrity: sha512-ZBmhE1C9LcPoH9XZSdwiPtbPHZROwAnMy+kIFQVrnMCxY4Cudlz3gBOpzilgc0jOgRaiT3sIWfpMomW2ar2orQ==}
+    engines: {node: '>=16.20.0'}
 
   pkg-dir@4.2.0:
     resolution: {integrity: sha512-HRDzbaKjC+AOWVXxAU/x54COGeIv9eb+6CkDSQoNTt4XyWoIJvuPsXizxu/Fr23EiekbtZwmh1IcIG/l/a10GQ==}
@@ -16930,6 +16940,21 @@ snapshots:
     dependencies:
       zod: 3.24.1
 
+  '@modelcontextprotocol/sdk@1.8.0':
+    dependencies:
+      content-type: 1.0.5
+      cors: 2.8.5
+      cross-spawn: 7.0.6
+      eventsource: 3.0.6
+      express: 5.1.0
+      express-rate-limit: 7.5.0(express@5.1.0)
+      pkce-challenge: 4.1.0(patch_hash=0ee9925f4423f9bdae913a5d469c9b2c38e1cab099286bd8dcbcc10a5281d6ba)
+      raw-body: 3.0.0
+      zod: 3.24.1
+      zod-to-json-schema: 3.24.1(zod@3.24.1)
+    transitivePeerDependencies:
+      - supports-color
+
   '@mongodb-js/saslprep@1.1.9':
     dependencies:
       sparse-bitfield: 3.0.3
@@ -18788,8 +18813,6 @@ snapshots:
   '@types/estree@1.0.0': {}
 
   '@types/estree@1.0.6': {}
-
-  '@types/eventsource@1.1.9': {}
 
   '@types/express-serve-static-core@5.0.6(patch_hash=d602248fcd302cf5a794d1e85a411633ba9635ea5d566d6f2e0429c7ae0fa3eb)':
     dependencies:
@@ -20787,6 +20810,11 @@ snapshots:
 
   core-util-is@1.0.3: {}
 
+  cors@2.8.5:
+    dependencies:
+      object-assign: 4.1.1
+      vary: 1.1.2
+
   cpu-features@0.0.10:
     dependencies:
       buildcheck: 0.0.6
@@ -21663,7 +21691,7 @@ snapshots:
 
   eslint-import-resolver-node@0.3.9:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       is-core-module: 2.13.1
       resolve: 1.22.8
     transitivePeerDependencies:
@@ -21688,7 +21716,7 @@ snapshots:
 
   eslint-module-utils@2.8.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0):
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     optionalDependencies:
       '@typescript-eslint/parser': 7.2.0(eslint@8.57.0)(typescript@5.8.2)
       eslint: 8.57.0
@@ -21708,7 +21736,7 @@ snapshots:
       array.prototype.findlastindex: 1.2.3
       array.prototype.flat: 1.3.2
       array.prototype.flatmap: 1.3.2
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       doctrine: 2.1.0
       eslint: 8.57.0
       eslint-import-resolver-node: 0.3.9
@@ -21903,7 +21931,11 @@ snapshots:
 
   events@3.3.0: {}
 
-  eventsource@2.0.2: {}
+  eventsource-parser@3.0.1: {}
+
+  eventsource@3.0.6:
+    dependencies:
+      eventsource-parser: 3.0.1
 
   execa@4.1.0:
     dependencies:
@@ -22521,7 +22553,7 @@ snapshots:
       array-parallel: 0.1.3
       array-series: 0.1.5
       cross-spawn: 4.0.2
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -25393,7 +25425,7 @@ snapshots:
 
   pdf-parse@1.1.1:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       node-ensure: 0.0.0
     transitivePeerDependencies:
       - supports-color
@@ -25493,9 +25525,7 @@ snapshots:
 
   pirates@4.0.6: {}
 
-  pkce-challenge@3.0.0(patch_hash=4fa087c659ab74f146b6e9ff6ecee9f497d1d8a57d5a2bbb9c0c7a0356b3c33b):
-    dependencies:
-      crypto-js: 4.2.0
+  pkce-challenge@4.1.0(patch_hash=0ee9925f4423f9bdae913a5d469c9b2c38e1cab099286bd8dcbcc10a5281d6ba): {}
 
   pkg-dir@4.2.0:
     dependencies:
@@ -26239,7 +26269,7 @@ snapshots:
 
   rhea@1.0.24:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     transitivePeerDependencies:
       - supports-color
 

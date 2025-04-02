@@ -87,6 +87,7 @@ export class Server extends AbstractServer {
 		super();
 
 		this.testWebhooksEnabled = true;
+		this.testMcpEnabled = true;
 		this.webhooksEnabled = !this.globalConfig.endpoints.disableProductionWebhooksOnMainProcess;
 	}
 
