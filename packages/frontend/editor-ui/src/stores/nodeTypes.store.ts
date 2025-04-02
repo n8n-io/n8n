@@ -277,11 +277,12 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 
 	const getNodeTypes = async () => {
 		let nodeTypes = await nodeTypesApi.getNodeTypes(rootStore.baseUrl);
-		let attemps = 5;
+		let attempts = 5;
 
-		while (typeof nodeTypes !== 'object' && attemps > 0) {
+		while (typeof nodeTypes !== 'object' && attempts > 0) {
+			console.log('Could not fetch node types, retrying...');
 			nodeTypes = await nodeTypesApi.getNodeTypes(rootStore.baseUrl);
-			attemps--;
+			attempts--;
 		}
 
 		if (typeof nodeTypes !== 'object') {

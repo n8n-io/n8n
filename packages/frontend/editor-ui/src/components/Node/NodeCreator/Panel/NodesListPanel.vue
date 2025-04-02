@@ -220,7 +220,7 @@ function onBackButton() {
 			</div>
 
 			<CommunityNodeFooter
-				v-if="!isCommunityNodeActionsMode"
+				v-if="communityNodeDetails && !isCommunityNodeActionsMode"
 				:package-name="communityNodeDetails?.packageName as string"
 			/>
 		</aside>
