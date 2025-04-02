@@ -1,12 +1,24 @@
-import { WorkflowExecute } from 'n8n-core';
-import type { INodeTypes, IRun, IRunExecutionData } from 'n8n-workflow';
+import { Container } from '@n8n/di';
+import { mock } from 'jest-mock-extended';
+import { ExecutionLifecycleHooks, WorkflowExecute } from 'n8n-core';
+import type {
+	IRun,
+	IRunExecutionData,
+	IWorkflowExecuteAdditionalData,
+	WorkflowTestData,
+} from 'n8n-workflow';
 import { createDeferredPromise, Workflow } from 'n8n-workflow';
 import nock from 'nock';
 
-import * as Helpers from './Helpers';
-import type { WorkflowTestData } from './types';
+import { CredentialsHelper } from './credentials-helper';
+import { NodeTypes } from './node-types';
 
-export async function executeWorkflow(testData: WorkflowTestData, nodeTypes: INodeTypes) {
+// This is (temporarily) needed to setup LoadNodesAndCredentials
+import './Helpers';
+
+export async function executeWorkflow(testData: WorkflowTestData) {
+	const nodeTypes = Container.get(NodeTypes);
+
 	if (testData.nock) {
 		const { baseUrl, mocks } = testData.nock;
 		const agent = nock(baseUrl);
@@ -46,7 +58,18 @@ export async function executeWorkflow(testData: WorkflowTestData, nodeTypes: INo
 	});
 	const waitPromise = createDeferredPromise<IRun>();
 	const nodeExecutionOrder: string[] = [];
-	const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
+
+	const hooks = new ExecutionLifecycleHooks('trigger', '1', mock());
+	hooks.addHandler('nodeExecuteAfter', (nodeName) => {
+		nodeExecutionOrder.push(nodeName);
+	});
+	hooks.addHandler('workflowExecuteAfter', (fullRunData) => waitPromise.resolve(fullRunData));
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({
+		credentialsHelper: Container.get(CredentialsHelper),
+		hooks,
+		// Get from node.parameters
+		currentNodeParameters: undefined,
+	});
 
 	let executionData: IRun;
 	const runExecutionData: IRunExecutionData = {

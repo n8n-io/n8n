@@ -754,7 +754,7 @@ describe('getInsightsSummary', () => {
 		});
 		await createCompactedInsightsEvent(workflow, {
 			type: 'failure',
-			value: 2,
+			value: 1,
 			periodUnit: 'day',
 			periodStart: DateTime.utc(),
 		});
@@ -778,10 +778,10 @@ describe('getInsightsSummary', () => {
 		// ASSERT
 		expect(summary).toEqual({
 			averageRunTime: { deviation: -123, unit: 'time', value: 0 },
-			failed: { deviation: 2, unit: 'count', value: 2 },
-			failureRate: { deviation: 0.5, unit: 'ratio', value: 0.5 },
+			failed: { deviation: 1, unit: 'count', value: 1 },
+			failureRate: { deviation: 0.333, unit: 'ratio', value: 0.333 },
 			timeSaved: { deviation: 0, unit: 'time', value: 0 },
-			total: { deviation: 3, unit: 'count', value: 4 },
+			total: { deviation: 2, unit: 'count', value: 3 },
 		});
 	});
 
@@ -800,5 +800,51 @@ describe('getInsightsSummary', () => {
 
 		// ASSERT
 		expect(Object.values(summary).map((v) => v.deviation)).toEqual([null, null, null, null, null]);
+	});
+
+	test('mixed period data are summarized correctly', async () => {
+		// ARRANGE
+		await createCompactedInsightsEvent(workflow, {
+			type: 'success',
+			value: 1,
+			periodUnit: 'hour',
+			periodStart: DateTime.utc(),
+		});
+		await createCompactedInsightsEvent(workflow, {
+			type: 'success',
+			value: 1,
+			periodUnit: 'day',
+			periodStart: DateTime.utc().minus({ day: 1 }),
+		});
+		await createCompactedInsightsEvent(workflow, {
+			type: 'failure',
+			value: 2,
+			periodUnit: 'day',
+			periodStart: DateTime.utc(),
+		});
+		await createCompactedInsightsEvent(workflow, {
+			type: 'success',
+			value: 2,
+			periodUnit: 'hour',
+			periodStart: DateTime.utc().minus({ day: 10 }),
+		});
+		await createCompactedInsightsEvent(workflow, {
+			type: 'success',
+			value: 3,
+			periodUnit: 'day',
+			periodStart: DateTime.utc().minus({ day: 11 }),
+		});
+
+		// ACT
+		const summary = await insightsService.getInsightsSummary();
+
+		// ASSERT
+		expect(summary).toEqual({
+			averageRunTime: { deviation: 0, unit: 'time', value: 0 },
+			failed: { deviation: 2, unit: 'count', value: 2 },
+			failureRate: { deviation: 0.5, unit: 'ratio', value: 0.5 },
+			timeSaved: { deviation: 0, unit: 'time', value: 0 },
+			total: { deviation: -1, unit: 'count', value: 4 },
+		});
 	});
 });

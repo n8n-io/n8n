@@ -26,5 +26,9 @@ module.exports = defineConfig({
 		downloadsFolder: 'downloads',
 		screenshotsFolder: 'screenshots',
 		videosFolder: 'videos',
+		setupNodeEvents(on, config) {
+			require('@cypress/grep/src/plugin')(config);
+			return config;
+		},
 	},
 });

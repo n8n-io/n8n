@@ -89,7 +89,7 @@ jobs:
             /home/runner/.cache/Cypress
             /github/home/.pnpm-store
             ./packages/**/dist
-          key: ${{ github.sha }}-base:build
+          key: ${{ github.sha }}-ui
 
       - name: Install dependencies
         if: steps.cache-build-artifacts.outputs.cache-hit != 'true'
@@ -108,7 +108,6 @@ jobs:
         if: steps.cache-build-artifacts.outputs.cache-hit != 'true'
         working-directory: cypress
         run: pnpm cypress:install
-
 
   testing:
     runs-on: blacksmith-2vcpu-ubuntu-2204
@@ -140,7 +139,7 @@ jobs:
             /home/runner/.cache/Cypress
             /github/home/.pnpm-store
             ./packages/**/dist
-          key: ${{ github.sha }}-base:build
+          key: ${{ github.sha }}-ui
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
