@@ -105,7 +105,7 @@ const outputError = computed(() => {
 						</n8n-tooltip>
 					</li>
 					<li v-if="runMeta">
-						<ViewSubExecution :task-metadata="runMeta" :display-mode="'ai'" />
+						<ViewSubExecution :task-metadata="runMeta" :display-mode="'ai'" :inline="true" />
 					</li>
 					<li v-if="(consumedTokensSum?.totalTokens ?? 0) > 0" :class="$style.tokensUsage">
 						{{

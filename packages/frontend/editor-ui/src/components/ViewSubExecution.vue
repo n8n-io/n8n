@@ -8,10 +8,16 @@ import { computed } from 'vue';
 const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl } = useExecutionHelpers();
 const i18n = useI18n();
 
-const props = defineProps<{
-	taskMetadata: ITaskMetadata;
-	displayMode: IRunDataDisplayMode;
-}>();
+const props = withDefaults(
+	defineProps<{
+		taskMetadata: ITaskMetadata;
+		displayMode: IRunDataDisplayMode;
+		inline?: boolean;
+	}>(),
+	{
+		inline: false,
+	},
+);
 
 const hasRelatedExecution = computed(() => {
 	return Boolean(props.taskMetadata.subExecution ?? props.taskMetadata.parentExecution);
@@ -41,7 +47,7 @@ function getExecutionLinkLabel(task: ITaskMetadata): string | undefined {
 <template>
 	<a
 		v-if="hasRelatedExecution"
-		:class="{ [$style.relatedExecutionInfo]: displayMode !== 'ai' }"
+		:class="{ [$style.relatedExecutionInfo]: !inline }"
 		data-test-id="related-execution-link"
 		:href="resolveRelatedExecutionUrl(taskMetadata)"
 		target="_blank"
