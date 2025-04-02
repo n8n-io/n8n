@@ -1,78 +1,211 @@
-import { mock } from 'jest-mock-extended';
-import type { WebSocket } from 'ws';
+import type { Application } from 'express';
+import { captor, mock } from 'jest-mock-extended';
+import type { Server, ServerResponse } from 'node:http';
+import type { Socket } from 'node:net';
+import { type WebSocket, Server as WSServer } from 'ws';
 
-import config from '@/config';
 import type { User } from '@/databases/entities/user';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { Push } from '@/push';
 import { SSEPush } from '@/push/sse.push';
-import type { WebSocketPushRequest, SSEPushRequest } from '@/push/types';
+import type { WebSocketPushRequest, SSEPushRequest, PushResponse } from '@/push/types';
 import { WebSocketPush } from '@/push/websocket.push';
 import { mockInstance } from '@test/mocking';
 
+import type { PushConfig } from '../push.config';
+
+jest.mock('ws', () => ({
+	Server: jest.fn(),
+}));
 jest.unmock('@/push');
 jest.mock('@/constants', () => ({
 	inProduction: true,
 }));
 
 describe('Push', () => {
-	const user = mock<User>();
+	const pushRef = 'valid-push-ref';
+	const host = 'subdomain.example.com';
+	const user = mock<User>({ id: 'user-id' });
+	const config = mock<PushConfig>();
+
+	let push: Push;
 	const sseBackend = mockInstance(SSEPush);
 	const wsBackend = mockInstance(WebSocketPush);
 
-	let push: Push;
-
 	beforeEach(() => jest.resetAllMocks());
 
-	describe('handleRequest', () => {
-		describe('SSE backend', () => {
-			const request = mock<SSEPushRequest>({ user, ws: undefined });
+	describe('setupPushServer', () => {
+		const restEndpoint = 'rest';
+		const app = mock<Application>();
+		const server = mock<Server>();
+		// @ts-expect-error `jest.spyOn` typings don't allow `constructor`
+		const wssSpy = jest.spyOn(WSServer.prototype, 'constructor') as jest.SpyInstance<WSServer>;
 
-			beforeAll(() => {
-				config.set('push.backend', 'sse');
-				push = new Push(mock(), mock(), mock());
+		describe('SSE backend', () => {
+			test('should not create a WebSocket server', () => {
+				config.backend = 'sse';
+				push = new Push(config, mock(), mock(), mock(), mock());
+
+				push.setupPushServer(restEndpoint, server, app);
+
+				expect(wssSpy).not.toHaveBeenCalled();
+				expect(server.on).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('WebSocket backend', () => {
+			let onUpgrade: (request: WebSocketPushRequest, socket: Socket, head: Buffer) => void;
+			const wsServer = mock<WSServer>();
+			const socket = mock<Socket>();
+			const upgradeHead = mock<Buffer>();
+
+			beforeEach(() => {
+				config.backend = 'websocket';
+				push = new Push(config, mock(), mock(), mock(), mock());
+				wssSpy.mockReturnValue(wsServer);
+
+				push.setupPushServer(restEndpoint, server, app);
+
+				expect(wssSpy).toHaveBeenCalledWith({ noServer: true });
+				const onUpgradeCaptor = captor<typeof onUpgrade>();
+				expect(server.on).toHaveBeenCalledWith('upgrade', onUpgradeCaptor);
+				onUpgrade = onUpgradeCaptor.value;
 			});
 
-			test('should validate pushRef on requests', () => {
-				request.query = { pushRef: '' };
+			test('should not upgrade non-push urls', () => {
+				const request = mock<WebSocketPushRequest>({ url: '/rest/testing' });
 
-				expect(() => push.handleRequest(request, mock())).toThrow(
+				onUpgrade(request, socket, upgradeHead);
+
+				expect(wsServer.handleUpgrade).not.toHaveBeenCalled();
+			});
+
+			test('should upgrade push url, and route it to express', () => {
+				const request = mock<WebSocketPushRequest>({ url: '/rest/push' });
+
+				onUpgrade(request, socket, upgradeHead);
+
+				const handleUpgradeCaptor = captor<(ws: WebSocket) => void>();
+				expect(wsServer.handleUpgrade).toHaveBeenCalledWith(
+					request,
+					socket,
+					upgradeHead,
+					handleUpgradeCaptor,
+				);
+
+				const ws = mock<WebSocket>();
+				handleUpgradeCaptor.value(ws);
+
+				expect(request.ws).toBe(ws);
+
+				const serverResponseCaptor = captor<ServerResponse>();
+				// @ts-expect-error `handle` isn't documented
+				expect(app.handle).toHaveBeenCalledWith(request, serverResponseCaptor);
+
+				serverResponseCaptor.value.writeHead(200);
+				expect(ws.close).not.toHaveBeenCalled();
+
+				serverResponseCaptor.value.writeHead(404);
+				expect(ws.close).toHaveBeenCalled();
+			});
+		});
+	});
+
+	describe('handleRequest', () => {
+		const req = mock<SSEPushRequest | WebSocketPushRequest>({ user });
+		const res = mock<PushResponse>();
+
+		beforeEach(() => {
+			res.status.mockReturnThis();
+
+			req.headers.host = host;
+			req.headers.origin = `https://${host}`;
+			req.query = { pushRef };
+		});
+
+		describe('SSE backend', () => {
+			beforeEach(() => {
+				config.backend = 'sse';
+				push = new Push(config, mock(), mock(), mock(), mock());
+				req.ws = undefined;
+			});
+
+			test('should throw if pushRef is invalid', () => {
+				req.query = { pushRef: '' };
+
+				expect(() => push.handleRequest(req, res)).toThrow(
 					new BadRequestError('The query parameter "pushRef" is missing!'),
 				);
 
 				expect(sseBackend.add).not.toHaveBeenCalled();
 			});
+
+			test('should throw if origin is invalid', () => {
+				req.headers.origin = 'https://subdomain1.example.com';
+
+				expect(() => push.handleRequest(req, res)).toThrow(new BadRequestError('Invalid origin!'));
+				expect(sseBackend.add).not.toHaveBeenCalled();
+			});
+
+			test('should add the connection if pushRef is valid', () => {
+				const emitSpy = jest.spyOn(push, 'emit');
+
+				push.handleRequest(req, res);
+
+				expect(sseBackend.add).toHaveBeenCalledWith(pushRef, user.id, {
+					req,
+					res,
+				});
+				expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
+			});
 		});
 
 		describe('WebSocket backend', () => {
 			const ws = mock<WebSocket>();
-			const request = mock<WebSocketPushRequest>({ user, ws, headers: {} });
 
-			beforeAll(() => {
-				config.set('push.backend', 'websocket');
-				push = new Push(mock(), mock(), mock());
+			beforeEach(() => {
+				config.backend = 'websocket';
+				push = new Push(config, mock(), mock(), mock(), mock());
+				req.ws = ws;
 			});
 
-			test('should validate pushRef on requests for websocket backend', () => {
-				request.query = { pushRef: '' };
+			test('should throw if pushRef is invalid', () => {
+				req.query = { pushRef: '' };
 
-				push.handleRequest(request, mock());
+				push.handleRequest(req, mock());
 
 				expect(ws.send).toHaveBeenCalled();
 				expect(ws.close).toHaveBeenCalledWith(1008);
 				expect(wsBackend.add).not.toHaveBeenCalled();
 			});
 
-			test('should validate origin on websocket requests', () => {
-				request.headers.origin = 'https://subdomain1.example.com';
-				request.headers.host = 'subdomain2.example.com';
-				request.query = { pushRef: 'valid-push-ref' };
+			test('should throw if origin is invalid', () => {
+				req.headers.origin = 'https://subdomain1.example.com';
 
-				push.handleRequest(request, mock());
+				push.handleRequest(req, res);
 
 				expect(ws.send).toHaveBeenCalledWith('Invalid origin!');
 				expect(ws.close).toHaveBeenCalledWith(1008);
 				expect(wsBackend.add).not.toHaveBeenCalled();
+			});
+
+			test('should respond with 401 if request is not WebSocket', () => {
+				req.ws = undefined;
+
+				push.handleRequest(req, res);
+
+				expect(res.status).toHaveBeenCalledWith(401);
+				expect(res.send).toHaveBeenCalledWith('Unauthorized');
+				expect(wsBackend.add).not.toHaveBeenCalled();
+			});
+
+			test('should add the connection when pushRef is valid', () => {
+				const emitSpy = jest.spyOn(push, 'emit');
+
+				push.handleRequest(req, res);
+
+				expect(wsBackend.add).toHaveBeenCalledWith(pushRef, user.id, ws);
+				expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
 			});
 		});
 	});
