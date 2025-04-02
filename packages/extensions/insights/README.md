@@ -1,1 +1,1 @@
-# @n8n/plugin-sdk
+# @n8n/n8n-extension-insights
