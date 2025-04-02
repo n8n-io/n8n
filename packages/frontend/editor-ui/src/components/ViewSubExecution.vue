@@ -41,7 +41,7 @@ function getExecutionLinkLabel(task: ITaskMetadata): string | undefined {
 <template>
 	<a
 		v-if="hasRelatedExecution"
-		:class="$style.relatedExecutionInfo"
+		:class="{ [$style.relatedExecutionInfo]: displayMode !== 'ai' }"
 		data-test-id="related-execution-link"
 		:href="resolveRelatedExecutionUrl(taskMetadata)"
 		target="_blank"
