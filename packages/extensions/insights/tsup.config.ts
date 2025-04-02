@@ -1,14 +1,23 @@
 import { defineConfig } from 'tsup';
 
-export default defineConfig({
-	entry: [
-		'src/backend/**/*.ts',
-		'!src/backend/**/*.test.ts',
-		'!src/backend/**/*.d.ts',
-		'!src/backend/__tests__**/*',
-	],
-	outDir: 'dist/backend',
-	format: ['cjs', 'esm'],
-	dts: true,
-	sourcemap: true,
-});
+export default defineConfig([
+	{
+		entry: ['src/index.ts'],
+		outDir: 'dist',
+		format: ['cjs', 'esm'],
+		dts: true,
+		sourcemap: true,
+	},
+	{
+		entry: [
+			'src/backend/**/*.ts',
+			'!src/backend/**/*.test.ts',
+			'!src/backend/**/*.d.ts',
+			'!src/backend/__tests__**/*',
+		],
+		outDir: 'dist/backend',
+		format: ['cjs', 'esm'],
+		dts: true,
+		sourcemap: true,
+	},
+]);

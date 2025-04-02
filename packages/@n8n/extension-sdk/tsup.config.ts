@@ -13,7 +13,6 @@ export default defineConfig([
 	{
 		clean: false,
 		entry: [
-			'src/index.ts',
 			'src/backend/**/*.ts',
 			'!src/backend/**/*.test.ts',
 			'!src/backend/**/*.d.ts',
