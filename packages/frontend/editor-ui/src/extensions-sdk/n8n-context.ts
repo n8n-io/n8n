@@ -2,6 +2,8 @@ import { useToast } from '@/composables/useToast';
 import type { ElMessageBoxOptions } from 'element-plus';
 import { useMessage } from '@/composables/useMessage';
 import { ExtensionIframeManager, type IframeMessage } from './ExtensionPaneManager';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { WorkflowListResource } from '@/Interface';
 
 const extensionIFrameManager = new ExtensionIframeManager({
 	watchStyleChanges: false,
@@ -24,6 +26,7 @@ export type N8nExtensionContext = {
 		configOrTitle?: string | ElMessageBoxOptions,
 		config?: ElMessageBoxOptions,
 	) => Promise<string | undefined>;
+	getWorkflows(): Promise<WorkflowListResource[]>;
 };
 
 const n8nExtensionContext: N8nExtensionContext = {
@@ -75,6 +78,16 @@ const n8nExtensionContext: N8nExtensionContext = {
 	) => {
 		const msg = useMessage();
 		return await msg.confirm(message, configOrTitle, config);
+	},
+	getWorkflows: async () => {
+		return await useWorkflowsStore().fetchWorkflowsPage(
+			undefined,
+			1,
+			100,
+			'updatedAt:desc',
+			{},
+			false,
+		);
 	},
 };
 

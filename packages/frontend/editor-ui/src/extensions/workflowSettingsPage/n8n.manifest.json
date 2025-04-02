@@ -1,8 +1,8 @@
 {
 	"id": "workflow-settings-page",
 	"name": "@milorad/custom-settings-page",
-	"displayName": "Workflow Settings",
-	"description": "Edit your workflow settings from the main settings page.",
+	"displayName": "Workflow Details",
+	"description": "Ses details of the selected workflow.",
 	"version": "1.0.0",
 	"author": "Milorad Filipovic",
 	"category": "Example",
@@ -22,7 +22,7 @@
 		"settingsPage": [
 			{
 				"icon": { "type": "icon", "name": "cog" },
-				"label": "Current Workflow Settings"
+				"label": "Workflow Details"
 			}
 		]
 	}

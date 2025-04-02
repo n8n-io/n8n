@@ -73,7 +73,7 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 		}
 		if (!extension.setup.frontend) {
 			toast.showError(
-				new Error(`Extension "${extension.name}" does not have a frontend setup`),
+				new Error(`Extension "${extension.name}" does not have a frontend entry point`),
 				'Error loading extension',
 			);
 			return;

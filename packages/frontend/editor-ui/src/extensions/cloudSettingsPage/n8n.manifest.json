@@ -14,12 +14,14 @@
 		"backend": []
 	},
 	"events": [],
-	"setup": {},
+	"setup": {
+		"frontend": "./frontend.ts"
+	},
 	"contributes": {
 		"settingsPage": [
 			{
 				"icon": { "type": "icon", "name": "cloud" },
-				"label": "Current Workflow Settings"
+				"label": "Cloud Dashboard"
 			}
 		]
 	}

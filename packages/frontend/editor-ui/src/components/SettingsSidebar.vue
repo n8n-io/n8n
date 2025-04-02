@@ -128,7 +128,7 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 		menuItems.push({
 			id: `settings-${extension.id}`,
 			icon: extension.contributes.settingsPage[0].icon.name,
-			label: extension.displayName,
+			label: extension.contributes.settingsPage[0].label,
 			position: 'top',
 			route: {
 				to: {

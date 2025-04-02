@@ -5,11 +5,6 @@ export interface ExtensionIframeManagerOptions {
 	watchStyleChanges?: boolean;
 }
 
-interface PanelOptions {
-	id: string;
-	name: string;
-}
-
 export interface IframeMessage {
 	type: string;
 	frameId?: string;
@@ -138,6 +133,7 @@ export class ExtensionIframeManager {
 		name: string,
 		enableScripts?: boolean,
 	): HTMLIFrameElement {
+		// TODO: This only works for settings extensions
 		const settingsExtensionContainer = document.getElementById(SETTINGS_EXTENSIONS_CONTAINER_ID);
 
 		if (!settingsExtensionContainer) {
@@ -184,10 +180,6 @@ export class ExtensionIframeManager {
 							if (styleElement) {
 								styleElement.textContent = event.data.payload;
 							}
-						}
-						else if (event.data.type === 'registerMethods') {
-							// Store available methods in a global for autocompletion purposes
-							window.availableMethods = event.data.methods;
 						}
 					});
 

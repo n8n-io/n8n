@@ -7,54 +7,33 @@ const setup = async (context: N8nExtensionContext) => {
 		enableScripts: true,
 	});
 
-	window.addEventListener('message', async (event) => {
-		if (event.data && event.data.type === 'showPrompt') {
-			await showPrompt();
-		}
-	});
+	const workflows = await context.getWorkflows();
+
+	const workflowsDropHTML = `
+		<select id="workflows">
+			${workflows
+				.map((workflow) => `<option value="${workflow.id}">${workflow.name}</option>`)
+				.join('')}
+		</select>
+	`;
 
 	context.setPanelContent(
 		panel,
 		`
-		<p>Click the button below to proceed.</p>
-		<div>
-			<button id="proceed-button" class="button-ext primary">Proceed</button>
+		<p>Start by selecting your workflow</p>
+		<div id="workflows-dropdown">
+			${workflowsDropHTML}
 		</div>
 		<script>
-        const button = document.getElementById('proceed-button');
-				button.addEventListener('click', () => {
-					window.parent.postMessage({
-          	type: 'showPrompt'
-        	}, '*');
-				});
-    </script>
+			const workflowsDropdown = document.getElementById('workflows-dropdown');
+			const workflowsSelect = document.getElementById('workflows');
+			workflowsSelect.addEventListener('change', (event) => {
+				const selectedWorkflowId = event.target.value;
+				console.log('Selected workflow ID:', selectedWorkflowId);
+			});
+		</script>
 	`,
 	);
-
-	const showPrompt = async () => {
-		const promptResponsePromise = context.confirm(
-			'Are you sure you want to proceed?',
-			'Confirmation',
-			{
-				confirmButtonText: 'Yeah sure',
-				cancelButtonText: 'No way',
-			},
-		);
-		const promptResponse = await promptResponsePromise;
-
-		if (promptResponse === 'confirm') {
-			context.showToast({
-				type: 'success',
-				message: 'Workflow settings extension loaded successfully!',
-			});
-		} else {
-			context.showToast({
-				type: 'error',
-				message: 'Thanks, see you next time!',
-			});
-		}
-	};
-	// await showPrompt();
 };
 
 export { setup };
