@@ -2177,8 +2177,9 @@ export class Github implements INodeType {
 			const repository = this.getNodeParameter('repository', 0, '', {
 				extractValue: true,
 			}) as string;
-			const workflowIdObj = this.getNodeParameter('workflowId', 0);
-			const workflowId = (workflowIdObj as IDataObject)?.value as string;
+			const workflowId = this.getNodeParameter('workflowId', 0, '', {
+				extractValue: true,
+			}) as string;
 			const ref = this.getNodeParameter('ref', 0, '', { extractValue: true }) as string;
 
 			const inputs = validateJSON(this.getNodeParameter('inputs', 0) as string) as IDataObject;
@@ -2215,7 +2216,6 @@ export class Github implements INodeType {
 			}
 
 			await this.putExecutionToWait(WAIT_INDEFINITELY);
-			return [this.getInputData()];
 			return [this.getInputData()];
 		}
 
@@ -2662,8 +2662,9 @@ export class Github implements INodeType {
 
 						requestMethod = 'PUT';
 
-						const workflowIdObj = this.getNodeParameter('workflowId', i);
-						const workflowId = (workflowIdObj as IDataObject)?.value as string;
+						const workflowId = this.getNodeParameter('workflowId', i, '', {
+							extractValue: true,
+						}) as string;
 
 						endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}/disable`;
 					}
@@ -2674,8 +2675,9 @@ export class Github implements INodeType {
 
 						requestMethod = 'POST';
 
-						const workflowIdObj = this.getNodeParameter('workflowId', i);
-						const workflowId = (workflowIdObj as IDataObject)?.value as string;
+						const workflowId = this.getNodeParameter('workflowId', i, '', {
+							extractValue: true,
+						}) as string;
 
 						endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}/dispatches`;
 
@@ -2698,8 +2700,9 @@ export class Github implements INodeType {
 
 						requestMethod = 'PUT';
 
-						const workflowIdObj = this.getNodeParameter('workflowId', i);
-						const workflowId = (workflowIdObj as IDataObject)?.value as string;
+						const workflowId = this.getNodeParameter('workflowId', i, '', {
+							extractValue: true,
+						}) as string;
 
 						endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}/enable`;
 					} else if (operation === 'get') {
@@ -2709,8 +2712,9 @@ export class Github implements INodeType {
 
 						requestMethod = 'GET';
 
-						const workflowIdObj = this.getNodeParameter('workflowId', i);
-						const workflowId = (workflowIdObj as IDataObject)?.value as string;
+						const workflowId = this.getNodeParameter('workflowId', i, '', {
+							extractValue: true,
+						}) as string;
 
 						endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}`;
 					} else if (operation === 'getUsage') {
@@ -2720,8 +2724,9 @@ export class Github implements INodeType {
 
 						requestMethod = 'GET';
 
-						const workflowIdObj = this.getNodeParameter('workflowId', i);
-						const workflowId = (workflowIdObj as IDataObject)?.value as string;
+						const workflowId = this.getNodeParameter('workflowId', i, '', {
+							extractValue: true,
+						}) as string;
 
 						endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}/timing`;
 					} else if (operation === 'list') {
