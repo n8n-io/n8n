@@ -1943,8 +1943,8 @@ importers:
         specifier: 3.666.0
         version: 3.666.0(@aws-sdk/client-sts@3.666.0)
       '@kafkajs/confluent-schema-registry':
-        specifier: 1.0.6
-        version: 1.0.6
+        specifier: 3.8.0
+        version: 3.8.0
       '@n8n/config':
         specifier: workspace:*
         version: link:../@n8n/config
@@ -2027,8 +2027,8 @@ importers:
         specifier: 9.0.2
         version: 9.0.2
       kafkajs:
-        specifier: 1.16.0
-        version: 1.16.0
+        specifier: 2.2.4
+        version: 2.2.4
       ldapts:
         specifier: 4.2.6
         version: 4.2.6
@@ -3973,8 +3973,8 @@ packages:
   '@jsdevtools/ono@7.1.3':
     resolution: {integrity: sha512-4JQNk+3mVzK3xh2rqd6RB4J46qUR19azEHBneZyTZM+c456qOrbbM/5xcR8huNCCcbVt7+UmizG6GuUvPvKUYg==}
 
-  '@kafkajs/confluent-schema-registry@1.0.6':
-    resolution: {integrity: sha512-NrZL1peOIlmlLKvheQcJAx9PHdnc4kaW+9+Yt4jXUfbbYR9EFNCZt6yApI4SwlFilaiZieReM6XslWy1LZAvoQ==}
+  '@kafkajs/confluent-schema-registry@3.8.0':
+    resolution: {integrity: sha512-33iCTcNofWznLAy9YcfPmUVoArTzRHUOl+s79Br3+rRvwtNqRueIRBrPwGuA4tYA24VHux77qekSy0yNTHVoeA==}
 
   '@kurkle/color@0.3.2':
     resolution: {integrity: sha512-fuscdXJ9G1qb7W8VdHi+IwRqij3lBkosAm4ydQtEmbY58OzHXqQhvlxqEkoz0yssNVn38bcpRWgA9PP+OGoisw==}
@@ -6671,6 +6671,9 @@ packages:
 
   ajv@6.12.6:
     resolution: {integrity: sha512-j3fVLgvTo527anyYyJOGTYJbG+vnnQYvE0m5mmkc1TK+nxAppkCLMIL0aZ4dblVCNoGShhm+kzE4ZUykBoMg4g==}
+
+  ajv@7.2.4:
+    resolution: {integrity: sha512-nBeQgg/ZZA3u3SYxyaDvpvDtgZ/EZPF547ARgZBrG9Bhu1vKDwAIjtIf+sDtJUKa2zOcEbmRLBRSyMraS/Oy1A==}
 
   ajv@8.12.0:
     resolution: {integrity: sha512-sRu1kpcO9yLtYxBKvqfTeh9KzZEwO3STyX1HT+4CaDzC6HpTGYhIhPIzj9XuKU7KYDwnaeh5hcOwjy1QuJzBPA==}
@@ -9850,9 +9853,9 @@ packages:
   jws@4.0.0:
     resolution: {integrity: sha512-KDncfTmOZoOMTFG4mBlG0qUIOlc03fmzH+ru6RgYVZhPkyiy/92Owlt/8UEN+a4TXR1FQetfIpJE8ApdvdVxTg==}
 
-  kafkajs@1.16.0:
-    resolution: {integrity: sha512-+Rcfu2hyQ/jv5skqRY8xA7Ra+mmRkDAzCaLDYbkGtgsNKpzxPWiLbk8ub0dgr4EbWrN1Zb4BCXHUkD6+zYfdWg==}
-    engines: {node: '>=10.13.0'}
+  kafkajs@2.2.4:
+    resolution: {integrity: sha512-j/YeapB1vfPT2iOIUn/vxdyKEuhuY2PxMBvf5JWux6iSaukAccrMtXEY/Lb7OvavDhOWME589bpLrEdnVHjfjA==}
+    engines: {node: '>=14.0.0'}
 
   kleur@3.0.3:
     resolution: {integrity: sha512-eTIzlVOSUR+JxdDFepEYcBMtZ9Qqdef+rnzWdRZuMbOywu5tO2w2N7rqjoANZ5k9vywhL6Br1VRjUIgTQx4E8w==}
@@ -10262,8 +10265,8 @@ packages:
   map-stream@0.1.0:
     resolution: {integrity: sha512-CkYQrPYZfWnu/DAmVCpTSX/xHpKZ80eKh2lAkyA6AJTef6bW+6JpbQZN5rofum7da+SyN1bi5ctTm+lTfcCW3g==}
 
-  mappersmith@2.43.4:
-    resolution: {integrity: sha512-IyUw53aE3/SPH3eOkqSuD+Hcstpcl4dpxDDgZsPz65R2SlOikq0VHxo3kMPzUVvw7cCHunTmlpNXl5n/KzPcpg==}
+  mappersmith@2.45.0:
+    resolution: {integrity: sha512-N/Kkx9RqJenkvMHPMY0VS1geAara0VQTwup5Abv2GB19QBT7w+epjhRQMLW5jtz2DXUdkh7KD3F3prqJKG1A8w==}
 
   mark.js@8.11.1:
     resolution: {integrity: sha512-1I+1qpDt4idfgLQG+BNWmrqku+7/2bi5nLf4YwF8y8zXvmfiTBY3PV3ZibfrjBueCByROpuBjLLFCajqkgYoLQ==}
@@ -11563,6 +11566,10 @@ packages:
 
   protobufjs@7.3.0:
     resolution: {integrity: sha512-YWD03n3shzV9ImZRX3ccbjqLxj7NokGN0V/ESiBV5xWqrommYHYiihuIyavq03pWSGqlyvYUFmfoMKd+1rPA/g==}
+    engines: {node: '>=12.0.0'}
+
+  protobufjs@7.4.0:
+    resolution: {integrity: sha512-mRUWCc3KUU4w1jU8sGxICXH/gNS94DvI1gxqDvBzhj1JpcsimQkYiOJfwsPUykUI5ZaspFbSgmBLER8IrQ3tqw==}
     engines: {node: '>=12.0.0'}
 
   proxy-addr@2.0.7:
@@ -16445,10 +16452,12 @@ snapshots:
 
   '@jsdevtools/ono@7.1.3': {}
 
-  '@kafkajs/confluent-schema-registry@1.0.6':
+  '@kafkajs/confluent-schema-registry@3.8.0':
     dependencies:
+      ajv: 7.2.4
       avsc: 5.7.6
-      mappersmith: 2.43.4
+      mappersmith: 2.45.0
+      protobufjs: 7.4.0
 
   '@kurkle/color@0.3.2': {}
 
@@ -19594,6 +19603,13 @@ snapshots:
       fast-deep-equal: 3.1.3
       fast-json-stable-stringify: 2.1.0
       json-schema-traverse: 0.4.1
+      uri-js: 4.4.1
+
+  ajv@7.2.4:
+    dependencies:
+      fast-deep-equal: 3.1.3
+      json-schema-traverse: 1.0.0
+      require-from-string: 2.0.2
       uri-js: 4.4.1
 
   ajv@8.12.0:
@@ -23626,7 +23642,7 @@ snapshots:
       jwa: 2.0.0
       safe-buffer: 5.2.1
 
-  kafkajs@1.16.0: {}
+  kafkajs@2.2.4: {}
 
   kleur@3.0.3: {}
 
@@ -24028,7 +24044,7 @@ snapshots:
 
   map-stream@0.1.0: {}
 
-  mappersmith@2.43.4: {}
+  mappersmith@2.45.0: {}
 
   mark.js@8.11.1: {}
 
@@ -25525,6 +25541,21 @@ snapshots:
       protobufjs: 7.3.0
 
   protobufjs@7.3.0:
+    dependencies:
+      '@protobufjs/aspromise': 1.1.2
+      '@protobufjs/base64': 1.1.2
+      '@protobufjs/codegen': 2.0.4
+      '@protobufjs/eventemitter': 1.1.0
+      '@protobufjs/fetch': 1.1.0
+      '@protobufjs/float': 1.0.2
+      '@protobufjs/inquire': 1.1.0
+      '@protobufjs/path': 1.1.2
+      '@protobufjs/pool': 1.1.0
+      '@protobufjs/utf8': 1.1.0
+      '@types/node': 18.16.16
+      long: 5.2.3
+
+  protobufjs@7.4.0:
     dependencies:
       '@protobufjs/aspromise': 1.1.2
       '@protobufjs/base64': 1.1.2
