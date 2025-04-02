@@ -1,0 +1,64 @@
+<script setup lang="ts">
+import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
+import { useI18n } from '@/composables/useI18n';
+import type { IRunDataDisplayMode } from '@/Interface';
+import type { ITaskMetadata } from 'n8n-workflow';
+import { computed } from 'vue';
+
+const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl } = useExecutionHelpers();
+const i18n = useI18n();
+
+const props = defineProps<{
+	taskMetadata: ITaskMetadata;
+	displayMode: IRunDataDisplayMode;
+}>();
+
+const hasRelatedExecution = computed(() => {
+	return Boolean(props.taskMetadata.subExecution ?? props.taskMetadata.parentExecution);
+});
+
+function getExecutionLinkLabel(task: ITaskMetadata): string | undefined {
+	if (task.parentExecution) {
+		return i18n.baseText('runData.openParentExecution', {
+			interpolate: { id: task.parentExecution.executionId },
+		});
+	}
+
+	if (task.subExecution) {
+		if (props.taskMetadata.subExecutionsCount === 1) {
+			return i18n.baseText('runData.openSubExecutionSingle');
+		} else {
+			return i18n.baseText('runData.openSubExecutionWithId', {
+				interpolate: { id: task.subExecution.executionId },
+			});
+		}
+	}
+
+	return;
+}
+</script>
+
+<template>
+	<a
+		v-if="hasRelatedExecution"
+		:class="$style.relatedExecutionInfo"
+		data-test-id="related-execution-link"
+		:href="resolveRelatedExecutionUrl(taskMetadata)"
+		target="_blank"
+		@click.stop="trackOpeningRelatedExecution(taskMetadata, displayMode)"
+	>
+		<N8nIcon icon="external-link-alt" size="xsmall" />
+		{{ getExecutionLinkLabel(taskMetadata) }}
+	</a>
+</template>
+
+<style lang="scss" module>
+.relatedExecutionInfo {
+	font-size: var(--font-size-s);
+	margin-left: var(--spacing-3xs);
+
+	svg {
+		padding-bottom: 2px;
+	}
+}
+</style>
