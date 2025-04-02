@@ -141,7 +141,6 @@ export function prepareFormData({
 	formSubmittedHeader?: string;
 	customCss?: string;
 }) {
-	const validForm = formFields.length > 0;
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
 	const n8nWebsiteLink = `https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger${utm_campaign}`;
 
@@ -151,7 +150,6 @@ export function prepareFormData({
 
 	const formData: FormTriggerData = {
 		testRun,
-		validForm,
 		formTitle,
 		formDescription,
 		formDescriptionMetadata: createDescriptionMetadata(formDescription),
@@ -170,10 +168,6 @@ export function prepareFormData({
 			redirectUrl = `http://${redirectUrl}`;
 		}
 		formData.redirectUrl = redirectUrl;
-	}
-
-	if (!validForm) {
-		return formData;
 	}
 
 	for (const [index, field] of formFields.entries()) {
@@ -269,6 +263,48 @@ export const validateResponseModeConfiguration = (context: IWebhookFunctions) =>
 	}
 };
 
+export function addFormResponseDataToReturnItem(
+	returnItem: INodeExecutionData,
+	formFields: FormFieldsParameter,
+	bodyData: IDataObject,
+) {
+	for (const [index, field] of formFields.entries()) {
+		const key = `field-${index}`;
+		const name = field.fieldLabel ?? field.fieldName;
+		let value = bodyData[key] ?? null;
+
+		if (value === null) {
+			returnItem.json[name] = null;
+			continue;
+		}
+
+		if (field.fieldType === 'html') {
+			if (field.elementName) {
+				returnItem.json[field.elementName] = value;
+			}
+			continue;
+		}
+
+		if (field.fieldType === 'number') {
+			value = Number(value);
+		}
+		if (field.fieldType === 'text') {
+			value = String(value).trim();
+		}
+		if (field.multiselect && typeof value === 'string') {
+			value = jsonParse(value);
+		}
+		if (field.fieldType === 'date' && value && field.formatDate !== '') {
+			value = DateTime.fromFormat(String(value), 'yyyy-mm-dd').toFormat(field.formatDate as string);
+		}
+		if (field.fieldType === 'file' && field.multipleFiles && !Array.isArray(value)) {
+			value = [value];
+		}
+
+		returnItem.json[name] = value;
+	}
+}
+
 export async function prepareFormReturnItem(
 	context: IWebhookFunctions,
 	formFields: FormFieldsParameter,
@@ -326,40 +362,7 @@ export async function prepareFormReturnItem(
 		}
 	}
 
-	for (const [index, field] of formFields.entries()) {
-		const key = `field-${index}`;
-		let value = bodyData[key] ?? null;
-
-		if (value === null) {
-			returnItem.json[field.fieldLabel] = null;
-			continue;
-		}
-
-		if (field.fieldType === 'html') {
-			if (field.elementName) {
-				returnItem.json[field.elementName] = value;
-			}
-			continue;
-		}
-
-		if (field.fieldType === 'number') {
-			value = Number(value);
-		}
-		if (field.fieldType === 'text') {
-			value = String(value).trim();
-		}
-		if (field.multiselect && typeof value === 'string') {
-			value = jsonParse(value);
-		}
-		if (field.fieldType === 'date' && value && field.formatDate !== '') {
-			value = DateTime.fromFormat(String(value), 'yyyy-mm-dd').toFormat(field.formatDate as string);
-		}
-		if (field.fieldType === 'file' && field.multipleFiles && !Array.isArray(value)) {
-			value = [value];
-		}
-
-		returnItem.json[field.fieldLabel] = value;
-	}
+	addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
 
 	const timezone = useWorkflowTimezone ? context.getTimezone() : 'UTC';
 	returnItem.json.submittedAt = DateTime.now().setZone(timezone).toISO();

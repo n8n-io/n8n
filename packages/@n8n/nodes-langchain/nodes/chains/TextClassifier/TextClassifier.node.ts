@@ -22,9 +22,9 @@ const configuredOutputs = (parameters: INodeParameters) => {
 	const categories = ((parameters.categories as IDataObject)?.categories as IDataObject[]) ?? [];
 	const fallback = (parameters.options as IDataObject)?.fallback as string;
 	const ret = categories.map((cat) => {
-		return { type: NodeConnectionTypes.Main, displayName: cat.category };
+		return { type: 'main', displayName: cat.category };
 	});
-	if (fallback === 'other') ret.push({ type: NodeConnectionTypes.Main, displayName: 'Other' });
+	if (fallback === 'other') ret.push({ type: 'main', displayName: 'Other' });
 	return ret;
 };
 

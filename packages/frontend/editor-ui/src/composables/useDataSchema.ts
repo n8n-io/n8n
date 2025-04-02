@@ -233,6 +233,8 @@ export type SchemaNode = {
 	itemsCount: number;
 	schema: Schema;
 	preview: boolean;
+	isNodeExecuted: boolean;
+	hasBinary: boolean;
 };
 
 export type RenderItem = {
@@ -278,7 +280,14 @@ export type RenderNotice = {
 	message: string;
 };
 
-export type Renders = RenderHeader | RenderItem | RenderIcon | RenderNotice;
+export type RenderEmpty = {
+	id: string;
+	type: 'empty';
+	nodeName: string;
+	key: 'emptyData' | 'emptyDataWithBinary' | 'executeSchema';
+};
+
+export type Renders = RenderHeader | RenderItem | RenderIcon | RenderNotice | RenderEmpty;
 
 const icons = {
 	object: 'cube',
@@ -295,11 +304,11 @@ const icons = {
 
 const getIconBySchemaType = (type: Schema['type']): string => icons[type];
 
-const emptyItem = (): RenderItem => ({
+const emptyItem = (key: RenderEmpty['key'], nodeName?: string): RenderEmpty => ({
 	id: `empty-${window.crypto.randomUUID()}`,
-	icon: '',
-	value: useI18n().baseText('dataMapping.schemaView.emptyData'),
-	type: 'item',
+	type: 'empty',
+	key,
+	nodeName: nodeName || '',
 });
 
 const moreFieldsItem = (): RenderIcon => ({
@@ -358,10 +367,10 @@ export const useFlattenSchema = () => {
 		prefix?: string;
 		level?: number;
 		preview?: boolean;
-	}): RenderItem[] => {
+	}): Renders[] => {
 		// only show empty item for the first level
 		if (isDataEmpty(schema) && depth <= 0) {
-			return [emptyItem()];
+			return [emptyItem('emptyData')];
 		}
 
 		const expression = `{{ ${expressionPrefix ? expressionPrefix + schema.path : schema.path.slice(1)} }}`;
@@ -369,7 +378,7 @@ export const useFlattenSchema = () => {
 		const id = expression;
 
 		if (Array.isArray(schema.value)) {
-			const items: RenderItem[] = [];
+			const items: Renders[] = [];
 
 			if (schema.key) {
 				items.push({
@@ -456,8 +465,14 @@ export const useFlattenSchema = () => {
 				return acc;
 			}
 
+			if (isDataEmpty(item.schema) && !item.isNodeExecuted && !item.hasBinary) {
+				acc.push(emptyItem('executeSchema', item.node.name));
+				return acc;
+			}
+
 			if (isDataEmpty(item.schema)) {
-				acc.push(emptyItem());
+				const key = item.hasBinary ? 'emptyDataWithBinary' : 'emptyData';
+				acc.push(emptyItem(key));
 				return acc;
 			}
 
