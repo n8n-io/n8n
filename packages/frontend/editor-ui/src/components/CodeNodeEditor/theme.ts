@@ -246,6 +246,7 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 		},
 		'.cm-panel.cm-search label': {
 			fontSize: '90%',
+			display: 'inline',
 		},
 		'.cm-button': {
 			outline: 'none',
