@@ -64,7 +64,7 @@ function getExecutionLinkLabel(task: ITaskMetadata): string | undefined {
 	margin-left: var(--spacing-3xs);
 
 	svg {
-		padding-bottom: 2px;
+		padding-bottom: var(--spacing-5xs);
 	}
 }
 </style>
