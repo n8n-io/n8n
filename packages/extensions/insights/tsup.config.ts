@@ -7,6 +7,7 @@ export default defineConfig([
 		format: ['cjs', 'esm'],
 		dts: true,
 		sourcemap: true,
+		tsconfig: 'tsconfig.json',
 	},
 	{
 		entry: [
@@ -19,5 +20,6 @@ export default defineConfig([
 		format: ['cjs', 'esm'],
 		dts: true,
 		sourcemap: true,
+		tsconfig: 'tsconfig.backend.json',
 	},
 ]);

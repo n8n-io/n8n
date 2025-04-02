@@ -1,4 +1,6 @@
-export type BackendExtensionContext = {};
+export type BackendExtensionContext = {
+	example?: string;
+};
 
 export type BackendExtensionSetupFn = (context: BackendExtension) => void;
 
