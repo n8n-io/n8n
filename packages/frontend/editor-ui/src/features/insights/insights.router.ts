@@ -13,7 +13,12 @@ export const insightsRoutes: RouteRecordRaw[] = [
 			sidebar: MainSidebar,
 		},
 		meta: {
-			middleware: ['authenticated'],
+			middleware: ['authenticated', 'rbac'],
+			middlewareOptions: {
+				rbac: {
+					scope: ['insights:list'],
+				},
+			},
 		},
 		children: [
 			{

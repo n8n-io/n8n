@@ -57,7 +57,10 @@ const filters = computed(() => getDefaultFilter(route.query));
 watch(
 	() => filters.value.time_span,
 	() => {
-		void insightsStore.summary.execute();
+		if (insightsStore.isSummaryEnabled) {
+			void insightsStore.summary.execute();
+		}
+
 		void insightsStore.charts.execute();
 		void insightsStore.table.execute();
 	},
@@ -72,29 +75,28 @@ watch(
 		<N8nHeading bold tag="h2" size="xlarge">{{
 			i18n.baseText('insights.dashboard.title')
 		}}</N8nHeading>
-		<InsightsPaywall v-if="!insightsStore.globalInsightsPermissions.list" />
-		<div v-else>
-			<div>
-				<InsightsSummary
-					:summary="insightsStore.summary.state"
-					:loading="insightsStore.summary.isLoading"
-					:class="$style.insightsBanner"
-				/>
-				<div :class="$style.insightsContent">
-					<div :class="$style.insightsChartWrapper">
-						<template v-if="insightsStore.charts.isLoading"> loading </template>
-						<component
-							:is="chartComponents[props.insightType]"
-							v-else
-							:type="props.insightType"
-							:data="insightsStore.charts.state"
-						/>
-					</div>
-					<div :class="$style.insightsTableWrapper">
-						<InsightsTableWorkflows :data="insightsStore.table.state" />
-					</div>
+		<div>
+			<InsightsSummary
+				v-if="insightsStore.isSummaryEnabled"
+				:summary="insightsStore.summary.state"
+				:loading="insightsStore.summary.isLoading"
+				:class="$style.insightsBanner"
+			/>
+			<div v-if="insightsStore.isInsightsEnabled" :class="$style.insightsContent">
+				<div :class="$style.insightsChartWrapper">
+					<template v-if="insightsStore.charts.isLoading"> loading </template>
+					<component
+						:is="chartComponents[props.insightType]"
+						v-else
+						:type="props.insightType"
+						:data="insightsStore.charts.state"
+					/>
+				</div>
+				<div :class="$style.insightsTableWrapper">
+					<InsightsTableWorkflows :data="insightsStore.table.state" />
 				</div>
 			</div>
+			<InsightsPaywall v-else data-test-id="insights-dashboard-unlicensed" />
 		</div>
 	</div>
 </template>
@@ -107,6 +109,7 @@ watch(
 	flex-direction: column;
 	gap: 30px;
 	overflow: auto;
+	max-width: var(--content-container-width);
 }
 
 .insightsBanner {
