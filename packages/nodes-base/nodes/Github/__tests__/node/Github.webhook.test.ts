@@ -1,5 +1,6 @@
-import { Github } from '../../Github.node';
 import type { IWebhookFunctions } from 'n8n-workflow';
+
+import { Github } from '../../Github.node';
 
 describe('Github Node - Webhook Method', () => {
 	let githubNode: Github;

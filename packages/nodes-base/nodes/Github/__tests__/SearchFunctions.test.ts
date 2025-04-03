@@ -187,11 +187,11 @@ describe('Search Functions', () => {
 			const owner = 'test-owner';
 			const repository = 'test-repo';
 			const refsResponse = [
-				{ ref: 'refs/heads/main' },
-				{ ref: 'refs/heads/dev' },
+				{ ref: 'refs/heads/Main' },
+				{ ref: 'refs/heads/Dev' },
 				{ ref: 'refs/tags/v1.0.0' },
 				{ ref: 'refs/tags/v2.0.0' },
-				{ ref: 'refs/pull/123/head' },
+				{ ref: 'refs/Pull/123/head' },
 			];
 
 			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock).mockImplementation(
@@ -209,11 +209,11 @@ describe('Search Functions', () => {
 
 			expect(result).toEqual({
 				results: [
-					{ name: 'main', value: 'main', description: 'Branch: main' },
-					{ name: 'dev', value: 'dev', description: 'Branch: dev' },
+					{ name: 'Main', value: 'Main', description: 'Branch: Main' },
+					{ name: 'Dev', value: 'Dev', description: 'Branch: Dev' },
 					{ name: 'v1.0.0', value: 'v1.0.0', description: 'Tag: v1.0.0' },
 					{ name: 'v2.0.0', value: 'v2.0.0', description: 'Tag: v2.0.0' },
-					{ name: '123/head', value: '123/head', description: 'pull: 123/head' },
+					{ name: '123/head', value: '123/head', description: 'Pull: 123/head' },
 				],
 				paginationToken: undefined,
 			});
