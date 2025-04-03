@@ -275,7 +275,7 @@ describe('Test Github Node', () => {
 			const workflowId = 147025216;
 
 			mockExecutionContext.getNodeParameter.mockImplementation(
-				(parameterName: string, itemIndex: number, defaultValue: string, options?: any) => {
+				(parameterName: string, _itemIndex: number, defaultValue: string, options?: any) => {
 					if (parameterName === 'owner') {
 						return owner;
 					}
@@ -317,7 +317,7 @@ describe('Test Github Node', () => {
 			const workflowId = 147025216;
 
 			mockExecutionContext.getNodeParameter.mockImplementation(
-				(parameterName: string, itemIndex: number, defaultValue: string, options?: any) => {
+				(parameterName: string, _itemIndex: number, defaultValue: string, options?: any) => {
 					if (parameterName === 'owner') {
 						return owner;
 					}
@@ -359,7 +359,7 @@ describe('Test Github Node', () => {
 			const workflowId = 147025216;
 
 			mockExecutionContext.getNodeParameter.mockImplementation(
-				(parameterName: string, itemIndex: number, defaultValue: string, options?: any) => {
+				(parameterName: string, _itemIndex: number, defaultValue: string, options?: any) => {
 					if (parameterName === 'owner') {
 						return owner;
 					}
@@ -401,7 +401,7 @@ describe('Test Github Node', () => {
 			const workflowId = 147025216;
 
 			mockExecutionContext.getNodeParameter.mockImplementation(
-				(parameterName: string, itemIndex: number, defaultValue: string, options?: any) => {
+				(parameterName: string, _itemIndex: number, defaultValue: string, options?: any) => {
 					if (parameterName === 'owner') {
 						return owner;
 					}
