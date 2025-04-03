@@ -346,6 +346,20 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					"
 					:redact-value="true"
 				/>
+				<n8n-notice
+					v-if="
+						isOAuthType &&
+						!allOAuth2BasePropertiesOverridden &&
+						oAuthCallbackUrl.includes('localhost')
+					"
+				>
+					{{ i18n.baseText('credentialEdit.credentialConfig.toConnectCredentialUseTunnel') }}
+					<span class="ml-4xs">
+						<n8n-link :to="'https://docs.n8n.io'" size="small" bold>
+							{{ i18n.baseText('credentialEdit.credentialConfig.tunnel') }}
+						</n8n-link>
+					</span>
+				</n8n-notice>
 			</template>
 			<EnterpriseEdition v-else :features="[EnterpriseEditionFeature.Sharing]">
 				<div>
