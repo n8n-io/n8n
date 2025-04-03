@@ -159,6 +159,11 @@ const oAuthCallbackUrl = computed(() => {
 	return rootStore.OAuthCallbackUrls[oauthType as keyof {}];
 });
 
+const oAuthCallbackUrlIsLocalhost = computed(() => {
+	const url = new URL(oAuthCallbackUrl.value);
+	return url.hostname === 'localhost';
+});
+
 const showOAuthSuccessBanner = computed(() => {
 	return (
 		props.isOAuthType &&
@@ -347,11 +352,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					:redact-value="true"
 				/>
 				<n8n-notice
-					v-if="
-						isOAuthType &&
-						!allOAuth2BasePropertiesOverridden &&
-						oAuthCallbackUrl.includes('localhost')
-					"
+					v-if="isOAuthType && !allOAuth2BasePropertiesOverridden && oAuthCallbackUrlIsLocalhost"
 				>
 					{{ i18n.baseText('credentialEdit.credentialConfig.toConnectCredentialUseTunnel') }}
 					<span class="ml-4xs">
