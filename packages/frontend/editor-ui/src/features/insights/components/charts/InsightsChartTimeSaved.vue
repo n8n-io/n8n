@@ -38,31 +38,16 @@ const chartOptions = computed(() =>
 const chartData = computed<ChartData<'line'>>(() => {
 	const labels: string[] = [];
 	const data: number[] = [];
-	const cumulativeData: number[] = [];
 
-	let cumulativeTimeSaved = 0;
 	for (const entry of props.data) {
 		labels.push(dateformat(entry.date, 'd. mmm'));
-
 		const timeSaved = transformInsightsTimeSaved(entry.values.timeSaved);
-
 		data.push(timeSaved);
-
-		cumulativeTimeSaved += timeSaved;
-		cumulativeData.push(cumulativeTimeSaved);
 	}
 
 	return {
 		labels,
 		datasets: [
-			{
-				label: i18n.baseText('insights.banner.title.timeSavedDailyAverage'),
-				data: cumulativeData,
-				backgroundColor: 'rgba(255, 255, 255, 0.5)',
-				borderColor: 'rgba(116, 116, 116, 1)',
-				borderDash: [5, 5],
-				pointStyle: false,
-			},
 			{
 				label: i18n.baseText('insights.banner.title.timeSaved'),
 				data,
