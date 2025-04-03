@@ -1642,11 +1642,15 @@ watch(
 		// This is just out of caution
 		if (!([VIEWS.WORKFLOW] as string[]).includes(String(route.name))) return;
 
-		const nodeId = val?.id ? workflowsStore.getPartialIdForNode(val?.id) : undefined;
-		await router.push({
-			name: route.name,
-			params: { name: workflowId.value, nodeId },
-		});
+		// Route params default to '' instead of undefined if not present
+		const nodeId = val?.id ? workflowsStore.getPartialIdForNode(val?.id) : '';
+
+		if (nodeId !== route.params.nodeId) {
+			await router.push({
+				name: route.name,
+				params: { name: workflowId.value, nodeId },
+			});
+		}
 	},
 );
 onBeforeRouteLeave(async (to, from, next) => {
