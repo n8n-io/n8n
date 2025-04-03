@@ -3,67 +3,62 @@ import nock from 'nock';
 import { getWorkflowFilenames, initBinaryDataService, testWorkflows } from '@test/nodes/Helpers';
 
 const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
-	filename.includes('GithubTestWorkflow.json'),
+	filename.includes('GithubDispatchAndWaitWorkflow.json'),
 );
 
-describe('Test Github Node', () => {
-	describe('Workflow Dispatch', () => {
+describe('Test Github Node - Dispatch and Wait', () => {
+	describe('Workflow Dispatch and Wait', () => {
 		const now = 1683028800000;
-		const owner = 'testOwner';
-		const repository = 'testRepository';
-		const workflowId = 147025216;
+		const owner = 'Owner';
+		const repository = 'test-github-actions';
+		const workflowId = 145370278;
+		const ref = 'test-branch';
+
 		const usersResponse = {
-			total_count: 12,
+			total_count: 1,
 			items: [
 				{
-					login: 'testOwner',
+					login: owner,
 					id: 1,
 				},
 			],
 		};
+
 		const repositoriesResponse = {
-			total_count: 40,
+			total_count: 1,
 			items: [
 				{
 					id: 3081286,
-					name: 'testRepository',
+					name: repository,
 				},
 			],
 		};
+
 		const workflowsResponse = {
-			total_count: 2,
+			total_count: 1,
 			workflows: [
 				{
 					id: workflowId,
 					node_id: 'MDg6V29ya2Zsb3cxNjEzMzU=',
-					name: 'CI',
-					path: '.github/workflows/blank.yaml',
+					name: 'New Test Workflow',
+					path: '.github/workflows/test.yaml',
 					state: 'active',
 					created_at: '2020-01-08T23:48:37.000-08:00',
 					updated_at: '2020-01-08T23:50:21.000-08:00',
-					url: 'https://api.github.com/repos/octo-org/octo-repo/actions/workflows/161335',
-					html_url: 'https://github.com/octo-org/octo-repo/blob/master/.github/workflows/161335',
-					badge_url: 'https://github.com/octo-org/octo-repo/workflows/CI/badge.svg',
-				},
-				{
-					id: 269289,
-					node_id: 'MDE4OldvcmtmbG93IFNlY29uZGFyeTI2OTI4OQ==',
-					name: 'Linter',
-					path: '.github/workflows/linter.yaml',
-					state: 'active',
-					created_at: '2020-01-08T23:48:37.000-08:00',
-					updated_at: '2020-01-08T23:50:21.000-08:00',
-					url: 'https://api.github.com/repos/octo-org/octo-repo/actions/workflows/269289',
-					html_url: 'https://github.com/octo-org/octo-repo/blob/master/.github/workflows/269289',
-					badge_url: 'https://github.com/octo-org/octo-repo/workflows/Linter/badge.svg',
+					url: `https://api.github.com/repos/${owner}/${repository}/actions/workflows/${workflowId}`,
+					html_url: `https://github.com/${owner}/${repository}/blob/master/.github/workflows/test.yaml`,
+					badge_url: `https://github.com/${owner}/${repository}/workflows/New%20Test%20Workflow/badge.svg`,
 				},
 			],
 		};
+
+		const refsResponse = [{ ref: `refs/heads/${ref}` }];
 
 		beforeAll(async () => {
 			jest.useFakeTimers({ doNotFake: ['nextTick'], now });
 			await initBinaryDataService();
 		});
+
 		beforeEach(async () => {
 			const baseUrl = 'https://api.github.com';
 			nock.cleanAll();
@@ -78,16 +73,21 @@ describe('Test Github Node', () => {
 				.reply(200, repositoriesResponse)
 				.get(`/repos/${owner}/${repository}/actions/workflows`)
 				.reply(200, workflowsResponse)
-				.post(`/repos/${owner}/${repository}/actions/workflows/${workflowId}/dispatches`, {
-					ref: 'main',
-					inputs: {},
-				})
+				.get(`/repos/${owner}/${repository}/git/refs`)
+				.reply(200, refsResponse)
+				.post(
+					`/repos/${owner}/${repository}/actions/workflows/${workflowId}/dispatches`,
+					(body) => {
+						return body.ref === ref && body.inputs && body.inputs.resumeUrl;
+					},
+				)
 				.reply(200, {});
 		});
 
 		afterEach(() => {
 			nock.cleanAll();
 		});
+
 		testWorkflows(workflows);
 	});
 });

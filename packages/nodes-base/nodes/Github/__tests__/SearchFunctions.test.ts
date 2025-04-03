@@ -183,11 +183,16 @@ describe('Search Functions', () => {
 	});
 
 	describe('getRefs', () => {
-		it('should fetch branches and tags', async () => {
+		it('should fetch branches and tags using git/refs endpoint', async () => {
 			const owner = 'test-owner';
 			const repository = 'test-repo';
-			const branches = [{ name: 'MyTest' }, { name: 'NewTest' }];
-			const tags = [{ name: 'v1.0.0' }, { name: 'v2.0.0' }];
+			const refsResponse = [
+				{ ref: 'refs/heads/main' },
+				{ ref: 'refs/heads/dev' },
+				{ ref: 'refs/tags/v1.0.0' },
+				{ ref: 'refs/tags/v2.0.0' },
+				{ ref: 'refs/pull/123/head' },
+			];
 
 			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock).mockImplementation(
 				(param: string) => {
@@ -196,18 +201,19 @@ describe('Search Functions', () => {
 				},
 			);
 
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock)
-				.mockResolvedValueOnce(branches)
-				.mockResolvedValueOnce(tags);
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				refsResponse,
+			);
 
 			const result = await getRefs.call(mockLoadOptionsFunctions);
 
 			expect(result).toEqual({
 				results: [
-					{ name: 'MyTest', value: 'MyTest', description: 'Branch: MyTest' },
-					{ name: 'NewTest', value: 'NewTest', description: 'Branch: NewTest' },
+					{ name: 'main', value: 'main', description: 'Branch: main' },
+					{ name: 'dev', value: 'dev', description: 'Branch: dev' },
 					{ name: 'v1.0.0', value: 'v1.0.0', description: 'Tag: v1.0.0' },
 					{ name: 'v2.0.0', value: 'v2.0.0', description: 'Tag: v2.0.0' },
+					{ name: '123/head', value: '123/head', description: 'pull: 123/head' },
 				],
 				paginationToken: undefined,
 			});
@@ -216,21 +222,55 @@ describe('Search Functions', () => {
 		it('should filter refs based on the provided filter', async () => {
 			const owner = 'test-owner';
 			const repository = 'test-repo';
-			const branches = [{ name: 'main' }, { name: 'dev' }];
-			const tags = [{ name: 'v1.0.0' }, { name: 'v2.0.0' }];
+			const refsResponse = [
+				{ ref: 'refs/heads/main' },
+				{ ref: 'refs/heads/dev' },
+				{ ref: 'refs/tags/v1.0.0' },
+				{ ref: 'refs/tags/v2.0.0' },
+			];
 
-			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock)
-				.mockReturnValueOnce(owner)
-				.mockReturnValueOnce(repository);
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock)
-				.mockResolvedValueOnce(branches)
-				.mockResolvedValueOnce(tags);
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock).mockImplementation(
+				(param: string) => {
+					if (param === 'owner') return owner;
+					if (param === 'repository') return repository;
+				},
+			);
+
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				refsResponse,
+			);
 
 			const result = await getRefs.call(mockLoadOptionsFunctions, 'v1');
 
 			expect(result).toEqual({
 				results: [{ name: 'v1.0.0', value: 'v1.0.0', description: 'Tag: v1.0.0' }],
 			});
+		});
+
+		it('should handle pagination correctly', async () => {
+			const owner = 'test-owner';
+			const repository = 'test-repo';
+			const refsResponse = Array(100)
+				.fill(0)
+				.map((_, i) => ({
+					ref: i % 2 === 0 ? `refs/heads/branch-${i}` : `refs/tags/tag-${i}`,
+				}));
+
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock).mockImplementation(
+				(param: string) => {
+					if (param === 'owner') return owner;
+					if (param === 'repository') return repository;
+				},
+			);
+
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				refsResponse,
+			);
+
+			const result = await getRefs.call(mockLoadOptionsFunctions);
+
+			expect(result.paginationToken).toBe(2);
+			expect(result.results.length).toBe(100);
 		});
 	});
 });
