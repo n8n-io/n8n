@@ -59,11 +59,13 @@ RUN \
 	mkdir .n8n && \
 	chown node:node .n8n
 
-# Install neo4j-driver, mailgun.js, and form-data locally
+# Install neo4j-driver, mailgun.js, and form-data locall sy
 
 
 ENV SHELL /bin/sh
 USER root
 RUN npm install -g neo4j-driver mailgun.js form-data composio-core openai @mendable/firecrawl-js resend @supabase/supabase-js @pinecone-database/pinecone
 USER node
+EXPOSE 5678
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
+   
