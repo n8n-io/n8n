@@ -27,11 +27,12 @@ export async function getPartitionKey(this: IExecuteSingleFunctions): Promise<st
 		)) as IContainer;
 		partitionKeyField = responseData.partitionKey?.paths[0]?.replace('/', '');
 	} catch (error) {
-		if ((error as NodeApiError).httpCode === '404') {
-			(error as NodeApiError).message = ErrorMap.Container.NotFound.message;
-			(error as NodeApiError).description = ErrorMap.Container.NotFound.description;
+		const err = error as NodeApiError;
+		if (err.httpCode === '404') {
+			err.message = ErrorMap.Container.NotFound.message;
+			err.description = ErrorMap.Container.NotFound.description;
 		}
-		throw error;
+		throw err;
 	}
 
 	if (!partitionKeyField) {
@@ -178,12 +179,12 @@ export function processJsonInput<T>(
 		try {
 			values = jsonParse(jsonData, { fallbackValue });
 		} catch (error) {
-			throw new OperationalError(`Input ${input} must contain a valid JSON`, { level: 'warning' });
+			throw new OperationalError(`Input ${input}must contain a valid JSON`, { level: 'warning' });
 		}
 	} else if (typeof jsonData === 'object') {
 		values = jsonData;
 	} else {
-		throw new OperationalError(`Input ${input} must contain a valid JSON`, { level: 'warning' });
+		throw new OperationalError(`Input ${input}must contain a valid JSON`, { level: 'warning' });
 	}
 
 	return values;

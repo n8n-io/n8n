@@ -37,6 +37,7 @@ export async function handleError(
 		const resource = this.getNodeParameter('resource') as string;
 		const error = response.body as IErrorResponse;
 		let errorMessage = error.message;
+
 		let errorDetails: string[] | undefined = undefined;
 
 		if (resource === 'container') {

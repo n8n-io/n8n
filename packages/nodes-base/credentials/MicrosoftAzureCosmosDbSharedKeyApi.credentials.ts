@@ -71,11 +71,8 @@ export class MicrosoftAzureCosmosDbSharedKeyApi implements ICredentialType {
 			'x-ms-version': CURRENT_VERSION,
 			'Cache-Control': 'no-cache',
 		};
-
-		// HttpRequest node uses IRequestOptions.uri
-		const url = new URL(
-			(requestOptions as IRequestOptions).uri ?? requestOptions.baseURL + requestOptions.url,
-		);
+		console.log('uri', (requestOptions as IRequestOptions).uri);
+		const url = new URL(requestOptions.baseURL + requestOptions.url);
 
 		const pathSegments = url.pathname.split('/').filter(Boolean);
 
@@ -113,6 +110,7 @@ export class MicrosoftAzureCosmosDbSharedKeyApi implements ICredentialType {
 		request: {
 			baseURL: '={{ $credentials.baseUrl }}',
 			url: '/colls',
+			method: 'GET',
 			headers: {
 				[HeaderConstants.X_MS_MAX_ITEM_COUNT]: '1',
 			},

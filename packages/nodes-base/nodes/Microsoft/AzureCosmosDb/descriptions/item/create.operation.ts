@@ -6,47 +6,11 @@ import type {
 } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 
+import { containerResourceLocator } from '../../helpers/resourceLocators';
 import { processJsonInput, untilContainerSelected } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
-	{
-		displayName: 'Container',
-		name: 'container',
-		default: {
-			mode: 'list',
-			value: '',
-		},
-		description: 'Select the container you want to use',
-		modes: [
-			{
-				displayName: 'From list',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchContainers',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'containerId',
-				hint: 'Enter the container ID',
-				placeholder: 'e.g. UsersContainer',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '^[\\w+=,.@-]+$',
-							errorMessage: 'The container ID must follow the allowed pattern',
-						},
-					},
-				],
-				type: 'string',
-			},
-		],
-		required: true,
-		type: 'resourceLocator',
-	},
+	containerResourceLocator,
 	{
 		displayName: 'Item Contents',
 		name: 'customProperties',
