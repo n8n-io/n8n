@@ -9,7 +9,6 @@ import { useAnnotationTagsStore } from '@/stores/tags.store';
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
-import type { TestRunRecord } from '@/api/testDefinition.ee';
 import InlineNameEdit from '@/components/InlineNameEdit.vue';
 import ConfigSection from '@/components/TestDefinition/EditDefinition/sections/ConfigSection.vue';
 import RunsSection from '@/components/TestDefinition/EditDefinition/sections/RunsSection.vue';
