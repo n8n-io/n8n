@@ -364,3 +364,7 @@ export function openContextMenu(
 export function clickContextMenuAction(action: string) {
 	getContextMenuAction(action).click({ force: true });
 }
+
+export function clickClearExecutionDataButton() {
+	cy.getByTestId('clear-execution-data-button').click();
+}
