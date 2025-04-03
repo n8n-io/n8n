@@ -1,8 +1,8 @@
 import type { ComputedRef, Ref } from 'vue';
 import { computed, ref } from 'vue';
 import { v4 as uuid } from 'uuid';
-import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
-import { NodeConnectionTypes, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import type { ChatMessage } from '@n8n/chat/types';
+import { CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type {
 	ITaskData,
 	INodeExecutionData,
@@ -16,10 +16,9 @@ import type {
 import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
 import { usePinnedData } from '@/composables/usePinnedData';
-import { get, isEmpty, last } from 'lodash-es';
+import { get, isEmpty } from 'lodash-es';
 import { MANUAL_CHAT_TRIGGER_NODE_TYPE, MODAL_CONFIRM } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
-import type { MemoryOutput } from '../types/chat';
 import type { IExecutionPushResponse, INodeUi } from '@/Interface';
 
 export type RunWorkflowChatPayload = {
@@ -247,42 +246,10 @@ export function useChatMessaging({
 		await startWorkflowWithMessage(newMessage.text, files);
 	}
 
-	function getChatMessages(): ChatMessageText[] {
-		if (!connectedNode.value) return [];
-
-		const connectedMemoryInputs =
-			workflow.value.connectionsByDestinationNode?.[connectedNode.value.name]?.[
-				NodeConnectionTypes.AiMemory
-			];
-		if (!connectedMemoryInputs) return [];
-
-		const memoryConnection = (connectedMemoryInputs ?? []).find((i) => (i ?? []).length > 0)?.[0];
-
-		if (!memoryConnection) return [];
-
-		const nodeResultData = getWorkflowResultDataByNodeName(memoryConnection.node);
-
-		const memoryOutputData = (nodeResultData ?? [])
-			.map(
-				(data) => get(data, ['data', NodeConnectionTypes.AiMemory, 0, 0, 'json']) as MemoryOutput,
-			)
-			.find((data) => data && data.action === 'saveContext');
-
-		return (memoryOutputData?.chatHistory ?? []).map((message, index) => {
-			return {
-				createdAt: new Date().toISOString(),
-				text: message.kwargs.content,
-				id: `preload__${index}`,
-				sender: last(message.id) === 'HumanMessage' ? 'user' : 'bot',
-			};
-		});
-	}
-
 	return {
 		previousMessageIndex,
 		isLoading: computed(() => isLoading.value),
 		sendMessage,
 		extractResponseMessage,
-		getChatMessages,
 	};
 }
