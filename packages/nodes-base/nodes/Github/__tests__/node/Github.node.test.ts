@@ -114,7 +114,7 @@ describe('Test Github Node', () => {
 					httpRequestWithAuthentication: jest.fn(),
 					requestWithAuthentication: jest
 						.fn()
-						.mockImplementation(async (credentialType, options) => {
+						.mockImplementation(async (_credentialType, options) => {
 							if (options.uri.includes('dispatches') && options.method === 'POST') {
 								const error: any = new Error('Not Found');
 								error.statusCode = 404;
