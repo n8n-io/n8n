@@ -14,6 +14,7 @@ import { getResourcePermissions } from '@/permissions';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { executionRetryMessage } from '@/utils/executionUtils';
 import { N8nButton, N8nCheckbox, N8nTableBase } from '@n8n/design-system';
 import { useIntersectionObserver } from '@vueuse/core';
 import { ElSkeletonItem } from 'element-plus';
@@ -243,18 +244,11 @@ async function retryOriginalExecution(execution: ExecutionSummary) {
 
 async function retryExecution(execution: ExecutionSummary, loadWorkflow?: boolean) {
 	try {
-		const retrySuccessful = await executionsStore.retryExecution(execution.id, loadWorkflow);
+		const retryStatus = await executionsStore.retryExecution(execution.id, loadWorkflow);
+		const retryMessage = executionRetryMessage(retryStatus);
 
-		if (retrySuccessful) {
-			toast.showMessage({
-				title: i18n.baseText('executionsList.showMessage.retrySuccessfulTrue.title'),
-				type: 'success',
-			});
-		} else {
-			toast.showMessage({
-				title: i18n.baseText('executionsList.showMessage.retrySuccessfulFalse.title'),
-				type: 'error',
-			});
+		if (retryMessage) {
+			toast.showMessage(retryMessage);
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('executionsList.showError.retryExecution.title'));

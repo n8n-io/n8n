@@ -865,7 +865,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-sso-oidc": "3.666.0",
-    "@kafkajs/confluent-schema-registry": "1.0.6",
+    "@kafkajs/confluent-schema-registry": "3.8.0",
     "@n8n/config": "workspace:*",
     "@n8n/di": "workspace:*",
     "@n8n/imap": "workspace:*",
@@ -893,7 +893,7 @@
     "iso-639-1": "2.1.15",
     "js-nacl": "1.4.0",
     "jsonwebtoken": "9.0.2",
-    "kafkajs": "1.16.0",
+    "kafkajs": "2.2.4",
     "ldapts": "4.2.6",
     "lodash": "catalog:",
     "lossless-json": "1.0.5",

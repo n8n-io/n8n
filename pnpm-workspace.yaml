@@ -2,6 +2,7 @@ packages:
   - packages/*
   - packages/@n8n/*
   - packages/frontend/**
+  - packages/extensions/**
   - cypress
 
 catalog:
