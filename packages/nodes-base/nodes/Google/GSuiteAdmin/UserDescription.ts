@@ -1,5 +1,63 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+const rolesOptions = [
+	{
+		name: 'Directory Sync Admin',
+		value: 'directorySyncAdmin',
+		description: 'Whether to assign the Directory Sync Admin role',
+	},
+	{
+		name: 'Groups Admin',
+		value: 'groupsAdmin',
+		description: 'Whether to assign the Groups Admin role',
+	},
+	{
+		name: 'Groups Editor',
+		value: 'groupsEditor',
+		description: 'Whether to assign the Groups Editor role',
+	},
+	{
+		name: 'Groups Reader',
+		value: 'groupsReader',
+		description: 'Whether to assign the Groups Reader role',
+	},
+	{
+		name: 'Help Desk Admin',
+		value: 'helpDeskAdmin',
+		description: 'Whether to assign the Help Desk Admin role',
+	},
+	{
+		name: 'Inventory Reporting Admin',
+		value: 'inventoryReportingAdmin',
+		description: 'Whether to assign the Inventory Reporting Admin role',
+	},
+	{
+		name: 'Mobile Admin',
+		value: 'mobileAdmin',
+		description: 'Whether to assign the Mobile Admin role',
+	},
+	{
+		name: 'Services Admin',
+		value: 'servicesAdmin',
+		description: 'Whether to assign the Services Admin role',
+	},
+	{
+		name: 'Storage Admin',
+		value: 'storageAdmin',
+		description: 'Whether to assign the Storage Admin role',
+	},
+	{
+		name: 'Super Admin',
+		value: 'superAdmin',
+		description: 'Whether to assign the Super Admin role',
+	},
+	{
+		name: 'User Management',
+		value: 'userManagement',
+		description: 'Whether to assign the User Management role',
+	},
+];
+
 export const userOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -428,63 +486,7 @@ export const userFields: INodeProperties[] = [
 				type: 'multiOptions',
 				default: [],
 				description: 'Select the roles you want to assign to the user',
-				options: [
-					{
-						name: 'Directory Sync Admin',
-						value: 'directorySyncAdmin',
-						description: 'Whether to assign the Directory Sync Admin role',
-					},
-					{
-						name: 'Groups Admin',
-						value: 'groupsAdmin',
-						description: 'Whether to assign the Groups Admin role',
-					},
-					{
-						name: 'Groups Editor',
-						value: 'groupsEditor',
-						description: 'Whether to assign the Groups Editor role',
-					},
-					{
-						name: 'Groups Reader',
-						value: 'groupsReader',
-						description: 'Whether to assign the Groups Reader role',
-					},
-					{
-						name: 'Help Desk Admin',
-						value: 'helpDeskAdmin',
-						description: 'Whether to assign the Help Desk Admin role',
-					},
-					{
-						name: 'Inventory Reporting Admin',
-						value: 'inventoryReportingAdmin',
-						description: 'Whether to assign the Inventory Reporting Admin role',
-					},
-					{
-						name: 'Mobile Admin',
-						value: 'mobileAdmin',
-						description: 'Whether to assign the Mobile Admin role',
-					},
-					{
-						name: 'Services Admin',
-						value: 'servicesAdmin',
-						description: 'Whether to assign the Services Admin role',
-					},
-					{
-						name: 'Storage Admin',
-						value: 'storageAdmin',
-						description: 'Whether to assign the Storage Admin role',
-					},
-					{
-						name: 'Super Admin',
-						value: 'superAdmin',
-						description: 'Whether to assign the Super Admin role',
-					},
-					{
-						name: 'User Management',
-						value: 'userManagement',
-						description: 'Whether to assign the User Management role',
-					},
-				],
+				options: rolesOptions,
 			},
 			{
 				displayName: 'Custom Fields',
@@ -1178,58 +1180,7 @@ export const userFields: INodeProperties[] = [
 				type: 'multiOptions',
 				default: [],
 				description: 'Select the roles you want to assign to the user',
-				options: [
-					{
-						name: 'Directory Sync Admin',
-						value: 'directorySyncAdmin',
-						description: 'Whether Assign Directory Sync Admin role',
-					},
-					{
-						name: 'Groups Admin',
-						value: 'groupsAdmin',
-						description: 'Whether Assign Groups Admin role',
-					},
-					{
-						name: 'Groups Editor',
-						value: 'groupsEditor',
-						description: 'Whether Assign Groups Editor role',
-					},
-					{
-						name: 'Groups Reader',
-						value: 'groupsReader',
-						description: 'Whether Assign Groups Reader role',
-					},
-					{
-						name: 'Help Desk Admin',
-						value: 'helpDeskAdmin',
-						description: 'Whether Assign Help Desk Admin role',
-					},
-					{
-						name: 'Inventory Reporting Admin',
-						value: 'inventoryReportingAdmin',
-						description: 'Whether Assign Inventory Reporting Admin role',
-					},
-					{
-						name: 'Services Admin',
-						value: 'servicesAdmin',
-						description: 'Whether Assign Services Admin role',
-					},
-					{
-						name: 'Storage Admin',
-						value: 'storageAdmin',
-						description: 'Whether Assign Storage Admin role',
-					},
-					{
-						name: 'Super Admin',
-						value: 'superAdmin',
-						description: 'Whether Assign Super Admin role',
-					},
-					{
-						name: 'User Management',
-						value: 'userManagement',
-						description: 'Whether Assign User Management role',
-					},
-				],
+				options: rolesOptions,
 			},
 			{
 				displayName: 'Custom Fields',
