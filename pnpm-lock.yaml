@@ -1348,6 +1348,37 @@ importers:
         specifier: 'catalog:'
         version: 0.4.14
 
+  packages/extensions/insights:
+    dependencies:
+      '@n8n/extension-sdk':
+        specifier: workspace:*
+        version: link:../../@n8n/extension-sdk
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../../@n8n/typescript-config
+      '@vitejs/plugin-vue':
+        specifier: catalog:frontend
+        version: 5.2.1(vite@6.2.1(@types/node@18.16.16)(jiti@1.21.0)(sass@1.64.1)(terser@5.16.1))(vue@3.5.13(typescript@5.8.2))
+      '@vue/tsconfig':
+        specifier: catalog:frontend
+        version: 0.7.0(typescript@5.8.2)(vue@3.5.13(typescript@5.8.2))
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.0.1
+      vite:
+        specifier: catalog:frontend
+        version: 6.2.1(@types/node@18.16.16)(jiti@1.21.0)(sass@1.64.1)(terser@5.16.1)
+      vue:
+        specifier: catalog:frontend
+        version: 3.5.13(typescript@5.8.2)
+      vue-router:
+        specifier: catalog:frontend
+        version: 4.5.0(vue@3.5.13(typescript@5.8.2))
+      vue-tsc:
+        specifier: ^2.2.8
+        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.8.2)
+
   packages/frontend/@n8n/chat:
     dependencies:
       '@vueuse/core':
@@ -26032,8 +26063,6 @@ snapshots:
     dependencies:
       onetime: 5.1.2
       signal-exit: 3.0.7
-
-  ret@0.1.15: {}
 
   retry-axios@2.6.0(axios@1.8.2):
     dependencies:
