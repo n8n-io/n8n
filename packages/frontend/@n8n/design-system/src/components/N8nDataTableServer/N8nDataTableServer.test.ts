@@ -49,11 +49,12 @@ describe('N8nDataTableServer', () => {
 	});
 
 	it('should render dynamic slots', () => {
+		const slotName = 'item.id' as `item.${string}`;
 		const { container } = render(N8nDataTableServer, {
 			//@ts-expect-error testing-library errors due to header generics
 			props: { items, headers, itemsLength: items.length },
 			slots: {
-				['item.id']: ({ item }: { item: Item }) => {
+				[slotName]: ({ item }: { item: Item }) => {
 					return `🍌 ${item.id}`;
 				},
 			},
