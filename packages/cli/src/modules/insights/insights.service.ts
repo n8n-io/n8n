@@ -1,6 +1,7 @@
 import type { InsightsSummary } from '@n8n/api-types';
 import { Container, Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
+import { Logger } from 'n8n-core';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 import {
 	UnexpectedError,
@@ -63,7 +64,7 @@ export class InsightsService {
 
 	private compactInsightsTimer: NodeJS.Timer | undefined;
 
-	private insightsRawToInsertBuffer: Set<BufferedInsight> = new Set();
+	private bufferedInsights: Set<BufferedInsight> = new Set();
 
 	private flushInsightsRawBufferTimer: NodeJS.Timer | undefined;
 
@@ -73,7 +74,9 @@ export class InsightsService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
 		private readonly insightsRawRepository: InsightsRawRepository,
+		private readonly logger: Logger,
 	) {
+		this.logger.scoped('insights');
 		this.initializeCompaction();
 		this.scheduleFlushing();
 	}
@@ -136,7 +139,7 @@ export class InsightsService {
 			workflowName: ctx.workflowData.name,
 		};
 		// success or failure event
-		this.insightsRawToInsertBuffer.add({
+		this.bufferedInsights.add({
 			...commonWorkflowData,
 			type: status,
 			value: 1,
@@ -145,7 +148,7 @@ export class InsightsService {
 		// run time event
 		if (fullRunData.stoppedAt) {
 			const value = fullRunData.stoppedAt.getTime() - fullRunData.startedAt.getTime();
-			this.insightsRawToInsertBuffer.add({
+			this.bufferedInsights.add({
 				...commonWorkflowData,
 				type: 'runtime_ms',
 				value,
@@ -154,22 +157,20 @@ export class InsightsService {
 
 		// time saved event
 		if (status === 'success' && ctx.workflowData.settings?.timeSavedPerExecution) {
-			this.insightsRawToInsertBuffer.add({
+			this.bufferedInsights.add({
 				...commonWorkflowData,
 				type: 'time_saved_min',
 				value: ctx.workflowData.settings.timeSavedPerExecution,
 			});
 		}
 
-		if (this.isAsynchronouslySavingInsights) {
-			this.triggerFlushOnBufferFull();
-		} else {
+		if (!this.isAsynchronouslySavingInsights) {
+			// If we are not asynchronously saving insights, we need to flush the events
 			await this.flushEvents();
 		}
-	}
 
-	triggerFlushOnBufferFull() {
-		if (this.insightsRawToInsertBuffer.size >= config.flushBatchSize) {
+		// If the buffer is full, flush the events asynchronously
+		if (this.bufferedInsights.size >= config.flushBatchSize) {
 			// Fire and forget flush to avoid blocking the workflow execute after handler
 			void this.flushEvents();
 		}
@@ -184,7 +185,6 @@ export class InsightsService {
 
 		await this.sharedWorkflowRepository.manager.transaction(async (trx) => {
 			const sharedWorkflows = await trx.find(SharedWorkflow, {
-				// TODO: limit the amount of things in the `In`
 				where: { workflowId: In([...workflowIdNames.keys()]), role: 'workflow:owner' },
 				relations: { project: true },
 			});
@@ -249,7 +249,7 @@ export class InsightsService {
 
 	async flushEvents() {
 		// Prevent flushing if we are already flushing or if there are no events to flush
-		if (this.insightsRawToInsertBuffer.size === 0) {
+		if (this.bufferedInsights.size === 0) {
 			return;
 		}
 
@@ -258,11 +258,18 @@ export class InsightsService {
 
 		// Copy the buffer to a new set to avoid concurrent modification
 		// while we are flushing the events
-		const insightsRawToInsertBuffer = new Set(this.insightsRawToInsertBuffer);
-		this.insightsRawToInsertBuffer.clear();
+		const bufferedInsightsToFlush = new Set(this.bufferedInsights);
+		this.bufferedInsights.clear();
 
 		try {
-			await this.saveInsightsMetadataAndRaw(insightsRawToInsertBuffer);
+			await this.saveInsightsMetadataAndRaw(bufferedInsightsToFlush);
+		} catch (e) {
+			this.logger.error('Error while saving insights metadata and raw data', { error: e });
+
+			// If there was an error, we need to re-add the events to the buffer for next flush
+			for (const event of bufferedInsightsToFlush) {
+				this.bufferedInsights.add(event);
+			}
 		} finally {
 			// Reinitialize the timer to flush the buffer again
 			this.scheduleFlushing();

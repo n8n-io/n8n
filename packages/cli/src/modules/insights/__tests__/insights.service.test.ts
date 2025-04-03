@@ -2,7 +2,7 @@ import { Container } from '@n8n/di';
 import { In, type EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
-import type { ExecutionLifecycleHooks } from 'n8n-core';
+import { Logger, type ExecutionLifecycleHooks } from 'n8n-core';
 import type { ExecutionStatus, IRun, WorkflowExecuteMode } from 'n8n-workflow';
 
 import type { Project } from '@/databases/entities/project';
@@ -12,6 +12,7 @@ import type { IWorkflowDb } from '@/interfaces';
 import type { TypeUnit } from '@/modules/insights/database/entities/insights-shared';
 import { InsightsMetadataRepository } from '@/modules/insights/database/repositories/insights-metadata.repository';
 import { InsightsRawRepository } from '@/modules/insights/database/repositories/insights-raw.repository';
+import { mockInstance } from '@test/mocking';
 import { createTeamProject } from '@test-integration/db/projects';
 import { createWorkflow } from '@test-integration/db/workflows';
 import * as testDb from '@test-integration/test-db';
@@ -269,6 +270,7 @@ describe('workflowExecuteAfterHandler', () => {
 				sharedWorkflowRepositoryMock,
 				Container.get(InsightsByPeriodRepository),
 				insightsRawRepository,
+				mockInstance(Logger),
 			);
 		});
 
@@ -424,6 +426,7 @@ describe('workflowExecuteAfterHandler', () => {
 				sharedWorkflowRepositoryMock,
 				Container.get(InsightsByPeriodRepository),
 				insightsRawRepository,
+				mockInstance(Logger),
 			);
 
 			trxMock.find = jest.fn().mockResolvedValue([
