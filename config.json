@@ -2,15 +2,7 @@
 	"externalSecrets": {
 		"updateInterval": 30
 	},
-	"externalStorage": {
-		"s3": {
-			"host": "s3.us-east-1.amazonaws.com",
-			"bucketName": "remdol-n8n",
-			"bucketRegion": "us-east-1",
-			"accessKey": "ACCESS_KEY",
-			"accessSecret": "ACCESS_SECRET"
-		}
-	},
+	
 	"binaryDataManager": {
 		"availableModes": ["filesystem", "s3"],
 		"mode": "s3"
