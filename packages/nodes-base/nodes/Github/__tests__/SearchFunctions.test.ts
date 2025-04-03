@@ -307,16 +307,16 @@ describe('Search Functions', () => {
 			});
 		});
 
-		it('should use paginationToken when provided', async () => {
-			const paginationToken = '3';
+		it('should use paginationToken when provided and return next page token', async () => {
+			const paginationToken = '1';
 			const owner = 'test-owner';
 			const repository = 'test-repo';
 			const responseData = {
 				workflows: [
-					{ id: '5', name: 'workflow-5' },
-					{ id: '6', name: 'workflow-6' },
+					{ id: '3', name: 'workflow-3' },
+					{ id: '4', name: 'workflow-4' },
 				],
-				total_count: 200,
+				total_count: 300,
 			};
 
 			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock)
@@ -330,17 +330,17 @@ describe('Search Functions', () => {
 
 			expect(result).toEqual({
 				results: [
-					{ name: 'workflow-5', value: '5' },
-					{ name: 'workflow-6', value: '6' },
+					{ name: 'workflow-3', value: '3' },
+					{ name: 'workflow-4', value: '4' },
 				],
-				paginationToken: 4,
+				paginationToken: 2,
 			});
 
 			expect(mockLoadOptionsFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 				'githubOAuth2Api',
 				expect.objectContaining({
 					method: 'GET',
-					qs: expect.objectContaining({ page: 3 }),
+					qs: expect.objectContaining({ page: 1 }),
 				}),
 			);
 		});
