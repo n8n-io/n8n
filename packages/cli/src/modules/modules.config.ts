@@ -25,4 +25,19 @@ export class ModulesConfig {
 	/** Comma-separated list of all disabled modules */
 	@Env('N8N_DISABLED_MODULES')
 	disabledModules: Modules = [];
+
+	private readonly defaultModules: ModuleName[] = ['insights'];
+
+	// Get all modules by merging default and enabled, and filtering out disabled modules
+	get modules(): ModuleName[] {
+		if (this.enabledModules.some((module) => this.disabledModules.includes(module))) {
+			throw new UnexpectedError('Module cannot be both enabled and disabled', { level: 'fatal' });
+		}
+
+		// Concat enabled modules with default ones
+		const enabledModules = Array.from(new Set(this.defaultModules.concat(this.enabledModules)));
+
+		// filter out disabled modules
+		return enabledModules.filter((module) => !this.disabledModules.includes(module));
+	}
 }
