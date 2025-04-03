@@ -23,15 +23,15 @@ import type { IAttachment, IThread } from './ThreadInterface';
 
 export class HelpScout implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'HelpScout',
+		displayName: 'Help Scout',
 		name: 'helpScout',
 		icon: 'file:helpScout.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume HelpScout API',
+		description: 'Consume Help Scout API',
 		defaults: {
-			name: 'HelpScout',
+			name: 'Help Scout',
 		},
 		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],
