@@ -100,8 +100,12 @@ export class WorkerServer {
 		const { health, overwrites, metrics } = this.endpointsConfig;
 
 		if (health) {
-			this.app.get('/healthz', async (_, res) => res.send({ status: 'ok' }));
-			this.app.get('/healthz/readiness', async (_, res) => await this.readiness(_, res));
+			this.app.get('/healthz', async (_, res) => {
+				res.send({ status: 'ok' });
+			});
+			this.app.get('/healthz/readiness', async (_, res) => {
+				await this.readiness(_, res);
+			});
 		}
 
 		if (overwrites) {

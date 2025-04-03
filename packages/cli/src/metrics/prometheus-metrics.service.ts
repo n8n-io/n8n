@@ -153,11 +153,11 @@ export class PrometheusMetricsService {
 				`/${this.globalConfig.endpoints.formWaiting}/`,
 				`/${this.globalConfig.endpoints.formTest}/`,
 			],
-			(req, res, next) => {
+			async (req, res, next) => {
 				activityGauge.reset();
 				activityGauge.set({ timestamp: new Date().toISOString() }, 1);
 
-				metricsMiddleware(req, res, next);
+				await metricsMiddleware(req, res, next);
 			},
 		);
 	}

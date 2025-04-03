@@ -38,7 +38,6 @@ Please use a Node.js version that satisfies the following version range: ${suppo
 const { inspect } = require('util');
 inspect.defaultOptions.customInspect = false;
 
-require('express-async-errors');
 require('source-map-support').install();
 require('reflect-metadata');
 
