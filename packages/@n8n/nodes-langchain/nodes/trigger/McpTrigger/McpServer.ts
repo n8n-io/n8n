@@ -122,15 +122,14 @@ export class McpServerData {
 				throw new Error('Require a sessionId for the tool call');
 			}
 
-			const requestedTool: Tool | undefined = this._tools[extra.sessionId].filter(
+			const requestedTool: Tool | undefined = this._tools[extra.sessionId].find(
 				(tool) => tool.name === request.params.name,
-			)?.[0];
+			);
 			if (!requestedTool) {
 				// eslint-disable-next-line n8n-local-rules/no-plain-errors
 				throw new Error('Tool not found');
 			}
 
-			// TODO: Add propper logging / n8n logger wrapper stuff
 			try {
 				const result = await requestedTool.invoke(request.params.arguments);
 
