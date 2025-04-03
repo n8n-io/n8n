@@ -1,5 +1,8 @@
 {
-	"name": "@n8n/n8n-extension-insights",
+	"name": "insights",
+	"publisher": "n8n",
+	"displayName": "Insights",
+	"description": "Insights Dashboard",
 	"version": "1.0.0",
 	"author": "n8n",
 	"category": "Internal",

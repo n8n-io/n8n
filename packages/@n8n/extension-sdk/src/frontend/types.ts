@@ -1,9 +1,6 @@
-import type { RouteRecordRaw } from 'vue-router';
-import type { App, Component } from 'vue';
+import type { Component } from 'vue';
 
 export type FrontendExtensionContext = {
-	app: App;
-	defineRoutes: (routes: RouteRecordRaw[]) => void;
 	registerComponent: (name: string, component: Component) => void;
 };
 
