@@ -1,4 +1,4 @@
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import nock from 'nock';
 
 import { getWorkflowFilenames, initBinaryDataService, testWorkflows } from '@test/nodes/Helpers';
@@ -242,6 +242,71 @@ describe('Test Github Node', () => {
 			await expect(async () => {
 				await githubNode.execute.call(mockExecutionContext);
 			}).rejects.toThrow();
+		});
+
+		it('should throw NodeApiError for general API errors in dispatchAndWait operation', async () => {
+			const owner = 'testOwner';
+			const repository = 'testRepository';
+			const workflowId = 147025216;
+
+			mockExecutionContext.getWorkflowDataProxy = jest.fn().mockReturnValue({
+				$execution: {
+					resumeUrl: 'https://example.com/webhook',
+				},
+			});
+
+			mockExecutionContext.helpers.requestWithAuthentication.mockRejectedValueOnce({
+				statusCode: 500,
+				message: 'Internal Server Error',
+			});
+
+			mockExecutionContext.getNodeParameter.mockImplementation((parameterName: string) => {
+				if (parameterName === 'owner') {
+					return owner;
+				}
+				if (parameterName === 'repository') {
+					return repository;
+				}
+				if (parameterName === 'workflowId') {
+					return workflowId;
+				}
+				if (parameterName === 'inputs') {
+					return '{}';
+				}
+				if (parameterName === 'ref') {
+					return 'main';
+				}
+				if (parameterName === 'resource') {
+					return 'workflow';
+				}
+				if (parameterName === 'operation') {
+					return 'dispatchAndWait';
+				}
+				if (parameterName === 'authentication') {
+					return 'accessToken';
+				}
+				return '';
+			});
+
+			await expect(async () => {
+				await githubNode.execute.call(mockExecutionContext);
+			}).rejects.toThrow(NodeApiError);
+
+			expect(mockExecutionContext.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					method: 'POST',
+					uri: expect.stringContaining(
+						`/repos/${owner}/${repository}/actions/workflows/${workflowId}/dispatches`,
+					),
+					body: expect.objectContaining({
+						ref: 'main',
+						inputs: expect.objectContaining({
+							resumeUrl: 'https://example.com/webhook',
+						}),
+					}),
+				}),
+			);
 		});
 	});
 

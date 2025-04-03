@@ -181,17 +181,4 @@ describe('GenericFunctions', () => {
 			expect(result).toBeUndefined();
 		});
 	});
-	describe('Pagination', () => {
-		it('should handle pagination tokens correctly', () => {
-			const paginationToken = '2';
-			const page = paginationToken ? +paginationToken : 1;
-
-			expect(page).toBe(2);
-
-			const undefinedToken = undefined;
-			const defaultPage = undefinedToken ? +undefinedToken : 1;
-
-			expect(defaultPage).toBe(1);
-		});
-	});
 });

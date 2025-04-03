@@ -42,6 +42,14 @@ describe('Search Functions', () => {
 				],
 				paginationToken: undefined,
 			});
+
+			expect(mockLoadOptionsFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'githubOAuth2Api',
+				expect.objectContaining({
+					method: 'GET',
+					qs: expect.objectContaining({ page: 1 }),
+				}),
+			);
 		});
 
 		it('should handle pagination', async () => {
@@ -67,6 +75,40 @@ describe('Search Functions', () => {
 				],
 				paginationToken: 2,
 			});
+		});
+
+		it('should use paginationToken when provided', async () => {
+			const filter = 'test-user';
+			const paginationToken = '3';
+			const responseData = {
+				items: [
+					{ login: 'test-user-5', html_url: 'https://github.com/test-user-5' },
+					{ login: 'test-user-6', html_url: 'https://github.com/test-user-6' },
+				],
+				total_count: 200,
+			};
+
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				responseData,
+			);
+
+			const result = await getUsers.call(mockLoadOptionsFunctions, filter, paginationToken);
+
+			expect(result).toEqual({
+				results: [
+					{ name: 'test-user-5', value: 'test-user-5', url: 'https://github.com/test-user-5' },
+					{ name: 'test-user-6', value: 'test-user-6', url: 'https://github.com/test-user-6' },
+				],
+				paginationToken: undefined,
+			});
+
+			expect(mockLoadOptionsFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'githubOAuth2Api',
+				expect.objectContaining({
+					method: 'GET',
+					qs: expect.objectContaining({ page: 3 }),
+				}),
+			);
 		});
 	});
 
@@ -104,6 +146,84 @@ describe('Search Functions', () => {
 				],
 				paginationToken: undefined,
 			});
+		});
+
+		it('should fetch repositories without filter', async () => {
+			const owner = 'test-owner';
+			const responseData = {
+				items: [
+					{ name: 'test-repo-1', html_url: 'https://github.com/test-owner/test-repo-1' },
+					{ name: 'test-repo-2', html_url: 'https://github.com/test-owner/test-repo-2' },
+				],
+				total_count: 2,
+			};
+
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock).mockReturnValue(owner);
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				responseData,
+			);
+
+			const result = await getRepositories.call(mockLoadOptionsFunctions);
+
+			expect(result).toEqual({
+				results: [
+					{
+						name: 'test-repo-1',
+						value: 'test-repo-1',
+						url: 'https://github.com/test-owner/test-repo-1',
+					},
+					{
+						name: 'test-repo-2',
+						value: 'test-repo-2',
+						url: 'https://github.com/test-owner/test-repo-2',
+					},
+				],
+				paginationToken: undefined,
+			});
+		});
+
+		it('should use paginationToken when provided', async () => {
+			const filter = 'test-repo';
+			const paginationToken = '3';
+			const owner = 'test-owner';
+			const responseData = {
+				items: [
+					{ name: 'test-repo-5', html_url: 'https://github.com/test-owner/test-repo-5' },
+					{ name: 'test-repo-6', html_url: 'https://github.com/test-owner/test-repo-6' },
+				],
+				total_count: 200,
+			};
+
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock).mockReturnValue(owner);
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				responseData,
+			);
+
+			const result = await getRepositories.call(mockLoadOptionsFunctions, filter, paginationToken);
+
+			expect(result).toEqual({
+				results: [
+					{
+						name: 'test-repo-5',
+						value: 'test-repo-5',
+						url: 'https://github.com/test-owner/test-repo-5',
+					},
+					{
+						name: 'test-repo-6',
+						value: 'test-repo-6',
+						url: 'https://github.com/test-owner/test-repo-6',
+					},
+				],
+				paginationToken: undefined,
+			});
+
+			expect(mockLoadOptionsFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'githubOAuth2Api',
+				expect.objectContaining({
+					method: 'GET',
+					qs: expect.objectContaining({ page: 3 }),
+				}),
+			);
 		});
 
 		it('should handle empty repositories', async () => {
@@ -156,6 +276,73 @@ describe('Search Functions', () => {
 				],
 				paginationToken: undefined,
 			});
+		});
+
+		it('should handle pagination', async () => {
+			const owner = 'test-owner';
+			const repository = 'test-repo';
+			const responseData = {
+				workflows: [
+					{ id: '1', name: 'workflow-1' },
+					{ id: '2', name: 'workflow-2' },
+				],
+				total_count: 200,
+			};
+
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock)
+				.mockReturnValueOnce(owner)
+				.mockReturnValueOnce(repository);
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				responseData,
+			);
+
+			const result = await getWorkflows.call(mockLoadOptionsFunctions);
+
+			expect(result).toEqual({
+				results: [
+					{ name: 'workflow-1', value: '1' },
+					{ name: 'workflow-2', value: '2' },
+				],
+				paginationToken: 2,
+			});
+		});
+
+		it('should use paginationToken when provided', async () => {
+			const paginationToken = '3';
+			const owner = 'test-owner';
+			const repository = 'test-repo';
+			const responseData = {
+				workflows: [
+					{ id: '5', name: 'workflow-5' },
+					{ id: '6', name: 'workflow-6' },
+				],
+				total_count: 200,
+			};
+
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock)
+				.mockReturnValueOnce(owner)
+				.mockReturnValueOnce(repository);
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				responseData,
+			);
+
+			const result = await getWorkflows.call(mockLoadOptionsFunctions, paginationToken);
+
+			expect(result).toEqual({
+				results: [
+					{ name: 'workflow-5', value: '5' },
+					{ name: 'workflow-6', value: '6' },
+				],
+				paginationToken: 4,
+			});
+
+			expect(mockLoadOptionsFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'githubOAuth2Api',
+				expect.objectContaining({
+					method: 'GET',
+					qs: expect.objectContaining({ page: 3 }),
+				}),
+			);
 		});
 
 		it('should handle empty workflows', async () => {
@@ -217,6 +404,42 @@ describe('Search Functions', () => {
 				],
 				paginationToken: undefined,
 			});
+		});
+
+		it('should use paginationToken when provided', async () => {
+			const paginationToken = '3';
+			const owner = 'test-owner';
+			const repository = 'test-repo';
+			const refsResponse = [{ ref: 'refs/heads/branch-5' }, { ref: 'refs/heads/branch-6' }];
+
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock).mockImplementation(
+				(param: string) => {
+					if (param === 'owner') return owner;
+					if (param === 'repository') return repository;
+				},
+			);
+
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				refsResponse,
+			);
+
+			const result = await getRefs.call(mockLoadOptionsFunctions, undefined, paginationToken);
+
+			expect(result).toEqual({
+				results: [
+					{ name: 'branch-5', value: 'branch-5', description: 'Branch: branch-5' },
+					{ name: 'branch-6', value: 'branch-6', description: 'Branch: branch-6' },
+				],
+				paginationToken: undefined,
+			});
+
+			expect(mockLoadOptionsFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'githubOAuth2Api',
+				expect.objectContaining({
+					method: 'GET',
+					qs: expect.objectContaining({ page: 3 }),
+				}),
+			);
 		});
 
 		it('should filter refs based on the provided filter', async () => {
