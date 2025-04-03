@@ -112,9 +112,7 @@ export class Push extends TypedEmitter<PushEvents> {
 			connectionError = 'The query parameter "pushRef" is missing!';
 		} else if (
 			inProduction &&
-			headers.origin &&
-			headers.host &&
-			!headers.origin.endsWith(headers.host)
+			!(headers.origin === `http://${headers.host}` || headers.origin === `https://${headers.host}`)
 		) {
 			connectionError = 'Invalid origin!';
 		}

@@ -24,7 +24,7 @@ jest.mock('@/constants', () => ({
 
 describe('Push', () => {
 	const pushRef = 'valid-push-ref';
-	const host = 'subdomain.example.com';
+	const host = 'example.com';
 	const user = mock<User>({ id: 'user-id' });
 	const config = mock<PushConfig>();
 
@@ -140,11 +140,18 @@ describe('Push', () => {
 				expect(sseBackend.add).not.toHaveBeenCalled();
 			});
 
-			test('should throw if origin is invalid', () => {
-				req.headers.origin = 'https://subdomain1.example.com';
+			describe('should throw on invalid origin', () => {
+				test.each(['https://subdomain.example.com', 'https://123example.com', undefined])(
+					'%s',
+					(origin) => {
+						req.headers.origin = origin;
 
-				expect(() => push.handleRequest(req, res)).toThrow(new BadRequestError('Invalid origin!'));
-				expect(sseBackend.add).not.toHaveBeenCalled();
+						expect(() => push.handleRequest(req, res)).toThrow(
+							new BadRequestError('Invalid origin!'),
+						);
+						expect(sseBackend.add).not.toHaveBeenCalled();
+					},
+				);
 			});
 
 			test('should add the connection if pushRef is valid', () => {
@@ -179,14 +186,19 @@ describe('Push', () => {
 				expect(wsBackend.add).not.toHaveBeenCalled();
 			});
 
-			test('should throw if origin is invalid', () => {
-				req.headers.origin = 'https://subdomain1.example.com';
+			describe('should throw on invalid origin', () => {
+				test.each(['https://subdomain.example.com', 'https://123example.com', undefined])(
+					'%s',
+					(origin) => {
+						req.headers.origin = origin;
 
-				push.handleRequest(req, res);
+						push.handleRequest(req, res);
 
-				expect(ws.send).toHaveBeenCalledWith('Invalid origin!');
-				expect(ws.close).toHaveBeenCalledWith(1008);
-				expect(wsBackend.add).not.toHaveBeenCalled();
+						expect(ws.send).toHaveBeenCalledWith('Invalid origin!');
+						expect(ws.close).toHaveBeenCalledWith(1008);
+						expect(wsBackend.add).not.toHaveBeenCalled();
+					},
+				);
 			});
 
 			test('should respond with 401 if request is not WebSocket', () => {
