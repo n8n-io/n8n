@@ -53,7 +53,6 @@ import { nextTick } from 'vue';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { CanvasLayoutEvent } from './useCanvasLayout';
 import { useTelemetry } from './useTelemetry';
-import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
 
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = await importOriginal<{}>();
