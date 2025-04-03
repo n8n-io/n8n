@@ -6,6 +6,7 @@ import {
 	stringifyExpressionResult,
 	unwrapExpression,
 } from './expressions';
+import { executionRetryMessage } from './executionUtils';
 
 describe('Utils: Expressions', () => {
 	describe('stringifyExpressionResult()', () => {
@@ -106,6 +107,54 @@ describe('Utils: Expressions', () => {
 
 		it('should return false if special editor type', () => {
 			expect(shouldConvertToExpression('test {{ value }}', true)).toBe(false);
+		});
+	});
+
+	describe('executionRetryMessage', () => {
+		it('returns success message for success status', () => {
+			expect(executionRetryMessage('success')).toEqual({
+				title: 'Retry successful',
+				type: 'success',
+			});
+		});
+
+		it('returns info message for waiting status', () => {
+			expect(executionRetryMessage('waiting')).toEqual({
+				title: 'Retry waiting',
+				type: 'info',
+			});
+		});
+
+		it('returns info message for running status', () => {
+			expect(executionRetryMessage('running')).toEqual({
+				title: 'Retry running',
+				type: 'info',
+			});
+		});
+
+		it('returns error message for crashed status', () => {
+			expect(executionRetryMessage('crashed')).toEqual({
+				title: 'Retry crashed',
+				type: 'error',
+			});
+		});
+
+		it('returns error message for canceled status', () => {
+			expect(executionRetryMessage('canceled')).toEqual({
+				title: 'Retry canceled',
+				type: 'error',
+			});
+		});
+
+		it('returns error message for error status', () => {
+			expect(executionRetryMessage('error')).toEqual({
+				title: 'Retry unsuccessful',
+				type: 'error',
+			});
+		});
+
+		it('returns undefined for an unknown status', () => {
+			expect(executionRetryMessage('unknown')).toBeUndefined();
 		});
 	});
 });
