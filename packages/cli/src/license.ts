@@ -195,6 +195,15 @@ export class License {
 		this.logger.debug('License renewed');
 	}
 
+	async clear() {
+		if (!this.manager) {
+			return;
+		}
+
+		await this.manager.clear();
+		this.logger.info('License cleared');
+	}
+
 	@OnShutdown()
 	async shutdown() {
 		// Shut down License manager to unclaim any floating entitlements
