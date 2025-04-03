@@ -311,19 +311,25 @@ export class Server extends AbstractServer {
 		const cacheOptions = inE2ETests || inDevelopment ? {} : { maxAge };
 		const { staticCacheDir } = Container.get(InstanceSettings);
 		if (frontendService) {
-			const serveIcons: express.RequestHandler = async (req, res) => {
-				// eslint-disable-next-line prefer-const
-				let { scope, packageName } = req.params;
-				if (scope) packageName = `@${scope}/${packageName}`;
-				const filePath = this.loadNodesAndCredentials.resolveIcon(packageName, req.originalUrl);
-				if (filePath) {
-					try {
-						await fsAccess(filePath);
-						return res.sendFile(filePath, cacheOptions);
-					} catch {}
-				}
-				res.sendStatus(404);
-			};
+			this.app.use(
+				[
+					'/icons/{@:scope/}:packageName/*path/*file.svg',
+					'/icons/{@:scope/}:packageName/*path/*file.png',
+				],
+				async (req, res) => {
+					// eslint-disable-next-line prefer-const
+					let { scope, packageName } = req.params;
+					if (scope) packageName = `@${scope}/${packageName}`;
+					const filePath = this.loadNodesAndCredentials.resolveIcon(packageName, req.originalUrl);
+					if (filePath) {
+						try {
+							await fsAccess(filePath);
+							return res.sendFile(filePath, { maxAge, dotfiles: 'allow' });
+						} catch {}
+					}
+					res.sendStatus(404);
+				},
+			);
 
 			const serveSchemas: express.RequestHandler = async (req, res) => {
 				const { node, version, resource, operation } = req.params;
@@ -342,10 +348,7 @@ export class Server extends AbstractServer {
 				}
 				res.sendStatus(404);
 			};
-
-			this.app.use('/icons/@:scope/:packageName/*/*.(svg|png)', serveIcons);
-			this.app.use('/icons/:packageName/*/*.(svg|png)', serveIcons);
-			this.app.use('/schemas/:node/:version/:resource?/:operation?.json', serveSchemas);
+			this.app.use('/schemas/:node/:version/:resource/:operation.json', serveSchemas);
 
 			const isTLSEnabled =
 				this.globalConfig.protocol === 'https' && !!(this.sslKey && this.sslCert);
