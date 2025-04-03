@@ -1312,17 +1312,20 @@ const onCreateWorkflowClick = () => {
 				/>
 			</div>
 		</template>
-		<template #item="{ item: data }">
+		<template #item="{ item: data, index }">
 			<FolderCard
 				v-if="(data as FolderResource | WorkflowResource).resourceType === 'folder'"
+				:key="`folder-${index}`"
 				:data="data as FolderResource"
 				:actions="folderCardActions"
 				:read-only="readOnlyEnv || (!hasPermissionToDeleteFolders && !hasPermissionToCreateFolders)"
+				:personal-project="projectsStore.personalProject"
 				class="mb-2xs"
 				@action="onFolderCardAction"
 			/>
 			<WorkflowCard
 				v-else
+				:key="`workflow-${index}`"
 				data-test-id="resources-list-item-workflow"
 				class="mb-2xs"
 				:data="data as WorkflowResource"

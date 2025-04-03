@@ -93,6 +93,10 @@ export class I18nClass {
 				return `${Math.floor(msPassed / 1000)}${this.baseText('genericHelpers.secShort')}`;
 			}
 
+			if (msPassed > 0 && msPassed < 1000) {
+				return `${msPassed}${this.baseText('genericHelpers.millis')}`;
+			}
+
 			return `${msPassed / 1000}${this.baseText('genericHelpers.secShort')}`;
 		}
 

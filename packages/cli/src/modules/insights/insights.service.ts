@@ -14,7 +14,7 @@ import { OnShutdown } from '@/decorators/on-shutdown';
 import { InsightsMetadata } from '@/modules/insights/database/entities/insights-metadata';
 import { InsightsRaw } from '@/modules/insights/database/entities/insights-raw';
 
-import type { TypeUnit } from './database/entities/insights-shared';
+import type { PeriodUnit, TypeUnit } from './database/entities/insights-shared';
 import { NumberToType } from './database/entities/insights-shared';
 import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
 import { InsightsRawRepository } from './database/repositories/insights-raw.repository';
@@ -37,22 +37,22 @@ const shouldSkipStatus: Record<ExecutionStatus, boolean> = {
 const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
 	cli: false,
 	error: false,
-	integrated: false,
 	retry: false,
 	trigger: false,
 	webhook: false,
 	evaluation: false,
 
+	// sub workflows
+	integrated: true,
+
+	// error workflows
 	internal: true,
+
 	manual: true,
 };
 
 @Service()
 export class InsightsService {
-	private readonly maxAgeInDaysForHourlyData = 90;
-
-	private readonly maxAgeInDaysForDailyData = 180;
-
 	private compactInsightsTimer: NodeJS.Timer | undefined;
 
 	constructor(
@@ -195,7 +195,7 @@ export class InsightsService {
 		const batchQuery = this.insightsByPeriodRepository.getPeriodInsightsBatchQuery({
 			periodUnitToCompactFrom: 'hour',
 			compactionBatchSize: config.compactionBatchSize,
-			maxAgeInDays: this.maxAgeInDaysForHourlyData,
+			maxAgeInDays: config.compactionHourlyToDailyThresholdDays,
 		});
 
 		return await this.insightsByPeriodRepository.compactSourceDataIntoInsightPeriod({
@@ -210,7 +210,7 @@ export class InsightsService {
 		const batchQuery = this.insightsByPeriodRepository.getPeriodInsightsBatchQuery({
 			periodUnitToCompactFrom: 'day',
 			compactionBatchSize: config.compactionBatchSize,
-			maxAgeInDays: this.maxAgeInDaysForDailyData,
+			maxAgeInDays: config.compactionDailyToWeeklyThresholdDays,
 		});
 
 		return await this.insightsByPeriodRepository.compactSourceDataIntoInsightPeriod({
@@ -250,9 +250,9 @@ export class InsightsService {
 		const previousTotal = previousSuccesses + previousFailures;
 
 		const currentFailureRate =
-			currentTotal > 0 ? Math.round((currentFailures / currentTotal) * 100) / 100 : 0;
+			currentTotal > 0 ? Math.round((currentFailures / currentTotal) * 1000) / 1000 : 0;
 		const previousFailureRate =
-			previousTotal > 0 ? Math.round((previousFailures / previousTotal) * 100) / 100 : 0;
+			previousTotal > 0 ? Math.round((previousFailures / previousTotal) * 1000) / 1000 : 0;
 
 		const currentTotalRuntime = getValueByType('current', 'runtime_ms') ?? 0;
 		const previousTotalRuntime = getValueByType('previous', 'runtime_ms') ?? 0;
@@ -299,5 +299,54 @@ export class InsightsService {
 		};
 
 		return result;
+	}
+
+	async getInsightsByWorkflow({
+		maxAgeInDays,
+		skip = 0,
+		take = 10,
+		sortBy = 'total:desc',
+	}: {
+		maxAgeInDays: number;
+		skip?: number;
+		take?: number;
+		sortBy?: string;
+	}) {
+		const { count, rows } = await this.insightsByPeriodRepository.getInsightsByWorkflow({
+			maxAgeInDays,
+			skip,
+			take,
+			sortBy,
+		});
+
+		return {
+			count,
+			data: rows,
+		};
+	}
+
+	async getInsightsByTime({
+		maxAgeInDays,
+		periodUnit,
+	}: { maxAgeInDays: number; periodUnit: PeriodUnit }) {
+		const rows = await this.insightsByPeriodRepository.getInsightsByTime({
+			maxAgeInDays,
+			periodUnit,
+		});
+
+		return rows.map((r) => {
+			const total = r.succeeded + r.failed;
+			return {
+				date: r.periodStart,
+				values: {
+					total,
+					succeeded: r.succeeded,
+					failed: r.failed,
+					failureRate: r.failed / total,
+					averageRunTime: r.runTime / total,
+					timeSaved: r.timeSaved,
+				},
+			};
+		});
 	}
 }

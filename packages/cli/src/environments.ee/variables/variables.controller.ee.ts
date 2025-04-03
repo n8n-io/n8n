@@ -76,7 +76,7 @@ export class VariablesController {
 		}
 	}
 
-	@Delete('/:id(\\w+)')
+	@Delete('/:id')
 	@GlobalScope('variable:delete')
 	async deleteVariable(req: VariablesRequest.Delete) {
 		const id = req.params.id;
