@@ -82,6 +82,8 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 		const basePath = extension.path.replace('n8n.manifest.json', '');
 		const mainPath = `${basePath}${extension.setup.frontend?.replace('./', '')}`;
 
+		// Import the extension module
+		// TODO: This is not sandboxed, so we need to implement loading extensions in an iframe or something similar
 		const extensionModule = await import(mainPath);
 		const context = n8n;
 		extensionModule.setup(context.n8n.extensionContext);

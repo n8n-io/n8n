@@ -1,33 +1,4 @@
 @forward 'common/var.scss';
 @import 'common/transition.scss';
 @import 'icon.scss';
-
-.button-ext {
-	display: inline-block;
-	line-height: 1;
-	white-space: nowrap;
-	cursor: pointer;
-	border: var(--border-width-base) var(--button-border-color, var(--color-button-primary-border))
-		var(--border-style-base);
-	color: var(--button-font-color, var(--color-button-primary-font));
-	background-color: var(--button-background-color, var(--color-button-primary-background));
-	font-weight: var(--font-weight-medium);
-	border-radius: var(--button-border-radius, 4px);
-	padding: var(--button-padding-vertical, var(--spacing-xs))
-		var(--button-padding-horizontal, var(--spacing-m));
-	font-size: var(--button-font-size, var(--font-size-s));
-	-webkit-appearance: none;
-	text-align: center;
-	-webkit-box-sizing: border-box;
-	box-sizing: border-box;
-	outline: none;
-	margin: 0;
-	-webkit-transition: 0.3s;
-	transition: 0.3s;
-	-moz-user-select: none;
-	-webkit-user-select: none;
-
-	&.primary {
-		background-color: var(--color-primary);
-	}
-}
+@import 'extensions.scss';

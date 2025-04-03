@@ -57,5 +57,6 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing-l);
+	height: 100%;
 }
 </style>

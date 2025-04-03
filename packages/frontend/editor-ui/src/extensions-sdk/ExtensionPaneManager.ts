@@ -9,6 +9,7 @@ export interface IframeMessage {
 	type: string;
 	frameId?: string;
 	payload?: string;
+	elementId?: string;
 }
 
 // TODO: Observe style changes
@@ -42,6 +43,7 @@ export class ExtensionIframeManager {
 		return this.readyFrames;
 	}
 
+	// TODO: Check what this is picking up, we don't need all styles in iframes
 	async collectStyles(): Promise<void> {
 		return await new Promise((resolve) => {
 			// Get all stylesheet elements
@@ -100,7 +102,7 @@ export class ExtensionIframeManager {
 		}
 	}
 
-	// Method to update styles when the parent app's styles change
+	// Update styles when the parent app's styles change
 	async updateStyles(): Promise<void> {
 		return await this.collectStyles();
 	}
@@ -125,6 +127,19 @@ export class ExtensionIframeManager {
 		} else if (data.type === 'setContent' && data.frameId) {
 			const frameId = data.frameId;
 			this.applyContentUpdate(frameId, data.payload as string);
+		} else if (data.type === 'appendContent' && data.frameId) {
+			const frameId = data.frameId;
+			this.appendPanelContent(
+				this.iframes.get(frameId) as HTMLIFrameElement,
+				data.payload as string,
+			);
+		} else if (data.type === 'setElementContent' && data.frameId && data.elementId) {
+			const frameId = data.frameId;
+			this.setElementContent(
+				this.iframes.get(frameId) as HTMLIFrameElement,
+				data.elementId,
+				data.payload as string,
+			);
 		}
 	}
 
@@ -145,6 +160,7 @@ export class ExtensionIframeManager {
 		// Create boilerplate HTML content for the iframe
 		// This includes a script to handle method calls and content updates
 		// and a style element for injecting styles from the parent app
+		// TODO: Extract this to a separate file and make copy/pasted code reusable (also move scripts to body when injecting)
 		const htmlContent = `
 			<!DOCTYPE html>
 			<html>
@@ -173,6 +189,46 @@ export class ExtensionIframeManager {
 									newScript.textContent = oldScript.textContent;
 									oldScript.parentNode.replaceChild(newScript, oldScript);
 								});
+							}
+						}
+						else if (event.data.type === 'appendContent') {
+							const container = document.getElementById('plugin-content');
+							if (container) {
+								container.innerHTML += event.data.payload;
+
+								// Execute scripts
+								const scripts = container.querySelectorAll('script');
+								scripts.forEach(oldScript => {
+									const newScript = document.createElement('script');
+
+									Array.from(oldScript.attributes).forEach(attr => {
+										newScript.setAttribute(attr.name, attr.value);
+									});
+
+									newScript.textContent = oldScript.textContent;
+									oldScript.parentNode.replaceChild(newScript, oldScript);
+								});
+							}
+						}
+						else if (event.data.type === 'setElementContent') {
+							const container = document.getElementById('plugin-content');
+							if (container) {
+								const element = container.querySelector('#' + event.data.elementId);
+								if (element) {
+									element.innerHTML = event.data.payload;
+									// Execute scripts
+									const scripts = container.querySelectorAll('script');
+									scripts.forEach(oldScript => {
+										const newScript = document.createElement('script');
+
+										Array.from(oldScript.attributes).forEach(attr => {
+											newScript.setAttribute(attr.name, attr.value);
+										});
+
+										newScript.textContent = oldScript.textContent;
+										oldScript.parentNode.replaceChild(newScript, oldScript);
+									});
+								}
 							}
 						}
 						else if (event.data.type === 'setStyles') {
@@ -205,6 +261,7 @@ export class ExtensionIframeManager {
 		// Create iframe with the Blob URL as src
 		const extensionIFrame = document.createElement('iframe');
 		extensionIFrame.id = id;
+		extensionIFrame.style.height = '100%';
 		if (enableScripts) {
 			extensionIFrame.sandbox = 'allow-scripts';
 		} else {
@@ -230,6 +287,45 @@ export class ExtensionIframeManager {
 		} else {
 			// Otherwise queue the update for when the frame is ready
 			this.pendingContentUpdates.set(frameId, content);
+		}
+	}
+
+	setElementContent(pane: HTMLIFrameElement, elementId: string, content: string): void {
+		const frameId = pane.id;
+		const iframe = this.iframes.get(frameId);
+		if (iframe?.contentWindow) {
+			iframe.contentWindow.postMessage(
+				{
+					type: 'setElementContent',
+					elementId,
+					payload: content,
+				},
+				'*',
+			);
+		} else {
+			useToast().showError(
+				new Error(`Iframe with id "${frameId}" not found`),
+				'Error loading extension',
+			);
+		}
+	}
+
+	appendPanelContent(pane: HTMLIFrameElement, content: string): void {
+		const frameId = pane.id;
+		const iframe = this.iframes.get(frameId);
+		if (iframe?.contentWindow) {
+			iframe.contentWindow.postMessage(
+				{
+					type: 'appendContent',
+					payload: content,
+				},
+				'*',
+			);
+		} else {
+			useToast().showError(
+				new Error(`Iframe with id "${frameId}" not found`),
+				'Error loading extension',
+			);
 		}
 	}
 
@@ -278,7 +374,7 @@ export class ExtensionIframeManager {
 
 			// Remove any previous injected styles
 			const previousStyle = iframeDoc.querySelector('style[data-source="parent-app"]');
-			if (previousStyle && previousStyle.parentNode) {
+			if (previousStyle?.parentNode) {
 				previousStyle.parentNode.removeChild(previousStyle);
 			}
 

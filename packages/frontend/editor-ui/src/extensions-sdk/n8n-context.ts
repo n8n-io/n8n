@@ -16,6 +16,8 @@ export type N8nExtensionContext = {
 		enableScripts?: boolean;
 	}) => Promise<HTMLIFrameElement>;
 	setPanelContent: (pane: HTMLIFrameElement, content: string) => void;
+	appendPanelContent: (pane: HTMLIFrameElement, content: string) => void;
+	setElementContent: (pane: HTMLIFrameElement, elementId: string, content: string) => void;
 	showToast: (options: {
 		message: string;
 		type: 'success' | 'error' | 'info';
@@ -58,6 +60,27 @@ const n8nExtensionContext: N8nExtensionContext = {
 		window.parent.postMessage(
 			{
 				type: 'setContent',
+				frameId: pane.id,
+				payload: content,
+			},
+			'*',
+		);
+	},
+	setElementContent: (pane, elementId, content) => {
+		window.parent.postMessage(
+			{
+				type: 'setElementContent',
+				frameId: pane.id,
+				elementId,
+				payload: content,
+			},
+			'*',
+		);
+	},
+	appendPanelContent: (pane, content) => {
+		window.parent.postMessage(
+			{
+				type: 'appendContent',
 				frameId: pane.id,
 				payload: content,
 			},
