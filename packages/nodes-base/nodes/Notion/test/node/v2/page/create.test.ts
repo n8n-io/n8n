@@ -1,6 +1,6 @@
-import type { IHttpRequestMethods } from 'n8n-workflow';
+import nock from 'nock';
 
-import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
+import { testWorkflows } from '@test/nodes/Helpers';
 
 const API_RESPONSE = {
 	object: 'page',
@@ -56,24 +56,27 @@ const API_RESPONSE = {
 	request_id: 'df28ec00-4361-46af-a3b6-add18c8d1295',
 };
 
-jest.mock('../../../../shared/GenericFunctions', () => {
-	const originalModule = jest.requireActual('../../../../shared/GenericFunctions');
-	return {
-		...originalModule,
-		notionApiRequest: jest.fn(async function (method: IHttpRequestMethods) {
-			if (method === 'POST') {
-				return API_RESPONSE;
-			}
-		}),
-	};
-});
-
 describe('Test NotionV2, page => create', () => {
-	const workflows = ['nodes/Notion/test/node/v2/page/create.workflow.json'];
-	const tests = workflowToTests(workflows);
-	const nodeTypes = setup(tests);
+	nock('https://api.notion.com')
+		.post('/v1/pages', {
+			parent: { page_id: '15bfb9cb4cf081c7aab4c5855b8cb6c3' },
+			properties: { title: [{ text: { content: 'Child page' } }] },
+			children: [
+				{
+					object: 'block',
+					type: 'heading_1',
+					heading_1: { text: [{ type: 'text', text: { content: 'Title' }, annotations: {} }] },
+				},
+				{
+					object: 'block',
+					type: 'paragraph',
+					paragraph: { text: [{ text: { content: 'text' } }] },
+				},
+			],
+			icon: { emoji: '😊' },
+		})
+		.reply(200, API_RESPONSE);
 
-	for (const testData of tests) {
-		test(testData.description, async () => await equalityTest(testData, nodeTypes));
-	}
+	const workflows = ['nodes/Notion/test/node/v2/page/create.workflow.json'];
+	testWorkflows(workflows);
 });

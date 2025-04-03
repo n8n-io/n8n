@@ -91,6 +91,7 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useUsersStore } from '@/stores/users.store';
 import { updateCurrentUserSettings } from '@/api/users';
 import { useExecutingNode } from '@/composables/useExecutingNode';
+import { LOGS_PANEL_STATE, type LogsPanelState } from '@/components/CanvasChat/types/logs';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -115,8 +116,6 @@ const createEmptyWorkflow = (): IWorkflowDb => ({
 
 let cachedWorkflowKey: string | null = '';
 let cachedWorkflow: Workflow | null = null;
-
-type ChatPanelState = 'closed' | 'attached' | 'floating';
 
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const uiStore = useUIStore();
@@ -147,7 +146,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const isInDebugMode = ref(false);
 	const chatMessages = ref<string[]>([]);
 	const chatPartialExecutionDestinationNode = ref<string | null>(null);
-	const chatPanelState = ref<ChatPanelState>('closed');
+	const chatPanelState = ref<LogsPanelState>(LOGS_PANEL_STATE.CLOSED);
 
 	const { executingNode, addExecutingNode, removeExecutingNode, clearNodeExecutionQueue } =
 		useExecutingNode();
@@ -1208,7 +1207,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		// If chat trigger node is removed, close chat
 		if (node.type === CHAT_TRIGGER_NODE_TYPE && !settingsStore.isNewLogsEnabled) {
-			setPanelState('closed');
+			setPanelState(LOGS_PANEL_STATE.CLOSED);
 		}
 
 		if (workflow.value.pinData && workflow.value.pinData.hasOwnProperty(node.name)) {
@@ -1670,7 +1669,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	// End Canvas V2 Functions
 	//
 
-	function setPanelState(state: ChatPanelState) {
+	function setPanelState(state: LogsPanelState) {
 		chatPanelState.value = state;
 	}
 

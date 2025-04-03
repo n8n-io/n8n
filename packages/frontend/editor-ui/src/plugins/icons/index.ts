@@ -29,6 +29,7 @@ import {
 	faChartBar,
 	faCheck,
 	faCheckCircle,
+	faCheckDouble,
 	faCheckSquare,
 	faChevronDown,
 	faChevronUp,
@@ -226,6 +227,7 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faChartBar);
 		addIcon(faCheck);
 		addIcon(faCheckCircle);
+		addIcon(faCheckDouble);
 		addIcon(faCheckSquare);
 		addIcon(faChevronLeft);
 		addIcon(faChevronRight);

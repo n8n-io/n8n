@@ -210,3 +210,54 @@ export function hasTrimmedItem(taskData: ITaskData[]) {
 export function hasTrimmedData(runData: IRunData) {
 	return Object.keys(runData).some((nodeName) => hasTrimmedItem(runData[nodeName]));
 }
+
+export function executionRetryMessage(executionStatus: ExecutionStatus):
+	| {
+			title: string;
+			type: 'error' | 'info' | 'success';
+	  }
+	| undefined {
+	if (executionStatus === 'success') {
+		return {
+			title: i18n.baseText('executionsList.showMessage.retrySuccess.title'),
+			type: 'success',
+		};
+	}
+
+	if (executionStatus === 'waiting') {
+		return {
+			title: i18n.baseText('executionsList.showMessage.retryWaiting.title'),
+			type: 'info',
+		};
+	}
+
+	if (executionStatus === 'running') {
+		return {
+			title: i18n.baseText('executionsList.showMessage.retryRunning.title'),
+			type: 'info',
+		};
+	}
+
+	if (executionStatus === 'crashed') {
+		return {
+			title: i18n.baseText('executionsList.showMessage.retryCrashed.title'),
+			type: 'error',
+		};
+	}
+
+	if (executionStatus === 'canceled') {
+		return {
+			title: i18n.baseText('executionsList.showMessage.retryCanceled.title'),
+			type: 'error',
+		};
+	}
+
+	if (executionStatus === 'error') {
+		return {
+			title: i18n.baseText('executionsList.showMessage.retryError.title'),
+			type: 'error',
+		};
+	}
+
+	return undefined;
+}
