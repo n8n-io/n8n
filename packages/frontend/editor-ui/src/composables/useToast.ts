@@ -39,7 +39,7 @@ export function useToast() {
 		zIndex: APP_Z_INDEXES.TOASTS, // above NDV and modal overlays
 		offset:
 			settingsStore.isAiAssistantEnabled ||
-			workflowsStore.chatPanelState === LOGS_PANEL_STATE.ATTACHED
+			workflowsStore.logsPanelState === LOGS_PANEL_STATE.ATTACHED
 				? 64
 				: 0,
 		appendTo: '#app-grid',
