@@ -141,7 +141,7 @@ export class RabbitMQTrigger implements INodeType {
 						displayName: 'Binding',
 						name: 'binding',
 						placeholder: 'Add Binding',
-						description: 'Add binding to queu',
+						description: 'Add binding to queue',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,
@@ -207,16 +207,67 @@ export class RabbitMQTrigger implements INodeType {
 		const options = this.getNodeParameter('options', {}) as TriggerOptions;
 		const channel = await rabbitmqConnectQueue.call(this, queue, options);
 
+		let acknowledgeMode = options.acknowledge ?? 'immediately';
 		if (this.getMode() === 'manual') {
+			let processingMessage = false;
 			const manualTriggerFunction = async () => {
 				// Do only catch a single message when executing manually, else messages will leak
 				await channel.prefetch(1);
 
 				const processMessage = async (message: Message | null) => {
 					if (message !== null) {
-						const item = await parseMessage(message, options, this.helpers);
-						channel.ack(message);
-						this.emit([[item]]);
+						// const item = await parseMessage(message, options, this.helpers);
+						// channel.ack(message);
+						// this.emit([[item]]);
+						processingMessage = true;
+						try {
+							const item = await parseMessage(message, options, this.helpers);
+
+							let responsePromise: IDeferredPromise<IRun> | undefined;
+							let responsePromiseHook: IDeferredPromise<IExecuteResponsePromiseData> | undefined =
+								undefined;
+
+							if (acknowledgeMode !== 'immediately' && acknowledgeMode !== 'laterMessageNode') {
+								responsePromise = this.helpers.createDeferredPromise();
+							} else if (acknowledgeMode === 'laterMessageNode') {
+								responsePromiseHook =
+									this.helpers.createDeferredPromise<IExecuteResponsePromiseData>();
+							}
+
+							if (responsePromiseHook) {
+								this.emit([[item]], responsePromiseHook, undefined);
+							} else {
+								this.emit([[item]], undefined, responsePromise);
+							}
+
+							if (acknowledgeMode === 'immediately') {
+								channel.ack(message);
+								processingMessage = false;
+							} else if (responsePromise && acknowledgeMode !== 'laterMessageNode') {
+								await responsePromise.promise.then(async (data: IRun) => {
+									if (data.data.resultData.error) {
+										if (acknowledgeMode === 'executionFinishesSuccessfully') {
+											channel.nack(message);
+											processingMessage = false;
+											return;
+										}
+									}
+									channel.ack(message);
+									processingMessage = false;
+								});
+							} else if (responsePromiseHook && acknowledgeMode === 'laterMessageNode') {
+								await responsePromiseHook.promise.then(() => {
+									channel.ack(message);
+									processingMessage = false;
+								});
+							} else {
+								channel.ack(message);
+								processingMessage = false;
+							}
+						} catch (error) {
+							processingMessage = false;
+							this.emitError(new Error(`Failed to process message: ${error.message}`));
+						}
 					} else {
 						this.emitError(new Error('Connection got closed unexpectedly'));
 					}
@@ -228,6 +279,19 @@ export class RabbitMQTrigger implements INodeType {
 			};
 
 			const closeFunction = async () => {
+				const maxWaitTime = 5000; // 5 seconds timeout
+				const interval = 100;
+				let waitedTime = 0;
+
+				while (processingMessage && waitedTime < maxWaitTime) {
+					await new Promise((resolve) => setTimeout(resolve, interval));
+					waitedTime += interval;
+				}
+
+				// If still processing after timeout, log a warning and force close
+				if (processingMessage) {
+					console.warn('Forcing RabbitMQ connection to close after timeout');
+				}
 				await channel.close();
 				await channel.connection.close();
 				return;
@@ -246,8 +310,6 @@ export class RabbitMQTrigger implements INodeType {
 				'Parallel message processing limit must be a number greater than zero (or -1 for no limit)',
 			);
 		}
-
-		let acknowledgeMode = options.acknowledge ?? 'immediately';
 
 		if (parallelMessages !== -1 && acknowledgeMode === 'immediately') {
 			// If parallel message limit is set, then the default mode is "executionFinishes"
