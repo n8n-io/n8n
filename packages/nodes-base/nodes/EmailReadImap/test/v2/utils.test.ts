@@ -74,7 +74,7 @@ describe('Test IMap V2 utils', () => {
 
 			expectedResults.forEach(async (expectedResult) => {
 				// use new staticData for each iteration
-				const tmpStaticData: IDataObject = {};
+				const staticData: IDataObject = {};
 
 				triggerFunctions.getNodeParameter
 					.calledWith('format')
@@ -87,7 +87,7 @@ describe('Test IMap V2 utils', () => {
 					triggerFunctions,
 					imapConnection,
 					[],
-					tmpStaticData,
+					staticData,
 					'',
 					getText,
 					getAttachment,
