@@ -55,6 +55,10 @@ export class WorkflowRunner {
 		private readonly executionDataService: ExecutionDataService,
 	) {}
 
+	setExecutionMode(mode: 'regular' | 'queue') {
+		this.executionsMode = mode;
+	}
+
 	/** The process did error */
 	async processError(
 		error: ExecutionError | ExecutionNotFoundError,

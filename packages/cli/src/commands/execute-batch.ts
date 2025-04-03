@@ -17,6 +17,7 @@ import { findCliWorkflowStart } from '@/utils';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { BaseCommand } from './base-command';
+import config from '../config';
 import type {
 	IExecutionResult,
 	INodeSpecialCase,
@@ -609,6 +610,13 @@ export class ExecuteBatch extends BaseCommand {
 			}
 		});
 
+		const workflowRunner = Container.get(WorkflowRunner);
+
+		if (config.getEnv('executions.mode') === 'queue') {
+			this.logger.warn('`executeBatch` does not support queue mode. Falling back to regular mode.');
+			workflowRunner.setExecutionMode('regular');
+		}
+
 		return await new Promise(async (resolve) => {
 			let gotCancel = false;
 
@@ -630,7 +638,7 @@ export class ExecuteBatch extends BaseCommand {
 					userId: ExecuteBatch.instanceOwner.id,
 				};
 
-				const executionId = await Container.get(WorkflowRunner).run(runData);
+				const executionId = await workflowRunner.run(runData);
 
 				const activeExecutions = Container.get(ActiveExecutions);
 				const data = await activeExecutions.getPostExecutePromise(executionId);
