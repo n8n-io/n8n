@@ -4,7 +4,6 @@ import {
 	type IDataObject,
 	type IExecuteFunctions,
 	type IGetNodeParameterOptions,
-	type ILoadOptionsFunctions,
 	type INodeExecutionData,
 	type IPairedItemData,
 	NodeOperationError,
@@ -180,71 +179,24 @@ describe('Test Supabase Node', () => {
 		);
 	});
 
-	it('should show descriptive error in fetching tables when wrong schema is set', async () => {
+	it('should show descriptive message when error is caught', async () => {
 		const fakeExecuteFunction = createMockExecuteFunction({
 			resource: 'row',
-			operation: 'getAll',
+			operation: 'create',
 			returnAll: true,
 			useCustomSchema: true,
 			schema: '',
 			tableId: 'my_table',
 		});
 
-		const mockLoadOptionsFunctions: ILoadOptionsFunctions = {
-			...fakeExecuteFunction,
-			getCurrentNodeParameter: jest.fn(),
-			getCurrentNodeParameters: jest.fn(),
-		};
+		fakeExecuteFunction.helpers.requestWithAuthentication = jest.fn().mockRejectedValue({
+			description: 'Something when wrong',
+			message: 'error',
+		});
 
-		const expectedError = {
-			level: 'warning',
-			tags: {
-				packageName: 'workflow',
-			},
-			extra: undefined,
-			context: {},
-			functionality: 'regular',
-			name: 'NodeApiError',
-			timestamp: 1743066292930,
-			node: {
-				parameters: {
-					useCustomSchema: true,
-					schema: '',
-					resource: 'row',
-					operation: 'getAll',
-					tableId: 'n8n',
-					returnAll: true,
-					filterType: 'manual',
-					matchType: 'anyFilter',
-					filters: {},
-				},
-				id: 'uuid-1234',
-				name: 'Temp-Node',
-				type: 'n8n-nodes-base.supabase',
-				typeVersion: 1,
-				position: [0, 0],
-				credentials: {
-					supabaseApi: {
-						id: 'z7MK41ZmcZoE4Fjb',
-						name: 'Supabase account',
-					},
-				},
-			},
-			messages: [
-				'406 - {"code":"PGRST106","details":null,"hint":null,"message":"The schema must be one of the following: public, graphql_public, custom_schema, my_new_schema"}',
-			],
-			httpCode: '406',
-			description:
-				'The schema must be one of the following: public, graphql_public, custom_schema, my_new_schema',
-		};
-
-		jest.spyOn(utils, 'supabaseApiRequest').mockRejectedValueOnce(expectedError);
-
-		try {
-			await node.methods.loadOptions.getTables.call(mockLoadOptionsFunctions);
-		} catch (error) {
-			expect(error.description).toMatch(/The schema must be one of the following: public/);
-			expect(error.name).toBe('NodeApiError');
-		}
+		await expect(node.execute.call(fakeExecuteFunction)).rejects.toHaveProperty(
+			'message',
+			'error: Something when wrong',
+		);
 	});
 });
