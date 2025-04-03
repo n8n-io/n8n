@@ -469,12 +469,6 @@ const fetchWorkflows = async () => {
 	// Only fetch folders if showFolders is enabled and there are not tags or active filter applied
 	const fetchFolders = showFolders.value && !tags.length && activeFilter === undefined;
 
-	const areFiltersApplied =
-		filters.value.search ||
-		filters.value.status !== StatusFilter.ALL ||
-		filters.value.homeProject ||
-		tags.length;
-
 	try {
 		const fetchedResources = await workflowsStore.fetchWorkflowsPage(
 			routeProjectId ?? homeProjectFilter,
@@ -487,7 +481,7 @@ const fetchWorkflows = async () => {
 				tags: tags.length ? tags : undefined,
 				parentFolderId:
 					parentFolder ??
-					(isOverviewPage.value ? undefined : areFiltersApplied ? undefined : PROJECT_ROOT),
+					(isOverviewPage.value ? undefined : filters?.value.search ? undefined : PROJECT_ROOT), // Sending 0 will only show one level of folders
 			},
 			fetchFolders,
 		);
