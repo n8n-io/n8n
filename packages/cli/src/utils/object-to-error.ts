@@ -2,7 +2,10 @@ import { isObjectLiteral } from 'n8n-core';
 import { NodeOperationError } from 'n8n-workflow';
 import type { Workflow } from 'n8n-workflow';
 
-const transientErrorProperties = ['description', 'stack', 'executionId', 'workflowId'];
+/**
+ * Optional properties that should be propagated from an error object to the new Error instance.
+ */
+const errorProperties = ['description', 'stack', 'executionId', 'workflowId'];
 
 export function objectToError(errorObject: unknown, workflow: Workflow): Error {
 	// TODO: Expand with other error types
@@ -36,8 +39,9 @@ export function objectToError(errorObject: unknown, workflow: Workflow): Error {
 			error = new Error(errorObject.message);
 		}
 
-		for (const field of transientErrorProperties) {
-			if (field in errorObject) {
+		for (const field of errorProperties) {
+			if (field in errorObject && errorObject[field]) {
+				// Not all errors contain these properties
 				(error as unknown as Record<string, unknown>)[field] = errorObject[field];
 			}
 		}
