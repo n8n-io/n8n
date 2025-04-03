@@ -1,6 +1,5 @@
 import { type LlmTokenUsageData, type IAiDataContent } from '@/Interface';
 import {
-	type IRunData,
 	type INodeExecutionData,
 	type ITaskData,
 	type ITaskDataConnections,
@@ -29,17 +28,16 @@ function createNode(
 	parent: TreeNode | undefined,
 	nodeName: string,
 	currentDepth: number,
-	runIndex: number,
 	r?: AIResult,
 	children: TreeNode[] = [],
 ): TreeNode {
 	return {
 		parent,
 		node: nodeName,
-		id: `${nodeName}:${runIndex}`,
+		id: nodeName,
 		depth: currentDepth,
 		startTime: r?.data?.metadata?.startTime ?? 0,
-		runIndex,
+		runIndex: r?.runIndex ?? 0,
 		children,
 		consumedTokens: getConsumedTokens(r?.data),
 	};
@@ -49,9 +47,8 @@ export function getTreeNodeData(
 	nodeName: string,
 	workflow: Workflow,
 	aiData: AIResult[] | undefined,
-	runIndex?: number,
 ): TreeNode[] {
-	return getTreeNodeDataRec(undefined, nodeName, 0, workflow, aiData, runIndex);
+	return getTreeNodeDataRec(undefined, nodeName, 0, workflow, aiData, undefined);
 }
 
 function getTreeNodeDataRec(
@@ -69,13 +66,13 @@ function getTreeNodeDataRec(
 		) ?? [];
 
 	if (!connections) {
-		return resultData.map((d) => createNode(parent, nodeName, currentDepth, d.runIndex, d));
+		return resultData.map((d) => createNode(parent, nodeName, currentDepth, d));
 	}
 
 	// Get the first level of children
 	const connectedSubNodes = workflow.getParentNodes(nodeName, 'ALL_NON_MAIN', 1);
 
-	const treeNode = createNode(parent, nodeName, currentDepth, runIndex ?? 0);
+	const treeNode = createNode(parent, nodeName, currentDepth);
 	const children = connectedSubNodes.flatMap((name) => {
 		// Only include sub-nodes which have data
 		return (
@@ -94,9 +91,7 @@ function getTreeNodeDataRec(
 	treeNode.children = children;
 
 	if (resultData.length) {
-		return resultData.map((r) =>
-			createNode(parent, nodeName, currentDepth, r.runIndex, r, children),
-		);
+		return resultData.map((r) => createNode(parent, nodeName, currentDepth, r, children));
 	}
 
 	return [treeNode];
@@ -106,7 +101,6 @@ export function createAiData(
 	nodeName: string,
 	workflow: Workflow,
 	getWorkflowResultDataByNodeName: (nodeName: string) => ITaskData[] | null,
-	runIndex?: number,
 ): AIResult[] {
 	const result: AIResult[] = [];
 	const connectedSubNodes = workflow.getParentNodes(nodeName, 'ALL_NON_MAIN');
@@ -114,16 +108,14 @@ export function createAiData(
 	connectedSubNodes.forEach((node) => {
 		const nodeRunData = getWorkflowResultDataByNodeName(node) ?? [];
 
-		nodeRunData.forEach((run, index) => {
-			if (runIndex === undefined || index === runIndex) {
-				const referenceData = {
-					data: getReferencedData(run, false, true)[0],
-					node,
-					runIndex: index,
-				};
+		nodeRunData.forEach((run, runIndex) => {
+			const referenceData = {
+				data: getReferencedData(run, false, true)[0],
+				node,
+				runIndex,
+			};
 
-				result.push(referenceData);
-			}
+			result.push(referenceData);
 		});
 	});
 
@@ -238,43 +230,4 @@ export function formatTokenUsageCount(
 				: usage.promptTokens;
 
 	return usage.isEstimate ? `~${count}` : count.toLocaleString();
-}
-
-export function createLogEntriesIncludingNonAiNodeExecutions(
-	workflow: Workflow,
-	runData: IRunData,
-) {
-	const runs = Object.entries(runData)
-		.flatMap(([nodeName, taskData]) =>
-			workflow.getChildNodes(nodeName, 'ALL_NON_MAIN').length === 0
-				? taskData.map((task, runIndex) => ({ nodeName, task, runIndex }))
-				: [],
-		)
-		.toSorted((a, b) =>
-			a.nodeName === b.nodeName ? a.runIndex - b.runIndex : a.task.startTime - b.task.startTime,
-		);
-
-	return runs.flatMap(({ nodeName, runIndex, task }) => {
-		if (workflow.getParentNodes(nodeName, 'ALL_NON_MAIN').length > 0) {
-			return getTreeNodeData(
-				nodeName,
-				workflow,
-				createAiData(nodeName, workflow, (node) => runData[node] ?? []),
-				runIndex,
-			);
-		}
-
-		return getTreeNodeData(
-			nodeName,
-			workflow,
-			[
-				{
-					data: getReferencedData(task, false, true)[0],
-					node: nodeName,
-					runIndex,
-				},
-			],
-			runIndex,
-		);
-	});
 }
