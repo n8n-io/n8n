@@ -153,7 +153,7 @@ export function send<T, R extends Request, S extends Response>(
 	processFunction: (req: R, res: S) => Promise<T>,
 	raw = false,
 ) {
-	return async (req: R, res: S) => {
+	return async (req: R, res: S): Promise<void> => {
 		try {
 			const data = await processFunction(req, res);
 

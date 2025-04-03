@@ -15,27 +15,27 @@ export type InsightsSummaryUnit = z.infer<typeof insightsSummaryUnitSchema>;
 export const insightsSummaryDataSchemas = {
 	total: z.object({
 		value: z.number(),
-		deviation: z.number(),
+		deviation: z.union([z.null(), z.number()]),
 		unit: z.literal('count'),
 	}),
 	failed: z.object({
 		value: z.number(),
-		deviation: z.number(),
+		deviation: z.union([z.null(), z.number()]),
 		unit: z.literal('count'),
 	}),
 	failureRate: z.object({
 		value: z.number(),
-		deviation: z.number(),
+		deviation: z.union([z.null(), z.number()]),
 		unit: z.literal('ratio'),
 	}),
 	timeSaved: z.object({
 		value: z.number(),
-		deviation: z.number(),
+		deviation: z.union([z.null(), z.number()]),
 		unit: z.literal('time'),
 	}),
 	averageRunTime: z.object({
 		value: z.number(),
-		deviation: z.number(),
+		deviation: z.union([z.null(), z.number()]),
 		unit: z.literal('time'),
 	}),
 } as const;
@@ -49,9 +49,9 @@ export const insightsByWorkflowDataSchemas = {
 		z
 			.object({
 				workflowId: z.string(),
-				workflowName: z.string().optional(),
-				projectId: z.string().optional(),
-				projectName: z.string().optional(),
+				workflowName: z.string(),
+				projectId: z.string(),
+				projectName: z.string(),
 				total: z.number(),
 				succeeded: z.number(),
 				failed: z.number(),
@@ -74,6 +74,8 @@ export const insightsByTimeDataSchemas = {
 	values: z
 		.object({
 			total: z.number(),
+			succeeded: z.number(),
+			failed: z.number(),
 			failureRate: z.number(),
 			averageRunTime: z.number(),
 			timeSaved: z.number(),
