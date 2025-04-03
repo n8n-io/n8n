@@ -15,7 +15,7 @@ github_checks:
 flags:
   tests:
     paths:
-      - "**"
+      - '**'
     carryforward: true
 
 component_management:
@@ -24,7 +24,7 @@ component_management:
       - type: project
         target: auto
         branches:
-          - "!master"
+          - '!master'
   individual_components:
     - component_id: backend_packages
       name: Backend
@@ -42,10 +42,7 @@ component_management:
     - component_id: frontend_packages
       name: Frontend
       paths:
-        - packages/@n8n/chat/**
         - packages/@n8n/codemirror-lang/**
-        - packages/design-system/**
-        - packages/editor-ui/**
         - packages/frontend/**
     - component_id: nodes_packages
       name: Nodes

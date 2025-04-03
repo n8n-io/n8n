@@ -1,10 +1,10 @@
-const sharedOptions = require('@n8n_io/eslint-config/shared');
+const sharedOptions = require('@n8n/eslint-config/shared');
 
 /**
  * @type {import('@types/eslint').ESLint.ConfigData}
  */
 module.exports = {
-	extends: ['@n8n_io/eslint-config/base', 'plugin:cypress/recommended'],
+	extends: ['@n8n/eslint-config/base', 'plugin:cypress/recommended'],
 
 	...sharedOptions(__dirname),
 
@@ -26,9 +26,15 @@ module.exports = {
 		'@typescript-eslint/no-use-before-define': 'off',
 		'@typescript-eslint/promise-function-async': 'off',
 		'n8n-local-rules/no-uncaught-json-parse': 'off',
-
 		'cypress/no-assigning-return-values': 'warn',
 		'cypress/no-unnecessary-waiting': 'warn',
 		'cypress/unsafe-to-chain-command': 'warn',
+		'import/no-extraneous-dependencies': [
+			'error',
+			{
+				devDependencies: ['**/cypress/**'],
+				optionalDependencies: false,
+			},
+		],
 	},
 };

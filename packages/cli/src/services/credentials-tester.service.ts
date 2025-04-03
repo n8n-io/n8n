@@ -32,7 +32,7 @@ import type {
 	IDataObject,
 	IExecuteData,
 } from 'n8n-workflow';
-import { VersionedNodeType, NodeHelpers, Workflow, ApplicationError } from 'n8n-workflow';
+import { VersionedNodeType, NodeHelpers, Workflow, UnexpectedError } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import type { User } from '@/databases/entities/user';
@@ -62,7 +62,7 @@ const mockNodeTypes: INodeTypes = {
 	},
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
 		if (!mockNodesData[nodeType]) {
-			throw new ApplicationError(RESPONSE_ERROR_MESSAGES.NO_NODE, {
+			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.NO_NODE, {
 				tags: { nodeType },
 			});
 		}
@@ -172,7 +172,7 @@ export class CredentialsTester {
 
 	// eslint-disable-next-line complexity
 	async testCredentials(
-		user: User,
+		userId: User['id'],
 		credentialType: string,
 		credentialsDecrypted: ICredentialsDecrypted,
 	): Promise<INodeCredentialTestResult> {
@@ -186,7 +186,7 @@ export class CredentialsTester {
 
 		if (credentialsDecrypted.data) {
 			try {
-				const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
+				const additionalData = await WorkflowExecuteAdditionalData.getBase(userId);
 				credentialsDecrypted.data = this.credentialsHelper.applyDefaultsAndOverwrites(
 					additionalData,
 					credentialsDecrypted.data,
@@ -292,7 +292,7 @@ export class CredentialsTester {
 			},
 		};
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id, node.parameters);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(userId, node.parameters);
 
 		const executeData: IExecuteData = { node, data: {}, source: null };
 		const executeFunctions = new ExecuteContext(

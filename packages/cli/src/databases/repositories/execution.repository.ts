@@ -23,7 +23,7 @@ import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import { parse, stringify } from 'flatted';
 import pick from 'lodash/pick';
 import { BinaryDataService, ErrorReporter, Logger } from 'n8n-core';
-import { ExecutionCancelledError, ApplicationError } from 'n8n-workflow';
+import { ExecutionCancelledError, UnexpectedError } from 'n8n-workflow';
 import type {
 	AnnotationVote,
 	ExecutionStatus,
@@ -206,7 +206,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		if (executions.length === 0) return;
 
 		this.errorReporter.error(
-			new ApplicationError('Found executions without executionData', {
+			new UnexpectedError('Found executions without executionData', {
 				extra: { executionIds: executions.map(({ id }) => id) },
 			}),
 		);
@@ -434,7 +434,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		},
 	) {
 		if (!deleteConditions?.deleteBefore && !deleteConditions?.ids) {
-			throw new ApplicationError(
+			throw new UnexpectedError(
 				'Either "deleteBefore" or "ids" must be present in the request body',
 			);
 		}
@@ -836,7 +836,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	async findManyByRangeQuery(query: ExecutionSummaries.RangeQuery): Promise<ExecutionSummary[]> {
 		if (query?.accessibleWorkflowIds?.length === 0) {
-			throw new ApplicationError('Expected accessible workflow IDs');
+			throw new UnexpectedError('Expected accessible workflow IDs');
 		}
 
 		// Due to performance reasons, we use custom query builder with raw SQL.

@@ -10,21 +10,7 @@
                         "xmlns": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "xmlns"
-                    ]
-                },
-                "SendEmailResult": {
-                    "type": "object",
-                    "properties": {
-                        "MessageId": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "MessageId"
-                    ]
+                    }
                 },
                 "ResponseMetadata": {
                     "type": "object",
@@ -32,17 +18,18 @@
                         "RequestId": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "RequestId"
-                    ]
+                    }
+                },
+                "SendEmailResult": {
+                    "type": "object",
+                    "properties": {
+                        "MessageId": {
+                            "type": "string"
+                        }
+                    }
                 }
-            },
-            "required": [
-                "$",
-                "SendEmailResult",
-                "ResponseMetadata"
-            ]
+            }
         }
-    }
+    },
+    "version": 1
 }

@@ -5,10 +5,11 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import type { IRecord } from './GenericFunction';
 import { apiRequest, apiRequestAllItems } from './GenericFunction';
+import { generatePairedItemData } from '../../utils/utilities';
 
 export class Stackby implements INodeType {
 	description: INodeTypeDescription = {
@@ -23,8 +24,8 @@ export class Stackby implements INodeType {
 			name: 'Stackby',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'stackbyApi',
@@ -283,7 +284,11 @@ export class Stackby implements INodeType {
 				);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					const executionErrorData = this.helpers.returnJsonArray({ error: error.message });
+					const itemData = generatePairedItemData(items.length);
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData },
+					);
 					returnData.push(...executionErrorData);
 				} else {
 					throw error;

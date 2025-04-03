@@ -22,7 +22,11 @@ describe('Undo/Redo', () => {
 	it('should undo/redo deleting node using context menu', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.actions.deleteNodeFromContextMenu(CODE_NODE_NAME);
+		WorkflowPage.actions.zoomToFit();
+		WorkflowPage.actions.deleteNodeFromContextMenu(CODE_NODE_NAME, {
+			method: 'right-click',
+			anchor: 'topLeft',
+		});
 		WorkflowPage.getters.canvasNodes().should('have.have.length', 1);
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
 		WorkflowPage.actions.hitUndo();

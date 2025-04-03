@@ -46,7 +46,7 @@
 				"@n8n/storybook#lint",
 				"n8n-cypress#lint",
 				"@n8n/composables#build",
-				"n8n-design-system#lint",
+				"@n8n/design-system#lint",
 				"n8n-editor-ui#lint"
 			]
 		},
@@ -72,17 +72,19 @@
 				"n8n-core#test",
 				"n8n#test"
 			],
-			"outputs": ["coverage/**"]
+			"outputs": ["coverage/**"],
+			"inputs": ["jest.config.js"]
 		},
 		"test:frontend": {
 			"dependsOn": [
 				"@n8n/chat#test",
 				"@n8n/codemirror-lang#test",
 				"@n8n/composables#build",
-				"n8n-design-system#test",
+				"@n8n/design-system#test",
 				"n8n-editor-ui#test"
 			],
-			"outputs": ["coverage/**"]
+			"outputs": ["coverage/**"],
+			"inputs": ["jest.config.js"]
 		},
 		"test:nodes": {
 			"dependsOn": [
@@ -90,7 +92,8 @@
 				"@n8n/n8n-nodes-langchain#test",
 				"@n8n/json-schema-to-zod#test"
 			],
-			"outputs": ["coverage/**"]
+			"outputs": ["coverage/**"],
+			"inputs": ["jest.config.js"]
 		},
 		"test": {},
 		"watch": {

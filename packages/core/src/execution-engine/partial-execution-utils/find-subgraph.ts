@@ -1,4 +1,4 @@
-import { NodeConnectionType, type INode } from 'n8n-workflow';
+import { NodeConnectionTypes, type INode } from 'n8n-workflow';
 
 import type { GraphConnection } from './directed-graph';
 import { DirectedGraph } from './directed-graph';
@@ -13,6 +13,12 @@ function findSubgraphRecursive(
 ) {
 	// If the current node is the chosen trigger keep this branch.
 	if (current === trigger) {
+		// If this graph consists of only one node there won't be any connections
+		// and the loop below won't add anything.
+		// We're adding the trigger here so that graphs with one node and no
+		// connections are handled correctly.
+		newGraph.addNode(trigger);
+
 		for (const connection of currentBranch) {
 			newGraph.addNodes(connection.from, connection.to);
 			newGraph.addConnection(connection);
@@ -51,7 +57,7 @@ function findSubgraphRecursive(
 		// Skip parents that are connected via non-Main connection types. They are
 		// only utility nodes for AI and are not part of the data or control flow
 		// and can never lead too the trigger.
-		if (parentConnection.type !== NodeConnectionType.Main) {
+		if (parentConnection.type !== NodeConnectionTypes.Main) {
 			continue;
 		}
 
@@ -101,7 +107,7 @@ export function findSubgraph(options: {
 		const parentConnections = graph.getParentConnections(node);
 
 		for (const connection of parentConnections) {
-			if (connection.type === NodeConnectionType.Main) {
+			if (connection.type === NodeConnectionTypes.Main) {
 				continue;
 			}
 

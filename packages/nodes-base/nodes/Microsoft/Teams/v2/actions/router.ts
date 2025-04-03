@@ -11,7 +11,7 @@ import * as channelMessage from './channelMessage';
 import * as chatMessage from './chatMessage';
 import type { MicrosoftTeamsType } from './node.type';
 import * as task from './task';
-import { configureWaitTillDate } from '../../../../../utils/sendAndWait/utils';
+import { configureWaitTillDate } from '../../../../../utils/sendAndWait/configureWaitTillDate.util';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();

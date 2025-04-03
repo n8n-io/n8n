@@ -3,7 +3,8 @@ import type { NodeOptions } from '@sentry/node';
 import { close } from '@sentry/node';
 import type { ErrorEvent, EventHint } from '@sentry/types';
 import { AxiosError } from 'axios';
-import { ApplicationError, ExecutionCancelledError, type ReportingOptions } from 'n8n-workflow';
+import type { ReportingOptions } from 'n8n-workflow';
+import { ApplicationError, ExecutionCancelledError, BaseError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 
 import type { InstanceType } from '@/instance-settings';
@@ -15,6 +16,7 @@ type ErrorReporterInitOptions = {
 	release: string;
 	environment: string;
 	serverName: string;
+	releaseDate?: Date;
 	/**
 	 * Function to allow filtering out errors before they are sent to Sentry.
 	 * Return true if the error should be filtered out.
@@ -22,8 +24,15 @@ type ErrorReporterInitOptions = {
 	beforeSendFilter?: (event: ErrorEvent, hint: EventHint) => boolean;
 };
 
+const ONE_DAY_IN_MS = 24 * 60 * 60 * 1000;
+const SIX_WEEKS_IN_MS = 6 * 7 * ONE_DAY_IN_MS;
+const RELEASE_EXPIRATION_WARNING =
+	'Error tracking disabled because this release is older than 6 weeks.';
+
 @Service()
 export class ErrorReporter {
+	private expirationTimer?: NodeJS.Timeout;
+
 	/** Hashes of error stack traces, to deduplicate error reports. */
 	private seenErrors = new Set<string>();
 
@@ -44,11 +53,15 @@ export class ErrorReporter {
 			const context = executionId ? ` (execution ${executionId})` : '';
 
 			do {
-				const msg = [
-					e.message + context,
-					e instanceof ApplicationError && e.level === 'error' && e.stack ? `\n${e.stack}\n` : '',
-				].join('');
-				const meta = e instanceof ApplicationError ? e.extra : undefined;
+				let stack = '';
+				let meta = undefined;
+				if (e instanceof ApplicationError || e instanceof BaseError) {
+					if (e.level === 'error' && e.stack) {
+						stack = `\n${e.stack}\n`;
+					}
+					meta = e.extra;
+				}
+				const msg = [e.message + context, stack].join('');
 				this.logger.error(msg, meta);
 				e = e.cause as Error;
 			} while (e);
@@ -56,6 +69,7 @@ export class ErrorReporter {
 	}
 
 	async shutdown(timeoutInMs = 1000) {
+		clearTimeout(this.expirationTimer);
 		await close(timeoutInMs);
 	}
 
@@ -66,10 +80,31 @@ export class ErrorReporter {
 		release,
 		environment,
 		serverName,
+		releaseDate,
 	}: ErrorReporterInitOptions) {
 		process.on('uncaughtException', (error) => {
 			this.error(error);
 		});
+
+		if (releaseDate) {
+			const releaseExpiresAtMs = releaseDate.getTime() + SIX_WEEKS_IN_MS;
+			const releaseExpiresInMs = () => releaseExpiresAtMs - Date.now();
+			if (releaseExpiresInMs() <= 0) {
+				this.logger.warn(RELEASE_EXPIRATION_WARNING);
+				return;
+			}
+			const checkForExpiration = () => {
+				// Once this release expires, reject all events
+				if (releaseExpiresInMs() <= 0) {
+					this.logger.warn(RELEASE_EXPIRATION_WARNING);
+					// eslint-disable-next-line @typescript-eslint/unbound-method
+					this.report = this.defaultReport;
+				} else {
+					setTimeout(checkForExpiration, ONE_DAY_IN_MS);
+				}
+			};
+			checkForExpiration();
+		}
 
 		if (!dsn) return;
 
@@ -137,11 +172,17 @@ export class ErrorReporter {
 
 		if (originalException instanceof AxiosError) return null;
 
-		if (this.isIgnoredSqliteError(originalException)) return null;
-		if (this.isApplicationError(originalException)) {
-			if (this.isIgnoredApplicationError(originalException)) return null;
+		if (originalException instanceof BaseError) {
+			if (!originalException.shouldReport) return null;
 
-			this.extractEventDetailsFromApplicationError(event, originalException);
+			this.extractEventDetailsFromN8nError(event, originalException);
+		}
+
+		if (this.isIgnoredSqliteError(originalException)) return null;
+		if (originalException instanceof ApplicationError || originalException instanceof BaseError) {
+			if (this.isIgnoredN8nError(originalException)) return null;
+
+			this.extractEventDetailsFromN8nError(event, originalException);
 		}
 
 		if (
@@ -149,7 +190,7 @@ export class ErrorReporter {
 			'cause' in originalException &&
 			originalException.cause instanceof Error &&
 			'level' in originalException.cause &&
-			originalException.cause.level === 'warning'
+			(originalException.cause.level === 'warning' || originalException.cause.level === 'info')
 		) {
 			// handle underlying errors propagating from dependencies like ai-assistant-sdk
 			return null;
@@ -193,17 +234,13 @@ export class ErrorReporter {
 		);
 	}
 
-	private isApplicationError(error: unknown): error is ApplicationError {
-		return error instanceof ApplicationError;
+	private isIgnoredN8nError(error: ApplicationError | BaseError) {
+		return error.level === 'warning' || error.level === 'info';
 	}
 
-	private isIgnoredApplicationError(error: ApplicationError) {
-		return error.level === 'warning';
-	}
-
-	private extractEventDetailsFromApplicationError(
+	private extractEventDetailsFromN8nError(
 		event: ErrorEvent,
-		originalException: ApplicationError,
+		originalException: ApplicationError | BaseError,
 	) {
 		const { level, extra, tags } = originalException;
 		event.level = level;

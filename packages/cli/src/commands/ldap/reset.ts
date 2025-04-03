@@ -2,7 +2,7 @@ import { Container } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { Flags } from '@oclif/core';
-import { ApplicationError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -56,7 +56,7 @@ export class Reset extends BaseCommand {
 			Number(!!flags.deleteWorkflowsAndCredentials);
 
 		if (numberOfOptions !== 1) {
-			throw new ApplicationError(wrongFlagsError);
+			throw new UserError(wrongFlagsError);
 		}
 
 		const owner = await this.getOwner();
@@ -71,13 +71,13 @@ export class Reset extends BaseCommand {
 		// Migrate all workflows and credentials to another project.
 		if (flags.projectId ?? flags.userId) {
 			if (flags.userId && ldapIdentities.some((i) => i.userId === flags.userId)) {
-				throw new ApplicationError(
+				throw new UserError(
 					`Can't migrate workflows and credentials to the user with the ID ${flags.userId}. That user was created via LDAP and will be deleted as well.`,
 				);
 			}
 
 			if (flags.projectId && personalProjectIds.includes(flags.projectId)) {
-				throw new ApplicationError(
+				throw new UserError(
 					`Can't migrate workflows and credentials to the project with the ID ${flags.projectId}. That project is a personal project belonging to a user that was created via LDAP and will be deleted as well.`,
 				);
 			}
@@ -132,7 +132,7 @@ export class Reset extends BaseCommand {
 			const project = await Container.get(ProjectRepository).findOneBy({ id: projectId });
 
 			if (project === null) {
-				throw new ApplicationError(`Could not find the project with the ID ${projectId}.`);
+				throw new UserError(`Could not find the project with the ID ${projectId}.`);
 			}
 
 			return project;
@@ -142,7 +142,7 @@ export class Reset extends BaseCommand {
 			const project = await Container.get(ProjectRepository).getPersonalProjectForUser(userId);
 
 			if (project === null) {
-				throw new ApplicationError(
+				throw new UserError(
 					`Could not find the user with the ID ${userId} or their personalProject.`,
 				);
 			}
@@ -150,7 +150,7 @@ export class Reset extends BaseCommand {
 			return project;
 		}
 
-		throw new ApplicationError(wrongFlagsError);
+		throw new UserError(wrongFlagsError);
 	}
 
 	async catch(error: Error): Promise<void> {
@@ -161,7 +161,7 @@ export class Reset extends BaseCommand {
 	private async getOwner() {
 		const owner = await Container.get(UserRepository).findOneBy({ role: 'global:owner' });
 		if (!owner) {
-			throw new ApplicationError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
+			throw new UserError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
 		}
 
 		return owner;

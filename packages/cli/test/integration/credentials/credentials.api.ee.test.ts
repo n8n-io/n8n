@@ -28,7 +28,10 @@ import {
 	createUser,
 	createUserShell,
 } from '../shared/db/users';
-import { randomCredentialPayload } from '../shared/random';
+import {
+	randomCredentialPayload,
+	randomCredentialPayloadWithOauthTokenData,
+} from '../shared/random';
 import * as testDb from '../shared/test-db';
 import type { SaveCredentialFunction } from '../shared/types';
 import type { SuperAgentTest } from '../shared/types';
@@ -556,10 +559,11 @@ describe('GET /credentials/:id', () => {
 		expect(secondCredential.data).toBeDefined();
 	});
 
-	test('should not redact the data when `includeData:true` is passed', async () => {
+	test('should redact the data when `includeData:true` is passed', async () => {
 		const credentialService = Container.get(CredentialsService);
 		const redactSpy = jest.spyOn(credentialService, 'redact');
-		const savedCredential = await saveCredential(randomCredentialPayload(), {
+		const credential = randomCredentialPayloadWithOauthTokenData();
+		const savedCredential = await saveCredential(credential, {
 			user: owner,
 		});
 
@@ -569,7 +573,8 @@ describe('GET /credentials/:id', () => {
 
 		validateMainCredentialData(response.body.data);
 		expect(response.body.data.data).toBeDefined();
-		expect(redactSpy).not.toHaveBeenCalled();
+		expect(response.body.data.data.oauthTokenData).toBe(true);
+		expect(redactSpy).toHaveBeenCalled();
 	});
 
 	test('should retrieve non-owned cred for owner', async () => {
@@ -944,6 +949,57 @@ describe('PUT /credentials/:id/share', () => {
 		expect(sharedCredentials).toHaveLength(1);
 		expect(sharedCredentials[0].projectId).toBe(ownerPersonalProject.id);
 		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(1);
+	});
+
+	test('should ignore sharing with owner project', async () => {
+		// ARRANGE
+		const project = await projectService.createTeamProject(owner, { name: 'Team Project' });
+		const credential = await saveCredential(randomCredentialPayload(), { project });
+
+		// ACT
+		const response = await authOwnerAgent
+			.put(`/credentials/${credential.id}/share`)
+			.send({ shareWithIds: [project.id] });
+
+		const sharedCredentials = await Container.get(SharedCredentialsRepository).find({
+			where: { credentialsId: credential.id },
+		});
+
+		// ASSERT
+		expect(response.statusCode).toBe(200);
+
+		expect(sharedCredentials).toHaveLength(1);
+		expect(sharedCredentials[0].projectId).toBe(project.id);
+		expect(sharedCredentials[0].role).toBe('credential:owner');
+	});
+
+	test('should ignore sharing with project that already has it shared', async () => {
+		// ARRANGE
+		const project = await projectService.createTeamProject(owner, { name: 'Team Project' });
+		const credential = await saveCredential(randomCredentialPayload(), { project });
+
+		const project2 = await projectService.createTeamProject(owner, { name: 'Team Project 2' });
+		await shareCredentialWithProjects(credential, [project2]);
+
+		// ACT
+		const response = await authOwnerAgent
+			.put(`/credentials/${credential.id}/share`)
+			.send({ shareWithIds: [project2.id] });
+
+		const sharedCredentials = await Container.get(SharedCredentialsRepository).find({
+			where: { credentialsId: credential.id },
+		});
+
+		// ASSERT
+		expect(response.statusCode).toBe(200);
+
+		expect(sharedCredentials).toHaveLength(2);
+		expect(sharedCredentials).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ projectId: project.id, role: 'credential:owner' }),
+				expect.objectContaining({ projectId: project2.id, role: 'credential:user' }),
+			]),
+		);
 	});
 
 	test('should respond 400 if invalid payload is provided', async () => {

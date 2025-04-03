@@ -1,4 +1,5 @@
 import { AiAssistantConfig } from './configs/aiAssistant.config';
+import { AuthConfig } from './configs/auth.config';
 import { CacheConfig } from './configs/cache.config';
 import { CredentialsConfig } from './configs/credentials.config';
 import { DatabaseConfig } from './configs/database.config';
@@ -31,14 +32,17 @@ export { Config, Env, Nested } from './decorators';
 export { TaskRunnersConfig } from './configs/runners.config';
 export { SecurityConfig } from './configs/security.config';
 export { ExecutionsConfig } from './configs/executions.config';
-export { FrontendBetaFeatures, FrontendConfig } from './configs/frontend.config';
 export { S3Config } from './configs/external-storage.config';
 export { LOG_SCOPES } from './configs/logging.config';
 export type { LogScope } from './configs/logging.config';
 export { WorkflowsConfig } from './configs/workflows.config';
+export * from './custom-types';
 
 @Config
 export class GlobalConfig {
+	@Nested
+	auth: AuthConfig;
+
 	@Nested
 	database: DatabaseConfig;
 

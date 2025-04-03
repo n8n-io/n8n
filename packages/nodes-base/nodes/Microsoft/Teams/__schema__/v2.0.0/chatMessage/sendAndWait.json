@@ -1,0 +1,17 @@
+{
+    "type": "object",
+    "properties": {
+        "data": {
+            "type": "object",
+            "properties": {
+                "Approve": {
+                    "type": "string"
+                },
+                "Which changes do you want?": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 1
+}
