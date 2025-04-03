@@ -26,7 +26,6 @@ describe('Test IMap V2 utils', () => {
 			],
 		};
 
-		const staticData: IDataObject = {};
 		const imapConnection = mock<ImapSimple>({
 			search: jest.fn().mockReturnValue(Promise.resolve([message])),
 		});
@@ -74,6 +73,9 @@ describe('Test IMap V2 utils', () => {
 			];
 
 			expectedResults.forEach(async (expectedResult) => {
+				// use new staticData for each iteration
+				const tmpStaticData: IDataObject = {};
+
 				triggerFunctions.getNodeParameter
 					.calledWith('format')
 					.mockReturnValue(expectedResult.format);
@@ -85,7 +87,7 @@ describe('Test IMap V2 utils', () => {
 					triggerFunctions,
 					imapConnection,
 					[],
-					staticData,
+					tmpStaticData,
 					'',
 					getText,
 					getAttachment,
