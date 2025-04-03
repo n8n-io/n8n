@@ -1,11 +1,16 @@
-import type { ICredentialDataDecryptedObject, IHttpRequestOptions } from 'n8n-workflow';
+import { OperationalError } from 'n8n-workflow';
+import type {
+	IRequestOptions,
+	ICredentialDataDecryptedObject,
+	IHttpRequestOptions,
+} from 'n8n-workflow';
 
 import { MicrosoftAzureCosmosDbSharedKeyApi } from '../../../../../credentials/MicrosoftAzureCosmosDbSharedKeyApi.credentials';
 import { FAKE_CREDENTIALS_DATA } from '../../../../../test/nodes/FakeCredentialsMap';
 
 describe('Azure Cosmos DB', () => {
 	describe('authenticate', () => {
-		const azureStorageSharedKeyApi = new MicrosoftAzureCosmosDbSharedKeyApi();
+		const azureCosmosDbSharedKeyApi = new MicrosoftAzureCosmosDbSharedKeyApi();
 
 		it('should generate a valid authorization header', async () => {
 			jest.useFakeTimers().setSystemTime(new Date('2025-01-01T00:00:00Z'));
@@ -17,11 +22,47 @@ describe('Azure Cosmos DB', () => {
 				url: `${FAKE_CREDENTIALS_DATA.microsoftAzureCosmosDbSharedKeyApi.baseUrl}/colls/container1/docs/item1`,
 				method: 'GET',
 			};
-			const result = await azureStorageSharedKeyApi.authenticate(credentials, requestOptions);
+			const result = await azureCosmosDbSharedKeyApi.authenticate(credentials, requestOptions);
 
 			expect(result.headers?.authorization).toBe(
 				'type%3Dmaster%26ver%3D1.0%26sig%3DRuXkVr%2BEib7sX3QuhtA4BjbqbD%2BtS1G1emPvH7upycg%3D',
 			);
+		});
+
+		it('should throw an error when unable to determine the resource type from the URL', async () => {
+			const requestOptions: IRequestOptions = {
+				uri: 'https://invalid-url.com/',
+				method: 'GET',
+			};
+
+			const urlString =
+				requestOptions.uri ??
+				(requestOptions.baseURL && requestOptions.url
+					? requestOptions.baseURL + requestOptions.url
+					: '');
+			if (!urlString) {
+				throw new OperationalError('Invalid URL: Both uri and baseURL+url are missing');
+			}
+
+			const url = new URL(urlString);
+
+			const pathSegments = url.pathname.split('/').filter(Boolean);
+
+			const RESOURCE_TYPES = ['dbs', 'colls', 'docs', 'sprocs', 'udfs', 'triggers'];
+			const foundResource = RESOURCE_TYPES.map((type) => ({
+				type,
+				index: pathSegments.lastIndexOf(type),
+			}))
+				.filter(({ index }) => index !== -1)
+				.sort((a, b) => b.index - a.index)
+				.shift();
+
+			expect(foundResource).toBeUndefined();
+			expect(() => {
+				if (!foundResource) {
+					throw new OperationalError('Unable to determine the resource type from the URL');
+				}
+			}).toThrow('Unable to determine the resource type from the URL');
 		});
 	});
 });
