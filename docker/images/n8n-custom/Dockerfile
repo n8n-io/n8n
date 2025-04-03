@@ -64,6 +64,6 @@ RUN \
 
 ENV SHELL /bin/sh
 USER root
-RUN npm install -g neo4j-driver mailgun.js form-data composio-core openai @mendable/firecrawl-js resend 
+RUN npm install -g neo4j-driver mailgun.js form-data composio-core openai @mendable/firecrawl-js resend @supabase/supabase-js @pinecone-database/pinecone
 USER node
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
