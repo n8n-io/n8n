@@ -45,7 +45,9 @@ const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
 	// sub workflows
 	integrated: true,
 
+	// error workflows
 	internal: true,
+
 	manual: true,
 };
 
