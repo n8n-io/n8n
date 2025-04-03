@@ -37,13 +37,17 @@ const shouldSkipStatus: Record<ExecutionStatus, boolean> = {
 const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
 	cli: false,
 	error: false,
-	integrated: false,
 	retry: false,
 	trigger: false,
 	webhook: false,
 	evaluation: false,
 
+	// sub workflows
+	integrated: true,
+
+	// error workflows
 	internal: true,
+
 	manual: true,
 };
 
