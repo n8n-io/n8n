@@ -1,6 +1,9 @@
+import { NodeOperationError } from 'n8n-workflow';
 import nock from 'nock';
 
 import { getWorkflowFilenames, initBinaryDataService, testWorkflows } from '@test/nodes/Helpers';
+
+import { Github } from '../../Github.node';
 
 const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
 	filename.includes('GithubTestWorkflow.json'),
@@ -86,5 +89,144 @@ describe('Test Github Node', () => {
 		});
 
 		testWorkflows(workflows);
+	});
+
+	describe('Error Handling', () => {
+		let githubNode: Github;
+		let mockExecutionContext: any;
+
+		beforeEach(() => {
+			githubNode = new Github();
+			mockExecutionContext = {
+				getNode: jest.fn().mockReturnValue({ name: 'Github' }),
+				getNodeParameter: jest.fn(),
+				getInputData: jest.fn().mockReturnValue([{ json: {} }]),
+				continueOnFail: jest.fn().mockReturnValue(false),
+				putExecutionToWait: jest.fn(),
+				getCredentials: jest.fn().mockResolvedValue({
+					server: 'https://api.github.com',
+					user: 'test',
+					accessToken: 'test',
+				}),
+				helpers: {
+					returnJsonArray: jest.fn().mockReturnValue([{ json: {} }]),
+					httpRequest: jest.fn(),
+					httpRequestWithAuthentication: jest.fn(),
+					requestWithAuthentication: jest
+						.fn()
+						.mockImplementation(async (credentialType, options) => {
+							if (options.uri.includes('dispatches') && options.method === 'POST') {
+								const error: any = new Error('Not Found');
+								error.statusCode = 404;
+								error.message = 'Not Found';
+								throw error;
+							}
+							return {};
+						}),
+					request: jest.fn(),
+					constructExecutionMetaData: jest.fn().mockReturnValue([{ json: {} }]),
+					assertBinaryData: jest.fn(),
+					prepareBinaryData: jest.fn(),
+				},
+				getWorkflowDataProxy: jest.fn().mockReturnValue({
+					$execution: {
+						resumeUrl: 'https://example.com/webhook',
+					},
+				}),
+			};
+		});
+
+		it('should throw NodeOperationError for invalid JSON inputs', async () => {
+			mockExecutionContext.getNodeParameter.mockImplementation((parameterName: string) => {
+				if (parameterName === 'inputs') {
+					return 'invalid json';
+				}
+				if (parameterName === 'resource') {
+					return 'workflow';
+				}
+				if (parameterName === 'operation') {
+					return 'dispatchAndWait';
+				}
+				if (parameterName === 'authentication') {
+					return 'accessToken';
+				}
+				return '';
+			});
+
+			await expect(async () => {
+				await githubNode.execute.call(mockExecutionContext);
+			}).rejects.toThrow(NodeOperationError);
+		});
+
+		it('should throw NodeOperationError for 404 errors when dispatching a workflow', async () => {
+			const owner = 'testOwner';
+			const repository = 'testRepository';
+			const workflowId = 147025216;
+
+			mockExecutionContext.helpers.requestWithAuthentication.mockRejectedValueOnce({
+				statusCode: 404,
+				message: 'Not Found',
+			});
+
+			mockExecutionContext.getNodeParameter.mockImplementation((parameterName: string) => {
+				if (parameterName === 'owner') {
+					return owner;
+				}
+				if (parameterName === 'repository') {
+					return repository;
+				}
+				if (parameterName === 'workflowId') {
+					return workflowId;
+				}
+				if (parameterName === 'inputs') {
+					return '{}';
+				}
+				if (parameterName === 'ref') {
+					return 'main';
+				}
+				if (parameterName === 'resource') {
+					return 'workflow';
+				}
+				if (parameterName === 'operation') {
+					return 'dispatchAndWait';
+				}
+				if (parameterName === 'authentication') {
+					return 'accessToken';
+				}
+				return '';
+			});
+
+			await expect(async () => {
+				await githubNode.execute.call(mockExecutionContext);
+			}).rejects.toThrow(/The workflow to dispatch could not be found/);
+		});
+	});
+
+	describe('Parameter Extraction', () => {
+		it('should use extractValue for workflowId parameter', () => {
+			const githubNode = new Github();
+			const description = githubNode.description;
+
+			const workflowIdParam = description.properties.find((prop) => prop.name === 'workflowId');
+
+			expect(workflowIdParam).toBeDefined();
+			expect(workflowIdParam?.type).toBe('resourceLocator');
+
+			const workflowOperations = description.properties.find(
+				(prop) =>
+					prop.name === 'operation' && prop.displayOptions?.show?.resource?.includes('workflow'),
+			);
+
+			expect(workflowOperations).toBeDefined();
+			expect(workflowOperations?.options).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ value: 'disable' }),
+					expect.objectContaining({ value: 'dispatch' }),
+					expect.objectContaining({ value: 'enable' }),
+					expect.objectContaining({ value: 'get' }),
+					expect.objectContaining({ value: 'getUsage' }),
+				]),
+			);
+		});
 	});
 });
