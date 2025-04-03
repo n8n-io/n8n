@@ -4685,6 +4685,40 @@ describe('NodeHelpers', () => {
 				false,
 			],
 			[
+				'Should return true if @tool is true in nodeTypeDescription of tool',
+				{
+					...defaultTestInput,
+					nodeTypeDescription: {
+						...testNodeType,
+						name: testNodeType.name + 'Tool',
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@tool': [true],
+							},
+						},
+					},
+				},
+				true,
+			],
+			[
+				'Should return false if @tool is true in nodeTypeDescription of non-tool',
+				{
+					...defaultTestInput,
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@tool': [true],
+							},
+						},
+					},
+				},
+				false,
+			],
+			[
 				'Should return true if @version condition is met',
 				{
 					...defaultTestInput,
@@ -4721,6 +4755,66 @@ describe('NodeHelpers', () => {
 						...defaultTestInput.parameter,
 						displayOptions: {
 							show: {
+								'@version': [
+									{
+										_cnd: {
+											gte: 2,
+										},
+									},
+								],
+							},
+						},
+					},
+				},
+				false,
+			],
+			[
+				'Should return true if @tool and @version conditions are both met',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						name: testNodeType.name + 'Tool',
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@tool': [true],
+								'@version': [
+									{
+										_cnd: {
+											gte: 2,
+										},
+									},
+								],
+							},
+						},
+					},
+				},
+				true,
+			],
+			[
+				'Should return false if @tool is true but @version condition is not met',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 1,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						name: testNodeType.name + 'Tool',
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@tool': [true],
 								'@version': [
 									{
 										_cnd: {

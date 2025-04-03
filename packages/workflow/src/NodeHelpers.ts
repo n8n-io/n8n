@@ -392,7 +392,7 @@ const getPropertyValues = (
 	nodeValues: INodeParameters,
 	propertyName: string,
 	node: Pick<INode, 'typeVersion'> | null,
-	_nodeTypeDescription: INodeTypeDescription | null,
+	nodeTypeDescription: INodeTypeDescription | null,
 	nodeValuesRoot: INodeParameters,
 ) => {
 	let value;
@@ -401,6 +401,8 @@ const getPropertyValues = (
 		value = get(nodeValuesRoot, propertyName.slice(1));
 	} else if (propertyName === '@version') {
 		value = node?.typeVersion || 0;
+	} else if (propertyName === '@tool') {
+		value = nodeTypeDescription?.name.endsWith('Tool') ?? false;
 	} else {
 		// Get the value from current level
 		value = get(nodeValues, propertyName);
