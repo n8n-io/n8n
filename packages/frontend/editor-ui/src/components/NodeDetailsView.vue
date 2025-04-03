@@ -281,31 +281,23 @@ const maxInputRun = computed(() => {
 	return 0;
 });
 
-const runInputIndex = computed(() =>
-	ndvStore.input.run > maxInputRun.value ? -1 : ndvStore.input.run,
-);
-
-const runOutputIndex = computed(() =>
-	ndvStore.output.run > maxOutputRun.value ? -1 : ndvStore.output.run,
-);
-
 const isLinkingEnabled = computed(() => ndvStore.isRunIndexLinkingEnabled);
 
 const outputRun = computed(() =>
-	runOutputIndex.value === -1
+	ndvStore.output.run === -1
 		? maxOutputRun.value
-		: Math.min(runOutputIndex.value, maxOutputRun.value),
+		: Math.min(ndvStore.output.run, maxOutputRun.value),
 );
 
 const inputRun = computed(() => {
 	if (isLinkingEnabled.value && maxOutputRun.value === maxInputRun.value) {
 		return outputRun.value;
 	}
-	if (runInputIndex.value === -1) {
+	if (ndvStore.input.run === -1) {
 		return maxInputRun.value;
 	}
 
-	return Math.min(runInputIndex.value, maxInputRun.value);
+	return Math.min(ndvStore.input.run, maxInputRun.value);
 });
 
 const canLinkRuns = computed(
@@ -455,7 +447,7 @@ const onLinkRunToOutput = () => {
 };
 
 const onUnlinkRun = (pane: string) => {
-	ndvStore.setInputRunIndex(runOutputIndex.value);
+	ndvStore.setInputRunIndex(outputRun.value);
 	ndvStore.setRunIndexLinkingEnabled(false);
 	trackLinking(pane);
 };
@@ -483,7 +475,7 @@ const trackLinking = (pane: string) => {
 };
 
 const onLinkRunToInput = () => {
-	ndvStore.setOutputRunIndex(runInputIndex.value);
+	ndvStore.setOutputRunIndex(inputRun.value);
 	ndvStore.setRunIndexLinkingEnabled(true);
 	trackLinking('input');
 };
@@ -678,12 +670,6 @@ watch(
 watch(inputNodeName, (nodeName) => {
 	setTimeout(() => {
 		ndvStore.setInputNodeName(nodeName);
-	}, 0);
-});
-
-watch(inputRun, (inputRun) => {
-	setTimeout(() => {
-		ndvStore.setInputRunIndex(inputRun);
 	}, 0);
 });
 
