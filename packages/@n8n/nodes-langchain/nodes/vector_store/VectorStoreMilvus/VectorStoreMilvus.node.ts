@@ -1,7 +1,12 @@
 import type { Milvus } from '@langchain/community/vectorstores/milvus';
 import { UnexpectedError } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
+import { milvusCollectionsSearch } from '../shared/createVectorStoreNode/methods/listSearch';
+import { milvusCollectionRLC } from '../shared/descriptions';
+
+const sharedFields: INodeProperties[] = [milvusCollectionRLC];
 
 export class VectorStoreMilvus extends createVectorStoreNode<Milvus>({
 	meta: {
@@ -13,11 +18,15 @@ export class VectorStoreMilvus extends createVectorStoreNode<Milvus>({
 			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoremilvus/',
 		// operationModes: ['load', 'insert', 'retrieve', 'update', 'retrieve-as-tool'],
 	},
-	sharedFields: [],
+	methods: { listSearch: { milvusCollectionsSearch } },
+
+	sharedFields,
 	async populateVectorStore(context, embeddings, documents, itemIndex): Promise<void> {
+		// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
 		throw new UnexpectedError('Function not implemented.');
 	},
 	async getVectorStoreClient(context, filter, embeddings, itemIndex): Promise<Milvus> {
+		// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
 		throw new UnexpectedError('Function not implemented.');
 	},
 }) {}
