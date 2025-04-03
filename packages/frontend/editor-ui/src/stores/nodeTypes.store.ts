@@ -289,7 +289,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 			throw new Error('Could not fetch node types');
 		}
 
-		let communityTypes = (await nodeTypesApi.getCommunityNodeTypes()) ?? [];
+		let communityTypes = (await nodeTypesApi.getCommunityNodeTypes(rootStore.restApiContext)) ?? [];
 
 		const communityNodesStore = useCommunityNodesStore();
 
