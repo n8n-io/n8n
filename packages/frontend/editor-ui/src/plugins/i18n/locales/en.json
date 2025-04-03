@@ -3074,7 +3074,10 @@
 	"insights.banner.timeSaved.tooltip.link.text": "add time estimates",
 	"insights.banner.title.total": "Total",
 	"insights.banner.title.failed": "Failed",
+	"insights.banner.title.succeeded": "Succeeded",
 	"insights.banner.title.failureRate": "Failure rate",
 	"insights.banner.title.timeSaved": "Time saved",
-	"insights.banner.title.averageRunTime": "Avg. run time"
+	"insights.banner.title.timeSavedDailyAverage": "Time saved daily avg.",
+	"insights.banner.title.averageRunTime": "Avg. run time",
+	"insights.dashboard.title": "Insights"
 }
