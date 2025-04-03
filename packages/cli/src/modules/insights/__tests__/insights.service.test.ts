@@ -153,30 +153,31 @@ describe('workflowExecuteAfterHandler', () => {
 		expect(allInsights).toHaveLength(0);
 	});
 
-	test.each<{ mode: WorkflowExecuteMode }>([{ mode: 'internal' }, { mode: 'manual' }])(
-		'does not store events for executions with the mode `$mode`',
-		async ({ mode }) => {
-			// ARRANGE
-			const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
-			const startedAt = DateTime.utc();
-			const stoppedAt = startedAt.plus({ seconds: 5 });
-			const run = mock<IRun>({
-				mode,
-				status: 'success',
-				startedAt: startedAt.toJSDate(),
-				stoppedAt: stoppedAt.toJSDate(),
-			});
+	test.each<{ mode: WorkflowExecuteMode }>([
+		{ mode: 'internal' },
+		{ mode: 'manual' },
+		{ mode: 'integrated' },
+	])('does not store events for executions with the mode `$mode`', async ({ mode }) => {
+		// ARRANGE
+		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
+		const startedAt = DateTime.utc();
+		const stoppedAt = startedAt.plus({ seconds: 5 });
+		const run = mock<IRun>({
+			mode,
+			status: 'success',
+			startedAt: startedAt.toJSDate(),
+			stoppedAt: stoppedAt.toJSDate(),
+		});
 
-			// ACT
-			await insightsService.workflowExecuteAfterHandler(ctx, run);
+		// ACT
+		await insightsService.workflowExecuteAfterHandler(ctx, run);
 
-			// ASSERT
-			const metadata = await insightsMetadataRepository.findOneBy({ workflowId: workflow.id });
-			const allInsights = await insightsRawRepository.find();
-			expect(metadata).toBeNull();
-			expect(allInsights).toHaveLength(0);
-		},
-	);
+		// ASSERT
+		const metadata = await insightsMetadataRepository.findOneBy({ workflowId: workflow.id });
+		const allInsights = await insightsRawRepository.find();
+		expect(metadata).toBeNull();
+		expect(allInsights).toHaveLength(0);
+	});
 
 	test.each<{ mode: WorkflowExecuteMode }>([
 		{ mode: 'evaluation' },
@@ -185,7 +186,6 @@ describe('workflowExecuteAfterHandler', () => {
 		{ mode: 'retry' },
 		{ mode: 'trigger' },
 		{ mode: 'webhook' },
-		{ mode: 'integrated' },
 	])('stores events for executions with the mode `$mode`', async ({ mode }) => {
 		// ARRANGE
 		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
