@@ -1,8 +1,25 @@
+import { reactive } from 'vue';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { InsightsSummaryDisplay } from '@/features/insights/insights.types';
 
-const renderComponent = createComponentRenderer(InsightsSummary);
+vi.mock('vue-router', () => ({
+	useRouter: () => ({}),
+	useRoute: () => reactive({}),
+	RouterLink: {
+		template: '<a><slot /></a>',
+	},
+}));
+
+const renderComponent = createComponentRenderer(InsightsSummary, {
+	global: {
+		stubs: {
+			'router-link': {
+				template: '<a><slot /></a>',
+			},
+		},
+	},
+});
 
 describe('InsightsSummary', () => {
 	it('should render without error', () => {
