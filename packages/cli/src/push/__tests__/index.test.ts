@@ -41,7 +41,7 @@ describe('Push', () => {
 		// @ts-expect-error `jest.spyOn` typings don't allow `constructor`
 		const wssSpy = jest.spyOn(WSServer.prototype, 'constructor') as jest.SpyInstance<WSServer>;
 
-		describe('SSE backend', () => {
+		describe('sse backend', () => {
 			test('should not create a WebSocket server', () => {
 				config.backend = 'sse';
 				push = new Push(config, mock(), mock(), mock(), mock());
@@ -53,7 +53,7 @@ describe('Push', () => {
 			});
 		});
 
-		describe('WebSocket backend', () => {
+		describe('websocket backend', () => {
 			let onUpgrade: (request: WebSocketPushRequest, socket: Socket, head: Buffer) => void;
 			const wsServer = mock<WSServer>();
 			const socket = mock<Socket>();
@@ -114,6 +114,8 @@ describe('Push', () => {
 	describe('handleRequest', () => {
 		const req = mock<SSEPushRequest | WebSocketPushRequest>({ user });
 		const res = mock<PushResponse>();
+		const ws = mock<WebSocket>();
+		const backendNames = ['sse', 'websocket'] as const;
 
 		beforeEach(() => {
 			res.status.mockReturnThis();
@@ -123,21 +125,13 @@ describe('Push', () => {
 			req.query = { pushRef };
 		});
 
-		describe('SSE backend', () => {
+		describe.each(backendNames)('%s backend', (backendName) => {
+			const backend = backendName === 'sse' ? sseBackend : wsBackend;
+
 			beforeEach(() => {
-				config.backend = 'sse';
+				config.backend = backendName;
 				push = new Push(config, mock(), mock(), mock(), mock());
-				req.ws = undefined;
-			});
-
-			test('should throw if pushRef is invalid', () => {
-				req.query = { pushRef: '' };
-
-				expect(() => push.handleRequest(req, res)).toThrow(
-					new BadRequestError('The query parameter "pushRef" is missing!'),
-				);
-
-				expect(sseBackend.add).not.toHaveBeenCalled();
+				req.ws = backendName === 'sse' ? undefined : ws;
 			});
 
 			describe('should throw on invalid origin', () => {
@@ -146,12 +140,33 @@ describe('Push', () => {
 					(origin) => {
 						req.headers.origin = origin;
 
-						expect(() => push.handleRequest(req, res)).toThrow(
-							new BadRequestError('Invalid origin!'),
-						);
-						expect(sseBackend.add).not.toHaveBeenCalled();
+						if (backendName === 'sse') {
+							expect(() => push.handleRequest(req, res)).toThrow(
+								new BadRequestError('Invalid origin!'),
+							);
+						} else {
+							push.handleRequest(req, res);
+							expect(ws.send).toHaveBeenCalledWith('Invalid origin!');
+							expect(ws.close).toHaveBeenCalledWith(1008);
+						}
+						expect(backend.add).not.toHaveBeenCalled();
 					},
 				);
+			});
+
+			test('should throw if pushRef is invalid', () => {
+				req.query = { pushRef: '' };
+
+				if (backendName === 'sse') {
+					expect(() => push.handleRequest(req, res)).toThrow(
+						new BadRequestError('The query parameter "pushRef" is missing!'),
+					);
+				} else {
+					push.handleRequest(req, mock());
+					expect(ws.send).toHaveBeenCalled();
+					expect(ws.close).toHaveBeenCalledWith(1008);
+				}
+				expect(backend.add).not.toHaveBeenCalled();
 			});
 
 			test('should add the connection if pushRef is valid', () => {
@@ -159,66 +174,22 @@ describe('Push', () => {
 
 				push.handleRequest(req, res);
 
-				expect(sseBackend.add).toHaveBeenCalledWith(pushRef, user.id, {
-					req,
-					res,
+				const connection = backendName === 'sse' ? { req, res } : ws;
+				expect(backend.add).toHaveBeenCalledWith(pushRef, user.id, connection);
+				expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
+			});
+
+			if (backendName === 'websocket') {
+				test('should respond with 401 if request is not WebSocket', () => {
+					req.ws = undefined;
+
+					push.handleRequest(req, res);
+
+					expect(res.status).toHaveBeenCalledWith(401);
+					expect(res.send).toHaveBeenCalledWith('Unauthorized');
+					expect(backend.add).not.toHaveBeenCalled();
 				});
-				expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
-			});
-		});
-
-		describe('WebSocket backend', () => {
-			const ws = mock<WebSocket>();
-
-			beforeEach(() => {
-				config.backend = 'websocket';
-				push = new Push(config, mock(), mock(), mock(), mock());
-				req.ws = ws;
-			});
-
-			test('should throw if pushRef is invalid', () => {
-				req.query = { pushRef: '' };
-
-				push.handleRequest(req, mock());
-
-				expect(ws.send).toHaveBeenCalled();
-				expect(ws.close).toHaveBeenCalledWith(1008);
-				expect(wsBackend.add).not.toHaveBeenCalled();
-			});
-
-			describe('should throw on invalid origin', () => {
-				test.each(['https://subdomain.example.com', 'https://123example.com', undefined])(
-					'%s',
-					(origin) => {
-						req.headers.origin = origin;
-
-						push.handleRequest(req, res);
-
-						expect(ws.send).toHaveBeenCalledWith('Invalid origin!');
-						expect(ws.close).toHaveBeenCalledWith(1008);
-						expect(wsBackend.add).not.toHaveBeenCalled();
-					},
-				);
-			});
-
-			test('should respond with 401 if request is not WebSocket', () => {
-				req.ws = undefined;
-
-				push.handleRequest(req, res);
-
-				expect(res.status).toHaveBeenCalledWith(401);
-				expect(res.send).toHaveBeenCalledWith('Unauthorized');
-				expect(wsBackend.add).not.toHaveBeenCalled();
-			});
-
-			test('should add the connection when pushRef is valid', () => {
-				const emitSpy = jest.spyOn(push, 'emit');
-
-				push.handleRequest(req, res);
-
-				expect(wsBackend.add).toHaveBeenCalledWith(pushRef, user.id, ws);
-				expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
-			});
+			}
 		});
 	});
 });
