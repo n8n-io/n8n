@@ -64,6 +64,8 @@ import { useUsageStore } from '@/stores/usage.store';
 import { useInsightsStore } from '@/features/insights/insights.store';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useOverview } from '@/composables/useOverview';
+import { PROJECT_ROOT } from 'n8n-workflow';
+import { should } from 'vitest';
 
 const SEARCH_DEBOUNCE_TIME = 300;
 const FILTERS_DEBOUNCE_TIME = 100;
@@ -468,6 +470,12 @@ const fetchWorkflows = async () => {
 	// Only fetch folders if showFolders is enabled and there are not tags or active filter applied
 	const fetchFolders = showFolders.value && !tags.length && activeFilter === undefined;
 
+	const areFiltersApplied =
+		filters.value.search ||
+		filters.value.status !== StatusFilter.ALL ||
+		filters.value.homeProject ||
+		tags.length;
+
 	try {
 		const fetchedResources = await workflowsStore.fetchWorkflowsPage(
 			routeProjectId ?? homeProjectFilter,
@@ -480,7 +488,7 @@ const fetchWorkflows = async () => {
 				tags: tags.length ? tags : undefined,
 				parentFolderId:
 					parentFolder ??
-					(isOverviewPage.value ? undefined : filters?.value.search ? undefined : '0'), // Sending 0 will only show one level of folders
+					(isOverviewPage.value ? undefined : areFiltersApplied ? undefined : PROJECT_ROOT),
 			},
 			fetchFolders,
 		);
