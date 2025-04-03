@@ -42,6 +42,8 @@ export class McpServerData {
 
 	private _tools: { [sessionId: string]: Tool[] } = {};
 
+	private _resolveFunctions: { [sessionId: string]: CallableFunction } = {};
+
 	constructor() {
 		this.server = this.setUpServer();
 	}
@@ -65,7 +67,11 @@ export class McpServerData {
 		const transport = this.transports[sessionId];
 		this._tools[sessionId] = connectedTools;
 		if (transport) {
-			await transport.handlePostMessage(req, resp, req.rawBody.toString());
+			await new Promise(async (resolve) => {
+				this._resolveFunctions[sessionId] = resolve;
+				await transport.handlePostMessage(req, resp, req.rawBody.toString());
+			});
+			delete this._resolveFunctions[sessionId];
 		} else {
 			resp.status(400).send('No transport found for sessionId');
 		}
@@ -127,6 +133,9 @@ export class McpServerData {
 			// TODO: Add propper logging / n8n logger wrapper stuff
 			try {
 				const result = await requestedTool.invoke(request.params.arguments);
+
+				this._resolveFunctions[extra.sessionId]();
+
 				// TODO: Refactor this to no longer use the legacy tool result, but
 				return { toolResult: result };
 			} catch (error) {
