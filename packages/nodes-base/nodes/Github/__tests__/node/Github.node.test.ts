@@ -200,6 +200,242 @@ describe('Test Github Node', () => {
 				await githubNode.execute.call(mockExecutionContext);
 			}).rejects.toThrow(/The workflow to dispatch could not be found/);
 		});
+
+		it('should throw NodeApiError for general API errors', async () => {
+			const owner = 'testOwner';
+			const repository = 'testRepository';
+			const workflowId = 147025216;
+
+			mockExecutionContext.helpers.requestWithAuthentication.mockRejectedValueOnce({
+				statusCode: 500,
+				message: 'Internal Server Error',
+			});
+
+			mockExecutionContext.getNodeParameter.mockImplementation((parameterName: string) => {
+				if (parameterName === 'owner') {
+					return owner;
+				}
+				if (parameterName === 'repository') {
+					return repository;
+				}
+				if (parameterName === 'workflowId') {
+					return workflowId;
+				}
+				if (parameterName === 'inputs') {
+					return '{}';
+				}
+				if (parameterName === 'ref') {
+					return 'main';
+				}
+				if (parameterName === 'resource') {
+					return 'workflow';
+				}
+				if (parameterName === 'operation') {
+					return 'dispatch';
+				}
+				if (parameterName === 'authentication') {
+					return 'accessToken';
+				}
+				return '';
+			});
+
+			await expect(async () => {
+				await githubNode.execute.call(mockExecutionContext);
+			}).rejects.toThrow();
+		});
+	});
+
+	describe('Workflow Operations', () => {
+		let githubNode: Github;
+		let mockExecutionContext: any;
+
+		beforeEach(() => {
+			githubNode = new Github();
+			mockExecutionContext = {
+				getNode: jest.fn().mockReturnValue({ name: 'Github' }),
+				getNodeParameter: jest.fn(),
+				getInputData: jest.fn().mockReturnValue([{ json: {} }]),
+				continueOnFail: jest.fn().mockReturnValue(false),
+				getCredentials: jest.fn().mockResolvedValue({
+					server: 'https://api.github.com',
+					user: 'test',
+					accessToken: 'test',
+				}),
+				helpers: {
+					returnJsonArray: jest.fn().mockReturnValue([{ json: {} }]),
+					requestWithAuthentication: jest.fn().mockResolvedValue({}),
+					constructExecutionMetaData: jest.fn().mockReturnValue([{ json: {} }]),
+				},
+			};
+		});
+
+		it('should use extractValue for workflowId in disable operation', async () => {
+			const owner = 'testOwner';
+			const repository = 'testRepository';
+			const workflowId = 147025216;
+
+			mockExecutionContext.getNodeParameter.mockImplementation(
+				(parameterName: string, itemIndex: number, defaultValue: string, options?: any) => {
+					if (parameterName === 'owner') {
+						return owner;
+					}
+					if (parameterName === 'repository') {
+						return repository;
+					}
+					if (parameterName === 'workflowId') {
+						expect(options).toBeDefined();
+						expect(options.extractValue).toBe(true);
+						return workflowId;
+					}
+					if (parameterName === 'resource') {
+						return 'workflow';
+					}
+					if (parameterName === 'operation') {
+						return 'disable';
+					}
+					if (parameterName === 'authentication') {
+						return 'accessToken';
+					}
+					return defaultValue;
+				},
+			);
+
+			await githubNode.execute.call(mockExecutionContext);
+
+			expect(mockExecutionContext.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					method: 'PUT',
+					uri: `https://api.github.com/repos/${owner}/${repository}/actions/workflows/${workflowId}/disable`,
+				}),
+			);
+		});
+
+		it('should use extractValue for workflowId in enable operation', async () => {
+			const owner = 'testOwner';
+			const repository = 'testRepository';
+			const workflowId = 147025216;
+
+			mockExecutionContext.getNodeParameter.mockImplementation(
+				(parameterName: string, itemIndex: number, defaultValue: string, options?: any) => {
+					if (parameterName === 'owner') {
+						return owner;
+					}
+					if (parameterName === 'repository') {
+						return repository;
+					}
+					if (parameterName === 'workflowId') {
+						expect(options).toBeDefined();
+						expect(options.extractValue).toBe(true);
+						return workflowId;
+					}
+					if (parameterName === 'resource') {
+						return 'workflow';
+					}
+					if (parameterName === 'operation') {
+						return 'enable';
+					}
+					if (parameterName === 'authentication') {
+						return 'accessToken';
+					}
+					return defaultValue;
+				},
+			);
+
+			await githubNode.execute.call(mockExecutionContext);
+
+			expect(mockExecutionContext.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					method: 'PUT',
+					uri: `https://api.github.com/repos/${owner}/${repository}/actions/workflows/${workflowId}/enable`,
+				}),
+			);
+		});
+
+		it('should use extractValue for workflowId in get operation', async () => {
+			const owner = 'testOwner';
+			const repository = 'testRepository';
+			const workflowId = 147025216;
+
+			mockExecutionContext.getNodeParameter.mockImplementation(
+				(parameterName: string, itemIndex: number, defaultValue: string, options?: any) => {
+					if (parameterName === 'owner') {
+						return owner;
+					}
+					if (parameterName === 'repository') {
+						return repository;
+					}
+					if (parameterName === 'workflowId') {
+						expect(options).toBeDefined();
+						expect(options.extractValue).toBe(true);
+						return workflowId;
+					}
+					if (parameterName === 'resource') {
+						return 'workflow';
+					}
+					if (parameterName === 'operation') {
+						return 'get';
+					}
+					if (parameterName === 'authentication') {
+						return 'accessToken';
+					}
+					return defaultValue;
+				},
+			);
+
+			await githubNode.execute.call(mockExecutionContext);
+
+			expect(mockExecutionContext.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					method: 'GET',
+					uri: `https://api.github.com/repos/${owner}/${repository}/actions/workflows/${workflowId}`,
+				}),
+			);
+		});
+
+		it('should use extractValue for workflowId in getUsage operation', async () => {
+			const owner = 'testOwner';
+			const repository = 'testRepository';
+			const workflowId = 147025216;
+
+			mockExecutionContext.getNodeParameter.mockImplementation(
+				(parameterName: string, itemIndex: number, defaultValue: string, options?: any) => {
+					if (parameterName === 'owner') {
+						return owner;
+					}
+					if (parameterName === 'repository') {
+						return repository;
+					}
+					if (parameterName === 'workflowId') {
+						expect(options).toBeDefined();
+						expect(options.extractValue).toBe(true);
+						return workflowId;
+					}
+					if (parameterName === 'resource') {
+						return 'workflow';
+					}
+					if (parameterName === 'operation') {
+						return 'getUsage';
+					}
+					if (parameterName === 'authentication') {
+						return 'accessToken';
+					}
+					return defaultValue;
+				},
+			);
+
+			await githubNode.execute.call(mockExecutionContext);
+
+			expect(mockExecutionContext.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					method: 'GET',
+					uri: `https://api.github.com/repos/${owner}/${repository}/actions/workflows/${workflowId}/timing`,
+				}),
+			);
+		});
 	});
 
 	describe('Parameter Extraction', () => {
