@@ -62,12 +62,9 @@ export function useChatState(isDisabled: Ref<boolean>, onWindowResize: () => voi
 
 	const { sendMessage, isLoading } = useChatMessaging({
 		chatTrigger: chatTriggerNode,
-		connectedNode,
 		messages,
 		sessionId: currentSessionId,
-		workflow,
 		executionResultData: computed(() => workflowsStore.getWorkflowExecution?.data?.resultData),
-		getWorkflowResultDataByNodeName: workflowsStore.getWorkflowResultDataByNodeName,
 		onRunChatWorkflow,
 	});
 

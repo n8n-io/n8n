@@ -10,7 +10,6 @@ import type {
 	IDataObject,
 	IBinaryData,
 	BinaryFileType,
-	Workflow,
 	IRunExecutionData,
 } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
@@ -29,12 +28,9 @@ export type RunWorkflowChatPayload = {
 };
 export interface ChatMessagingDependencies {
 	chatTrigger: Ref<INodeUi | null>;
-	connectedNode: Ref<INodeUi | null>;
 	messages: Ref<ChatMessage[]>;
 	sessionId: Ref<string>;
-	workflow: ComputedRef<Workflow>;
 	executionResultData: ComputedRef<IRunExecutionData['resultData'] | undefined>;
-	getWorkflowResultDataByNodeName: (nodeName: string) => ITaskData[] | null;
 	onRunChatWorkflow: (
 		payload: RunWorkflowChatPayload,
 	) => Promise<IExecutionPushResponse | undefined>;
@@ -42,12 +38,9 @@ export interface ChatMessagingDependencies {
 
 export function useChatMessaging({
 	chatTrigger,
-	connectedNode,
 	messages,
 	sessionId,
-	workflow,
 	executionResultData,
-	getWorkflowResultDataByNodeName,
 	onRunChatWorkflow,
 }: ChatMessagingDependencies) {
 	const locale = useI18n();
