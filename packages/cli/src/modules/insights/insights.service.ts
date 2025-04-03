@@ -72,7 +72,7 @@ export class InsightsService {
 		private readonly insightsRawRepository: InsightsRawRepository,
 		private readonly logger: Logger,
 	) {
-		this.logger.scoped('insights');
+		this.logger = this.logger.scoped('insights');
 		this.initializeCompaction();
 		this.scheduleFlushing();
 	}
