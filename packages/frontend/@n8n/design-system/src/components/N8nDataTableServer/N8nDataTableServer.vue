@@ -186,6 +186,11 @@ function mapHeaders(columns: Array<TableHeader<T>>) {
 			id: `display_column_${index}`,
 			header: () => getHeaderTitle(column),
 			size: column.width,
+			meta: {
+				cellProps: {
+					align: column.align,
+				},
+			},
 		});
 	});
 }
