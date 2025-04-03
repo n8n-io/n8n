@@ -118,6 +118,8 @@ export class ControllerRegistry {
 				...route.middlewares,
 				route.usesTemplates
 					? async (req, res) => {
+							// When using templates, intentionally drop the return value,
+							// since template rendering writes directly to the response.
 							await handler(req, res);
 						}
 					: send(handler),
