@@ -106,10 +106,10 @@ export const LICENSE_QUOTAS = {
 	WORKFLOW_HISTORY_PRUNE_LIMIT: 'quota:workflowHistoryPrune',
 	TEAM_PROJECT_LIMIT: 'quota:maxTeamProjects',
 	AI_CREDITS: 'quota:aiCredits',
-	INSIGHTS_RANGE: 'quota:insights:range',
-	INSIGHTS_GRANULARITY: 'quota:insights:granularity',
-	INSIGHTS_RETENTION_MAX_AGE: 'quota:insights:retention:maxAge',
-	INSIGHTS_RETENTION_PRUNE_INTERVAL: 'quota:insights:retention:pruneInterval',
+	INSIGHTS_MAX_HISTORY_DAYS: 'quota:insights:maxHistoryDays',
+	INSIGHTS_LOWEST_GRANULARITY_HOURS: 'quota:insights:lowestGranularityHours',
+	INSIGHTS_RETENTION_MAX_AGE_DAYS: 'quota:insights:retention:maxAgeDays',
+	INSIGHTS_RETENTION_PRUNE_INTERVAL_DAYS: 'quota:insights:retention:pruneIntervalDays',
 } as const;
 export const UNLIMITED_LICENSE_QUOTA = -1;
 
