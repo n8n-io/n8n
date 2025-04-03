@@ -35,7 +35,7 @@ export class InsightsConfig {
 	 * Default: 100
 	 */
 	@Env('N8N_INSIGHTS_FLUSH_BATCH_SIZE')
-	flushBatchSize: number = 100;
+	flushBatchSize: number = 1000;
 
 	/**
 	 * The interval in seconds at which the insights data should be flushed to the database.

@@ -1,5 +1,6 @@
 import type { InsightsSummary } from '@n8n/api-types';
 import { Container, Service } from '@n8n/di';
+import { In } from '@n8n/typeorm';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 import {
 	UnexpectedError,
@@ -53,9 +54,11 @@ const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
 
 @Service()
 export class InsightsService {
-	private readonly cachedMetadata: Record<string, InsightsMetadata> = {};
+	// private readonly cachedMetadata: Record<string, InsightsMetadata> = {};
 
-	private readonly insightsRawToInsertBuffer: InsightsRaw[] = [];
+	private insightsRawToInsertBuffer: Set<
+		Pick<InsightsRaw, 'type' | 'value'> & { workflowId: string }
+	> = new Set();
 
 	private compactInsightsTimer: NodeJS.Timer | undefined;
 
@@ -109,93 +112,47 @@ export class InsightsService {
 		await this.flushEvents();
 	}
 
-	async workflowExecuteAfterHandler(ctx: ExecutionLifecycleHooks, fullRunData: IRun) {
+	workflowExecuteAfterHandler(ctx: ExecutionLifecycleHooks, fullRunData: IRun) {
 		if (shouldSkipStatus[fullRunData.status] || shouldSkipMode[fullRunData.mode]) {
 			return;
 		}
 
 		const status = fullRunData.status === 'success' ? 'success' : 'failure';
 
-		let metadata = this.cachedMetadata[ctx.workflowData.id];
-		await this.sharedWorkflowRepository.manager.transaction(async (trx) => {
-			const sharedWorkflow = await trx.findOne(SharedWorkflow, {
-				where: { workflowId: ctx.workflowData.id, role: 'workflow:owner' },
-				relations: { project: true },
-			});
-
-			if (!sharedWorkflow) {
-				throw new UnexpectedError(
-					`Could not find an owner for the workflow with the name '${ctx.workflowData.name}' and the id '${ctx.workflowData.id}'`,
-				);
-			}
-
-			if (
-				metadata === undefined ||
-				metadata.projectId !== sharedWorkflow.projectId ||
-				metadata.projectName !== sharedWorkflow.project.name ||
-				metadata.workflowName !== ctx.workflowData.name
-			) {
-				await trx.upsert(
-					InsightsMetadata,
-					{
-						workflowId: ctx.workflowData.id,
-						workflowName: ctx.workflowData.name,
-						projectId: sharedWorkflow.projectId,
-						projectName: sharedWorkflow.project.name,
-					},
-					['workflowId'],
-				);
-				const upsertMetadata = await trx.findOneBy(InsightsMetadata, {
-					workflowId: ctx.workflowData.id,
-				});
-
-				if (!upsertMetadata) {
-					// This can't happen, we just wrote the metadata in the same
-					// transaction.
-					throw new UnexpectedError(
-						`Could not find metadata for the workflow with the id '${ctx.workflowData.id}'`,
-					);
-				}
-				this.cachedMetadata[ctx.workflowData.id] = metadata = upsertMetadata;
-			}
-		});
-
-		const events: InsightsRaw[] = [];
 		// success or failure event
 		{
-			const event = new InsightsRaw();
-			event.metaId = metadata.metaId;
-			event.type = status;
-			event.value = 1;
-			events.push(event);
+			this.insightsRawToInsertBuffer.add({
+				type: status,
+				value: 1,
+				workflowId: ctx.workflowData.id,
+			});
 		}
 
 		// run time event
 		if (fullRunData.stoppedAt) {
 			const value = fullRunData.stoppedAt.getTime() - fullRunData.startedAt.getTime();
-			const event = new InsightsRaw();
-			event.metaId = metadata.metaId;
-			event.type = 'runtime_ms';
-			event.value = value;
-			events.push(event);
+			this.insightsRawToInsertBuffer.add({
+				type: 'runtime_ms',
+				value,
+				workflowId: ctx.workflowData.id,
+			});
 		}
 
 		// time saved event
 		if (status === 'success' && ctx.workflowData.settings?.timeSavedPerExecution) {
-			const event = new InsightsRaw();
-			event.metaId = metadata.metaId;
-			event.type = 'time_saved_min';
-			event.value = ctx.workflowData.settings.timeSavedPerExecution;
-			events.push(event);
+			this.insightsRawToInsertBuffer.add({
+				type: 'time_saved_min',
+				value: ctx.workflowData.settings.timeSavedPerExecution,
+				workflowId: ctx.workflowData.id,
+			});
 		}
 
-		this.pushEvent(events);
+		this.pushEvent();
 	}
 
-	pushEvent(events: InsightsRaw[]) {
-		this.insightsRawToInsertBuffer.push(...events);
+	pushEvent() {
 		if (
-			this.insightsRawToInsertBuffer.length >= config.flushBatchSize &&
+			this.insightsRawToInsertBuffer.size >= config.flushBatchSize &&
 			!this.isFlushingInsightsRawBuffer
 		) {
 			// Fire and forget flush to avoid blocking the workflow execute after handler
@@ -205,17 +162,76 @@ export class InsightsService {
 
 	async flushEvents() {
 		// Prevent flushing if we are already flushing or if there are no events to flush
-		if (this.isFlushingInsightsRawBuffer || this.insightsRawToInsertBuffer.length === 0) {
+		if (this.isFlushingInsightsRawBuffer || this.insightsRawToInsertBuffer.size === 0) {
 			return;
+		}
+
+		const workflowIds: Set<string> = new Set();
+
+		for (const event of this.insightsRawToInsertBuffer) {
+			workflowIds.add(event.workflowId);
 		}
 
 		// Set isFlushing flag to prevent concurrent flushes
 		this.isFlushingInsightsRawBuffer = true;
 
-		await this.insightsRawRepository.insert(this.insightsRawToInsertBuffer);
-		this.insightsRawToInsertBuffer.length = 0;
+		try {
+			await this.sharedWorkflowRepository.manager.transaction(async (trx) => {
+				const sharedWorkflows = await trx.find(SharedWorkflow, {
+					// TODO: limit the amount of things in the `In`
+					where: { workflowId: In([...workflowIds]), role: 'workflow:owner' },
+					relations: { project: true, workflow: true },
+				});
 
-		this.isFlushingInsightsRawBuffer = false;
+				const metadataCache: Map<string, SharedWorkflow> = new Map();
+				const workflowIdToMetaId: Map<string, number> = new Map();
+
+				for (const metadata of sharedWorkflows) {
+					metadataCache.set(metadata.workflowId, metadata);
+
+					await trx.upsert(
+						InsightsMetadata,
+						{
+							workflowId: metadata.workflowId,
+							workflowName: metadata.workflow.name,
+							projectId: metadata.projectId,
+							projectName: metadata.project.name,
+						},
+						['workflowId'],
+					);
+
+					const upsertMetadata = await trx.findOneBy(InsightsMetadata, {
+						workflowId: metadata.workflowId,
+					});
+
+					if (!upsertMetadata) {
+						// This can't happen, we just wrote the metadata in the same
+						// transaction.
+						throw new UnexpectedError(
+							`Could not find metadata for the workflow with the id '${metadata.workflowId}'`,
+						);
+					}
+
+					workflowIdToMetaId.set(metadata.workflowId, upsertMetadata.metaId);
+				}
+
+				const events: InsightsRaw[] = [];
+
+				for (const event of this.insightsRawToInsertBuffer) {
+					const insight = new InsightsRaw();
+					insight.metaId = workflowIdToMetaId.get(event.workflowId)!;
+					insight.type = event.type;
+					insight.value = event.value;
+
+					events.push(insight);
+				}
+
+				await trx.insert(InsightsRaw, events);
+				this.insightsRawToInsertBuffer.clear();
+			});
+		} finally {
+			this.isFlushingInsightsRawBuffer = false;
+		}
 	}
 
 	async compactInsights() {
