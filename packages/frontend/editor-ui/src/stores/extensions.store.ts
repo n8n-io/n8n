@@ -147,6 +147,60 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 			// Add iframe to the document
 			document.body.appendChild(iframe);
 
+			// Helper function to make objects safe for serialization via postMessage
+			const makeSerializable = (obj: any): any => {
+				if (obj === null || obj === undefined) {
+					return obj;
+				}
+
+				// Handle simple types
+				if (typeof obj === 'string' || typeof obj === 'number' || typeof obj === 'boolean') {
+					return obj;
+				}
+
+				// Handle Date objects
+				if (obj instanceof Date) {
+					return { __type: 'date', value: obj.toISOString() };
+				}
+
+				// Handle arrays
+				if (Array.isArray(obj)) {
+					return obj.map((item) => makeSerializable(item));
+				}
+
+				// Handle objects
+				if (typeof obj === 'object') {
+					// Exclude DOM nodes and functions
+					if (obj instanceof Node || obj instanceof Window) {
+						return { __type: 'domNode', description: obj.constructor.name };
+					}
+
+					// For regular objects, recursively process each property
+					const result: any = {};
+					for (const key in obj) {
+						if (Object.prototype.hasOwnProperty.call(obj, key)) {
+							try {
+								result[key] = makeSerializable(obj[key]);
+							} catch (e) {
+								result[key] = {
+									__type: 'error',
+									message: `Couldn't serialize property: ${e.message}`,
+								};
+							}
+						}
+					}
+					return result;
+				}
+
+				// Handle functions (just return a placeholder)
+				if (typeof obj === 'function') {
+					return { __type: 'function', name: obj.name || 'anonymous' };
+				}
+
+				// Fallback
+				return { __type: 'unknown', typeName: typeof obj };
+			};
+
 			// Set up communication
 			const messageHandler = (event: MessageEvent) => {
 				if (event.source !== iframe.contentWindow) return;
@@ -158,43 +212,78 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 					console.log(`API call from extension ${id}: ${method}`, args);
 					// Call the method on the extension context
 					const context = n8n;
-					// @ts-expect-error testing
-					const result = context.n8n.extensionContext[method](...args);
-					// Send the result back to the extension
-					if (result instanceof Promise) {
-						console.log(`API call from extension ${id}: ${method} is a promise`, args);
-						result
-							.then((data) => {
+					try {
+						// @ts-expect-error testing
+						const result = context.n8n.extensionContext[method](...args);
+						// Send the result back to the extension
+						if (result instanceof Promise) {
+							console.log(`API call from extension ${id}: ${method} is a promise`, args);
+							result
+								.then((data) => {
+									try {
+										const serializedData = makeSerializable(data);
+										iframe.contentWindow?.postMessage(
+											{
+												type: 'API_RESPONSE',
+												callId,
+												result: serializedData,
+											},
+											'*',
+										);
+									} catch (serializationError) {
+										iframe.contentWindow?.postMessage(
+											{
+												type: 'API_ERROR',
+												callId,
+												error: `Serialization error: ${serializationError.message}`,
+											},
+											'*',
+										);
+									}
+								})
+								.catch((error) => {
+									iframe.contentWindow?.postMessage(
+										{
+											type: 'API_ERROR',
+											callId,
+											error: error.message,
+										},
+										'*',
+									);
+								});
+						} else {
+							try {
+								const serializedResult = makeSerializable(result);
 								iframe.contentWindow?.postMessage(
 									{
 										type: 'API_RESPONSE',
 										callId,
-										result: data,
+										result: serializedResult,
 									},
 									'*',
 								);
-							})
-							.catch((error) => {
+							} catch (serializationError) {
 								iframe.contentWindow?.postMessage(
 									{
 										type: 'API_ERROR',
 										callId,
-										error: error.message,
+										error: `Serialization error: ${serializationError.message}`,
 									},
 									'*',
 								);
-							});
-					} else {
+							}
+						}
+						console.log(`API response to extension ${id}: ${method}`, result);
+					} catch (error) {
 						iframe.contentWindow?.postMessage(
 							{
-								type: 'API_RESPONSE',
+								type: 'API_ERROR',
 								callId,
-								result,
+								error: error.message,
 							},
 							'*',
 						);
 					}
-					console.log(`API response to extension ${id}: ${method}`, result);
 				} else if (type === 'EXTENSION_LOADED') {
 					console.log(`Extension ${id} loaded successfully`);
 					extension.initialized = true;
@@ -202,7 +291,13 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 			};
 
 			window.addEventListener('message', messageHandler);
-			// extension.messageHandler = messageHandler;
+			// Store the message handler for cleanup later
+			// extension.cleanup = () => {
+			// 	window.removeEventListener('message', messageHandler);
+			// 	if (iframe) {
+			// 		document.body.removeChild(iframe);
+			// 	}
+			// };
 
 			// Create a blob URL for the extension code
 			const blob = new Blob([extensionCode], { type: 'application/javascript' });
@@ -210,76 +305,106 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 
 			// Create the iframe content with the extension code loaded via blob URL
 			const iframeContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <script type="module">
-          // Create API proxy for communication with parent
-          const extensionAPI = new Proxy({}, {
-            get: (target, prop) => {
-              return (...args) => {
-                return new Promise((resolve, reject) => {
-                  const callId = Date.now() + Math.random();
+			<!DOCTYPE html>
+			<html>
+			<head>
+				<script type="module">
+					// Helper function to restore special types from serialization
+					const deserializeSpecialTypes = (obj) => {
+						if (obj === null || obj === undefined) {
+							return obj;
+						}
 
-                  const handler = (event) => {
-                    const { type, callId: responseId, result, error } = event.data;
-                    if ((type === 'API_RESPONSE' || type === 'API_ERROR') && responseId === callId) {
-                      window.removeEventListener('message', handler);
+						if (Array.isArray(obj)) {
+							return obj.map(item => deserializeSpecialTypes(item));
+						}
 
-                      if (type === 'API_RESPONSE') {
-                        resolve(result);
-                      } else {
-                        reject(new Error(error));
-                      }
-                    }
-                  };
+						if (typeof obj === 'object') {
+							// Check for special types
+							if (obj.__type === 'date') {
+								return new Date(obj.value);
+							}
 
-                  window.addEventListener('message', handler);
+							// For regular objects, recursively process each property
+							const result = {};
+							for (const key in obj) {
+								if (Object.prototype.hasOwnProperty.call(obj, key)) {
+									result[key] = deserializeSpecialTypes(obj[key]);
+								}
+							}
+							return result;
+						}
 
-                  window.parent.postMessage({
-                    type: 'API_CALL',
-                    method: prop,
-                    args,
-                    callId
-                  }, '*');
-                });
-              };
-            }
-          });
+						return obj;
+					};
 
-          // Import the extension code from the blob URL
-          import('${blobUrl}')
-            .then(module => {
-              if (typeof module.setup !== 'function') {
-                throw new Error('Extension does not export a setup function');
-              }
+					// Create API proxy for communication with parent
+					const extensionAPI = new Proxy({}, {
+						get: (target, prop) => {
+							return (...args) => {
+								return new Promise((resolve, reject) => {
+									const callId = Date.now() + Math.random();
 
-              // Call setup with the API proxy
-              module.setup(extensionAPI);
+									const handler = (event) => {
+										const { type, callId: responseId, result, error } = event.data;
+										if ((type === 'API_RESPONSE' || type === 'API_ERROR') && responseId === callId) {
+											window.removeEventListener('message', handler);
 
-              // Notify parent
-              window.parent.postMessage({ type: 'EXTENSION_LOADED', id: '${id}' }, '*');
-            })
-            .catch(error => {
-              console.error('Error loading extension:', error);
-              window.parent.postMessage({
-                type: 'EXTENSION_ERROR',
-                id: '${id}',
-                error: error.message
-              }, '*');
-            });
-        </script>
-      </head>
-      <body></body>
-      </html>
-    `;
+											if (type === 'API_RESPONSE') {
+												// Process special serialized types
+												const deserializedResult = deserializeSpecialTypes(result);
+												resolve(deserializedResult);
+											} else {
+												reject(new Error(error));
+											}
+										}
+									};
+
+									window.addEventListener('message', handler);
+
+									window.parent.postMessage({
+										type: 'API_CALL',
+										method: prop,
+										args,
+										callId
+									}, '*');
+								});
+							};
+						}
+					});
+
+					// Import the extension code from the blob URL
+					import('${blobUrl}')
+						.then(module => {
+							if (typeof module.setup !== 'function') {
+								throw new Error('Extension does not export a setup function');
+							}
+
+							// Call setup with the API proxy
+							module.setup(extensionAPI);
+
+							// Notify parent
+							window.parent.postMessage({ type: 'EXTENSION_LOADED', id: '${id}' }, '*');
+						})
+						.catch(error => {
+							console.error('Error loading extension:', error);
+							window.parent.postMessage({
+								type: 'EXTENSION_ERROR',
+								id: '${id}',
+								error: error.message
+							}, '*');
+						});
+				</script>
+			</head>
+			<body></body>
+			</html>
+		`;
 
 			// Set the iframe content
 			const htmlBlob = new Blob([iframeContent], { type: 'text/html' });
 			iframe.src = URL.createObjectURL(htmlBlob);
 
-			// Store for cleanup
-			// extension.iframe = iframe;
+			// Store URLs for cleanup later
 			// extension.blobUrls = [blobUrl, iframe.src];
 		} catch (error) {
 			toast.showError(error, 'Error loading extension');
