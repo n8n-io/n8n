@@ -1,8 +1,3 @@
-export interface LogEntryIdentity {
-	node: string;
-	runIndex: number;
-}
-
 export const LOGS_PANEL_STATE = {
 	CLOSED: 'closed',
 	ATTACHED: 'attached',
@@ -11,6 +6,10 @@ export const LOGS_PANEL_STATE = {
 
 export type LogsPanelState = (typeof LOGS_PANEL_STATE)[keyof typeof LOGS_PANEL_STATE];
 
-export function isSameLogEntry(one: LogEntryIdentity, another: LogEntryIdentity): boolean {
-	return one.node === another.node && one.runIndex === another.runIndex;
-}
+export const LOG_DETAILS_CONTENT = {
+	INPUT: 'input',
+	OUTPUT: 'output',
+	BOTH: 'both',
+};
+
+export type LogDetailsContent = (typeof LOG_DETAILS_CONTENT)[keyof typeof LOG_DETAILS_CONTENT];
