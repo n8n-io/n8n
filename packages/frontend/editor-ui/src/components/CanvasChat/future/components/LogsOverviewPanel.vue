@@ -114,6 +114,7 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 						type="secondary"
 						icon="trash"
 						icon-size="medium"
+						:class="$style.clearButton"
 						@click.stop="onClearExecutionData"
 						>{{ locale.baseText('logs.overview.header.actions.clearExecution') }}</N8nButton
 					>
@@ -192,6 +193,11 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 	align-items: stretch;
 	overflow: hidden;
 	background-color: var(--color-foreground-xlight);
+}
+
+.clearButton {
+	border: none;
+	color: var(--color-text-light);
 }
 
 .content {

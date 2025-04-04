@@ -56,9 +56,4 @@ const emit = defineEmits<{ click: [] }>();
 	/* Let button heights not affect the header height */
 	margin-block: calc(-1 * var(--spacing-s));
 }
-
-.actions button {
-	border: none;
-	color: var(--color-text-light);
-}
 </style>

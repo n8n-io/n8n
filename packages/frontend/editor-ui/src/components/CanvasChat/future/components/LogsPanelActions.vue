@@ -26,7 +26,7 @@ const toggleButtonText = computed(() =>
 </script>
 
 <template>
-	<div>
+	<div :class="$style.container">
 		<N8nTooltip v-if="showPopOutButton" :z-index="tooltipZIndex" :content="popOutButtonText">
 			<N8nIconButton
 				icon="pop-out"
@@ -54,3 +54,10 @@ const toggleButtonText = computed(() =>
 		</N8nTooltip>
 	</div>
 </template>
+
+<style lang="scss" module>
+.container button {
+	border: none;
+	color: var(--color-text-light);
+}
+</style>
