@@ -24,7 +24,7 @@ export const INSIGHTS_DEVIATION_UNIT_MAPPING: Record<
 	failed: () => '%',
 	failureRate: () => 'pp',
 	timeSaved: (deviation: number) => (Math.abs(deviation) < 3600 ? 'm' : 'h'),
-	averageRunTime: () => '',
+	averageRunTime: () => 's',
 } as const;
 
 export const INSIGHT_IMPACT_TYPES = {
