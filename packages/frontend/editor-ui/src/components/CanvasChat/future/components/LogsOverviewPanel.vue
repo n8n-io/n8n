@@ -44,7 +44,6 @@ const executionTree = computed<TreeNode[]>(() =>
 	createLogEntries(
 		workflow.value,
 		workflowsStore.workflowExecutionData?.data?.resultData.runData ?? {},
-		workflowsStore.workflowExecutionWebsocketEventDeliveryOrder,
 	),
 );
 const isEmpty = computed(() => workflowsStore.workflowExecutionData === null);

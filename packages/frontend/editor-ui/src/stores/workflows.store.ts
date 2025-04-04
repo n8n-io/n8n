@@ -91,7 +91,7 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useUsersStore } from '@/stores/users.store';
 import { updateCurrentUserSettings } from '@/api/users';
 import { useExecutingNode } from '@/composables/useExecutingNode';
-import { type LogEntryIdentity, LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
+import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -137,7 +137,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const activeWorkflowExecution = ref<ExecutionSummary | null>(null);
 	const currentWorkflowExecutions = ref<ExecutionSummary[]>([]);
 	const workflowExecutionData = ref<IExecutionResponse | null>(null);
-	const workflowExecutionWebsocketEventDeliveryOrder = ref<LogEntryIdentity[]>([]);
 	const workflowExecutionPairedItemMappings = ref<Record<string, Set<string>>>({});
 	const activeExecutionId = ref<string | null>(null);
 	const subWorkflowExecutionError = ref<Error | null>(null);
@@ -774,9 +773,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 		workflowExecutionData.value = workflowResultData;
 		workflowExecutionPairedItemMappings.value = getPairedItemsMapping(workflowResultData);
-		if (workflowResultData === null) {
-			workflowExecutionWebsocketEventDeliveryOrder.value = [];
-		}
 	}
 
 	function setWorkflowExecutionRunData(workflowResultData: IRunExecutionData) {
@@ -1706,15 +1702,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 	}
 
-	function setNodeExecuting(nodeName: string) {
-		addExecutingNode(nodeName);
-
-		workflowExecutionWebsocketEventDeliveryOrder.value.push({
-			node: nodeName,
-			runIndex: (workflowExecutionData.value?.data?.resultData.runData[nodeName] ?? []).length,
-		});
-	}
-
 	return {
 		workflow,
 		usedCredentials,
@@ -1758,7 +1745,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getWorkflowExecution,
 		getPastChatMessages,
 		logsPanelState: computed(() => logsPanelState.value),
-		workflowExecutionWebsocketEventDeliveryOrder,
 		toggleLogsPanelOpen,
 		setPreferPoppedOutLogsView,
 		outgoingConnectionsByNodeName,
@@ -1790,7 +1776,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		makeNewWorkflowShareable,
 		resetWorkflow,
 		resetState,
-		setNodeExecuting,
+		addExecutingNode,
 		removeExecutingNode,
 		setWorkflowId,
 		setUsedCredentials,
