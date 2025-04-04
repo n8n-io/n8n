@@ -50,8 +50,12 @@ export class CommunityPackagesController {
 			throw new BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
 		}
 
-		if (verify && !this.communityNodeTypesService.isVetted(name)) {
-			throw new BadRequestError(`Package ${name} is not vetted for installation`);
+		let checksum: string | undefined;
+		if (verify) {
+			checksum = this.communityNodeTypesService.findVetted(name)?.checksum;
+			if (!checksum) {
+				throw new BadRequestError(`Package ${name} is not vetted for installation`);
+			}
 		}
 
 		let parsed: CommunityPackages.ParsedPackageName;
@@ -97,6 +101,7 @@ export class CommunityPackagesController {
 			installedPackage = await this.communityPackagesService.installPackage(
 				parsed.packageName,
 				packageVersion,
+				verify ? checksum : undefined,
 			);
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : UNKNOWN_FAILURE_REASON;

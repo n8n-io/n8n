@@ -2,6 +2,8 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import axios from 'axios';
 import { exec } from 'child_process';
+import type { BinaryLike } from 'crypto';
+import crypto from 'crypto';
 import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
 import type { PackageDirectoryLoader } from 'n8n-core';
 import { InstanceSettings, Logger } from 'n8n-core';
@@ -306,8 +308,12 @@ export class CommunityPackagesService {
 		);
 	}
 
-	async installPackage(packageName: string, version?: string): Promise<InstalledPackages> {
-		return await this.installOrUpdatePackage(packageName, { version });
+	async installPackage(
+		packageName: string,
+		version?: string,
+		checksum?: string,
+	): Promise<InstalledPackages> {
+		return await this.installOrUpdatePackage(packageName, { version, checksum });
 	}
 
 	async updatePackage(
@@ -334,13 +340,39 @@ export class CommunityPackagesService {
 		return registry;
 	}
 
+	private async getPackageMetadata(packageName: string, version: string) {
+		const registryUrl = `${this.getNpmRegistry()}/${packageName.replace('/', '%2F')}`;
+		const response = await axios.get<{ dist: { tarball: string } }>(`${registryUrl}/${version}`);
+		return response.data;
+	}
+
+	private async verifyPackageIntegrity(
+		tarballUrl: string,
+		expectedIntegrity: string,
+	): Promise<void> {
+		const { data } = await axios.get<BinaryLike>(tarballUrl, { responseType: 'arraybuffer' });
+
+		const expected = expectedIntegrity.split('-')[1];
+		const actualHash = crypto.createHash('sha512').update(data).digest('base64');
+
+		if (actualHash !== expected) {
+			throw new UnexpectedError('Checksum verification failed. Package integrity does not match.');
+		}
+	}
+
 	private async installOrUpdatePackage(
 		packageName: string,
-		options: { version?: string } | { installedPackage: InstalledPackages },
+		options: { version?: string; checksum?: string } | { installedPackage: InstalledPackages },
 	) {
 		const isUpdate = 'installedPackage' in options;
 		const packageVersion = isUpdate || !options.version ? 'latest' : options.version;
 		const command = `npm install ${packageName}@${packageVersion} --registry=${this.getNpmRegistry()}`;
+
+		if (!isUpdate && options.checksum) {
+			const metadata = await this.getPackageMetadata(packageName, options.version || 'latest');
+			const tarballUrl = metadata.dist.tarball;
+			await this.verifyPackageIntegrity(tarballUrl, options.checksum);
+		}
 
 		try {
 			await this.executeNpmCommand(command);
