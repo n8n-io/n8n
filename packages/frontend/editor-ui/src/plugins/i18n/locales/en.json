@@ -3074,7 +3074,7 @@
 	"insights.banner.timeSaved.tooltip.link.text": "add time estimates",
 	"insights.banner.title.total": "Prod. executions",
 	"insights.banner.title.failed": "Failed prod. executions",
-	"insights.banner.title.succeeded": "Succeeded",
+	"insights.banner.title.succeeded": "Successful prod. executions",
 	"insights.banner.title.failureRate": "Failure rate",
 	"insights.banner.title.timeSaved": "Time saved",
 	"insights.banner.title.timeSavedDailyAverage": "Time saved daily avg.",

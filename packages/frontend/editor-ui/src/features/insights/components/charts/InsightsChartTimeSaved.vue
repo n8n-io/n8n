@@ -27,7 +27,8 @@ const chartOptions = computed(() =>
 				callbacks: {
 					label: (context) => {
 						const label = context.dataset.label ?? '';
-						return `${label} ${transformInsightsTimeSaved(Number(context.parsed.y))} | ${INSIGHTS_UNIT_MAPPING[props.type](context.parsed.y)}`;
+						const value = Number(context.parsed.y);
+						return `${label} ${transformInsightsTimeSaved(value).toLocaleString('en-US')}${INSIGHTS_UNIT_MAPPING[props.type](value)}`;
 					},
 				},
 			},
@@ -35,6 +36,7 @@ const chartOptions = computed(() =>
 		scales: {
 			y: {
 				ticks: {
+					// eslint-disable-next-line id-denylist
 					callback(tickValue) {
 						return transformInsightsTimeSaved(Number(tickValue));
 					},
@@ -50,7 +52,6 @@ const chartData = computed<ChartData<'line'>>(() => {
 
 	for (const entry of props.data) {
 		labels.push(dateformat(entry.date, DATE_FORMAT_MASK));
-		// const timeSaved = transformInsightsTimeSaved(entry.values.timeSaved);
 		data.push(entry.values.timeSaved);
 	}
 

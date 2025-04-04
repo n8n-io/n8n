@@ -92,8 +92,7 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 								:class="[$style.icon, getImpactStyle(id, deviation)]"
 								:icon="deviation === 0 ? 'caret-right' : deviation > 0 ? 'caret-up' : 'caret-down'"
 							/>
-							{{ smartDecimal(Math.abs(deviation)) }}
-							{{ deviationUnit }}
+							{{ smartDecimal(Math.abs(deviation)).toLocaleString('en-US') }}{{ deviationUnit }}
 						</small>
 					</span>
 				</router-link>

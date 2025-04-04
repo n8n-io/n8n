@@ -7,7 +7,7 @@ import {
 } from '@/features/insights/insights.constants';
 
 export const transformInsightsTimeSaved = (seconds: number): number =>
-	Math.ceil(seconds / (seconds < 3600 ? 60 : 3600)); // we want to show saved time in minutes or hours
+	Math.ceil(seconds / (Math.abs(seconds) < 3600 ? 60 : 3600)); // we want to show saved time in minutes or hours
 export const transformInsightsAverageRunTime = (ms: number): number => ms / 1000; // we want to show average run time in seconds
 export const transformInsightsFailureRate = (value: number): number => value * 100; // we want to show failure rate in percentage
 
@@ -26,8 +26,8 @@ export const transformInsightsDeviation: Record<
 	total: (value: number, deviation: number) => (deviation / value) * 100,
 	failed: (value: number, deviation: number) => (deviation / value) * 100,
 	timeSaved: (_: number, deviation: number) => transformInsightsTimeSaved(deviation),
-	averageRunTime: (_: number, deviation: number) => deviation,
-	failureRate: (_: number, deviation: number) => deviation * 100,
+	averageRunTime: (_: number, deviation: number) => transformInsightsAverageRunTime(deviation),
+	failureRate: (_: number, deviation: number) => transformInsightsFailureRate(deviation),
 };
 
 export const transformInsightsSummary = (data: InsightsSummary | null): InsightsSummaryDisplay =>
