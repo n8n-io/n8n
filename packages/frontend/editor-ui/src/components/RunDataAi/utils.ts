@@ -7,6 +7,7 @@ import {
 	type NodeConnectionType,
 	type Workflow,
 } from 'n8n-workflow';
+import { isSameLogEntry, type LogEntryIdentity } from '../CanvasChat/types/logs';
 
 export interface AIResult {
 	node: string;
@@ -237,33 +238,38 @@ export function formatTokenUsageCount(
 	return usage.isEstimate ? `~${count}` : count.toLocaleString();
 }
 
-export function createLogEntries(workflow: Workflow, runData: IRunData) {
+export function createLogEntries(
+	workflow: Workflow,
+	runData: IRunData,
+	eventOrdering: LogEntryIdentity[],
+) {
 	const runs = Object.entries(runData)
 		.filter(([nodeName]) => workflow.getChildNodes(nodeName, 'ALL_NON_MAIN').length === 0)
-		.flatMap(([nodeName, taskData]) =>
-			taskData.map((task, runIndex) => ({ nodeName, task, runIndex })),
-		)
-		.toSorted((a, b) =>
-			a.nodeName === b.nodeName ? a.runIndex - b.runIndex : a.task.startTime - b.task.startTime,
-		);
+		.flatMap(([node, taskData]) => taskData.map((task, runIndex) => ({ node, task, runIndex })))
+		.toSorted((a, b) => {
+			const aIndex = eventOrdering.findIndex((e) => isSameLogEntry(e, a));
+			const bIndex = eventOrdering.findIndex((e) => isSameLogEntry(e, b));
 
-	return runs.flatMap(({ nodeName, runIndex, task }) => {
-		if (workflow.getParentNodes(nodeName, 'ALL_NON_MAIN').length > 0) {
+			return aIndex - bIndex;
+		});
+
+	return runs.flatMap(({ node, runIndex, task }) => {
+		if (workflow.getParentNodes(node, 'ALL_NON_MAIN').length > 0) {
 			return getTreeNodeData(
-				nodeName,
+				node,
 				workflow,
-				createAiData(nodeName, workflow, (node) => runData[node] ?? []),
+				createAiData(node, workflow, (nodeName) => runData[nodeName] ?? []),
 				runIndex,
 			);
 		}
 
 		return getTreeNodeData(
-			nodeName,
+			node,
 			workflow,
 			[
 				{
 					data: getReferencedData(task, false, true)[0],
-					node: nodeName,
+					node,
 					runIndex,
 				},
 			],
