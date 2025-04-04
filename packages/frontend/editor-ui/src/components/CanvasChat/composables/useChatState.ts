@@ -60,14 +60,11 @@ export function useChatState(isDisabled: Ref<boolean>, onWindowResize: () => voi
 		getNodeType: nodeTypesStore.getNodeType,
 	});
 
-	const { sendMessage, getChatMessages, isLoading } = useChatMessaging({
+	const { sendMessage, isLoading } = useChatMessaging({
 		chatTrigger: chatTriggerNode,
-		connectedNode,
 		messages,
 		sessionId: currentSessionId,
-		workflow,
 		executionResultData: computed(() => workflowsStore.getWorkflowExecution?.data?.resultData),
-		getWorkflowResultDataByNodeName: workflowsStore.getWorkflowResultDataByNodeName,
 		onRunChatWorkflow,
 	});
 
@@ -133,10 +130,6 @@ export function useChatState(isDisabled: Ref<boolean>, onWindowResize: () => voi
 			if (state !== LOGS_PANEL_STATE.CLOSED) {
 				setChatTriggerNode();
 				setConnectedNode();
-
-				if (messages.value.length === 0) {
-					messages.value = getChatMessages();
-				}
 
 				setTimeout(() => {
 					onWindowResize();
