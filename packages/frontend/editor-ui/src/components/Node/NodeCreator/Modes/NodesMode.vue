@@ -285,7 +285,7 @@ registerKeyHook('MainViewArrowLeft', {
 		>
 		</CategorizedItemsRenderer>
 
-		<!-- Results in communty nodes -->
+		<!-- Results in community nodes -->
 		<CategorizedItemsRenderer
 			v-if="additionalSearchItems.communityItems.length > 0"
 			:elements="additionalSearchItems.communityItems"

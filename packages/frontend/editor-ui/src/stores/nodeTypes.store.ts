@@ -18,7 +18,7 @@ import type {
 	Workflow,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
+import { COMMUNITY_NODE_TYPE_PREVIEW_TOKEN, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useCredentialsStore } from './credentials.store';
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';
@@ -32,6 +32,7 @@ export type NodeTypesStore = ReturnType<typeof useNodeTypesStore>;
 export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	const nodeTypes = ref<NodeTypesByTypeNameAndVersion>({});
 	const verifiedNodeTypes = ref<string[]>([]);
+	const communityNodeTypes = ref<INodeTypeDescription[]>([]);
 
 	const rootStore = useRootStore();
 
@@ -289,23 +290,13 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 			throw new Error('Could not fetch node types');
 		}
 
-		let communityTypes = (await nodeTypesApi.getCommunityNodeTypes(rootStore.restApiContext)) ?? [];
-
-		const communityNodesStore = useCommunityNodesStore();
-
-		if (Object.keys(communityNodesStore.installedPackages).length === 0) {
-			await communityNodesStore.fetchInstalledPackages();
+		if (!communityNodeTypes.value.length) {
+			await fetchCommunityNodes();
 		}
 
-		communityTypes = communityTypes.filter((nodeType) => {
-			verifiedNodeTypes.value.push(nodeType.name);
-			return !communityNodesStore.installedPackages[
-				nodeType.name.split('.')[0].replace('-preview', '')
-			];
-		});
-
 		if (nodeTypes.length) {
-			setNodeTypes(nodeTypes.concat(communityTypes));
+			const communityNodes = await getNotInstalledCommunityNodes();
+			setNodeTypes(nodeTypes.concat(communityNodes));
 		}
 	};
 
@@ -351,6 +342,29 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		return await nodeTypesApi.getNodeParameterActionResult(rootStore.restApiContext, sendData);
 	};
 
+	const fetchCommunityNodes = async () => {
+		communityNodeTypes.value = await nodeTypesApi.getCommunityNodeTypes(rootStore.restApiContext);
+		verifiedNodeTypes.value = await nodeTypesApi.getVettedNodes(rootStore.restApiContext);
+	};
+
+	const getNotInstalledCommunityNodes = async () => {
+		const communityNodesStore = useCommunityNodesStore();
+
+		if (Object.keys(communityNodesStore.installedPackages).length === 0) {
+			await communityNodesStore.fetchInstalledPackages();
+		}
+
+		return communityNodeTypes.value.filter((nodeType) => {
+			return !communityNodesStore.installedPackages[
+				nodeType.name.split('.')[0].replace(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN, '')
+			];
+		});
+	};
+
+	const getCommunityNodeAttributes = async (nodeName: string) => {
+		return await nodeTypesApi.getCommunityNodeAttributes(rootStore.restApiContext, nodeName);
+	};
+
 	// #endregion
 
 	return {
@@ -381,5 +395,6 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		getNodeTranslationHeaders,
 		setNodeTypes,
 		removeNodeTypes,
+		getCommunityNodeAttributes,
 	};
 });

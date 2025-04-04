@@ -10,6 +10,7 @@ import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 
 import { getNodeIconSource } from '@/utils/nodeIcon';
+import { COMMUNITY_NODE_TYPE_PREVIEW_TOKEN } from 'n8n-workflow';
 
 const {
 	activeViewStack,
@@ -27,6 +28,7 @@ interface DownloadData {
 const publisherName = ref<string | undefined>(undefined);
 const downloads = ref<string | null>(null);
 const loading = ref(false);
+const verified = ref(false);
 
 const communityNodesStore = useCommunityNodesStore();
 const nodeCreatorStore = useNodeCreatorStore();
@@ -53,7 +55,7 @@ const onInstallClick = async () => {
 			await useCredentialsStore().fetchCredentialTypes(true);
 
 			const installedNodeItem = getAllNodeCreateElements().find(
-				(node) => node.key === key.replace('-preview', ''),
+				(node) => node.key === key.replace(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN, ''),
 			);
 
 			if (installedNodeItem) {
@@ -96,6 +98,17 @@ const formatNumber = (number: number) => {
 };
 
 async function fetchPackageInfo(packageName: string) {
+	const communityNodeAttributes = await useNodeTypesStore().getCommunityNodeAttributes(
+		activeViewStack.communityNodeDetails?.key || '',
+	);
+
+	if (communityNodeAttributes) {
+		publisherName.value = communityNodeAttributes.authorName;
+		downloads.value = formatNumber(communityNodeAttributes.numberOfDownloads);
+		verified.value = true;
+		return;
+	}
+
 	const url = `https://registry.npmjs.org/${packageName}`;
 
 	try {
@@ -168,7 +181,7 @@ onMounted(async () => {
 		</n8n-text>
 		<div :class="$style.separator"></div>
 		<div :class="$style.info">
-			<n8n-tooltip placement="top" v-if="communityNodeDetails?.verified">
+			<n8n-tooltip placement="top" v-if="verified">
 				<template #content>This community node has been reviewed and approved by n8n</template>
 				<div>
 					<FontAwesomeIcon :class="$style.tooltipIcon" icon="check-circle" />

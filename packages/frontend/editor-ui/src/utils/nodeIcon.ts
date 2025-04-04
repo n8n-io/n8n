@@ -1,4 +1,4 @@
-import { type INodeTypeDescription } from 'n8n-workflow';
+import { COMMUNITY_NODE_TYPE_PREVIEW_TOKEN, type INodeTypeDescription } from 'n8n-workflow';
 import type { IVersionNode } from '../Interface';
 import { useRootStore } from '../stores/root.store';
 import { useUIStore } from '../stores/ui.store';
@@ -72,7 +72,11 @@ export function getNodeIconSource(nodeType?: IconNodeType | null): NodeIconSourc
 		}
 	}
 
-	if (nodeType.name && nodeType.name.includes('-preview') && typeof nodeType.iconUrl === 'string') {
+	if (
+		nodeType.name &&
+		nodeType.name.includes(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN) &&
+		typeof nodeType.iconUrl === 'string'
+	) {
 		return {
 			type: 'file',
 			src: nodeType.iconUrl,

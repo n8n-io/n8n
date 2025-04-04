@@ -38,7 +38,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useKeyboardNavigation } from './useKeyboardNavigation';
 
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { AI_TRANSFORM_NODE_TYPE } from 'n8n-workflow';
+import { AI_TRANSFORM_NODE_TYPE, COMMUNITY_NODE_TYPE_PREVIEW_TOKEN } from 'n8n-workflow';
 import type { NodeConnectionType, INodeInputFilter } from 'n8n-workflow';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -517,10 +517,10 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			resetStacks?: boolean;
 		},
 	) {
-		const installed = !item.key.includes('-preview');
-		const packageName = item.key.split('.')[0].replace('-preview', '');
+		const installed = !item.key.includes(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN);
+		const packageName = item.key.split('.')[0].replace(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN, '');
 		const verified = useNodeTypesStore().verifiedNodeTypes.some((n) =>
-			n.replace('-preview', '').includes(packageName),
+			n.replace(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN, '').includes(packageName),
 		);
 
 		const communityNodeDetails = {
