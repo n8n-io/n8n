@@ -4,6 +4,7 @@
   "type": "module",
   "files": [
     "dist",
+    "schema.json",
     "LICENSE",
     "README.md"
   ],
@@ -33,7 +34,8 @@
     "dev": "tsup --watch",
     "typecheck:frontend": "vue-tsc --noEmit --project tsconfig.frontend.json",
     "typecheck:backend": "tsc --noEmit --project tsconfig.backend.json",
-    "build": "pnpm \"/^typecheck:.+/\" && pnpm clean && tsup",
+    "build": "pnpm \"/^typecheck:.+/\" && pnpm clean && tsup && pnpm create-json-schema",
+    "create-json-schema": "tsx scripts/create-json-schema.ts",
     "preview": "vite preview"
   },
   "peerDependencies": {
@@ -48,7 +50,12 @@
     "vite": "catalog:frontend",
     "vue": "catalog:frontend",
     "vue-router": "catalog:frontend",
-    "vue-tsc": "catalog:frontend"
+    "vue-tsc": "catalog:frontend",
+    "zod-to-json-schema": "catalog:",
+    "tsx": "catalog:"
   },
-  "license": "https://docs.n8n.io/sustainable-use-license/"
+  "license": "https://docs.n8n.io/sustainable-use-license/",
+  "dependencies": {
+    "zod": "catalog:"
+  }
 }
