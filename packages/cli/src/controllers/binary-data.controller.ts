@@ -38,7 +38,14 @@ export class BinaryDataController {
 				} catch {}
 			}
 
-			if (mimeType) res.setHeader('Content-Type', mimeType);
+			if (mimeType) {
+				res.setHeader('Content-Type', mimeType);
+
+				// Sandbox html files when viewed in a browser
+				if (mimeType.includes('html') && action === 'view') {
+					res.header('Content-Security-Policy', 'sandbox');
+				}
+			}
 
 			if (action === 'download' && fileName) {
 				const encodedFilename = encodeURIComponent(fileName);
@@ -47,7 +54,7 @@ export class BinaryDataController {
 
 			return await this.binaryDataService.getAsStream(binaryDataId);
 		} catch (error) {
-			if (error instanceof FileNotFoundError) return res.writeHead(404).end();
+			if (error instanceof FileNotFoundError) return res.status(404).end();
 			else throw error;
 		}
 	}

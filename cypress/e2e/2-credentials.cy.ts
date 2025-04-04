@@ -1,5 +1,6 @@
 import { type ICredentialType } from 'n8n-workflow';
 
+import * as credentialsComposables from '../composables/credentialsComposables';
 import { getCredentialSaveButton, saveCredential } from '../composables/modals/credential-modal';
 import {
 	AGENT_NODE_NAME,
@@ -45,7 +46,7 @@ function deleteSelectedCredential() {
 
 describe('Credentials', () => {
 	beforeEach(() => {
-		cy.visit(credentialsPage.url);
+		credentialsComposables.loadCredentialsPage(credentialsPage.url);
 	});
 
 	it('should create a new credential using empty state', () => {

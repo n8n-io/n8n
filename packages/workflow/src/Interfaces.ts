@@ -1376,6 +1376,7 @@ export interface IDisplayOptions {
 	};
 	show?: {
 		'@version'?: Array<number | DisplayCondition>;
+		'@tool'?: [boolean];
 		[key: string]: Array<NodeParameterValue | DisplayCondition> | undefined;
 	};
 
@@ -2089,6 +2090,11 @@ export type KnownNodesAndCredentials = {
 	nodes: Record<string, NodeLoadingDetails>;
 	credentials: Record<string, CredentialLoadingDetails>;
 };
+
+export interface LoadedNodesAndCredentials {
+	nodes: INodeTypeData;
+	credentials: ICredentialTypeData;
+}
 
 export interface LoadedClass<T> {
 	sourcePath: string;

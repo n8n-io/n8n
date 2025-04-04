@@ -116,7 +116,13 @@ export class ControllerRegistry {
 				...(route.accessScope ? [this.createScopedMiddleware(route.accessScope)] : []),
 				...controllerMiddlewares,
 				...route.middlewares,
-				route.usesTemplates ? handler : send(handler),
+				route.usesTemplates
+					? async (req, res) => {
+							// When using templates, intentionally drop the return value,
+							// since template rendering writes directly to the response.
+							await handler(req, res);
+						}
+					: send(handler),
 			);
 		}
 	}
@@ -133,11 +139,10 @@ export class ControllerRegistry {
 	private createLicenseMiddleware(feature: BooleanLicenseFeature): RequestHandler {
 		return (_req, res, next) => {
 			if (!this.license.isFeatureEnabled(feature)) {
-				return res
-					.status(403)
-					.json({ status: 'error', message: 'Plan lacks license for this feature' });
+				res.status(403).json({ status: 'error', message: 'Plan lacks license for this feature' });
+				return;
 			}
-			return next();
+			next();
 		};
 	}
 
@@ -152,13 +157,14 @@ export class ControllerRegistry {
 			const { scope, globalOnly } = accessScope;
 
 			if (!(await userHasScopes(req.user, [scope], globalOnly, req.params))) {
-				return res.status(403).json({
+				res.status(403).json({
 					status: 'error',
 					message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE,
 				});
+				return;
 			}
 
-			return next();
+			next();
 		};
 	}
 }
