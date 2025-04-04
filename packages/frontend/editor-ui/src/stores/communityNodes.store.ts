@@ -54,8 +54,8 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 		}, timeout);
 	};
 
-	const installPackage = async (packageName: string): Promise<void> => {
-		await communityNodesApi.installNewPackage(rootStore.restApiContext, packageName);
+	const installPackage = async (packageName: string, verify?: boolean): Promise<void> => {
+		await communityNodesApi.installNewPackage(rootStore.restApiContext, packageName, verify);
 		await fetchInstalledPackages();
 	};
 

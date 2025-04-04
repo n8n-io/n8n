@@ -2,7 +2,7 @@ import { Service } from '@n8n/di';
 import axios from 'axios';
 import { Logger } from 'n8n-core';
 import type { CommunityNodeAttributes, INodeTypeDescription } from 'n8n-workflow';
-import { ensureError } from 'n8n-workflow';
+import { COMMUNITY_NODE_TYPE_PREVIEW_TOKEN, ensureError } from 'n8n-workflow';
 
 interface ResponseData {
 	data: Data[];
@@ -93,6 +93,12 @@ export class CommunityNodeTypesService {
 	}
 
 	getCommunityNodeAttributes(nodeName: string): CommunityNodeAttributes {
-		return this.communityNodes[nodeName];
+		const name = nodeName.replace(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN, '');
+		return this.communityNodes[name];
+	}
+
+	isVetted(packageName: string) {
+		const vettedTypes = Object.keys(this.communityNodes);
+		return vettedTypes.some((t) => t.includes(packageName));
 	}
 }

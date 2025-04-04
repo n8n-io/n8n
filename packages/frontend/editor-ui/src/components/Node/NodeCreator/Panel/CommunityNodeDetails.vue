@@ -48,7 +48,7 @@ const onInstallClick = async () => {
 
 		try {
 			loading.value = true;
-			await communityNodesStore.installPackage(packageName);
+			await communityNodesStore.installPackage(packageName, true);
 
 			await useNodeTypesStore().getNodeTypes();
 

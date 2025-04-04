@@ -1,5 +1,5 @@
 import { Request } from 'express';
-import { COMMUNITY_NODE_TYPE_PREVIEW_TOKEN, type CommunityNodeAttributes } from 'n8n-workflow';
+import { type CommunityNodeAttributes } from 'n8n-workflow';
 
 import { Get, RestController } from '@/decorators';
 import { CommunityNodeTypesService } from '@/services/community-node-types.service';
@@ -15,8 +15,7 @@ export class CommunityNodeTypesController {
 
 	@Get('/:name')
 	async getCommunityNodeAttributes(req: Request): Promise<CommunityNodeAttributes | null> {
-		const name = req.params.name.replace(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN, '');
-		return this.communityNodeTypesService.getCommunityNodeAttributes(name) ?? null;
+		return this.communityNodeTypesService.getCommunityNodeAttributes(req.params.name) ?? null;
 	}
 
 	@Get('/')

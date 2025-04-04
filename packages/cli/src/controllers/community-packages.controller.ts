@@ -13,6 +13,8 @@ import { Push } from '@/push';
 import { NodeRequest } from '@/requests';
 import { CommunityPackagesService } from '@/services/community-packages.service';
 
+import { CommunityNodeTypesService } from '../services/community-node-types.service';
+
 const {
 	PACKAGE_NOT_INSTALLED,
 	PACKAGE_NAME_NOT_PROVIDED,
@@ -36,15 +38,20 @@ export class CommunityPackagesController {
 		private readonly push: Push,
 		private readonly communityPackagesService: CommunityPackagesService,
 		private readonly eventService: EventService,
+		private readonly communityNodeTypesService: CommunityNodeTypesService,
 	) {}
 
 	@Post('/')
 	@GlobalScope('communityPackage:install')
 	async installPackage(req: NodeRequest.Post) {
-		const { name } = req.body;
+		const { name, verify } = req.body;
 
 		if (!name) {
 			throw new BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
+		}
+
+		if (verify && !this.communityNodeTypesService.isVetted(name)) {
+			throw new BadRequestError(`Package ${name} is not vetted for installation`);
 		}
 
 		let parsed: CommunityPackages.ParsedPackageName;
