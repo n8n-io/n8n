@@ -48,6 +48,10 @@ const executionStatusText = computed(() =>
 
 	& > * {
 		padding-inline: var(--spacing-2xs);
+		flex-shrink: 1;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
 	& > *:not(:last-child) {

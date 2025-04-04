@@ -52,6 +52,7 @@ const consumedTokens = computed(() => getSubtreeTotalConsumedTokens(logEntry));
 					>
 					<ExecutionSummary
 						v-if="isOpen"
+						:class="$style.executionSummary"
 						:status="runData.executionStatus ?? 'unknown'"
 						:consumed-tokens="consumedTokens"
 						:time-took="runData.executionTime"
@@ -122,6 +123,17 @@ const consumedTokens = computed(() => getSubtreeTotalConsumedTokens(logEntry));
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-2xs);
+	flex-shrink: 1;
+}
+
+.name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.executionSummary {
+	flex-shrink: 1;
 }
 
 .content {

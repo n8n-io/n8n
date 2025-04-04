@@ -56,6 +56,10 @@ const toggleButtonText = computed(() =>
 </template>
 
 <style lang="scss" module>
+.container {
+	display: flex;
+}
+
 .container button {
 	border: none;
 	color: var(--color-text-light);

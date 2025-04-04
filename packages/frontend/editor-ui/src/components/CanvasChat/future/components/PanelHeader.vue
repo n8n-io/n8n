@@ -46,9 +46,13 @@ const emit = defineEmits<{ click: [] }>();
 .title {
 	flex-grow: 1;
 	flex-shrink: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .actions {
+	flex-shrink: 0;
 	display: flex;
 	align-items: center;
 	color: var(--color-text-base);
