@@ -19,7 +19,6 @@ export type FormTriggerInput = {
 
 export type FormTriggerData = {
 	testRun: boolean;
-	validForm: boolean;
 	formTitle: string;
 	formDescription?: string;
 	formDescriptionMetadata?: string;

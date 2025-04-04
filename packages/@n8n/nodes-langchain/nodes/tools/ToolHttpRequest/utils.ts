@@ -92,7 +92,7 @@ const genericCredentialRequest = async (ctx: ISupplyDataFunctions, itemIndex: nu
 
 	if (genericType === 'oAuth2Api') {
 		return async (options: IHttpRequestOptions) => {
-			return await ctx.helpers.requestOAuth2.call(ctx, 'oAuth1Api', options, {
+			return await ctx.helpers.requestOAuth2.call(ctx, 'oAuth2Api', options, {
 				tokenType: 'Bearer',
 			});
 		};
@@ -777,7 +777,7 @@ export const configureToolFunction = (
 						throw new NodeOperationError(ctx.getNode(), 'Binary data is not supported');
 					}
 
-					response = optimizeResponse(fullResponse.body);
+					response = optimizeResponse(fullResponse.body ?? fullResponse);
 				} catch (error) {
 					response = `There was an error: "${error.message}"`;
 				}
