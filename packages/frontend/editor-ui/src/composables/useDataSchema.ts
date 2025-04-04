@@ -283,6 +283,7 @@ export type RenderNotice = {
 export type RenderEmpty = {
 	id: string;
 	type: 'empty';
+	level: number;
 	nodeName: string;
 	key: 'emptyData' | 'emptyDataWithBinary' | 'executeSchema';
 };
@@ -304,11 +305,15 @@ const icons = {
 
 const getIconBySchemaType = (type: Schema['type']): string => icons[type];
 
-const emptyItem = (key: RenderEmpty['key'], nodeName?: string): RenderEmpty => ({
+const emptyItem = (
+	key: RenderEmpty['key'],
+	{ nodeName, level }: { nodeName?: string; level?: number } = {},
+): RenderEmpty => ({
 	id: `empty-${window.crypto.randomUUID()}`,
 	type: 'empty',
 	key,
-	nodeName: nodeName || '',
+	level: level ?? 0,
+	nodeName: nodeName ?? '',
 });
 
 const moreFieldsItem = (): RenderIcon => ({
@@ -369,7 +374,7 @@ export const useFlattenSchema = () => {
 		preview?: boolean;
 	}): Renders[] => {
 		// only show empty item for the first level
-		if (isDataEmpty(schema) && depth <= 0) {
+		if (isDataEmpty(schema) && level < 0) {
 			return [emptyItem('emptyData')];
 		}
 
@@ -466,13 +471,13 @@ export const useFlattenSchema = () => {
 			}
 
 			if (isDataEmpty(item.schema) && !item.isNodeExecuted && !item.hasBinary) {
-				acc.push(emptyItem('executeSchema', item.node.name));
+				acc.push(emptyItem('executeSchema', { nodeName: item.node.name, level: 1 }));
 				return acc;
 			}
 
 			if (isDataEmpty(item.schema)) {
 				const key = item.hasBinary ? 'emptyDataWithBinary' : 'emptyData';
-				acc.push(emptyItem(key));
+				acc.push(emptyItem(key, { level: 1 }));
 				return acc;
 			}
 
