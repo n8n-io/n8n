@@ -100,7 +100,7 @@ describe(getTreeNodeData, () => {
 		).toEqual([
 			{
 				depth: 0,
-				id: 'A',
+				id: 'A:0',
 				node: 'A',
 				runIndex: 0,
 				startTime: 0,
@@ -114,7 +114,7 @@ describe(getTreeNodeData, () => {
 				children: [
 					{
 						depth: 1,
-						id: 'B',
+						id: 'B:0',
 						node: 'B',
 						runIndex: 0,
 						startTime: +new Date('2025-02-26T00:00:01.000Z'),
@@ -129,7 +129,7 @@ describe(getTreeNodeData, () => {
 							{
 								children: [],
 								depth: 2,
-								id: 'C',
+								id: 'C:0',
 								node: 'C',
 								runIndex: 0,
 								startTime: +new Date('2025-02-26T00:00:02.000Z'),
@@ -145,7 +145,7 @@ describe(getTreeNodeData, () => {
 					},
 					{
 						depth: 1,
-						id: 'B',
+						id: 'B:1',
 						node: 'B',
 						runIndex: 1,
 						startTime: +new Date('2025-02-26T00:00:03.000Z'),
@@ -160,7 +160,7 @@ describe(getTreeNodeData, () => {
 							{
 								children: [],
 								depth: 2,
-								id: 'C',
+								id: 'C:1',
 								node: 'C',
 								runIndex: 1,
 								startTime: +new Date('2025-02-26T00:00:04.000Z'),

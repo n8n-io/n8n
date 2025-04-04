@@ -33,8 +33,10 @@ const telemetry = useTelemetry();
 const { rootStyles, height, chatWidth, onWindowResize, onResizeDebounced, onResizeChatDebounced } =
 	useResize(container);
 
-const { currentSessionId, messages, connectedNode, sendMessage, refreshSession, displayExecution } =
-	useChatState(ref(false), onWindowResize);
+const { currentSessionId, messages, sendMessage, refreshSession, displayExecution } = useChatState(
+	ref(false),
+	onWindowResize,
+);
 const isLogDetailsOpen = computed(() => selectedLogEntry.value !== undefined);
 
 const { canPopOut, isPoppedOut, pipWindow } = usePiPWindow({
@@ -134,7 +136,6 @@ watch([panelState, height], ([state, h]) => {
 					<LogsOverviewPanel
 						:class="$style.logsOverview"
 						:is-open="panelState !== LOGS_PANEL_STATE.CLOSED"
-						:node="connectedNode"
 						:selected="selectedLogEntry"
 						@click-header="handleClickHeader"
 						@select="handleSelectLogEntry"
