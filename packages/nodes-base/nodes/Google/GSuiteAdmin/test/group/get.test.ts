@@ -1,42 +1,38 @@
-import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
+import nock from 'nock';
 
-describe('Google GSuiteAdmin Node', () => {
-	const workflows = ['nodes/Google/GSuiteAdmin/test/group/get.workflow.json'];
-	const workflowTests = workflowToTests(workflows);
+import { initBinaryDataService, testWorkflows, getWorkflowFilenames } from '@test/nodes/Helpers';
 
-	describe('should get group', () => {
-		const nodeTypes = setup(workflowTests);
+describe('Google GSuiteAdmin Node - Get Group', () => {
+	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
+		filename.includes('get.workflow.json'),
+	);
 
-		for (const workflow of workflowTests) {
-			workflow.nock = {
-				baseUrl: 'https://www.googleapis.com/admin',
-				mocks: [
-					{
-						method: 'get',
-						path: '/directory/v1/groups/01302m922pmp3e4',
-						statusCode: 200,
-						responseBody: {
-							kind: 'admin#directory#group',
-							id: '01302m922pmp3e4',
-							etag: '"example"',
-							email: 'new3@example.com',
-							name: 'new2',
-							directMembersCount: '2',
-							description: 'new1',
-							adminCreated: true,
-							aliases: ['new2@example.com', 'new@example.com', 'NewOnes@example.com'],
-							nonEditableAliases: [
-								'NewOnes@example.com.test-google-a.com',
-								'new@example.com.test-google-a.com',
-								'new2@example.com.test-google-a.com',
-								'new3@example.com.test-google-a.com',
-							],
-						},
-					},
-				],
-			};
-
-			test(workflow.description, async () => await equalityTest(workflow, nodeTypes));
-		}
+	beforeAll(async () => {
+		await initBinaryDataService();
 	});
+
+	beforeEach(() => {
+		nock.disableNetConnect();
+		nock('https://www.googleapis.com/admin')
+			.get('/directory/v1/groups/01302m922pmp3e4')
+			.reply(200, {
+				kind: 'admin#directory#group',
+				id: '01302m922pmp3e4',
+				etag: '"example"',
+				email: 'new3@example.com',
+				name: 'new2',
+				directMembersCount: '2',
+				description: 'new1',
+				adminCreated: true,
+				aliases: ['new2@example.com', 'new@example.com', 'NewOnes@example.com'],
+				nonEditableAliases: [
+					'NewOnes@example.com.test-google-a.com',
+					'new@example.com.test-google-a.com',
+					'new2@example.com.test-google-a.com',
+					'new3@example.com.test-google-a.com',
+				],
+			});
+	});
+
+	testWorkflows(workflows);
 });

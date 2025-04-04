@@ -1,26 +1,23 @@
-import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
+import nock from 'nock';
 
-describe('Google GSuiteAdmin Node', () => {
-	const workflows = ['nodes/Google/GSuiteAdmin/test/user/delete.workflow.json'];
-	const workflowTests = workflowToTests(workflows);
+import { initBinaryDataService, testWorkflows, getWorkflowFilenames } from '@test/nodes/Helpers';
 
-	describe('should delete user', () => {
-		const nodeTypes = setup(workflowTests);
+describe('Google GSuiteAdmin Node - Delete User', () => {
+	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
+		filename.includes('delete.workflow.json'),
+	);
 
-		for (const workflow of workflowTests) {
-			workflow.nock = {
-				baseUrl: 'https://www.googleapis.com/admin',
-				mocks: [
-					{
-						method: 'delete',
-						path: '/directory/v1/users/114393134535981252212',
-						statusCode: 200,
-						responseBody: {},
-					},
-				],
-			};
-
-			test(workflow.description, async () => await equalityTest(workflow, nodeTypes));
-		}
+	beforeAll(async () => {
+		await initBinaryDataService();
 	});
+
+	beforeEach(() => {
+		nock.disableNetConnect();
+
+		nock('https://www.googleapis.com/admin')
+			.delete('/directory/v1/users/114393134535981252212')
+			.reply(200, {});
+	});
+
+	testWorkflows(workflows);
 });

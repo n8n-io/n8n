@@ -1,26 +1,23 @@
-import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
+import nock from 'nock';
 
-describe('Google GSuiteAdmin Node', () => {
-	const workflows = ['nodes/Google/GSuiteAdmin/test/user/removeFromGroup.workflow.json'];
-	const workflowTests = workflowToTests(workflows);
+import { initBinaryDataService, testWorkflows, getWorkflowFilenames } from '@test/nodes/Helpers';
 
-	describe('should remove user from group', () => {
-		const nodeTypes = setup(workflowTests);
+describe('Google GSuiteAdmin Node - Remove User from Group', () => {
+	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
+		filename.includes('removeFromGroup.workflow.json'),
+	);
 
-		for (const workflow of workflowTests) {
-			workflow.nock = {
-				baseUrl: 'https://www.googleapis.com/admin',
-				mocks: [
-					{
-						method: 'delete',
-						path: '/directory/v1/groups/01302m922pmp3e4/members/114393134535981252528',
-						statusCode: 200,
-						responseBody: {},
-					},
-				],
-			};
-
-			test(workflow.description, async () => await equalityTest(workflow, nodeTypes));
-		}
+	beforeAll(async () => {
+		await initBinaryDataService();
 	});
+
+	beforeEach(() => {
+		nock.disableNetConnect();
+
+		nock('https://www.googleapis.com/admin')
+			.delete('/directory/v1/groups/01302m922pmp3e4/members/114393134535981252528')
+			.reply(200, {});
+	});
+
+	testWorkflows(workflows);
 });

@@ -1,39 +1,34 @@
-import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
+import nock from 'nock';
 
-describe('Google GSuiteAdmin Node', () => {
-	const workflows = ['nodes/Google/GSuiteAdmin/test/group/create.workflow.json'];
-	const workflowTests = workflowToTests(workflows);
+import { initBinaryDataService, testWorkflows, getWorkflowFilenames } from '@test/nodes/Helpers';
 
-	describe('should create group', () => {
-		const nodeTypes = setup(workflowTests);
+describe('Google GSuiteAdmin Node - Create Group', () => {
+	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
+		filename.includes('create.workflow.json'),
+	);
 
-		for (const workflow of workflowTests) {
-			workflow.nock = {
-				baseUrl: 'https://www.googleapis.com/admin',
-				mocks: [
-					{
-						method: 'post',
-						path: '/directory/v1/groups',
-						statusCode: 200,
-						requestBody: {
-							email: 'NewOnes22@example.com',
-							name: 'Test',
-							description: 'test',
-						},
-						responseBody: {
-							kind: 'admin#directory#group',
-							id: '03mzq4wv15cepg2',
-							etag: '"example"',
-							email: 'NewOnes22@example.com',
-							name: 'Test',
-							description: 'test',
-							adminCreated: true,
-						},
-					},
-				],
-			};
-
-			test(workflow.description, async () => await equalityTest(workflow, nodeTypes));
-		}
+	beforeAll(async () => {
+		await initBinaryDataService();
 	});
+
+	beforeEach(() => {
+		nock.disableNetConnect();
+		nock('https://www.googleapis.com/admin')
+			.post('/directory/v1/groups', {
+				email: 'NewOnes22@example.com',
+				name: 'Test',
+				description: 'test',
+			})
+			.reply(200, {
+				kind: 'admin#directory#group',
+				id: '03mzq4wv15cepg2',
+				etag: '"example"',
+				email: 'NewOnes22@example.com',
+				name: 'Test',
+				description: 'test',
+				adminCreated: true,
+			});
+	});
+
+	testWorkflows(workflows);
 });
