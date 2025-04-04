@@ -70,13 +70,15 @@ export async function qdrantCollectionsSearch(this: ILoadOptionsFunctions) {
 }
 
 export async function milvusCollectionsSearch(this: ILoadOptionsFunctions) {
-	// XXX need to implement getCredentials for milvus
-	// const credentials = await this.getCredentials('milvusApi');
+	const credentials = await this.getCredentials<{
+		baseUrl: string;
+		username: string;
+		password: string;
+	}>('milvusApi');
 
 	const client = new MilvusClient({
-		address: 'http://localhost:19530',
-		token: 'root:Milvus',
-		ssl: false,
+		address: credentials.baseUrl,
+		token: `${credentials.username}:${credentials.password}`,
 	});
 
 	const response = await client.listCollections();
