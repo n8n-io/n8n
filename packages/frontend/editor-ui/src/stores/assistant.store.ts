@@ -3,7 +3,6 @@ import {
 	VIEWS,
 	EDITABLE_CANVAS_VIEWS,
 	STORES,
-	AI_ASSISTANT_EXPERIMENT,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	CREDENTIAL_EDIT_MODAL_KEY,
 } from '@/constants';
@@ -23,7 +22,6 @@ import { deepCopy } from 'n8n-workflow';
 import { ndvEventBus, codeNodeEditorEventBus } from '@/event-bus';
 import { useNDVStore } from './ndv.store';
 import type { IUpdateInformation } from '@/Interface';
-import { usePostHog } from './posthog.store';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
@@ -60,7 +58,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const route = useRoute();
 	const streaming = ref<boolean>();
 	const ndvStore = useNDVStore();
-	const { getVariant } = usePostHog();
 	const locale = useI18n();
 	const telemetry = useTelemetry();
 	const assistantHelpers = useAIAssistantHelpers();
@@ -89,10 +86,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const workflowDataStale = ref<boolean>(true);
 	const workflowExecutionDataStale = ref<boolean>(true);
 
-	const isExperimentEnabled = computed(
-		() => getVariant(AI_ASSISTANT_EXPERIMENT.name) === AI_ASSISTANT_EXPERIMENT.variant,
-	);
-
 	const assistantMessages = computed(() =>
 		chatMessages.value.filter((msg) => msg.role === 'assistant'),
 	);
@@ -110,9 +103,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 	const isAssistantOpen = computed(() => canShowAssistant.value && chatWindowOpen.value);
 
-	const isAssistantEnabled = computed(
-		() => isExperimentEnabled.value && settings.isAiAssistantEnabled,
-	);
+	const isAssistantEnabled = computed(() => settings.isAiAssistantEnabled);
 
 	const canShowAssistant = computed(
 		() => isAssistantEnabled.value && ENABLED_VIEWS.includes(route.name as VIEWS),
