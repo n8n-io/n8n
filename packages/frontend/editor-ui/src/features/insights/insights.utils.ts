@@ -27,7 +27,7 @@ export const transformInsightsDeviation: Record<
 	failed: (value: number, deviation: number) => (deviation / value) * 100,
 	timeSaved: (_: number, deviation: number) => transformInsightsTimeSaved(deviation),
 	averageRunTime: (_: number, deviation: number) => deviation,
-	failureRate: (_: number, deviation: number) => deviation,
+	failureRate: (_: number, deviation: number) => deviation * 100,
 };
 
 export const transformInsightsSummary = (data: InsightsSummary | null): InsightsSummaryDisplay =>
