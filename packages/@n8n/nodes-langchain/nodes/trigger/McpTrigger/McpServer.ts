@@ -9,6 +9,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { Service } from '@n8n/di';
 import type * as express from 'express';
+import type { Logger } from 'n8n-workflow';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { FlushingSSEServerTransport } from './FlushingSSEServerTransport';
@@ -40,21 +41,30 @@ export class McpServerData {
 
 	transports: { [sessionId: string]: FlushingSSEServerTransport } = {};
 
+	logger: Logger;
+
 	private _tools: { [sessionId: string]: Tool[] } = {};
 
 	private _resolveFunctions: { [sessionId: string]: CallableFunction } = {};
 
-	constructor() {
+	constructor(logger: Logger) {
 		this.server = this.setUpServer();
+		this.logger = logger;
+		this.logger.info('MCP Server created');
 	}
 
 	async connectTransport(postUrl: string, resp: CompressionResponse): Promise<void> {
 		const transport = new FlushingSSEServerTransport(postUrl, resp);
 		this.transports[transport.sessionId] = transport;
-		resp.on('close', () => {
-			delete this.transports[transport.sessionId];
-		});
 		await this.server.connect(transport);
+
+		resp.on('close', async () => {
+			this.logger.info(`Deleting transport for ${transport.sessionId}`);
+			await transport.close();
+			delete this.transports[transport.sessionId];
+			delete this._tools[transport.sessionId];
+			delete this._resolveFunctions[transport.sessionId];
+		});
 
 		// Make sure we flush the compression middleware, so that it's not waiting for more content to be added to the buffer
 		if (resp.flush) {
@@ -73,7 +83,8 @@ export class McpServerData {
 			});
 			delete this._resolveFunctions[sessionId];
 		} else {
-			resp.status(400).send('No transport found for sessionId');
+			this.logger.warn(`No transport found for session ${sessionId}`);
+			resp.status(401).send('No transport found for sessionId');
 		}
 
 		if (resp.flush) {
@@ -135,19 +146,21 @@ export class McpServerData {
 
 				this._resolveFunctions[extra.sessionId]();
 
+				this.logger.debug(`Got request for ${requestedTool.name}, and executed it.`);
+
 				// TODO: Refactor this to no longer use the legacy tool result, but
 				return { toolResult: result };
 			} catch (error) {
-				console.error(error);
+				this.logger.error(`Error while executing Tool ${requestedTool.name}: ${error}`);
 				return { isError: true, content: [{ type: 'text', text: `Error: ${error.message}` }] };
 			}
 		});
 
 		server.onclose = () => {
-			console.log('!!! CLOSING SERVER !!!');
+			this.logger.info('Closing MCP Server');
 		};
-		server.onerror = (error: any) => {
-			console.log('!!! MCP ERROR', error);
+		server.onerror = (error: unknown) => {
+			this.logger.error(`MCP Error: ${error}`);
 		};
 		return server;
 	}
@@ -159,14 +172,14 @@ export class McpServers {
 
 	private _serverData: McpServerData;
 
-	private constructor() {
-		this._serverData = new McpServerData();
+	private constructor(logger: Logger) {
+		this._serverData = new McpServerData(logger);
 	}
 
-	static get instance(): McpServers {
+	static instance(logger: Logger): McpServers {
 		if (!McpServers.#instance) {
-			console.log('Setting up new singleton');
-			McpServers.#instance = new McpServers();
+			McpServers.#instance = new McpServers(logger);
+			logger.debug('Created singleton for MCP Servers');
 		}
 
 		return McpServers.#instance;

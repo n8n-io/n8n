@@ -4,9 +4,9 @@ import { NodeConnectionTypes, Node } from 'n8n-workflow';
 
 import { getConnectedTools } from '@utils/helpers';
 
+import type { CompressionResponse } from './FlushingSSEServerTransport';
 import { McpServers } from './McpServer';
 import type { McpServerData } from './McpServer';
-import type { CompressionResponse } from './FlushingSSEServerTransport';
 
 const MCP_SSE_SETUP_PATH = 'sse';
 const MCP_SSE_MESSAGES_PATH = 'messages';
@@ -65,7 +65,7 @@ export class McpTrigger extends Node {
 		const req = context.getRequestObject();
 		const resp = context.getResponseObject() as unknown as CompressionResponse;
 
-		const serverData: McpServerData = McpServers.instance.serverData;
+		const serverData: McpServerData = McpServers.instance(context.logger).serverData;
 
 		if (webhookName === 'setup' && serverData.server) {
 			// Sets up the transport and opens the long-lived connection. This resp
