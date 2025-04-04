@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
-import type { IHttpRequestOptions, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, IHttpRequestOptions, INodeExecutionData } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError, OperationalError } from 'n8n-workflow';
 
 import { ErrorMap } from '../../helpers/errorHandler';
@@ -8,8 +8,14 @@ import {
 	simplifyData,
 	validateQueryParameters,
 	processJsonInput,
+	validatePartitionKey,
+	validateCustomProperties,
 } from '../../helpers/utils';
 import { azureCosmosDbApiRequest } from '../../transport';
+
+interface RequestBodyWithParameters extends IDataObject {
+	parameters: Array<{ name: string; value: string }>;
+}
 
 jest.mock('n8n-workflow', () => ({
 	...jest.requireActual('n8n-workflow'),
@@ -76,6 +82,118 @@ describe('getPartitionKey', () => {
 	});
 });
 
+describe('validatePartitionKey', () => {
+	let mockExecuteSingleFunctions: any;
+	let requestOptions: any;
+
+	beforeEach(() => {
+		mockExecuteSingleFunctions = {
+			getNodeParameter: jest.fn(),
+			getNode: jest.fn(() => ({ name: 'MockNode' })),
+		};
+		requestOptions = { body: {}, headers: {} };
+
+		(azureCosmosDbApiRequest as jest.Mock).mockClear();
+	});
+
+	test('should throw NodeOperationError when partition key is missing for "create" operation', async () => {
+		mockExecuteSingleFunctions.getNodeParameter.mockReturnValueOnce('create');
+		mockExecuteSingleFunctions.getNodeParameter.mockReturnValueOnce({});
+
+		const mockApiResponse = {
+			partitionKey: {
+				paths: ['/partitionKeyPath'],
+			},
+		};
+		(azureCosmosDbApiRequest as jest.Mock).mockResolvedValue(mockApiResponse);
+
+		await expect(
+			validatePartitionKey.call(mockExecuteSingleFunctions, requestOptions),
+		).rejects.toThrowError(
+			new NodeOperationError(
+				mockExecuteSingleFunctions.getNode(),
+				"Partition key not found in 'Item Contents'",
+				{
+					description:
+						"Partition key 'partitionKey' must be present and have a valid, non-empty value in 'Item Contents'.",
+				},
+			),
+		);
+	});
+
+	test('should throw NodeOperationError when partition key is missing for "update" operation', async () => {
+		mockExecuteSingleFunctions.getNodeParameter.mockReturnValueOnce('update');
+		mockExecuteSingleFunctions.getNodeParameter.mockReturnValueOnce({ partitionKey: '' });
+
+		const mockApiResponse = {
+			partitionKey: {
+				paths: ['/partitionKeyPath'],
+			},
+		};
+		(azureCosmosDbApiRequest as jest.Mock).mockResolvedValue(mockApiResponse);
+
+		await expect(
+			validatePartitionKey.call(mockExecuteSingleFunctions, requestOptions),
+		).rejects.toThrowError(
+			new NodeOperationError(
+				mockExecuteSingleFunctions.getNode(),
+				'Partition key is missing or empty',
+				{
+					description: 'Ensure the "Partition Key" field has a valid, non-empty value.',
+				},
+			),
+		);
+	});
+
+	test('should throw NodeOperationError when partition key is missing for "get" operation', async () => {
+		mockExecuteSingleFunctions.getNodeParameter.mockReturnValueOnce('get');
+		mockExecuteSingleFunctions.getNodeParameter.mockReturnValueOnce(undefined);
+
+		const mockApiResponse = {
+			partitionKey: {
+				paths: ['/partitionKeyPath'],
+			},
+		};
+		(azureCosmosDbApiRequest as jest.Mock).mockResolvedValue(mockApiResponse);
+
+		await expect(
+			validatePartitionKey.call(mockExecuteSingleFunctions, requestOptions),
+		).rejects.toThrowError(
+			new NodeOperationError(
+				mockExecuteSingleFunctions.getNode(),
+				'Partition key is missing or empty',
+				{
+					description: 'Ensure the "Partition Key" field exists and has a valid, non-empty value.',
+				},
+			),
+		);
+	});
+
+	test('should throw NodeOperationError when invalid JSON is provided for customProperties', async () => {
+		mockExecuteSingleFunctions.getNodeParameter.mockReturnValueOnce('create');
+		mockExecuteSingleFunctions.getNodeParameter.mockReturnValueOnce('invalidJson');
+
+		const mockApiResponse = {
+			partitionKey: {
+				paths: ['/partitionKeyPath'],
+			},
+		};
+		(azureCosmosDbApiRequest as jest.Mock).mockResolvedValue(mockApiResponse);
+
+		await expect(
+			validatePartitionKey.call(mockExecuteSingleFunctions, requestOptions),
+		).rejects.toThrowError(
+			new NodeOperationError(
+				mockExecuteSingleFunctions.getNode(),
+				'Invalid JSON format in "Item Contents"',
+				{
+					description: 'Ensure the "Item Contents" field contains a valid JSON object',
+				},
+			),
+		);
+	});
+});
+
 describe('simplifyData', () => {
 	let mockExecuteSingleFunctions: any;
 
@@ -134,6 +252,23 @@ describe('validateQueryParameters', () => {
 			),
 		);
 	});
+
+	test('should successfully map parameters when they match', async () => {
+		mockExecuteSingleFunctions.getNodeParameter
+			.mockReturnValueOnce('$1, $2')
+			.mockReturnValueOnce({ queryParameters: 'value1, value2' });
+
+		const result = await validateQueryParameters.call(mockExecuteSingleFunctions, requestOptions);
+
+		if (result.body && (result.body as RequestBodyWithParameters).parameters) {
+			expect((result.body as RequestBodyWithParameters).parameters).toEqual([
+				{ name: '@param1', value: 'value1' },
+				{ name: '@param2', value: 'value2' },
+			]);
+		} else {
+			throw new OperationalError('Expected result.body to contain a parameters array');
+		}
+	});
 });
 
 describe('processJsonInput', () => {
@@ -150,8 +285,66 @@ describe('processJsonInput', () => {
 	});
 
 	test('should throw OperationalError for invalid JSON string', () => {
-		expect(() => processJsonInput('{key: value}')).toThrowError(
+		const invalidJson = '{key: value}';
+		expect(() => processJsonInput(invalidJson)).toThrowError(
 			new OperationalError('Input must contain a valid JSON', { level: 'warning' }),
+		);
+	});
+
+	test('should throw OperationalError for invalid JSON string with inputName', () => {
+		const invalidJson = '{key: value}';
+		expect(() => processJsonInput(invalidJson, 'testInput')).toThrowError(
+			new OperationalError("Input 'testInput' must contain a valid JSON", { level: 'warning' }),
+		);
+	});
+});
+
+describe('validateCustomProperties', () => {
+	let mockExecuteSingleFunctions: any;
+	let requestOptions: any;
+
+	beforeEach(() => {
+		mockExecuteSingleFunctions = {
+			getNodeParameter: jest.fn(),
+			getNode: jest.fn(() => ({ name: 'MockNode' })),
+		};
+		requestOptions = { body: {}, headers: {}, url: 'http://mock.url' };
+	});
+
+	afterEach(() => {
+		jest.resetAllMocks();
+	});
+
+	test('should merge custom properties into requestOptions.body for valid input', async () => {
+		const validCustomProperties = { property1: 'value1', property2: 'value2' };
+		mockExecuteSingleFunctions.getNodeParameter.mockReturnValue(validCustomProperties);
+
+		const result = await validateCustomProperties.call(mockExecuteSingleFunctions, requestOptions);
+
+		expect(result.body).toEqual({ property1: 'value1', property2: 'value2' });
+	});
+
+	test('should throw NodeOperationError when customProperties are empty, undefined, null, or contain only invalid values', async () => {
+		const emptyCustomProperties = {};
+		mockExecuteSingleFunctions.getNodeParameter.mockReturnValue(emptyCustomProperties);
+
+		await expect(
+			validateCustomProperties.call(mockExecuteSingleFunctions, requestOptions),
+		).rejects.toThrowError(
+			new NodeOperationError(mockExecuteSingleFunctions.getNode(), 'Item contents are empty', {
+				description: 'Ensure the "Item Contents" field contains at least one valid property.',
+			}),
+		);
+
+		const invalidValues = { property1: null, property2: '' };
+		mockExecuteSingleFunctions.getNodeParameter.mockReturnValue(invalidValues);
+
+		await expect(
+			validateCustomProperties.call(mockExecuteSingleFunctions, requestOptions),
+		).rejects.toThrowError(
+			new NodeOperationError(mockExecuteSingleFunctions.getNode(), 'Item contents are empty', {
+				description: 'Ensure the "Item Contents" field contains at least one valid property.',
+			}),
 		);
 	});
 });

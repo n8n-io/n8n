@@ -103,6 +103,28 @@ export async function validateQueryParameters(
 	return requestOptions;
 }
 
+export function processJsonInput<T>(
+	jsonData: T,
+	inputName?: string,
+	fallbackValue: T | undefined = undefined,
+) {
+	let values;
+	const input = inputName ? `'${inputName}' ` : '';
+	if (typeof jsonData === 'string') {
+		try {
+			values = jsonParse(jsonData, { fallbackValue });
+		} catch (error) {
+			throw new OperationalError(`Input ${input}must contain a valid JSON`, { level: 'warning' });
+		}
+	} else if (typeof jsonData === 'object') {
+		values = jsonData;
+	} else {
+		throw new OperationalError(`Input ${input}must contain a valid JSON`, { level: 'warning' });
+	}
+
+	return values;
+}
+
 export async function validatePartitionKey(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
@@ -168,26 +190,25 @@ export async function validatePartitionKey(
 	return requestOptions;
 }
 
-export function processJsonInput<T>(
-	jsonData: T,
-	inputName?: string,
-	fallbackValue: T | undefined = undefined,
-) {
-	let values;
-	const input = inputName ? `'${inputName}' ` : '';
-	if (typeof jsonData === 'string') {
-		try {
-			values = jsonParse(jsonData, { fallbackValue });
-		} catch (error) {
-			throw new OperationalError(`Input ${input}must contain a valid JSON`, { level: 'warning' });
-		}
-	} else if (typeof jsonData === 'object') {
-		values = jsonData;
-	} else {
-		throw new OperationalError(`Input ${input}must contain a valid JSON`, { level: 'warning' });
+export async function validateCustomProperties(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const rawCustomProperties = this.getNodeParameter('customProperties') as IDataObject;
+	const customProperties = processJsonInput(rawCustomProperties, 'Item Contents');
+	if (
+		Object.keys(customProperties).length === 0 ||
+		Object.values(customProperties).every((val) => val === undefined || val === null || val === '')
+	) {
+		throw new NodeOperationError(this.getNode(), 'Item contents are empty', {
+			description: 'Ensure the "Item Contents" field contains at least one valid property.',
+		});
 	}
-
-	return values;
+	requestOptions.body = {
+		...(requestOptions.body as IDataObject),
+		...customProperties,
+	};
+	return requestOptions;
 }
 
 export const untilContainerSelected = { container: [''] };

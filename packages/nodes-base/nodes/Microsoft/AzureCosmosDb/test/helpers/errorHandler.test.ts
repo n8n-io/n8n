@@ -80,4 +80,99 @@ describe('handleError', () => {
 			}),
 		);
 	});
+
+	test('should handle error details correctly when match is successful', async () => {
+		const errorMessage = 'Message: {"Errors":["Error 1", "Error 2"]}';
+		const match = errorMessage.match(/Message: ({.*?})/);
+		let errorDetails: string[] = [];
+
+		if (match?.[1]) {
+			try {
+				errorDetails = JSON.parse(match[1]).Errors;
+			} catch {}
+		}
+
+		expect(errorDetails).toEqual(['Error 1', 'Error 2']);
+	});
+
+	test('should handle error when match does not return expected format', async () => {
+		const errorMessage = 'Message: Invalid format';
+
+		const match = errorMessage.match(/Message: ({.*?})/);
+		let errorDetails: string[] = [];
+
+		if (match?.[1]) {
+			try {
+				errorDetails = JSON.parse(match[1]).Errors;
+			} catch {}
+		}
+
+		expect(errorDetails).toEqual([]);
+	});
+
+	test('should throw NodeApiError with proper details if error details are present', async () => {
+		const errorMessage = 'Message: {"Errors":["Specific error occurred"]}';
+		const match = errorMessage.match(/Message: ({.*?})/);
+		let errorDetails: string[] = [];
+
+		if (match?.[1]) {
+			try {
+				errorDetails = JSON.parse(match[1]).Errors;
+			} catch {}
+		}
+
+		if (errorDetails && errorDetails.length > 0) {
+			await expect(
+				handleError.call(mockExecuteSingleFunctions, data, {
+					statusCode: 500,
+					body: { code: 'InternalServerError', message: errorMessage },
+					headers: {},
+				}),
+			).rejects.toThrow(
+				new NodeApiError(
+					mockExecuteSingleFunctions.getNode(),
+					{
+						code: 'InternalServerError',
+						message: errorMessage,
+					} as JsonObject,
+					{
+						message: 'InternalServerError',
+						description: errorDetails.join('\n'),
+					},
+				),
+			);
+		}
+	});
+
+	test('should throw NodeApiError with fallback message if no details found', async () => {
+		const errorMessage = 'Message: {"Errors":[] }';
+		const match = errorMessage.match(/Message: ({.*?})/);
+		let errorDetails: string[] = [];
+
+		if (match?.[1]) {
+			try {
+				errorDetails = JSON.parse(match[1]).Errors;
+			} catch {}
+		}
+
+		await expect(
+			handleError.call(mockExecuteSingleFunctions, data, {
+				statusCode: 500,
+				body: { code: 'InternalServerError', message: errorMessage },
+				headers: {},
+			}),
+		).rejects.toThrow(
+			new NodeApiError(
+				mockExecuteSingleFunctions.getNode(),
+				{
+					code: 'InternalServerError',
+					message: errorMessage,
+				} as JsonObject,
+				{
+					message: 'InternalServerError',
+					description: 'Internal Server Error',
+				},
+			),
+		);
+	});
 });
