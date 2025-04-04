@@ -268,8 +268,12 @@ const displayModes = computed(() => {
 
 	if (
 		isPaneTypeOutput.value &&
-		activeNode.value?.type === HTML_NODE_TYPE &&
-		activeNode.value.parameters.operation === 'generateHtmlTemplate'
+		(activeNode.value?.type === HTML_NODE_TYPE ||
+			activeNode.value?.type === 'n8n-nodes-base.extractFromFile') &&
+		(activeNode.value?.parameters.operation === 'generateHtmlTemplate' ||
+			(activeNode.value?.parameters.operation === 'docx' &&
+				(activeNode.value.parameters.options as Record<string, unknown>)['outputFormat'] ===
+					'html'))
 	) {
 		defaults.unshift({ label: 'HTML', value: 'html' });
 	}
@@ -1293,8 +1297,10 @@ function setDisplayMode() {
 	if (!activeNode.value) return;
 
 	const shouldDisplayHtml =
-		activeNode.value.type === HTML_NODE_TYPE &&
-		activeNode.value.parameters.operation === 'generateHtmlTemplate';
+		(activeNode.value.type === HTML_NODE_TYPE ||
+			activeNode.value.type === 'n8n-nodes-base.extractFromFile') &&
+		(activeNode.value.parameters.operation === 'generateHtmlTemplate' ||
+			activeNode.value.parameters.operation === 'docx');
 
 	if (shouldDisplayHtml) {
 		ndvStore.setPanelDisplayMode({
