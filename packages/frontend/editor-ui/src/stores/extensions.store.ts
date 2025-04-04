@@ -3,6 +3,7 @@ import { STORES } from '@/constants';
 import n8n from '@/extensions-sdk';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
+import ShadowRealm from 'shadowrealm-api';
 
 export type Extension = {
 	id: string;
@@ -135,17 +136,15 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 				throw new Error(`Failed to fetch extension code: ${response.statusText}`);
 			}
 			const extensionCode = await response.text();
-			let iframe = document.getElementById(EXTENSION_SANDBOX_ID) as HTMLIFrameElement;
-			if (!iframe) {
-				iframe = document.createElement('iframe');
-				iframe.id = EXTENSION_SANDBOX_ID;
+			let host = document.getElementById(EXTENSION_SANDBOX_ID) as HTMLIFrameElement;
+			if (!host) {
+				host = document.createElement('iframe');
+				host.id = EXTENSION_SANDBOX_ID;
 				// TODO: Setting 'allow-same-origin' is not secure, we need to find a way to load the extension without it
-				iframe.sandbox = 'allow-scripts allow-same-origin';
-				iframe.style.display = 'none';
-				document.body.appendChild(iframe);
+				host.sandbox = 'allow-scripts allow-same-origin';
+				host.style.display = 'none';
+				document.body.appendChild(host);
 			}
-			// Add iframe to the document
-			document.body.appendChild(iframe);
 
 			// Helper function to make objects safe for serialization via postMessage
 			const makeSerializable = (obj: any): any => {
@@ -203,7 +202,7 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 
 			// Set up communication
 			const messageHandler = (event: MessageEvent) => {
-				if (event.source !== iframe.contentWindow) return;
+				if (event.source !== host.contentWindow) return;
 
 				const { type, method, args, callId } = event.data;
 
@@ -222,7 +221,7 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 								.then((data) => {
 									try {
 										const serializedData = makeSerializable(data);
-										iframe.contentWindow?.postMessage(
+										host.contentWindow?.postMessage(
 											{
 												type: 'API_RESPONSE',
 												callId,
@@ -231,7 +230,7 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 											'*',
 										);
 									} catch (serializationError) {
-										iframe.contentWindow?.postMessage(
+										host.contentWindow?.postMessage(
 											{
 												type: 'API_ERROR',
 												callId,
@@ -242,7 +241,7 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 									}
 								})
 								.catch((error) => {
-									iframe.contentWindow?.postMessage(
+									host.contentWindow?.postMessage(
 										{
 											type: 'API_ERROR',
 											callId,
@@ -254,7 +253,7 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 						} else {
 							try {
 								const serializedResult = makeSerializable(result);
-								iframe.contentWindow?.postMessage(
+								host.contentWindow?.postMessage(
 									{
 										type: 'API_RESPONSE',
 										callId,
@@ -263,7 +262,7 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 									'*',
 								);
 							} catch (serializationError) {
-								iframe.contentWindow?.postMessage(
+								host.contentWindow?.postMessage(
 									{
 										type: 'API_ERROR',
 										callId,
@@ -275,7 +274,7 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 						}
 						console.log(`API response to extension ${id}: ${method}`, result);
 					} catch (error) {
-						iframe.contentWindow?.postMessage(
+						host.contentWindow?.postMessage(
 							{
 								type: 'API_ERROR',
 								callId,
@@ -402,7 +401,7 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 
 			// Set the iframe content
 			const htmlBlob = new Blob([iframeContent], { type: 'text/html' });
-			iframe.src = URL.createObjectURL(htmlBlob);
+			host.src = URL.createObjectURL(htmlBlob);
 
 			// Store URLs for cleanup later
 			// extension.blobUrls = [blobUrl, iframe.src];
@@ -414,6 +413,36 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 		extension.initialized = true;
 	};
 
+	/**
+	 * Option C: Load the extension in a shadow realm
+	 */
+	const setupExtensionUsingShadowRealm = async (id: string) => {
+		const extension = getExtensionById(id);
+		if (!extension || !extension.enabled) return;
+		if (!extension.setup.frontend) {
+			toast.showError(
+				new Error(`Extension "${extension.name}" does not have a frontend entry point`),
+				'Error loading extension',
+			);
+			return;
+		}
+		const basePath = extension.path.replace('n8n.manifest.json', '');
+		const relativePath = `${basePath}${extension.setup.frontend?.replace('./', '')}`;
+		const mainPath = new URL(relativePath, window.location.origin).href;
+		const response = await fetch(mainPath);
+		if (!response.ok) {
+			toast.showError(
+				new Error(`Failed to fetch extension code: ${response.statusText}`),
+				'Error loading extension',
+			);
+			return;
+		}
+		const extensionCode = await response.text();
+
+		const realm = new ShadowRealm();
+		realm.evaluate(extensionCode.replace('export { setup };', ''));
+	};
+
 	const setupExtension = async (id: string) => {
 		switch (setupMethod.value) {
 			case 'directImport':
@@ -421,6 +450,9 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 				break;
 			case 'iframe':
 				await setupExtensionUsingIframe(id);
+				break;
+			case 'shadowRealm':
+				await setupExtensionUsingShadowRealm(id);
 				break;
 		}
 	};

@@ -52,7 +52,6 @@ const setup = async (context) => {
 			});
 		}
 	};
-	// await showPrompt();
 };
 
 export { setup };
