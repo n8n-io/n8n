@@ -6,29 +6,30 @@ import * as jmespath from 'jmespath';
 import { DateTime, Duration, Interval, Settings } from 'luxon';
 
 import { augmentArray, augmentObject } from './AugmentObject';
-import { SCRIPTING_NODE_TYPES } from './Constants';
+import { AGENT_LANGCHAIN_NODE_TYPE, SCRIPTING_NODE_TYPES } from './Constants';
 import { ApplicationError } from './errors/application.error';
 import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
 import { getGlobalState } from './GlobalState';
-import {
-	type IDataObject,
-	type IExecuteData,
-	type INodeExecutionData,
-	type INodeParameters,
-	type IPairedItemData,
-	type IRunExecutionData,
-	type ISourceData,
-	type ITaskData,
-	type IWorkflowDataProxyAdditionalKeys,
-	type IWorkflowDataProxyData,
-	type INodeParameterResourceLocator,
-	type NodeParameterValueType,
-	type WorkflowExecuteMode,
-	type ProxyInput,
-	NodeConnectionTypes,
+import { NodeConnectionTypes } from './Interfaces';
+import type {
+	IDataObject,
+	IExecuteData,
+	INodeExecutionData,
+	INodeParameters,
+	IPairedItemData,
+	IRunExecutionData,
+	ISourceData,
+	ITaskData,
+	IWorkflowDataProxyAdditionalKeys,
+	IWorkflowDataProxyData,
+	INodeParameterResourceLocator,
+	NodeParameterValueType,
+	WorkflowExecuteMode,
+	ProxyInput,
+	INode,
 } from './Interfaces';
 import * as NodeHelpers from './NodeHelpers';
-import { deepCopy } from './utils';
+import { deepCopy, isObjectEmpty } from './utils';
 import type { Workflow } from './Workflow';
 import type { EnvProviderState } from './WorkflowDataProxyEnvProvider';
 import { createEnvProvider, createEnvProviderState } from './WorkflowDataProxyEnvProvider';
@@ -157,6 +158,68 @@ export class WorkflowDataProxy {
 				},
 			},
 		);
+	}
+
+	private buildAgentToolInfo(node: INode) {
+		const nodeType = this.workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		const type = nodeType.description.displayName;
+		const resourceKey = node.parameters.resource;
+		const getProp = (x: NodeParameterValueType) =>
+			nodeType.description.properties.find((y) => y.name === x);
+
+		const resource =
+			getProp(resourceKey)?.displayName ?? getProp(getProp('resource')?.default)?.displayName;
+
+		const operationKey = node.parameters.operation;
+		const operation =
+			getProp(operationKey)?.displayName ?? getProp(getProp('operation')?.default)?.displayName;
+
+		const hasCredentials = !isObjectEmpty(node.credentials ?? {});
+
+		const hasValidCalendar = nodeType.description.name.includes('googleCalendar')
+			? isResourceLocatorValue(node.parameters.calendar)
+			: undefined;
+
+		const aiDefinedFields = Object.entries(node.parameters)
+			.map(([key, value]) => [key, isResourceLocatorValue(value) ? value.value : value] as const)
+			.filter(([_, value]) => value?.toString().toLowerCase().includes('$fromai'))
+			.map(([key]) => key);
+
+		return {
+			name: node.name,
+			type,
+			resource,
+			operation,
+			hasCredentials,
+			hasValidCalendar,
+			aiDefinedFields,
+		};
+	}
+
+	private agentInfo() {
+		const node = this.workflow.getNode(this.activeNodeName);
+		if (!node || node.type !== AGENT_LANGCHAIN_NODE_TYPE) return undefined;
+		const connectedTools = this.workflow
+			.getParentNodes(this.activeNodeName, NodeConnectionTypes.AiTool)
+			.map((x) => this.workflow.getNode(x))
+			.filter((x) => x) as INode[];
+		const memoryConnectedToAgent =
+			this.workflow.getParentNodes(this.activeNodeName, NodeConnectionTypes.AiMemory).length > 0;
+		const allTools = this.workflow.queryNodes((x) =>
+			x.description.name?.toLowerCase().includes('tool'),
+		);
+
+		const unconnectedTools = allTools.filter(
+			(x) => this.workflow.getChildNodes(x.name, 'ai_agent', 1).length === 0,
+		);
+
+		return {
+			memoryConnectedToAgent,
+			tools: [
+				...connectedTools.map((x) => ({ connected: true, ...this.buildAgentToolInfo(x) })),
+				...unconnectedTools.map((x) => ({ connected: false, ...this.buildAgentToolInfo(x) })),
+			],
+		};
 	}
 
 	/**
@@ -1386,6 +1449,7 @@ export class WorkflowDataProxy {
 			$thisRunIndex: this.runIndex,
 			$nodeVersion: that.workflow.getNode(that.activeNodeName)?.typeVersion,
 			$nodeId: that.workflow.getNode(that.activeNodeName)?.id,
+			$agentInfo: this.agentInfo(),
 			$webhookId: that.workflow.getNode(that.activeNodeName)?.webhookId,
 		};
 		const throwOnMissingExecutionData = opts?.throwOnMissingExecutionData ?? true;
