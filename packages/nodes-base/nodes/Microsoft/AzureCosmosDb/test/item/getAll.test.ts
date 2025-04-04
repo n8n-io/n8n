@@ -1,65 +1,88 @@
-import { equalityTest, setup, workflowToTests } from '../../../../../test/nodes/Helpers';
+import nock from 'nock';
 
-describe('Azure Cosmos DB', () => {
-	const workflows = ['nodes/Microsoft/AzureCosmosDb/test/item/getAll.workflow.json'];
-	const workflowTests = workflowToTests(workflows);
+import {
+	initBinaryDataService,
+	testWorkflows,
+	getWorkflowFilenames,
+} from '../../../../../test/nodes/Helpers';
 
-	describe('should get all items', () => {
-		const nodeTypes = setup(workflowTests);
+describe('Azure Cosmos DB - Get All Items', () => {
+	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
+		filename.includes('getAll.workflow.json'),
+	);
 
-		for (const workflow of workflowTests) {
-			workflow.nock = {
-				baseUrl: 'https://n8n-us-east-account.documents.azure.com/dbs/database_1',
-				mocks: [
-					{
-						method: 'get',
-						path: '/colls/container1/docs',
-						statusCode: 200,
-						responseBody: {
-							_rid: '4PVyAMPuBto=',
-							Documents: [
-								{
-									id: 'item1',
-									_rid: '4PVyAMPuBtoCAAAAAAAAAA==',
-									_self: 'dbs/4PVyAA==/colls/4PVyAMPuBto=/docs/4PVyAMPuBtoCAAAAAAAAAA==/',
-									_etag: '"b60042f6-0000-0300-0000-67d982dc0000"',
-									_attachments: 'attachments/',
-									_ts: 1742308060,
-								},
+	beforeAll(async () => {
+		await initBinaryDataService();
+	});
+
+	beforeEach(() => {
+		if (!nock.isActive()) {
+			nock.activate();
+		}
+
+		const baseUrl = 'https://n8n-us-east-account.documents.azure.com/dbs/database_1';
+
+		nock.cleanAll();
+		nock(baseUrl)
+			.persist()
+			.defaultReplyHeaders({ 'Content-Type': 'application/json' })
+			.get('/colls/newOne3/docs')
+			.reply(
+				200,
+				{
+					_rid: '4PVyAMPuBto=',
+					Documents: [
+						{
+							id: 'John',
+							FamilyName: 'NewNameAdded',
+							Parents: [
+								88,
+								{ FirstName: 'Thomas', FamilyName: 'Bob' },
+								{ FamilyName: null, FirstName: 'Mary Kay' },
 							],
-							_count: 1,
+							ExtraField: 'nothing serious',
+							Otherdetails: 'male',
+							This: 'male',
 						},
-						responseHeaders: {
-							'x-ms-continuation': '4PVyAKoVaBQ=',
+						{
+							FamilyName: 'NewName',
+							id: 'NewId',
 						},
-					},
+						{
+							id: 'this',
+						},
+					],
+					_count: 3,
+				},
+				{
+					'x-ms-continuation': '4PVyAKoVaBQ=',
+				},
+			)
+			.get('/colls/newOne3/docs')
+			.matchHeader('x-ms-continuation', '4PVyAKoVaBQ=')
+			.reply(200, {
+				_rid: '4PVyAMPuBto=',
+				Documents: [
 					{
-						method: 'get',
-						path: '/colls/container1/docs',
-						statusCode: 200,
-						requestHeaders: {
-							'x-ms-continuation': '4PVyAKoVaBQ=',
-						},
-						responseBody: {
-							_rid: '4PVyAMPuBto=',
-							Documents: [
-								{
-									id: 'item2',
-									_rid: '4PVyAMPuBtoCAAAAAAAAAA==',
-									_self: 'dbs/4PVyAA==/colls/4PVyAMPuBto=/docs/4PVyAMPuBtoCAAAAAAAAAA==/',
-									_etag: '"b60042f6-0000-0300-0000-67d982dc0000"',
-									_attachments: 'attachments/',
-									_ts: 1742308060,
-								},
-							],
-							_count: 1,
-						},
-						responseHeaders: {},
+						id: 'John',
+						FamilyName: 'NewNameAdded',
+						Parents: [
+							88,
+							{ FirstName: 'Thomas', FamilyName: 'Bob' },
+							{ FamilyName: null, FirstName: 'Mary Kay' },
+						],
+						ExtraField: 'nothing serious',
+						Otherdetails: 'male',
+						This: 'male',
 					},
 				],
-			};
-
-			test(workflow.description, async () => await equalityTest(workflow, nodeTypes));
-		}
+				_count: 1,
+			});
 	});
+
+	afterEach(() => {
+		nock.cleanAll();
+	});
+
+	testWorkflows(workflows);
 });

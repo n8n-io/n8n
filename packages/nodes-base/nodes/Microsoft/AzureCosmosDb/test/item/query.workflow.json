@@ -33,7 +33,7 @@
 			"name": "Azure Cosmos Db",
 			"credentials": {
 				"microsoftAzureCosmosDbSharedKeyApi": {
-					"id": "Y2enLYdrqhmVxetV",
+					"id": "exampleId",
 					"name": "Azure Cosmos DB account"
 				}
 			}
@@ -60,9 +60,5 @@
 				}
 			}
 		]
-	},
-	"meta": {
-		"templateCredsSetupCompleted": true,
-		"instanceId": "7047d2700c0010a2580ba6b2649861ef0a567bfcd1671650a6ca242150e686b8"
 	}
 }

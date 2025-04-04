@@ -1,26 +1,38 @@
-import { equalityTest, setup, workflowToTests } from '../../../../../test/nodes/Helpers';
+import nock from 'nock';
 
-describe('Azure Cosmos DB', () => {
-	const workflows = ['nodes/Microsoft/AzureCosmosDb/test/container/delete.workflow.json'];
-	const workflowTests = workflowToTests(workflows);
+import {
+	initBinaryDataService,
+	testWorkflows,
+	getWorkflowFilenames,
+} from '../../../../../test/nodes/Helpers';
 
-	describe('should delete container', () => {
-		const nodeTypes = setup(workflowTests);
+describe('Azure Cosmos DB - Delete Container', () => {
+	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
+		filename.includes('delete.workflow.json'),
+	);
 
-		for (const workflow of workflowTests) {
-			workflow.nock = {
-				baseUrl: 'https://n8n-us-east-account.documents.azure.com/dbs/database_1',
-				mocks: [
-					{
-						method: 'delete',
-						path: '/colls/container1',
-						statusCode: 204,
-						responseBody: {},
-					},
-				],
-			};
-
-			test(workflow.description, async () => await equalityTest(workflow, nodeTypes));
-		}
+	beforeAll(async () => {
+		await initBinaryDataService();
 	});
+
+	beforeEach(() => {
+		if (!nock.isActive()) {
+			nock.activate();
+		}
+
+		const baseUrl = 'https://n8n-us-east-account.documents.azure.com/dbs/database_1';
+
+		nock.cleanAll();
+		nock(baseUrl)
+			.persist()
+			.defaultReplyHeaders({ 'Content-Type': 'application/json' })
+			.delete('/colls/container1')
+			.reply(204, {});
+	});
+
+	afterEach(() => {
+		nock.cleanAll();
+	});
+
+	testWorkflows(workflows);
 });

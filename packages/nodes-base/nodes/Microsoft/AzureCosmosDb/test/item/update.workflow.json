@@ -35,7 +35,7 @@
 			"name": "Azure Cosmos Db",
 			"credentials": {
 				"microsoftAzureCosmosDbSharedKeyApi": {
-					"id": "Y2enLYdrqhmVxetV",
+					"id": "exampleId",
 					"name": "Azure Cosmos DB account"
 				}
 			}

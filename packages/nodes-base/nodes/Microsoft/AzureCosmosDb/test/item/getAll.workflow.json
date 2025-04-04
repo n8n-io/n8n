@@ -4,8 +4,8 @@
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [0, 0],
-			"id": "49466d78-738a-4dee-a2fb-2143f7800b45",
+			"position": [-180, -520],
+			"id": "8218dacc-3b5f-460a-a773-817faf012ba9",
 			"name": "When clicking ‘Test workflow’"
 		},
 		{
@@ -13,22 +13,22 @@
 				"resource": "item",
 				"container": {
 					"__rl": true,
-					"value": "container1",
+					"value": "newOne3",
 					"mode": "list",
-					"cachedResultName": "container1"
+					"cachedResultName": "newOne3"
 				},
-				"returnAll": true,
 				"requestOptions": {}
 			},
 			"type": "n8n-nodes-base.azureCosmosDb",
 			"typeVersion": 1,
-			"position": [220, 0],
-			"id": "00d6b986-6b8a-43ee-a6a5-b6a7c165c991",
-			"name": "Azure Cosmos Db",
+			"position": [-80, -360],
+			"id": "4f60d430-3c90-4838-b9d1-8c9637e745b6",
+			"name": "getAllItems",
+			"alwaysOutputData": true,
 			"credentials": {
 				"microsoftAzureCosmosDbSharedKeyApi": {
-					"id": "Y2enLYdrqhmVxetV",
-					"name": "Azure Cosmos DB account"
+					"id": "iTUZNEdLdLW0RpF9",
+					"name": "Azure Cosmos DB account "
 				}
 			}
 		}
@@ -38,7 +38,7 @@
 			"main": [
 				[
 					{
-						"node": "Azure Cosmos Db",
+						"node": "getAllItems",
 						"type": "main",
 						"index": 0
 					}
@@ -47,21 +47,38 @@
 		}
 	},
 	"pinData": {
-		"Azure Cosmos Db": [
+		"getAllItems": [
 			{
 				"json": {
-					"id": "item1"
+					"id": "John",
+					"FamilyName": "NewNameAdded",
+					"Parents": [
+						88,
+						{
+							"FirstName": "Thomas",
+							"FamilyName": "Bob"
+						},
+						{
+							"FamilyName": null,
+							"FirstName": "Mary Kay"
+						}
+					],
+					"ExtraField": "nothing serious",
+					"Otherdetails": "male",
+					"This": "male"
 				}
 			},
 			{
 				"json": {
-					"id": "item2"
+					"FamilyName": "NewName",
+					"id": "NewId"
+				}
+			},
+			{
+				"json": {
+					"id": "this"
 				}
 			}
 		]
-	},
-	"meta": {
-		"templateCredsSetupCompleted": true,
-		"instanceId": "7047d2700c0010a2580ba6b2649861ef0a567bfcd1671650a6ca242150e686b8"
 	}
 }

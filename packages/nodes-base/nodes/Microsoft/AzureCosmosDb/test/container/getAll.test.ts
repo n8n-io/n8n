@@ -1,127 +1,178 @@
-import { equalityTest, setup, workflowToTests } from '../../../../../test/nodes/Helpers';
+import nock from 'nock';
 
-describe('Azure Cosmos DB', () => {
-	const workflows = ['nodes/Microsoft/AzureCosmosDb/test/container/getAll.workflow.json'];
-	const workflowTests = workflowToTests(workflows);
+import {
+	initBinaryDataService,
+	testWorkflows,
+	getWorkflowFilenames,
+} from '../../../../../test/nodes/Helpers';
 
-	describe('should get all containers', () => {
-		const nodeTypes = setup(workflowTests);
+describe('Azure Cosmos DB - Get All Containers', () => {
+	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
+		filename.includes('getAll.workflow.json'),
+	);
 
-		for (const workflow of workflowTests) {
-			workflow.nock = {
-				baseUrl: 'https://n8n-us-east-account.documents.azure.com/dbs/database_1',
-				mocks: [
+	beforeAll(async () => {
+		await initBinaryDataService();
+	});
+
+	beforeEach(() => {
+		if (!nock.isActive()) {
+			nock.activate();
+		}
+
+		const baseUrl = 'https://n8n-us-east-account.documents.azure.com/dbs/database_1';
+
+		nock.cleanAll();
+		nock(baseUrl)
+			.persist()
+			.defaultReplyHeaders({ 'Content-Type': 'application/json' })
+			.get('/colls')
+			.reply(
+				200,
+				{
+					_rid: '4PVyAA==',
+					DocumentCollections: [
+						{
+							id: 'newOne3',
+							indexingPolicy: {
+								indexingMode: 'consistent',
+								automatic: true,
+								includedPaths: [{ path: '/*' }],
+								excludedPaths: [{ path: '/"_etag"/?' }],
+								fullTextIndexes: [],
+							},
+							partitionKey: {
+								paths: ['/id'],
+								kind: 'Hash',
+								version: 2,
+							},
+							conflictResolutionPolicy: {
+								mode: 'LastWriterWins',
+								conflictResolutionPath: '/_ts',
+								conflictResolutionProcedure: '',
+							},
+							geospatialConfig: { type: 'Geography' },
+						},
+						{
+							id: 'newId',
+							indexingPolicy: {
+								indexingMode: 'consistent',
+								automatic: true,
+								includedPaths: [{ path: '/*' }],
+								excludedPaths: [{ path: '/"_etag"/?' }],
+								fullTextIndexes: [],
+							},
+							partitionKey: {
+								paths: ['/id'],
+								kind: 'Hash',
+								version: 2,
+							},
+							uniqueKeyPolicy: {
+								uniqueKeys: [],
+							},
+							conflictResolutionPolicy: {
+								mode: 'LastWriterWins',
+								conflictResolutionPath: '/_ts',
+								conflictResolutionProcedure: '',
+							},
+							geospatialConfig: { type: 'Geography' },
+							fullTextPolicy: {
+								defaultLanguage: 'en-US',
+								fullTextPaths: [],
+							},
+							computedProperties: [],
+						},
+						{
+							id: 'ContainerWithNameAsKey',
+							indexingPolicy: {
+								indexingMode: 'consistent',
+								automatic: true,
+								includedPaths: [{ path: '/*' }],
+								excludedPaths: [{ path: '/"_etag"/?' }],
+								fullTextIndexes: [],
+							},
+							partitionKey: {
+								paths: ['/Name'],
+								kind: 'Hash',
+								version: 2,
+							},
+							uniqueKeyPolicy: {
+								uniqueKeys: [],
+							},
+							conflictResolutionPolicy: {
+								mode: 'LastWriterWins',
+								conflictResolutionPath: '/_ts',
+								conflictResolutionProcedure: '',
+							},
+							geospatialConfig: { type: 'Geography' },
+							fullTextPolicy: {
+								defaultLanguage: 'en-US',
+								fullTextPaths: [],
+							},
+							computedProperties: [],
+						},
+						{
+							id: 'ContainerWithPhoneNrAsKey',
+							indexingPolicy: {
+								indexingMode: 'consistent',
+								automatic: true,
+								includedPaths: [{ path: '/*' }],
+								excludedPaths: [{ path: '/"_etag"/?' }],
+								fullTextIndexes: [],
+							},
+							partitionKey: {
+								paths: ['/PhoneNumber'],
+								kind: 'Hash',
+								version: 2,
+							},
+							conflictResolutionPolicy: {
+								mode: 'LastWriterWins',
+								conflictResolutionPath: '/_ts',
+								conflictResolutionProcedure: '',
+							},
+							geospatialConfig: { type: 'Geography' },
+						},
+					],
+					_count: 4,
+				},
+				{
+					'x-ms-continuation': '4PVyAKoVaBQ=',
+				},
+			)
+			.get('/colls')
+			.matchHeader('x-ms-continuation', '4PVyAKoVaBQ=')
+			.reply(200, {
+				_rid: '4PVyAA==',
+				DocumentCollections: [
 					{
-						method: 'get',
-						path: '/colls',
-						statusCode: 200,
-						responseBody: {
-							_rid: '4PVyAA==',
-							DocumentCollections: [
-								{
-									id: 'container1',
-									indexingPolicy: {
-										indexingMode: 'consistent',
-										automatic: true,
-										includedPaths: [
-											{
-												path: '/*',
-											},
-										],
-										excludedPaths: [
-											{
-												path: '/"_etag"/?',
-											},
-										],
-									},
-									partitionKey: {
-										paths: ['/id'],
-										kind: 'Hash',
-										version: 2,
-									},
-									conflictResolutionPolicy: {
-										mode: 'LastWriterWins',
-										conflictResolutionPath: '/_ts',
-										conflictResolutionProcedure: '',
-									},
-									geospatialConfig: {
-										type: 'Geography',
-									},
-									_rid: '4PVyAKoVaBQ=',
-									_ts: 1738759686,
-									_self: 'dbs/4PVyAA==/colls/4PVyAKoVaBQ=/',
-									_etag: '"0000d72f-0000-0300-0000-67a35e060000"',
-									_docs: 'docs/',
-									_sprocs: 'sprocs/',
-									_triggers: 'triggers/',
-									_udfs: 'udfs/',
-									_conflicts: 'conflicts/',
-								},
-							],
-							_count: 1,
+						id: 'ContainerWithPhoneNrAsKey',
+						indexingPolicy: {
+							indexingMode: 'consistent',
+							automatic: true,
+							includedPaths: [{ path: '/*' }],
+							excludedPaths: [{ path: '/"_etag"/?' }],
+							fullTextIndexes: [],
 						},
-						responseHeaders: {
-							'x-ms-continuation': '4PVyAKoVaBQ=',
+						partitionKey: {
+							paths: ['/PhoneNumber'],
+							kind: 'Hash',
+							version: 2,
 						},
-					},
-					{
-						method: 'get',
-						path: '/colls',
-						statusCode: 200,
-						requestHeaders: {
-							'x-ms-continuation': '4PVyAKoVaBQ=',
+						conflictResolutionPolicy: {
+							mode: 'LastWriterWins',
+							conflictResolutionPath: '/_ts',
+							conflictResolutionProcedure: '',
 						},
-						responseBody: {
-							_rid: '4PVyAA==',
-							DocumentCollections: [
-								{
-									id: 'container2',
-									indexingPolicy: {
-										indexingMode: 'consistent',
-										automatic: true,
-										includedPaths: [
-											{
-												path: '/*',
-											},
-										],
-										excludedPaths: [
-											{
-												path: '/"_etag"/?',
-											},
-										],
-									},
-									partitionKey: {
-										paths: ['/id'],
-										kind: 'Hash',
-										version: 2,
-									},
-									conflictResolutionPolicy: {
-										mode: 'LastWriterWins',
-										conflictResolutionPath: '/_ts',
-										conflictResolutionProcedure: '',
-									},
-									geospatialConfig: {
-										type: 'Geography',
-									},
-									_rid: '4PVyAKoVaBQ=',
-									_ts: 1738759686,
-									_self: 'dbs/4PVyAA==/colls/4PVyAKoVaBQ=/',
-									_etag: '"0000d72f-0000-0300-0000-67a35e060000"',
-									_docs: 'docs/',
-									_sprocs: 'sprocs/',
-									_triggers: 'triggers/',
-									_udfs: 'udfs/',
-									_conflicts: 'conflicts/',
-								},
-							],
-							_count: 1,
-						},
-						responseHeaders: {},
+						geospatialConfig: { type: 'Geography' },
 					},
 				],
-			};
-
-			test(workflow.description, async () => await equalityTest(workflow, nodeTypes));
-		}
+				_count: 1,
+			});
 	});
+
+	afterEach(() => {
+		nock.cleanAll();
+	});
+
+	testWorkflows(workflows);
 });

@@ -4,24 +4,23 @@
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [0, 0],
-			"id": "fabb9c53-ca91-4b11-84e3-3b172b10b83a",
+			"position": [-180, -520],
+			"id": "8218dacc-3b5f-460a-a773-817faf012ba9",
 			"name": "When clicking ‘Test workflow’"
 		},
 		{
 			"parameters": {
-				"returnAll": true,
 				"requestOptions": {}
 			},
 			"type": "n8n-nodes-base.azureCosmosDb",
 			"typeVersion": 1,
-			"position": [220, 0],
-			"id": "134e2bbd-937a-4ee8-9ad7-7a745cf0905f",
-			"name": "Azure Cosmos DB",
+			"position": [20, -520],
+			"id": "4568cad5-4e55-4370-9fbe-7f19e03faa67",
+			"name": "getAllContainers",
 			"credentials": {
 				"microsoftAzureCosmosDbSharedKeyApi": {
-					"id": "Y2enLYdrqhmVxetV",
-					"name": "Azure Cosmos DB account"
+					"id": "iTUZNEdLdLW0RpF9",
+					"name": "Azure Cosmos DB account "
 				}
 			}
 		}
@@ -31,22 +30,22 @@
 			"main": [
 				[
 					{
-						"node": "Azure Cosmos DB",
+						"node": "getAllContainers",
 						"type": "main",
 						"index": 0
 					}
 				]
 			]
 		},
-		"Azure Cosmos DB": {
+		"getAllContainers": {
 			"main": [[]]
 		}
 	},
 	"pinData": {
-		"Azure Cosmos DB": [
+		"getAllContainers": [
 			{
 				"json": {
-					"id": "container1",
+					"id": "newOne3",
 					"indexingPolicy": {
 						"indexingMode": "consistent",
 						"automatic": true,
@@ -59,7 +58,8 @@
 							{
 								"path": "/\"_etag\"/?"
 							}
-						]
+						],
+						"fullTextIndexes": []
 					},
 					"partitionKey": {
 						"paths": ["/id"],
@@ -78,7 +78,7 @@
 			},
 			{
 				"json": {
-					"id": "container2",
+					"id": "newId",
 					"indexingPolicy": {
 						"indexingMode": "consistent",
 						"automatic": true,
@@ -91,10 +91,93 @@
 							{
 								"path": "/\"_etag\"/?"
 							}
-						]
+						],
+						"fullTextIndexes": []
 					},
 					"partitionKey": {
 						"paths": ["/id"],
+						"kind": "Hash",
+						"version": 2
+					},
+					"uniqueKeyPolicy": {
+						"uniqueKeys": []
+					},
+					"conflictResolutionPolicy": {
+						"mode": "LastWriterWins",
+						"conflictResolutionPath": "/_ts",
+						"conflictResolutionProcedure": ""
+					},
+					"geospatialConfig": {
+						"type": "Geography"
+					},
+					"fullTextPolicy": {
+						"defaultLanguage": "en-US",
+						"fullTextPaths": []
+					},
+					"computedProperties": []
+				}
+			},
+			{
+				"json": {
+					"id": "ContainerWithNameAsKey",
+					"indexingPolicy": {
+						"indexingMode": "consistent",
+						"automatic": true,
+						"includedPaths": [
+							{
+								"path": "/*"
+							}
+						],
+						"excludedPaths": [
+							{
+								"path": "/\"_etag\"/?"
+							}
+						],
+						"fullTextIndexes": []
+					},
+					"partitionKey": {
+						"paths": ["/Name"],
+						"kind": "Hash",
+						"version": 2
+					},
+					"uniqueKeyPolicy": {
+						"uniqueKeys": []
+					},
+					"conflictResolutionPolicy": {
+						"mode": "LastWriterWins",
+						"conflictResolutionPath": "/_ts",
+						"conflictResolutionProcedure": ""
+					},
+					"geospatialConfig": {
+						"type": "Geography"
+					},
+					"fullTextPolicy": {
+						"defaultLanguage": "en-US",
+						"fullTextPaths": []
+					},
+					"computedProperties": []
+				}
+			},
+			{
+				"json": {
+					"id": "ContainerWithPhoneNrAsKey",
+					"indexingPolicy": {
+						"indexingMode": "consistent",
+						"automatic": true,
+						"includedPaths": [
+							{
+								"path": "/*"
+							}
+						],
+						"excludedPaths": [
+							{
+								"path": "/\"_etag\"/?"
+							}
+						],
+						"fullTextIndexes": []
+					},
+					"partitionKey": {
+						"paths": ["/PhoneNumber"],
 						"kind": "Hash",
 						"version": 2
 					},
@@ -109,9 +192,5 @@
 				}
 			}
 		]
-	},
-	"meta": {
-		"templateCredsSetupCompleted": true,
-		"instanceId": "7047d2700c0010a2580ba6b2649861ef0a567bfcd1671650a6ca242150e686b8"
 	}
 }
