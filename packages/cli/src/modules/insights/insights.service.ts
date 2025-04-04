@@ -59,19 +59,24 @@ export class InsightsService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
 		private readonly insightsRawRepository: InsightsRawRepository,
-	) {
-		this.initializeCompaction();
-	}
+	) {}
 
-	initializeCompaction() {
-		if (this.compactInsightsTimer !== undefined) {
-			clearInterval(this.compactInsightsTimer);
-		}
+	// Initialize regular compaction of insights data
+	startCompactionScheduler() {
+		this.stopCompactionScheduler();
 		const intervalMilliseconds = config.compactionIntervalMinutes * 60 * 1000;
 		this.compactInsightsTimer = setInterval(
 			async () => await this.compactInsights(),
 			intervalMilliseconds,
 		);
+	}
+
+	// Stop regular compaction of insights data
+	stopCompactionScheduler() {
+		if (this.compactInsightsTimer !== undefined) {
+			clearInterval(this.compactInsightsTimer);
+			this.compactInsightsTimer = undefined;
+		}
 	}
 
 	@OnShutdown()
@@ -154,6 +159,7 @@ export class InsightsService {
 	}
 
 	async compactInsights() {
+		console.log('compating');
 		let numberOfCompactedRawData: number;
 
 		// Compact raw data to hourly aggregates

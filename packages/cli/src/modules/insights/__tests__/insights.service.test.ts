@@ -523,7 +523,7 @@ describe('compaction', () => {
 			try {
 				// ARRANGE
 				const insightsService = Container.get(InsightsService);
-				insightsService.initializeCompaction();
+				insightsService.startCompactionScheduler();
 
 				// spy on the compactInsights method to check if it's called
 				insightsService.compactInsights = jest.fn();
