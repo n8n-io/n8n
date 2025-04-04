@@ -432,14 +432,12 @@ const onDragEnd = (el: HTMLElement) => {
 							v-else-if="item.type === 'notice'"
 							v-n8n-html="item.message"
 							class="notice"
-							:style="{ marginLeft: `calc(var(--spacing-l) + var(--spacing-l) * ${item.level})` }"
+							:style="{ '--schema-level': item.level }"
 						/>
 						<div
 							v-else-if="item.type === 'empty'"
-							:style="{
-								paddingBottom: `var(--spacing-xs)`,
-								marginLeft: `var(--spacing-xl)`,
-							}"
+							class="empty-schema"
+							:style="{ '--schema-level': item.level }"
 						>
 							<N8nText tag="div" size="small">
 								<i18n-t
@@ -450,12 +448,12 @@ const onDragEnd = (el: HTMLElement) => {
 									<template #link>
 										<NodeExecuteButton
 											:node-name="item.nodeName"
+											:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
 											text
 											telemetry-source="inputs"
 											hide-icon
-											:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
 											size="small"
-											:style="{ padding: 0 }"
+											class="execute-button"
 										/>
 									</template>
 								</i18n-t>
@@ -506,5 +504,18 @@ const onDragEnd = (el: HTMLElement) => {
 	color: var(--color-text-base);
 	font-size: var(--font-size-2xs);
 	line-height: var(--font-line-height-loose);
+}
+
+.notice {
+	margin-left: calc(var(--spacing-l) * var(--schema-level));
+}
+
+.empty-schema {
+	padding-bottom: var(--spacing-xs);
+	margin-left: calc((var(--spacing-xl) * var(--schema-level)));
+}
+
+.execute-button {
+	padding: 0;
 }
 </style>
