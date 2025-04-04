@@ -101,6 +101,7 @@ import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { isPresent } from '../utils/typesUtils';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { CanvasLayoutEvent } from './useCanvasLayout';
+import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -873,6 +874,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			true,
 			false,
 			node,
+			nodeTypeDescription,
 		);
 
 		node.parameters = nodeParameters ?? {};
@@ -1976,7 +1978,9 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		const workflow = workflowsStore.getCurrentWorkflow();
 
 		workflowsStore.setPanelState(
-			workflowsStore.chatPanelState === 'closed' ? 'attached' : 'closed',
+			workflowsStore.chatPanelState === LOGS_PANEL_STATE.CLOSED
+				? LOGS_PANEL_STATE.ATTACHED
+				: LOGS_PANEL_STATE.CLOSED,
 		);
 
 		const payload = {

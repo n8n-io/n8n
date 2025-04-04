@@ -219,6 +219,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 					additionalData.currentNodeParameters || node.parameters,
 					nodeCredentialDescription,
 					node,
+					nodeType.description,
 					node.parameters,
 				)
 			) {
