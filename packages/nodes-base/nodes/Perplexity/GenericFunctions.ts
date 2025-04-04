@@ -61,7 +61,7 @@ export async function getModels(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const models: INodePropertyOptions[] = [
+	let models: INodePropertyOptions[] = [
 		{
 			name: 'R1-1776',
 			value: 'r1-1776',
@@ -88,11 +88,11 @@ export async function getModels(
 		},
 	];
 
-	const filteredModels = filter
-		? models.filter((model) => model.name.toLowerCase().includes(filter.toLowerCase()))
-		: models;
+	if (filter) {
+		models = models.filter((model) => model.name.toLowerCase().startsWith(filter.toLowerCase()));
+	}
 
 	return {
-		results: filteredModels,
+		results: models,
 	};
 }

@@ -8,7 +8,10 @@ export class Perplexity implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Perplexity',
 		name: 'perplexity',
-		icon: { light: 'file:perplexity.svg', dark: 'file:perplexity.dark.svg' },
+		icon: {
+			light: 'file:perplexity.svg',
+			dark: 'file:perplexity.dark.svg',
+		},
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
