@@ -13,21 +13,19 @@ import {
 	getTotalConsumedTokens,
 	type TreeNode,
 } from '@/components/RunDataAi/utils';
-import { upperFirst } from 'lodash-es';
 import { useTelemetry } from '@/composables/useTelemetry';
-import ConsumedTokenCountText from '@/components/CanvasChat/future/components/ConsumedTokenCountText.vue';
-import { type LogEntryIdentity } from '@/components/CanvasChat/types/logs';
 import LogsOverviewRow from '@/components/CanvasChat/future/components/LogsOverviewRow.vue';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useRouter } from 'vue-router';
+import ExecutionSummary from '@/components/CanvasChat/future/components/ExecutionSummary.vue';
 
 const { isOpen, selected } = defineProps<{
 	isOpen: boolean;
-	selected?: LogEntryIdentity;
+	selected?: TreeNode;
 }>();
 
-const emit = defineEmits<{ clickHeader: []; select: [LogEntryIdentity | undefined] }>();
+const emit = defineEmits<{ clickHeader: []; select: [TreeNode | undefined] }>();
 
 defineSlots<{ actions: {} }>();
 
@@ -51,27 +49,7 @@ const switchViewOptions = computed(() => [
 	{ label: locale.baseText('logs.overview.header.switch.details'), value: 'details' as const },
 	{ label: locale.baseText('logs.overview.header.switch.overview'), value: 'overview' as const },
 ]);
-const executionStatusText = computed(() => {
-	const execution = workflowsStore.workflowExecutionData;
-
-	if (!execution) {
-		return undefined;
-	}
-
-	if (execution.startedAt && execution.stoppedAt) {
-		return locale.baseText('logs.overview.body.summaryText', {
-			interpolate: {
-				status: upperFirst(execution.status),
-				time: locale.displayTimer(
-					+new Date(execution.stoppedAt) - +new Date(execution.startedAt),
-					true,
-				),
-			},
-		});
-	}
-
-	return upperFirst(execution.status);
-});
+const execution = computed(() => workflowsStore.workflowExecutionData);
 const consumedTokens = computed(() =>
 	getTotalConsumedTokens(...executionTree.value.map(getSubtreeTotalConsumedTokens)),
 );
@@ -87,7 +65,7 @@ function handleClickNode(clicked: TreeNode) {
 		return;
 	}
 
-	emit('select', { node: clicked.node, runIndex: clicked.runIndex });
+	emit('select', clicked);
 	telemetry.track('User selected node in log view', {
 		node_type: workflowsStore.nodesByName[clicked.node].type,
 		node_id: workflowsStore.nodesByName[clicked.node].id,
@@ -159,19 +137,17 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 				{{ locale.baseText('logs.overview.body.empty.message') }}
 			</N8nText>
 			<div v-else :class="$style.scrollable">
-				<N8nText
-					v-if="executionStatusText !== undefined"
-					tag="div"
-					color="text-light"
-					size="small"
+				<ExecutionSummary
+					v-if="execution"
 					:class="$style.summary"
-				>
-					<span>{{ executionStatusText }}</span>
-					<ConsumedTokenCountText
-						v-if="consumedTokens.totalTokens > 0"
-						:consumed-tokens="consumedTokens"
-					/>
-				</N8nText>
+					:status="execution.status"
+					:consumed-tokens="consumedTokens"
+					:time-took="
+						execution.startedAt && execution.stoppedAt
+							? +new Date(execution.stoppedAt) - +new Date(execution.startedAt)
+							: undefined
+					"
+				/>
 				<ElTree
 					v-if="executionTree.length > 0"
 					node-key="id"
@@ -246,17 +222,7 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 }
 
 .summary {
-	display: flex;
-	align-items: center;
 	padding-block: var(--spacing-2xs);
-
-	& > * {
-		padding-inline: var(--spacing-2xs);
-	}
-
-	& > *:not(:last-child) {
-		border-right: var(--border-base);
-	}
 }
 
 .tree {

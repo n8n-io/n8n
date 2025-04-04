@@ -11,14 +11,15 @@ import LogsOverviewPanel from '@/components/CanvasChat/future/components/LogsOve
 import { useCanvasStore } from '@/stores/canvas.store';
 import ChatMessagesPanel from '@/components/CanvasChat/components/ChatMessagesPanel.vue';
 import LogsDetailsPanel from '@/components/CanvasChat/future/components/LogDetailsPanel.vue';
-import { LOGS_PANEL_STATE, type LogEntryIdentity } from '@/components/CanvasChat/types/logs';
+import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
 import LogsPanelActions from '@/components/CanvasChat/future/components/LogsPanelActions.vue';
+import { type TreeNode } from '@/components/RunDataAi/utils';
 
 const workflowsStore = useWorkflowsStore();
 const canvasStore = useCanvasStore();
 const panelState = computed(() => workflowsStore.logsPanelState);
 const container = ref<HTMLElement>();
-const selectedLogEntry = ref<LogEntryIdentity | undefined>(undefined);
+const selectedLogEntry = ref<TreeNode | undefined>(undefined);
 const pipContainer = useTemplateRef('pipContainer');
 const pipContent = useTemplateRef('pipContent');
 const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
@@ -76,7 +77,7 @@ function handleClickHeader() {
 	}
 }
 
-function handleSelectLogEntry(selected: LogEntryIdentity | undefined) {
+function handleSelectLogEntry(selected: TreeNode | undefined) {
 	selectedLogEntry.value = selected;
 }
 
@@ -146,6 +147,7 @@ watch([panelState, height], ([state, h]) => {
 					</LogsOverviewPanel>
 					<LogsDetailsPanel
 						v-if="selectedLogEntry"
+						:log-entry="selectedLogEntry"
 						:class="$style.logDetails"
 						:is-open="panelState !== LOGS_PANEL_STATE.CLOSED"
 						@click-header="handleClickHeader"
