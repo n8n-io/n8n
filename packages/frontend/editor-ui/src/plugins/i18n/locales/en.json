@@ -538,8 +538,6 @@
 	"credentialEdit.credentialConfig.needHelpFillingOutTheseFields": "Need help filling out these fields?",
 	"credentialEdit.credentialConfig.oAuthRedirectUrl": "OAuth Redirect URL",
 	"credentialEdit.credentialConfig.openDocs": "Open docs",
-	"credentialEdit.credentialConfig.toConnectCredentialUseTunnel": "To connect this credential, use an externally accessible domain or start n8n with",
-	"credentialEdit.credentialConfig.tunnel": "tunnel",
 	"credentialEdit.credentialConfig.pleaseCheckTheErrorsBelow": "Please check the errors below",
 	"credentialEdit.credentialConfig.pleaseCheckTheErrorsBelow.sharee": "Problem with connection settings. {owner} may be able to fix this",
 	"credentialEdit.credentialConfig.reconnect": "Reconnect",
