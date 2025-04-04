@@ -25,7 +25,7 @@ export class McpTrigger extends Node {
 		eventTriggerDescription: '',
 		activationMessage: 'You can now make calls to your SSE URL to trigger executions.',
 		defaults: {
-			name: 'setup',
+			name: 'MCP Trigger',
 		},
 		triggerPanel: {
 			header: '',
