@@ -13,8 +13,9 @@ export async function installNewPackage(
 	context: IRestApiContext,
 	name: string,
 	verify?: boolean,
+	version?: string,
 ): Promise<PublicInstalledPackage> {
-	return await post(context.baseUrl, '/community-packages', { name, verify });
+	return await post(context.baseUrl, '/community-packages', { name, verify, version });
 }
 
 export async function uninstallPackage(context: IRestApiContext, name: string): Promise<void> {

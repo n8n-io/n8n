@@ -29,6 +29,7 @@ const publisherName = ref<string | undefined>(undefined);
 const downloads = ref<string | null>(null);
 const loading = ref(false);
 const verified = ref(false);
+const verifiedVersion = ref<string | undefined>(undefined);
 
 const communityNodesStore = useCommunityNodesStore();
 const nodeCreatorStore = useNodeCreatorStore();
@@ -48,7 +49,7 @@ const onInstallClick = async () => {
 
 		try {
 			loading.value = true;
-			await communityNodesStore.installPackage(packageName, true);
+			await communityNodesStore.installPackage(packageName, true, verifiedVersion.value);
 
 			await useNodeTypesStore().getNodeTypes();
 
@@ -106,6 +107,7 @@ async function fetchPackageInfo(packageName: string) {
 		publisherName.value = communityNodeAttributes.authorName;
 		downloads.value = formatNumber(communityNodeAttributes.numberOfDownloads);
 		verified.value = true;
+		verifiedVersion.value = communityNodeAttributes.npmVersion;
 		return;
 	}
 

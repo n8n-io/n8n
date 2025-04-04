@@ -44,7 +44,7 @@ export class CommunityPackagesController {
 	@Post('/')
 	@GlobalScope('communityPackage:install')
 	async installPackage(req: NodeRequest.Post) {
-		const { name, verify } = req.body;
+		const { name, verify, version } = req.body;
 
 		if (!name) {
 			throw new BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
@@ -91,11 +91,12 @@ export class CommunityPackagesController {
 			throw new BadRequestError(`Package "${name}" is banned so it cannot be installed`);
 		}
 
+		const packageVersion = version ?? parsed.version;
 		let installedPackage: InstalledPackages;
 		try {
 			installedPackage = await this.communityPackagesService.installPackage(
 				parsed.packageName,
-				parsed.version,
+				packageVersion,
 			);
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : UNKNOWN_FAILURE_REASON;
@@ -105,7 +106,7 @@ export class CommunityPackagesController {
 				inputString: name,
 				packageName: parsed.packageName,
 				success: false,
-				packageVersion: parsed.version,
+				packageVersion,
 				failureReason: errorMessage,
 			});
 
@@ -136,7 +137,7 @@ export class CommunityPackagesController {
 			inputString: name,
 			packageName: parsed.packageName,
 			success: true,
-			packageVersion: parsed.version,
+			packageVersion,
 			packageNodeNames: installedPackage.installedNodes.map((node) => node.name),
 			packageAuthor: installedPackage.authorName,
 			packageAuthorEmail: installedPackage.authorEmail,
