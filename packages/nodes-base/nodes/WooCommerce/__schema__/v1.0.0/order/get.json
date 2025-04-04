@@ -214,6 +214,20 @@
                     "tax_status": {
                         "type": "string"
                     },
+                    "taxes": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "subtotal": {
+                                    "type": "string"
+                                },
+                                "total": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
                     "total": {
                         "type": "string"
                     },
@@ -545,5 +559,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

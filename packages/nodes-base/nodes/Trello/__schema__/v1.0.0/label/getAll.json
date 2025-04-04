@@ -1,0 +1,21 @@
+{
+    "type": "object",
+    "properties": {
+        "color": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "idBoard": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "uses": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

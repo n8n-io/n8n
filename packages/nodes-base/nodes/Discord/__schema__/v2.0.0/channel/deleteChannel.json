@@ -7,17 +7,6 @@
         "guild_id": {
             "type": "string"
         },
-        "icon_emoji": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "null"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
         "id": {
             "type": "string"
         },
@@ -53,9 +42,6 @@
         "rate_limit_per_user": {
             "type": "integer"
         },
-        "theme_color": {
-            "type": "null"
-        },
         "topic": {
             "type": "null"
         },
@@ -63,5 +49,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }

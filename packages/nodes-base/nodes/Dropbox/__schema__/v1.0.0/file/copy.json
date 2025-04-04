@@ -22,9 +22,6 @@
                 "name": {
                     "type": "string"
                 },
-                "parent_shared_folder_id": {
-                    "type": "string"
-                },
                 "path_display": {
                     "type": "string"
                 },
@@ -37,25 +34,11 @@
                 "server_modified": {
                     "type": "string"
                 },
-                "sharing_info": {
-                    "type": "object",
-                    "properties": {
-                        "modified_by": {
-                            "type": "string"
-                        },
-                        "parent_shared_folder_id": {
-                            "type": "string"
-                        },
-                        "read_only": {
-                            "type": "boolean"
-                        }
-                    }
-                },
                 "size": {
                     "type": "integer"
                 }
             }
         }
     },
-    "version": 1
+    "version": 2
 }

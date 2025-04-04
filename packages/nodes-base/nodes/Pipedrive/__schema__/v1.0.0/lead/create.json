@@ -10,9 +10,6 @@
         "channel": {
             "type": "null"
         },
-        "channel_id": {
-            "type": "null"
-        },
         "creator_id": {
             "type": "integer"
         },
@@ -34,9 +31,6 @@
         "origin": {
             "type": "string"
         },
-        "origin_id": {
-            "type": "null"
-        },
         "owner_id": {
             "type": "integer"
         },
@@ -56,5 +50,5 @@
             "type": "boolean"
         }
     },
-    "version": 1
+    "version": 2
 }

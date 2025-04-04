@@ -44,9 +44,6 @@
                                                     },
                                                     "type": {
                                                         "type": "string"
-                                                    },
-                                                    "url": {
-                                                        "type": "string"
                                                     }
                                                 }
                                             }
@@ -54,20 +51,6 @@
                                         "type": {
                                             "type": "string"
                                         }
-                                    }
-                                }
-                            },
-                            "text": {
-                                "type": "object",
-                                "properties": {
-                                    "text": {
-                                        "type": "string"
-                                    },
-                                    "type": {
-                                        "type": "string"
-                                    },
-                                    "verbatim": {
-                                        "type": "boolean"
                                     }
                                 }
                             },
@@ -152,5 +135,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

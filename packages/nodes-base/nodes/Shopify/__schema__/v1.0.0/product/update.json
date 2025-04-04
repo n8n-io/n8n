@@ -174,9 +174,6 @@
                     "option1": {
                         "type": "string"
                     },
-                    "option3": {
-                        "type": "null"
-                    },
                     "position": {
                         "type": "integer"
                     },
@@ -208,5 +205,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

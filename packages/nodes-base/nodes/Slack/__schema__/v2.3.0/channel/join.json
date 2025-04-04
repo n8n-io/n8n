@@ -73,6 +73,9 @@
                         "file_id": {
                             "type": "string"
                         },
+                        "is_empty": {
+                            "type": "boolean"
+                        },
                         "quip_thread_id": {
                             "type": "string"
                         }
@@ -83,19 +86,8 @@
                     "items": {
                         "type": "object",
                         "properties": {
-                            "data": {
-                                "type": "object",
-                                "properties": {
-                                    "folder_bookmark_id": {
-                                        "type": "string"
-                                    }
-                                }
-                            },
                             "id": {
                                 "type": "string"
-                            },
-                            "is_disabled": {
-                                "type": "boolean"
                             },
                             "label": {
                                 "type": "string"
@@ -111,23 +103,6 @@
                     "items": {
                         "type": "object",
                         "properties": {
-                            "data": {
-                                "type": "object",
-                                "properties": {
-                                    "folder_bookmark_id": {
-                                        "type": "string"
-                                    }
-                                }
-                            },
-                            "id": {
-                                "type": "string"
-                            },
-                            "is_disabled": {
-                                "type": "boolean"
-                            },
-                            "label": {
-                                "type": "string"
-                            },
                             "type": {
                                 "type": "string"
                             }
@@ -177,5 +152,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }

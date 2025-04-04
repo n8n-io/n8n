@@ -333,9 +333,6 @@
                     "cardRegion5": {
                         "type": "string"
                     },
-                    "cdate": {
-                        "type": "null"
-                    },
                     "color": {
                         "type": "string"
                     },
@@ -369,5 +366,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }

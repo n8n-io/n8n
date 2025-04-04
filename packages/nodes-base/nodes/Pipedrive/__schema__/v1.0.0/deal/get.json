@@ -151,9 +151,6 @@
         "next_activity_duration": {
             "type": "null"
         },
-        "next_activity_note": {
-            "type": "null"
-        },
         "next_activity_time": {
             "type": "null"
         },
@@ -285,5 +282,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

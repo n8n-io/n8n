@@ -134,6 +134,15 @@
         "Modified_Time": {
             "type": "string"
         },
+        "Other_City": {
+            "type": "null"
+        },
+        "Other_Country": {
+            "type": "null"
+        },
+        "Other_State": {
+            "type": "null"
+        },
         "Other_Street": {
             "type": "null"
         },
@@ -154,20 +163,6 @@
                 }
             }
         },
-        "Tag": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
         "Unsubscribed_Mode": {
             "type": "null"
         },
@@ -175,5 +170,5 @@
             "type": "null"
         }
     },
-    "version": 1
+    "version": 2
 }

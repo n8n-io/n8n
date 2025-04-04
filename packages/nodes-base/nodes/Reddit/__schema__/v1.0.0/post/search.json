@@ -21,10 +21,16 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "a": {
+                        "type": "string"
+                    },
                     "e": {
                         "type": "string"
                     },
                     "t": {
+                        "type": "string"
+                    },
+                    "u": {
                         "type": "string"
                     }
                 }
@@ -65,6 +71,9 @@
         },
         "contest_mode": {
             "type": "boolean"
+        },
+        "created": {
+            "type": "integer"
         },
         "created_utc": {
             "type": "integer"
@@ -161,6 +170,9 @@
         "num_crossposts": {
             "type": "integer"
         },
+        "num_reports": {
+            "type": "null"
+        },
         "over_18": {
             "type": "boolean"
         },
@@ -180,6 +192,9 @@
             "type": "null"
         },
         "removed_by_category": {
+            "type": "null"
+        },
+        "report_reasons": {
             "type": "null"
         },
         "saved": {
@@ -240,5 +255,5 @@
             "type": "boolean"
         }
     },
-    "version": 1
+    "version": 2
 }

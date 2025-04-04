@@ -132,6 +132,9 @@
                 "backgroundBrightness": {
                     "type": "string"
                 },
+                "backgroundDarkColor": {
+                    "type": "null"
+                },
                 "backgroundDarkImage": {
                     "type": "null"
                 },
@@ -215,5 +218,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

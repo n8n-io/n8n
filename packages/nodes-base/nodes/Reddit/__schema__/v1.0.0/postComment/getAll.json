@@ -126,9 +126,6 @@
         "no_follow": {
             "type": "boolean"
         },
-        "num_reports": {
-            "type": "null"
-        },
         "parent_id": {
             "type": "string"
         },
@@ -136,9 +133,6 @@
             "type": "string"
         },
         "removal_reason": {
-            "type": "null"
-        },
-        "report_reasons": {
             "type": "null"
         },
         "saved": {
@@ -181,5 +175,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }

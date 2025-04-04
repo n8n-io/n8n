@@ -1,15 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "content_created_at": {
-            "type": "string"
-        },
-        "content_modified_at": {
-            "type": "string"
-        },
-        "created_at": {
-            "type": "string"
-        },
         "created_by": {
             "type": "object",
             "properties": {
@@ -30,9 +21,6 @@
         "description": {
             "type": "string"
         },
-        "etag": {
-            "type": "string"
-        },
         "id": {
             "type": "string"
         },
@@ -47,20 +35,6 @@
                             "etag": {
                                 "type": "string"
                             },
-                            "file_version": {
-                                "type": "object",
-                                "properties": {
-                                    "id": {
-                                        "type": "string"
-                                    },
-                                    "sha1": {
-                                        "type": "string"
-                                    },
-                                    "type": {
-                                        "type": "string"
-                                    }
-                                }
-                            },
                             "id": {
                                 "type": "string"
                             },
@@ -68,9 +42,6 @@
                                 "type": "string"
                             },
                             "sequence_id": {
-                                "type": "string"
-                            },
-                            "sha1": {
                                 "type": "string"
                             },
                             "type": {
@@ -105,9 +76,6 @@
             }
         },
         "item_status": {
-            "type": "string"
-        },
-        "modified_at": {
             "type": "string"
         },
         "modified_by": {
@@ -147,20 +115,6 @@
                 }
             }
         },
-        "parent": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                }
-            }
-        },
         "path_collection": {
             "type": "object",
             "properties": {
@@ -189,9 +143,6 @@
         "purged_at": {
             "type": "null"
         },
-        "sequence_id": {
-            "type": "string"
-        },
         "size": {
             "type": "integer"
         },
@@ -202,5 +153,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

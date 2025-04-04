@@ -124,31 +124,6 @@
                                                 "role": {
                                                     "type": "string"
                                                 },
-                                                "settings": {
-                                                    "type": "object",
-                                                    "properties": {
-                                                        "firstSuccessfulWorkflowId": {
-                                                            "type": "string"
-                                                        },
-                                                        "npsSurvey": {
-                                                            "type": "object",
-                                                            "properties": {
-                                                                "lastShownAt": {
-                                                                    "type": "integer"
-                                                                },
-                                                                "responded": {
-                                                                    "type": "boolean"
-                                                                }
-                                                            }
-                                                        },
-                                                        "userActivated": {
-                                                            "type": "boolean"
-                                                        },
-                                                        "userActivatedAt": {
-                                                            "type": "integer"
-                                                        }
-                                                    }
-                                                },
                                                 "updatedAt": {
                                                     "type": "string"
                                                 }
@@ -213,5 +188,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

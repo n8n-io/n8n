@@ -4,20 +4,6 @@
         "actual_time_minutes": {
             "type": "integer"
         },
-        "assignee": {
-            "type": "object",
-            "properties": {
-                "gid": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "resource_type": {
-                    "type": "string"
-                }
-            }
-        },
         "assignee_status": {
             "type": "string"
         },
@@ -234,5 +220,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }

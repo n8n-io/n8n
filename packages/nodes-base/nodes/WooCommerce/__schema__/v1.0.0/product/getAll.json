@@ -216,12 +216,6 @@
         "global_unique_id": {
             "type": "string"
         },
-        "grouped_products": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
-        },
         "has_options": {
             "type": "boolean"
         },
@@ -391,5 +385,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

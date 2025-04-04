@@ -1,15 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "aac": {
-            "type": "string"
-        },
-        "audio_wave_samples": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
-        },
         "channels": {
             "type": "array",
             "items": {
@@ -24,9 +15,6 @@
         },
         "display_as_bot": {
             "type": "boolean"
-        },
-        "duration_ms": {
-            "type": "integer"
         },
         "editable": {
             "type": "boolean"
@@ -97,22 +85,11 @@
         "size": {
             "type": "integer"
         },
-        "subtype": {
-            "type": "string"
-        },
         "timestamp": {
             "type": "integer"
         },
         "title": {
             "type": "string"
-        },
-        "transcription": {
-            "type": "object",
-            "properties": {
-                "status": {
-                    "type": "string"
-                }
-            }
         },
         "url_private": {
             "type": "string"
@@ -130,5 +107,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

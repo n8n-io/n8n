@@ -110,9 +110,6 @@
         "pic1": {
             "type": "string"
         },
-        "pic2": {
-            "type": "string"
-        },
         "q2nd_pic": {
             "type": "string"
         },
@@ -126,5 +123,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

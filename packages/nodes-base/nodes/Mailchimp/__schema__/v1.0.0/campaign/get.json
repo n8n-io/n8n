@@ -1,0 +1,212 @@
+{
+    "type": "object",
+    "properties": {
+        "_links": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "href": {
+                        "type": "string"
+                    },
+                    "method": {
+                        "type": "string"
+                    },
+                    "rel": {
+                        "type": "string"
+                    },
+                    "schema": {
+                        "type": "string"
+                    },
+                    "targetSchema": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "archive_url": {
+            "type": "string"
+        },
+        "content_type": {
+            "type": "string"
+        },
+        "create_time": {
+            "type": "string"
+        },
+        "delivery_status": {
+            "type": "object",
+            "properties": {
+                "can_cancel": {
+                    "type": "boolean"
+                },
+                "emails_canceled": {
+                    "type": "integer"
+                },
+                "emails_sent": {
+                    "type": "integer"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "emails_sent": {
+            "type": "integer"
+        },
+        "id": {
+            "type": "string"
+        },
+        "long_archive_url": {
+            "type": "string"
+        },
+        "needs_block_refresh": {
+            "type": "boolean"
+        },
+        "recipients": {
+            "type": "object",
+            "properties": {
+                "list_id": {
+                    "type": "string"
+                },
+                "list_is_active": {
+                    "type": "boolean"
+                },
+                "list_name": {
+                    "type": "string"
+                },
+                "recipient_count": {
+                    "type": "integer"
+                },
+                "segment_text": {
+                    "type": "string"
+                }
+            }
+        },
+        "report_summary": {
+            "type": "object",
+            "properties": {
+                "clicks": {
+                    "type": "integer"
+                },
+                "ecommerce": {
+                    "type": "object",
+                    "properties": {
+                        "total_orders": {
+                            "type": "integer"
+                        },
+                        "total_revenue": {
+                            "type": "integer"
+                        },
+                        "total_spent": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "opens": {
+                    "type": "integer"
+                },
+                "subscriber_clicks": {
+                    "type": "integer"
+                },
+                "unique_opens": {
+                    "type": "integer"
+                }
+            }
+        },
+        "resendable": {
+            "type": "boolean"
+        },
+        "send_time": {
+            "type": "string"
+        },
+        "settings": {
+            "type": "object",
+            "properties": {
+                "authenticate": {
+                    "type": "boolean"
+                },
+                "auto_footer": {
+                    "type": "boolean"
+                },
+                "auto_tweet": {
+                    "type": "boolean"
+                },
+                "drag_and_drop": {
+                    "type": "boolean"
+                },
+                "fb_comments": {
+                    "type": "boolean"
+                },
+                "folder_id": {
+                    "type": "string"
+                },
+                "from_name": {
+                    "type": "string"
+                },
+                "inline_css": {
+                    "type": "boolean"
+                },
+                "reply_to": {
+                    "type": "string"
+                },
+                "subject_line": {
+                    "type": "string"
+                },
+                "template_id": {
+                    "type": "integer"
+                },
+                "timewarp": {
+                    "type": "boolean"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "to_name": {
+                    "type": "string"
+                },
+                "use_conversation": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "status": {
+            "type": "string"
+        },
+        "tracking": {
+            "type": "object",
+            "properties": {
+                "clicktale": {
+                    "type": "string"
+                },
+                "ecomm360": {
+                    "type": "boolean"
+                },
+                "goal_tracking": {
+                    "type": "boolean"
+                },
+                "google_analytics": {
+                    "type": "string"
+                },
+                "html_clicks": {
+                    "type": "boolean"
+                },
+                "opens": {
+                    "type": "boolean"
+                },
+                "text_clicks": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "type": {
+            "type": "string"
+        },
+        "web_id": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

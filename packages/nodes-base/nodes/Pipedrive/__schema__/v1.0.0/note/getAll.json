@@ -13,14 +13,6 @@
         "id": {
             "type": "integer"
         },
-        "person": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
         "pinned_to_deal_flag": {
             "type": "boolean"
         },
@@ -60,5 +52,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }

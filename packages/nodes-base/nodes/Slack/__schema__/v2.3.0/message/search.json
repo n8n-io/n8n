@@ -24,9 +24,6 @@
                                             },
                                             "type": {
                                                 "type": "string"
-                                            },
-                                            "user_id": {
-                                                "type": "string"
                                             }
                                         }
                                     }
@@ -106,5 +103,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

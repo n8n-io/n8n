@@ -18,20 +18,6 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "created_by": {
-                        "type": "object",
-                        "properties": {
-                            "gid": {
-                                "type": "string"
-                            },
-                            "name": {
-                                "type": "string"
-                            },
-                            "resource_type": {
-                                "type": "string"
-                            }
-                        }
-                    },
                     "enabled": {
                         "type": "boolean"
                     },
@@ -268,5 +254,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }

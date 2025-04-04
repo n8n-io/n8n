@@ -1,0 +1,45 @@
+{
+    "type": "object",
+    "properties": {
+        "api_quota": {
+            "type": "integer"
+        },
+        "api_remaining": {
+            "type": "string"
+        },
+        "api_used": {
+            "type": "string"
+        },
+        "message": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "subscription_current_period_end": {
+            "type": "string"
+        },
+        "subscription_current_period_start": {
+            "type": "string"
+        },
+        "subscription_interval": {
+            "type": "string"
+        },
+        "subscription_product": {
+            "type": "string"
+        },
+        "subscription_status": {
+            "type": "string"
+        },
+        "template_count": {
+            "type": "integer"
+        },
+        "template_quota": {
+            "type": "integer"
+        },
+        "template_remaining": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

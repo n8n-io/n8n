@@ -1,12 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "1e901332a0666ef17792122457262233cfdb3d15": {
-            "type": "null"
-        },
-        "73794f1db542a544402ab6cd42aaf337d2d8e51b": {
-            "type": "null"
-        },
         "active_flag": {
             "type": "boolean"
         },
@@ -45,9 +39,6 @@
                 },
                 "name": {
                     "type": "string"
-                },
-                "pic_hash": {
-                    "type": "null"
                 },
                 "value": {
                     "type": "integer"
@@ -139,5 +130,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

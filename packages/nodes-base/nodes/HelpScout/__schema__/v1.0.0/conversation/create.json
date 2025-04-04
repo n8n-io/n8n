@@ -131,6 +131,9 @@
         "number": {
             "type": "integer"
         },
+        "preview": {
+            "type": "string"
+        },
         "primaryCustomer": {
             "type": "object",
             "properties": {
@@ -201,5 +204,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

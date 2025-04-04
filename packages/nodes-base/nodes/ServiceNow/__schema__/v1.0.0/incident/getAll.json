@@ -161,9 +161,6 @@
         "reopen_count": {
             "type": "string"
         },
-        "reopened_by": {
-            "type": "string"
-        },
         "reopened_time": {
             "type": "string"
         },
@@ -266,5 +263,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

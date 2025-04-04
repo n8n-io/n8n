@@ -55,9 +55,6 @@
         "time_zone": {
             "type": "string"
         },
-        "two_factor_auth_enabled": {
-            "type": "null"
-        },
         "updated_at": {
             "type": "string"
         },
@@ -68,5 +65,5 @@
             "type": "boolean"
         }
     },
-    "version": 1
+    "version": 2
 }

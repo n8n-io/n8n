@@ -30,9 +30,6 @@
         "Contact": {
             "type": "object",
             "properties": {
-                "AccountsReceivableTaxType": {
-                    "type": "string"
-                },
                 "Addresses": {
                     "type": "array",
                     "items": {
@@ -232,6 +229,23 @@
                     "Description": {
                         "type": "string"
                     },
+                    "Item": {
+                        "type": "object",
+                        "properties": {
+                            "Code": {
+                                "type": "string"
+                            },
+                            "ItemID": {
+                                "type": "string"
+                            },
+                            "Name": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "ItemCode": {
+                        "type": "string"
+                    },
                     "LineItemID": {
                         "type": "string"
                     },
@@ -301,10 +315,7 @@
         },
         "UpdatedDateUTC": {
             "type": "string"
-        },
-        "Url": {
-            "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

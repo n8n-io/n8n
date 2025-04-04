@@ -1,9 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "approval_id": {
-            "type": "null"
-        },
         "at": {
             "type": "string"
         },
@@ -120,5 +117,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

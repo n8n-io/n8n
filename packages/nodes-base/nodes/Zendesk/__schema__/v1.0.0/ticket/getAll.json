@@ -86,9 +86,6 @@
         "is_public": {
             "type": "boolean"
         },
-        "problem_id": {
-            "type": "null"
-        },
         "requester_id": {
             "type": "integer"
         },
@@ -126,9 +123,33 @@
             "properties": {
                 "channel": {
                     "type": "string"
+                },
+                "source": {
+                    "type": "object",
+                    "properties": {
+                        "from": {
+                            "type": "object",
+                            "properties": {
+                                "address": {
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "to": {
+                            "type": "object",
+                            "properties": {
+                                "address": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
     },
-    "version": 1
+    "version": 2
 }

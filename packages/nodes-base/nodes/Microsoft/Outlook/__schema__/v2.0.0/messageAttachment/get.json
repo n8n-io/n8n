@@ -10,9 +10,12 @@
         "@odata.type": {
             "type": "string"
         },
+        "contentType": {
+            "type": "string"
+        },
         "id": {
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

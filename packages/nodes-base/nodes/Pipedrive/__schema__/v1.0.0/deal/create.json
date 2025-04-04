@@ -16,6 +16,9 @@
         "add_time": {
             "type": "string"
         },
+        "archive_time": {
+            "type": "null"
+        },
         "arr": {
             "type": "null"
         },
@@ -77,6 +80,9 @@
         },
         "id": {
             "type": "integer"
+        },
+        "is_archived": {
+            "type": "boolean"
         },
         "last_activity_date": {
             "type": "null"
@@ -204,5 +210,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

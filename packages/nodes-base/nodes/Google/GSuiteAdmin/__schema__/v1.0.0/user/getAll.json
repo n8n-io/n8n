@@ -32,9 +32,6 @@
                     },
                     "primary": {
                         "type": "boolean"
-                    },
-                    "type": {
-                        "type": "string"
                     }
                 }
             }
@@ -100,12 +97,6 @@
                 }
             }
         },
-        "nonEditableAliases": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
         "orgUnitPath": {
             "type": "string"
         },
@@ -122,5 +113,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

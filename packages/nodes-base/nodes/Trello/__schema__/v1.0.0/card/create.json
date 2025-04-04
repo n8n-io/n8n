@@ -15,6 +15,9 @@
                     "edgeColor": {
                         "type": "null"
                     },
+                    "fileName": {
+                        "type": "string"
+                    },
                     "id": {
                         "type": "string"
                     },
@@ -94,6 +97,9 @@
                 "location": {
                     "type": "boolean"
                 },
+                "maliciousAttachments": {
+                    "type": "integer"
+                },
                 "start": {
                     "type": "null"
                 },
@@ -161,12 +167,6 @@
         "idBoard": {
             "type": "string"
         },
-        "idChecklists": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
         "idLabels": {
             "type": "array",
             "items": {
@@ -193,6 +193,9 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "color": {
+                        "type": "string"
+                    },
                     "id": {
                         "type": "string"
                     },
@@ -245,5 +248,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

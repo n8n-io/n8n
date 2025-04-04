@@ -58,20 +58,6 @@
         "mweb_xpromo_modal_listing_click_daily_dismissible_ios": {
             "type": "boolean"
         },
-        "mweb_xpromo_revamp_v2": {
-            "type": "object",
-            "properties": {
-                "experiment_id": {
-                    "type": "integer"
-                },
-                "owner": {
-                    "type": "string"
-                },
-                "variant": {
-                    "type": "string"
-                }
-            }
-        },
         "noreferrer_to_noopener": {
             "type": "boolean"
         },
@@ -91,5 +77,5 @@
             "type": "boolean"
         }
     },
-    "version": 1
+    "version": 2
 }

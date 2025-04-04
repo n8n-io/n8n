@@ -34,9 +34,6 @@
         "domain": {
             "type": "string"
         },
-        "ExchangeRate": {
-            "type": "integer"
-        },
         "Id": {
             "type": "string"
         },
@@ -142,5 +139,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }

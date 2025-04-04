@@ -1,0 +1,475 @@
+{
+    "type": "object",
+    "properties": {
+        "achievement_count": {
+            "type": "integer"
+        },
+        "athlete": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "resource_state": {
+                    "type": "integer"
+                }
+            }
+        },
+        "athlete_count": {
+            "type": "integer"
+        },
+        "available_zones": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "comment_count": {
+            "type": "integer"
+        },
+        "commute": {
+            "type": "boolean"
+        },
+        "device_name": {
+            "type": "string"
+        },
+        "display_hide_heartrate_option": {
+            "type": "boolean"
+        },
+        "elapsed_time": {
+            "type": "integer"
+        },
+        "embed_token": {
+            "type": "string"
+        },
+        "end_latlng": {
+            "type": "array",
+            "items": {
+                "type": "number"
+            }
+        },
+        "flagged": {
+            "type": "boolean"
+        },
+        "from_accepted_tag": {
+            "type": "boolean"
+        },
+        "has_heartrate": {
+            "type": "boolean"
+        },
+        "has_kudoed": {
+            "type": "boolean"
+        },
+        "heartrate_opt_out": {
+            "type": "boolean"
+        },
+        "hide_from_home": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "kudos_count": {
+            "type": "integer"
+        },
+        "laps": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "activity": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "resource_state": {
+                                "type": "integer"
+                            },
+                            "visibility": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "athlete": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "resource_state": {
+                                "type": "integer"
+                            }
+                        }
+                    },
+                    "average_heartrate": {
+                        "type": "number"
+                    },
+                    "device_watts": {
+                        "type": "boolean"
+                    },
+                    "elapsed_time": {
+                        "type": "integer"
+                    },
+                    "end_index": {
+                        "type": "integer"
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "lap_index": {
+                        "type": "integer"
+                    },
+                    "max_heartrate": {
+                        "type": "integer"
+                    },
+                    "moving_time": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "resource_state": {
+                        "type": "integer"
+                    },
+                    "split": {
+                        "type": "integer"
+                    },
+                    "start_date": {
+                        "type": "string"
+                    },
+                    "start_date_local": {
+                        "type": "string"
+                    },
+                    "start_index": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "location_city": {
+            "type": "null"
+        },
+        "location_state": {
+            "type": "null"
+        },
+        "manual": {
+            "type": "boolean"
+        },
+        "map": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "polyline": {
+                    "type": "string"
+                },
+                "resource_state": {
+                    "type": "integer"
+                },
+                "summary_polyline": {
+                    "type": "string"
+                }
+            }
+        },
+        "max_heartrate": {
+            "type": "integer"
+        },
+        "moving_time": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "perceived_exertion": {
+            "type": "null"
+        },
+        "photo_count": {
+            "type": "integer"
+        },
+        "photos": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "pr_count": {
+            "type": "integer"
+        },
+        "private": {
+            "type": "boolean"
+        },
+        "resource_state": {
+            "type": "integer"
+        },
+        "segment_efforts": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "achievements": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "rank": {
+                                    "type": "integer"
+                                },
+                                "type": {
+                                    "type": "string"
+                                },
+                                "type_id": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "activity": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "resource_state": {
+                                "type": "integer"
+                            },
+                            "visibility": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "athlete": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "resource_state": {
+                                "type": "integer"
+                            }
+                        }
+                    },
+                    "average_cadence": {
+                        "type": "number"
+                    },
+                    "average_heartrate": {
+                        "type": "number"
+                    },
+                    "average_watts": {
+                        "type": "number"
+                    },
+                    "device_watts": {
+                        "type": "boolean"
+                    },
+                    "distance": {
+                        "type": "number"
+                    },
+                    "elapsed_time": {
+                        "type": "integer"
+                    },
+                    "end_index": {
+                        "type": "integer"
+                    },
+                    "hidden": {
+                        "type": "boolean"
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "max_heartrate": {
+                        "type": "integer"
+                    },
+                    "moving_time": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "resource_state": {
+                        "type": "integer"
+                    },
+                    "segment": {
+                        "type": "object",
+                        "properties": {
+                            "activity_type": {
+                                "type": "string"
+                            },
+                            "average_grade": {
+                                "type": "number"
+                            },
+                            "climb_category": {
+                                "type": "integer"
+                            },
+                            "distance": {
+                                "type": "number"
+                            },
+                            "elevation_low": {
+                                "type": "number"
+                            },
+                            "elevation_profile": {
+                                "type": "null"
+                            },
+                            "elevation_profiles": {
+                                "type": "null"
+                            },
+                            "end_latlng": {
+                                "type": "array",
+                                "items": {
+                                    "type": "number"
+                                }
+                            },
+                            "hazardous": {
+                                "type": "boolean"
+                            },
+                            "id": {
+                                "type": "integer"
+                            },
+                            "maximum_grade": {
+                                "type": "number"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "private": {
+                                "type": "boolean"
+                            },
+                            "resource_state": {
+                                "type": "integer"
+                            },
+                            "starred": {
+                                "type": "boolean"
+                            },
+                            "start_latlng": {
+                                "type": "array",
+                                "items": {
+                                    "type": "number"
+                                }
+                            }
+                        }
+                    },
+                    "start_date": {
+                        "type": "string"
+                    },
+                    "start_date_local": {
+                        "type": "string"
+                    },
+                    "start_index": {
+                        "type": "integer"
+                    },
+                    "visibility": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "splits_metric": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "average_heartrate": {
+                        "type": "number"
+                    },
+                    "average_speed": {
+                        "type": "number"
+                    },
+                    "elapsed_time": {
+                        "type": "integer"
+                    },
+                    "moving_time": {
+                        "type": "integer"
+                    },
+                    "pace_zone": {
+                        "type": "integer"
+                    },
+                    "split": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "splits_standard": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "average_heartrate": {
+                        "type": "number"
+                    },
+                    "average_speed": {
+                        "type": "number"
+                    },
+                    "distance": {
+                        "type": "number"
+                    },
+                    "elapsed_time": {
+                        "type": "integer"
+                    },
+                    "moving_time": {
+                        "type": "integer"
+                    },
+                    "pace_zone": {
+                        "type": "integer"
+                    },
+                    "split": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "sport_type": {
+            "type": "string"
+        },
+        "start_date": {
+            "type": "string"
+        },
+        "start_date_local": {
+            "type": "string"
+        },
+        "start_latlng": {
+            "type": "array",
+            "items": {
+                "type": "number"
+            }
+        },
+        "stats_visibility": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string"
+                    },
+                    "visibility": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "timezone": {
+            "type": "string"
+        },
+        "total_photo_count": {
+            "type": "integer"
+        },
+        "trainer": {
+            "type": "boolean"
+        },
+        "type": {
+            "type": "string"
+        },
+        "upload_id_str": {
+            "type": "string"
+        },
+        "utc_offset": {
+            "type": "integer"
+        },
+        "visibility": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

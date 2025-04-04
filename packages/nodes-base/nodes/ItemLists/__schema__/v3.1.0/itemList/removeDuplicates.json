@@ -36,9 +36,6 @@
         "provider_id": {
             "type": "string"
         },
-        "reviews": {
-            "type": "integer"
-        },
         "reviews_link": {
             "type": "string"
         },
@@ -66,12 +63,9 @@
                 "type": "string"
             }
         },
-        "unclaimed_listing": {
-            "type": "boolean"
-        },
         "website": {
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

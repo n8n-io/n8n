@@ -36,9 +36,6 @@
         "description": {
             "type": "string"
         },
-        "due_at": {
-            "type": "null"
-        },
         "email_cc_ids": {
             "type": "array",
             "items": {
@@ -127,5 +124,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }

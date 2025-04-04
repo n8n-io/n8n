@@ -57,23 +57,6 @@
                                 "items": {
                                     "type": "object",
                                     "properties": {
-                                        "attrs": {
-                                            "type": "object",
-                                            "properties": {
-                                                "accessLevel": {
-                                                    "type": "string"
-                                                },
-                                                "id": {
-                                                    "type": "string"
-                                                },
-                                                "localId": {
-                                                    "type": "string"
-                                                },
-                                                "text": {
-                                                    "type": "string"
-                                                }
-                                            }
-                                        },
                                         "text": {
                                             "type": "string"
                                         },
@@ -156,5 +139,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

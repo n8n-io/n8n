@@ -41,6 +41,12 @@
         "dnd": {
             "type": "boolean"
         },
+        "followers": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
         "id": {
             "type": "string"
         },
@@ -54,5 +60,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }

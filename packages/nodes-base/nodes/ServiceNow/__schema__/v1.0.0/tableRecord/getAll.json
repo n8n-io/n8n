@@ -4,9 +4,6 @@
         "number": {
             "type": "string"
         },
-        "short_description": {
-            "type": "string"
-        },
         "state": {
             "type": "string"
         },
@@ -35,5 +32,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

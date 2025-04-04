@@ -1,9 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "analytics_domains": {
-            "type": "null"
-        },
         "analytics_source": {
             "type": "string"
         },
@@ -13,16 +10,10 @@
         "cdate": {
             "type": "string"
         },
-        "created_by": {
-            "type": "null"
-        },
         "created_timestamp": {
             "type": "string"
         },
         "deletestamp": {
-            "type": "null"
-        },
-        "facebook_session": {
             "type": "null"
         },
         "get_unsubscribe_reason": {
@@ -129,9 +120,6 @@
         "twitter_token_secret": {
             "type": "string"
         },
-        "updated_by": {
-            "type": "null"
-        },
         "updated_timestamp": {
             "type": "string"
         },
@@ -142,5 +130,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

@@ -10,19 +10,19 @@
         "content": {
             "type": "string"
         },
+        "deal": {
+            "type": "object",
+            "properties": {
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
         "id": {
             "type": "integer"
         },
         "last_update_user_id": {
             "type": "null"
-        },
-        "organization": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                }
-            }
         },
         "person": {
             "type": "object",
@@ -65,5 +65,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }

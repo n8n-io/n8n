@@ -22,9 +22,34 @@
                         "properties": {
                             "href": {
                                 "type": "string"
+                            },
+                            "targetHints": {
+                                "type": "object",
+                                "properties": {
+                                    "allow": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
+                }
+            }
+        },
+        "avatar_urls": {
+            "type": "object",
+            "properties": {
+                "24": {
+                    "type": "string"
+                },
+                "48": {
+                    "type": "string"
+                },
+                "96": {
+                    "type": "string"
                 }
             }
         },
@@ -47,5 +72,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

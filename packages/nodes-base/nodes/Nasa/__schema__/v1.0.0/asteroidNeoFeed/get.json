@@ -1,0 +1,135 @@
+{
+    "type": "object",
+    "properties": {
+        "absolute_magnitude_h": {
+            "type": "number"
+        },
+        "close_approach_data": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "close_approach_date": {
+                        "type": "string"
+                    },
+                    "close_approach_date_full": {
+                        "type": "string"
+                    },
+                    "epoch_date_close_approach": {
+                        "type": "integer"
+                    },
+                    "miss_distance": {
+                        "type": "object",
+                        "properties": {
+                            "astronomical": {
+                                "type": "string"
+                            },
+                            "kilometers": {
+                                "type": "string"
+                            },
+                            "lunar": {
+                                "type": "string"
+                            },
+                            "miles": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "orbiting_body": {
+                        "type": "string"
+                    },
+                    "relative_velocity": {
+                        "type": "object",
+                        "properties": {
+                            "kilometers_per_hour": {
+                                "type": "string"
+                            },
+                            "kilometers_per_second": {
+                                "type": "string"
+                            },
+                            "miles_per_hour": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "estimated_diameter": {
+            "type": "object",
+            "properties": {
+                "feet": {
+                    "type": "object",
+                    "properties": {
+                        "estimated_diameter_max": {
+                            "type": "number"
+                        },
+                        "estimated_diameter_min": {
+                            "type": "number"
+                        }
+                    }
+                },
+                "kilometers": {
+                    "type": "object",
+                    "properties": {
+                        "estimated_diameter_max": {
+                            "type": "number"
+                        },
+                        "estimated_diameter_min": {
+                            "type": "number"
+                        }
+                    }
+                },
+                "meters": {
+                    "type": "object",
+                    "properties": {
+                        "estimated_diameter_max": {
+                            "type": "number"
+                        },
+                        "estimated_diameter_min": {
+                            "type": "number"
+                        }
+                    }
+                },
+                "miles": {
+                    "type": "object",
+                    "properties": {
+                        "estimated_diameter_max": {
+                            "type": "number"
+                        },
+                        "estimated_diameter_min": {
+                            "type": "number"
+                        }
+                    }
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "is_potentially_hazardous_asteroid": {
+            "type": "boolean"
+        },
+        "is_sentry_object": {
+            "type": "boolean"
+        },
+        "links": {
+            "type": "object",
+            "properties": {
+                "self": {
+                    "type": "string"
+                }
+            }
+        },
+        "name": {
+            "type": "string"
+        },
+        "nasa_jpl_url": {
+            "type": "string"
+        },
+        "neo_reference_id": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

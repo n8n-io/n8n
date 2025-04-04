@@ -1,0 +1,68 @@
+{
+    "type": "object",
+    "properties": {
+        "actions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string"
+                    },
+                    "button_text": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "content": {
+            "type": "string"
+        },
+        "conversation_id": {
+            "type": "integer"
+        },
+        "creator": {
+            "type": "integer"
+        },
+        "creator_name": {
+            "type": "string"
+        },
+        "deleted": {
+            "type": "boolean"
+        },
+        "direct_mentions": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "id": {
+            "type": "integer"
+        },
+        "last_edited_ts": {
+            "type": "null"
+        },
+        "obj_index": {
+            "type": "integer"
+        },
+        "posted_ts": {
+            "type": "integer"
+        },
+        "system_message": {
+            "type": "null"
+        },
+        "version": {
+            "type": "integer"
+        },
+        "workspace_id": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

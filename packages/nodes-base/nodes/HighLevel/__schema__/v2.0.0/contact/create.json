@@ -38,12 +38,6 @@
         "dateUpdated": {
             "type": "string"
         },
-        "email": {
-            "type": "string"
-        },
-        "emailLowerCase": {
-            "type": "string"
-        },
         "firstName": {
             "type": "string"
         },
@@ -71,6 +65,9 @@
         "locationId": {
             "type": "string"
         },
+        "phone": {
+            "type": "string"
+        },
         "tags": {
             "type": "array",
             "items": {
@@ -81,5 +78,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

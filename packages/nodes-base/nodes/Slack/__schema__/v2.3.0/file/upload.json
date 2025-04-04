@@ -28,12 +28,6 @@
         "filetype": {
             "type": "string"
         },
-        "groups": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
         "has_more_shares": {
             "type": "boolean"
         },
@@ -101,5 +95,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

@@ -63,6 +63,9 @@
                                 "properties": {
                                     "addressLocality": {
                                         "type": "string"
+                                    },
+                                    "countryCode": {
+                                        "type": "string"
                                     }
                                 }
                             }
@@ -125,6 +128,9 @@
                             "properties": {
                                 "addressLocality": {
                                     "type": "string"
+                                },
+                                "countryCode": {
+                                    "type": "string"
                                 }
                             }
                         }
@@ -148,5 +154,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }

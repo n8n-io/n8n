@@ -27,9 +27,6 @@
                     "e": {
                         "type": "string"
                     },
-                    "t": {
-                        "type": "string"
-                    },
                     "u": {
                         "type": "string"
                     }
@@ -249,5 +246,5 @@
             "type": "boolean"
         }
     },
-    "version": 1
+    "version": 2
 }

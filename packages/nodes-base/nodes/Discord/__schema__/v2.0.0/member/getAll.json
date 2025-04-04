@@ -49,6 +49,9 @@
                 "id": {
                     "type": "string"
                 },
+                "primary_guild": {
+                    "type": "null"
+                },
                 "public_flags": {
                     "type": "integer"
                 },
@@ -58,5 +61,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }

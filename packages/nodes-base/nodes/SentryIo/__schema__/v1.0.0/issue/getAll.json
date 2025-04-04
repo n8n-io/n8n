@@ -129,9 +129,6 @@
         "status": {
             "type": "string"
         },
-        "substatus": {
-            "type": "string"
-        },
         "title": {
             "type": "string"
         },
@@ -142,5 +139,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }

@@ -15,17 +15,6 @@
                     "shape": {
                         "type": "object",
                         "properties": {
-                            "placeholder": {
-                                "type": "object",
-                                "properties": {
-                                    "parentObjectId": {
-                                        "type": "string"
-                                    },
-                                    "type": {
-                                        "type": "string"
-                                    }
-                                }
-                            },
                             "shapeProperties": {
                                 "type": "object",
                                 "properties": {
@@ -338,19 +327,6 @@
                 }
             }
         },
-        "pageProperties": {
-            "type": "object",
-            "properties": {
-                "pageBackgroundFill": {
-                    "type": "object",
-                    "properties": {
-                        "propertyState": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
         "revisionId": {
             "type": "string"
         },
@@ -509,5 +485,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }

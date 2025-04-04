@@ -9,49 +9,6 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "image": {
-                        "type": "object",
-                        "properties": {
-                            "contentUrl": {
-                                "type": "string"
-                            },
-                            "imageProperties": {
-                                "type": "object",
-                                "properties": {
-                                    "outline": {
-                                        "type": "object",
-                                        "properties": {
-                                            "propertyState": {
-                                                "type": "string"
-                                            }
-                                        }
-                                    },
-                                    "shadow": {
-                                        "type": "object",
-                                        "properties": {
-                                            "propertyState": {
-                                                "type": "string"
-                                            }
-                                        }
-                                    }
-                                }
-                            },
-                            "placeholder": {
-                                "type": "object",
-                                "properties": {
-                                    "index": {
-                                        "type": "integer"
-                                    },
-                                    "parentObjectId": {
-                                        "type": "string"
-                                    },
-                                    "type": {
-                                        "type": "string"
-                                    }
-                                }
-                            }
-                        }
-                    },
                     "objectId": {
                         "type": "string"
                     },
@@ -89,22 +46,6 @@
                                     "outline": {
                                         "type": "object",
                                         "properties": {
-                                            "dashStyle": {
-                                                "type": "string"
-                                            },
-                                            "outlineFill": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "solidFill": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "alpha": {
-                                                                "type": "integer"
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            },
                                             "propertyState": {
                                                 "type": "string"
                                             },
@@ -124,38 +65,7 @@
                                     "shadow": {
                                         "type": "object",
                                         "properties": {
-                                            "alignment": {
-                                                "type": "string"
-                                            },
-                                            "blurRadius": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "unit": {
-                                                        "type": "string"
-                                                    }
-                                                }
-                                            },
                                             "propertyState": {
-                                                "type": "string"
-                                            },
-                                            "rotateWithShape": {
-                                                "type": "boolean"
-                                            },
-                                            "transform": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "scaleX": {
-                                                        "type": "integer"
-                                                    },
-                                                    "scaleY": {
-                                                        "type": "integer"
-                                                    },
-                                                    "unit": {
-                                                        "type": "string"
-                                                    }
-                                                }
-                                            },
-                                            "type": {
                                                 "type": "string"
                                             }
                                         }
@@ -494,5 +404,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }

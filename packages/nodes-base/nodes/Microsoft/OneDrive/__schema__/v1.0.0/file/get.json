@@ -124,14 +124,6 @@
                 }
             }
         },
-        "shared": {
-            "type": "object",
-            "properties": {
-                "scope": {
-                    "type": "string"
-                }
-            }
-        },
         "size": {
             "type": "integer"
         },
@@ -139,5 +131,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

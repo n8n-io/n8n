@@ -17,9 +17,6 @@
                     },
                     "initials": {
                         "type": "string"
-                    },
-                    "username": {
-                        "type": "string"
                     }
                 }
             }
@@ -37,6 +34,53 @@
                     },
                     "id": {
                         "type": "string"
+                    },
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "assignee": {
+                                    "type": "null"
+                                },
+                                "date_created": {
+                                    "type": "string"
+                                },
+                                "due_date": {
+                                    "type": "null"
+                                },
+                                "due_date_time": {
+                                    "type": "boolean"
+                                },
+                                "group_assignee": {
+                                    "type": "null"
+                                },
+                                "id": {
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "type": "string"
+                                },
+                                "orderindex": {
+                                    "type": "number"
+                                },
+                                "parent": {
+                                    "type": "null"
+                                },
+                                "resolved": {
+                                    "type": "boolean"
+                                },
+                                "sent_due_date_notif": {
+                                    "type": "null"
+                                },
+                                "start_date": {
+                                    "type": "null"
+                                },
+                                "start_date_time": {
+                                    "type": "boolean"
+                                }
+                            }
+                        }
                     },
                     "name": {
                         "type": "string"
@@ -93,12 +137,18 @@
                     "type_config": {
                         "type": "object",
                         "properties": {
+                            "new_drop_down": {
+                                "type": "boolean"
+                            },
                             "options": {
                                 "type": "array",
                                 "items": {
                                     "type": "object",
                                     "properties": {
                                         "id": {
+                                            "type": "string"
+                                        },
+                                        "label": {
                                             "type": "string"
                                         },
                                         "name": {
@@ -340,13 +390,10 @@
                     },
                     "initials": {
                         "type": "string"
-                    },
-                    "username": {
-                        "type": "string"
                     }
                 }
             }
         }
     },
-    "version": 1
+    "version": 2
 }

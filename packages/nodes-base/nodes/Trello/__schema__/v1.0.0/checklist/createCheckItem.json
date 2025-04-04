@@ -19,12 +19,9 @@
         "name": {
             "type": "string"
         },
-        "pos": {
-            "type": "integer"
-        },
         "state": {
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
