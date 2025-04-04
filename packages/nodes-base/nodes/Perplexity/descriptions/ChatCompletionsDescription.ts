@@ -1,6 +1,7 @@
+import { updateDisplayOptions } from 'n8n-workflow';
 import type { INodeProperties } from 'n8n-workflow';
 
-import { sendErrorPostReceive } from './GenericFunctions';
+import { sendErrorPostReceive } from '../GenericFunctions';
 
 export const chatCompletionsOperations: INodeProperties[] = [
 	{
@@ -145,19 +146,15 @@ export const chatCompletionsFields: INodeProperties[] = [
 			},
 		},
 	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Option',
-		default: {},
-		displayOptions: {
+
+	...updateDisplayOptions(
+		{
 			show: {
 				resource: ['chat'],
 				operation: ['complete'],
 			},
 		},
-		options: [
+		[
 			{
 				displayName: 'Frequency Penalty',
 				name: 'frequencyPenalty',
@@ -179,7 +176,7 @@ export const chatCompletionsFields: INodeProperties[] = [
 				displayName: 'Maximum Number of Tokens',
 				name: 'maxTokens',
 				type: 'number',
-				default: 0,
+				default: 1,
 				description:
 					'The maximum number of tokens to generate in the completion. The number of tokens requested plus the number of prompt tokens sent in messages must not exceed the context window token limit of model requested.',
 				routing: {
@@ -301,7 +298,8 @@ export const chatCompletionsFields: INodeProperties[] = [
 					send: {
 						type: 'body',
 						property: 'search_domain_filter',
-						value: '={{ $value.split(",").map(domain => domain.trim()) }}',
+						value:
+							'={{ $json["userTier"] && $json["userTier"] >= 3 ? $value.split(",").map(domain => domain.trim()) : undefined }}',
 					},
 				},
 			},
@@ -337,7 +335,7 @@ export const chatCompletionsFields: INodeProperties[] = [
 				},
 			},
 		],
-	},
+	),
 	{
 		displayName: 'Simplify Output',
 		name: 'simplifyOutput',
