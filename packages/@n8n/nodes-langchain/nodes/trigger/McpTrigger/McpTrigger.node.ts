@@ -8,7 +8,8 @@ import { McpServers } from './McpServer';
 import type { McpServerData } from './McpServer';
 import type { CompressionResponse } from './FlushingSSEServerTransport';
 
-const MCP_TRIGGER_PATH_IDENTIFIER = 'mcp';
+const MCP_SSE_SETUP_PATH = 'sse';
+const MCP_SSE_MESSAGES_PATH = 'messages';
 
 export class McpTrigger extends Node {
 	description: INodeTypeDescription = {
@@ -44,14 +45,14 @@ export class McpTrigger extends Node {
 				name: 'setup',
 				httpMethod: 'GET',
 				responseMode: 'onReceived',
-				path: MCP_TRIGGER_PATH_IDENTIFIER,
+				path: MCP_SSE_SETUP_PATH,
 				ndvHideMethod: true,
 			},
 			{
 				name: 'default',
 				httpMethod: 'POST',
 				responseMode: 'onReceived',
-				path: MCP_TRIGGER_PATH_IDENTIFIER + '/messages',
+				path: MCP_SSE_MESSAGES_PATH,
 				ndvHideUrl: true,
 				startExecutionEarly: true,
 			},
