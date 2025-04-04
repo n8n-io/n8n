@@ -392,6 +392,7 @@ const getPropertyValues = (
 	nodeValues: INodeParameters,
 	propertyName: string,
 	node: Pick<INode, 'typeVersion'> | null,
+	nodeTypeDescription: INodeTypeDescription | null,
 	nodeValuesRoot: INodeParameters,
 ) => {
 	let value;
@@ -400,6 +401,8 @@ const getPropertyValues = (
 		value = get(nodeValuesRoot, propertyName.slice(1));
 	} else if (propertyName === '@version') {
 		value = node?.typeVersion || 0;
+	} else if (propertyName === '@tool') {
+		value = nodeTypeDescription?.name.endsWith('Tool') ?? false;
 	} else {
 		// Get the value from current level
 		value = get(nodeValues, propertyName);
@@ -487,6 +490,7 @@ export function displayParameter(
 	nodeValues: INodeParameters,
 	parameter: INodeProperties | INodeCredentialDescription,
 	node: Pick<INode, 'typeVersion'> | null, // Allow null as it does also get used by credentials and they do not have versioning yet
+	nodeTypeDescription: INodeTypeDescription | null,
 	nodeValuesRoot?: INodeParameters,
 	displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
 ) {
@@ -501,7 +505,13 @@ export function displayParameter(
 	if (show) {
 		// All the defined rules have to match to display parameter
 		for (const propertyName of Object.keys(show)) {
-			const values = getPropertyValues(nodeValues, propertyName, node, nodeValuesRoot);
+			const values = getPropertyValues(
+				nodeValues,
+				propertyName,
+				node,
+				nodeTypeDescription,
+				nodeValuesRoot,
+			);
 
 			if (values.some((v) => typeof v === 'string' && v.charAt(0) === '=')) {
 				return true;
@@ -516,7 +526,13 @@ export function displayParameter(
 	if (hide) {
 		// Any of the defined hide rules have to match to hide the parameter
 		for (const propertyName of Object.keys(hide)) {
-			const values = getPropertyValues(nodeValues, propertyName, node, nodeValuesRoot);
+			const values = getPropertyValues(
+				nodeValues,
+				propertyName,
+				node,
+				nodeTypeDescription,
+				nodeValuesRoot,
+			);
 
 			if (values.length !== 0 && checkConditions(hide[propertyName]!, values)) {
 				return false;
@@ -541,6 +557,7 @@ export function displayParameterPath(
 	parameter: INodeProperties | INodeCredentialDescription,
 	path: string,
 	node: Pick<INode, 'typeVersion'> | null,
+	nodeTypeDescription: INodeTypeDescription | null,
 	displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
 ) {
 	let resolvedNodeValues = nodeValues;
@@ -554,7 +571,14 @@ export function displayParameterPath(
 		nodeValuesRoot = get(nodeValues, 'parameters') as INodeParameters;
 	}
 
-	return displayParameter(resolvedNodeValues, parameter, node, nodeValuesRoot, displayKey);
+	return displayParameter(
+		resolvedNodeValues,
+		parameter,
+		node,
+		nodeTypeDescription,
+		nodeValuesRoot,
+		displayKey,
+	);
 }
 
 /**
@@ -698,6 +722,14 @@ export function getParameterResolveOrder(
 	return executionOrder;
 }
 
+export type GetNodeParametersOptions = {
+	onlySimpleTypes?: boolean;
+	dataIsResolved?: boolean; // If nodeValues are already fully resolved (so that all default values got added already)
+	nodeValuesRoot?: INodeParameters;
+	parentType?: string;
+	parameterDependencies?: IParameterDependencies;
+};
+
 /**
  * Returns the node parameter values. Depending on the settings it either just returns the none
  * default values or it applies all the default values.
@@ -706,9 +738,7 @@ export function getParameterResolveOrder(
  * @param {INodeParameters} nodeValues The node parameter data
  * @param {boolean} returnDefaults If default values get added or only none default values returned
  * @param {boolean} returnNoneDisplayed If also values which should not be displayed should be returned
- * @param {boolean} [onlySimpleTypes=false] If only simple types should be resolved
- * @param {boolean} [dataIsResolved=false] If nodeValues are already fully resolved (so that all default values got added already)
- * @param {INodeParameters} [nodeValuesRoot] The root node-parameter-data
+ * @param {GetNodeParametersOptions} options Optional properties
  */
 // eslint-disable-next-line complexity
 export function getNodeParameters(
@@ -717,12 +747,11 @@ export function getNodeParameters(
 	returnDefaults: boolean,
 	returnNoneDisplayed: boolean,
 	node: Pick<INode, 'typeVersion'> | null,
-	onlySimpleTypes = false,
-	dataIsResolved = false,
-	nodeValuesRoot?: INodeParameters,
-	parentType?: string,
-	parameterDependencies?: IParameterDependencies,
+	nodeTypeDescription: INodeTypeDescription | null,
+	options?: GetNodeParametersOptions,
 ): INodeParameters | null {
+	let { nodeValuesRoot, parameterDependencies } = options ?? {};
+	const { onlySimpleTypes = false, dataIsResolved = false, parentType } = options ?? {};
 	if (parameterDependencies === undefined) {
 		parameterDependencies = getParameterDependencies(nodePropertiesArray);
 	}
@@ -752,11 +781,14 @@ export function getNodeParameters(
 			true,
 			true,
 			node,
-			true,
-			true,
-			nodeValuesRoot,
-			parentType,
-			parameterDependencies,
+			nodeTypeDescription,
+			{
+				onlySimpleTypes: true,
+				dataIsResolved: true,
+				nodeValuesRoot,
+				parentType,
+				parameterDependencies,
+			},
 		) as INodeParameters;
 	}
 
@@ -781,7 +813,13 @@ export function getNodeParameters(
 
 		if (
 			!returnNoneDisplayed &&
-			!displayParameter(nodeValuesDisplayCheck, nodeProperties, node, nodeValuesRoot)
+			!displayParameter(
+				nodeValuesDisplayCheck,
+				nodeProperties,
+				node,
+				nodeTypeDescription,
+				nodeValuesRoot,
+			)
 		) {
 			if (!returnNoneDisplayed || !returnDefaults) {
 				continue;
@@ -792,7 +830,15 @@ export function getNodeParameters(
 			// Is a simple property so can be set as it is
 
 			if (duplicateParameterNames.includes(nodeProperties.name)) {
-				if (!displayParameter(nodeValuesDisplayCheck, nodeProperties, node, nodeValuesRoot)) {
+				if (
+					!displayParameter(
+						nodeValuesDisplayCheck,
+						nodeProperties,
+						node,
+						nodeTypeDescription,
+						nodeValuesRoot,
+					)
+				) {
 					continue;
 				}
 			}
@@ -871,10 +917,13 @@ export function getNodeParameters(
 					returnDefaults,
 					returnNoneDisplayed,
 					node,
-					false,
-					false,
-					nodeValuesRoot,
-					nodeProperties.type,
+					nodeTypeDescription,
+					{
+						onlySimpleTypes: false,
+						dataIsResolved: false,
+						nodeValuesRoot,
+						parentType: nodeProperties.type,
+					},
 				);
 
 				if (tempNodeParameters !== null) {
@@ -944,10 +993,13 @@ export function getNodeParameters(
 							returnDefaults,
 							returnNoneDisplayed,
 							node,
-							false,
-							false,
-							nodeValuesRoot,
-							nodeProperties.type,
+							nodeTypeDescription,
+							{
+								onlySimpleTypes: false,
+								dataIsResolved: false,
+								nodeValuesRoot,
+								parentType: nodeProperties.type,
+							},
 						);
 						if (tempValue !== null) {
 							tempArrayValue.push(tempValue);
@@ -972,10 +1024,13 @@ export function getNodeParameters(
 							returnDefaults,
 							returnNoneDisplayed,
 							node,
-							false,
-							false,
-							nodeValuesRoot,
-							nodeProperties.type,
+							nodeTypeDescription,
+							{
+								onlySimpleTypes: false,
+								dataIsResolved: false,
+								nodeValuesRoot,
+								parentType: nodeProperties.type,
+							},
 						);
 						if (tempValue !== null) {
 							Object.assign(tempNodeParameters, tempValue);
@@ -1236,6 +1291,7 @@ export function getNodeOutputs(
 export function getNodeParametersIssues(
 	nodePropertiesArray: INodeProperties[],
 	node: INode,
+	nodeTypeDescription: INodeTypeDescription | null,
 	pinDataNodeNames?: string[],
 ): INodeIssues | null {
 	const foundIssues: INodeIssues = {};
@@ -1247,7 +1303,13 @@ export function getNodeParametersIssues(
 	}
 
 	for (const nodeProperty of nodePropertiesArray) {
-		propertyIssues = getParameterIssues(nodeProperty, node.parameters, '', node);
+		propertyIssues = getParameterIssues(
+			nodeProperty,
+			node.parameters,
+			'',
+			node,
+			nodeTypeDescription,
+		);
 		mergeIssues(foundIssues, propertyIssues);
 	}
 
@@ -1456,9 +1518,16 @@ export function getParameterIssues(
 	nodeValues: INodeParameters,
 	path: string,
 	node: INode,
+	nodeTypeDescription: INodeTypeDescription | null,
 ): INodeIssues {
 	const foundIssues: INodeIssues = {};
-	const isDisplayed = displayParameterPath(nodeValues, nodeProperties, path, node);
+	const isDisplayed = displayParameterPath(
+		nodeValues,
+		nodeProperties,
+		path,
+		node,
+		nodeTypeDescription,
+	);
 	if (nodeProperties.required === true) {
 		if (isDisplayed) {
 			const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
@@ -1636,7 +1705,13 @@ export function getParameterIssues(
 	let propertyIssues;
 
 	for (const optionData of checkChildNodeProperties) {
-		propertyIssues = getParameterIssues(optionData.data, nodeValues, optionData.basePath, node);
+		propertyIssues = getParameterIssues(
+			optionData.data,
+			nodeValues,
+			optionData.basePath,
+			node,
+			nodeTypeDescription,
+		);
 		mergeIssues(foundIssues, propertyIssues);
 	}
 
