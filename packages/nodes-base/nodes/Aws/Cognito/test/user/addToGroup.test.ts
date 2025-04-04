@@ -1,44 +1,37 @@
-import nock from 'nock';
-
 import { equalityTest, setup, workflowToTests } from '../../../../../test/nodes/Helpers';
 
 describe('AWS Cognito - Add User to Group', () => {
 	const workflows = ['nodes/Aws/Cognito/test/user/addToGroup.workflow.json'];
 	const workflowTests = workflowToTests(workflows);
 
-	beforeEach(() => {
-		if (!nock.isActive()) {
-			nock.activate();
-		}
-	});
-
-	afterEach(() => {
-		nock.cleanAll();
-	});
-
-	describe('should add user to group', () => {
+	describe('should add user to group in the user pool', () => {
 		const nodeTypes = setup(workflowTests);
 
 		for (const workflow of workflowTests) {
-			nock('https://cognito-idp.eu-central-1.amazonaws.com')
-				.post('/')
-				.matchHeader('x-amz-target', 'AWSCognitoIdentityProviderService.DescribeUserPool')
-				.reply(200, { UserPoolId: 'eu-central-1_KkXQgdCJv' });
+			workflow.nock = {
+				baseUrl: 'https://cognito-idp.us-east-1.amazonaws.com/',
+				mocks: [
+					{
+						method: 'post',
+						path: '/',
+						statusCode: 200,
+						requestBody: {
+							UserPoolId: 'us-east-1_RbwZXygrI',
+							Username: 'a4583478-f091-7038-7681-b00374bc1ed4',
+							GroupName: 'MyNewGroup3',
+						},
+						requestHeaders: {
+							'X-Amz-Target': 'AWSCognitoIdentityProviderService.AdminAddUserToGroup',
+							'Content-Type': 'application/x-amz-json-1.1',
+						},
+						responseBody: {},
+					},
+				],
+			};
 
-			nock('https://cognito-idp.eu-central-1.amazonaws.com')
-				.post('/')
-				.matchHeader('x-amz-target', 'AWSCognitoIdentityProviderService.ListUsers')
-				.reply(200, { Users: [] });
-
-			nock('https://cognito-idp.eu-central-1.amazonaws.com')
-				.post(
-					'/',
-					(body) => body.UserPoolId === 'eu-central-1_KkXQgdCJv' && body.GroupName === 'MyNewTest1',
-				)
-				.matchHeader('x-amz-target', 'AWSCognitoIdentityProviderService.AdminAddUserToGroup')
-				.reply(200, {});
-
-			test(workflow.description, async () => await equalityTest(workflow, nodeTypes));
+			test(workflow.description, async () => {
+				await equalityTest(workflow, nodeTypes);
+			});
 		}
 	});
 });

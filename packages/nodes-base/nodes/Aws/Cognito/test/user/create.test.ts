@@ -1,67 +1,70 @@
-import { equalityTest, setup, workflowToTests } from '../../../../../test/nodes/Helpers';
+import nock from 'nock';
+
+import {
+	getWorkflowFilenames,
+	initBinaryDataService,
+	testWorkflows,
+} from '../../../../../test/nodes/Helpers';
 
 describe('AWS Cognito - Create User', () => {
-	const workflows = ['nodes/Aws/Cognito/test/user/create.workflow.json'];
-	const workflowTests = workflowToTests(workflows);
+	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
+		filename.includes('create.workflow.json'),
+	);
 
-	describe('should create user in the user pool', () => {
-		const nodeTypes = setup(workflowTests);
-
-		for (const workflow of workflowTests) {
-			workflow.nock = {
-				baseUrl: 'https://cognito-idp.eu-central-1.amazonaws.com/',
-				mocks: [
-					{
-						method: 'post',
-						path: '/',
-						statusCode: 200,
-						requestBody: {
-							UserPoolId: 'eu-central-1_W3WwpiBXV',
-						},
-						requestHeaders: {
-							'x-amz-target': 'AWSCognitoIdentityProviderService.DescribeUserPool',
-							'Content-Type': 'application/x-amz-json-1.1',
-						},
-						responseBody: {
-							UserPool: {
-								Id: 'eu-central-1_W3WwpiBXV',
-								Name: 'MyUserPool',
-								CreationDate: 1627891230,
-							},
-						},
-					},
-					{
-						method: 'post',
-						path: '/',
-						statusCode: 200,
-						requestBody: {
-							UserPoolId: 'eu-central-1_W3WwpiBXV',
-							Username: 'Johnn12',
-						},
-						requestHeaders: {
-							'x-amz-target': 'AWSCognitoIdentityProviderService.AdminCreateUser',
-							'Content-Type': 'application/x-amz-json-1.1',
-						},
-						responseBody: {
-							User: {
-								Username: 'Johnn12',
-								UserStatus: 'FORCE_CHANGE_PASSWORD',
-								Attributes: [
-									{
-										Name: 'sub',
-										Value: '03d43812-00c1-7098-075e-8a535fdefc1b',
-									},
-								],
-								UserCreateDate: 1743068750.761,
-								UserLastModifiedDate: 1743068750.761,
-								Enabled: true,
-							},
-						},
-					},
-				],
-			};
-
-			test(workflow.description, async () => await equalityTest(workflow, nodeTypes));
-		}
+	beforeAll(async () => {
+		await initBinaryDataService();
 	});
+
+	beforeEach(() => {
+		if (!nock.isActive()) {
+			nock.activate();
+		}
+
+		const baseUrl = 'https://cognito-idp.eu-central-1.amazonaws.com/';
+		nock.cleanAll();
+		nock(baseUrl)
+			.persist()
+			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
+			.post('/', {
+				UserPoolId: 'eu-central-1_W3WwpiBXV',
+			})
+			.matchHeader('x-amz-target', 'AWSCognitoIdentityProviderService.DescribeUserPool')
+			.reply(200, {
+				UserPool: {
+					Id: 'eu-central-1_W3WwpiBXV',
+					Name: 'MyUserPool',
+					CreationDate: 1627891230,
+				},
+			});
+
+		nock(baseUrl)
+			.persist()
+			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
+			.post('/', {
+				UserPoolId: 'eu-central-1_W3WwpiBXV',
+				Username: 'Johnn12',
+			})
+			.matchHeader('x-amz-target', 'AWSCognitoIdentityProviderService.AdminCreateUser')
+			.reply(200, {
+				User: {
+					Username: 'Johnn12',
+					UserStatus: 'FORCE_CHANGE_PASSWORD',
+					Attributes: [
+						{
+							Name: 'sub',
+							Value: '03d43812-00c1-7098-075e-8a535fdefc1b',
+						},
+					],
+					UserCreateDate: 1743068750.761,
+					UserLastModifiedDate: 1743068750.761,
+					Enabled: true,
+				},
+			});
+	});
+
+	afterEach(() => {
+		nock.cleanAll();
+	});
+
+	testWorkflows(workflows);
 });

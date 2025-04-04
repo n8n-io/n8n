@@ -4,8 +4,8 @@
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [260, 360],
-			"id": "9ed2b86b-7c24-4ea0-a328-92d9e6dba35a",
+			"position": [-80, -100],
+			"id": "7da2ce49-9a9d-4240-b082-ff1b12d101b1",
 			"name": "When clicking ‘Test workflow’"
 		},
 		{
@@ -13,53 +13,45 @@
 				"operation": "update",
 				"userPoolId": {
 					"__rl": true,
-					"value": "eu-central-1_KkXQgdCJv",
+					"value": "us-east-1_RbwZXygrI",
 					"mode": "list",
-					"cachedResultName": "AWS test"
+					"cachedResultName": "UserPoolSimple"
 				},
 				"userName": {
 					"__rl": true,
-					"value": "530408b2-d071-7071-ceb8-2f9612693faf",
+					"value": "a4583478-f091-7038-7681-b00374bc1ed4",
 					"mode": "list",
-					"cachedResultName": "mail.this2@gmail.com"
+					"cachedResultName": "this@mail.com"
 				},
 				"userAttributes": {
 					"attributes": [
 						{
-							"Value": "New Address 2"
+							"Name": "address",
+							"Value": "New"
 						}
 					]
 				},
 				"requestOptions": {}
 			},
-			"id": "66ec763f-eb72-474a-8573-935e890ef33b",
-			"name": "updateUser",
 			"type": "n8n-nodes-base.awsCognito",
 			"typeVersion": 1,
-			"position": [500, 360],
+			"position": [0, 40],
+			"id": "bc3483ef-4922-4759-a51d-12e5bd996628",
+			"name": "AWS Cognito",
 			"credentials": {
 				"aws": {
-					"id": "xZj8dnPxDrcwGXyn",
-					"name": "AWS account Central Europe"
+					"id": "9jaRLOceaJvYwd8S",
+					"name": "AWS US EAST"
 				}
 			}
 		}
 	],
-	"pinData": {
-		"updateUser": [
-			{
-				"json": {
-					"updated": true
-				}
-			}
-		]
-	},
 	"connections": {
 		"When clicking ‘Test workflow’": {
 			"main": [
 				[
 					{
-						"node": "updateUser",
+						"node": "AWS Cognito",
 						"type": "main",
 						"index": 0
 					}
@@ -67,14 +59,11 @@
 			]
 		}
 	},
-	"active": false,
-	"settings": {
-		"executionOrder": "v1"
-	},
-	"versionId": "ada1a789-e86f-4ac3-a64e-f2a209e52fd5",
-	"meta": {
-		"instanceId": "26f38eb23ad84214537831cfef4032299ffac994ff18d5cb72e82d31ac4ceac4"
-	},
-	"id": "GLTHCGg64D86o8jf",
-	"tags": []
+	"pinData": {
+		"AWS Cognito": [
+			{
+				"updated": true
+			}
+		]
+	}
 }

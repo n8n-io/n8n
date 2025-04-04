@@ -1,36 +1,28 @@
 {
 	"nodes": [
 		{
-			"parameters": {},
-			"type": "n8n-nodes-base.manualTrigger",
-			"typeVersion": 1,
-			"position": [240, -120],
-			"id": "7da2ce49-9a9d-4240-b082-ff1b12d101b1",
-			"name": "When clicking ‘Test workflow’"
-		},
-		{
 			"parameters": {
 				"resource": "group",
 				"operation": "get",
 				"userPoolId": {
 					"__rl": true,
-					"value": "eu-central-1_EUZ4iEF1T",
+					"value": "eu-central-1_qqle3XBUA",
 					"mode": "list",
-					"cachedResultName": "UserPoolTwo"
+					"cachedResultName": "UserPoolThree"
 				},
-				"groupName": {
+				"group": {
 					"__rl": true,
-					"value": "MyNewGroup",
+					"value": "MyNewGroup2",
 					"mode": "list",
-					"cachedResultName": "MyNewGroup"
+					"cachedResultName": "MyNewGroup2"
 				},
 				"requestOptions": {}
 			},
 			"type": "n8n-nodes-base.awsCognito",
 			"typeVersion": 1,
-			"position": [440, -120],
-			"id": "f31d8d93-7a60-45a5-b7d0-ebcc681b372d",
-			"name": "AWS Cognito",
+			"position": [200, 1300],
+			"id": "ece9e04f-305c-45ed-afc6-34d34303f8b0",
+			"name": "AWS Cognito1",
 			"credentials": {
 				"aws": {
 					"id": "xZj8dnPxDrcwGXyn",
@@ -39,41 +31,17 @@
 			}
 		}
 	],
+	"connections": {},
 	"pinData": {
-		"AWS Cognito": [
+		"AWS Cognito1": [
 			{
 				"json": {
-					"CreationDate": 1742927877.679,
-					"Description": "This is a new group",
-					"GroupName": "MyNewGroup",
-					"LastModifiedDate": 1742927877.679,
-					"Precedence": 10,
-					"UserPoolId": "eu-central-1_EUZ4iEF1T"
+					"CreationDate": 1741609269.287,
+					"GroupName": "MyNewGroup2",
+					"LastModifiedDate": 1741609269.287,
+					"UserPoolId": "eu-central-1_qqle3XBUA"
 				}
 			}
 		]
-	},
-	"connections": {
-		"When clicking ‘Test workflow’": {
-			"main": [
-				[
-					{
-						"node": "AWS Cognito",
-						"type": "main",
-						"index": 0
-					}
-				]
-			]
-		}
-	},
-	"active": false,
-	"settings": {
-		"executionOrder": "v1"
-	},
-	"versionId": "f51fb47c-8afb-4aca-be03-956cdffd1acf",
-	"meta": {
-		"instanceId": "26f38eb23ad84214537831cfef4032299ffac994ff18d5cb72e82d31ac4ceac4"
-	},
-	"id": "0qqycx08fTBpfbC9",
-	"tags": []
+	}
 }

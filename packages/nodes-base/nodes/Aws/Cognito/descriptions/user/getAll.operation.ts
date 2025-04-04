@@ -2,52 +2,11 @@ import type { IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties } fr
 import { updateDisplayOptions } from 'n8n-workflow';
 
 import type { Filters } from '../../helpers/interfaces';
+import { userPoolResourceLocator } from '../../helpers/resourceLocators';
 import { parseRequestBody } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
-	{
-		displayName: 'User Pool',
-		name: 'userPoolId',
-		required: true,
-		type: 'resourceLocator',
-		default: {
-			mode: 'list',
-			value: '',
-		},
-		description: 'The user pool where the users are managed',
-		routing: {
-			send: {
-				type: 'body',
-				property: 'UserPoolId',
-			},
-		},
-		modes: [
-			{
-				displayName: 'From list',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'searchUserPools',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				placeholder: 'e.g. eu-central-1_ab12cdefgh',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '^[a-zA-Z0-9-]+_[0-9a-zA-Z]+$',
-							errorMessage: 'The ID must follow the pattern "xx-xx-xx_xxxxxx"',
-						},
-					},
-				],
-			},
-		],
-	},
+	userPoolResourceLocator,
 	{
 		displayName: 'Return All',
 		name: 'returnAll',

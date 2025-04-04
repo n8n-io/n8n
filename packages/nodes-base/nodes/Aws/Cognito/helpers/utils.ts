@@ -9,7 +9,8 @@ import type {
 import { jsonParse, NodeApiError, NodeOperationError, OperationalError } from 'n8n-workflow';
 
 import type { IUserPool } from './interfaces';
-import { searchUsersForGroup } from '../methods/listSearch';
+import { searchUsersForGroup } from './searchFunctions';
+import { searchUsers } from '../methods/listSearch';
 import { awsApiRequest } from '../transport';
 
 const validateEmail = (email: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -70,15 +71,21 @@ export async function preSendUserFields(
 	requestOptions: IHttpRequestOptions,
 	_paginationToken?: string,
 ): Promise<IHttpRequestOptions> {
+	const operation = this.getNodeParameter('operation') as string;
 	const userPoolId = this.getNodeParameter('userPoolId', undefined, {
 		extractValue: true,
 	}) as string;
 
-	const userPool = await getUserPool.call(this, userPoolId);
+	const userPool = (await awsApiRequest.call(this, {
+		url: '',
+		method: 'POST',
+		headers: { 'X-Amz-Target': 'AWSCognitoIdentityProviderService.DescribeUserPool' },
+		body: JSON.stringify({ UserPoolId: userPoolId }),
+	})) as unknown as IUserPool;
 	const usernameAttributes = userPool?.UserPool.UsernameAttributes ?? [];
-
 	const isEmailAuth = usernameAttributes.includes('email');
 	const isPhoneAuth = usernameAttributes.includes('phone_number');
+	const isEmailOrPhone = isEmailAuth || isPhoneAuth;
 
 	const getValidatedNewUserName = (): string => {
 		const newUsername = this.getNodeParameter('newUserName') as string;
@@ -99,10 +106,22 @@ export async function preSendUserFields(
 		return newUsername;
 	};
 
-	const finalUserName = getValidatedNewUserName();
+	const getUserNameFromExistingUsers = async (): Promise<string | undefined> => {
+		const userName = this.getNodeParameter('userName', undefined, {
+			extractValue: true,
+		}) as string;
+
+		const { results: users } = await searchUsers.call(this as unknown as ILoadOptionsFunctions);
+
+		const matchedUser = users?.find((user) => user.value === userName);
+
+		return isEmailOrPhone ? userName : matchedUser?.name;
+	};
+
+	const finalUserName =
+		operation === 'create' ? getValidatedNewUserName() : await getUserNameFromExistingUsers();
 
 	const body = parseRequestBody(requestOptions.body);
-
 	return {
 		...requestOptions,
 		body: JSON.stringify({
@@ -189,6 +208,8 @@ export async function simplifyUserPool(
 	items: INodeExecutionData[],
 	_response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
+	const simple = this.getNodeParameter('simple') as boolean;
+	if (!simple) return items;
 	return items
 		.map((item) => {
 			const data = item.json?.UserPool as IDataObject | undefined;

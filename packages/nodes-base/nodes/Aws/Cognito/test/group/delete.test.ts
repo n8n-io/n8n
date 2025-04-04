@@ -1,42 +1,47 @@
 import nock from 'nock';
 
-import { equalityTest, setup, workflowToTests } from '../../../../../test/nodes/Helpers';
+import {
+	getWorkflowFilenames,
+	initBinaryDataService,
+	testWorkflows,
+} from '../../../../../test/nodes/Helpers';
 
 describe('AWS Cognito - Delete Group', () => {
-	const workflows = ['nodes/Aws/Cognito/test/group/delete.workflow.json'];
-	const workflowTests = workflowToTests(workflows);
+	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
+		filename.includes('delete.workflow.json'),
+	);
+
+	beforeAll(async () => {
+		await initBinaryDataService();
+	});
 
 	beforeEach(() => {
 		if (!nock.isActive()) {
 			nock.activate();
 		}
+
+		const baseUrl = 'https://cognito-idp.eu-central-1.amazonaws.com/';
+		nock.cleanAll();
+		nock(baseUrl)
+			.persist()
+			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
+			.post('/', {
+				UserPoolId: 'eu-central-1_qqle3XBUA',
+				GroupName: 'MyNewGroup22',
+			})
+			.reply(200, {
+				Group: {
+					GroupName: 'MyNewGroup22',
+					UserPoolId: 'eu-central-1_qqle3XBUA',
+					CreationDate: 1743068959.243,
+					LastModifiedDate: 1743068959.243,
+				},
+			});
 	});
 
-	describe('should fetch and then delete a group from the user pool', () => {
-		const nodeTypes = setup(workflowTests);
-
-		for (const workflow of workflowTests) {
-			workflow.nock = {
-				baseUrl: 'https://cognito-idp.eu-central-1.amazonaws.com/',
-				mocks: [
-					{
-						method: 'post',
-						path: '/',
-						statusCode: 200,
-						requestBody: {
-							UserPoolId: 'eu-central-1_KkXQgdCJv',
-							GroupName: 'First',
-						},
-						requestHeaders: {
-							'X-Amz-Target': 'AWSCognitoIdentityProviderService.DeleteGroup',
-							'Content-Type': 'application/x-amz-json-1.1',
-						},
-						responseBody: {},
-					},
-				],
-			};
-
-			test(workflow.description, async () => await equalityTest(workflow, nodeTypes));
-		}
+	afterEach(() => {
+		nock.cleanAll();
 	});
+
+	testWorkflows(workflows);
 });

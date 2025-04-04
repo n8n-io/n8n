@@ -4,8 +4,8 @@
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [260, 360],
-			"id": "9ed2b86b-7c24-4ea0-a328-92d9e6dba35a",
+			"position": [-80, -100],
+			"id": "7da2ce49-9a9d-4240-b082-ff1b12d101b1",
 			"name": "When clicking ‘Test workflow’"
 		},
 		{
@@ -18,7 +18,7 @@
 					"mode": "list",
 					"cachedResultName": "AWS test"
 				},
-				"groupName": {
+				"group": {
 					"__rl": true,
 					"value": "MyNewTesttttt",
 					"mode": "list",
@@ -29,11 +29,11 @@
 				},
 				"requestOptions": {}
 			},
-			"id": "535684ac-fd25-49b4-ada6-acbc568114c8",
+			"id": "fd0610c8-9af2-4ca5-943f-f0de5d897fc0",
 			"name": "updateGroup",
 			"type": "n8n-nodes-base.awsCognito",
 			"typeVersion": 1,
-			"position": [460, 360],
+			"position": [160, -100],
 			"credentials": {
 				"aws": {
 					"id": "xZj8dnPxDrcwGXyn",
@@ -42,15 +42,6 @@
 			}
 		}
 	],
-	"pinData": {
-		"updateGroup": [
-			{
-				"json": {
-					"updated": true
-				}
-			}
-		]
-	},
 	"connections": {
 		"When clicking ‘Test workflow’": {
 			"main": [
@@ -64,14 +55,13 @@
 			]
 		}
 	},
-	"active": false,
-	"settings": {
-		"executionOrder": "v1"
-	},
-	"versionId": "bfcd2c00-6917-420a-88da-e900d203abdd",
-	"meta": {
-		"instanceId": "26f38eb23ad84214537831cfef4032299ffac994ff18d5cb72e82d31ac4ceac4"
-	},
-	"id": "GLTHCGg64D86o8jf",
-	"tags": []
+	"pinData": {
+		"updateGroup": [
+			{
+				"json": {
+					"updated": true
+				}
+			}
+		]
+	}
 }

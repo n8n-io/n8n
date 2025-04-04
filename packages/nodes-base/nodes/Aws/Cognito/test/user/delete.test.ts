@@ -1,71 +1,63 @@
-import { equalityTest, setup, workflowToTests } from '../../../../../test/nodes/Helpers';
+import nock from 'nock';
+
+import {
+	getWorkflowFilenames,
+	initBinaryDataService,
+	testWorkflows,
+} from '../../../../../test/nodes/Helpers';
 
 describe('AWS Cognito - Delete User', () => {
-	const workflows = ['nodes/Aws/Cognito/test/user/delete.workflow.json'];
-	const workflowTests = workflowToTests(workflows);
+	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
+		filename.includes('delete.workflow.json'),
+	);
 
-	describe('should delete user', () => {
-		const nodeTypes = setup(workflowTests);
-
-		for (const workflow of workflowTests) {
-			workflow.nock = {
-				baseUrl: 'https://cognito-idp.eu-central-1.amazonaws.com',
-				mocks: [
-					{
-						method: 'post',
-						path: '/',
-						statusCode: 200,
-						requestHeaders: {
-							'Content-Type': 'application/x-amz-json-1.1',
-							'X-Amz-Target': 'AWSCognitoIdentityProviderService.AdminDeleteUser',
-						},
-						requestBody: {
-							UserPoolId: 'eu-central-1_KkXQgdCJv',
-							Username: '63c44842-9021-70a9-0c39-9c0b8fe539b4',
-						},
-						responseBody: {
-							Status: 'SUCCESS',
-						},
-					},
-					{
-						method: 'post',
-						path: '/',
-						statusCode: 200,
-						requestHeaders: {
-							'Content-Type': 'application/x-amz-json-1.1',
-							'X-Amz-Target': 'AWSCognitoIdentityProviderService.DescribeUserPool',
-						},
-						requestBody: {
-							UserPoolId: 'eu-central-1_KkXQgdCJv',
-						},
-						responseBody: {
-							UserPool: {
-								Id: 'eu-central-1_KkXQgdCJv',
-								Name: 'MyUserPool',
-								CreationDate: 1627891230,
-							},
-						},
-					},
-					{
-						method: 'post',
-						path: '/',
-						statusCode: 200,
-						requestHeaders: {
-							'Content-Type': 'application/x-amz-json-1.1',
-							'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListUsers',
-						},
-						requestBody: {
-							UserPoolId: 'eu-central-1_KkXQgdCJv',
-							MaxResults: 60,
-						},
-						responseBody: {
-							Users: [],
-						},
-					},
-				],
-			};
-
-			test(workflow.description, async () => await equalityTest(workflow, nodeTypes));
-		}
+	beforeAll(async () => {
+		await initBinaryDataService();
 	});
+
+	beforeEach(() => {
+		if (!nock.isActive()) {
+			nock.activate();
+		}
+
+		const baseUrl = 'https://cognito-idp.eu-central-1.amazonaws.com/';
+		nock.cleanAll();
+		nock(baseUrl)
+			.persist()
+			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
+			.post('/', {
+				UserPoolId: 'eu-central-1_EUZ4iEF1T',
+			})
+			.matchHeader('x-amz-target', 'AWSCognitoIdentityProviderService.DescribeUserPool')
+			.reply(200, {
+				UserPool: {
+					Arn: 'arn:aws:cognito-idp:eu-central-1:130450532146:userpool/eu-central-1_EUZ4iEF1T',
+					CreationDate: 1739530218.869,
+					DeletionProtection: 'INACTIVE',
+					EstimatedNumberOfUsers: 4,
+					Id: 'eu-central-1_EUZ4iEF1T',
+					LastModifiedDate: 1739530218.869,
+					MfaConfiguration: 'OFF',
+					Name: 'UserPoolTwo',
+				},
+			});
+
+		nock(baseUrl)
+			.persist()
+			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
+			.post('/', {
+				UserPoolId: 'eu-central-1_EUZ4iEF1T',
+				Username: '53c4f8c2-c071-707b-debd-d45585618da0',
+			})
+			.matchHeader('x-amz-target', 'AWSCognitoIdentityProviderService.AdminDeleteUser')
+			.reply(200, {
+				Message: 'User successfully deleted',
+			});
+	});
+
+	afterEach(() => {
+		nock.cleanAll();
+	});
+
+	testWorkflows(workflows);
 });

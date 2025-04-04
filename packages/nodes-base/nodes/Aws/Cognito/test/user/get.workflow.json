@@ -4,7 +4,7 @@
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [240, -120],
+			"position": [-80, -100],
 			"id": "7da2ce49-9a9d-4240-b082-ff1b12d101b1",
 			"name": "When clicking ‘Test workflow’"
 		},
@@ -13,23 +13,22 @@
 				"operation": "get",
 				"userPoolId": {
 					"__rl": true,
-					"value": "eu-central-1_EUZ4iEF1T",
+					"value": "eu-central-1_W3WwpiBXV",
 					"mode": "list",
-					"cachedResultName": "UserPoolTwo"
+					"cachedResultName": "UserPoolSimple"
 				},
 				"userName": {
 					"__rl": true,
-					"value": "43045822-80e1-70f6-582d-78ae7992e9d9",
+					"value": "0394e8e2-5081-7020-06bd-44bdfc84dd10",
 					"mode": "list",
-					"cachedResultName": "Johnn"
+					"cachedResultName": "UserSimple"
 				},
-				"simple": false,
 				"requestOptions": {}
 			},
 			"type": "n8n-nodes-base.awsCognito",
 			"typeVersion": 1,
-			"position": [460, -120],
-			"id": "8fc7a9dd-d66d-4e81-abea-4d4ec74cb424",
+			"position": [20, 80],
+			"id": "68d9c310-77d5-4ca6-a98e-47e8216b31eb",
 			"name": "AWS Cognito1",
 			"credentials": {
 				"aws": {
@@ -39,25 +38,6 @@
 			}
 		}
 	],
-	"pinData": {
-		"AWS Cognito1": [
-			{
-				"json": {
-					"Enabled": true,
-					"UserAttributes": [
-						{
-							"Name": "sub",
-							"Value": "43045822-80e1-70f6-582d-78ae7992e9d9"
-						}
-					],
-					"UserCreateDate": 1742928038.451,
-					"UserLastModifiedDate": 1742928038.451,
-					"UserStatus": "FORCE_CHANGE_PASSWORD",
-					"Username": "Johnn"
-				}
-			}
-		]
-	},
 	"connections": {
 		"When clicking ‘Test workflow’": {
 			"main": [
@@ -71,14 +51,17 @@
 			]
 		}
 	},
-	"active": false,
-	"settings": {
-		"executionOrder": "v1"
-	},
-	"versionId": "813f4f7b-a495-4e08-b3d0-1dbd3f921eef",
-	"meta": {
-		"instanceId": "26f38eb23ad84214537831cfef4032299ffac994ff18d5cb72e82d31ac4ceac4"
-	},
-	"id": "0qqycx08fTBpfbC9",
-	"tags": []
+	"pinData": {
+		"AWS Cognito1": [
+			{
+				"Enabled": true,
+				"UserCreateDate": 1739528018.102,
+				"UserLastModifiedDate": 1740655109.821,
+				"UserStatus": "FORCE_CHANGE_PASSWORD",
+				"Username": "UserSimple",
+				"address": "newAddress223",
+				"sub": "0394e8e2-5081-7020-06bd-44bdfc84dd10"
+			}
+		]
+	}
 }

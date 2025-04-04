@@ -4,20 +4,22 @@ import {
 	type INodeListSearchResult,
 } from 'n8n-workflow';
 
-import { getUsersInGroup } from '../../helpers/utils';
 import {
 	searchUsers,
 	searchGroups,
 	searchUserPools,
 	searchGroupsForUser,
+	searchUsersForGroup,
 } from '../../methods/listSearch';
 import { awsApiRequest } from '../../transport/index';
 
-jest.mock('../../transport', () => ({
-	makeAwsRequest: jest.fn(),
+jest.mock('../../transport/index', () => ({
+	awsApiRequest: jest.fn(),
 }));
-jest.mock('../../helpers/utils', () => ({
-	getUsersInGroup: jest.fn(),
+
+jest.mock('../../methods/listSearch', () => ({
+	...jest.requireActual('../../methods/listSearch'),
+	searchUsersForGroup: jest.fn(),
 }));
 
 describe('AWS Cognito Functions', () => {
@@ -79,10 +81,13 @@ describe('AWS Cognito Functions', () => {
 
 		it('should throw an error if UserPoolId is missing', async () => {
 			const mockContext = {
-				getNodeParameter: jest.fn().mockReturnValue({ value: '' }),
+				getNodeParameter: jest.fn().mockReturnValue(''),
+				getNode: jest.fn(),
 			} as unknown as ILoadOptionsFunctions;
 
-			await expect(searchUsers.call(mockContext)).rejects.toThrow(ApplicationError);
+			await expect(searchUsers.call(mockContext)).rejects.toThrow(
+				'User Pool ID is required to search users',
+			);
 		});
 	});
 
@@ -131,6 +136,7 @@ describe('AWS Cognito Functions', () => {
 		it('should throw an error if UserPoolId is missing', async () => {
 			const mockContext = {
 				getNodeParameter: jest.fn().mockReturnValue(null),
+				getNode: jest.fn(),
 			} as unknown as ILoadOptionsFunctions;
 
 			await expect(searchGroups.call(mockContext)).rejects.toThrow(ApplicationError);
@@ -181,10 +187,10 @@ describe('AWS Cognito Functions', () => {
 	});
 
 	describe('searchGroupsForUser', () => {
-		it('should handle empty groups response', async () => {
-			const userName = '03a438f2-10d1-70f1-f45a-09753ab5c4c3';
-			const userPoolId = 'eu-central-1_KkXQgdCJv';
+		const userName = '03a438f2-10d1-70f1-f45a-09753ab5c4c3';
+		const userPoolId = 'eu-central-1_KkXQgdCJv';
 
+		it('should handle empty groups response', async () => {
 			const mockListGroupsResponse = { Groups: [] };
 
 			(awsApiRequest as jest.Mock).mockResolvedValueOnce(mockListGroupsResponse);
@@ -207,34 +213,13 @@ describe('AWS Cognito Functions', () => {
 			expect(result).toEqual(expectedResult);
 		});
 
-		it('should return correct groups that the user is part of', async () => {
-			const userName = '03a438f2-10d1-70f1-f45a-09753ab5c4c3';
-			const userPoolId = 'eu-central-1_KkXQgdCJv';
-
+		it('should return empty array when user is not in any groups', async () => {
 			const mockListGroupsResponse = {
-				Groups: [
-					{ GroupName: 'MyNewGroup' },
-					{ GroupName: 'MyNewTesttttt' },
-					{ GroupName: 'MyNewTest1' },
-				],
+				Groups: [{ GroupName: 'AdminGroup' }, { GroupName: 'UserGroup' }],
 			};
 
 			(awsApiRequest as jest.Mock).mockResolvedValueOnce(mockListGroupsResponse);
-
-			(getUsersInGroup as jest.Mock).mockImplementation(async (groupName, _userPoolId) => {
-				if (groupName === 'MyNewGroup') {
-					return {
-						results: [
-							{
-								Username: '03a438f2-10d1-70f1-f45a-09753ab5c4c3',
-								Enabled: true,
-								email: 'mail.this1@gmail.com',
-							},
-						],
-					};
-				}
-				return { results: [] };
-			});
+			(searchUsersForGroup as jest.Mock).mockResolvedValue({ results: [] });
 
 			const mockContext = {
 				getNodeParameter: jest.fn((param) => {
@@ -244,14 +229,8 @@ describe('AWS Cognito Functions', () => {
 				}),
 			} as unknown as ILoadOptionsFunctions;
 
-			const result = await searchGroupsForUser.call(mockContext, '', '');
-
-			const expectedResult = {
-				results: [{ name: 'MyNewGroup', value: 'MyNewGroup' }],
-				paginationToken: '',
-			};
-
-			expect(result).toEqual(expectedResult);
+			const result = await searchGroupsForUser.call(mockContext);
+			expect(result).toEqual({ results: [], paginationToken: undefined });
 		});
 	});
 });

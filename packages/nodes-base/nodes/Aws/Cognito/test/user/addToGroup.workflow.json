@@ -4,8 +4,8 @@
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [260, 360],
-			"id": "9ed2b86b-7c24-4ea0-a328-92d9e6dba35a",
+			"position": [-80, -100],
+			"id": "7da2ce49-9a9d-4240-b082-ff1b12d101b1",
 			"name": "When clicking ‘Test workflow’"
 		},
 		{
@@ -13,52 +13,43 @@
 				"operation": "addToGroup",
 				"userPoolId": {
 					"__rl": true,
-					"value": "eu-central-1_KkXQgdCJv",
+					"value": "us-east-1_RbwZXygrI",
 					"mode": "list",
-					"cachedResultName": "AWS test"
+					"cachedResultName": "UserPoolSimple"
 				},
 				"userName": {
 					"__rl": true,
-					"value": "23048882-90b1-70bb-4eca-154c2eb92f13",
+					"value": "a4583478-f091-7038-7681-b00374bc1ed4",
 					"mode": "list",
-					"cachedResultName": "mail.this111@gmail.com"
+					"cachedResultName": "this@mail.com"
 				},
 				"groupName": {
 					"__rl": true,
-					"value": "MyNewTest1",
+					"value": "MyNewGroup3",
 					"mode": "list",
-					"cachedResultName": "MyNewTest1"
+					"cachedResultName": "MyNewGroup3"
 				},
 				"requestOptions": {}
 			},
-			"id": "2ca34a15-6a2a-4ec3-a607-1002e54e11ac",
-			"name": "addToGroup",
 			"type": "n8n-nodes-base.awsCognito",
 			"typeVersion": 1,
-			"position": [440, 360],
+			"position": [0, 60],
+			"id": "d29c766d-e353-4286-9423-b667a39541f7",
+			"name": "AWS Cognito2",
 			"credentials": {
 				"aws": {
-					"id": "xZj8dnPxDrcwGXyn",
-					"name": "AWS account Central Europe"
+					"id": "9jaRLOceaJvYwd8S",
+					"name": "AWS US EAST"
 				}
 			}
 		}
 	],
-	"pinData": {
-		"addToGroup": [
-			{
-				"json": {
-					"addedToGroup": true
-				}
-			}
-		]
-	},
 	"connections": {
 		"When clicking ‘Test workflow’": {
 			"main": [
 				[
 					{
-						"node": "addToGroup",
+						"node": "AWS Cognito2",
 						"type": "main",
 						"index": 0
 					}
@@ -66,14 +57,11 @@
 			]
 		}
 	},
-	"active": false,
-	"settings": {
-		"executionOrder": "v1"
-	},
-	"versionId": "a4d19d29-a069-45dd-8a8e-72b64bb06933",
-	"meta": {
-		"instanceId": "26f38eb23ad84214537831cfef4032299ffac994ff18d5cb72e82d31ac4ceac4"
-	},
-	"id": "GLTHCGg64D86o8jf",
-	"tags": []
+	"pinData": {
+		"AWS Cognito2": [
+			{
+				"addedToGroup": true
+			}
+		]
+	}
 }

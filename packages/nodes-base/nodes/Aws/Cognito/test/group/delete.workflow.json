@@ -1,36 +1,28 @@
 {
 	"nodes": [
 		{
-			"parameters": {},
-			"type": "n8n-nodes-base.manualTrigger",
-			"typeVersion": 1,
-			"position": [260, 360],
-			"id": "9ed2b86b-7c24-4ea0-a328-92d9e6dba35a",
-			"name": "When clicking ‘Test workflow’"
-		},
-		{
 			"parameters": {
 				"resource": "group",
 				"operation": "delete",
 				"userPoolId": {
 					"__rl": true,
-					"value": "eu-central-1_KkXQgdCJv",
+					"value": "eu-central-1_qqle3XBUA",
 					"mode": "list",
-					"cachedResultName": "AWS test"
+					"cachedResultName": "UserPoolThree"
 				},
-				"groupName": {
+				"group": {
 					"__rl": true,
-					"value": "First",
+					"value": "MyNewGroup22",
 					"mode": "list",
-					"cachedResultName": "First"
+					"cachedResultName": "MyNewGroup22"
 				},
 				"requestOptions": {}
 			},
-			"id": "1abda69b-016a-4e60-8e94-381eb6b2bba9",
-			"name": "deleteGroup",
 			"type": "n8n-nodes-base.awsCognito",
 			"typeVersion": 1,
-			"position": [440, 360],
+			"position": [200, 1300],
+			"id": "ece9e04f-305c-45ed-afc6-34d34303f8b0",
+			"name": "AWS Cognito1",
 			"credentials": {
 				"aws": {
 					"id": "xZj8dnPxDrcwGXyn",
@@ -39,8 +31,9 @@
 			}
 		}
 	],
+	"connections": {},
 	"pinData": {
-		"deleteGroup": [
+		"AWS Cognito1": [
 			{
 				"json": {
 					"deleted": true
@@ -48,27 +41,8 @@
 			}
 		]
 	},
-	"connections": {
-		"When clicking ‘Test workflow’": {
-			"main": [
-				[
-					{
-						"node": "deleteGroup",
-						"type": "main",
-						"index": 0
-					}
-				]
-			]
-		}
-	},
-	"active": false,
-	"settings": {
-		"executionOrder": "v1"
-	},
-	"versionId": "a5530a5a-533f-4e39-a39c-5425f48a3f59",
 	"meta": {
+		"templateCredsSetupCompleted": true,
 		"instanceId": "26f38eb23ad84214537831cfef4032299ffac994ff18d5cb72e82d31ac4ceac4"
-	},
-	"id": "GLTHCGg64D86o8jf",
-	"tags": []
+	}
 }
