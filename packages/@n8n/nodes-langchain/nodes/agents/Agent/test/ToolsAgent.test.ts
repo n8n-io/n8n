@@ -258,6 +258,54 @@ describe('prepareMessages', () => {
 		const hasHumanMessage = messages.some((m) => m instanceof HumanMessage);
 		expect(hasHumanMessage).toBe(false);
 	});
+
+	it('should not include system_message in prompt templates if not provided after version 1.9', async () => {
+		const fakeItem = { json: {} };
+		const ctx = createFakeExecuteFunctions({
+			getInputData: jest.fn().mockReturnValue([fakeItem]),
+		});
+		ctx.getNode().typeVersion = 1.9;
+		const messages = await prepareMessages(ctx, 0, {});
+
+		expect(messages.length).toBe(3);
+		expect(messages).not.toContainEqual(['system', '{system_message}']);
+	});
+
+	it('should include system_message in prompt templates if provided after version 1.9', async () => {
+		const fakeItem = { json: {} };
+		const ctx = createFakeExecuteFunctions({
+			getInputData: jest.fn().mockReturnValue([fakeItem]),
+		});
+		ctx.getNode().typeVersion = 1.9;
+		const messages = await prepareMessages(ctx, 0, { systemMessage: 'Hello' });
+
+		expect(messages.length).toBe(4);
+		expect(messages).toContainEqual(['system', '{system_message}']);
+	});
+
+	it('should include system_message in prompt templates if not provided before version 1.9', async () => {
+		const fakeItem = { json: {} };
+		const ctx = createFakeExecuteFunctions({
+			getInputData: jest.fn().mockReturnValue([fakeItem]),
+		});
+		ctx.getNode().typeVersion = 1.8;
+		const messages = await prepareMessages(ctx, 0, {});
+
+		expect(messages.length).toBe(4);
+		expect(messages).toContainEqual(['system', '{system_message}']);
+	});
+
+	it('should include system_message in prompt templates if provided before version 1.9', async () => {
+		const fakeItem = { json: {} };
+		const ctx = createFakeExecuteFunctions({
+			getInputData: jest.fn().mockReturnValue([fakeItem]),
+		});
+		ctx.getNode().typeVersion = 1.8;
+		const messages = await prepareMessages(ctx, 0, { systemMessage: 'Hello' });
+
+		expect(messages.length).toBe(4);
+		expect(messages).toContainEqual(['system', '{system_message}']);
+	});
 });
 
 describe('preparePrompt', () => {
