@@ -26,6 +26,10 @@ type RepositorySearchResponse = {
 	total_count: number;
 };
 
+type RefItem = {
+	ref: string;
+};
+
 export async function getUsers(
 	this: ILoadOptionsFunctions,
 	filter?: string,
@@ -126,7 +130,7 @@ export async function getRefs(
 	const page = paginationToken ? +paginationToken : 1;
 	const per_page = 100;
 
-	const responseData = await githubApiRequest.call(
+	const responseData: RefItem[] = await githubApiRequest.call(
 		this,
 		'GET',
 		`/repos/${owner}/${repository}/git/refs`,
