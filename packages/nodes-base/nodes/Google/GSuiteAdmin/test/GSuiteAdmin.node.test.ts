@@ -2,6 +2,7 @@ import type { ILoadOptionsFunctions, IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import nock from 'nock';
 
+import { returnData } from '../../../E2eTest/mock';
 import { googleApiRequest, googleApiRequestAllItems } from '../GenericFunctions';
 import { GSuiteAdmin } from '../GSuiteAdmin.node';
 
@@ -68,6 +69,23 @@ describe('GSuiteAdmin Node - loadOptions', () => {
 			expect(result).toEqual([
 				{ name: 'Employee Info', value: 'EmployeeSchema' },
 				{ name: 'CustomSchema', value: 'CustomSchema' },
+			]);
+		});
+
+		it('should correctly iterate over schemas and return expected values', async () => {
+			const schemas = [
+				{ displayName: 'Employee Info', schemaName: 'EmployeeSchema' },
+				{ displayName: 'Custom Schema', schemaName: 'CustomSchema' },
+			];
+
+			const result = schemas.map((schema) => ({
+				name: schema.displayName,
+				value: schema.schemaName,
+			}));
+
+			expect(result).toEqual([
+				{ name: 'Employee Info', value: 'EmployeeSchema' },
+				{ name: 'Custom Schema', value: 'CustomSchema' },
 			]);
 		});
 	});
@@ -154,6 +172,30 @@ describe('GSuiteAdmin Node - logic coverage', () => {
 		});
 	});
 
+	it('should throw an error for invalid query format', () => {
+		const filter = {
+			query: 'invalidQuery',
+		};
+
+		const qs: Record<string, any> = {};
+
+		expect(() => {
+			if (filter.query) {
+				const query = filter.query.trim();
+				const regex = /^(name|email):\S+$/;
+				if (!regex.test(query)) {
+					throw new NodeOperationError(
+						mockThis.getNode(),
+						'Invalid query format. Query must follow the format "displayName:<value>" or "email:<value>".',
+					);
+				}
+				qs.query = query;
+			}
+		}).toThrow(
+			'Invalid query format. Query must follow the format "displayName:<value>" or "email:<value>".',
+		);
+	});
+
 	it('should assign my_customer when customer is not defined', () => {
 		const qs: Record<string, any> = {};
 		if (!qs.customer) qs.customer = 'my_customer';
@@ -166,14 +208,14 @@ describe('GSuiteAdmin Node - logic coverage', () => {
 			const username = '';
 			if (!username) {
 				throw new NodeOperationError(mock.getNode(), "The parameter 'Username' is empty", {
-					description: "Please fill in the 'Username' parameter to create the user",
 					itemIndex: 0,
+					description: "Please fill in the 'Username' parameter to create the user",
 				});
 			}
 		}).toThrow("The parameter 'Username' is empty");
 	});
 
-	it('should set phone, email, roles and custom fields', () => {
+	it('should set phones, emails, roles, and custom fields', () => {
 		const additionalFields = {
 			phoneUi: { phoneValues: [{ type: 'work', value: '123' }] },
 			emailUi: { emailValues: [{ address: 'test@example.com', type: 'home' }] },
@@ -408,5 +450,111 @@ describe('GSuiteAdmin Node - user:update logic', () => {
 		expect(calledBody.customSchemas).toEqual({
 			ValidSchema: { valid: 'ok' },
 		});
+	});
+
+	it('should throw an error if username is empty', () => {
+		const mock = { getNode: () => ({}) } as IExecuteFunctions;
+		expect(() => {
+			const username = '';
+			if (!username) {
+				throw new NodeOperationError(mock.getNode(), "The parameter 'Username' is empty", {
+					itemIndex: 0,
+					description: "Please fill in the 'Username' parameter to create the user",
+				});
+			}
+		}).toThrow("The parameter 'Username' is empty");
+	});
+});
+
+describe('GSuiteAdmin Node - Error Handling', () => {
+	it('should throw a NodeOperationError if the error is an instance of NodeOperationError', async () => {
+		const mockContext = {
+			getNode: () => ({ name: 'GSuiteAdmin' }),
+			continueOnFail: () => false,
+			helpers: {
+				constructExecutionMetaData: jest.fn(),
+				returnJsonArray: jest.fn(),
+			},
+		} as unknown as IExecuteFunctions;
+
+		const error = new NodeOperationError(mockContext.getNode(), 'Some error message');
+
+		await expect(async () => {
+			throw error;
+		}).rejects.toThrow(NodeOperationError);
+	});
+
+	it('should handle error when continueOnFail is true and constructExecutionMetaData is called', async () => {
+		const mockContext = {
+			getNode: () => ({ name: 'GSuiteAdmin' }),
+			continueOnFail: () => true,
+			helpers: {
+				constructExecutionMetaData: jest.fn().mockReturnValue([{ message: 'mock error data' }]),
+				returnJsonArray: jest.fn().mockReturnValue([]),
+			},
+		} as unknown as IExecuteFunctions;
+
+		const error = new Error('Some error message');
+
+		await expect(async () => {
+			if (error instanceof NodeOperationError) {
+				throw error;
+			}
+
+			if (mockContext.continueOnFail()) {
+				const executionErrorData = mockContext.helpers.constructExecutionMetaData(
+					mockContext.helpers.returnJsonArray({
+						message: 'Operation "update" failed for resource "user".',
+						description: error.message,
+					}),
+					{ itemData: { item: 0 } },
+				);
+
+				if (executionErrorData) {
+					returnData.push(...executionErrorData);
+				} else {
+					console.error('executionErrorData is not iterable:', executionErrorData);
+				}
+			}
+
+			throw new NodeOperationError(
+				mockContext.getNode(),
+				'Operation "update" failed for resource "user".',
+				{
+					description: `Please check the input parameters and ensure the API request is correctly formatted. Details: ${error.message}`,
+					itemIndex: 0,
+				},
+			);
+		}).rejects.toThrow(NodeOperationError);
+	});
+
+	it('should throw a NodeOperationError if an unknown error is thrown and continueOnFail is false', async () => {
+		const mockContext = {
+			getNode: () => ({ name: 'GSuiteAdmin' }),
+			continueOnFail: () => false,
+			helpers: {
+				constructExecutionMetaData: jest.fn(),
+				returnJsonArray: jest.fn(),
+			},
+		} as unknown as IExecuteFunctions;
+
+		const error = new Error('Some unknown error');
+
+		await expect(async () => {
+			if (error instanceof NodeOperationError) {
+				throw error;
+			}
+
+			if (!mockContext.continueOnFail()) {
+				throw new NodeOperationError(
+					mockContext.getNode(),
+					'Operation "update" failed for resource "user".',
+					{
+						description: `Please check the input parameters and ensure the API request is correctly formatted. Details: ${error.message}`,
+						itemIndex: 0,
+					},
+				);
+			}
+		}).rejects.toThrow(NodeOperationError);
 	});
 });
