@@ -11,7 +11,7 @@ import {
 import { useI18n } from '@/composables/useI18n';
 import { transformInsightsTimeSaved } from '@/features/insights/insights.utils';
 import { smartDecimal } from '@n8n/utils/number/smartDecimal';
-import { INSIGHTS_UNIT_MAPPING } from '@/features/insights/insights.constants';
+import { DATE_FORMAT_MASK, INSIGHTS_UNIT_MAPPING } from '@/features/insights/insights.constants';
 
 const props = defineProps<{
 	data: InsightsByTime[];
@@ -40,7 +40,7 @@ const chartData = computed<ChartData<'line'>>(() => {
 	const data: number[] = [];
 
 	for (const entry of props.data) {
-		labels.push(dateformat(entry.date, 'mmm d.'));
+		labels.push(dateformat(entry.date, DATE_FORMAT_MASK));
 		const timeSaved = transformInsightsTimeSaved(entry.values.timeSaved);
 		data.push(timeSaved);
 	}

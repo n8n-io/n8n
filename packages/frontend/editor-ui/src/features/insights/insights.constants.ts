@@ -32,3 +32,5 @@ export const INSIGHTS_UNIT_IMPACT_MAPPING: Record<
 	timeSaved: INSIGHT_IMPACT_TYPES.POSITIVE, // More time saved is good → positive (green)
 	averageRunTime: INSIGHT_IMPACT_TYPES.NEUTRAL, // Not good or bad → neutral (grey)
 } as const;
+
+export const DATE_FORMAT_MASK = 'mmm d';
