@@ -277,6 +277,36 @@ describe('validateQueryParameters', () => {
 			throw new OperationalError('Expected result.body to contain a parameters array');
 		}
 	});
+
+	test('should correctly map parameters when query contains multiple dynamic values', async () => {
+		mockExecuteSingleFunctions.getNodeParameter
+			.mockReturnValueOnce('$1, $2, $3')
+			.mockReturnValueOnce({ queryParameters: 'firstValue, secondValue, thirdValue' });
+
+		const result = await validateQueryParameters.call(mockExecuteSingleFunctions, requestOptions);
+
+		if (result.body && (result.body as RequestBodyWithParameters).parameters) {
+			expect((result.body as RequestBodyWithParameters).parameters).toEqual([
+				{ name: '@param1', value: 'firstValue' },
+				{ name: '@param2', value: 'secondValue' },
+				{ name: '@param3', value: 'thirdValue' },
+			]);
+		} else {
+			throw new OperationalError('Expected result.body to contain a parameters array');
+		}
+	});
+
+	test('should extract and map parameter names correctly using regex', async () => {
+		const query = '$1, $2, $3';
+		const queryParamsString = 'value1, value2, value3';
+
+		const parameterNames = query.replace(/\$(\d+)/g, '@param$1').match(/@\w+/g) ?? [];
+
+		const parameterValues = queryParamsString.split(',').map((val) => val.trim());
+
+		expect(parameterNames).toEqual(['@param1', '@param2', '@param3']);
+		expect(parameterValues).toEqual(['value1', 'value2', 'value3']);
+	});
 });
 
 describe('processJsonInput', () => {

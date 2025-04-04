@@ -86,6 +86,7 @@ describe('Azure Cosmos DB', () => {
 				(requestOptions.baseURL && requestOptions.url
 					? requestOptions.baseURL + requestOptions.url
 					: '');
+
 			if (!urlString) {
 				throw new OperationalError('Invalid URL: Both uri and baseURL+url are missing');
 			}
@@ -103,11 +104,12 @@ describe('Azure Cosmos DB', () => {
 				.shift();
 
 			expect(foundResource).toBeUndefined();
+
 			expect(() => {
 				if (!foundResource) {
 					throw new OperationalError('Unable to determine the resource type from the URL');
 				}
-			}).toThrow('Unable to determine the resource type from the URL');
+			}).toThrowError(new OperationalError('Unable to determine the resource type from the URL'));
 		});
 
 		it('should properly construct the resourceId and payload', async () => {
