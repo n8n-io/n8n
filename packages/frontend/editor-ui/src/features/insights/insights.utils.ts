@@ -22,9 +22,10 @@ export const transformInsightsSummary = (data: InsightsSummary | null): Insights
 		? INSIGHTS_SUMMARY_ORDER.map((key) => ({
 				id: key,
 				value: transformInsightsValues[key]?.(data[key].value) ?? data[key].value,
-				deviation: data[key].deviation
-					? (transformInsightsValues[key]?.(data[key].deviation) ?? data[key].deviation)
-					: null,
+				deviation:
+					data[key].deviation === null
+						? null
+						: (transformInsightsValues[key]?.(data[key].deviation) ?? data[key].deviation),
 				unit: INSIGHTS_UNIT_MAPPING[key],
 			}))
 		: [];
