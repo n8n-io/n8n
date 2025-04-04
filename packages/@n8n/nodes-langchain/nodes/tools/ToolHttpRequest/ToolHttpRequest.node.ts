@@ -68,7 +68,6 @@ export class ToolHttpRequest implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: [NodeConnectionTypes.AiTool],
 		outputNames: ['Tool'],
-		hidden: true,
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{
