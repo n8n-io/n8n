@@ -26,7 +26,6 @@ export class McpTrigger extends Node {
 		activationMessage: 'You can now make calls to your SSE URL to trigger executions.',
 		defaults: {
 			name: 'setup',
-			color: '#225577',
 		},
 		triggerPanel: {
 			header: '',
