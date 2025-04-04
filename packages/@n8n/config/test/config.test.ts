@@ -274,7 +274,7 @@ describe('GlobalConfig', () => {
 		license: {
 			serverUrl: 'https://license.n8n.io/v1',
 			autoRenewalEnabled: true,
-			autoRenewOffset: 60 * 60 * 72,
+			detachFloatingOnShutdown: true,
 			activationKey: '',
 			tenantId: 1,
 			cert: '',

@@ -14,6 +14,7 @@ import {
 	LICENSE_QUOTAS,
 	N8N_VERSION,
 	SETTINGS_LICENSE_CERT_KEY,
+	Time,
 	UNLIMITED_LICENSE_QUOTA,
 } from './constants';
 import type { BooleanLicenseFeature, NumericLicenseFeature } from './interfaces';
@@ -60,7 +61,7 @@ export class License {
 		const isMainInstance = instanceType === 'main';
 		const server = this.globalConfig.license.serverUrl;
 		const offlineMode = !isMainInstance;
-		const autoRenewOffset = this.globalConfig.license.autoRenewOffset;
+		const autoRenewOffset = 72 * Time.hours.toSeconds;
 		const saveCertStr = isMainInstance
 			? async (value: TLicenseBlock) => await this.saveCertStr(value)
 			: async () => {};
@@ -92,6 +93,7 @@ export class License {
 				autoRenewEnabled: shouldRenew,
 				renewOnInit: shouldRenew,
 				autoRenewOffset,
+				detachFloatingOnShutdown: this.globalConfig.license.detachFloatingOnShutdown,
 				offlineMode,
 				logger: this.logger,
 				loadCertStr: async () => await this.loadCertStr(),
@@ -192,6 +194,15 @@ export class License {
 
 		await this.manager.renew();
 		this.logger.debug('License renewed');
+	}
+
+	async clear() {
+		if (!this.manager) {
+			return;
+		}
+
+		await this.manager.clear();
+		this.logger.info('License cleared');
 	}
 
 	@OnShutdown()
