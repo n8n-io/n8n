@@ -15,7 +15,7 @@
 	},
 	"events": [],
 	"setup": {
-		"frontend": "./frontend.ts"
+		"frontend": "./frontend.js"
 	},
 	"contributes": {
 		"settingsPage": [

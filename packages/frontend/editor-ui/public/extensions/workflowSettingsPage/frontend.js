@@ -1,6 +1,4 @@
-import type { N8nExtensionContext } from '@/extensions-sdk/n8n-context';
-
-const setup = async (context: N8nExtensionContext) => {
+const setup = async (context) => {
 	const panel = await context.createViewPanel({
 		name: 'Workflow Settings',
 		id: 'workflow-settings',

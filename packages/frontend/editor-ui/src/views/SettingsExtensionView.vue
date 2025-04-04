@@ -33,6 +33,7 @@ onMounted(async () => {
 	if (!extension.value) {
 		return;
 	}
+	extensionsStore.setupMethod = 'directImport';
 
 	await extensionsStore.setupExtension(extension.value.id);
 });

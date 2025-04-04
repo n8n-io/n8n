@@ -15,8 +15,8 @@
 	},
 	"events": ["workflow:started"],
 	"setup": {
-		"backend": "./backend.ts",
-		"frontend": "./frontend.ts"
+		"backend": "./backend.js",
+		"frontend": "./frontend.js"
 	},
 	"contributes": {
 		"settingsPage": [
