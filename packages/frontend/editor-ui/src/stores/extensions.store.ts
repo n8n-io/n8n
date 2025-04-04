@@ -24,6 +24,8 @@ export type Extension = {
 	initialized?: boolean;
 };
 
+const EXTENSION_SANDBOX_ID = 'extensions-host';
+
 export type ExtensionSetupMethod = 'directImport' | 'shadowRealm' | 'iframe';
 
 export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
@@ -123,20 +125,162 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 		}
 
 		const basePath = extension.path.replace('n8n.manifest.json', '');
-		// const mainPath = `${basePath}${extension.setup.frontend?.replace('./', '')}`;
 		const relativePath = `${basePath}${extension.setup.frontend?.replace('./', '')}`;
-		// const mainPath = new URL(relativePath, window.location.origin).href;
-
-		console.log(`Loading extension ${id} from ${mainPath}`);
+		const mainPath = new URL(relativePath, window.location.origin).href;
 
 		try {
-			// Fetch the extension code directly from the main application
+			// Fetch the extension code
 			const response = await fetch(mainPath);
 			if (!response.ok) {
 				throw new Error(`Failed to fetch extension code: ${response.statusText}`);
 			}
 			const extensionCode = await response.text();
-			console.log(`Extension code for ${id} fetched successfully`, extensionCode);
+			let iframe = document.getElementById(EXTENSION_SANDBOX_ID) as HTMLIFrameElement;
+			if (!iframe) {
+				iframe = document.createElement('iframe');
+				iframe.id = EXTENSION_SANDBOX_ID;
+				// TODO: Setting 'allow-same-origin' is not secure, we need to find a way to load the extension without it
+				iframe.sandbox = 'allow-scripts allow-same-origin';
+				iframe.style.display = 'none';
+				document.body.appendChild(iframe);
+			}
+			// Add iframe to the document
+			document.body.appendChild(iframe);
+
+			// Set up communication
+			const messageHandler = (event: MessageEvent) => {
+				if (event.source !== iframe.contentWindow) return;
+
+				const { type, method, args, callId } = event.data;
+
+				// TODO: Whitelist api calls
+				if (type === 'API_CALL') {
+					console.log(`API call from extension ${id}: ${method}`, args);
+					// Call the method on the extension context
+					const context = n8n;
+					// @ts-expect-error testing
+					const result = context.n8n.extensionContext[method](...args);
+					// Send the result back to the extension
+					if (result instanceof Promise) {
+						console.log(`API call from extension ${id}: ${method} is a promise`, args);
+						result
+							.then((data) => {
+								iframe.contentWindow?.postMessage(
+									{
+										type: 'API_RESPONSE',
+										callId,
+										result: data,
+									},
+									'*',
+								);
+							})
+							.catch((error) => {
+								iframe.contentWindow?.postMessage(
+									{
+										type: 'API_ERROR',
+										callId,
+										error: error.message,
+									},
+									'*',
+								);
+							});
+					} else {
+						iframe.contentWindow?.postMessage(
+							{
+								type: 'API_RESPONSE',
+								callId,
+								result,
+							},
+							'*',
+						);
+					}
+					console.log(`API response to extension ${id}: ${method}`, result);
+				} else if (type === 'EXTENSION_LOADED') {
+					console.log(`Extension ${id} loaded successfully`);
+					extension.initialized = true;
+				}
+			};
+
+			window.addEventListener('message', messageHandler);
+			// extension.messageHandler = messageHandler;
+
+			// Create a blob URL for the extension code
+			const blob = new Blob([extensionCode], { type: 'application/javascript' });
+			const blobUrl = URL.createObjectURL(blob);
+
+			// Create the iframe content with the extension code loaded via blob URL
+			const iframeContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <script type="module">
+          // Create API proxy for communication with parent
+          const extensionAPI = new Proxy({}, {
+            get: (target, prop) => {
+              return (...args) => {
+                return new Promise((resolve, reject) => {
+                  const callId = Date.now() + Math.random();
+
+                  const handler = (event) => {
+                    const { type, callId: responseId, result, error } = event.data;
+                    if ((type === 'API_RESPONSE' || type === 'API_ERROR') && responseId === callId) {
+                      window.removeEventListener('message', handler);
+
+                      if (type === 'API_RESPONSE') {
+                        resolve(result);
+                      } else {
+                        reject(new Error(error));
+                      }
+                    }
+                  };
+
+                  window.addEventListener('message', handler);
+
+                  window.parent.postMessage({
+                    type: 'API_CALL',
+                    method: prop,
+                    args,
+                    callId
+                  }, '*');
+                });
+              };
+            }
+          });
+
+          // Import the extension code from the blob URL
+          import('${blobUrl}')
+            .then(module => {
+              if (typeof module.setup !== 'function') {
+                throw new Error('Extension does not export a setup function');
+              }
+
+              // Call setup with the API proxy
+              module.setup(extensionAPI);
+
+              // Notify parent
+              window.parent.postMessage({ type: 'EXTENSION_LOADED', id: '${id}' }, '*');
+            })
+            .catch(error => {
+              console.error('Error loading extension:', error);
+              window.parent.postMessage({
+                type: 'EXTENSION_ERROR',
+                id: '${id}',
+                error: error.message
+              }, '*');
+            });
+        </script>
+      </head>
+      <body></body>
+      </html>
+    `;
+
+			// Set the iframe content
+			const htmlBlob = new Blob([iframeContent], { type: 'text/html' });
+			iframe.src = URL.createObjectURL(htmlBlob);
+
+			// Store for cleanup
+			// extension.iframe = iframe;
+			// extension.blobUrls = [blobUrl, iframe.src];
 		} catch (error) {
 			toast.showError(error, 'Error loading extension');
 			return;

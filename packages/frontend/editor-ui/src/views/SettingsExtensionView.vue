@@ -33,7 +33,7 @@ onMounted(async () => {
 	if (!extension.value) {
 		return;
 	}
-	extensionsStore.setupMethod = 'directImport';
+	extensionsStore.setupMethod = 'iframe';
 
 	await extensionsStore.setupExtension(extension.value.id);
 });

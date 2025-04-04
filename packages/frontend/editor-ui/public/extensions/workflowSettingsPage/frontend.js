@@ -1,4 +1,6 @@
 const setup = async (context) => {
+	console.log('Workflow Settings Page setup');
+
 	const panel = await context.createViewPanel({
 		name: 'Workflow Settings',
 		id: 'workflow-settings',
