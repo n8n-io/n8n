@@ -16,16 +16,21 @@ export class VectorStoreMilvus extends createVectorStoreNode<Milvus>({
 		icon: { light: 'file:milvus-icon-black.svg', dark: 'file:milvus-icon-white.svg' },
 		docsUrl:
 			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoremilvus/',
-		// operationModes: ['load', 'insert', 'retrieve', 'update', 'retrieve-as-tool'],
+		credentials: [
+			{
+				name: 'milvusApi',
+				required: true,
+			},
+		],
+		operationModes: ['load', 'insert', 'retrieve', 'retrieve-as-tool'],
 	},
 	methods: { listSearch: { milvusCollectionsSearch } },
-
 	sharedFields,
-	async populateVectorStore(context, embeddings, documents, itemIndex): Promise<void> {
+	async getVectorStoreClient(context, filter, embeddings, itemIndex): Promise<Milvus> {
 		// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
 		throw new UnexpectedError('Function not implemented.');
 	},
-	async getVectorStoreClient(context, filter, embeddings, itemIndex): Promise<Milvus> {
+	async populateVectorStore(context, embeddings, documents, itemIndex): Promise<void> {
 		// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
 		throw new UnexpectedError('Function not implemented.');
 	},
