@@ -1,5 +1,6 @@
 import { Container } from '@n8n/di';
 import { License } from '@/license';
+
 import { BaseCommand } from '../base-command';
 
 export class ClearLicenseCommand extends BaseCommand {
