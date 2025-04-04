@@ -243,9 +243,15 @@ export function createLogEntries(workflow: Workflow, runData: IRunData) {
 		.flatMap(([nodeName, taskData]) =>
 			taskData.map((task, runIndex) => ({ nodeName, task, runIndex })),
 		)
-		.toSorted((a, b) =>
-			a.nodeName === b.nodeName ? a.runIndex - b.runIndex : a.task.startTime - b.task.startTime,
-		);
+		.toSorted((a, b) => {
+			if (a.task.executionIndex !== undefined && b.task.executionIndex !== undefined) {
+				return a.task.executionIndex - b.task.executionIndex;
+			}
+
+			return a.nodeName === b.nodeName
+				? a.runIndex - b.runIndex
+				: a.task.startTime - b.task.startTime;
+		});
 
 	return runs.flatMap(({ nodeName, runIndex, task }) => {
 		if (workflow.getParentNodes(nodeName, 'ALL_NON_MAIN').length > 0) {

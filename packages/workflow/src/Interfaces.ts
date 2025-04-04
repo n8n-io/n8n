@@ -2185,7 +2185,7 @@ export interface ITaskData {
 	executionTime: number;
 	executionStatus?: ExecutionStatus;
 	/** This index tracks the order in which nodes are executed */
-	executionIndex: number;
+	executionIndex?: number;
 	data?: ITaskDataConnections;
 	inputOverride?: ITaskDataConnections;
 	error?: ExecutionError;
