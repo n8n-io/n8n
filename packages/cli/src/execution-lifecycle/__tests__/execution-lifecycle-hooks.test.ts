@@ -473,6 +473,7 @@ describe('Execution Lifecycle Hooks', () => {
 						{
 							executionTime: 1,
 							startTime: 1,
+							executionIndex: 0,
 							source: [],
 							data: {
 								main: [

@@ -234,6 +234,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			taskData = {
 				startTime: new Date().getTime(),
 				executionTime: 0,
+				executionIndex: 0, // TODO: get this from WorkflowExecute
 				executionStatus: 'running',
 				source: [null],
 			};

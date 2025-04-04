@@ -8,6 +8,10 @@ export function getNdvContainer() {
 	return cy.getByTestId('ndv');
 }
 
+export function getNdvTitle() {
+	return cy.getByTestId('node-title-container');
+}
+
 export function getCredentialSelect(eq = 0) {
 	return cy.getByTestId('node-credentials-select').eq(eq);
 }

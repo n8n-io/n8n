@@ -73,6 +73,9 @@ import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
 
 export class WorkflowExecute {
+	/** This is the index of the node that's currently being executed */
+	private executionIndex = 0;
+
 	private status: ExecutionStatus = 'new';
 
 	private readonly abortController = new AbortController();
@@ -1362,6 +1365,7 @@ export class WorkflowExecute {
 								{
 									startTime,
 									executionTime: new Date().getTime() - startTime,
+									executionIndex: this.executionIndex++,
 									data: {
 										main: executionData.data.main,
 									} as ITaskDataConnections,
@@ -1634,6 +1638,7 @@ export class WorkflowExecute {
 						hints: executionHints,
 						startTime,
 						executionTime: new Date().getTime() - startTime,
+						executionIndex: this.executionIndex++,
 						source: !executionData.source ? [] : executionData.source.main,
 						metadata: executionData.metadata,
 						executionStatus: this.runExecutionData.waitTill ? 'waiting' : 'success',

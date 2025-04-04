@@ -38,6 +38,7 @@ export class ExecutionDataService {
 				{
 					startTime,
 					executionTime: 0,
+					executionIndex: 0,
 					executionStatus: 'error',
 					error: executionError,
 					source: [],

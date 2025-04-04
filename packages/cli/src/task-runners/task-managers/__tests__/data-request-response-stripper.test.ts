@@ -111,6 +111,7 @@ const taskData: DataRequestResponse = {
 						hints: [],
 						startTime: 1730313407328,
 						executionTime: 1,
+						executionIndex: 0,
 						source: [],
 						executionStatus: 'success',
 						data: {
@@ -123,6 +124,7 @@ const taskData: DataRequestResponse = {
 						hints: [],
 						startTime: 1730313407330,
 						executionTime: 1,
+						executionIndex: 1,
 						source: [
 							{
 								previousNode: triggerNode.name,
