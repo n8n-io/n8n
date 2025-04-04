@@ -239,6 +239,8 @@ export class FrontendService {
 			},
 			insights: {
 				enabled: this.modulesConfig.modules.includes('insights'),
+				summary: true,
+				dashboard: false,
 			},
 		};
 	}

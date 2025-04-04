@@ -305,11 +305,15 @@ export class License {
 	}
 
 	isInsightsOverviewEnabled() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.INSIGHTS_OVERVIEW);
+		return this.isFeatureEnabled(LICENSE_FEATURES.INSIGHTS_VIEW_SUMMARY);
 	}
 
-	isInsightsDetailsEnabled() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.INSIGHTS_DETAILS);
+	isInsightsDashboardEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.INSIGHTS_VIEW_DASHBOARD);
+	}
+
+	isInsightsHourlyDataEnabled() {
+		return this.getFeatureValue(LICENSE_FEATURES.INSIGHTS_VIEW_HOURLY_DATA);
 	}
 
 	getCurrentEntitlements() {
@@ -375,11 +379,7 @@ export class License {
 	}
 
 	getInsightsMaxHistory() {
-		return this.getFeatureValue(LICENSE_QUOTAS.INSIGHTS_MAX_HISTORY_DAYS) ?? 0;
-	}
-
-	getInsightsLowestGranularity() {
-		return this.getFeatureValue(LICENSE_QUOTAS.INSIGHTS_LOWEST_GRANULARITY_HOURS) ?? 24;
+		return this.getFeatureValue(LICENSE_QUOTAS.INSIGHTS_MAX_HISTORY_DAYS) ?? 7;
 	}
 
 	getInsightsRetentionMaxAge() {

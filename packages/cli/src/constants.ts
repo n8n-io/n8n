@@ -95,8 +95,9 @@ export const LICENSE_FEATURES = {
 	COMMUNITY_NODES_CUSTOM_REGISTRY: 'feat:communityNodes:customRegistry',
 	AI_CREDITS: 'feat:aiCredits',
 	FOLDERS: 'feat:folders',
-	INSIGHTS_OVERVIEW: 'feat:insights:overview',
-	INSIGHTS_DETAILS: 'feat:insights:details',
+	INSIGHTS_VIEW_SUMMARY: 'feat:insights:viewSummary',
+	INSIGHTS_VIEW_DASHBOARD: 'feat:insights:viewDashboard',
+	INSIGHTS_VIEW_HOURLY_DATA: 'feat:insights:viewHourlyData',
 } as const;
 
 export const LICENSE_QUOTAS = {
@@ -107,7 +108,6 @@ export const LICENSE_QUOTAS = {
 	TEAM_PROJECT_LIMIT: 'quota:maxTeamProjects',
 	AI_CREDITS: 'quota:aiCredits',
 	INSIGHTS_MAX_HISTORY_DAYS: 'quota:insights:maxHistoryDays',
-	INSIGHTS_LOWEST_GRANULARITY_HOURS: 'quota:insights:lowestGranularityHours',
 	INSIGHTS_RETENTION_MAX_AGE_DAYS: 'quota:insights:retention:maxAgeDays',
 	INSIGHTS_RETENTION_PRUNE_INTERVAL_DAYS: 'quota:insights:retention:pruneIntervalDays',
 } as const;
