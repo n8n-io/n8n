@@ -84,10 +84,9 @@ export class InsightsService {
 		this.scheduleFlushing();
 	}
 
-	initializeCompaction() {
-		if (this.compactInsightsTimer !== undefined) {
-			clearInterval(this.compactInsightsTimer);
-		}
+	// Initialize regular compaction of insights data
+	startCompactionScheduler() {
+		this.stopCompactionScheduler();
 		const intervalMilliseconds = config.compactionIntervalMinutes * 60 * 1000;
 		this.compactInsightsTimer = setInterval(
 			async () => await this.compactInsights(),
@@ -283,6 +282,7 @@ export class InsightsService {
 	}
 
 	async compactInsights() {
+		console.log('compating');
 		let numberOfCompactedRawData: number;
 
 		// Compact raw data to hourly aggregates

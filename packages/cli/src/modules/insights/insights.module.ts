@@ -4,10 +4,10 @@ import { InstanceSettings, Logger } from 'n8n-core';
 
 import type { BaseN8nModule } from '@/decorators/module';
 import { N8nModule } from '@/decorators/module';
+import { OrchestrationService } from '@/services/orchestration.service';
 
 import { InsightsService } from './insights.service';
 import './insights.controller';
-import { ModulesConfig } from '../modules.config';
 
 @N8nModule()
 export class InsightsModule implements BaseN8nModule {
@@ -16,26 +16,36 @@ export class InsightsModule implements BaseN8nModule {
 		private readonly insightsService: InsightsService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly globalConfig: GlobalConfig,
-		private readonly moduleConfig: ModulesConfig,
+		private readonly orchestrationService: OrchestrationService,
 	) {
 		this.logger = this.logger.scoped('insights');
+
+		// Initialize background process for insights if instance is main and leader
+		if (this.instanceSettings.instanceType === 'main' && this.instanceSettings.isLeader) {
+			this.insightsService.startCompactionScheduler();
+		}
+
+		if (this.instanceSettings.isMultiMain) {
+			this.orchestrationService.multiMainSetup.on('leader-takeover', () =>
+				this.insightsService.startCompactionScheduler(),
+			);
+			this.orchestrationService.multiMainSetup.on('leader-stepdown', () =>
+				this.insightsService.stopCompactionScheduler(),
+			);
+		}
 	}
 
 	private shouldRegisterLifecycleHooks(): boolean {
-		if (
-			this.globalConfig.database.type === 'sqlite' &&
-			!this.globalConfig.database.sqlite.poolSize
-		) {
-			return false;
-		}
-
+		// Disable insights for workers
 		if (this.instanceSettings.instanceType === 'worker') {
 			return false;
 		}
 
+		// Disable insights for sqlite if pool size is not set
+		// This is because legacy sqlite does not support nested transactions needed for insights
 		if (
-			this.globalConfig.database.type === 'postgresdb' &&
-			!this.moduleConfig.enabledModules.includes('insights')
+			this.globalConfig.database.type === 'sqlite' &&
+			!this.globalConfig.database.sqlite.poolSize
 		) {
 			return false;
 		}
