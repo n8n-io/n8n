@@ -58,7 +58,15 @@ export class HttpRequestV3 implements INodeType {
 				name: 'HTTP Request',
 				color: '#0004F5',
 			},
-			usableAsTool: true,
+			usableAsTool: {
+				replacements: {
+					codex: {
+						subcategories: {
+							Tools: ['Recommended Tools'],
+						},
+					},
+				},
+			},
 			inputs: [NodeConnectionTypes.Main],
 			outputs: [NodeConnectionTypes.Main],
 			credentials: [

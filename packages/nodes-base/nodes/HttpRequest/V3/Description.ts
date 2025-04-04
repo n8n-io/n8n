@@ -1169,7 +1169,10 @@ export const mainProperties: INodeProperties[] = [
 			},
 		],
 	},
-	...optimizeResponseProperties,
+	...optimizeResponseProperties.map((x) => ({
+		...x,
+		displayOptions: { show: { ...x.displayOptions?.show, '@tool': [true] } },
+	})),
 	{
 		displayName:
 			"You can view the raw requests this node makes in your browser's developer console",
