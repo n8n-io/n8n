@@ -83,11 +83,13 @@ const consumedTokens = computed(() => getSubtreeTotalConsumedTokens(logEntry));
 		<div v-if="isOpen" :class="$style.content" data-test-id="logs-details-body">
 			<RunDataView
 				v-if="content !== LOG_DETAILS_CONTENT.OUTPUT"
+				:class="$style.runDataView"
 				:title="locale.baseText('logs.details.header.actions.input')"
 				:data="runData"
 			/>
 			<RunDataView
 				v-if="content !== LOG_DETAILS_CONTENT.INPUT"
+				:class="$style.runDataView"
 				:title="locale.baseText('logs.details.header.actions.output')"
 				:data="runData"
 			/>
@@ -127,12 +129,14 @@ const consumedTokens = computed(() => getSubtreeTotalConsumedTokens(logEntry));
 	display: flex;
 	align-items: stretch;
 
-	& > * {
-		width: 50%;
-	}
-
 	& > *:not(:last-child) {
 		border-right: var(--border-base);
 	}
+}
+
+.runDataView {
+	flex-grow: 1;
+	flex-shrink: 1;
+	width: 50%;
 }
 </style>
