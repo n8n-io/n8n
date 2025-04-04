@@ -12,12 +12,33 @@ type ExtensionMetadata = {
 export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 	const extensionManifests = ref([InsightsExtensionManifest]);
 	const extensionMetadata: Record<string, ExtensionMetadata> = {};
+	const extensionPoints = {
+		views: {
+			workflows: {
+				header: [],
+			},
+		},
+	};
+
+	function createNamespaceString(manifest) {
+		return `${manifest.publisher}/${manifest.name}`;
+	}
 
 	function registerNamespace(ns: string) {
 		if (!extensionMetadata[ns]) {
 			extensionMetadata[ns] = {
 				components: {},
 			};
+		}
+	}
+
+	function registerExtensionPoints(manifest: object, context: FrontendExtensionContext) {
+		const ns = createNamespaceString(manifest);
+
+		if (manifest.extends.views.workflows.header) {
+			extensionPoints.views.workflows.header.push(
+				extensionMetadata[ns].components[manifest.extends.views.workflows.header],
+			);
 		}
 	}
 
@@ -31,7 +52,7 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 
 	function createExtensionContext(manifest: object): FrontendExtensionContext {
 		const context = {};
-		const ns = `${manifest.publisher}/${manifest.name}`;
+		const ns = createNamespaceString(manifest);
 
 		if (manifest.extends.views) {
 			context.registerComponent = createRegisterComponent(ns);
@@ -44,7 +65,9 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 		const loadedExtensions = await Promise.all(
 			extensionManifests.value.map(
 				async (extension) =>
-					await import(`@${extension.publisher}/n8n-extension${extension.name}/frontend`),
+					await import(
+						`../../node_modules/@${extension.publisher}/n8n-extension-${extension.name}/dist/frontend/index.js`
+					),
 			),
 		);
 
@@ -53,11 +76,14 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 			const extensionContext = createExtensionContext(extensionManifest);
 
 			extensionModule.setup(extensionContext);
+
+			registerExtensionPoints(extensionManifest, extensionContext);
 		});
 	}
 
 	return {
-		extensions: extensionManifests,
+		extensionManifests,
+		extensionMetadata,
 		initialize,
 	};
 });

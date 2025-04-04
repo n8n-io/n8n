@@ -33,7 +33,6 @@ export async function initializeCore() {
 	const extensionsStore = useExtensionsStore();
 
 	await settingsStore.initialize();
-	await extensionsStore.initialize();
 
 	void useExternalHooks().run('app.mount');
 
@@ -42,6 +41,8 @@ export async function initializeCore() {
 
 		void versionsStore.checkForNewVersions();
 	}
+
+	void extensionsStore.initialize();
 
 	coreInitialized = true;
 }
