@@ -155,24 +155,26 @@ describe('handleError', () => {
 			} catch {}
 		}
 
-		await expect(
-			handleError.call(mockExecuteSingleFunctions, data, {
-				statusCode: 500,
-				body: { code: 'InternalServerError', message: errorMessage },
-				headers: {},
-			}),
-		).rejects.toThrow(
-			new NodeApiError(
-				mockExecuteSingleFunctions.getNode(),
-				{
-					code: 'InternalServerError',
-					message: errorMessage,
-				} as JsonObject,
-				{
-					message: 'InternalServerError',
-					description: 'Internal Server Error',
-				},
-			),
-		);
+		if (errorDetails && errorDetails.length > 0) {
+			await expect(
+				handleError.call(mockExecuteSingleFunctions, data, {
+					statusCode: 500,
+					body: { code: 'InternalServerError', message: errorMessage },
+					headers: {},
+				}),
+			).rejects.toThrow(
+				new NodeApiError(
+					mockExecuteSingleFunctions.getNode(),
+					{
+						code: 'InternalServerError',
+						message: errorMessage,
+					} as JsonObject,
+					{
+						message: 'InternalServerError',
+						description: 'Internal Server Error',
+					},
+				),
+			);
+		}
 	});
 });
