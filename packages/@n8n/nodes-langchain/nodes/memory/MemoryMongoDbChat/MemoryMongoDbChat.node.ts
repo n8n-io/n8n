@@ -10,6 +10,7 @@ import type {
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { getSessionId } from '@utils/helpers';
+import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import {
@@ -49,9 +50,7 @@ export class MemoryMongoDbChat implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: [NodeConnectionTypes.AiMemory],
 		outputNames: ['Memory'],
 		properties: [
@@ -80,7 +79,16 @@ export class MemoryMongoDbChat implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials('mongoDb');
+		const credentials = await this.getCredentials<{
+			configurationType: string;
+			connectionString: string;
+			database: string;
+			host: string;
+			user: string;
+			port: number;
+			password: string;
+			tls: boolean;
+		}>('mongoDb');
 		const collectionName = this.getNodeParameter(
 			'collectionName',
 			itemIndex,
@@ -93,25 +101,23 @@ export class MemoryMongoDbChat implements INodeType {
 		let dbName: string;
 
 		if (credentials.configurationType === 'connectionString') {
-			connectionString = credentials.connectionString as string;
-			dbName = databaseName || (credentials.database as string);
+			connectionString = credentials.connectionString;
+			dbName = databaseName || credentials.database;
 		} else {
 			// Build connection string from individual fields
-			const host = credentials.host as string;
-			const port = credentials.port as number;
-			const user = credentials.user ? encodeURIComponent(credentials.user as string) : '';
-			const password = credentials.password
-				? encodeURIComponent(credentials.password as string)
-				: '';
+			const host = credentials.host;
+			const port = credentials.port;
+			const user = credentials.user ? encodeURIComponent(credentials.user) : '';
+			const password = credentials.password ? encodeURIComponent(credentials.password) : '';
 			const authString = user && password ? `${user}:${password}@` : '';
-			const tls = credentials.tls as boolean;
+			const tls = credentials.tls;
 
 			connectionString = `mongodb://${authString}${host}:${port}/?appname=n8n`;
 			if (tls) {
 				connectionString += '&ssl=true';
 			}
 
-			dbName = databaseName || (credentials.database as string);
+			dbName = databaseName || credentials.database;
 		}
 
 		if (!dbName) {
@@ -142,8 +148,13 @@ export class MemoryMongoDbChat implements INodeType {
 				k: this.getNodeParameter('contextWindowLength', itemIndex, 5) as number,
 			});
 
+			async function closeFunction() {
+				await client.close();
+			}
+
 			return {
-				response: memory,
+				closeFunction,
+				response: logWrapper(memory, this),
 			};
 		} catch (error) {
 			throw new NodeOperationError(this.getNode(), `MongoDB connection error: ${error.message}`);
