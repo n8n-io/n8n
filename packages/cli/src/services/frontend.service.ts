@@ -241,6 +241,8 @@ export class FrontendService {
 			},
 			insights: {
 				enabled: this.modulesConfig.modules.includes('insights'),
+				summary: true,
+				dashboard: false,
 			},
 		};
 	}
@@ -360,6 +362,12 @@ export class FrontendService {
 			this.settings.aiCredits.enabled = isAiCreditsEnabled;
 			this.settings.aiCredits.credits = this.license.getAiCredits();
 		}
+
+		Object.assign(this.settings.insights, {
+			enabled: this.modulesConfig.modules.includes('insights'),
+			summary: this.license.isInsightsSummaryEnabled(),
+			dashboard: this.license.isInsightsDashboardEnabled(),
+		});
 
 		this.settings.mfa.enabled = config.get('mfa.enabled');
 
