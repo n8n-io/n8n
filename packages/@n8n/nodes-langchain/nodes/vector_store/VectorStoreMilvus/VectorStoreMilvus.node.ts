@@ -1,5 +1,5 @@
-import type { Milvus } from '@langchain/community/vectorstores/milvus';
-import { UnexpectedError } from 'n8n-workflow';
+import { Milvus } from '@langchain/community/vectorstores/milvus';
+import type { MilvusLibArgs } from '@langchain/community/vectorstores/milvus';
 import type { INodeProperties } from 'n8n-workflow';
 
 import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
@@ -27,11 +27,40 @@ export class VectorStoreMilvus extends createVectorStoreNode<Milvus>({
 	methods: { listSearch: { milvusCollectionsSearch } },
 	sharedFields,
 	async getVectorStoreClient(context, filter, embeddings, itemIndex): Promise<Milvus> {
-		// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
-		throw new UnexpectedError('Function not implemented.');
+		const collection = context.getNodeParameter('milvusCollection', itemIndex, '', {
+			extractValue: true,
+		}) as string;
+
+		const credentials = await context.getCredentials<{
+			baseUrl: string;
+			username: string;
+			password: string;
+		}>('milvusApi');
+		const config: MilvusLibArgs = {
+			url: credentials.baseUrl,
+			username: credentials.username,
+			password: credentials.password,
+			collectionName: collection,
+		};
+		return await Milvus.fromExistingCollection(embeddings, config);
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex): Promise<void> {
-		// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
-		throw new UnexpectedError('Function not implemented.');
+		const collection = context.getNodeParameter('milvusCollection', itemIndex, '', {
+			extractValue: true,
+		}) as string;
+
+		const credentials = await context.getCredentials<{
+			baseUrl: string;
+			username: string;
+			password: string;
+		}>('milvusApi');
+
+		const config: MilvusLibArgs = {
+			url: credentials.baseUrl,
+			username: credentials.username,
+			password: credentials.password,
+			collectionName: collection,
+		};
+		await Milvus.fromDocuments(documents, embeddings, config);
 	},
 }) {}

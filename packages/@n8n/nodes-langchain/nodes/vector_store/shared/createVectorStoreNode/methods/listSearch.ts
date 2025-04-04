@@ -83,7 +83,7 @@ export async function milvusCollectionsSearch(this: ILoadOptionsFunctions) {
 
 	const results = response.data.map((collection) => ({
 		name: collection.name,
-		value: collection.id,
+		value: collection.name,
 	}));
 
 	return { results };
