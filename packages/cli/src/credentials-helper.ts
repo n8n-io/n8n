@@ -371,6 +371,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			true,
 			false,
 			null,
+			null,
 		) as ICredentialDataDecryptedObject;
 
 		if (decryptedDataOriginal.oauthTokenData !== undefined) {
