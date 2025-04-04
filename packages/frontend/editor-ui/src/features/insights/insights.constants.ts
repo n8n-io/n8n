@@ -8,12 +8,23 @@ export const INSIGHTS_SUMMARY_ORDER: InsightsSummaryType[] = [
 	'averageRunTime',
 ];
 
-export const INSIGHTS_UNIT_MAPPING: Record<InsightsSummaryType, string> = {
-	total: '',
-	failed: '',
-	failureRate: '%',
-	timeSaved: 'h',
-	averageRunTime: 's',
+export const INSIGHTS_UNIT_MAPPING: Record<InsightsSummaryType, (value: number) => string> = {
+	total: () => '',
+	failed: () => '',
+	failureRate: () => '%',
+	timeSaved: (value: number) => (value < 3600 ? 'm' : 'h'),
+	averageRunTime: () => 's',
+} as const;
+
+export const INSIGHTS_DEVIATION_UNIT_MAPPING: Record<
+	InsightsSummaryType,
+	(deviation: number) => string
+> = {
+	total: () => '%',
+	failed: () => '%',
+	failureRate: () => 'ppt',
+	timeSaved: (deviation: number) => (deviation < 3600 ? 'm' : 'h'),
+	averageRunTime: () => '',
 } as const;
 
 export const INSIGHT_IMPACT_TYPES = {

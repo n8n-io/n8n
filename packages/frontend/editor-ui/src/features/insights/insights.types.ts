@@ -8,7 +8,8 @@ export type InsightsSummaryDisplay = Array<
 			id: K;
 			value: number;
 			deviation: number | null;
-			unit: InsightsDisplayUnits[K];
+			deviationUnit: string;
+			unit: ReturnType<InsightsDisplayUnits[K]>;
 		};
 	}[keyof InsightsDisplayUnits]
 >;

@@ -37,7 +37,6 @@ const summaryWithRouteLocations = computed(() =>
 	})),
 );
 
-const getSign = (n: number) => (n > 0 ? '+' : undefined);
 const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 	const impact = INSIGHTS_UNIT_IMPACT_MAPPING[id];
 	if (value === 0 || impact === INSIGHT_IMPACT_TYPES.NEUTRAL) {
@@ -58,7 +57,7 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 		<N8nLoading v-if="loading" :class="$style.loading" :cols="5" />
 		<ul v-else data-test-id="insights-summary-tabs">
 			<li
-				v-for="{ id, value, deviation, unit, to } in summaryWithRouteLocations"
+				v-for="{ id, value, deviation, deviationUnit, unit, to } in summaryWithRouteLocations"
 				:key="id"
 				:data-test-id="`insights-summary-tab-${id}`"
 			>
@@ -93,7 +92,8 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 								:class="[$style.icon, getImpactStyle(id, deviation)]"
 								:icon="deviation === 0 ? 'caret-right' : deviation > 0 ? 'caret-up' : 'caret-down'"
 							/>
-							{{ getSign(deviation) }}{{ smartDecimal(deviation) }}
+							{{ smartDecimal(Math.abs(deviation)) }}
+							{{ deviationUnit }}
 						</small>
 					</span>
 				</router-link>
