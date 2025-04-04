@@ -1,12 +1,20 @@
 import { OperationalError } from 'n8n-workflow';
 import type {
-	IRequestOptions,
 	ICredentialDataDecryptedObject,
 	IHttpRequestOptions,
+	IRequestOptions,
 } from 'n8n-workflow';
 
 import { MicrosoftAzureCosmosDbSharedKeyApi } from '../../../../../credentials/MicrosoftAzureCosmosDbSharedKeyApi.credentials';
 import { FAKE_CREDENTIALS_DATA } from '../../../../../test/nodes/FakeCredentialsMap';
+
+jest.mock('crypto', () => ({
+	createHmac: jest.fn(() => ({
+		update: jest.fn(() => ({
+			digest: jest.fn(() => 'fake-signature'),
+		})),
+	})),
+}));
 
 describe('Azure Cosmos DB', () => {
 	describe('authenticate', () => {
@@ -25,7 +33,7 @@ describe('Azure Cosmos DB', () => {
 			const result = await azureCosmosDbSharedKeyApi.authenticate(credentials, requestOptions);
 
 			expect(result.headers?.authorization).toBe(
-				'type%3Dmaster%26ver%3D1.0%26sig%3DRuXkVr%2BEib7sX3QuhtA4BjbqbD%2BtS1G1emPvH7upycg%3D',
+				'type%3Dmaster%26ver%3D1.0%26sig%3Dfake-signature',
 			);
 		});
 
@@ -97,6 +105,23 @@ describe('Azure Cosmos DB', () => {
 					throw new OperationalError('Unable to determine the resource type from the URL');
 				}
 			}).toThrow('Unable to determine the resource type from the URL');
+		});
+
+		it('should properly construct the resourceId and payload', async () => {
+			jest.useFakeTimers().setSystemTime(new Date('2025-01-01T00:00:00Z'));
+			const credentials: ICredentialDataDecryptedObject = {
+				account: FAKE_CREDENTIALS_DATA.microsoftAzureCosmosDbSharedKeyApi.account,
+				key: FAKE_CREDENTIALS_DATA.microsoftAzureCosmosDbSharedKeyApi.key,
+			};
+			const requestOptions: IHttpRequestOptions = {
+				url: 'https://example.com/dbs/mydb/colls/mycoll/docs/mydoc',
+				method: 'GET',
+			};
+			const result = await azureCosmosDbSharedKeyApi.authenticate(credentials, requestOptions);
+
+			expect(result.headers?.authorization).toBe(
+				'type%3Dmaster%26ver%3D1.0%26sig%3Dfake-signature',
+			);
 		});
 	});
 });

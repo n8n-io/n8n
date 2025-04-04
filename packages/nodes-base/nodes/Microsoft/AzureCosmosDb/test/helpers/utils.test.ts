@@ -69,6 +69,7 @@ describe('getPartitionKey', () => {
 			mockExecuteSingleFunctions.getNode(),
 			{},
 			{
+				httpCode: '404',
 				message: ErrorMap.Container.NotFound.message,
 				description: ErrorMap.Container.NotFound.description,
 			},
@@ -77,7 +78,14 @@ describe('getPartitionKey', () => {
 		(azureCosmosDbApiRequest as jest.Mock).mockRejectedValue(mockError);
 
 		await expect(getPartitionKey.call(mockExecuteSingleFunctions)).rejects.toThrowError(
-			new NodeApiError(mockExecuteSingleFunctions.getNode(), {}, ErrorMap.Container.NotFound),
+			new NodeApiError(
+				mockExecuteSingleFunctions.getNode(),
+				{},
+				{
+					message: ErrorMap.Container.NotFound.message,
+					description: ErrorMap.Container.NotFound.description,
+				},
+			),
 		);
 	});
 });
