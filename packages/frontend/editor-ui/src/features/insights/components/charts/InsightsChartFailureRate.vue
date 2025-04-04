@@ -39,7 +39,7 @@ const chartData = computed<ChartData<'bar'>>(() => {
 	const data: number[] = [];
 
 	for (const entry of props.data) {
-		labels.push(dateformat(entry.date, 'd. mmm'));
+		labels.push(dateformat(entry.date, 'mmm d.'));
 		data.push(transformInsightsFailureRate(entry.values.failureRate));
 	}
 

@@ -40,7 +40,7 @@ const chartData = computed<ChartData<'line'>>(() => {
 	const data: number[] = [];
 
 	for (const entry of props.data) {
-		labels.push(dateformat(entry.date, 'd. mmm'));
+		labels.push(dateformat(entry.date, 'mmm d.'));
 		const timeSaved = transformInsightsTimeSaved(entry.values.timeSaved);
 		data.push(timeSaved);
 	}

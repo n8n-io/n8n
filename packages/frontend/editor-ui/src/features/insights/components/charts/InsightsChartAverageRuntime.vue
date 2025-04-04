@@ -40,7 +40,7 @@ const chartData = computed<ChartData<'line'>>(() => {
 	const data: number[] = [];
 
 	for (const entry of props.data) {
-		labels.push(dateformat(entry.date, 'd. mmm'));
+		labels.push(dateformat(entry.date, 'mmm d.'));
 
 		const value = transformInsightsAverageRunTime(entry.values.averageRunTime);
 
