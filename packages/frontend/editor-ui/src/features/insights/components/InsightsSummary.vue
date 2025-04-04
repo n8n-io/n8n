@@ -62,7 +62,14 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 				:data-test-id="`insights-summary-tab-${id}`"
 			>
 				<router-link :to="to" :exact-active-class="$style.activeTab">
-					<strong>{{ summaryTitles[id] }}</strong>
+					<strong>
+						<N8nTooltip placement="bottom" :disabled="id !== 'timeSaved'">
+							<template #content>
+								{{ i18n.baseText('insights.banner.title.timeSaved.tooltip') }}
+							</template>
+							{{ summaryTitles[id] }}
+						</N8nTooltip>
+					</strong>
 					<small :class="$style.days">{{
 						i18n.baseText('insights.lastNDays', { interpolate: { count: lastNDays } })
 					}}</small>
@@ -92,7 +99,12 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 								:class="[$style.icon, getImpactStyle(id, deviation)]"
 								:icon="deviation === 0 ? 'caret-right' : deviation > 0 ? 'caret-up' : 'caret-down'"
 							/>
-							{{ smartDecimal(Math.abs(deviation)).toLocaleString('en-US') }}{{ deviationUnit }}
+							<N8nTooltip placement="bottom" :disabled="id !== 'failureRate'">
+								<template #content>
+									{{ i18n.baseText('insights.banner.failureRate.deviation.tooltip') }}
+								</template>
+								{{ smartDecimal(Math.abs(deviation)).toLocaleString('en-US') }}{{ deviationUnit }}
+							</N8nTooltip>
 						</small>
 					</span>
 				</router-link>
@@ -150,6 +162,7 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 			}
 
 			strong {
+				justify-self: flex-start;
 				color: var(--color-text-dark);
 				font-size: var(--font-size-s);
 				font-weight: 400;
