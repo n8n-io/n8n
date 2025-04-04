@@ -34,18 +34,16 @@ function wasToolCall(body: string) {
 	}
 }
 
-export class McpServerData {
+export class McpServer {
 	server: Server;
-
-	id: number = Math.random();
 
 	transports: { [sessionId: string]: FlushingSSEServerTransport } = {};
 
 	logger: Logger;
 
-	private _tools: { [sessionId: string]: Tool[] } = {};
+	private tools: { [sessionId: string]: Tool[] } = {};
 
-	private _resolveFunctions: { [sessionId: string]: CallableFunction } = {};
+	private resolveFunctions: { [sessionId: string]: CallableFunction } = {};
 
 	constructor(logger: Logger) {
 		this.server = this.setUpServer();
@@ -62,8 +60,8 @@ export class McpServerData {
 			this.logger.info(`Deleting transport for ${transport.sessionId}`);
 			await transport.close();
 			delete this.transports[transport.sessionId];
-			delete this._tools[transport.sessionId];
-			delete this._resolveFunctions[transport.sessionId];
+			delete this.tools[transport.sessionId];
+			delete this.resolveFunctions[transport.sessionId];
 		});
 
 		// Make sure we flush the compression middleware, so that it's not waiting for more content to be added to the buffer
@@ -75,13 +73,13 @@ export class McpServerData {
 	async handlePostMessage(req: express.Request, resp: CompressionResponse, connectedTools: Tool[]) {
 		const sessionId = req.query.sessionId as string;
 		const transport = this.transports[sessionId];
-		this._tools[sessionId] = connectedTools;
+		this.tools[sessionId] = connectedTools;
 		if (transport) {
 			await new Promise(async (resolve) => {
-				this._resolveFunctions[sessionId] = resolve;
+				this.resolveFunctions[sessionId] = resolve;
 				await transport.handlePostMessage(req, resp, req.rawBody.toString());
 			});
-			delete this._resolveFunctions[sessionId];
+			delete this.resolveFunctions[sessionId];
 		} else {
 			this.logger.warn(`No transport found for session ${sessionId}`);
 			resp.status(401).send('No transport found for sessionId');
@@ -91,7 +89,7 @@ export class McpServerData {
 			resp.flush();
 		}
 
-		delete this._tools[sessionId]; // Clean up to avoid keeping all tools in memory
+		delete this.tools[sessionId]; // Clean up to avoid keeping all tools in memory
 
 		return wasToolCall(req.rawBody.toString());
 	}
@@ -113,7 +111,7 @@ export class McpServerData {
 				throw new Error('Require a sessionId for the listing of tools');
 			}
 			return {
-				tools: this._tools[extra.sessionId].map((tool) => {
+				tools: this.tools[extra.sessionId].map((tool) => {
 					return {
 						name: tool.name,
 						description: tool.description,
@@ -133,7 +131,7 @@ export class McpServerData {
 				throw new Error('Require a sessionId for the tool call');
 			}
 
-			const requestedTool: Tool | undefined = this._tools[extra.sessionId].find(
+			const requestedTool: Tool | undefined = this.tools[extra.sessionId].find(
 				(tool) => tool.name === request.params.name,
 			);
 			if (!requestedTool) {
@@ -144,7 +142,7 @@ export class McpServerData {
 			try {
 				const result = await requestedTool.invoke(request.params.arguments);
 
-				this._resolveFunctions[extra.sessionId]();
+				this.resolveFunctions[extra.sessionId]();
 
 				this.logger.debug(`Got request for ${requestedTool.name}, and executed it.`);
 
@@ -166,23 +164,28 @@ export class McpServerData {
 	}
 }
 
+/**
+ * This singleton is shared across the instance, making sure we only have one server to worry about.
+ * It needs to stay in memory to keep track of the long-lived connections.
+ * It requires a logger at first creation to set everything up.
+ */
 @Service()
-export class McpServers {
-	static #instance: McpServers;
+export class McpServerSingleton {
+	static #instance: McpServerSingleton;
 
-	private _serverData: McpServerData;
+	private _serverData: McpServer;
 
 	private constructor(logger: Logger) {
-		this._serverData = new McpServerData(logger);
+		this._serverData = new McpServer(logger);
 	}
 
-	static instance(logger: Logger): McpServers {
-		if (!McpServers.#instance) {
-			McpServers.#instance = new McpServers(logger);
+	static instance(logger: Logger): McpServer {
+		if (!McpServerSingleton.#instance) {
+			McpServerSingleton.#instance = new McpServerSingleton(logger);
 			logger.debug('Created singleton for MCP Servers');
 		}
 
-		return McpServers.#instance;
+		return McpServerSingleton.#instance.serverData;
 	}
 
 	get serverData() {
