@@ -299,9 +299,9 @@ describe('processJsonInput', () => {
 		);
 	});
 
-	test('should throw OperationalError for invalid JSON string with inputName', () => {
-		const invalidJson = '{key: value}';
-		expect(() => processJsonInput(invalidJson, 'testInput')).toThrowError(
+	test('should throw OperationalError for invalid non-string and non-object input', () => {
+		const invalidInput = 123;
+		expect(() => processJsonInput(invalidInput, 'testInput')).toThrowError(
 			new OperationalError("Input 'testInput' must contain a valid JSON", { level: 'warning' }),
 		);
 	});
