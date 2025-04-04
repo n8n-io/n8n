@@ -4,7 +4,7 @@ import PanelHeader from '@/components/CanvasChat/future/components/PanelHeader.v
 import RunDataView from '@/components/CanvasChat/future/components/RunDataView.vue';
 import { LOG_DETAILS_CONTENT, type LogDetailsContent } from '@/components/CanvasChat/types/logs';
 import NodeIcon from '@/components/NodeIcon.vue';
-import { type TreeNode } from '@/components/RunDataAi/utils';
+import { getSubtreeTotalConsumedTokens, type TreeNode } from '@/components/RunDataAi/utils';
 import { useI18n } from '@/composables/useI18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -33,6 +33,7 @@ const runData = computed(
 		],
 );
 const isError = computed(() => !!runData.value?.error);
+const consumedTokens = computed(() => getSubtreeTotalConsumedTokens(logEntry));
 </script>
 
 <template>
@@ -50,14 +51,15 @@ const isError = computed(() => !!runData.value?.error);
 						>{{ node.name }}</N8nText
 					>
 					<ExecutionSummary
+						v-if="isOpen"
 						:status="runData.executionStatus ?? 'unknown'"
-						:consumed-tokens="logEntry.consumedTokens"
+						:consumed-tokens="consumedTokens"
 						:time-took="runData.executionTime"
 					/>
 				</div>
 			</template>
 			<template #actions>
-				<div :class="$style.actions">
+				<div v-if="isOpen" :class="$style.actions">
 					<N8nButton
 						size="mini"
 						type="secondary"
