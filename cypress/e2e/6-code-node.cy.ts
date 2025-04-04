@@ -167,8 +167,9 @@ return []
 				const askAiReq = cy.wait('@ask-ai');
 
 				askAiReq.its('request.body').should('have.keys', ['question', 'context', 'forNode']);
-
-				askAiReq.its('context').should('have.keys', ['schema', 'ndvPushRef', 'pushRef']);
+				askAiReq
+					.its('context')
+					.should('have.keys', ['schema', 'ndvPushRef', 'pushRef', 'inputSchema']);
 
 				cy.contains('Code generation completed').should('be.visible');
 				cy.getByTestId('code-node-tab-code').should('contain.text', 'console.log("Hello World")');
