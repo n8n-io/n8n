@@ -12,7 +12,6 @@ import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 
 const MOCK_SERVER_URL = 'https://server.com/v1';
-const MOCK_RENEW_OFFSET = 259200;
 
 let owner: User;
 let member: User;

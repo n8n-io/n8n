@@ -14,6 +14,7 @@ import {
 	LICENSE_QUOTAS,
 	N8N_VERSION,
 	SETTINGS_LICENSE_CERT_KEY,
+	Time,
 	UNLIMITED_LICENSE_QUOTA,
 } from './constants';
 import type { BooleanLicenseFeature, NumericLicenseFeature } from './interfaces';
@@ -60,7 +61,7 @@ export class License {
 		const isMainInstance = instanceType === 'main';
 		const server = this.globalConfig.license.serverUrl;
 		const offlineMode = !isMainInstance;
-		const autoRenewOffset = 60 * 60 * 72; // 72 hours
+		const autoRenewOffset = 72 * Time.hours.toSeconds;
 		const saveCertStr = isMainInstance
 			? async (value: TLicenseBlock) => await this.saveCertStr(value)
 			: async () => {};
