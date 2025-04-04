@@ -361,6 +361,12 @@ export class FrontendService {
 			this.settings.aiCredits.credits = this.license.getAiCredits();
 		}
 
+		Object.assign(this.settings.insights, {
+			enabled: this.modulesConfig.modules.includes('insights'),
+			summary: this.license.isInsightsSummaryEnabled(),
+			dashboard: this.license.isInsightsDashboardEnabled(),
+		});
+
 		this.settings.mfa.enabled = config.get('mfa.enabled');
 
 		this.settings.executionMode = config.getEnv('executions.mode');

@@ -304,7 +304,7 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.FOLDERS);
 	}
 
-	isInsightsOverviewEnabled() {
+	isInsightsSummaryEnabled() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.INSIGHTS_VIEW_SUMMARY);
 	}
 
