@@ -38,6 +38,7 @@ export function toITaskData(taskData: TaskData[]): ITaskData {
 		executionStatus: 'success',
 		executionTime: 0,
 		startTime: 0,
+		executionIndex: 0,
 		source: [],
 		data: {},
 	};

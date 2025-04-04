@@ -1603,6 +1603,7 @@ describe('Workflow', () => {
 									],
 									startTime: 1,
 									executionTime: 1,
+									executionIndex: 0,
 									data: {
 										main: [
 											[
@@ -1681,6 +1682,7 @@ describe('Workflow', () => {
 							{
 								startTime: 1,
 								executionTime: 1,
+								executionIndex: 0,
 								data: {
 									main: [
 										[

@@ -312,6 +312,7 @@ export class ExecutionService {
 						{
 							startTime: 0,
 							executionTime: 0,
+							executionIndex: 0,
 							error,
 							source: [],
 						},
