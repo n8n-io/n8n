@@ -22,7 +22,7 @@ export const INSIGHTS_DEVIATION_UNIT_MAPPING: Record<
 > = {
 	total: () => '%',
 	failed: () => '%',
-	failureRate: () => 'ppt',
+	failureRate: () => 'pp',
 	timeSaved: (deviation: number) => (deviation < 3600 ? 'm' : 'h'),
 	averageRunTime: () => '',
 } as const;
