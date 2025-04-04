@@ -52,7 +52,7 @@ export const generateLineChartOptions = (
 					callbacks: {
 						label(context: ScriptableContext<'line'>) {
 							const label = context.dataset.label ?? '';
-							return `${label} ${smartDecimal(context.parsed.y)}`;
+							return `${label} ${smartDecimal(context.parsed.y).toLocaleString('en-US')}`;
 						},
 						labelColor(context: ScriptableContext<'line'>) {
 							return {

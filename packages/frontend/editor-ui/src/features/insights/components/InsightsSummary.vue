@@ -8,7 +8,7 @@ import {
 import type { InsightsSummaryDisplay } from '@/features/insights/insights.types';
 import type { InsightsSummary } from '@n8n/api-types';
 import { smartDecimal } from '@n8n/utils/number/smartDecimal';
-import { computed, useCssModule } from 'vue';
+import { computed, ref, useCssModule } from 'vue';
 import { useRoute } from 'vue-router';
 
 const props = defineProps<{
@@ -19,6 +19,8 @@ const props = defineProps<{
 const i18n = useI18n();
 const route = useRoute();
 const $style = useCssModule();
+
+const lastNDays = ref(7);
 
 const summaryTitles = computed<Record<keyof InsightsSummary, string>>(() => ({
 	total: i18n.baseText('insights.banner.title.total'),
@@ -35,7 +37,6 @@ const summaryWithRouteLocations = computed(() =>
 	})),
 );
 
-const getSign = (n: number) => (n > 0 ? '+' : undefined);
 const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 	const impact = INSIGHTS_UNIT_IMPACT_MAPPING[id];
 	if (value === 0 || impact === INSIGHT_IMPACT_TYPES.NEUTRAL) {
@@ -53,18 +54,25 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 
 <template>
 	<div :class="$style.insights">
-		<N8nHeading bold tag="h3" size="small" color="text-light" class="mb-xs">{{
-			i18n.baseText('insights.banner.title', { interpolate: { count: 7 } })
-		}}</N8nHeading>
 		<N8nLoading v-if="loading" :class="$style.loading" :cols="5" />
 		<ul v-else data-test-id="insights-summary-tabs">
 			<li
-				v-for="{ id, value, deviation, unit, to } in summaryWithRouteLocations"
+				v-for="{ id, value, deviation, deviationUnit, unit, to } in summaryWithRouteLocations"
 				:key="id"
 				:data-test-id="`insights-summary-tab-${id}`"
 			>
 				<router-link :to="to" :exact-active-class="$style.activeTab">
-					<strong>{{ summaryTitles[id] }}</strong>
+					<strong>
+						<N8nTooltip placement="bottom" :disabled="id !== 'timeSaved'">
+							<template #content>
+								{{ i18n.baseText('insights.banner.title.timeSaved.tooltip') }}
+							</template>
+							{{ summaryTitles[id] }}
+						</N8nTooltip>
+					</strong>
+					<small :class="$style.days">{{
+						i18n.baseText('insights.lastNDays', { interpolate: { count: lastNDays } })
+					}}</small>
 					<span v-if="value === 0 && id === 'timeSaved'" :class="$style.empty">
 						<em>--</em>
 						<small>
@@ -84,14 +92,19 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 					</span>
 					<span v-else>
 						<em
-							>{{ smartDecimal(value) }} <i>{{ unit }}</i></em
+							>{{ smartDecimal(value).toLocaleString('en-US') }} <i>{{ unit }}</i></em
 						>
 						<small v-if="deviation !== null" :class="getImpactStyle(id, deviation)">
 							<N8nIcon
 								:class="[$style.icon, getImpactStyle(id, deviation)]"
 								:icon="deviation === 0 ? 'caret-right' : deviation > 0 ? 'caret-up' : 'caret-down'"
 							/>
-							{{ getSign(deviation) }}{{ smartDecimal(deviation) }}
+							<N8nTooltip placement="bottom" :disabled="id !== 'failureRate'">
+								<template #content>
+									{{ i18n.baseText('insights.banner.failureRate.deviation.tooltip') }}
+								</template>
+								{{ smartDecimal(Math.abs(deviation)).toLocaleString('en-US') }}{{ deviationUnit }}
+							</N8nTooltip>
 						</small>
 					</span>
 				</router-link>
@@ -108,7 +121,7 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 
 	ul {
 		display: flex;
-		height: 91px;
+		height: 101px;
 		align-items: stretch;
 		justify-content: space-evenly;
 		border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
@@ -131,9 +144,10 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 		a {
 			display: grid;
 			align-items: center;
+			align-content: center;
 			width: 100%;
 			height: 100%;
-			padding: var(--spacing-m) var(--spacing-l);
+			padding: var(--spacing-3xs) var(--spacing-l) 0;
 			border-bottom: 3px solid transparent;
 
 			&:hover {
@@ -148,17 +162,25 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 			}
 
 			strong {
+				justify-self: flex-start;
 				color: var(--color-text-dark);
 				font-size: var(--font-size-s);
 				font-weight: 400;
 				white-space: nowrap;
-				margin-bottom: var(--spacing-2xs);
+				margin-bottom: var(--spacing-3xs);
+			}
+
+			.days {
+				padding: 0;
+				margin: 0 0 var(--spacing-xs);
+				color: var(--color-text-light);
+				font-size: var(--font-size-2xs);
+				font-weight: var(--font-weight-normal);
 			}
 
 			span {
 				display: flex;
 				align-items: baseline;
-				gap: var(--spacing-xs);
 
 				&.empty {
 					em {
@@ -185,7 +207,7 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 				align-items: baseline;
 				justify-content: flex-start;
 				color: var(--color-text-dark);
-				font-size: var(--font-size-2xl);
+				font-size: 24px;
 				line-height: 100%;
 				font-weight: 600;
 				font-style: normal;
@@ -202,9 +224,10 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 				position: relative;
 				display: flex;
 				align-items: center;
-				padding: 0 0 0 18px;
-				font-size: 14px;
-				font-weight: 400;
+				padding: 0 0 0 14px;
+				margin: 0 0 0 var(--spacing-xs);
+				font-size: var(--font-size-2xs);
+				font-weight: var(--font-weight-bold);
 				white-space: nowrap;
 			}
 		}
@@ -223,13 +246,13 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 	color: var(--color-text-light);
 
 	.icon {
-		font-size: 23px;
+		font-size: 17px;
 	}
 }
 
 .icon {
 	position: absolute;
-	font-size: 32px;
+	font-size: 17px;
 	left: 0;
 	top: 50%;
 	transform: translateY(-50%);
