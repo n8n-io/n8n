@@ -28,9 +28,13 @@ import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
 import NoResults from '../Panel/NoResults.vue';
 import { useI18n } from '@/composables/useI18n';
+
 import { getNodeIconSource } from '@/utils/nodeIcon';
+
 import { useActions } from '../composables/useActions';
 import { SEND_AND_WAIT_OPERATION, type INodeParameters } from 'n8n-workflow';
+
+import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 
 export interface Props {
 	rootView: 'trigger' | 'action';
@@ -43,13 +47,22 @@ const emit = defineEmits<{
 const i18n = useI18n();
 
 const { mergedNodes, actions, onSubcategorySelected } = useNodeCreatorStore();
-const { pushViewStack, popViewStack } = useViewStacks();
+const { pushViewStack, popViewStack, pushCommunityNodeDetailsViewStack } = useViewStacks();
 const { setAddedNodeActionParameters } = useActions();
 
 const { registerKeyHook } = useKeyboardNavigation();
 
 const activeViewStack = computed(() => useViewStacks().activeViewStack);
-const globalSearchItemsDiff = computed(() => useViewStacks().globalSearchItemsDiff);
+
+const additionalSearchItems = computed(() => useViewStacks().additionalSearchItems);
+
+const isSearchResultEmpty = computed(() => {
+	return (
+		(activeViewStack.value.items || []).length === 0 &&
+		additionalSearchItems.value.items.length + additionalSearchItems.value.communityItems.length ===
+			0
+	);
+});
 
 function getFilteredActions(node: NodeCreateElement) {
 	const nodeActions = actions?.[node.key] || [];
@@ -104,6 +117,11 @@ function onSelected(item: INodeCreateElement) {
 
 	if (item.type === 'node') {
 		const nodeActions = getFilteredActions(item);
+
+		if (isCommunityPackageName(item.key) && !activeViewStack.value.communityNodeDetails) {
+			pushCommunityNodeDetailsViewStack(item, getNodeIconSource(item.properties), nodeActions);
+			return;
+		}
 
 		// If there is only one action, use it
 		if (nodeActions.length === 1) {
@@ -215,7 +233,8 @@ function arrowLeft() {
 function onKeySelect(activeItemId: string) {
 	const mergedItems = flattenCreateElements([
 		...(activeViewStack.value.items ?? []),
-		...(globalSearchItemsDiff.value ?? []),
+		...(additionalSearchItems.value.items ?? []),
+		...(additionalSearchItems.value.communityItems ?? []),
 	]);
 
 	const item = mergedItems.find((i) => i.uuid === activeItemId);
@@ -246,10 +265,7 @@ registerKeyHook('MainViewArrowLeft', {
 			:class="$style.items"
 			@selected="onSelected"
 		>
-			<template
-				v-if="(activeViewStack.items || []).length === 0 && globalSearchItemsDiff.length === 0"
-				#empty
-			>
+			<template v-if="isSearchResultEmpty" #empty>
 				<NoResults
 					:root-view="activeViewStack.rootView"
 					show-icon
@@ -259,12 +275,23 @@ registerKeyHook('MainViewArrowLeft', {
 				/>
 			</template>
 		</ItemsRenderer>
+
 		<!-- Results in other categories -->
 		<CategorizedItemsRenderer
-			v-if="globalSearchItemsDiff.length > 0"
-			:elements="globalSearchItemsDiff"
+			v-if="additionalSearchItems.items.length > 0"
+			:elements="additionalSearchItems.items"
 			:category="i18n.baseText('nodeCreator.categoryNames.otherCategories')"
 			@selected="onSelected"
+		>
+		</CategorizedItemsRenderer>
+
+		<!-- Results in community nodes -->
+		<CategorizedItemsRenderer
+			v-if="additionalSearchItems.communityItems.length > 0"
+			:elements="additionalSearchItems.communityItems"
+			category="More from the community"
+			@selected="onSelected"
+			:expanded="true"
 		>
 		</CategorizedItemsRenderer>
 	</span>

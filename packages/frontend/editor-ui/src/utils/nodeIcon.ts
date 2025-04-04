@@ -1,4 +1,4 @@
-import { type INodeTypeDescription } from 'n8n-workflow';
+import { COMMUNITY_NODE_TYPE_PREVIEW_TOKEN, type INodeTypeDescription } from 'n8n-workflow';
 import type { IVersionNode } from '../Interface';
 import { useRootStore } from '../stores/root.store';
 import { useUIStore } from '../stores/ui.store';
@@ -17,9 +17,9 @@ export type NodeIconType = 'file' | 'icon' | 'unknown';
 
 type IconNodeTypeDescription = Pick<
 	INodeTypeDescription,
-	'icon' | 'iconUrl' | 'iconColor' | 'defaults' | 'badgeIconUrl'
+	'icon' | 'iconUrl' | 'iconColor' | 'defaults' | 'badgeIconUrl' | 'name'
 >;
-type IconVersionNode = Pick<IVersionNode, 'icon' | 'iconUrl' | 'iconData' | 'defaults'>;
+type IconVersionNode = Pick<IVersionNode, 'icon' | 'iconUrl' | 'iconData' | 'defaults' | 'name'>;
 export type IconNodeType = IconNodeTypeDescription | IconVersionNode;
 
 export const getNodeIcon = (nodeType: IconNodeType): string | null => {
@@ -70,6 +70,17 @@ export function getNodeIconSource(nodeType?: IconNodeType | null): NodeIconSourc
 		if (nodeType.iconData.fileBuffer) {
 			return createFileIconSource(nodeType.iconData.fileBuffer);
 		}
+	}
+
+	if (
+		nodeType.name &&
+		nodeType.name.includes(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN) &&
+		typeof nodeType.iconUrl === 'string'
+	) {
+		return {
+			type: 'file',
+			src: nodeType.iconUrl,
+		};
 	}
 
 	const iconUrl = getNodeIconUrl(nodeType);

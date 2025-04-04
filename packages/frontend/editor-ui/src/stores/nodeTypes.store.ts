@@ -18,9 +18,10 @@ import type {
 	Workflow,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
+import { COMMUNITY_NODE_TYPE_PREVIEW_TOKEN, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useCredentialsStore } from './credentials.store';
+import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 import { useRootStore } from './root.store';
 import * as utils from '@/utils/credentialOnlyNodes';
 import { groupNodeTypesByNameAndType } from '@/utils/nodeTypes/nodeTypeTransforms';
@@ -30,6 +31,8 @@ export type NodeTypesStore = ReturnType<typeof useNodeTypesStore>;
 
 export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	const nodeTypes = ref<NodeTypesByTypeNameAndVersion>({});
+	const verifiedNodeTypes = ref<string[]>([]);
+	const communityNodeTypes = ref<INodeTypeDescription[]>([]);
 
 	const rootStore = useRootStore();
 
@@ -262,16 +265,38 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		return nodesInformation;
 	};
 
-	const getFullNodesProperties = async (nodesToBeFetched: INodeTypeNameVersion[]) => {
+	const getFullNodesProperties = async (
+		nodesToBeFetched: INodeTypeNameVersion[],
+		replaceNodeTypes = true,
+	) => {
 		const credentialsStore = useCredentialsStore();
 		await credentialsStore.fetchCredentialTypes(true);
-		await getNodesInformation(nodesToBeFetched);
+		if (replaceNodeTypes) {
+			await getNodesInformation(nodesToBeFetched);
+		}
 	};
 
 	const getNodeTypes = async () => {
-		const nodeTypes = await nodeTypesApi.getNodeTypes(rootStore.baseUrl);
+		let nodeTypes = await nodeTypesApi.getNodeTypes(rootStore.baseUrl);
+		let attempts = 5;
+
+		while (typeof nodeTypes !== 'object' && attempts > 0) {
+			console.log('Could not fetch node types, retrying...');
+			nodeTypes = await nodeTypesApi.getNodeTypes(rootStore.baseUrl);
+			attempts--;
+		}
+
+		if (typeof nodeTypes !== 'object') {
+			throw new Error('Could not fetch node types');
+		}
+
+		if (!communityNodeTypes.value.length) {
+			await fetchCommunityNodes();
+		}
+
 		if (nodeTypes.length) {
-			setNodeTypes(nodeTypes);
+			const communityNodes = await getNotInstalledCommunityNodes();
+			setNodeTypes(nodeTypes.concat(communityNodes));
 		}
 	};
 
@@ -317,6 +342,29 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		return await nodeTypesApi.getNodeParameterActionResult(rootStore.restApiContext, sendData);
 	};
 
+	const fetchCommunityNodes = async () => {
+		communityNodeTypes.value = await nodeTypesApi.getCommunityNodeTypes(rootStore.restApiContext);
+		verifiedNodeTypes.value = await nodeTypesApi.getVettedNodes(rootStore.restApiContext);
+	};
+
+	const getNotInstalledCommunityNodes = async () => {
+		const communityNodesStore = useCommunityNodesStore();
+
+		if (Object.keys(communityNodesStore.installedPackages).length === 0) {
+			await communityNodesStore.fetchInstalledPackages();
+		}
+
+		return communityNodeTypes.value.filter((nodeType) => {
+			return !communityNodesStore.installedPackages[
+				nodeType.name.split('.')[0].replace(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN, '')
+			];
+		});
+	};
+
+	const getCommunityNodeAttributes = async (nodeName: string) => {
+		return await nodeTypesApi.getCommunityNodeAttributes(rootStore.restApiContext, nodeName);
+	};
+
 	// #endregion
 
 	return {
@@ -334,6 +382,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		visibleNodeTypesByOutputConnectionTypeNames,
 		visibleNodeTypesByInputConnectionTypeNames,
 		isConfigurableNode,
+		verifiedNodeTypes,
 		getResourceMapperFields,
 		getLocalResourceMapperFields,
 		getNodeParameterActionResult,
@@ -346,5 +395,6 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		getNodeTranslationHeaders,
 		setNodeTypes,
 		removeNodeTypes,
+		getCommunityNodeAttributes,
 	};
 });

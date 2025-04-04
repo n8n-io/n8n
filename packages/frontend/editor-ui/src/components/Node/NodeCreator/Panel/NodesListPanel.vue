@@ -31,18 +31,33 @@ const nodeCreatorStore = useNodeCreatorStore();
 
 const activeViewStack = computed(() => useViewStacks().activeViewStack);
 
+const communityNodeDetails = computed(() => activeViewStack.value.communityNodeDetails);
+
 const viewStacks = computed(() => useViewStacks().viewStacks);
 
 const isActionsMode = computed(() => useViewStacks().activeViewStackMode === 'actions');
-const searchPlaceholder = computed(() =>
-	isActionsMode.value
-		? i18n.baseText('nodeCreator.actionsCategory.searchActions', {
-				interpolate: { node: activeViewStack.value.title as string },
-			})
-		: i18n.baseText('nodeCreator.searchBar.searchNodes'),
-);
+
+const searchPlaceholder = computed(() => {
+	let node = activeViewStack.value.title as string;
+
+	if (communityNodeDetails.value) {
+		node = communityNodeDetails.value.title;
+	}
+
+	if (isActionsMode.value) {
+		return i18n.baseText('nodeCreator.actionsCategory.searchActions', {
+			interpolate: { node },
+		});
+	}
+
+	return i18n.baseText('nodeCreator.searchBar.searchNodes');
+});
 
 const nodeCreatorView = computed(() => useNodeCreatorStore().selectedView);
+
+const isCommunityNodeActionsMode = computed(() => {
+	return communityNodeDetails.value && isActionsMode.value && activeViewStack.value.subcategory;
+});
 
 function getDefaultActiveIndex(search: string = ''): number {
 	if (activeViewStack.value.mode === 'actions') {
@@ -165,6 +180,11 @@ function onBackButton() {
 						:size="20"
 					/>
 					<p v-if="activeViewStack.title" :class="$style.title" v-text="activeViewStack.title" />
+
+					<CommunityNodeDocsLink
+						v-if="communityNodeDetails"
+						:package-name="communityNodeDetails.packageName"
+					/>
 				</div>
 				<p
 					v-if="activeViewStack.subtitle"
@@ -172,6 +192,7 @@ function onBackButton() {
 					v-text="activeViewStack.subtitle"
 				/>
 			</header>
+
 			<SearchBar
 				v-if="activeViewStack.hasSearch"
 				:class="$style.searchBar"
@@ -181,6 +202,9 @@ function onBackButton() {
 				:model-value="activeViewStack.search"
 				@update:model-value="onSearch"
 			/>
+
+			<CommunityNodeDetails v-if="communityNodeDetails" />
+
 			<div :class="$style.renderedItems">
 				<n8n-notice
 					v-if="activeViewStack.info && !activeViewStack.search"
@@ -194,6 +218,11 @@ function onBackButton() {
 				<!-- Nodes Mode -->
 				<NodesRenderer v-else :root-view="nodeCreatorView" v-bind="$attrs" />
 			</div>
+
+			<CommunityNodeFooter
+				v-if="communityNodeDetails && !isCommunityNodeActionsMode"
+				:package-name="communityNodeDetails?.packageName as string"
+			/>
 		</aside>
 	</transition>
 </template>

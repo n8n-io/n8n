@@ -12,6 +12,7 @@ import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 import { ref } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 const communityNodesStore = useCommunityNodesStore();
 
@@ -45,6 +46,7 @@ const onInstallClick = async () => {
 			loading.value = true;
 			await communityNodesStore.installPackage(packageName.value);
 			loading.value = false;
+			await useNodeTypesStore().getNodeTypes();
 			modalBus.emit('close');
 			toast.showMessage({
 				title: i18n.baseText('settings.communityNodes.messages.install.success'),
