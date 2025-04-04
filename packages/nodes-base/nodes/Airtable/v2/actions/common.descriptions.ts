@@ -193,6 +193,14 @@ export const insertUpdateOptions: INodeProperties[] = [
 				description: 'Comma-separated list of fields in input to ignore when updating',
 			},
 			{
+				displayName: 'Return Fields by Field ID',
+				name: 'returnFieldsByFieldId',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to return field values by field ID instead of field name. This is recommended to avoid your integration breaking if you rename Airtable fields.',
+			},
+			{
 				displayName: 'Update All Matches',
 				name: 'updateAllMatches',
 				type: 'boolean',
