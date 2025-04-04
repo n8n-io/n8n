@@ -80,7 +80,7 @@ export class InsightsService {
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('insights');
-		this.initializeCompaction();
+		this.startCompactionScheduler();
 		this.scheduleFlushing();
 	}
 
@@ -92,6 +92,14 @@ export class InsightsService {
 			async () => await this.compactInsights(),
 			intervalMilliseconds,
 		);
+	}
+
+	// Stop regular compaction of insights data
+	stopCompactionScheduler() {
+		if (this.compactInsightsTimer !== undefined) {
+			clearInterval(this.compactInsightsTimer);
+			this.compactInsightsTimer = undefined;
+		}
 	}
 
 	scheduleFlushing() {
@@ -282,7 +290,6 @@ export class InsightsService {
 	}
 
 	async compactInsights() {
-		console.log('compating');
 		let numberOfCompactedRawData: number;
 
 		// Compact raw data to hourly aggregates
