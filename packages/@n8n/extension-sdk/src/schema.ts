@@ -5,6 +5,11 @@ import { z } from 'zod';
  */
 export const extensionManifestSchema = z.object({
 	/**
+	 * Allow setting the schema to validate the manifest file.
+	 */
+	$schema: z.string(),
+
+	/**
 	 * Name of the extension package.
 	 */
 	name: z.string(),

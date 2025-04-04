@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia';
+import type { ExtensionManifest } from '@n8n/extension-sdk';
 import type { FrontendExtensionContext } from '@n8n/extension-sdk/frontend';
 import { STORES } from '@/constants';
-import type { Component } from 'vue';
+import { Component, reactive } from 'vue';
 import { ref, markRaw } from 'vue';
 import InsightsExtensionManifest from '@n8n/n8n-extension-insights';
 
@@ -9,18 +10,26 @@ type ExtensionMetadata = {
 	components: Record<string, Component>;
 };
 
+type ExtensionPoints = {
+	views: {
+		workflows: {
+			header: Component[];
+		};
+	};
+};
+
 export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
-	const extensionManifests = ref([InsightsExtensionManifest]);
-	const extensionMetadata: Record<string, ExtensionMetadata> = {};
-	const extensionPoints = {
+	const extensionManifests = ref<ExtensionManifest[]>([InsightsExtensionManifest]);
+	const extensionMetadata = reactive<Record<string, ExtensionMetadata>>({});
+	const extensionPoints = reactive<ExtensionPoints>({
 		views: {
 			workflows: {
 				header: [],
 			},
 		},
-	};
+	});
 
-	function createNamespaceString(manifest) {
+	function createNamespaceString(manifest: ExtensionManifest) {
 		return `${manifest.publisher}/${manifest.name}`;
 	}
 
@@ -32,13 +41,13 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 		}
 	}
 
-	function registerExtensionPoints(manifest: object, context: FrontendExtensionContext) {
+	function registerExtensionPoints(manifest: ExtensionManifest, context: FrontendExtensionContext) {
 		const ns = createNamespaceString(manifest);
 
 		if (manifest.extends.views.workflows.header) {
-			extensionPoints.views.workflows.header.push(
-				extensionMetadata[ns].components[manifest.extends.views.workflows.header],
-			);
+			const component: Component =
+				extensionMetadata[ns].components[manifest.extends.views.workflows.header];
+			extensionPoints.views.workflows.header.push(component);
 		}
 	}
 
@@ -50,8 +59,8 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 		};
 	}
 
-	function createExtensionContext(manifest: object): FrontendExtensionContext {
-		const context = {};
+	function createExtensionContext(manifest: ExtensionManifest): FrontendExtensionContext {
+		const context: FrontendExtensionContext = {};
 		const ns = createNamespaceString(manifest);
 
 		if (manifest.extends.views) {
@@ -84,6 +93,7 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 	return {
 		extensionManifests,
 		extensionMetadata,
+		extensionPoints,
 		initialize,
 	};
 });
