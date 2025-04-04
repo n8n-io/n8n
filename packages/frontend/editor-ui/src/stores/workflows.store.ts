@@ -1331,6 +1331,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			true,
 			false,
 			latestNode,
+			nodeType,
 		);
 
 		if (latestNode) {
