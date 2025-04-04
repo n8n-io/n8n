@@ -22,11 +22,17 @@ export function getNodeTypeDisplayableCredentials(
 	// credentials can have conditional requirements that depend on
 	// node parameters.
 	const nodeParameters =
-		NodeHelpers.getNodeParameters(nodeType.properties, node.parameters, true, false, node) ??
-		node.parameters;
+		NodeHelpers.getNodeParameters(
+			nodeType.properties,
+			node.parameters,
+			true,
+			false,
+			node,
+			nodeType,
+		) ?? node.parameters;
 
 	const displayableCredentials = nodeTypeCreds.filter((credentialTypeDescription) => {
-		return NodeHelpers.displayParameter(nodeParameters, credentialTypeDescription, node);
+		return NodeHelpers.displayParameter(nodeParameters, credentialTypeDescription, node, nodeType);
 	});
 
 	return displayableCredentials;

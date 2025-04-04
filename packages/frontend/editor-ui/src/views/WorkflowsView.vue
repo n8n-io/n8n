@@ -1225,19 +1225,19 @@ const onCreateWorkflowClick = () => {
 		<template #header>
 			<ProjectHeader @create-folder="createFolderInCurrent">
 				<InsightsSummary
-					v-if="overview.isOverviewSubPage"
+					v-if="overview.isOverviewSubPage && insightsStore.isSummaryEnabled"
 					:loading="insightsStore.summary.isLoading"
 					:summary="insightsStore.summary.state"
 				/>
 			</ProjectHeader>
 		</template>
-		<template v-if="foldersEnabled" #add-button>
+		<template v-if="foldersEnabled || showRegisteredCommunityCTA" #add-button>
 			<N8nTooltip
 				placement="top"
 				:disabled="!(isOverviewPage || (!readOnlyEnv && hasPermissionToCreateFolders))"
 			>
 				<template #content>
-					<span v-if="isOverviewPage">
+					<span v-if="isOverviewPage && !showRegisteredCommunityCTA">
 						<span v-if="teamProjectsEnabled">
 							{{ i18n.baseText('folders.add.overview.withProjects.message') }}
 						</span>
@@ -1245,7 +1245,7 @@ const onCreateWorkflowClick = () => {
 							{{ i18n.baseText('folders.add.overview.community.message') }}
 						</span>
 					</span>
-					<span v-else-if="!readOnlyEnv && hasPermissionToCreateFolders">
+					<span v-else>
 						{{
 							currentParentName
 								? i18n.baseText('folders.add.to.parent.message', {
@@ -1261,7 +1261,7 @@ const onCreateWorkflowClick = () => {
 					type="tertiary"
 					data-test-id="add-folder-button"
 					:class="$style['add-folder-button']"
-					:disabled="readOnlyEnv || !hasPermissionToCreateFolders"
+					:disabled="!showRegisteredCommunityCTA && (readOnlyEnv || !hasPermissionToCreateFolders)"
 					@click="createFolderInCurrent"
 				/>
 			</N8nTooltip>
@@ -1312,17 +1312,20 @@ const onCreateWorkflowClick = () => {
 				/>
 			</div>
 		</template>
-		<template #item="{ item: data }">
+		<template #item="{ item: data, index }">
 			<FolderCard
 				v-if="(data as FolderResource | WorkflowResource).resourceType === 'folder'"
+				:key="`folder-${index}`"
 				:data="data as FolderResource"
 				:actions="folderCardActions"
 				:read-only="readOnlyEnv || (!hasPermissionToDeleteFolders && !hasPermissionToCreateFolders)"
+				:personal-project="projectsStore.personalProject"
 				class="mb-2xs"
 				@action="onFolderCardAction"
 			/>
 			<WorkflowCard
 				v-else
+				:key="`workflow-${index}`"
 				data-test-id="resources-list-item-workflow"
 				class="mb-2xs"
 				:data="data as WorkflowResource"
