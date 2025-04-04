@@ -663,6 +663,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 		false,
 		false,
 		null,
+		null,
 	);
 
 	assert(credentialTypeName.value);
