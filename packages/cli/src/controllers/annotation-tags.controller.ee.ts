@@ -22,7 +22,7 @@ export class AnnotationTagsController {
 		return await this.annotationTagService.save(tag);
 	}
 
-	@Patch('/:id(\\w+)')
+	@Patch('/:id')
 	@GlobalScope('annotationTag:update')
 	async updateTag(req: AnnotationTagsRequest.Update) {
 		const newTag = this.annotationTagService.toEntity({
@@ -33,7 +33,7 @@ export class AnnotationTagsController {
 		return await this.annotationTagService.save(newTag);
 	}
 
-	@Delete('/:id(\\w+)')
+	@Delete('/:id')
 	@GlobalScope('annotationTag:delete')
 	async deleteTag(req: AnnotationTagsRequest.Delete) {
 		const { id } = req.params;

@@ -2964,7 +2964,7 @@
 	"testDefinition.edit.modal.description": "Choose which past data to keep when re-running the execution(s). Any mocked node will be replayed rather than re-executed. The trigger is always mocked.",
 	"testDefinition.edit.runExecution": "Run execution",
 	"testDefinition.edit.pastRuns": "Past runs",
-	"testDefinition.edit.pastRuns.total": "No runs | Past run ({count}) | Past runs ({count})",
+	"testDefinition.edit.pastRuns.total": "No runs | Past run | Past runs",
 	"testDefinition.edit.nodesPinning.pinButtonTooltip": "Use benchmark data for this node during evaluation execution",
 	"testDefinition.edit.nodesPinning.pinButtonTooltip.pinned": "This node will not be re-executed",
 	"testDefinition.edit.nodesPinning.triggerTooltip": "Trigger nodes are mocked by default",
@@ -3074,7 +3074,10 @@
 	"insights.banner.timeSaved.tooltip.link.text": "add time estimates",
 	"insights.banner.title.total": "Total",
 	"insights.banner.title.failed": "Failed",
+	"insights.banner.title.succeeded": "Succeeded",
 	"insights.banner.title.failureRate": "Failure rate",
 	"insights.banner.title.timeSaved": "Time saved",
-	"insights.banner.title.averageRunTime": "Avg. run time"
+	"insights.banner.title.timeSavedDailyAverage": "Time saved daily avg.",
+	"insights.banner.title.averageRunTime": "Avg. run time",
+	"insights.dashboard.title": "Insights"
 }
