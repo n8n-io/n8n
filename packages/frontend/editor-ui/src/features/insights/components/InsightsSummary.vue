@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { computed, ref, useCssModule } from 'vue';
-import { useRoute } from 'vue-router';
 import { useI18n } from '@/composables/useI18n';
 import { VIEWS } from '@/constants';
 import {
@@ -10,6 +8,8 @@ import {
 import type { InsightsSummaryDisplay } from '@/features/insights/insights.types';
 import type { InsightsSummary } from '@n8n/api-types';
 import { smartDecimal } from '@n8n/utils/number/smartDecimal';
+import { computed, ref, useCssModule } from 'vue';
+import { useRoute } from 'vue-router';
 
 const props = defineProps<{
 	summary: InsightsSummaryDisplay;
@@ -86,7 +86,7 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 					</span>
 					<span v-else>
 						<em
-							>{{ smartDecimal(value) }} <i>{{ unit }}</i></em
+							>{{ smartDecimal(value).toLocaleString('en-US') }} <i>{{ unit }}</i></em
 						>
 						<small v-if="deviation !== null" :class="getImpactStyle(id, deviation)">
 							<N8nIcon

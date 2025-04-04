@@ -32,10 +32,16 @@ const headers = ref<Array<TableHeader<Item>>>([
 	{
 		title: 'Total executions',
 		key: 'total',
+		value(row) {
+			return row.total.toLocaleString('en-US');
+		},
 	},
 	{
 		title: 'Total failed executions',
 		key: 'failed',
+		value(row) {
+			return row.failed.toLocaleString('en-US');
+		},
 	},
 	{
 		title: 'Average run time',
