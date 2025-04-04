@@ -15,8 +15,10 @@ export class McpTrigger extends Node {
 	description: INodeTypeDescription = {
 		displayName: 'MCP Trigger',
 		name: 'mcpTrigger',
-		icon: 'fa:cloud-download-alt',
-		iconColor: 'dark-blue',
+		icon: {
+			light: 'file:mcp.svg',
+			dark: 'file:mcp.dark.svg',
+		},
 		group: ['trigger'],
 		version: 1,
 		description: 'Triggers the workflow when Server-Sent Events occur',
