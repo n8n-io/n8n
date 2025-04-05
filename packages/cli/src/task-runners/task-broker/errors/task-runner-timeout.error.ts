@@ -1,4 +1,3 @@
-import type { TaskRunnerMode } from '@n8n/config/src/configs/runners.config';
 import { OperationalError } from 'n8n-workflow';
 
 export class TaskRunnerTimeoutError extends OperationalError {
@@ -8,7 +7,7 @@ export class TaskRunnerTimeoutError extends OperationalError {
 		taskTimeout,
 		isSelfHosted,
 		mode,
-	}: { taskTimeout: number; isSelfHosted: boolean; mode: TaskRunnerMode }) {
+	}: { taskTimeout: number; isSelfHosted: boolean; mode: 'internal' | 'external' }) {
 		super(
 			`Task execution timed out after ${taskTimeout} ${taskTimeout === 1 ? 'second' : 'seconds'}`,
 		);

@@ -10,6 +10,13 @@ type PropertyType = number | boolean | string | Class;
 interface PropertyMetadata {
 	type: PropertyType;
 	envName?: string;
+	unionMembers?: readonly string[];
+}
+
+const stringUnionsRegistry = new Map<string, readonly string[]>();
+
+export function registerStringUnion(key: string, unionMembers: readonly string[]) {
+	stringUnionsRegistry.set(key, unionMembers);
 }
 
 const globalMetadata = new Map<Class, Map<PropertyKey, PropertyMetadata>>();
@@ -33,14 +40,20 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 			throw new Error('Invalid config class: ' + ConfigClass.name);
 		}
 
-		for (const [key, { type, envName }] of classMetadata) {
+		for (const [key, { type, envName, unionMembers }] of classMetadata) {
 			if (typeof type === 'function' && globalMetadata.has(type)) {
 				config[key] = Container.get(type as Constructable);
 			} else if (envName) {
 				const value = readEnv(envName);
 				if (value === undefined) continue;
 
-				if (type === Number) {
+				if (unionMembers && !unionMembers.includes(value)) {
+					const defaultValue = unionMembers[0];
+					console.warn(
+						`Invalid value for ${envName}. Received: ${value}. Must be one of: ${unionMembers.join(', ')}. Falling back to: ${defaultValue}.`,
+					);
+					config[key] = defaultValue;
+				} else if (type === Number) {
 					const parsed = Number(value);
 					if (isNaN(parsed)) {
 						console.warn(`Invalid number value for ${envName}: ${value}`);
@@ -96,6 +109,12 @@ export const Env =
 				`Invalid decorator metadata on key "${key as string}" on ${ConfigClass.name}\n Please use explicit typing on all config fields`,
 			);
 		}
-		classMetadata.set(key, { type, envName });
+
+		let unionMembers: readonly string[] | undefined;
+		if (type === String) {
+			unionMembers = stringUnionsRegistry.get(`${ConfigClass.name}.${String(key)}`);
+		}
+
+		classMetadata.set(key, { type, envName, unionMembers });
 		globalMetadata.set(ConfigClass, classMetadata);
 	};
