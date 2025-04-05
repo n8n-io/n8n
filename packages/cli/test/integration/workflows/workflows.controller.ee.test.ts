@@ -1644,7 +1644,11 @@ describe('PUT /:workflowId/transfer', () => {
 		//
 		expect(response.body).toEqual({});
 
-		const workflowFromDB = await workflowRepository.findOneByOrFail({ id: workflow.id });
+		const workflowFromDB = await workflowRepository.findOneOrFail({
+			where: { id: workflow.id },
+			relations: ['parentFolder'],
+		});
+
 		expect(workflowFromDB.parentFolder).toBeNull();
 	});
 
