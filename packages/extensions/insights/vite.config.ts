@@ -23,7 +23,7 @@ export default defineConfig({
 			fileName: 'index',
 		},
 		rollupOptions: {
-			external: ['vue'],
+			external: ['vue', '@n8n/design-system'],
 			output: {
 				preserveModules: false,
 				globals: {

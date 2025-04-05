@@ -1,15 +1,18 @@
 {
-	"name": "@n8n/n8n-extension-insights",
+	"$schema": "https://raw.githubusercontent.com/n8n-io/n8n/refs/heads/master/packages/%40n8n/extension-sdk/schema.json",
+	"name": "insights",
+	"publisher": "n8n",
+	"displayName": "Insights",
+	"description": "Insights Dashboard",
 	"version": "1.0.0",
-	"author": "n8n",
-	"category": "Internal",
+	"categories": ["Internal"],
 	"minSDKVersion": "0.0.0",
 	"permissions": {
 		"frontend": [],
 		"backend": []
 	},
 	"events": ["workflow:started"],
-	"setup": {
+	"entry": {
 		"backend": "./dist/backend/index.js",
 		"frontend": "./dist/frontend/index.js"
 	},

@@ -64,6 +64,7 @@ import { useUsageStore } from '@/stores/usage.store';
 import { useInsightsStore } from '@/features/insights/insights.store';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useOverview } from '@/composables/useOverview';
+import { useExtensionsStore } from '@/stores/extensions.store';
 
 const SEARCH_DEBOUNCE_TIME = 300;
 const FILTERS_DEBOUNCE_TIME = 100;
@@ -106,6 +107,7 @@ const tagsStore = useTagsStore();
 const foldersStore = useFoldersStore();
 const usageStore = useUsageStore();
 const insightsStore = useInsightsStore();
+const extensionsStore = useExtensionsStore();
 
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
@@ -1229,6 +1231,7 @@ const onCreateWorkflowClick = () => {
 					:loading="insightsStore.summary.isLoading"
 					:summary="insightsStore.summary.state"
 				/>
+				<N8nDynamicRenderer :render="extensionsStore.extensionPoints.views.workflows.header" />
 			</ProjectHeader>
 		</template>
 		<template v-if="foldersEnabled || showRegisteredCommunityCTA" #add-button>
