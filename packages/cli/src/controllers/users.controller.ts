@@ -31,6 +31,7 @@ import { listQueryMiddleware } from '@/middlewares';
 import { AuthenticatedRequest, ListQuery, UserRequest } from '@/requests';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
+import { PublicApiKeyService } from '@/services/public-api-key.service';
 import { UserService } from '@/services/user.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -50,6 +51,7 @@ export class UsersController {
 		private readonly projectService: ProjectService,
 		private readonly eventService: EventService,
 		private readonly folderService: FolderService,
+		private readonly publicApiKeyService: PublicApiKeyService,
 	) {}
 
 	static ERROR_MESSAGES = {
@@ -294,6 +296,15 @@ export class UsersController {
 		}
 
 		await this.userService.update(targetUser.id, { role: payload.newRoleName });
+
+		const adminDowngradedToMember =
+			req.user.role === 'global:owner' &&
+			targetUser.role === 'global:admin' &&
+			payload.newRoleName === 'global:member';
+
+		if (adminDowngradedToMember) {
+			await this.publicApiKeyService.removeOwnerOnlyScopesFromApiKeys(targetUser);
+		}
 
 		this.eventService.emit('user-changed-role', {
 			userId: req.user.id,

@@ -6,9 +6,14 @@ import type {
 	ApiKey,
 	ApiKeyWithRawValue,
 } from '@n8n/api-types';
+import type { ApiKeyScope } from '@n8n/permissions';
 
 export async function getApiKeys(context: IRestApiContext): Promise<ApiKey[]> {
 	return await makeRestApiRequest(context, 'GET', '/api-keys');
+}
+
+export async function getApiKeyScopes(context: IRestApiContext): Promise<ApiKeyScope[]> {
+	return await makeRestApiRequest(context, 'GET', '/api-keys/scopes');
 }
 
 export async function createApiKey(
