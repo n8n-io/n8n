@@ -386,7 +386,7 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	{
-		path: '/workflow/:name',
+		path: '/workflow/:name/:nodeId?',
 		name: VIEWS.WORKFLOW,
 		components: {
 			default: NodeView,
