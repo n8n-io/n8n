@@ -13,7 +13,7 @@ const MCP_SSE_MESSAGES_PATH = 'messages';
 
 export class McpTrigger extends Node {
 	description: INodeTypeDescription = {
-		displayName: 'MCP Trigger',
+		displayName: 'MCP Server Trigger',
 		name: 'mcpTrigger',
 		icon: {
 			light: 'file:mcp.svg',
@@ -21,24 +21,29 @@ export class McpTrigger extends Node {
 		},
 		group: ['trigger'],
 		version: 1,
-		description: 'Triggers the workflow when Server-Sent Events occur',
+		description: 'Expose n8n tools as an MCP Server endpoint',
 		eventTriggerDescription: '',
-		activationMessage: 'You can now make calls to your SSE URL to trigger executions.',
+		activationMessage: 'You can now connect your MCP Clients to the SSE URL.',
 		defaults: {
-			name: 'MCP Trigger',
+			name: 'MCP Server Trigger',
 		},
 		triggerPanel: {
-			header: '',
+			header: 'Listen for MCP events',
 			executionsHelp: {
 				inactive:
-					"<b>While building your workflow</b>, click the 'listen' button, then trigger an SSE event. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Once you're happy with your workflow</b>, <a data-key='activate'>activate</a> it. Then every time a change is detected, the workflow will execute. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
+					"This trigger has two modes: test and production.<br /><br /><b>Use test mode while you build your workflow</b>. Click the 'test step' button, then make an MCP request to the test URL. The executions will show up in the editor.<br /><br /><b>Use production mode to run your workflow automatically</b>. <a data-key='activate'>Activate</a> the workflow, then make requests to the production URL. These executions will show up in the <a data-key='executions'>executions list</a>, but not the editor.",
 				active:
-					"<b>While building your workflow</b>, click the 'listen' button, then trigger an SSE event. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Your workflow will also execute automatically</b>, since it's activated. Every time a change is detected, this node will trigger an execution. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
+					"This trigger has two modes: test and production.<br /><br /><b>Use test mode while you build your workflow</b>. Click the 'test step' button, then make an MCP request to the test URL. The executions will show up in the editor.<br /><br /><b>Use production mode to run your workflow automatically</b>. Since your workflow is activated, you can make requests to the production URL. These executions will show up in the <a data-key='executions'>executions list</a>, but not the editor.",
 			},
 			activationHint:
-				"Once you’ve finished building your workflow, <a data-key='activate'>activate</a> it to have it also listen continuously (you just won’t see those executions here).",
+				'Once you’ve finished building your workflow, run it without having to click this button by using the production URL.',
 		},
-		inputs: [NodeConnectionTypes.AiTool],
+		inputs: [
+			{
+				type: NodeConnectionTypes.AiTool,
+				displayName: 'Tools',
+			},
+		],
 		outputs: [],
 		properties: [],
 		webhooks: [
