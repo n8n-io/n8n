@@ -1,39 +1,18 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import type { UsageTelemetry } from '@/stores/usage.store';
 import { useUsageStore } from '@/stores/usage.store';
-import { telemetry } from '@/plugins/telemetry';
 import { i18n as locale } from '@/plugins/i18n';
-import { useUIStore } from '@/stores/ui.store';
 import { useToast } from '@/composables/useToast';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { hasPermission } from '@/utils/rbac/permissions';
 import N8nInfoTip from '@n8n/design-system/components/N8nInfoTip';
-import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/constants';
-import { useUsersStore } from '@/stores/users.store';
-import { getResourcePermissions } from '@/permissions';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const usageStore = useUsageStore();
 const route = useRoute();
 const router = useRouter();
-const uiStore = useUIStore();
-const usersStore = useUsersStore();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
-const pageRedirectionHelper = usePageRedirectionHelper();
-
-const queryParamCallback = ref<string>(
-	`callback=${encodeURIComponent(`${window.location.origin}${window.location.pathname}`)}`,
-);
-const viewPlansUrl = computed(
-	() => `${usageStore.viewPlansUrl}&${queryParamCallback.value}&source=usage_page`,
-);
-const managePlanUrl = computed(() => `${usageStore.managePlanUrl}&${queryParamCallback.value}`);
-const activationKeyModal = ref(false);
-const activationKey = ref('');
-const activationKeyInput = ref<HTMLInputElement | null>(null);
 
 const canUserActivateLicense = computed(() =>
 	hasPermission(['rbac'], { rbac: { scope: 'license:manage' } }),
@@ -47,14 +26,8 @@ const badgedPlanName = computed(() => {
 	};
 });
 
-const isCommunity = computed(() => usageStore.planName.toLowerCase() === 'community');
-
 const isCommunityEditionRegistered = computed(
 	() => usageStore.planName.toLowerCase() === 'registered community',
-);
-
-const canUserRegisterCommunityPlus = computed(
-	() => getResourcePermissions(usersStore.currentUser?.globalScopes).community.register,
 );
 
 const showActivationSuccess = () => {
@@ -78,16 +51,6 @@ const showActivationError = (error: Error) => {
 		locale.baseText('settings.usageAndPlan.license.activation.error.title'),
 		error.message,
 	);
-};
-
-const onLicenseActivation = async () => {
-	try {
-		await usageStore.activateLicense(activationKey.value);
-		activationKeyModal.value = false;
-		showActivationSuccess();
-	} catch (error) {
-		showActivationError(error);
-	}
 };
 
 onMounted(async () => {
@@ -118,38 +81,6 @@ onMounted(async () => {
 		toast.showError(error, error.name, error.message);
 	}
 });
-
-const sendUsageTelemetry = (action: UsageTelemetry['action']) => {
-	const telemetryPayload = usageStore.telemetryPayload;
-	telemetryPayload.action = action;
-	telemetry.track('User clicked button on usage page', telemetryPayload);
-};
-
-const onAddActivationKey = () => {
-	activationKeyModal.value = true;
-	sendUsageTelemetry('add_activation_key');
-};
-
-const onViewPlans = () => {
-	void pageRedirectionHelper.goToUpgrade('usage_page', 'open');
-	sendUsageTelemetry('view_plans');
-};
-
-const onManagePlan = () => {
-	sendUsageTelemetry('manage_plan');
-};
-
-const onDialogClosed = () => {
-	activationKey.value = '';
-};
-
-const onDialogOpened = () => {
-	activationKeyInput.value?.focus();
-};
-
-const openCommunityRegisterModal = () => {
-	uiStore.openModal(COMMUNITY_PLUS_ENROLLMENT_MODAL);
-};
 </script>
 
 <template>
@@ -182,19 +113,6 @@ const openCommunityRegisterModal = () => {
 				</span>
 			</n8n-heading>
 
-			<N8nNotice v-if="isCommunity && canUserRegisterCommunityPlus" class="mt-0" theme="warning">
-				<i18n-t keypath="settings.usageAndPlan.callOut">
-					<template #link>
-						<N8nButton
-							class="pl-0 pr-0"
-							text
-							:label="locale.baseText('settings.usageAndPlan.callOut.link')"
-							@click="openCommunityRegisterModal"
-						/>
-					</template>
-				</i18n-t>
-			</N8nNotice>
-
 			<div :class="$style.quota">
 				<n8n-text size="medium" color="text-light">
 					{{ locale.baseText('settings.usageAndPlan.activeWorkflows') }}
@@ -223,54 +141,6 @@ const openCommunityRegisterModal = () => {
 			</div>
 
 			<N8nInfoTip>{{ locale.baseText('settings.usageAndPlan.activeWorkflows.hint') }}</N8nInfoTip>
-
-			<div :class="$style.buttons">
-				<n8n-button
-					v-if="canUserActivateLicense"
-					:class="$style.buttonTertiary"
-					type="tertiary"
-					size="large"
-					@click="onAddActivationKey"
-				>
-					<span>{{ locale.baseText('settings.usageAndPlan.button.activation') }}</span>
-				</n8n-button>
-				<n8n-button v-if="usageStore.managementToken" size="large" @click="onManagePlan">
-					<a :href="managePlanUrl" target="_blank">{{
-						locale.baseText('settings.usageAndPlan.button.manage')
-					}}</a>
-				</n8n-button>
-				<n8n-button v-else size="large" @click.prevent="onViewPlans">
-					<a :href="viewPlansUrl" target="_blank">{{
-						locale.baseText('settings.usageAndPlan.button.plans')
-					}}</a>
-				</n8n-button>
-			</div>
-
-			<el-dialog
-				v-model="activationKeyModal"
-				width="480px"
-				top="0"
-				:title="locale.baseText('settings.usageAndPlan.dialog.activation.title')"
-				:modal-class="$style.center"
-				@closed="onDialogClosed"
-				@opened="onDialogOpened"
-			>
-				<template #default>
-					<n8n-input
-						ref="activationKeyInput"
-						v-model="activationKey"
-						:placeholder="locale.baseText('settings.usageAndPlan.dialog.activation.label')"
-					/>
-				</template>
-				<template #footer>
-					<n8n-button type="secondary" @click="activationKeyModal = false">
-						{{ locale.baseText('settings.usageAndPlan.dialog.activation.cancel') }}
-					</n8n-button>
-					<n8n-button @click="onLicenseActivation">
-						{{ locale.baseText('settings.usageAndPlan.dialog.activation.activate') }}
-					</n8n-button>
-				</template>
-			</el-dialog>
 		</div>
 	</div>
 </template>

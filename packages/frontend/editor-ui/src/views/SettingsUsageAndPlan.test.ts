@@ -1,13 +1,10 @@
 import { createTestingPinia } from '@pinia/testing';
-import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { useUsageStore } from '@/stores/usage.store';
 import SettingsUsageAndPlan from '@/views/SettingsUsageAndPlan.vue';
 import { useUIStore } from '@/stores/ui.store';
-import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/constants';
 import { useUsersStore } from '@/stores/users.store';
-import type { IUser } from '@/Interface';
 
 vi.mock('vue-router', () => {
 	return {
