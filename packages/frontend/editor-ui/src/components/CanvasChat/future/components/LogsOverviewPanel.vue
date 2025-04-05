@@ -20,6 +20,9 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import ConsumedTokenCountText from '@/components/CanvasChat/future/components/ConsumedTokenCountText.vue';
 import { type LogEntryIdentity } from '@/components/CanvasChat/types/logs';
 import LogsOverviewRow from '@/components/CanvasChat/future/components/LogsOverviewRow.vue';
+import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useRouter } from 'vue-router';
 
 const { node, isOpen, selected } = defineProps<{
 	isOpen: boolean;
@@ -34,6 +37,9 @@ defineSlots<{ actions: {} }>();
 const locale = useI18n();
 const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
+const router = useRouter();
+const runWorkflow = useRunWorkflow({ router });
+const ndvStore = useNDVStore();
 const nodeHelpers = useNodeHelpers();
 const isClearExecutionButtonVisible = useClearExecutionButtonVisible();
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
@@ -105,6 +111,17 @@ function handleSwitchView(value: 'overview' | 'details') {
 
 function handleToggleExpanded(treeNode: ElTreeNode) {
 	treeNode.expanded = !treeNode.expanded;
+}
+
+function handleOpenNdv(treeNode: TreeNode) {
+	ndvStore.setActiveNodeName(treeNode.node);
+
+	// HACK: defer setting the output run index to not be overridden by other effects
+	requestAnimationFrame(() => ndvStore.setOutputRunIndex(treeNode.runIndex));
+}
+
+async function handleTriggerPartialExecution(treeNode: TreeNode) {
+	await runWorkflow.runWorkflow({ destinationNode: treeNode.node });
 }
 </script>
 
@@ -179,6 +196,8 @@ function handleToggleExpanded(treeNode: ElTreeNode) {
 							:is-compact="selected !== undefined"
 							:should-show-consumed-tokens="consumedTokens.totalTokens > 0"
 							@toggle-expanded="handleToggleExpanded"
+							@open-ndv="handleOpenNdv"
+							@trigger-partial-execution="handleTriggerPartialExecution"
 						/>
 					</template>
 				</ElTree>

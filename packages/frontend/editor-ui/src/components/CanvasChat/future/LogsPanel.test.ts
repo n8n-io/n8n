@@ -8,7 +8,12 @@ import { setActivePinia } from 'pinia';
 import { createRouter, createWebHistory } from 'vue-router';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { h } from 'vue';
-import { executionResponse, aiChatWorkflow, simpleWorkflow, nodeTypes } from '../__test__/data';
+import {
+	aiChatExecutionResponse,
+	aiChatWorkflow,
+	aiManualWorkflow,
+	nodeTypes,
+} from '../__test__/data';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 describe('LogsPanel', () => {
@@ -47,16 +52,14 @@ describe('LogsPanel', () => {
 	});
 
 	it('should render collapsed panel by default', async () => {
-		workflowsStore.setWorkflow(simpleWorkflow);
-
 		const rendered = render();
 
 		expect(await rendered.findByTestId('logs-overview-header')).toBeInTheDocument();
 		expect(rendered.queryByTestId('logs-overview-empty')).not.toBeInTheDocument();
 	});
 
-	it('should render logs panel only if the workflow has no chat trigger', async () => {
-		workflowsStore.setWorkflow(simpleWorkflow);
+	it('should only render logs panel if the workflow has no chat trigger', async () => {
+		workflowsStore.setWorkflow(aiManualWorkflow);
 
 		const rendered = render();
 
@@ -99,7 +102,7 @@ describe('LogsPanel', () => {
 
 	it('should open log details panel when a log entry is clicked in the logs overview panel', async () => {
 		workflowsStore.setWorkflow(aiChatWorkflow);
-		workflowsStore.setWorkflowExecutionData(executionResponse);
+		workflowsStore.setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
 
@@ -114,7 +117,7 @@ describe('LogsPanel', () => {
 
 	it("should show the button to toggle panel in the header of log details panel when it's opened", async () => {
 		workflowsStore.setWorkflow(aiChatWorkflow);
-		workflowsStore.setWorkflowExecutionData(executionResponse);
+		workflowsStore.setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
 

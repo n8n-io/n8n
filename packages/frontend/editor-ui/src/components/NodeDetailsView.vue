@@ -78,9 +78,6 @@ const { APP_Z_INDEXES } = useStyles();
 
 const settingsEventBus = createEventBus();
 const redrawRequired = ref(false);
-const runInputIndex = ref(-1);
-const runOutputIndex = ref(-1);
-const isLinkingEnabled = ref(true);
 const selectedInput = ref<string | undefined>();
 const triggerWaitingWarningEnabled = ref(false);
 const isDragging = ref(false);
@@ -248,12 +245,6 @@ const maxOutputRun = computed(() => {
 	return 0;
 });
 
-const outputRun = computed(() =>
-	runOutputIndex.value === -1
-		? maxOutputRun.value
-		: Math.min(runOutputIndex.value, maxOutputRun.value),
-);
-
 const maxInputRun = computed(() => {
 	if (inputNode.value === null || activeNode.value === null) {
 		return 0;
@@ -290,15 +281,23 @@ const maxInputRun = computed(() => {
 	return 0;
 });
 
+const isLinkingEnabled = computed(() => ndvStore.isRunIndexLinkingEnabled);
+
+const outputRun = computed(() =>
+	ndvStore.output.run === -1
+		? maxOutputRun.value
+		: Math.min(ndvStore.output.run, maxOutputRun.value),
+);
+
 const inputRun = computed(() => {
 	if (isLinkingEnabled.value && maxOutputRun.value === maxInputRun.value) {
 		return outputRun.value;
 	}
-	if (runInputIndex.value === -1) {
+	if (ndvStore.input.run === -1) {
 		return maxInputRun.value;
 	}
 
-	return Math.min(runInputIndex.value, maxInputRun.value);
+	return Math.min(ndvStore.input.run, maxInputRun.value);
 });
 
 const canLinkRuns = computed(
@@ -443,13 +442,13 @@ const onPanelsInit = (e: { position: number }) => {
 };
 
 const onLinkRunToOutput = () => {
-	isLinkingEnabled.value = true;
+	ndvStore.setRunIndexLinkingEnabled(true);
 	trackLinking('output');
 };
 
 const onUnlinkRun = (pane: string) => {
-	runInputIndex.value = runOutputIndex.value;
-	isLinkingEnabled.value = false;
+	ndvStore.setInputRunIndex(outputRun.value);
+	ndvStore.setRunIndexLinkingEnabled(false);
 	trackLinking(pane);
 };
 
@@ -476,8 +475,8 @@ const trackLinking = (pane: string) => {
 };
 
 const onLinkRunToInput = () => {
-	runOutputIndex.value = runInputIndex.value;
-	isLinkingEnabled.value = true;
+	ndvStore.setOutputRunIndex(inputRun.value);
+	ndvStore.setRunIndexLinkingEnabled(true);
 	trackLinking('input');
 };
 
@@ -553,15 +552,12 @@ const trackRunChange = (run: number, pane: string) => {
 };
 
 const onRunOutputIndexChange = (run: number) => {
-	runOutputIndex.value = run;
+	ndvStore.setOutputRunIndex(run);
 	trackRunChange(run, 'output');
 };
 
 const onRunInputIndexChange = (run: number) => {
-	runInputIndex.value = run;
-	if (linked.value) {
-		runOutputIndex.value = run;
-	}
+	ndvStore.setInputRunIndex(run);
 	trackRunChange(run, 'input');
 };
 
@@ -570,8 +566,8 @@ const onOutputTableMounted = (e: { avgRowHeight: number }) => {
 };
 
 const onInputNodeChange = (value: string, index: number) => {
-	runInputIndex.value = -1;
-	isLinkingEnabled.value = true;
+	ndvStore.setInputRunIndex(-1);
+	ndvStore.setRunIndexLinkingEnabled(true);
 	selectedInput.value = value;
 
 	telemetry.track('User changed ndv input dropdown', {
@@ -621,9 +617,6 @@ watch(
 		}
 
 		if (node && node.name !== oldNode?.name && !isActiveStickyNode.value) {
-			runInputIndex.value = -1;
-			runOutputIndex.value = -1;
-			isLinkingEnabled.value = true;
 			selectedInput.value = undefined;
 			triggerWaitingWarningEnabled.value = false;
 			avgOutputRowHeight.value = 0;
@@ -674,23 +667,9 @@ watch(
 	{ immediate: true },
 );
 
-watch(maxOutputRun, () => {
-	runOutputIndex.value = -1;
-});
-
-watch(maxInputRun, () => {
-	runInputIndex.value = -1;
-});
-
 watch(inputNodeName, (nodeName) => {
 	setTimeout(() => {
 		ndvStore.setInputNodeName(nodeName);
-	}, 0);
-});
-
-watch(inputRun, (inputRun) => {
-	setTimeout(() => {
-		ndvStore.setInputRunIndex(inputRun);
 	}, 0);
 });
 

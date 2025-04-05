@@ -34,7 +34,7 @@ const toggleButtonText = computed(() =>
 				size="small"
 				icon-size="medium"
 				:aria-label="popOutButtonText"
-				@click="emit('popOut')"
+				@click.stop="emit('popOut')"
 			/>
 		</N8nTooltip>
 		<N8nTooltip
