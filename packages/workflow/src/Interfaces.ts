@@ -1972,6 +1972,7 @@ export interface IWebhookData {
 	isTest?: boolean;
 	userId?: string;
 	staticData?: Workflow['staticData'];
+	startExecutionEarly?: boolean;
 }
 
 export type WebhookType = 'default' | 'setup';

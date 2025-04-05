@@ -184,7 +184,7 @@ export function escapeSingleCurlyBrackets(text?: string): string | undefined {
 }
 
 export const getConnectedTools = async (
-	ctx: IExecuteFunctions,
+	ctx: IExecuteFunctions | IWebhookFunctions,
 	enforceUniqueNames: boolean,
 	convertStructuredTool: boolean = true,
 	escapeCurlyBrackets: boolean = false,
