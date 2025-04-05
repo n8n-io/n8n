@@ -14,6 +14,7 @@ import { WorkflowRepository } from '@/databases/repositories/workflow.repository
 import { UserManagementMailer } from '@/user-management/email';
 import type { WorkflowWithSharingsMetaDataAndCredentials } from '@/workflows/workflows.types';
 import { mockInstance } from '@test/mocking';
+import { createFolder } from '@test-integration/db/folders';
 
 import {
 	affixRoleToSaveCredential,
@@ -36,7 +37,6 @@ import type { SaveCredentialFunction } from '../shared/types';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 import { makeWorkflow } from '../shared/utils/';
-import { createFolder } from '@test-integration/db/folders';
 
 let owner: User;
 let admin: User;
