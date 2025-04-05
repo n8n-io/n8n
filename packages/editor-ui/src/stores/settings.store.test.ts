@@ -112,6 +112,46 @@ describe('settings.store', () => {
 		});
 	});
 
+	describe('isCommunityPlan', () => {
+		it('should return true if the plan name includes "community" (case insensitive)', () => {
+			const settingsStore = useSettingsStore();
+
+			settingsStore.settings = {
+				license: {
+					planName: 'Community',
+				},
+			} as FrontendSettings;
+
+			expect(settingsStore.isCommunityPlan).toBe(true);
+
+			settingsStore.settings.license.planName = 'COMMUNITY';
+			expect(settingsStore.isCommunityPlan).toBe(true);
+
+			settingsStore.settings.license.planName = 'community';
+			expect(settingsStore.isCommunityPlan).toBe(true);
+		});
+
+		it('should return false if the plan name does not include "community"', () => {
+			const settingsStore = useSettingsStore();
+
+			settingsStore.settings = {
+				license: {
+					planName: 'Enterprise',
+				},
+			} as FrontendSettings;
+
+			expect(settingsStore.isCommunityPlan).toBe(false);
+		});
+
+		it('should return true if the plan name is undefined and defaults to "Community"', () => {
+			const settingsStore = useSettingsStore();
+
+			settingsStore.settings = {} as FrontendSettings;
+
+			expect(settingsStore.isCommunityPlan).toBe(true);
+		});
+	});
+
 	describe('partialExecutionVersion', () => {
 		it.each([
 			{
