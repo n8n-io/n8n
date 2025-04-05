@@ -36,6 +36,7 @@ import type { SaveCredentialFunction } from '../shared/types';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 import { makeWorkflow } from '../shared/utils/';
+import { createFolder } from '@test-integration/db/folders';
 
 let owner: User;
 let admin: User;
@@ -1617,6 +1618,34 @@ describe('PUT /:workflowId/transfer', () => {
 
 		expect(activeWorkflowManager.remove).toHaveBeenCalledWith(workflow.id);
 		expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflow.id, 'update');
+	});
+
+	test('should detach workflow from parent folder in source project', async () => {
+		//
+		// ARRANGE
+		//
+		const destinationProject = await createTeamProject('Team Project', member);
+
+		const folder = await createFolder(destinationProject, { name: 'Test Folder' });
+
+		const workflow = await createWorkflow({ active: true, parentFolder: folder }, member);
+
+		//
+		// ACT
+		//
+		const response = await testServer
+			.authAgentFor(member)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id })
+			.expect(200);
+
+		//
+		// ASSERT
+		//
+		expect(response.body).toEqual({});
+
+		const workflowFromDB = await workflowRepository.findOneByOrFail({ id: workflow.id });
+		expect(workflowFromDB.parentFolder).toBeNull();
 	});
 
 	test('deactivates the workflow if it cannot be added to the active workflow manager again and returns the WorkflowActivationError as data', async () => {
