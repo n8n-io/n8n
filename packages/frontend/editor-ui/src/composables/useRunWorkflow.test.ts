@@ -26,7 +26,7 @@ import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { waitFor } from '@testing-library/vue';
 
-vi.mock('@/stores/workflows.store', () => ({
+vi.mock('@/stores/workflows.store', async () => ({
 	useWorkflowsStore: vi.fn().mockReturnValue({
 		allNodes: [],
 		runWorkflow: vi.fn(),
@@ -34,6 +34,7 @@ vi.mock('@/stores/workflows.store', () => ({
 		getWorkflowRunData: null,
 		setWorkflowExecutionData: vi.fn(),
 		activeExecutionId: null,
+		previousExecutionId: null,
 		nodesIssuesExist: false,
 		executionWaitingForWebhook: false,
 		getCurrentWorkflow: vi.fn().mockReturnValue({ id: '123' }),
@@ -47,6 +48,7 @@ vi.mock('@/stores/workflows.store', () => ({
 		incomingConnectionsByNodeName: vi.fn(),
 		outgoingConnectionsByNodeName: vi.fn(),
 		markExecutionAsStopped: vi.fn(),
+		setActiveExecutionId: vi.fn(),
 	}),
 }));
 
@@ -151,6 +153,7 @@ describe('useRunWorkflow({ router })', () => {
 
 			const mockResponse = { executionId: '123', waitingForWebhook: false };
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockResponse);
+			vi.mocked(workflowsStore).activeExecutionId = '123';
 
 			const response = await runWorkflowApi({} as IStartRunData);
 
