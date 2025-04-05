@@ -68,7 +68,7 @@ export class McpTrigger extends Node {
 
 		const mcpServer: McpServer = McpServerSingleton.instance(context.logger);
 
-		if (webhookName === 'setup' && mcpServer.server) {
+		if (webhookName === 'setup') {
 			// Sets up the transport and opens the long-lived connection. This resp
 			// will stay streaming, and is the channel that sends the events
 			const postUrl = new URL(context.getNodeWebhookUrl('default') ?? '/mcp/messages').pathname;

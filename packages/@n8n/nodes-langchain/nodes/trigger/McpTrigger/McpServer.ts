@@ -35,7 +35,7 @@ function wasToolCall(body: string) {
 }
 
 export class McpServer {
-	server: Server;
+	servers: { [sessionId: string]: Server } = {};
 
 	transports: { [sessionId: string]: FlushingSSEServerTransport } = {};
 
@@ -46,23 +46,25 @@ export class McpServer {
 	private resolveFunctions: { [sessionId: string]: CallableFunction } = {};
 
 	constructor(logger: Logger) {
-		this.server = this.setUpServer();
 		this.logger = logger;
 		this.logger.info('MCP Server created');
 	}
 
 	async connectTransport(postUrl: string, resp: CompressionResponse): Promise<void> {
 		const transport = new FlushingSSEServerTransport(postUrl, resp);
+		const server = this.setUpServer();
 		this.transports[transport.sessionId] = transport;
-		await this.server.connect(transport);
+		this.servers[transport.sessionId] = server;
 
 		resp.on('close', async () => {
 			this.logger.info(`Deleting transport for ${transport.sessionId}`);
-			await transport.close();
-			delete this.transports[transport.sessionId];
 			delete this.tools[transport.sessionId];
 			delete this.resolveFunctions[transport.sessionId];
+			delete this.transports[transport.sessionId];
+			delete this.servers[transport.sessionId];
 		});
+
+		await server.connect(transport);
 
 		// Make sure we flush the compression middleware, so that it's not waiting for more content to be added to the buffer
 		if (resp.flush) {
@@ -110,6 +112,7 @@ export class McpServer {
 				// eslint-disable-next-line n8n-local-rules/no-plain-errors
 				throw new Error('Require a sessionId for the listing of tools');
 			}
+
 			return {
 				tools: this.tools[extra.sessionId].map((tool) => {
 					return {

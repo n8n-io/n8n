@@ -611,7 +611,7 @@ importers:
         specifier: 0.1.0
         version: 0.1.0(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))
       '@modelcontextprotocol/sdk':
-        specifier: ^1.7.0
+        specifier: ^1.8.0
         version: 1.8.0
       '@mozilla/readability':
         specifier: 0.6.0
