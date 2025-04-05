@@ -25,9 +25,11 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type {
 	Connection,
+	Dimensions,
 	GraphNode,
 	NodeDragEvent,
 	NodeMouseEvent,
+	ViewportTransform,
 	XYPosition,
 } from '@vue-flow/core';
 import { MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
@@ -64,7 +66,7 @@ const emit = defineEmits<{
 	'update:node:parameters': [id: string, parameters: Record<string, unknown>];
 	'update:node:inputs': [id: string];
 	'update:node:outputs': [id: string];
-	'click:node': [id: string];
+	'click:node': [id: string, position: XYPosition];
 	'click:node:add': [id: string, handle: string];
 	'run:node': [id: string];
 	'delete:node': [id: string];
@@ -92,6 +94,8 @@ const emit = defineEmits<{
 	'create:workflow': [];
 	'drag-and-drop': [position: XYPosition, event: DragEvent];
 	'tidy-up': [CanvasLayoutEvent];
+	'viewport:change': [viewport: ViewportTransform, dimensions: Dimensions];
+	'selection:end': [position: XYPosition];
 }>();
 
 const props = withDefaults(
@@ -139,6 +143,7 @@ const {
 	onNodesInitialized,
 	findNode,
 	viewport,
+	dimensions,
 	nodesSelectionActive,
 	onEdgeMouseLeave,
 	onEdgeMouseEnter,
@@ -345,7 +350,7 @@ function onNodeDragStop(event: NodeDragEvent) {
 }
 
 function onNodeClick({ event, node }: NodeMouseEvent) {
-	emit('click:node', node.id);
+	emit('click:node', node.id, getProjectedPosition(event));
 
 	if (event.ctrlKey || event.metaKey || selectedNodes.value.length < 2) {
 		return;
@@ -358,10 +363,12 @@ function onSelectionDragStop(event: NodeDragEvent) {
 	onUpdateNodesPosition(event.nodes.map(({ id, position }) => ({ id, position })));
 }
 
-function onSelectionEnd() {
+function onSelectionEnd(event: MouseEvent) {
 	if (selectedNodes.value.length === 1) {
 		nodesSelectionActive.value = false;
 	}
+
+	emit('selection:end', getProjectedPosition(event));
 }
 
 function onSetNodeActivated(id: string) {
@@ -581,6 +588,10 @@ function onPaneMoveStart() {
 
 function onPaneMoveEnd() {
 	isPaneMoving.value = false;
+}
+
+function onViewportChange() {
+	emit('viewport:change', viewport.value, dimensions.value);
 }
 
 /**
@@ -807,6 +818,7 @@ provide(CanvasKey, {
 		@selection-context-menu="onOpenSelectionContextMenu"
 		@dragover="onDragOver"
 		@drop="onDrop"
+		@viewport-change="onViewportChange"
 	>
 		<template #node-canvas-node="nodeProps">
 			<slot name="node" v-bind="{ nodeProps }">
