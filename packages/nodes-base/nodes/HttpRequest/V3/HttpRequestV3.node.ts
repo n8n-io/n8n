@@ -38,6 +38,7 @@ import {
 	sanitizeUiMessage,
 	setAgentOptions,
 } from '../GenericFunctions';
+import { configureResponseOptimizer } from '../shared/optimizeResponse';
 
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {
@@ -691,6 +692,8 @@ export class HttpRequestV3 implements INodeType {
 			}
 		}
 
+		const shouldOptimizeResponse = this.getNodeParameter('optimizeResponse', 0, false) as boolean;
+
 		const sanitizedRequests: IDataObject[] = [];
 		const promisesResponses = await Promise.allSettled(
 			requestPromises.map(
@@ -832,6 +835,14 @@ export class HttpRequestV3 implements INodeType {
 						}
 					}
 				}
+				const optimizeResponse2 = shouldOptimizeResponse
+					? configureResponseOptimizer(this, itemIndex)
+					: <T>(x: T) => x;
+
+				let optimizeResponse = (x: any) => {
+					// console.log(x);
+					return optimizeResponse2(x);
+				};
 
 				if (autoDetectResponseFormat && !fullResponse) {
 					delete response.headers;
@@ -839,9 +850,11 @@ export class HttpRequestV3 implements INodeType {
 					delete response.statusMessage;
 				}
 				if (!fullResponse) {
-					response = response.body;
+					console.log(response.body);
+					response = optimizeResponse(response.body);
+					console.log(response);
 				}
-
+				optimizeResponse = (x) => x;
 				if (responseFormat === 'file') {
 					const outputPropertyName = this.getNodeParameter(
 						'options.response.response.outputPropertyName',
@@ -908,11 +921,13 @@ export class HttpRequestV3 implements INodeType {
 						const returnItem: IDataObject = {};
 						for (const property of fullResponseProperties) {
 							if (property === 'body') {
-								returnItem[outputPropertyName] = toText(response[property]);
+								console.log('A');
+								returnItem[outputPropertyName] = optimizeResponse(toText(response[property]));
 								continue;
 							}
+							console.log('B');
 
-							returnItem[property] = response[property];
+							returnItem[property] = optimizeResponse(response[property]);
 						}
 						returnItems.push({
 							json: returnItem,
@@ -921,9 +936,10 @@ export class HttpRequestV3 implements INodeType {
 							},
 						});
 					} else {
+						console.log('C');
 						returnItems.push({
 							json: {
-								[outputPropertyName]: toText(response),
+								[outputPropertyName]: optimizeResponse(toText(response)),
 							},
 							pairedItem: {
 								item: itemIndex,
@@ -935,12 +951,15 @@ export class HttpRequestV3 implements INodeType {
 					if (fullResponse) {
 						const returnItem: IDataObject = {};
 						for (const property of fullResponseProperties) {
-							returnItem[property] = response[property];
+							returnItem[property] = optimizeResponse(response[property]);
 						}
 
 						if (responseFormat === 'json' && typeof returnItem.body === 'string') {
 							try {
-								returnItem.body = JSON.parse(returnItem.body);
+								console.log('D', optimizeResponse(returnItem.body), JSON.parse(returnItem.body));
+								const returnItemBody = optimizeResponse(returnItem.body);
+								returnItem.body =
+									typeof returnItemBody === 'string' ? JSON.parse(returnItemBody) : returnItemBody;
 							} catch (error) {
 								throw new NodeOperationError(
 									this.getNode(),
@@ -958,9 +977,11 @@ export class HttpRequestV3 implements INodeType {
 						});
 					} else {
 						if (responseFormat === 'json' && typeof response === 'string') {
+							console.log('e');
 							try {
 								if (typeof response !== 'object') {
-									response = JSON.parse(response);
+									console.log('f');
+									response = JSON.parse(optimizeResponse(response));
 								}
 							} catch (error) {
 								throw new NodeOperationError(
@@ -972,6 +993,8 @@ export class HttpRequestV3 implements INodeType {
 						}
 
 						if (Array.isArray(response)) {
+							console.log('g');
+
 							// eslint-disable-next-line @typescript-eslint/no-loop-func
 							response.forEach((item) =>
 								returnItems.push({
@@ -982,8 +1005,11 @@ export class HttpRequestV3 implements INodeType {
 								}),
 							);
 						} else {
+							console.log('h', response);
+							const responseResult = optimizeResponse(response);
 							returnItems.push({
-								json: response,
+								json: responseResult,
+								// json: response,
 								pairedItem: {
 									item: itemIndex,
 								},
@@ -996,16 +1022,26 @@ export class HttpRequestV3 implements INodeType {
 
 		returnItems = returnItems.map(replaceNullValues);
 
+		if (shouldOptimizeResponse) {
+			// returnItems = returnItems.map(x => )
+		}
+
 		if (
 			returnItems.length === 1 &&
 			returnItems[0].json.data &&
 			Array.isArray(returnItems[0].json.data)
 		) {
-			this.addExecutionHints({
-				message:
-					'To split the contents of ‘data’ into separate items for easier processing, add a ‘Split Out’ node after this one',
-				location: 'outputPane',
-			});
+			const message =
+				'To split the contents of ‘data’ into separate items for easier processing, add a ‘Split Out’ node after this one';
+
+			if (this.addExecutionHints) {
+				this.addExecutionHints({
+					message,
+					location: 'outputPane',
+				});
+			} else {
+				this.logger.info(message);
+			}
 		}
 
 		return [returnItems];
