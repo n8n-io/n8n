@@ -334,4 +334,49 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 		// Exclude all children of the specified folder
 		query.andWhere(`folder.id NOT IN (${subQuery.getQuery()})`);
 	}
+
+	/**
+	 * Get all folder and subfolder IDs in a hierarchy (including direct children and all descendants)
+	 * @param parentFolderId The ID of the parent folder
+	 * @param projectId Optional project ID to restrict search to a project
+	 * @returns Array of unique folder IDs including direct children and all descendants
+	 */
+	async getAllFolderIdsInHierarchy(parentFolderId: string, projectId?: string): Promise<string[]> {
+		// Start with direct children as the base case
+		const baseQuery = this.createQueryBuilder()
+			.select('f.id', 'id')
+			.from('folder', 'f')
+			.where('f.parentFolderId = :parentFolderId', { parentFolderId });
+
+		// Add project filter if provided
+		if (projectId) {
+			baseQuery.andWhere('f.projectId = :projectId', { projectId });
+		}
+
+		// Create the recursive query for descendants
+		const recursiveQuery = this.createQueryBuilder()
+			.select('child.id', 'id')
+			.from('folder', 'child')
+			.innerJoin('folder_tree', 'parent', 'child.parentFolderId = parent.id');
+
+		// Add project filter if provided
+		if (projectId) {
+			recursiveQuery.andWhere('child.projectId = :projectId', { projectId });
+		}
+
+		// Create the main query with CTE
+		const query = this.createQueryBuilder()
+			.addCommonTableExpression(
+				`${baseQuery.getQuery()} UNION ALL ${recursiveQuery.getQuery()}`,
+				'folder_tree',
+				{ recursive: true },
+			)
+			.select('DISTINCT tree.id', 'id')
+			.from('folder_tree', 'tree')
+			.setParameters(baseQuery.getParameters());
+
+		// Execute the query and extract IDs
+		const result = await query.getRawMany<{ id: string }>();
+		return result.map((row) => row.id);
+	}
 }

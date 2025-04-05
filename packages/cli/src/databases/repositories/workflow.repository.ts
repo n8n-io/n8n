@@ -264,6 +264,23 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	}
 
 	async getWorkflowsAndFoldersWithCount(workflowIds: string[], options: ListQuery.Options = {}) {
+		if (
+			options.filter?.parentFolderId &&
+			typeof options.filter?.parentFolderId === 'string' &&
+			options.filter.parentFolderId !== PROJECT_ROOT &&
+			typeof options.filter?.projectId === 'string' &&
+			options.filter.name
+		) {
+			const folderIds = await this.folderRepository.getAllFolderIdsInHierarchy(
+				options.filter.parentFolderId,
+				options.filter.projectId,
+			);
+
+			options.filter.parentFolderIds = [options.filter.parentFolderId, ...folderIds];
+			options.filter.folderIds = folderIds;
+			delete options.filter.parentFolderId;
+		}
+
 		const [workflowsAndFolders, count] = await Promise.all([
 			this.getWorkflowsAndFoldersUnion(workflowIds, options),
 			this.getWorkflowsAndFoldersCount(workflowIds, options),
@@ -401,6 +418,14 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		} else if (filter?.parentFolderId) {
 			qb.andWhere('workflow.parentFolderId = :parentFolderId', {
 				parentFolderId: filter.parentFolderId,
+			});
+		} else if (
+			filter?.parentFolderIds &&
+			Array.isArray(filter.parentFolderIds) &&
+			filter.parentFolderIds.length > 0
+		) {
+			qb.andWhere('workflow.parentFolderId IN (:...parentFolderIds)', {
+				parentFolderIds: filter.parentFolderIds,
 			});
 		}
 	}
