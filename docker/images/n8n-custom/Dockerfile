@@ -63,15 +63,15 @@ RUN \
 
 	USER root
 	RUN npm install -g \
-		neo4j-driver \
-		mailgun.js \
-		form-data \
-		composio-core \
-		openai \
-		@mendable/firecrawl-js \
-		resend \
-		@supabase/supabase-js \
-		@pinecone-database/pinecone
+    neo4j-driver \
+    mailgun.js \
+    form-data \
+    composio-core \
+    openai \
+    @mendable/firecrawl-js \
+    resend \
+    @supabase/supabase-js \
+    'pinecone5@npm:@pinecone-database/pinecone@5.1.1'
 	
 	# If any CLI binaries were installed and should be globally available, you can verify PATH here
 	ENV PATH="/usr/local/bin:$PATH"
