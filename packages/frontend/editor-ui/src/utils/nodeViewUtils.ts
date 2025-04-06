@@ -15,7 +15,7 @@ import type {
 	NodeHint,
 	Workflow,
 } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
 
 /*
@@ -280,11 +280,24 @@ export function getGenericHints({
 }) {
 	const nodeHints: NodeHint[] = [];
 
+	// tools hints
+	if (node?.type.toLocaleLowerCase().includes('tool') && hasNodeRun) {
+		const stringifiedParameters = JSON.stringify(workflowNode.parameters);
+		if (!stringifiedParameters.includes('$fromAI')) {
+			nodeHints.push({
+				message:
+					'No parameters are set up to be filled by AI. Click on the ✨ button next to a parameter to allow AI to set its value.',
+				location: 'outputPane',
+				whenToDisplay: 'afterExecution',
+			});
+		}
+	}
+
 	// add limit reached hint
 	if (hasNodeRun && workflowNode.parameters.limit) {
 		if (nodeOutputData.length === workflowNode.parameters.limit) {
 			nodeHints.push({
-				message: `Limit of ${workflowNode.parameters.limit as number} items reached. There may be more items that aren't being returned. Tweak the 'Return All' or 'Limit' parameters to access more items.`,
+				message: `Limit of ${workflowNode.parameters.limit} items reached. There may be more items that aren't being returned. Tweak the 'Return All' or 'Limit' parameters to access more items.`,
 				location: 'outputPane',
 				whenToDisplay: 'afterExecution',
 			});
@@ -306,6 +319,17 @@ export function getGenericHints({
 		}
 	}
 
+	// add sendAndWait hint
+	if (hasMultipleInputItems && workflowNode.parameters.operation === SEND_AND_WAIT_OPERATION) {
+		const executeOnce = workflow.getNode(node.name)?.executeOnce;
+		if (!executeOnce) {
+			nodeHints.push({
+				message: 'This action will run only once, for the first input item',
+				location: 'outputPane',
+			});
+		}
+	}
+
 	// add expression in field name hint for Set node
 	if (node.type === SET_NODE_TYPE && node.parameters.mode === 'manual') {
 		const rawParameters = NodeHelpers.getNodeParameters(
@@ -314,8 +338,7 @@ export function getGenericHints({
 			true,
 			false,
 			node,
-			undefined,
-			false,
+			nodeType,
 		);
 
 		const assignments =

@@ -20,7 +20,7 @@ import {
 	STORES,
 } from '@/constants';
 import type { INodeIssues } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import { useWorkflowsStore } from './workflows.store';
@@ -181,7 +181,7 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 			return false;
 		}
 		const workflow = workflowsStore.getCurrentWorkflow();
-		const parentNodes = workflow.getParentNodes(activeNode.value.name, NodeConnectionType.Main, 1);
+		const parentNodes = workflow.getParentNodes(activeNode.value.name, NodeConnectionTypes.Main, 1);
 		return parentNodes.includes(inputNodeName);
 	});
 
@@ -269,7 +269,11 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		type,
 		data,
 		dimensions,
-	}: { type: string; data: string; dimensions: DOMRect | null }): void => {
+	}: {
+		type: string;
+		data: string;
+		dimensions: DOMRect | null;
+	}): void => {
 		draggable.value = {
 			isDragging: true,
 			type,
@@ -314,10 +318,7 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		}
 	};
 
-	const setNDVPanelDataIsEmpty = (params: {
-		panel: NodePanelType;
-		isEmpty: boolean;
-	}): void => {
+	const setNDVPanelDataIsEmpty = (params: { panel: NodePanelType; isEmpty: boolean }): void => {
 		if (params.panel === 'input') {
 			input.value.data.isEmpty = params.isEmpty;
 		} else {

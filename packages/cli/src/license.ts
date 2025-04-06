@@ -14,6 +14,7 @@ import {
 	LICENSE_QUOTAS,
 	N8N_VERSION,
 	SETTINGS_LICENSE_CERT_KEY,
+	Time,
 	UNLIMITED_LICENSE_QUOTA,
 } from './constants';
 import type { BooleanLicenseFeature, NumericLicenseFeature } from './interfaces';
@@ -60,7 +61,7 @@ export class License {
 		const isMainInstance = instanceType === 'main';
 		const server = this.globalConfig.license.serverUrl;
 		const offlineMode = !isMainInstance;
-		const autoRenewOffset = this.globalConfig.license.autoRenewOffset;
+		const autoRenewOffset = 72 * Time.hours.toSeconds;
 		const saveCertStr = isMainInstance
 			? async (value: TLicenseBlock) => await this.saveCertStr(value)
 			: async () => {};
@@ -92,6 +93,7 @@ export class License {
 				autoRenewEnabled: shouldRenew,
 				renewOnInit: shouldRenew,
 				autoRenewOffset,
+				detachFloatingOnShutdown: this.globalConfig.license.detachFloatingOnShutdown,
 				offlineMode,
 				logger: this.logger,
 				loadCertStr: async () => await this.loadCertStr(),
@@ -131,11 +133,18 @@ export class License {
 	}
 
 	async onFeatureChange(_features: TFeatures): Promise<void> {
+		const { isMultiMain, isLeader } = this.instanceSettings;
+
+		if (Object.keys(_features).length === 0) {
+			this.logger.error('Empty license features recieved', { isMultiMain, isLeader });
+			return;
+		}
+
 		this.logger.debug('License feature change detected', _features);
 
 		this.checkIsLicensedForMultiMain(_features);
 
-		if (this.instanceSettings.isMultiMain && !this.instanceSettings.isLeader) {
+		if (isMultiMain && !isLeader) {
 			this.logger
 				.scoped(['scaling', 'multi-main-setup', 'license'])
 				.debug('Instance is not leader, skipping sending of "reload-license" command...');
@@ -185,6 +194,15 @@ export class License {
 
 		await this.manager.renew();
 		this.logger.debug('License renewed');
+	}
+
+	async clear() {
+		if (!this.manager) {
+			return;
+		}
+
+		await this.manager.clear();
+		this.logger.info('License cleared');
 	}
 
 	@OnShutdown()
@@ -291,6 +309,10 @@ export class License {
 
 	isCustomNpmRegistryEnabled() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY);
+	}
+
+	isFoldersEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.FOLDERS);
 	}
 
 	getCurrentEntitlements() {

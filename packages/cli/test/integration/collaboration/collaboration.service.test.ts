@@ -16,7 +16,7 @@ import { createWorkflow, shareWorkflowWithUsers } from '@test-integration/db/wor
 import * as testDb from '@test-integration/test-db';
 
 describe('CollaborationService', () => {
-	mockInstance(Push, new Push(mock(), mock(), mock()));
+	mockInstance(Push, new Push(mock(), mock(), mock(), mock(), mock()));
 	let pushService: Push;
 	let collaborationService: CollaborationService;
 	let owner: User;

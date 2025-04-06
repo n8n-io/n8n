@@ -105,6 +105,15 @@ const mainMenuItems = computed(() => [
 		route: { to: { name: VIEWS.VARIABLES } },
 	},
 	{
+		id: 'insights',
+		icon: 'chart-bar',
+		label: 'Insights',
+		customIconSize: 'medium',
+		position: 'bottom',
+		route: { to: { name: VIEWS.INSIGHTS } },
+		available: hasPermission(['rbac'], { rbac: { scope: 'insights:list' } }),
+	},
+	{
 		id: 'help',
 		icon: 'question',
 		label: i18n.baseText('mainSidebar.help'),
@@ -294,6 +303,7 @@ const {
 	createCredentialsAppendSlotName,
 	projectsLimitReachedMessage,
 	upgradeLabel,
+	hasPermissionToCreateProjects,
 } = useGlobalEntityCreation();
 onClickOutside(createBtn as Ref<VueInstance>, () => {
 	createBtn.value?.close();
@@ -385,7 +395,14 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 						placement="right"
 						:content="projectsLimitReachedMessage"
 					>
+						<N8nIcon
+							v-if="!hasPermissionToCreateProjects"
+							style="margin-left: auto; margin-right: 5px"
+							icon="lock"
+							size="xsmall"
+						/>
 						<N8nButton
+							v-else
 							:size="'mini'"
 							style="margin-left: auto"
 							type="tertiary"

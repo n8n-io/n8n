@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import nock from 'nock';
 
-import { setup, equalityTest, workflowToTests, getWorkflowFilenames } from '@test/nodes/Helpers';
+import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
 
 import { profileResponse } from './apiResponses';
 import { ouraApiRequest } from '../GenericFunctions';
@@ -52,19 +52,13 @@ describe('Oura', () => {
 		});
 	});
 	describe('Run Oura workflow', () => {
-		const workflows = getWorkflowFilenames(__dirname);
-		const tests = workflowToTests(workflows);
-
 		beforeAll(() => {
 			nock('https://api.ouraring.com/v2')
 				.get('/usercollection/personal_info')
 				.reply(200, profileResponse);
 		});
 
-		const nodeTypes = setup(tests);
-
-		for (const testData of tests) {
-			test(testData.description, async () => await equalityTest(testData, nodeTypes));
-		}
+		const workflows = getWorkflowFilenames(__dirname);
+		testWorkflows(workflows);
 	});
 });

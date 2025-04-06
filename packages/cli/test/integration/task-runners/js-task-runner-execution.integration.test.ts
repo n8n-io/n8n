@@ -12,7 +12,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { createEnvProviderState, NodeConnectionType, Workflow } from 'n8n-workflow';
+import { createEnvProviderState, NodeConnectionTypes, Workflow } from 'n8n-workflow';
 
 import { LocalTaskRequester } from '@/task-runners/task-managers/local-task-requester';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
@@ -78,7 +78,7 @@ describe('JS TaskRunner execution on internal mode', () => {
 						[
 							{
 								node: 'Code',
-								type: NodeConnectionType.Main,
+								type: NodeConnectionTypes.Main,
 								index: 0,
 							},
 						],

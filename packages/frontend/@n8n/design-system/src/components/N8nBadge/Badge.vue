@@ -17,6 +17,7 @@ interface BadgeProps {
 	theme?: (typeof THEME)[number];
 	size?: TextSize;
 	bold?: boolean;
+	showBorder?: boolean;
 }
 
 defineOptions({ name: 'N8nBadge' });
@@ -24,11 +25,12 @@ withDefaults(defineProps<BadgeProps>(), {
 	theme: 'default',
 	size: 'small',
 	bold: false,
+	showBorder: true,
 });
 </script>
 
 <template>
-	<span :class="['n8n-badge', $style[theme]]">
+	<span :class="['n8n-badge', { [$style[theme]]: true, [$style.border]: showBorder }]">
 		<N8nText :size="size" :bold="bold" :compact="true">
 			<slot></slot>
 		</N8nText>
@@ -40,8 +42,11 @@ withDefaults(defineProps<BadgeProps>(), {
 	display: inline-flex;
 	align-items: center;
 	padding: var(--spacing-5xs) var(--spacing-4xs);
-	border: var(--border-base);
 	white-space: nowrap;
+
+	&.border {
+		border: var(--border-base);
+	}
 }
 
 .default {

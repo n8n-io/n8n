@@ -1,0 +1,228 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Test Summarize Node, aggregateAndSplitData should not convert numbers to strings: array 1`] = `
+[
+  {
+    "pairedItems": [
+      0,
+    ],
+    "returnData": {
+      "Qty": 1,
+      "Sku": 12345,
+      "appended_Warehouse": [
+        "BER_0G",
+      ],
+    },
+  },
+  {
+    "pairedItems": [
+      1,
+    ],
+    "returnData": {
+      "Qty": 2,
+      "Sku": 12345,
+      "appended_Warehouse": [
+        "BER_0L",
+      ],
+    },
+  },
+  {
+    "pairedItems": [
+      2,
+    ],
+    "returnData": {
+      "Qty": 1,
+      "Sku": 6534563534,
+      "appended_Warehouse": [
+        "BER_0L",
+      ],
+    },
+  },
+]
+`;
+
+exports[`Test Summarize Node, aggregateAndSplitData should not convert numbers to strings: result 1`] = `
+{
+  "fieldName": "Sku",
+  "splits": Map {
+    12345 => {
+      "fieldName": "Qty",
+      "splits": Map {
+        1 => {
+          "pairedItems": [
+            0,
+          ],
+          "returnData": {
+            "appended_Warehouse": [
+              "BER_0G",
+            ],
+          },
+        },
+        2 => {
+          "pairedItems": [
+            1,
+          ],
+          "returnData": {
+            "appended_Warehouse": [
+              "BER_0L",
+            ],
+          },
+        },
+      },
+    },
+    6534563534 => {
+      "fieldName": "Qty",
+      "splits": Map {
+        1 => {
+          "pairedItems": [
+            2,
+          ],
+          "returnData": {
+            "appended_Warehouse": [
+              "BER_0L",
+            ],
+          },
+        },
+      },
+    },
+  },
+}
+`;
+
+exports[`Test Summarize Node, aggregateAndSplitData should not convert strings to numbers: array 1`] = `
+[
+  {
+    "pairedItems": [
+      0,
+    ],
+    "returnData": {
+      "Qty": "1",
+      "Sku": "012345",
+      "appended_Warehouse": [
+        "BER_0G",
+      ],
+    },
+  },
+  {
+    "pairedItems": [
+      1,
+    ],
+    "returnData": {
+      "Qty": "2",
+      "Sku": "012345",
+      "appended_Warehouse": [
+        "BER_0L",
+      ],
+    },
+  },
+  {
+    "pairedItems": [
+      2,
+    ],
+    "returnData": {
+      "Qty": "1",
+      "Sku": "06534563534",
+      "appended_Warehouse": [
+        "BER_0L",
+      ],
+    },
+  },
+]
+`;
+
+exports[`Test Summarize Node, aggregateAndSplitData should not convert strings to numbers: result 1`] = `
+{
+  "fieldName": "Sku",
+  "splits": Map {
+    "012345" => {
+      "fieldName": "Qty",
+      "splits": Map {
+        "1" => {
+          "pairedItems": [
+            0,
+          ],
+          "returnData": {
+            "appended_Warehouse": [
+              "BER_0G",
+            ],
+          },
+        },
+        "2" => {
+          "pairedItems": [
+            1,
+          ],
+          "returnData": {
+            "appended_Warehouse": [
+              "BER_0L",
+            ],
+          },
+        },
+      },
+    },
+    "06534563534" => {
+      "fieldName": "Qty",
+      "splits": Map {
+        "1" => {
+          "pairedItems": [
+            2,
+          ],
+          "returnData": {
+            "appended_Warehouse": [
+              "BER_0L",
+            ],
+          },
+        },
+      },
+    },
+  },
+}
+`;
+
+exports[`Test Summarize Node, aggregateAndSplitData with skipEmptySplitFields=true should skip empty split fields: array 1`] = `
+[
+  {
+    "pairedItems": [
+      0,
+      3,
+    ],
+    "returnData": {
+      "Sku": 12345,
+      "concatenated_Warehouse": "BER_0G//{"name":"BER_0G3"}",
+    },
+  },
+  {
+    "pairedItems": [
+      2,
+    ],
+    "returnData": {
+      "Sku": "{}",
+      "concatenated_Warehouse": "BER_0L",
+    },
+  },
+]
+`;
+
+exports[`Test Summarize Node, aggregateAndSplitData with skipEmptySplitFields=true should skip empty split fields: result 1`] = `
+{
+  "fieldName": "Sku",
+  "splits": Map {
+    12345 => {
+      "pairedItems": [
+        0,
+        3,
+      ],
+      "returnData": {
+        "concatenated_Warehouse": "BER_0G//{"name":"BER_0G3"}",
+      },
+    },
+    "{}" => {
+      "pairedItems": [
+        2,
+      ],
+      "returnData": {
+        "concatenated_Warehouse": "BER_0L",
+      },
+    },
+  },
+}
+`;

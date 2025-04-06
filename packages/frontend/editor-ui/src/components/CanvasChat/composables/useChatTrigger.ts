@@ -2,7 +2,7 @@ import type { ComputedRef, MaybeRef } from 'vue';
 import { ref, computed, unref } from 'vue';
 import {
 	CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	NodeHelpers,
 } from 'n8n-workflow';
 import type { INodeTypeDescription, Workflow, INode, INodeParameters } from 'n8n-workflow';
@@ -103,9 +103,9 @@ export function useChatTrigger({
 
 					// Validate if node has required AI connection types
 					if (
-						inputTypes.includes(NodeConnectionType.AiLanguageModel) &&
-						inputTypes.includes(NodeConnectionType.Main) &&
-						outputTypes.includes(NodeConnectionType.Main)
+						inputTypes.includes(NodeConnectionTypes.AiLanguageModel) &&
+						inputTypes.includes(NodeConnectionTypes.Main) &&
+						outputTypes.includes(NodeConnectionTypes.Main)
 					) {
 						isCustomChainOrAgent = true;
 					}

@@ -114,7 +114,7 @@ const iconData = computed<{ icon: IconMap[keyof IconMap]; color: IconColor }>(()
 }
 
 .bold {
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight-medium);
 }
 
 .note {

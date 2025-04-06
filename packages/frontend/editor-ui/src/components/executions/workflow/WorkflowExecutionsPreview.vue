@@ -1,24 +1,20 @@
 <script lang="ts" setup>
-import { computed, ref, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { ElDropdown } from 'element-plus';
-import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
-import { useMessage } from '@/composables/useMessage';
 import WorkflowExecutionAnnotationPanel from '@/components/executions/workflow/WorkflowExecutionAnnotationPanel.ee.vue';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
-import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/constants';
-import type { ExecutionSummary } from 'n8n-workflow';
+import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
 import type { IExecutionUIData } from '@/composables/useExecutionHelpers';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import { useI18n } from '@/composables/useI18n';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
+import { useMessage } from '@/composables/useMessage';
+import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/constants';
 import { getResourcePermissions } from '@/permissions';
 import { useSettingsStore } from '@/stores/settings.store';
-import type { ButtonType } from '@n8n/design-system';
-import { useExecutionsStore } from '@/stores/executions.store';
-import ProjectCreateResource from '@/components/Projects/ProjectCreateResource.vue';
-import { useToast } from '@/composables/useToast';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
+import { N8nButton, N8nIconButton, N8nText } from '@n8n/design-system';
+import type { ExecutionSummary } from 'n8n-workflow';
+import { computed, ref } from 'vue';
+import { RouterLink, useRoute } from 'vue-router';
 
 type RetryDropdownRef = InstanceType<typeof ElDropdown>;
 
@@ -33,19 +29,14 @@ const emit = defineEmits<{
 }>();
 
 const route = useRoute();
-const router = useRouter();
 const locale = useI18n();
 
 const executionHelpers = useExecutionHelpers();
 const message = useMessage();
-const toast = useToast();
 const executionDebugging = useExecutionDebugging();
 const workflowsStore = useWorkflowsStore();
 const settingsStore = useSettingsStore();
-const testDefinitionStore = useTestDefinitionStore();
-const executionsStore = useExecutionsStore();
 const retryDropdownRef = ref<RetryDropdownRef | null>(null);
-const actionToggleRef = ref<InstanceType<typeof ProjectCreateResource> | null>(null);
 const workflowId = computed(() => route.params.name as string);
 const workflowPermissions = computed(
 	() => getResourcePermissions(workflowsStore.getWorkflowById(workflowId.value)?.scopes).workflow,
@@ -58,11 +49,11 @@ const debugButtonData = computed(() =>
 	props.execution?.status === 'success'
 		? {
 				text: locale.baseText('executionsList.debug.button.copyToEditor'),
-				type: 'secondary',
+				type: 'secondary' as const,
 			}
 		: {
 				text: locale.baseText('executionsList.debug.button.debugInEditor'),
-				type: 'primary',
+				type: 'primary' as const,
 			},
 );
 const isRetriable = computed(
@@ -78,61 +69,6 @@ const hasAnnotation = computed(
 		!!props.execution?.annotation &&
 		(props.execution?.annotation.vote || props.execution?.annotation.tags.length > 0),
 );
-
-const testDefinitions = computed(
-	() => testDefinitionStore.allTestDefinitionsByWorkflowId[workflowId.value],
-);
-
-const testDefinition = computed(() =>
-	testDefinitions.value.find((test) => test.id === route.query.testId),
-);
-
-const addToTestActions = computed(() => {
-	const testAction = testDefinitions.value
-		.filter((test) => test.annotationTagId)
-		.map((test) => {
-			const isAlreadyAdded = isTagAlreadyAdded(test.annotationTagId ?? '');
-			return {
-				label: `${test.name}`,
-				value: test.annotationTagId ?? '',
-				disabled: !workflowPermissions.value.update || isAlreadyAdded,
-			};
-		});
-
-	const newTestAction = {
-		label: '+ New Test',
-		value: 'new',
-		disabled: !workflowPermissions.value.update,
-	};
-
-	return [newTestAction, ...testAction];
-});
-
-function getTestButtonLabel(isAdded: boolean): string {
-	if (isAdded) {
-		return locale.baseText('testDefinition.executions.addedTo', {
-			interpolate: { name: testDefinition.value?.name ?? '' },
-		});
-	}
-	return testDefinition.value
-		? locale.baseText('testDefinition.executions.addTo.existing', {
-				interpolate: { name: testDefinition.value.name },
-			})
-		: locale.baseText('testDefinition.executions.addTo.new');
-}
-
-const addTestButtonData = computed<{ label: string; type: ButtonType }>(() => {
-	const isAdded = isTagAlreadyAdded(route.query.tag as string);
-	return {
-		label: getTestButtonLabel(isAdded),
-		type: route.query.testId ? 'primary' : 'secondary',
-		disabled: !workflowPermissions.value.update || isAdded,
-	};
-});
-
-function isTagAlreadyAdded(tagId?: string | null) {
-	return Boolean(tagId && props.execution?.annotation?.tags.some((tag) => tag.id === tagId));
-}
 
 async function onDeleteExecution(): Promise<void> {
 	// Prepend the message with a note about annotations if they exist
@@ -172,40 +108,6 @@ function onRetryButtonBlur(event: FocusEvent) {
 		retryDropdownRef.value.handleClose();
 	}
 }
-
-async function handleAddToTestAction(actionValue: string) {
-	if (actionValue === 'new') {
-		await router.push({
-			name: VIEWS.NEW_TEST_DEFINITION,
-			params: {
-				name: workflowId.value,
-			},
-		});
-		return;
-	}
-	const currentTags = props.execution?.annotation?.tags ?? [];
-	const newTags = [...currentTags.map((t) => t.id), actionValue];
-	await executionsStore.annotateExecution(props.execution.id, { tags: newTags });
-	toast.showMessage({
-		title: locale.baseText('testDefinition.executions.toast.addedTo.title'),
-		message: locale.baseText('testDefinition.executions.toast.addedTo', {
-			interpolate: { name: testDefinition.value?.name ?? '' },
-		}),
-		type: 'success',
-	});
-}
-
-async function handleEvaluationButton() {
-	if (!testDefinition.value) {
-		actionToggleRef.value?.openActionToggle(true);
-	} else {
-		await handleAddToTestAction(route.query.tag as string);
-	}
-}
-
-onMounted(async () => {
-	await testDefinitionStore.fetchTestDefinitionsByWorkflowId(workflowId.value);
-});
 </script>
 
 <template>
@@ -285,7 +187,7 @@ onMounted(async () => {
 				</N8nText>
 				<br /><N8nText v-if="execution.mode === 'retry'" color="text-base" size="medium">
 					{{ locale.baseText('executionDetails.retry') }}
-					<router-link
+					<RouterLink
 						:class="$style.executionLink"
 						:to="{
 							name: VIEWS.EXECUTION_PREVIEW,
@@ -296,24 +198,11 @@ onMounted(async () => {
 						}"
 					>
 						#{{ execution.retryOf }}
-					</router-link>
+					</RouterLink>
 				</N8nText>
 			</div>
 			<div :class="$style.actions">
-				<ProjectCreateResource
-					v-if="testDefinitions && testDefinitions.length"
-					ref="actionToggleRef"
-					:actions="addToTestActions"
-					:type="addTestButtonData.type"
-					@action="handleAddToTestAction"
-				>
-					<N8nButton
-						data-test-id="add-to-test-button"
-						v-bind="addTestButtonData"
-						@click="handleEvaluationButton"
-					/>
-				</ProjectCreateResource>
-				<router-link
+				<RouterLink
 					:to="{
 						name: VIEWS.EXECUTION_DEBUG,
 						params: {
@@ -334,7 +223,7 @@ onMounted(async () => {
 							>{{ debugButtonData.text }}</span
 						>
 					</N8nButton>
-				</router-link>
+				</RouterLink>
 
 				<ElDropdown
 					v-if="isRetriable"

@@ -14,7 +14,7 @@ import type {
 	NodeApiError,
 	ISupplyDataFunctions,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type {
@@ -92,7 +92,7 @@ const genericCredentialRequest = async (ctx: ISupplyDataFunctions, itemIndex: nu
 
 	if (genericType === 'oAuth2Api') {
 		return async (options: IHttpRequestOptions) => {
-			return await ctx.helpers.requestOAuth2.call(ctx, 'oAuth1Api', options, {
+			return await ctx.helpers.requestOAuth2.call(ctx, 'oAuth2Api', options, {
 				tokenType: 'Bearer',
 			});
 		};
@@ -585,7 +585,7 @@ export const configureToolFunction = (
 	optimizeResponse: (response: string) => string,
 ) => {
 	return async (query: string | IDataObject): Promise<string> => {
-		const { index } = ctx.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
+		const { index } = ctx.addInputData(NodeConnectionTypes.AiTool, [[{ json: { query } }]]);
 
 		// Clone options and rawRequestOptions to avoid mutating the original objects
 		const options: IHttpRequestOptions | null = structuredClone(requestOptions);
@@ -777,7 +777,7 @@ export const configureToolFunction = (
 						throw new NodeOperationError(ctx.getNode(), 'Binary data is not supported');
 					}
 
-					response = optimizeResponse(fullResponse.body);
+					response = optimizeResponse(fullResponse.body ?? fullResponse);
 				} catch (error) {
 					response = `There was an error: "${error.message}"`;
 				}
@@ -792,9 +792,9 @@ export const configureToolFunction = (
 		}
 
 		if (executionError) {
-			void ctx.addOutputData(NodeConnectionType.AiTool, index, executionError as ExecutionError);
+			void ctx.addOutputData(NodeConnectionTypes.AiTool, index, executionError as ExecutionError);
 		} else {
-			void ctx.addOutputData(NodeConnectionType.AiTool, index, [[{ json: { response } }]]);
+			void ctx.addOutputData(NodeConnectionTypes.AiTool, index, [[{ json: { response } }]]);
 		}
 
 		return response;

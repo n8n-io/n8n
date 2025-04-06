@@ -1,6 +1,6 @@
 import type express from 'express';
 import { mock } from 'jest-mock-extended';
-import { FORM_NODE_TYPE, type Workflow } from 'n8n-workflow';
+import { FORM_NODE_TYPE, WAITING_FORMS_EXECUTION_STATUS, type Workflow } from 'n8n-workflow';
 
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WaitingForms } from '@/webhooks/waiting-forms';
@@ -219,6 +219,28 @@ describe('WaitingForms', () => {
 			await waitingForms.executeWebhook(mock<WaitingWebhookRequest>(), mock<express.Response>());
 
 			expect(execution.data.isTestWebhook).toBe(true);
+		});
+
+		it('should return status of execution if suffix is WAITING_FORMS_EXECUTION_STATUS', async () => {
+			const execution = mock<IExecutionResponse>({
+				status: 'success',
+			});
+			executionRepository.findSingleExecution.mockResolvedValue(execution);
+
+			const res = mock<express.Response>();
+
+			const result = await waitingForms.executeWebhook(
+				{
+					params: {
+						path: '123',
+						suffix: WAITING_FORMS_EXECUTION_STATUS,
+					},
+				} as WaitingWebhookRequest,
+				res,
+			);
+
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(res.send).toHaveBeenCalledWith(execution.status);
 		});
 	});
 });

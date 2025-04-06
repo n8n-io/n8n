@@ -4,7 +4,7 @@ import type { CanvasConnectionData } from '@/types';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import type { Connection, EdgeProps } from '@vue-flow/core';
 import { BaseEdge, EdgeLabelRenderer } from '@vue-flow/core';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { computed, ref, toRef, useCssModule, watch } from 'vue';
 import CanvasEdgeToolbar from './CanvasEdgeToolbar.vue';
 import { getEdgeRenderData } from './utils';
@@ -30,7 +30,7 @@ const $style = useCssModule();
 const connectionType = computed(() =>
 	isValidNodeConnectionType(props.data.source.type)
 		? props.data.source.type
-		: NodeConnectionType.Main,
+		: NodeConnectionTypes.Main,
 );
 
 const delayedHovered = ref(props.hovered);
@@ -54,7 +54,7 @@ watch(
 
 const renderToolbar = computed(() => (props.selected || delayedHovered.value) && !props.readOnly);
 
-const isMainConnection = computed(() => data.value.source.type === NodeConnectionType.Main);
+const isMainConnection = computed(() => data.value.source.type === NodeConnectionTypes.Main);
 
 const status = computed(() => props.data.status);
 

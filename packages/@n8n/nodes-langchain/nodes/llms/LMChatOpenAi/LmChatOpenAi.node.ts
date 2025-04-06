@@ -3,7 +3,7 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
@@ -52,7 +52,7 @@ export class LmChatOpenAi implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiLanguageModel],
+		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
 			{
@@ -66,7 +66,7 @@ export class LmChatOpenAi implements INodeType {
 				'={{ $parameter.options?.baseURL?.split("/").slice(0,-1).join("/") || $credentials?.url?.split("/").slice(0,-1).join("/") || "https://api.openai.com" }}',
 		},
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
 			{
 				displayName:
 					'If using JSON response format, you must include word "json" in the prompt in your chain or agent. Also, make sure to select latest models released post November 2023.',
@@ -105,8 +105,8 @@ export class LmChatOpenAi implements INodeType {
 										properties: {
 											// If the baseURL is not set or is set to api.openai.com, include only chat models
 											pass: `={{
-												($parameter.options?.baseURL && !$parameter.options?.baseURL?.includes('api.openai.com')) ||
-												($credentials?.url && !$credentials.url.includes('api.openai.com')) ||
+												($parameter.options?.baseURL && !$parameter.options?.baseURL?.startsWith('https://api.openai.com/')) ||
+												($credentials?.url && !$credentials.url.startsWith('https://api.openai.com/')) ||
 												$responseItem.id.startsWith('ft:') ||
 												$responseItem.id.startsWith('o1') ||
 												$responseItem.id.startsWith('o3') ||

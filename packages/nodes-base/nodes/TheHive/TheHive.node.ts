@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/dot-notation */
 import set from 'lodash/set';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IDataObject,
 	type IExecuteFunctions,
 	type IHttpRequestMethods,
@@ -44,8 +44,8 @@ export class TheHive implements INodeType {
 			name: 'TheHive',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'theHiveApi',

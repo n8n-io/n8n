@@ -155,9 +155,11 @@ describe('Breadcrumbs', async () => {
 			},
 		});
 		expect(getByTestId('ellipsis')).toBeTruthy();
-		expect(getByTestId('action-toggle')).toBeTruthy();
+		expect(getByTestId('hidden-items-menu')).toBeTruthy();
 		expect(getByTestId('ellipsis')).toHaveClass('disabled');
-		expect(getByTestId('action-toggle').querySelector('.el-dropdown')).toHaveClass('is-disabled');
+		expect(getByTestId('hidden-items-menu').querySelector('.el-dropdown')).toHaveClass(
+			'is-disabled',
+		);
 	});
 
 	it('does not highlight last item for "highlightLastItem = false" ', () => {
@@ -272,8 +274,8 @@ describe('Breadcrumbs', async () => {
 			{ id: '4', label: 'Current' },
 		];
 		const hiddenItems = [
-			{ id: '3', label: 'Parent 1', href: '/hidden1' },
-			{ id: '4', label: 'Parent 2', href: '/hidden2' },
+			{ id: '5', label: 'Parent 1', href: '/hidden1' },
+			{ id: '6', label: 'Parent 2', href: '/hidden2' },
 		];
 
 		const { container, emitted, getByTestId, getAllByTestId } = render(Breadcrumbs, {

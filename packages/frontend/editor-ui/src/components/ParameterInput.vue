@@ -18,6 +18,7 @@ import type {
 	INodeParameterResourceLocator,
 	INodeParameters,
 	INodeProperties,
+	INodePropertyCollection,
 	INodePropertyOptions,
 	IParameterLabel,
 	NodeParameterValueType,
@@ -66,7 +67,9 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useRouter } from 'vue-router';
 import { useElementSize } from '@vueuse/core';
-import { completeExpressionSyntax, isStringWithExpressionSyntax } from '@/utils/expressions';
+import { captureMessage } from '@sentry/vue';
+import { completeExpressionSyntax, shouldConvertToExpression } from '@/utils/expressions';
+import { isPresent } from '@/utils/typesUtils';
 import CssEditor from './CssEditor/CssEditor.vue';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
@@ -343,6 +346,7 @@ const getIssues = computed<string[]>(() => {
 		node.value.parameters,
 		newPath.join('.'),
 		node.value,
+		nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
 	);
 
 	if (props.parameter.type === 'credentialsSelect' && displayValue.value === '') {
@@ -422,14 +426,11 @@ const editorLanguage = computed<CodeNodeEditorLanguage>(() => {
 	return getArgument<CodeNodeEditorLanguage>('editorLanguage') ?? 'javaScript';
 });
 
-const parameterOptions = computed<INodePropertyOptions[] | undefined>(() => {
-	if (!hasRemoteMethod.value) {
-		// Options are already given
-		return props.parameter.options as INodePropertyOptions[];
-	}
+const parameterOptions = computed(() => {
+	const options = hasRemoteMethod.value ? remoteParameterOptions.value : props.parameter.options;
+	const safeOptions = (options ?? []).filter(isValidParameterOption);
 
-	// Options get loaded from server
-	return remoteParameterOptions.value;
+	return safeOptions;
 });
 
 const isSwitch = computed(
@@ -570,6 +571,12 @@ const shouldCaptureForPosthog = computed(() => {
 	}
 	return false;
 });
+
+function isValidParameterOption(
+	option: INodePropertyOptions | INodeProperties | INodePropertyCollection,
+): option is INodePropertyOptions {
+	return 'value' in option && isPresent(option.value) && isPresent(option.name);
+}
 
 function isRemoteParameterOption(option: INodePropertyOptions) {
 	return remoteParameterOptionsKeys.value.includes(option.name);
@@ -735,6 +742,30 @@ function onBlur() {
 	isFocused.value = false;
 }
 
+function onPaste(event: ClipboardEvent) {
+	const pastedText = event.clipboardData?.getData('text');
+	const input = event.target;
+
+	if (!(input instanceof HTMLInputElement)) return;
+
+	const start = input.selectionStart ?? 0;
+
+	// When a value starting with `=` is pasted that does not contain expression syntax ({{}})
+	// Add an extra `=` to go into expression mode and preserve the original pasted text
+	if (pastedText && pastedText.startsWith('=') && !pastedText.match(/{{.*?}}/g) && start === 0) {
+		event.preventDefault();
+
+		const end = input.selectionEnd ?? start;
+		const text = input.value;
+		const withExpressionPrefix = '=' + pastedText;
+
+		input.value = text.substring(0, start) + withExpressionPrefix + text.substring(end);
+		input.selectionStart = input.selectionEnd = start + withExpressionPrefix.length;
+
+		valueChanged(input.value);
+	}
+}
+
 function onResourceLocatorDrop(data: string) {
 	emit('drop', data);
 }
@@ -823,7 +854,13 @@ function valueChanged(value: NodeParameterValueType | {} | Date) {
 		return;
 	}
 
-	if (!oldValue && oldValue !== undefined && isStringWithExpressionSyntax(value)) {
+	const isSpecializedEditor = props.parameter.typeOptions?.editor !== undefined;
+
+	if (
+		!oldValue &&
+		oldValue !== undefined &&
+		shouldConvertToExpression(value, isSpecializedEditor)
+	) {
 		// if empty old value and updated value has an expression, add '=' prefix to switch to expression mode
 		value = '=' + value;
 	}
@@ -832,7 +869,7 @@ function valueChanged(value: NodeParameterValueType | {} | Date) {
 		activeCredentialType.value = value as string;
 	}
 
-	value = completeExpressionSyntax(value);
+	value = completeExpressionSyntax(value, isSpecializedEditor);
 
 	if (value instanceof Date) {
 		value = value.toISOString();
@@ -945,7 +982,9 @@ async function optionSelected(command: string) {
 
 			if (props.parameter.type === 'string') {
 				// Strip the '=' from the beginning
-				newValue = modelValueString.value ? modelValueString.value.toString().substring(1) : null;
+				newValue = modelValueString.value
+					? modelValueString.value.toString().replace(/^=+/, '')
+					: null;
 			} else if (newValue === null) {
 				// Invalid expressions land here
 				if (['number', 'boolean'].includes(props.parameter.type)) {
@@ -981,7 +1020,7 @@ async function optionSelected(command: string) {
 onMounted(() => {
 	props.eventBus.on('optionSelected', optionSelected);
 
-	tempValue.value = displayValue.value as string;
+	tempValue.value = displayValue.value;
 
 	if (node.value) {
 		nodeName.value = node.value.name;
@@ -997,7 +1036,7 @@ onMounted(() => {
 		displayValue.value !== null &&
 		displayValue.value.toString().charAt(0) !== '#'
 	) {
-		const newValue = rgbaToHex(displayValue.value as string);
+		const newValue = rgbaToHex(displayValue.value);
 		if (newValue !== null) {
 			tempValue.value = newValue;
 		}
@@ -1068,12 +1107,12 @@ watch(
 			// Do not set for color with alpha else wrong value gets displayed in field
 			return;
 		}
-		tempValue.value = displayValue.value as string;
+		tempValue.value = displayValue.value;
 	},
 );
 
 watch(remoteParameterOptionsLoading, () => {
-	tempValue.value = displayValue.value as string;
+	tempValue.value = displayValue.value;
 });
 
 // Focus input field when changing between fixed and expression
@@ -1083,6 +1122,28 @@ watch(isModelValueExpression, async (isExpression, wasExpression) => {
 		await setFocus();
 	}
 });
+
+// Investigate invalid parameter options
+// Sentry issue: https://n8nio.sentry.io/issues/6275981089/?project=4503960699273216
+const unwatchParameterOptions = watch(
+	[remoteParameterOptions, () => props.parameter.options],
+	([remoteOptions, options]) => {
+		const allOptions = [...remoteOptions, ...(options ?? [])];
+		const invalidOptions = allOptions.filter((option) => !isValidParameterOption(option));
+
+		if (invalidOptions.length > 0) {
+			captureMessage('Invalid parameter options', {
+				level: 'error',
+				extra: {
+					invalidOptions,
+					parameter: props.parameter.name,
+					node: node.value,
+				},
+			});
+			unwatchParameterOptions();
+		}
+	},
+);
 
 onUpdated(async () => {
 	await nextTick();
@@ -1432,6 +1493,7 @@ onUpdated(async () => {
 					@keydown.stop
 					@focus="setFocus"
 					@blur="onBlur"
+					@paste="onPaste"
 				>
 					<template #suffix>
 						<N8nIcon
@@ -1570,8 +1632,8 @@ onUpdated(async () => {
 						</div>
 						<div
 							v-if="option.description"
-							class="option-description"
 							v-n8n-html="getOptionsOptionDescription(option)"
+							class="option-description"
 						></div>
 					</div>
 				</N8nOption>
@@ -1603,8 +1665,8 @@ onUpdated(async () => {
 						<div class="option-headline">{{ getOptionsOptionDisplayName(option) }}</div>
 						<div
 							v-if="option.description"
-							class="option-description"
 							v-n8n-html="getOptionsOptionDescription(option)"
+							class="option-description"
 						></div>
 					</div>
 				</N8nOption>
@@ -1733,7 +1795,7 @@ onUpdated(async () => {
 	padding-right: 20px;
 
 	.option-headline {
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight-medium);
 		line-height: var(--font-line-height-regular);
 		overflow-wrap: break-word;
 	}

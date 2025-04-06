@@ -163,7 +163,7 @@ const isListeningForEvents = computed(() => {
 });
 
 const workflowRunning = computed(() => {
-	return uiStore.isActionActive['workflowRunning'];
+	return uiStore.isActionActive.workflowRunning;
 });
 
 const isActivelyPolling = computed(() => {

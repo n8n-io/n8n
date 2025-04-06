@@ -10,75 +10,53 @@
                 "properties": {
                     "type": "object",
                     "properties": {
-                        "name": {
-                            "type": "object",
-                            "properties": {
-                                "type": {
-                                    "type": "string"
-                                },
-                                "fields": {
-                                    "type": "object",
-                                    "properties": {
-                                        "keyword": {
-                                            "type": "object",
-                                            "properties": {
-                                                "type": {
-                                                    "type": "string"
-                                                },
-                                                "ignore_above": {
-                                                    "type": "integer"
-                                                }
-                                            },
-                                            "required": [
-                                                "type",
-                                                "ignore_above"
-                                            ]
-                                        }
-                                    },
-                                    "required": [
-                                        "keyword"
-                                    ]
-                                }
-                            },
-                            "required": [
-                                "type",
-                                "fields"
-                            ]
-                        },
                         "author": {
                             "type": "object",
                             "properties": {
-                                "type": {
-                                    "type": "string"
-                                },
                                 "fields": {
                                     "type": "object",
                                     "properties": {
                                         "keyword": {
                                             "type": "object",
                                             "properties": {
-                                                "type": {
-                                                    "type": "string"
-                                                },
                                                 "ignore_above": {
                                                     "type": "integer"
+                                                },
+                                                "type": {
+                                                    "type": "string"
                                                 }
-                                            },
-                                            "required": [
-                                                "type",
-                                                "ignore_above"
-                                            ]
+                                            }
                                         }
-                                    },
-                                    "required": [
-                                        "keyword"
-                                    ]
+                                    }
+                                },
+                                "type": {
+                                    "type": "string"
                                 }
-                            },
-                            "required": [
-                                "type",
-                                "fields"
-                            ]
+                            }
+                        },
+                        "name": {
+                            "type": "object",
+                            "properties": {
+                                "fields": {
+                                    "type": "object",
+                                    "properties": {
+                                        "keyword": {
+                                            "type": "object",
+                                            "properties": {
+                                                "ignore_above": {
+                                                    "type": "integer"
+                                                },
+                                                "type": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "type": {
+                                    "type": "string"
+                                }
+                            }
                         },
                         "page_count": {
                             "type": "object",
@@ -86,10 +64,7 @@
                                 "type": {
                                     "type": "string"
                                 }
-                            },
-                            "required": [
-                                "type"
-                            ]
+                            }
                         },
                         "release_date": {
                             "type": "object",
@@ -97,17 +72,11 @@
                                 "type": {
                                     "type": "string"
                                 }
-                            },
-                            "required": [
-                                "type"
-                            ]
+                            }
                         }
                     }
                 }
-            },
-            "required": [
-                "properties"
-            ]
+            }
         },
         "settings": {
             "type": "object",
@@ -115,6 +84,18 @@
                 "index": {
                     "type": "object",
                     "properties": {
+                        "creation_date": {
+                            "type": "string"
+                        },
+                        "number_of_replicas": {
+                            "type": "string"
+                        },
+                        "number_of_shards": {
+                            "type": "string"
+                        },
+                        "provided_name": {
+                            "type": "string"
+                        },
                         "routing": {
                             "type": "object",
                             "properties": {
@@ -127,32 +108,11 @@
                                                 "_tier_preference": {
                                                     "type": "string"
                                                 }
-                                            },
-                                            "required": [
-                                                "_tier_preference"
-                                            ]
+                                            }
                                         }
-                                    },
-                                    "required": [
-                                        "include"
-                                    ]
+                                    }
                                 }
-                            },
-                            "required": [
-                                "allocation"
-                            ]
-                        },
-                        "number_of_shards": {
-                            "type": "string"
-                        },
-                        "provided_name": {
-                            "type": "string"
-                        },
-                        "creation_date": {
-                            "type": "string"
-                        },
-                        "number_of_replicas": {
-                            "type": "string"
+                            }
                         },
                         "uuid": {
                             "type": "string"
@@ -163,29 +123,12 @@
                                 "created": {
                                     "type": "string"
                                 }
-                            },
-                            "required": [
-                                "created"
-                            ]
+                            }
                         }
-                    },
-                    "required": [
-                        "routing",
-                        "number_of_shards",
-                        "provided_name",
-                        "creation_date",
-                        "number_of_replicas",
-                        "uuid",
-                        "version"
-                    ]
+                    }
                 }
-            },
-            "required": [
-                "index"
-            ]
+            }
         }
     },
-    "required": [
-        "id"
-    ]
+    "version": 1
 }

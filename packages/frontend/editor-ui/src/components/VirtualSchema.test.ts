@@ -1,36 +1,40 @@
-import { createComponentRenderer } from '@/__tests__/render';
-import VirtualSchema from '@/components/VirtualSchema.vue';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { userEvent } from '@testing-library/user-event';
-import { cleanup, waitFor } from '@testing-library/vue';
-import { createPinia, setActivePinia } from 'pinia';
 import {
 	createTestNode,
 	defaultNodeDescriptions,
 	mockNodeTypeDescription,
 } from '@/__tests__/mocks';
-import { IF_NODE_TYPE, SET_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { mock } from 'vitest-mock-extended';
+import { createComponentRenderer } from '@/__tests__/render';
+import VirtualSchema from '@/components/VirtualSchema.vue';
+import * as nodeHelpers from '@/composables/useNodeHelpers';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { IF_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, SET_NODE_TYPE } from '@/constants';
 import type { IWorkflowDb } from '@/Interface';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { createTestingPinia } from '@pinia/testing';
+import { fireEvent } from '@testing-library/dom';
+import { userEvent } from '@testing-library/user-event';
+import { cleanup, waitFor } from '@testing-library/vue';
 import {
 	createResultOk,
-	NodeConnectionType,
-	type IDataObject,
+	NodeConnectionTypes,
+	type IBinaryData,
 	type INodeExecutionData,
 } from 'n8n-workflow';
-import * as nodeHelpers from '@/composables/useNodeHelpers';
-import { useNDVStore } from '@/stores/ndv.store';
-import { fireEvent } from '@testing-library/dom';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useSchemaPreviewStore } from '../stores/schemaPreview.store';
+import { setActivePinia } from 'pinia';
+import { mock } from 'vitest-mock-extended';
+import { defaultSettings } from '../__tests__/defaults';
 import { usePostHog } from '../stores/posthog.store';
+import { useSchemaPreviewStore } from '../stores/schemaPreview.store';
+import { useSettingsStore } from '../stores/settings.store';
 
 const mockNode1 = createTestNode({
 	name: 'Manual Trigger',
 	type: MANUAL_TRIGGER_NODE_TYPE,
 	typeVersion: 1,
 	disabled: false,
+	credentials: undefined,
 });
 
 const mockNode2 = createTestNode({
@@ -61,6 +65,14 @@ const aiTool = createTestNode({
 	disabled: false,
 });
 
+const nodeWithCredential = createTestNode({
+	name: 'Notion',
+	type: 'n8n-nodes-base.notion',
+	typeVersion: 1,
+	credentials: { notionApi: { id: 'testId', name: 'testName' } },
+	disabled: false,
+});
+
 const unknownNodeType = createTestNode({
 	name: 'Unknown Node Type',
 	type: 'unknown',
@@ -72,44 +84,58 @@ const defaultNodes = [
 ];
 
 async function setupStore() {
-	const workflow = mock<IWorkflowDb>({
+	const workflow = {
 		id: '123',
 		name: 'Test Workflow',
 		connections: {},
 		active: true,
-		nodes: [mockNode1, mockNode2, disabledNode, ifNode, aiTool, unknownNodeType],
-	});
+		nodes: [
+			mockNode1,
+			mockNode2,
+			disabledNode,
+			ifNode,
+			aiTool,
+			unknownNodeType,
+			nodeWithCredential,
+		],
+	};
 
-	const pinia = createPinia();
+	const pinia = createTestingPinia({ stubActions: false });
 	setActivePinia(pinia);
 
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
+	const settingsStore = useSettingsStore();
+	settingsStore.setSettings(defaultSettings);
 
 	nodeTypesStore.setNodeTypes([
 		...defaultNodeDescriptions,
 		mockNodeTypeDescription({
 			name: MANUAL_TRIGGER_NODE_TYPE,
-			outputs: [NodeConnectionType.Main],
+			outputs: [NodeConnectionTypes.Main],
 		}),
 		mockNodeTypeDescription({
 			name: IF_NODE_TYPE,
-			outputs: [NodeConnectionType.Main, NodeConnectionType.Main],
+			outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
+		}),
+		mockNodeTypeDescription({
+			name: 'n8n-nodes-base.notion',
+			outputs: [NodeConnectionTypes.Main],
 		}),
 	]);
-	workflowsStore.workflow = workflow;
+	workflowsStore.workflow = workflow as IWorkflowDb;
 
 	return pinia;
 }
 
-function mockNodeOutputData(nodeName: string, data: IDataObject[], outputIndex = 0) {
+function mockNodeOutputData(nodeName: string, data: INodeExecutionData[], outputIndex = 0) {
 	const originalNodeHelpers = nodeHelpers.useNodeHelpers();
 	vi.spyOn(nodeHelpers, 'useNodeHelpers').mockImplementation(() => {
 		return {
 			...originalNodeHelpers,
 			getNodeInputData: vi.fn((node, _, output) => {
 				if (node.name === nodeName && output === outputIndex) {
-					return data.map((json) => ({ json }));
+					return data;
 				}
 				return [];
 			}),
@@ -140,6 +166,8 @@ describe('VirtualSchema.vue', () => {
 
 	beforeEach(async () => {
 		cleanup();
+		vi.resetAllMocks();
+		vi.setSystemTime('2025-01-01');
 		renderComponent = createComponentRenderer(VirtualSchema, {
 			global: {
 				stubs: {
@@ -163,16 +191,28 @@ describe('VirtualSchema.vue', () => {
 		});
 	});
 
-	it('renders schema for empty data', async () => {
+	it('renders schema for empty data for unexecuted nodes', async () => {
 		const { getAllByText, getAllByTestId } = renderComponent();
 
-		await waitFor(() =>
-			expect(getAllByText("No fields - item(s) exist, but they're empty").length).toBe(2),
-		);
+		await waitFor(() => expect(getAllByText('Execute previous nodes').length).toBe(2));
 
 		// Collapse second node
 		await userEvent.click(getAllByTestId('run-data-schema-header')[1]);
-		expect(getAllByText("No fields - item(s) exist, but they're empty").length).toBe(1);
+		expect(getAllByText('Execute previous nodes').length).toBe(1);
+	});
+
+	it('renders schema for empty data with binary', async () => {
+		mockNodeOutputData(mockNode1.name, [{ json: {}, binary: { data: mock<IBinaryData>() } }]);
+
+		const { getByText } = renderComponent({
+			props: { nodes: [{ name: mockNode1.name, indicies: [], depth: 1 }] },
+		});
+
+		await waitFor(() =>
+			expect(
+				getByText("Only binary data exists. View it using the 'Binary' tab"),
+			).toBeInTheDocument(),
+		);
 	});
 
 	it('renders schema for data', async () => {
@@ -194,7 +234,7 @@ describe('VirtualSchema.vue', () => {
 		const { getAllByTestId } = renderComponent();
 		await waitFor(() => {
 			const headers = getAllByTestId('run-data-schema-header');
-			expect(headers.length).toBe(2);
+			expect(headers.length).toBe(3);
 			expect(headers[0]).toHaveTextContent('Manual Trigger');
 			expect(headers[0]).toHaveTextContent('2 items');
 			expect(headers[1]).toHaveTextContent('Set2');
@@ -253,7 +293,7 @@ describe('VirtualSchema.vue', () => {
 
 		await waitFor(() => {
 			const items = getAllByTestId('run-data-schema-item');
-			expect(items).toHaveLength(6);
+			expect(items).toHaveLength(5);
 		});
 
 		expect(container).toMatchSnapshot();
@@ -267,7 +307,7 @@ describe('VirtualSchema.vue', () => {
 
 		const { getAllByText } = renderComponent();
 		await waitFor(() =>
-			expect(getAllByText("No fields - item(s) exist, but they're empty").length).toBe(2),
+			expect(getAllByText("No fields - item(s) exist, but they're empty").length).toBe(1),
 		);
 	});
 
@@ -285,50 +325,44 @@ describe('VirtualSchema.vue', () => {
 	});
 
 	it('renders disabled nodes correctly', async () => {
-		const { getByTestId } = renderComponent({
+		const { getAllByTestId } = renderComponent({
 			props: {
 				nodes: [{ name: disabledNode.name, indicies: [], depth: 1 }],
 			},
 		});
-		await waitFor(() =>
-			expect(getByTestId('run-data-schema-header')).toHaveTextContent(
-				`${disabledNode.name} (Deactivated)`,
-			),
-		);
+		await waitFor(() => {
+			const headers = getAllByTestId('run-data-schema-header');
+			expect(headers[0]).toHaveTextContent(`${disabledNode.name} (Deactivated)`);
+		});
 	});
 
 	it('renders schema for correct output branch', async () => {
 		mockNodeOutputData(
 			'If',
-			[
-				{ id: 1, name: 'John' },
-				{ id: 2, name: 'Jane' },
-			],
+			[{ json: { id: 1, name: 'John' } }, { json: { id: 2, name: 'Jane' } }],
 			1,
 		);
-		const { getByTestId } = renderComponent({
+		const { getAllByTestId } = renderComponent({
 			props: {
 				nodes: [{ name: 'If', indicies: [1], depth: 2 }],
 			},
 		});
 
 		await waitFor(() => {
-			expect(getByTestId('run-data-schema-header')).toHaveTextContent('If');
-			expect(getByTestId('run-data-schema-header')).toHaveTextContent('2 items');
-			expect(getByTestId('run-data-schema-header')).toMatchSnapshot();
+			const headers = getAllByTestId('run-data-schema-header');
+			expect(headers[0]).toHaveTextContent('If');
+			expect(headers[0]).toHaveTextContent('2 items');
+			expect(headers[0]).toMatchSnapshot();
 		});
 	});
 
 	it('renders previous nodes schema for AI tools', async () => {
 		mockNodeOutputData(
 			'If',
-			[
-				{ id: 1, name: 'John' },
-				{ id: 2, name: 'Jane' },
-			],
+			[{ json: { id: 1, name: 'John' } }, { json: { id: 2, name: 'Jane' } }],
 			0,
 		);
-		const { getByTestId } = renderComponent({
+		const { getAllByTestId } = renderComponent({
 			props: {
 				nodes: [
 					{
@@ -342,9 +376,10 @@ describe('VirtualSchema.vue', () => {
 		});
 
 		await waitFor(() => {
-			expect(getByTestId('run-data-schema-header')).toHaveTextContent('If');
-			expect(getByTestId('run-data-schema-header')).toHaveTextContent('2 items');
-			expect(getByTestId('run-data-schema-header')).toMatchSnapshot();
+			const headers = getAllByTestId('run-data-schema-header');
+			expect(headers[0]).toHaveTextContent('If');
+			expect(headers[0]).toHaveTextContent('2 items');
+			expect(headers[0]).toMatchSnapshot();
 		});
 	});
 
@@ -413,46 +448,110 @@ describe('VirtualSchema.vue', () => {
 
 		await waitFor(() => {
 			const headers = getAllByTestId('run-data-schema-header');
-			expect(headers.length).toBe(2);
+			expect(headers.length).toBe(3);
 			expect(headers[0]).toHaveTextContent('Input 0');
 			expect(headers[1]).toHaveTextContent('Inputs 0, 1, 2');
 		});
 	});
 
-	it('should handle drop event', async () => {
-		const ndvStore = useNDVStore();
-		useWorkflowsStore().pinData({
-			node: mockNode1,
-			data: [{ json: { name: 'John', age: 22, hobbies: ['surfing', 'traveling'] } }],
+	describe('telemetry', () => {
+		function dragDropPill(pill: HTMLElement) {
+			const ndvStore = useNDVStore();
+			const reset = vi.spyOn(ndvStore, 'resetMappingTelemetry');
+			fireEvent(pill, new MouseEvent('mousedown', { bubbles: true }));
+			fireEvent(window, new MouseEvent('mousemove', { bubbles: true }));
+			expect(reset).toHaveBeenCalled();
+
+			vi.useRealTimers();
+			vi.useFakeTimers({ toFake: ['setTimeout'] });
+			fireEvent(window, new MouseEvent('mouseup', { bubbles: true }));
+			vi.advanceTimersByTime(250);
+			vi.useRealTimers();
+		}
+
+		it('should track data pill drag and drop', async () => {
+			useWorkflowsStore().pinData({
+				node: mockNode1,
+				data: [{ json: { name: 'John', age: 22, hobbies: ['surfing', 'traveling'] } }],
+			});
+			const telemetry = useTelemetry();
+			const trackSpy = vi.spyOn(telemetry, 'track');
+
+			const { getAllByTestId } = renderComponent();
+
+			await waitFor(() => {
+				expect(getAllByTestId('run-data-schema-item')).toHaveLength(5);
+			});
+			const items = getAllByTestId('run-data-schema-item');
+
+			expect(items[0].className).toBe('schema-item draggable');
+			expect(items[0]).toHaveTextContent('nameJohn');
+
+			const pill = items[0].querySelector('.pill') as HTMLElement;
+			dragDropPill(pill);
+
+			await waitFor(() =>
+				expect(trackSpy).toHaveBeenCalledWith(
+					'User dragged data for mapping',
+					expect.objectContaining({
+						src_view: 'schema',
+						src_field_name: 'name',
+						src_field_nest_level: 0,
+						src_node_type: 'n8n-nodes-base.manualTrigger',
+						src_nodes_back: '1',
+						src_has_credential: false,
+					}),
+					{ withPostHog: true },
+				),
+			);
 		});
-		const telemetry = useTelemetry();
-		const trackSpy = vi.spyOn(telemetry, 'track');
-		const reset = vi.spyOn(ndvStore, 'resetMappingTelemetry');
-		const { getAllByTestId } = renderComponent();
 
-		await waitFor(() => {
-			expect(getAllByTestId('run-data-schema-item')).toHaveLength(6);
+		it('should track data pill drag and drop for schema preview', async () => {
+			const telemetry = useTelemetry();
+			const trackSpy = vi.spyOn(telemetry, 'track');
+			const posthogStore = usePostHog();
+
+			vi.spyOn(posthogStore, 'isVariantEnabled').mockReturnValue(true);
+			const schemaPreviewStore = useSchemaPreviewStore();
+			vi.spyOn(schemaPreviewStore, 'getSchemaPreview').mockResolvedValue(
+				createResultOk({
+					type: 'object',
+					properties: {
+						account: {
+							type: 'object',
+							properties: {
+								id: {
+									type: 'string',
+								},
+							},
+						},
+					},
+				}),
+			);
+
+			const { getAllByTestId } = renderComponent({
+				props: {
+					nodes: [{ name: nodeWithCredential.name, indicies: [], depth: 1 }],
+				},
+			});
+
+			await waitFor(() => {
+				expect(getAllByTestId('run-data-schema-item')).toHaveLength(2);
+			});
+			const pill = getAllByTestId('run-data-schema-item')[0].querySelector('.pill') as HTMLElement;
+			dragDropPill(pill);
+
+			await waitFor(() =>
+				expect(trackSpy).toHaveBeenCalledWith(
+					'User dragged data for mapping',
+					expect.objectContaining({
+						src_view: 'schema_preview',
+						src_has_credential: true,
+					}),
+					{ withPostHog: true },
+				),
+			);
 		});
-		const items = getAllByTestId('run-data-schema-item');
-
-		expect(items[0].className).toBe('schema-item draggable');
-		expect(items[0]).toHaveTextContent('nameJohn');
-
-		const pill = items[0].querySelector('.pill') as Element;
-
-		fireEvent(pill, new MouseEvent('mousedown', { bubbles: true }));
-		fireEvent(window, new MouseEvent('mousemove', { bubbles: true }));
-		expect(reset).toHaveBeenCalled();
-
-		fireEvent(window, new MouseEvent('mouseup', { bubbles: true }));
-
-		await waitFor(() =>
-			expect(trackSpy).toHaveBeenCalledWith(
-				'User dragged data for mapping',
-				expect.any(Object),
-				expect.any(Object),
-			),
-		);
 	});
 
 	it('should expand all nodes when searching', async () => {
@@ -466,18 +565,22 @@ describe('VirtualSchema.vue', () => {
 		});
 
 		const { getAllByTestId, queryAllByTestId, rerender } = renderComponent();
+
+		let headers: HTMLElement[] = [];
 		await waitFor(async () => {
-			const headers = getAllByTestId('run-data-schema-header');
-			expect(headers.length).toBe(2);
-			expect(getAllByTestId('run-data-schema-item').length).toBe(2);
-
-			// Collapse all nodes
-			await Promise.all(headers.map(async ($header) => await userEvent.click($header)));
-
-			expect(queryAllByTestId('run-data-schema-item').length).toBe(0);
-			await rerender({ search: 'John' });
+			headers = getAllByTestId('run-data-schema-header');
+			expect(headers.length).toBe(3);
 			expect(getAllByTestId('run-data-schema-item').length).toBe(2);
 		});
+
+		// Collapse all nodes (Variables & context is collapsed by default)
+		await Promise.all(headers.slice(0, -1).map(async (header) => await userEvent.click(header)));
+
+		expect(queryAllByTestId('run-data-schema-item').length).toBe(0);
+
+		await rerender({ search: 'John' });
+
+		expect(getAllByTestId('run-data-schema-item').length).toBe(13);
 	});
 
 	it('renders preview schema when enabled and available', async () => {
@@ -490,7 +593,7 @@ describe('VirtualSchema.vue', () => {
 			data: [],
 		});
 		const posthogStore = usePostHog();
-		vi.spyOn(posthogStore, 'isFeatureEnabled').mockReturnValue(true);
+		vi.spyOn(posthogStore, 'isVariantEnabled').mockReturnValue(true);
 		const schemaPreviewStore = useSchemaPreviewStore();
 		vi.spyOn(schemaPreviewStore, 'getSchemaPreview').mockResolvedValue(
 			createResultOk({
@@ -511,11 +614,66 @@ describe('VirtualSchema.vue', () => {
 		const { getAllByTestId, queryAllByText, container } = renderComponent({});
 
 		await waitFor(() => {
-			expect(getAllByTestId('run-data-schema-header')).toHaveLength(2);
+			expect(getAllByTestId('run-data-schema-header')).toHaveLength(3);
 		});
 
 		expect(queryAllByText("No fields - item(s) exist, but they're empty")).toHaveLength(0);
 		expect(getAllByTestId('schema-preview-warning')).toHaveLength(2);
+		expect(container).toMatchSnapshot();
+	});
+
+	it('renders variables and context section', async () => {
+		useWorkflowsStore().pinData({
+			node: mockNode1,
+			data: [],
+		});
+
+		const { getAllByTestId, container } = renderComponent({
+			props: {
+				nodes: [{ name: mockNode1.name, indicies: [], depth: 1 }],
+			},
+		});
+
+		let headers: HTMLElement[] = [];
+
+		await waitFor(() => {
+			headers = getAllByTestId('run-data-schema-header');
+			expect(headers).toHaveLength(2);
+			expect(headers[1]).toHaveTextContent('Variables and context');
+		});
+
+		await userEvent.click(headers[1]);
+
+		await waitFor(() => {
+			const items = getAllByTestId('run-data-schema-item');
+
+			expect(items).toHaveLength(11);
+			expect(items[0]).toHaveTextContent('$now');
+			expect(items[1]).toHaveTextContent('$today');
+			expect(items[2]).toHaveTextContent('$vars');
+			expect(items[3]).toHaveTextContent('$execution');
+			expect(items[7]).toHaveTextContent('$workflow');
+		});
+
+		expect(container).toMatchSnapshot();
+	});
+
+	it('renders schema for empty objects and arrays', async () => {
+		useWorkflowsStore().pinData({
+			node: mockNode1,
+			data: [{ json: { empty: {}, emptyArray: [], nested: [{ empty: {}, emptyArray: [] }] } }],
+		});
+
+		const { container, getAllByTestId } = renderComponent({
+			props: {
+				nodes: [{ name: mockNode1.name, indicies: [], depth: 1 }],
+			},
+		});
+
+		await waitFor(() => {
+			const headers = getAllByTestId('run-data-schema-header');
+			expect(headers.length).toBe(2);
+		});
 		expect(container).toMatchSnapshot();
 	});
 });

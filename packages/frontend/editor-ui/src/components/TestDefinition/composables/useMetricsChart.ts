@@ -1,68 +1,56 @@
 import type { ChartData, ChartOptions } from 'chart.js';
 import type { TestRunRecord } from '@/api/testDefinition.ee';
 import dateFormat from 'dateformat';
-import type { AppliedThemeOption } from '@/Interface';
+import { useCssVar } from '@vueuse/core';
 
-const THEME_COLORS = {
-	light: {
-		primary: 'rgb(255, 110, 92)',
-		text: {
-			primary: 'rgb(68, 68, 68)',
-			secondary: 'rgb(102, 102, 102)',
-		},
-		background: 'rgb(255, 255, 255)',
-		grid: 'rgba(68, 68, 68, 0.1)',
-	},
-	dark: {
-		primary: 'rgb(255, 110, 92)',
-		text: {
-			primary: 'rgb(255, 255, 255)',
-			secondary: 'rgba(255, 255, 255, 0.7)',
-		},
-		background: 'rgb(32, 32, 32)',
-		grid: 'rgba(255, 255, 255, 0.1)',
-	},
-};
-
-export function useMetricsChart(mode: AppliedThemeOption = 'light') {
-	const colors = THEME_COLORS[mode];
-	const toRGBA = (color: string, alpha: number) => {
-		if (color.includes('rgba')) return color;
-		return color.replace('rgb', 'rgba').replace(')', `, ${alpha})`);
+export function useMetricsChart() {
+	const colors = {
+		primary: useCssVar('--color-primary', document.body).value,
+		textBase: useCssVar('--color-text-base', document.body).value,
+		backgroundXLight: useCssVar('--color-background-xlight', document.body).value,
+		foregroundLight: useCssVar('--color-foreground-light', document.body).value,
+		foregroundBase: useCssVar('--color-foreground-base', document.body).value,
+		foregroundDark: useCssVar('--color-foreground-dark', document.body).value,
 	};
-	function generateChartData(runs: TestRunRecord[], metric: string): ChartData<'line'> {
-		const sortedRuns = [...runs]
-			.sort((a, b) => new Date(a.runAt).getTime() - new Date(b.runAt).getTime())
-			.filter((run) => run.metrics?.[metric]);
 
-		return {
-			labels: sortedRuns.map((run) => {
-				return dateFormat(run.runAt, 'yyyy-mm-dd HH:MM');
-			}),
+	function generateChartData(
+		runs: Array<TestRunRecord & { index: number }>,
+		metric: string,
+	): ChartData<'line'> {
+		/**
+		 * @see https://www.chartjs.org/docs/latest/general/data-structures.html#object-using-custom-properties
+		 */
+		const data: ChartData<'line', TestRunRecord[]> = {
 			datasets: [
 				{
-					label: metric,
-					data: sortedRuns.map((run) => run.metrics?.[metric] ?? 0),
+					data: runs,
+					parsing: {
+						xAxisKey: 'id',
+						yAxisKey: `metrics.${metric}`,
+					},
 					borderColor: colors.primary,
-					backgroundColor: toRGBA(colors.primary, 0.1),
-					borderWidth: 2,
-					pointRadius: 4,
-					pointHoverRadius: 6,
-					pointBackgroundColor: colors.primary,
-					pointBorderColor: colors.primary,
-					pointHoverBackgroundColor: colors.background,
-					pointHoverBorderColor: colors.primary,
-					tension: 0.4,
-					fill: true,
+					backgroundColor: colors.backgroundXLight,
+					borderWidth: 1,
+					pointRadius: 2,
+					pointHoverRadius: 4,
+					pointBackgroundColor: colors.backgroundXLight,
+					pointHoverBackgroundColor: colors.backgroundXLight,
 				},
 			],
 		};
+
+		// casting to keep vue-chartjs happy!!
+		return data as unknown as ChartData<'line'>;
 	}
 
-	function generateChartOptions(params: { metric: string; xTitle: string }): ChartOptions<'line'> {
+	function generateChartOptions({
+		metric,
+		data,
+	}: { metric: string; data: Array<TestRunRecord & { index: number }> }): ChartOptions<'line'> {
 		return {
 			responsive: true,
 			maintainAspectRatio: false,
+			animation: false,
 			devicePixelRatio: 2,
 			interaction: {
 				mode: 'index' as const,
@@ -70,66 +58,63 @@ export function useMetricsChart(mode: AppliedThemeOption = 'light') {
 			},
 			scales: {
 				y: {
-					beginAtZero: true,
+					border: {
+						display: false,
+					},
 					grid: {
-						color: colors.grid,
+						color: colors.foregroundBase,
 					},
 					ticks: {
 						padding: 8,
-						color: colors.text.primary,
-					},
-					title: {
-						display: false,
-						text: params.metric,
-						padding: 16,
-						color: colors.text.primary,
+						color: colors.textBase,
 					},
 				},
 				x: {
+					border: {
+						display: false,
+					},
 					grid: {
 						display: false,
 					},
 					ticks: {
-						display: false,
-					},
-					title: {
-						text: params.xTitle,
-						padding: 1,
-						color: colors.text.primary,
+						color: colors.textBase,
+						// eslint-disable-next-line id-denylist
+						callback(_tickValue, index) {
+							return `#${data[index].index}`;
+						},
 					},
 				},
 			},
 			plugins: {
 				tooltip: {
-					backgroundColor: colors.background,
-					titleColor: colors.text.primary,
+					backgroundColor: colors.backgroundXLight,
+					titleColor: colors.textBase,
 					titleFont: {
 						weight: '600',
 					},
-					bodyColor: colors.text.secondary,
+					bodyColor: colors.textBase,
 					bodySpacing: 4,
 					padding: 12,
-					borderColor: toRGBA(colors.primary, 0.2),
+					borderColor: colors.foregroundBase,
 					borderWidth: 1,
 					displayColors: true,
 					callbacks: {
-						title: (tooltipItems) => tooltipItems[0].label,
-						label: (context) => `${params.metric}: ${context.parsed.y.toFixed(2)}`,
+						title: (tooltipItems) => {
+							return dateFormat((tooltipItems[0].raw as TestRunRecord).runAt, 'yyyy-mm-dd HH:MM');
+						},
+						label: (context) => `${metric}: ${context.parsed.y.toFixed(2)}`,
+						labelColor() {
+							return {
+								borderColor: 'rgba(29, 21, 21, 0)',
+								backgroundColor: colors.primary,
+								borderWidth: 0,
+								borderRadius: 5,
+							};
+						},
 					},
 				},
 				legend: {
 					display: false,
-				},
-			},
-			animation: {
-				duration: 750,
-				easing: 'easeInOutQuart',
-			},
-			transitions: {
-				active: {
-					animation: {
-						duration: 300,
-					},
 				},
 			},
 		};

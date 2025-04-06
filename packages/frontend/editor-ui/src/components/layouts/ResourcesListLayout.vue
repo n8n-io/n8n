@@ -96,6 +96,7 @@ const props = withDefaults(
 		resourcesRefreshing?: boolean;
 		// Set to true if sorting and filtering is done outside of the component
 		dontPerformSortingAndFiltering?: boolean;
+		hasEmptyState?: boolean;
 	}>(),
 	{
 		displayName: (resource: Resource) => resource.name || '',
@@ -114,6 +115,7 @@ const props = withDefaults(
 		totalItems: 0,
 		dontPerformSortingAndFiltering: false,
 		resourcesRefreshing: false,
+		hasEmptyState: true,
 	},
 );
 
@@ -144,8 +146,13 @@ const slots = defineSlots<{
 		filters: Record<string, boolean | string | string[]>;
 		setKeyValue: (key: string, value: unknown) => void;
 	}): unknown;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	default(props: { data: any; updateItemSize: (data: any) => void }): unknown;
+	default(props: {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		data: any;
+		columns?: DatatableColumn[];
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		updateItemSize?: (data: any) => void;
+	}): unknown;
 	item(props: { item: unknown; index: number }): unknown;
 	breadcrumbs(): unknown;
 }>();
@@ -158,7 +165,7 @@ const filtersModel = computed({
 
 const showEmptyState = computed(() => {
 	return (
-		route.params.folderId === undefined &&
+		props.hasEmptyState &&
 		props.resources.length === 0 &&
 		// Don't show empty state if resources are refreshing or if filters are being set
 		!hasFilters.value &&
@@ -418,7 +425,7 @@ const getColumns = () => {
 	if ('columns' in props.typeProps) {
 		return props.typeProps.columns;
 	}
-	return {};
+	return [];
 };
 
 const sendSortingTelemetry = () => {
@@ -534,8 +541,9 @@ const loadPaginationFromQueryString = async () => {
 							<n8n-input
 								ref="search"
 								:model-value="filtersModel.search"
-								:class="[$style['search'], 'mr-2xs']"
+								:class="$style.search"
 								:placeholder="i18n.baseText(`${resourceKey}.search.placeholder` as BaseTextKey)"
+								size="small"
 								clearable
 								data-test-id="resources-list-search"
 								@update:model-value="onSearch"
@@ -545,7 +553,7 @@ const loadPaginationFromQueryString = async () => {
 								</template>
 							</n8n-input>
 							<div :class="$style['sort-and-filter']">
-								<n8n-select v-model="sortBy" data-test-id="resources-list-sort">
+								<n8n-select v-model="sortBy" size="small" data-test-id="resources-list-sort">
 									<n8n-option
 										v-for="sortOption in sortOptions"
 										:key="sortOption"
@@ -653,7 +661,12 @@ const loadPaginationFromQueryString = async () => {
 					</n8n-datatable>
 				</div>
 
-				<n8n-text v-else color="text-base" size="medium" data-test-id="resources-list-empty">
+				<n8n-text
+					v-else-if="hasAppliedFilters() || filtersModel.search !== ''"
+					color="text-base"
+					size="medium"
+					data-test-id="resources-list-empty"
+				>
 					{{ i18n.baseText(`${resourceKey}.noResults` as BaseTextKey) }}
 				</n8n-text>
 
@@ -677,14 +690,14 @@ const loadPaginationFromQueryString = async () => {
 	display: grid;
 	grid-auto-flow: column;
 	grid-auto-columns: 1fr max-content max-content max-content;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing-4xs);
 	align-items: center;
 	justify-content: end;
 	width: 100%;
 
 	.sort-and-filter {
 		display: flex;
-		gap: var(--spacing-2xs);
+		gap: var(--spacing-4xs);
 		align-items: center;
 	}
 
@@ -692,6 +705,15 @@ const loadPaginationFromQueryString = async () => {
 		grid-auto-flow: row;
 		grid-auto-columns: unset;
 		grid-template-columns: 1fr;
+	}
+}
+
+.search {
+	max-width: 196px;
+	justify-self: end;
+
+	input {
+		height: 30px;
 	}
 }
 

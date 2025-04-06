@@ -1,10 +1,11 @@
-import type { ActionDropdownItem, XYPosition } from '@/Interface';
+import type { ActionDropdownItem, XYPosition, INodeUi } from '@/Interface';
 import { NOT_DUPLICATABLE_NODE_TYPES, STICKY_NODE_TYPE } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
 import { getMousePosition } from '../utils/nodeViewUtils';
 import { useI18n } from './useI18n';
@@ -92,6 +93,16 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 		isOpen.value = false;
 		actions.value = [];
 		position.value = [0, 0];
+	};
+
+	const isExecutable = (node: INodeUi) => {
+		const currentWorkflow = workflowsStore.getCurrentWorkflow();
+		const workflowNode = currentWorkflow.getNode(node.name) as INode;
+		const nodeType = nodeTypesStore.getNodeType(
+			workflowNode.type,
+			workflowNode.typeVersion,
+		) as INodeTypeDescription;
+		return NodeHelpers.isExecutable(currentWorkflow, workflowNode, nodeType);
 	};
 
 	const open = (event: MouseEvent, menuTarget: ContextMenuTarget) => {
@@ -228,7 +239,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 							{
 								id: 'execute',
 								label: i18n.baseText('contextMenu.test'),
-								disabled: isReadOnly.value,
+								disabled: isReadOnly.value || !isExecutable(nodes[0]),
 							},
 							{
 								id: 'rename',

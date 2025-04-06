@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "properties": {
+        "_id": {
+            "type": "string"
+        },
+        "createdAt": {
+            "type": "string"
+        },
+        "createdBy": {
+            "type": "string"
+        },
+        "errors": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "hasError": {
+            "type": "boolean"
+        },
+        "name": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

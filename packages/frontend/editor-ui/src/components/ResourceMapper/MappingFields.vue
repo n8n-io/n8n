@@ -449,7 +449,7 @@ defineExpose({
 	padding: 0 0 0 var(--spacing-s);
 
 	.parameterInput {
-		width: 100%;
+		width: calc(100% - var(--delete-option-width));
 	}
 
 	.parameterInput:first-child {
