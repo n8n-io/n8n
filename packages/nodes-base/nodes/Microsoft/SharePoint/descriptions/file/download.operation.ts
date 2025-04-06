@@ -1,6 +1,6 @@
 import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
 
-import { untilSiteSelected } from '../../helpers/utils';
+import { untilFolderSelected, untilSiteSelected } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
@@ -73,6 +73,12 @@ const properties: INodeProperties[] = [
 			value: '',
 		},
 		description: 'Select the file to download',
+		displayOptions: {
+			hide: {
+				...untilSiteSelected,
+				...untilFolderSelected,
+			},
+		},
 		modes: [
 			{
 				displayName: 'From List',

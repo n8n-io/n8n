@@ -270,6 +270,8 @@ export async function handleErrorPostReceive(
 	return data;
 }
 
+export const untilFolderSelected = { folder: [''] };
+
 export const untilItemSelected = { item: [''] };
 
 export const untilListSelected = { list: [''] };

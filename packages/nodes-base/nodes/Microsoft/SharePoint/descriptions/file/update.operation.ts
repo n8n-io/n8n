@@ -6,7 +6,7 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 
-import { untilSiteSelected } from '../../helpers/utils';
+import { untilFolderSelected, untilSiteSelected } from '../../helpers/utils';
 import { microsoftSharePointApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
@@ -80,6 +80,12 @@ const properties: INodeProperties[] = [
 			value: '',
 		},
 		description: 'Select the file to update',
+		displayOptions: {
+			hide: {
+				...untilSiteSelected,
+				...untilFolderSelected,
+			},
+		},
 		modes: [
 			{
 				displayName: 'From List',
