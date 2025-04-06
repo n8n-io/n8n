@@ -30,7 +30,7 @@ export interface IListItem {
 
 export interface IList {
 	id: string;
-	name: string;
+	displayName: string;
 }
 
 export interface ISite {

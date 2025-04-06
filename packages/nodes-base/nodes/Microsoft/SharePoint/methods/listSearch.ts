@@ -137,7 +137,7 @@ export async function getItems(
 			$select: 'id,fields',
 		};
 		if (filter) {
-			qs.$filter = `fields/Title eq ${filter}`;
+			qs.$filter = `fields/Title eq '${filter}'`;
 		}
 		response = await microsoftSharePointApiRequest.call(
 			this,
@@ -182,10 +182,10 @@ export async function getLists(
 		);
 	} else {
 		const qs: IDataObject = {
-			$select: 'id,name',
+			$select: 'id,displayName',
 		};
 		if (filter) {
-			qs.$search = filter;
+			qs.$filter = `displayName eq '${filter}'`;
 		}
 		response = await microsoftSharePointApiRequest.call(
 			this,
@@ -200,7 +200,7 @@ export async function getLists(
 
 	const results: INodeListSearchItems[] = lists
 		.map((g) => ({
-			name: g.name,
+			name: g.displayName,
 			value: g.id,
 		}))
 		.sort((a, b) =>
