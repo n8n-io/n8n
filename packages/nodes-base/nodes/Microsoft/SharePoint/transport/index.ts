@@ -29,7 +29,7 @@ export async function microsoftSharePointApiRequest(
 		qs,
 	};
 
-	return await this.helpers.requestWithAuthentication.call(
+	return await this.helpers.httpRequestWithAuthentication.call(
 		this,
 		'microsoftSharePointOAuth2Api',
 		options,
