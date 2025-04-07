@@ -3,9 +3,8 @@ import type {
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IDataObject,
-	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { microsoftApiRequest } from './v2/transport';
 
@@ -50,7 +49,6 @@ export async function createSubscription(
 	webhookUrl: string,
 	resourcePath: string,
 ): Promise<string> {
-	// Todo: is expirationTime required? Does the webhook still work once it is expired, i.e. is it recreated?
 	const expirationTime = new Date(Date.now() + 3600 * 2 * 1000).toISOString();
 	const body: IDataObject = {
 		changeType: 'created',
@@ -84,11 +82,13 @@ export async function getResourcePath(
 			const watchAllChats = this.getNodeParameter('watchAllChats', 0, {
 				extractValue: true,
 			}) as boolean;
-			if (watchAllChats) return '/me/chats/getAllMessages';
+			if (watchAllChats) {
+				return '/me/chats/getAllMessages';
+			}
 
 			let chatId = this.getNodeParameter('chatId', 0, { extractValue: true }) as string;
 			if (!chatId) {
-				throw new NodeApiError(this.getNode(), { message: 'Chat ID is required' });
+				throw new NodeOperationError(this.getNode(), 'Chat ID is required');
 			}
 
 			chatId = decodeURIComponent(chatId);
@@ -107,7 +107,7 @@ export async function getResourcePath(
 
 			const teamId = this.getNodeParameter('teamId', 0, { extractValue: true }) as string;
 			if (!teamId) {
-				throw new NodeApiError(this.getNode(), { message: 'Team ID is required' });
+				throw new NodeOperationError(this.getNode(), 'Team ID is required');
 			}
 
 			return `/teams/${teamId}/channels`;
@@ -138,7 +138,7 @@ export async function getResourcePath(
 			// If not watching all teams, fetch channels for a specific team
 			const teamId = this.getNodeParameter('teamId', undefined, { extractValue: true }) as string;
 			if (!teamId) {
-				throw new NodeApiError(this.getNode(), { message: 'Team ID is required' });
+				throw new NodeOperationError(this.getNode(), 'Team ID is required');
 			}
 
 			const watchAllChannels = this.getNodeParameter('watchAllChannels', 0, {
@@ -155,7 +155,7 @@ export async function getResourcePath(
 
 			let channelId = this.getNodeParameter('channelId', 0, { extractValue: true }) as string;
 			if (!channelId) {
-				throw new NodeApiError(this.getNode(), { message: 'Channel ID is required' });
+				throw new NodeOperationError(this.getNode(), 'Channel ID is required');
 			}
 
 			channelId = decodeURIComponent(channelId);
@@ -175,14 +175,14 @@ export async function getResourcePath(
 
 			const teamId = this.getNodeParameter('teamId', 0, { extractValue: true }) as string;
 			if (!teamId) {
-				throw new NodeApiError(this.getNode(), { message: 'Team ID is required' });
+				throw new NodeOperationError(this.getNode(), 'Team ID is required');
 			}
 
 			return `/teams/${teamId}/members`;
 		}
 
 		default: {
-			throw new NodeApiError(this.getNode(), {
+			throw new NodeOperationError(this.getNode(), {
 				message: `Invalid event: ${event}`,
 				description: `The selected event \"${event}\" is not recognized.`,
 			});
