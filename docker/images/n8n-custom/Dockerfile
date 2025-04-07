@@ -49,7 +49,14 @@ RUN \
 	tar xvf task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz --directory=/usr/local/bin && \
 	cd - && \
 	rm -r /launcher-temp
-
+# Install yt-dlp
+RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp && \
+    chmod a+rx /usr/local/bin/yt-dlp && \
+    # Also install ffmpeg for media processing
+    apt-get update && \
+    apt-get install -y ffmpeg && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 RUN \
 	cd /usr/local/lib/node_modules/n8n && \
 	npm rebuild sqlite3 && \
