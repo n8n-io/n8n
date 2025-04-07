@@ -380,7 +380,11 @@ const toggleTimeout = () => {
 
 const updateTimeSavedPerExecution = (value: string) => {
 	const numValue = parseInt(value, 10);
-	workflowSettings.value.timeSavedPerExecution = isNaN(numValue) ? undefined : numValue;
+	workflowSettings.value.timeSavedPerExecution = isNaN(numValue)
+		? undefined
+		: numValue < 0
+			? 0
+			: numValue;
 };
 
 onMounted(async () => {
@@ -826,6 +830,7 @@ onMounted(async () => {
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								data-test-id="workflow-settings-time-saved-per-execution"
 								type="number"
+								min="0"
 								@update:model-value="updateTimeSavedPerExecution"
 							/>
 							<span>{{ i18n.baseText('workflowSettings.timeSavedPerExecution.hint') }}</span>

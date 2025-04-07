@@ -42,7 +42,7 @@ export function useChatState(isDisabled: Ref<boolean>, onWindowResize: () => voi
 
 	const canvasNodes = computed(() => workflowsStore.allNodes);
 	const allConnections = computed(() => workflowsStore.allConnections);
-	const chatPanelState = computed(() => workflowsStore.chatPanelState);
+	const logsPanelState = computed(() => workflowsStore.logsPanelState);
 	const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 
 	// Initialize features with injected dependencies
@@ -60,14 +60,11 @@ export function useChatState(isDisabled: Ref<boolean>, onWindowResize: () => voi
 		getNodeType: nodeTypesStore.getNodeType,
 	});
 
-	const { sendMessage, getChatMessages, isLoading } = useChatMessaging({
+	const { sendMessage, isLoading } = useChatMessaging({
 		chatTrigger: chatTriggerNode,
-		connectedNode,
 		messages,
 		sessionId: currentSessionId,
-		workflow,
 		executionResultData: computed(() => workflowsStore.getWorkflowExecution?.data?.resultData),
-		getWorkflowResultDataByNodeName: workflowsStore.getWorkflowResultDataByNodeName,
 		onRunChatWorkflow,
 	});
 
@@ -128,15 +125,11 @@ export function useChatState(isDisabled: Ref<boolean>, onWindowResize: () => voi
 
 	// Watchers
 	watch(
-		() => chatPanelState.value,
+		() => logsPanelState.value,
 		(state) => {
 			if (state !== LOGS_PANEL_STATE.CLOSED) {
 				setChatTriggerNode();
 				setConnectedNode();
-
-				if (messages.value.length === 0) {
-					messages.value = getChatMessages();
-				}
 
 				setTimeout(() => {
 					onWindowResize();

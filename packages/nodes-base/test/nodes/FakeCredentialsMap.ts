@@ -251,6 +251,12 @@ BQIDAQAB
 		username: 'nathan@n8n.io',
 		password: 'fake-password',
 	},
+	wordpressApi: {
+		url: 'https://myblog.com',
+		allowUnauthorizedCerts: false,
+		username: 'nodeqa',
+		password: 'fake-password',
+	},
 	discordWebhookApi: {
 		webhookUri: 'https://discord.com/webhook',
 	},
