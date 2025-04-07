@@ -211,6 +211,9 @@ importers:
       jest-expect-message:
         specifier: ^1.1.3
         version: 1.1.3
+      jest-junit:
+        specifier: ^16.0.0
+        version: 16.0.0
       jest-mock:
         specifier: ^29.6.2
         version: 29.6.2
@@ -924,8 +927,8 @@ importers:
         specifier: 1.13.0
         version: 1.13.0
       '@n8n_io/license-sdk':
-        specifier: 2.17.0
-        version: 2.17.0
+        specifier: 2.19.0
+        version: 2.19.0
       '@oclif/core':
         specifier: 4.0.7
         version: 4.0.7
@@ -4693,8 +4696,8 @@ packages:
     resolution: {integrity: sha512-16kftFTeX3/lBinHJaBK0OL1lB4FpPaUoHX4h25AkvgHvmjUHpWNY2ZtKos0rY89+pkzDsNxMZqSUkeKU45iRg==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
-  '@n8n_io/license-sdk@2.17.0':
-    resolution: {integrity: sha512-oa+P1qnJtVDysLSyaeLqHwUwUd5tXqbiWnj1+kuZrtF9hrJUacxGUQdFuBlGJwr8wUTTJVh2XIcE5N2Mn7x2Bg==}
+  '@n8n_io/license-sdk@2.19.0':
+    resolution: {integrity: sha512-Jrdw0us1rvs1lvvJaF1EtfTHXmeHq+PK4RVhfBZuAZqpVOFfM8iqBr3GzzZFVF4k8BS12Y9KrkzPkLf6oOlFFw==}
     engines: {node: '>=18.12.1'}
 
   '@n8n_io/riot-tmpl@4.0.0':
@@ -9652,6 +9655,10 @@ packages:
     resolution: {integrity: sha512-+51XleTDAAysvU8rT6AnS1ZJ+WHVNqhj1k6nTvN2PYP+HjU3kqlaKQ1Lnw3NYW3bm2r8vq82X0Z1nDDHZMzHVA==}
     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
 
+  jest-junit@16.0.0:
+    resolution: {integrity: sha512-A94mmw6NfJab4Fg/BlvVOUXzXgF0XIH6EmTgJ5NDPp4xoKq0Kr7sErb+4Xs9nZvu58pJojz5RFGpqnZYJTrRfQ==}
+    engines: {node: '>=10.12.0'}
+
   jest-leak-detector@29.6.2:
     resolution: {integrity: sha512-aNqYhfp5uYEO3tdWMb2bfWv6f0b4I0LOxVRpnRLAeque2uqOVVMLh6khnTcE2qJ5wAKop0HcreM1btoysD6bPQ==}
     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
@@ -13185,6 +13192,10 @@ packages:
   undici@6.21.1:
     resolution: {integrity: sha512-q/1rj5D0/zayJB2FraXdaWxbhWiNKDvu8naDT2dl1yTlvJp4BLtOcp2a5BvgGNQpYYJzau7tf1WgKv3b+7mqpQ==}
     engines: {node: '>=18.17'}
+
+  undici@7.7.0:
+    resolution: {integrity: sha512-tZ6+5NBq4KH35rr46XJ2JPFKxfcBlYNaqLF/wyWIO9RMHqqU/gx/CLB1Y2qMcgB8lWw/bKHa7qzspqCN7mUHvA==}
+    engines: {node: '>=20.18.1'}
 
   unicode-canonical-property-names-ecmascript@2.0.1:
     resolution: {integrity: sha512-dA8WbNeb2a6oQzAQ55YlT5vQAWGV9WXOsi3SskE3bcCdM0P4SDd+24zS/OCacdRq5BkdsRj9q3Pg6YyQoxIGqg==}
@@ -17053,12 +17064,12 @@ snapshots:
 
   '@n8n_io/ai-assistant-sdk@1.13.0': {}
 
-  '@n8n_io/license-sdk@2.17.0':
+  '@n8n_io/license-sdk@2.19.0':
     dependencies:
       crypto-js: 4.2.0
       node-machine-id: 1.1.12
       node-rsa: 1.1.1
-      undici: 6.21.1
+      undici: 7.7.0
 
   '@n8n_io/riot-tmpl@4.0.0':
     dependencies:
@@ -23340,6 +23351,13 @@ snapshots:
     optionalDependencies:
       fsevents: 2.3.3
 
+  jest-junit@16.0.0:
+    dependencies:
+      mkdirp: 1.0.4
+      strip-ansi: 6.0.1
+      uuid: 8.3.2
+      xml: 1.0.1
+
   jest-leak-detector@29.6.2:
     dependencies:
       jest-get-type: 29.4.3
@@ -27591,6 +27609,8 @@ snapshots:
       '@fastify/busboy': 2.1.1
 
   undici@6.21.1: {}
+
+  undici@7.7.0: {}
 
   unicode-canonical-property-names-ecmascript@2.0.1: {}
 

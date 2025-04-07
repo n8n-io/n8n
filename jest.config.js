@@ -32,6 +32,7 @@ const config = {
 	collectCoverage: isCoverageEnabled,
 	coverageReporters: ['text-summary', 'lcov', 'html-spa'],
 	collectCoverageFrom: ['src/**/*.ts'],
+	reporters: ['default', 'jest-junit'],
 	workerIdleMemoryLimit: '1MB',
 };
 
