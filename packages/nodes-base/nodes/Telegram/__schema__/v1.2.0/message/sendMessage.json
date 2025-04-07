@@ -16,9 +16,6 @@
                         "id": {
                             "type": "integer"
                         },
-                        "last_name": {
-                            "type": "string"
-                        },
                         "type": {
                             "type": "string"
                         },
@@ -29,26 +26,6 @@
                 },
                 "date": {
                     "type": "integer"
-                },
-                "entities": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "length": {
-                                "type": "integer"
-                            },
-                            "offset": {
-                                "type": "integer"
-                            },
-                            "type": {
-                                "type": "string"
-                            },
-                            "url": {
-                                "type": "string"
-                            }
-                        }
-                    }
                 },
                 "from": {
                     "type": "object",
@@ -76,5 +53,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }
