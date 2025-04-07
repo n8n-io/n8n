@@ -53,7 +53,7 @@ const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
 	manual: true,
 };
 
-type BufferedInsight = Pick<InsightsRaw, 'type' | 'value'> & {
+type BufferedInsight = Pick<InsightsRaw, 'type' | 'value' | 'timestamp'> & {
 	workflowId: string;
 	workflowName: string;
 };
@@ -141,6 +141,7 @@ export class InsightsService {
 		const commonWorkflowData = {
 			workflowId: ctx.workflowData.id,
 			workflowName: ctx.workflowData.name,
+			timestamp: new Date(),
 		};
 		// success or failure event
 		this.bufferedInsights.add({
@@ -236,6 +237,7 @@ export class InsightsService {
 				insight.metaId = metadata.metaId;
 				insight.type = event.type;
 				insight.value = event.value;
+				insight.timestamp = event.timestamp;
 
 				events.push(insight);
 			}

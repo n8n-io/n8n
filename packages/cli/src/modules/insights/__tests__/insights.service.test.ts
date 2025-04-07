@@ -94,6 +94,7 @@ describe('workflowExecuteAfterHandler', () => {
 		});
 
 		// ACT
+		const now = new Date();
 		await insightsService.workflowExecuteAfterHandler(ctx, run);
 		await insightsService.flushEvents();
 
@@ -123,6 +124,10 @@ describe('workflowExecuteAfterHandler', () => {
 				value: stoppedAt.diff(startedAt).toMillis(),
 			}),
 		);
+		// expect timestamp to be close to workflow execution start
+		for (const insight of allInsights) {
+			expect(insight.timestamp.getTime() / 1000).toBeCloseTo(now.getTime() / 1000, 0);
+		}
 		if (status === 'success') {
 			expect(allInsights).toContainEqual(
 				expect.objectContaining({
@@ -567,16 +572,19 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 			await insightsService.workflowExecuteAfterHandler(ctx, run);
 		}
 
-		const shutdownPromise = insightsService.shutdown();
+		void insightsService.shutdown();
 		// trigger a workflow after shutdown
 		await insightsService.workflowExecuteAfterHandler(ctx, run);
-		await shutdownPromise;
 
 		// ASSERT
 		expect(trxMock.insert).toHaveBeenCalledTimes(2);
 		// Check that last insert call contains 3 events (the synchronous flush after shutdown)
 		let callArgs = trxMock.insert.mock.calls.at(-1);
 		expect(callArgs?.[1]).toHaveLength(3);
+
+		// ACT
+		// await for the next tick to ensure the flush is called
+		await new Promise(process.nextTick);
 
 		// Check that the one before that contains 30 events (the shutdown flush)
 		callArgs = trxMock.insert.mock.calls.at(-2);
@@ -598,17 +606,22 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 
 			// ASSERT
 			expect(trxMock.insert).toHaveBeenCalledTimes(1);
+			const insertArgs = trxMock.insert.mock.calls.at(-1);
 
 			// ACT
 			await insightsService.flushEvents();
 
 			expect(trxMock.insert).toHaveBeenCalledTimes(2);
+			const newInsertArgs = trxMock.insert.mock.calls.at(-1);
+			// Check that last insert call contains the same 3 insights as previous failed flush
+			expect(newInsertArgs?.[1]).toHaveLength(3);
+			expect(newInsertArgs?.[1]).toEqual(insertArgs?.[1]);
 		} finally {
 			jest.useRealTimers();
 		}
 	});
 
-	test('waits for in-flight flush during shutdown', async () => {
+	test('waits for ongoing flush during shutdown', async () => {
 		// ARRANGE
 		const config = Container.get(InsightsConfig);
 		config.flushBatchSize = 10;
