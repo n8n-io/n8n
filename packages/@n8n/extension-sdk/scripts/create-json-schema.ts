@@ -1,9 +1,10 @@
 import { extensionManifestSchema } from '../src/schema';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { writeFile } from 'fs/promises';
-import { resolve } from 'path';
+import { dirname, resolve } from 'path';
+import { fileURLToPath } from 'url';
 
-const __dirname = new URL('.', import.meta.url).pathname;
+const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = resolve(__dirname, '..');
 
 const jsonSchema = zodToJsonSchema(extensionManifestSchema, {
