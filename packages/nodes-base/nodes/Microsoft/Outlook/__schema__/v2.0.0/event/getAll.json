@@ -4,42 +4,6 @@
         "@odata.etag": {
             "type": "string"
         },
-        "attendees": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "emailAddress": {
-                        "type": "object",
-                        "properties": {
-                            "address": {
-                                "type": "string"
-                            },
-                            "name": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "status": {
-                        "type": "object",
-                        "properties": {
-                            "response": {
-                                "type": "string"
-                            },
-                            "time": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "type": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
-        "bodyPreview": {
-            "type": "string"
-        },
         "end": {
             "type": "object",
             "properties": {
@@ -54,22 +18,6 @@
         "id": {
             "type": "string"
         },
-        "organizer": {
-            "type": "object",
-            "properties": {
-                "emailAddress": {
-                    "type": "object",
-                    "properties": {
-                        "address": {
-                            "type": "string"
-                        },
-                        "name": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
         "start": {
             "type": "object",
             "properties": {
@@ -80,10 +28,7 @@
                     "type": "string"
                 }
             }
-        },
-        "webLink": {
-            "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
