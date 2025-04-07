@@ -1109,6 +1109,7 @@
 	"ndv.output.runNodeHint": "Execute this node to view data",
 	"ndv.output.runNodeHintSubNode": "Output will appear here once the parent node is run",
 	"ndv.output.waitNodeWaitingForWebhook": "Execution will continue when webhook is received on ",
+	"ndv.output.githubNodeWaitingForWebhook": "Execution will continue when the following webhook URL is called: ",
 	"ndv.output.sendAndWaitWaitingApproval": "Execution will continue after the user's response",
 	"ndv.output.waitNodeWaitingForFormSubmission": "Execution will continue when form is submitted on ",
 	"ndv.output.waitNodeWaiting": "Execution will continue when wait time is over",
@@ -3077,7 +3078,10 @@
 	"insights.banner.timeSaved.tooltip.link.text": "add time estimates",
 	"insights.banner.title.total": "Total",
 	"insights.banner.title.failed": "Failed",
+	"insights.banner.title.succeeded": "Succeeded",
 	"insights.banner.title.failureRate": "Failure rate",
 	"insights.banner.title.timeSaved": "Time saved",
-	"insights.banner.title.averageRunTime": "Avg. run time"
+	"insights.banner.title.timeSavedDailyAverage": "Time saved daily avg.",
+	"insights.banner.title.averageRunTime": "Avg. run time",
+	"insights.dashboard.title": "Insights"
 }

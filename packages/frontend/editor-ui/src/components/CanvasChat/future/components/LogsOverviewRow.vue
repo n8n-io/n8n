@@ -193,20 +193,23 @@ function isLastChild(level: number) {
 	position: relative;
 	z-index: 1;
 
+	--row-gap-thickness: 1px;
+
 	& > * {
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 		padding: var(--spacing-2xs);
+		margin-bottom: var(--row-gap-thickness);
 	}
 }
 
 .background {
 	position: absolute;
-	left: calc(var(--indent-depth) * 32px);
+	left: calc(var(--row-gap-thickness) + var(--indent-depth) * 32px);
 	top: 0;
-	width: calc(100% - var(--indent-depth) * 32px);
-	height: 100%;
+	width: calc(100% - var(--indent-depth) * 32px - var(--row-gap-thickness));
+	height: calc(100% - var(--row-gap-thickness));
 	border-radius: var(--border-radius-base);
 	z-index: -1;
 
@@ -227,6 +230,7 @@ function isLastChild(level: number) {
 	align-self: stretch;
 	position: relative;
 	overflow: hidden;
+	margin-bottom: 0;
 
 	&.connectorCurved:before {
 		content: '';
@@ -250,6 +254,7 @@ function isLastChild(level: number) {
 }
 
 .icon {
+	margin-left: var(--row-gap-thickness);
 	flex-grow: 0;
 	flex-shrink: 0;
 }

@@ -1002,6 +1002,7 @@ export class WorkflowExecute {
 				nodeIssues = NodeHelpers.getNodeParametersIssues(
 					nodeType.description.properties,
 					node,
+					nodeType.description,
 					inputData.pinDataNodeNames,
 				);
 			}

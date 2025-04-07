@@ -873,6 +873,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			true,
 			false,
 			node,
+			nodeTypeDescription,
 		);
 
 		node.parameters = nodeParameters ?? {};

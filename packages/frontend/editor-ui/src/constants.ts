@@ -202,6 +202,7 @@ export const SIMULATE_NODE_TYPE = 'n8n-nodes-base.simulate';
 export const SIMULATE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.simulateTrigger';
 export const AI_TRANSFORM_NODE_TYPE = 'n8n-nodes-base.aiTransform';
 export const FORM_NODE_TYPE = 'n8n-nodes-base.form';
+export const GITHUB_NODE_TYPE = 'n8n-nodes-base.github';
 export const SLACK_TRIGGER_NODE_TYPE = 'n8n-nodes-base.slackTrigger';
 export const TELEGRAM_TRIGGER_NODE_TYPE = 'n8n-nodes-base.telegramTrigger';
 export const FACEBOOK_LEAD_ADS_TRIGGER_NODE_TYPE = 'n8n-nodes-base.facebookLeadAdsTrigger';
@@ -550,6 +551,7 @@ export const enum VIEWS {
 	PROJECTS_EXECUTIONS = 'ProjectsExecutions',
 	FOLDERS = 'Folders',
 	PROJECTS_FOLDERS = 'ProjectsFolders',
+	INSIGHTS = 'Insights',
 }
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
@@ -721,16 +723,8 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
 
-export const TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT = '017_template_credential_setup_v2';
-
 export const CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT = {
 	name: '20_canvas_auto_add_manual_trigger',
-	control: 'control',
-	variant: 'variant',
-};
-
-export const AI_ASSISTANT_EXPERIMENT = {
-	name: '021_ai_debug_helper',
 	control: 'control',
 	variant: 'variant',
 };
@@ -760,9 +754,7 @@ export const SCHEMA_PREVIEW_EXPERIMENT = {
 };
 
 export const EXPERIMENTS_TO_TRACK = [
-	TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT,
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.name,
-	AI_ASSISTANT_EXPERIMENT.name,
 	CREDENTIAL_DOCS_EXPERIMENT.name,
 	EASY_AI_WORKFLOW_EXPERIMENT.name,
 	AI_CREDITS_EXPERIMENT.name,
