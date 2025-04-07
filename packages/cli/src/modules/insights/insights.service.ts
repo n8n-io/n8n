@@ -1,6 +1,7 @@
 import type { InsightsSummary } from '@n8n/api-types';
 import { Container, Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
+import { DateTime } from 'luxon';
 import { Logger } from 'n8n-core';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 import {
@@ -141,8 +142,9 @@ export class InsightsService {
 		const commonWorkflowData = {
 			workflowId: ctx.workflowData.id,
 			workflowName: ctx.workflowData.name,
-			timestamp: new Date(),
+			timestamp: DateTime.utc().toJSDate(),
 		};
+
 		// success or failure event
 		this.bufferedInsights.add({
 			...commonWorkflowData,

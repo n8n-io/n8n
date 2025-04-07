@@ -94,7 +94,7 @@ describe('workflowExecuteAfterHandler', () => {
 		});
 
 		// ACT
-		const now = new Date();
+		const now = DateTime.utc().toJSDate();
 		await insightsService.workflowExecuteAfterHandler(ctx, run);
 		await insightsService.flushEvents();
 
