@@ -787,4 +787,60 @@ describe('WorkflowDataProxy', () => {
 			});
 		});
 	});
+
+	describe('$agentInfo', () => {
+		const fixture = loadFixture('agentInfo');
+		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'AI Agent');
+		jest.mock('@/NodeTypes', () => ({
+			NodeTypes: jest.fn(() => ({
+				getByNameAndVersion: jest.fn(() => ({
+					description: {
+						properties: [],
+					},
+				})),
+			})),
+		}));
+
+		test('$agentInfo should return undefined for non-agent nodes', () => {
+			const nonAgentProxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Calculator');
+			expect(nonAgentProxy.$agentInfo).toBeUndefined();
+		});
+
+		test('$agentInfo should return memoryConnectedToAgent as true if memory is connected', () => {
+			expect(proxy.$agentInfo.memoryConnectedToAgent).toBe(true);
+		});
+
+		test('$agentInfo should return memoryConnectedToAgent as false if no memory is connected', () => {
+			const noMemoryProxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Another Agent');
+			expect(noMemoryProxy.$agentInfo.memoryConnectedToAgent).toBe(false);
+		});
+
+		test('$agentInfo.tools should include connected tools with correct details', () => {
+			const tools = proxy.$agentInfo.tools;
+			// don't show tool connected to other agent
+			expect(tools.length).toEqual(2);
+			expect(tools[0]).toMatchObject({
+				connected: true,
+				name: 'Google Calendar',
+				type: 'Google Calendar Tool',
+				resource: 'Event',
+				operation: 'Create',
+				hasCredentials: false,
+			});
+			expect(tools[1]).toMatchObject({
+				connected: false,
+				name: 'Calculator',
+				type: 'Calculator Tool',
+				resource: null,
+				operation: null,
+				hasCredentials: false,
+			});
+		});
+
+		test('$agentInfo.tools should correctly identify AI-defined fields', () => {
+			const tools = proxy.$agentInfo.tools;
+			expect(tools[0].aiDefinedFields).toBe(1);
+			expect(tools[0].aiDefinedFields).toEqual('Start');
+		});
+	});
 });

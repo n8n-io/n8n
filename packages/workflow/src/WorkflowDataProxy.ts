@@ -168,22 +168,26 @@ export class WorkflowDataProxy {
 			nodeType.description.properties.find((y) => y.name === x);
 
 		const resource =
-			getProp(resourceKey)?.displayName ?? getProp(getProp('resource')?.default)?.displayName;
+			getProp(resourceKey)?.displayName ??
+			getProp(getProp('resource')?.default)?.displayName ??
+			null;
 
 		const operationKey = node.parameters.operation;
 		const operation =
-			getProp(operationKey)?.displayName ?? getProp(getProp('operation')?.default)?.displayName;
+			getProp(operationKey)?.displayName ??
+			getProp(getProp('operation')?.default)?.displayName ??
+			null;
 
 		const hasCredentials = !isObjectEmpty(node.credentials ?? {});
 
 		const hasValidCalendar = nodeType.description.name.includes('googleCalendar')
-			? isResourceLocatorValue(node.parameters.calendar)
+			? isResourceLocatorValue(node.parameters.calendar) && node.parameters.calendar.value !== ''
 			: undefined;
 
 		const aiDefinedFields = Object.entries(node.parameters)
 			.map(([key, value]) => [key, isResourceLocatorValue(value) ? value.value : value] as const)
 			.filter(([_, value]) => value?.toString().toLowerCase().includes('$fromai'))
-			.map(([key]) => key);
+			.map(([key]) => nodeType.description.properties.find((x) => x.name === key)?.displayName);
 
 		return {
 			name: node.name,
@@ -206,12 +210,12 @@ export class WorkflowDataProxy {
 		const memoryConnectedToAgent =
 			this.workflow.getParentNodes(this.activeNodeName, NodeConnectionTypes.AiMemory).length > 0;
 		const allTools = this.workflow.queryNodes((x) =>
-			x.description.name?.toLowerCase().includes('tool'),
+			x.description.name.toLowerCase().includes('tool'),
 		);
 
-		const unconnectedTools = allTools.filter(
-			(x) => this.workflow.getChildNodes(x.name, 'ai_agent', 1).length === 0,
-		);
+		const unconnectedTools = allTools
+			.filter((x) => this.workflow.getChildNodes(x.name, 'ai_agent', 1).length === 0)
+			.filter((x) => !connectedTools.includes(x));
 
 		return {
 			memoryConnectedToAgent,
