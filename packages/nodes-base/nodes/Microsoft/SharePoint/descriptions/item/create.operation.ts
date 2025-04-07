@@ -65,6 +65,19 @@ const properties: INodeProperties[] = [
 		type: 'resourceLocator',
 	},
 	{
+		displayName:
+			'Due to API restrictions, the following column types cannot be updated: Hyperlink, Location, Metadata',
+		name: 'noticeUnsupportedFields',
+		displayOptions: {
+			hide: {
+				...untilSiteSelected,
+				...untilListSelected,
+			},
+		},
+		type: 'notice',
+		default: '',
+	},
+	{
 		displayName: 'Columns',
 		name: 'columns',
 		default: {
