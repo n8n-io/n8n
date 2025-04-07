@@ -82,14 +82,14 @@ export async function getResourcePath(
 		}
 
 		case 'newChatMessage': {
-			const watchAllChats = this.getNodeParameter('watchAllChats', 0, {
+			const watchAllChats = this.getNodeParameter('watchAllChats', false, {
 				extractValue: true,
 			}) as boolean;
 			if (watchAllChats) {
 				return '/me/chats/getAllMessages';
 			}
 
-			let chatId = this.getNodeParameter('chatId', 0, { extractValue: true }) as string;
+			let chatId = this.getNodeParameter('chatId', undefined, { extractValue: true }) as string;
 			if (!chatId) {
 				throw new NodeOperationError(this.getNode(), 'Chat ID is required');
 			}
@@ -99,7 +99,7 @@ export async function getResourcePath(
 		}
 
 		case 'newChannel': {
-			const watchAllTeams = this.getNodeParameter('watchAllTeams', 0, {
+			const watchAllTeams = this.getNodeParameter('watchAllTeams', false, {
 				extractValue: true,
 			}) as boolean;
 
@@ -108,7 +108,7 @@ export async function getResourcePath(
 				return teams.map((team) => `/teams/${team.id}/channels`);
 			}
 
-			const teamId = this.getNodeParameter('teamId', 0, { extractValue: true }) as string;
+			const teamId = this.getNodeParameter('teamId', undefined, { extractValue: true }) as string;
 			if (!teamId) {
 				throw new NodeOperationError(this.getNode(), 'Team ID is required');
 			}
@@ -117,7 +117,7 @@ export async function getResourcePath(
 		}
 
 		case 'newChannelMessage': {
-			const watchAllTeams = this.getNodeParameter('watchAllTeams', 0, {
+			const watchAllTeams = this.getNodeParameter('watchAllTeams', false, {
 				extractValue: true,
 			}) as boolean;
 
@@ -156,7 +156,9 @@ export async function getResourcePath(
 				return channels.map((channel) => `/teams/${teamId}/channels/${channel.id}/messages`);
 			}
 
-			let channelId = this.getNodeParameter('channelId', 0, { extractValue: true }) as string;
+			let channelId = this.getNodeParameter('channelId', undefined, {
+				extractValue: true,
+			}) as string;
 			if (!channelId) {
 				throw new NodeOperationError(this.getNode(), 'Channel ID is required');
 			}
@@ -167,7 +169,7 @@ export async function getResourcePath(
 		}
 
 		case 'newTeamMember': {
-			const watchAllTeams = this.getNodeParameter('watchAllTeams', 0, {
+			const watchAllTeams = this.getNodeParameter('watchAllTeams', false, {
 				extractValue: true,
 			}) as boolean;
 
@@ -176,7 +178,7 @@ export async function getResourcePath(
 				return teams.map((team) => `/teams/${team.id}/members`);
 			}
 
-			const teamId = this.getNodeParameter('teamId', 0, { extractValue: true }) as string;
+			const teamId = this.getNodeParameter('teamId', undefined, { extractValue: true }) as string;
 			if (!teamId) {
 				throw new NodeOperationError(this.getNode(), 'Team ID is required');
 			}
