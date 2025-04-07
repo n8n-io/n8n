@@ -6,6 +6,12 @@ settings:
 
 catalogs:
   default:
+    '@langchain/core':
+      specifier: 0.3.30
+      version: 0.3.30
+    '@sentry/node':
+      specifier: 8.52.1
+      version: 8.52.1
     '@types/basic-auth':
       specifier: ^1.1.3
       version: 1.1.3
@@ -21,12 +27,24 @@ catalogs:
     '@types/xml2js':
       specifier: ^0.4.14
       version: 0.4.14
+    axios:
+      specifier: 1.8.2
+      version: 1.8.2
     basic-auth:
       specifier: 2.0.1
       version: 2.0.1
+    callsites:
+      specifier: 3.1.0
+      version: 3.1.0
     fast-glob:
       specifier: 3.2.12
       version: 3.2.12
+    flatted:
+      specifier: 3.2.7
+      version: 3.2.7
+    form-data:
+      specifier: 4.0.0
+      version: 4.0.0
     iconv-lite:
       specifier: 0.6.3
       version: 0.6.3
@@ -36,12 +54,76 @@ catalogs:
     luxon:
       specifier: 3.4.4
       version: 3.4.4
+    nanoid:
+      specifier: 3.3.8
+      version: 3.3.8
+    picocolors:
+      specifier: 1.0.1
+      version: 1.0.1
+    reflect-metadata:
+      specifier: 0.2.2
+      version: 0.2.2
     uuid:
       specifier: 10.0.0
       version: 10.0.0
     xml2js:
       specifier: 0.6.2
       version: 0.6.2
+    xss:
+      specifier: 1.0.15
+      version: 1.0.15
+    zod:
+      specifier: 3.24.1
+      version: 3.24.1
+  frontend:
+    '@sentry/vue':
+      specifier: ^8.33.1
+      version: 8.33.1
+    '@testing-library/jest-dom':
+      specifier: ^6.6.3
+      version: 6.6.3
+    '@testing-library/user-event':
+      specifier: ^14.6.1
+      version: 14.6.1
+    '@testing-library/vue':
+      specifier: ^8.1.0
+      version: 8.1.0
+    '@vitejs/plugin-vue':
+      specifier: ^5.2.1
+      version: 5.2.1
+    '@vitest/coverage-v8':
+      specifier: ^3.0.7
+      version: 3.0.8
+    '@vue/tsconfig':
+      specifier: ^0.7.0
+      version: 0.7.0
+    '@vueuse/core':
+      specifier: ^10.11.0
+      version: 10.11.0
+    highlight.js:
+      specifier: ^11.8.0
+      version: 11.9.0
+    tsup:
+      specifier: ^8.4.0
+      version: 8.4.0
+    vite:
+      specifier: ^6.2.0
+      version: 6.2.1
+    vitest:
+      specifier: ^3.0.7
+      version: 3.0.8
+    vitest-mock-extended:
+      specifier: ^3.0.1
+      version: 3.0.1
+    vue:
+      specifier: ^3.5.13
+      version: 3.5.13
+    vue-markdown-render:
+      specifier: ^2.2.1
+      version: 2.2.1
+    vue-router:
+      specifier: ^4.5.0
+      version: 4.5.0
 
 overrides:
   '@types/node': ^18.16.16
@@ -484,7 +566,7 @@ importers:
         version: link:../json-schema-to-zod
       '@n8n/typeorm':
         specifier: 0.3.20-12
-        version: 0.3.20-12(@sentry/node@8.52.1)(ioredis@5.3.2)(mongodb@6.11.0(@aws-sdk/credential-providers@3.666.0(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0)))(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.3))(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.12)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.8.2))
+        version: 0.3.20-12(@sentry/node@8.52.1)(ioredis@5.3.2)(mongodb@6.11.0(@aws-sdk/credential-providers@3.666.0(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0)))(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.3))(mssql@10.0.2)(mysql2@3.11.0)(pg-query-stream@4.8.1(pg@8.12.0))(pg@8.12.0)(redis@4.6.12)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.8.2))
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -782,7 +864,7 @@ importers:
         version: link:../@n8n/task-runner
       '@n8n/typeorm':
         specifier: 0.3.20-12
-        version: 0.3.20-12(@sentry/node@8.52.1)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.14)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.8.2))
+        version: 0.3.20-12(@sentry/node@8.52.1)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg-query-stream@4.8.1(pg@8.12.0))(pg@8.12.0)(redis@4.6.14)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.8.2))
       '@n8n_io/ai-assistant-sdk':
         specifier: 1.13.0
         version: 1.13.0
@@ -1962,6 +2044,9 @@ importers:
       pg:
         specifier: 8.12.0
         version: 8.12.0
+      pg-promise:
+        specifier: 11.9.1
+        version: 11.9.1
       promise-ftp:
         specifier: 1.3.5
         version: 1.3.5(promise-ftp-common@1.1.5)
@@ -6726,6 +6811,10 @@ packages:
   assert-never@1.2.1:
     resolution: {integrity: sha512-TaTivMB6pYI1kXwrFlEhLeGfOqoDNdTxjCdwRfFFkEA30Eu+k48W34nlok2EYWJfFFzqaEmichdNM7th6M5HNw==}
 
+  assert-options@0.8.1:
+    resolution: {integrity: sha512-5lNGRB5g5i2bGIzb+J1QQE1iKU/WEMVBReFIc5pPDWjcPj23otPL0eI6PB2v7QPi0qU6Mhym5D3y0ZiSIOf3GA==}
+    engines: {node: '>=10.0.0'}
+
   assert-plus@1.0.0:
     resolution: {integrity: sha512-NfJ4UzBCcQGLDlQq7nHxH+tv3kyZ0hHQqF5BO6J7tNJeP5do1llPr8dZ8zHonfhAu0PHAdMkSo+8o0wxg9lZWw==}
     engines: {node: '>=0.8'}
@@ -11147,9 +11236,18 @@ packages:
   pg-connection-string@2.6.4:
     resolution: {integrity: sha512-v+Z7W/0EO707aNMaAEfiGnGL9sxxumwLl2fJvCQtMn9Fxsg+lPpPkdcyBSv/KFgpGdYkMfn+EI1Or2EHjpgLCA==}
 
+  pg-cursor@2.13.1:
+    resolution: {integrity: sha512-t7niROd7/BVlRn2juI0S0MP/Ps87lNMpmnxMRQMOH0fboL0n7gH/MxpymSdR4rZRcPfoR3Sx47JG1u5JOJf6Gg==}
+    peerDependencies:
+      pg: ^8
+
   pg-int8@1.0.1:
     resolution: {integrity: sha512-WCtabS6t3c8SkpDBUlb1kjOs7l66xsGdKpIPZsg4wR+B3+u9UAum2odSsF9tnvxg80h4ZxLWMy4pRjOsFIqQpw==}
     engines: {node: '>=4.0.0'}
+
+  pg-minify@1.6.5:
+    resolution: {integrity: sha512-u0UE8veaCnMfJmoklqneeBBopOAPG3/6DHqGVHYAhz8DkJXh9dnjPlz25fRxn4e+6XVzdOp7kau63Rp52fZ3WQ==}
+    engines: {node: '>=14.0.0'}
 
   pg-numeric@1.0.2:
     resolution: {integrity: sha512-BM/Thnrw5jm2kKLE5uJkXqqExRUY/toLHda65XgFTBTFYZyopbKjBe29Ii3RbkvlsMoFwD+tHeGaCjjv0gHlyw==}
@@ -11160,8 +11258,17 @@ packages:
     peerDependencies:
       pg: '>=8.0'
 
+  pg-promise@11.9.1:
+    resolution: {integrity: sha512-qvMmyDvWd64X0a25hCuWV40GLMbgeYf4z7ZmzxQqGHtUIlzMtxcMtaBHAMr7XVOL62wFv2ZVKW5pFruD/4ZAOg==}
+    engines: {node: '>=14.0'}
+
   pg-protocol@1.6.1:
     resolution: {integrity: sha512-jPIlvgoD63hrEuihvIg+tJhoGjUsLPn6poJY9N5CnlPd91c2T18T/9zBtLxZSb1EhYxBRoZJtzScCaWlYLtktg==}
+
+  pg-query-stream@4.8.1:
+    resolution: {integrity: sha512-kZo6C6HSzYFF6mlwl+etDk5QZD9CMdlHUXpof6PkK9+CHHaBLvOd2lZMwErOOpC/ldg4thrAojS8sG1B8PZ9Yw==}
+    peerDependencies:
+      pg: ^8
 
   pg-types@2.2.0:
     resolution: {integrity: sha512-qTAAlrEsl8s4OiEQY69wDvcMIdQN6wdz5ojQiOy6YRMuynxenON0O5oCpJI6lshc6scgAY8qvJ2On/p+CXY0GA==}
@@ -12211,6 +12318,10 @@ packages:
 
   spdx-license-ids@3.0.12:
     resolution: {integrity: sha512-rr+VVSXtRhO4OHbXUiAF7xW3Bo9DuuF6C5jH+q/x15j2jniycgKbxU09Hr0WqlSLUs4i4ltHGXqTe7VHclYWyA==}
+
+  spex@3.3.0:
+    resolution: {integrity: sha512-VNiXjFp6R4ldPbVRYbpxlD35yRHceecVXlct1J4/X80KuuPnW2AXMq3sGwhnJOhKkUsOxAT6nRGfGE5pocVw5w==}
+    engines: {node: '>=10.0.0'}
 
   split2@4.2.0:
     resolution: {integrity: sha512-UcjcJOWknrNkF6PLX83qcHM6KHgVKNkV62Y8a5uYDVv9ydGQVwAHMKqHdJje1VTWpljG0WYpCDhrCdAOYH4TWg==}
@@ -13713,7 +13824,7 @@ snapshots:
   '@acuminous/bitsyntax@0.1.2':
     dependencies:
       buffer-more-ints: 1.0.0
-      debug: 4.4.0
+      debug: 4.4.0(supports-color@8.1.1)
       safe-buffer: 5.1.2
     transitivePeerDependencies:
       - supports-color
@@ -15837,7 +15948,7 @@ snapshots:
   '@eslint/eslintrc@2.1.4':
     dependencies:
       ajv: 6.12.6
-      debug: 4.4.0
+      debug: 4.4.0(supports-color@8.1.1)
       espree: 9.6.1
       globals: 13.20.0
       ignore: 5.2.4
@@ -15989,7 +16100,7 @@ snapshots:
   '@humanwhocodes/config-array@0.11.14':
     dependencies:
       '@humanwhocodes/object-schema': 2.0.2
-      debug: 4.4.0
+      debug: 4.4.0(supports-color@8.1.1)
       minimatch: 3.1.2
     transitivePeerDependencies:
       - supports-color
@@ -16375,7 +16486,7 @@ snapshots:
 
   '@kwsites/file-exists@1.1.1':
     dependencies:
-      debug: 4.4.0
+      debug: 4.4.0(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -16776,7 +16887,7 @@ snapshots:
       esprima-next: 5.8.4
       recast: 0.22.0
 
-  '@n8n/typeorm@0.3.20-12(@sentry/node@8.52.1)(ioredis@5.3.2)(mongodb@6.11.0(@aws-sdk/credential-providers@3.666.0(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0)))(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.3))(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.12)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.8.2))':
+  '@n8n/typeorm@0.3.20-12(@sentry/node@8.52.1)(ioredis@5.3.2)(mongodb@6.11.0(@aws-sdk/credential-providers@3.666.0(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0)))(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.3))(mssql@10.0.2)(mysql2@3.11.0)(pg-query-stream@4.8.1(pg@8.12.0))(pg@8.12.0)(redis@4.6.12)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.8.2))':
     dependencies:
       '@n8n/p-retry': 6.2.0-2
       '@sqltools/formatter': 1.2.5
@@ -16802,13 +16913,14 @@ snapshots:
       mssql: 10.0.2
       mysql2: 3.11.0
       pg: 8.12.0
+      pg-query-stream: 4.8.1(pg@8.12.0)
       redis: 4.6.12
       sqlite3: 5.1.7
       ts-node: 10.9.2(@types/node@18.16.16)(typescript@5.8.2)
     transitivePeerDependencies:
       - supports-color
 
-  '@n8n/typeorm@0.3.20-12(@sentry/node@8.52.1)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.14)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.8.2))':
+  '@n8n/typeorm@0.3.20-12(@sentry/node@8.52.1)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg-query-stream@4.8.1(pg@8.12.0))(pg@8.12.0)(redis@4.6.14)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.8.2))':
     dependencies:
       '@n8n/p-retry': 6.2.0-2
       '@sqltools/formatter': 1.2.5
@@ -16833,6 +16945,7 @@ snapshots:
       mssql: 10.0.2
       mysql2: 3.11.0
       pg: 8.12.0
+      pg-query-stream: 4.8.1(pg@8.12.0)
       redis: 4.6.14
       sqlite3: 5.1.7
       ts-node: 10.9.2(@types/node@18.16.16)(typescript@5.8.2)
@@ -19030,7 +19143,7 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 6.21.0
       '@typescript-eslint/visitor-keys': 6.21.0
-      debug: 4.4.0
+      debug: 4.4.0(supports-color@8.1.1)
       globby: 11.1.0
       is-glob: 4.0.3
       minimatch: 9.0.3
@@ -19476,13 +19589,13 @@ snapshots:
 
   agent-base@6.0.2:
     dependencies:
-      debug: 4.4.0
+      debug: 4.4.0(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
   agent-base@7.1.0:
     dependencies:
-      debug: 4.4.0
+      debug: 4.4.0(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -19728,6 +19841,8 @@ snapshots:
 
   assert-never@1.2.1: {}
 
+  assert-options@0.8.1: {}
+
   assert-plus@1.0.0: {}
 
   assert@2.1.0:
@@ -19797,7 +19912,7 @@ snapshots:
 
   axios@1.8.2:
     dependencies:
-      follow-redirects: 1.15.6
+      follow-redirects: 1.15.6(debug@4.3.6)
       form-data: 4.0.0
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -20848,10 +20963,6 @@ snapshots:
     dependencies:
       ms: 2.0.0
 
-  debug@3.2.7:
-    dependencies:
-      ms: 2.1.3
-
   debug@3.2.7(supports-color@5.5.0):
     dependencies:
       ms: 2.1.3
@@ -20872,10 +20983,6 @@ snapshots:
     dependencies:
       ms: 2.1.2
 
-  debug@4.3.6:
-    dependencies:
-      ms: 2.1.2
-
   debug@4.3.6(supports-color@8.1.1):
     dependencies:
       ms: 2.1.2
@@ -20883,10 +20990,6 @@ snapshots:
       supports-color: 8.1.1
 
   debug@4.3.7:
-    dependencies:
-      ms: 2.1.3
-
-  debug@4.4.0:
     dependencies:
       ms: 2.1.3
 
@@ -21635,7 +21738,7 @@ snapshots:
       ajv: 6.12.6
       chalk: 4.1.2
       cross-spawn: 7.0.6
-      debug: 4.4.0
+      debug: 4.4.0(supports-color@8.1.1)
       doctrine: 3.0.0
       escape-string-regexp: 4.0.0
       eslint-scope: 7.2.2
@@ -22013,8 +22116,6 @@ snapshots:
 
   fn.name@1.1.0: {}
 
-  follow-redirects@1.15.6: {}
-
   follow-redirects@1.15.6(debug@4.3.6):
     optionalDependencies:
       debug: 4.3.6(supports-color@8.1.1)
@@ -22306,7 +22407,7 @@ snapshots:
       array-parallel: 0.1.3
       array-series: 0.1.5
       cross-spawn: 4.0.2
-      debug: 3.2.7
+      debug: 3.2.7(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -22553,7 +22654,7 @@ snapshots:
     dependencies:
       '@tootallnate/once': 2.0.0
       agent-base: 6.0.2
-      debug: 4.4.0
+      debug: 4.4.0(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -22575,21 +22676,21 @@ snapshots:
   https-proxy-agent@5.0.1:
     dependencies:
       agent-base: 6.0.2
-      debug: 4.4.0
+      debug: 4.4.0(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
   https-proxy-agent@7.0.2:
     dependencies:
       agent-base: 7.1.0
-      debug: 4.4.0
+      debug: 4.4.0(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
   https-proxy-agent@7.0.5:
     dependencies:
       agent-base: 7.1.0
-      debug: 4.4.0
+      debug: 4.4.0(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -24551,7 +24652,7 @@ snapshots:
   mqtt-packet@9.0.0:
     dependencies:
       bl: 6.0.12
-      debug: 4.4.0
+      debug: 4.4.0(supports-color@8.1.1)
       process-nextick-args: 2.0.1
     transitivePeerDependencies:
       - supports-color
@@ -24605,7 +24706,7 @@ snapshots:
     dependencies:
       '@tediousjs/connection-string': 0.5.0
       commander: 11.1.0
-      debug: 4.3.6
+      debug: 4.3.6(supports-color@8.1.1)
       rfdc: 1.3.0
       tarn: 3.0.2
       tedious: 16.7.1
@@ -24853,7 +24954,7 @@ snapshots:
 
   number-allocator@1.0.14:
     dependencies:
-      debug: 4.4.0
+      debug: 4.4.0(supports-color@8.1.1)
       js-sdsl: 4.3.0
     transitivePeerDependencies:
       - supports-color
@@ -25222,7 +25323,14 @@ snapshots:
 
   pg-connection-string@2.6.4: {}
 
+  pg-cursor@2.13.1(pg@8.12.0):
+    dependencies:
+      pg: 8.12.0
+    optional: true
+
   pg-int8@1.0.1: {}
+
+  pg-minify@1.6.5: {}
 
   pg-numeric@1.0.2: {}
 
@@ -25230,7 +25338,22 @@ snapshots:
     dependencies:
       pg: 8.12.0
 
+  pg-promise@11.9.1:
+    dependencies:
+      assert-options: 0.8.1
+      pg: 8.12.0
+      pg-minify: 1.6.5
+      spex: 3.3.0
+    transitivePeerDependencies:
+      - pg-native
+
   pg-protocol@1.6.1: {}
+
+  pg-query-stream@4.8.1(pg@8.12.0):
+    dependencies:
+      pg: 8.12.0
+      pg-cursor: 2.13.1(pg@8.12.0)
+    optional: true
 
   pg-types@2.2.0:
     dependencies:
@@ -26041,7 +26164,7 @@ snapshots:
 
   rhea@1.0.24:
     dependencies:
-      debug: 3.2.7
+      debug: 3.2.7(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -26519,6 +26642,8 @@ snapshots:
       spdx-license-ids: 3.0.12
 
   spdx-license-ids@3.0.12: {}
+
+  spex@3.3.0: {}
 
   split2@4.2.0: {}
 
