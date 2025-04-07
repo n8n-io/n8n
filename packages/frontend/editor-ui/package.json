@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "1.85.0",
+  "version": "1.86.0",
   "description": "Workflow Editor UI for n8n",
   "main": "index.js",
   "scripts": {
@@ -59,6 +59,7 @@
     "core-js": "^3.40.0",
     "curlconverter": "^4.12.0",
     "dateformat": "^3.0.3",
+    "element-plus": "catalog:frontend",
     "email-providers": "^2.0.1",
     "esprima-next": "5.8.4",
     "fast-json-stable-stringify": "^2.1.0",

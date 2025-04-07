@@ -3,27 +3,19 @@ import type {
 	IDataObject,
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
+	WorkflowTestData,
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
-import nock from 'nock';
 
+import { CredentialsHelper } from '@test/nodes/credentials-helper';
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import * as Helpers from '@test/nodes/Helpers';
-import type { WorkflowTestData } from '@test/nodes/types';
 
 import { microsoftEntraApiResponse, microsoftEntraNodeResponse } from './mocks';
-import { FAKE_CREDENTIALS_DATA } from '../../../../test/nodes/FakeCredentialsMap';
 import { MicrosoftEntra } from '../MicrosoftEntra.node';
 
 describe('Microsoft Entra Node', () => {
 	const baseUrl = 'https://graph.microsoft.com/v1.0';
-
-	beforeEach(() => {
-		// https://github.com/nock/nock/issues/2057#issuecomment-663665683
-		if (!nock.isActive()) {
-			nock.activate();
-		}
-	});
 
 	describe('Credentials', () => {
 		const tests: WorkflowTestData[] = [
@@ -87,12 +79,25 @@ describe('Microsoft Entra Node', () => {
 						'Micosoft Entra ID': [microsoftEntraNodeResponse.getGroup],
 					},
 				},
+				nock: {
+					baseUrl,
+					mocks: [
+						{
+							method: 'get',
+							path: `/groups/${microsoftEntraApiResponse.getGroup.id}`,
+							statusCode: 200,
+							responseBody: {
+								...microsoftEntraApiResponse.getGroup,
+							},
+						},
+					],
+				},
 			},
 		];
 
 		beforeAll(() => {
 			jest
-				.spyOn(Helpers.CredentialsHelper.prototype, 'authenticate')
+				.spyOn(CredentialsHelper.prototype, 'authenticate')
 				.mockImplementation(
 					async (
 						credentials: ICredentialDataDecryptedObject,
@@ -114,20 +119,8 @@ describe('Microsoft Entra Node', () => {
 				);
 		});
 
-		nock(baseUrl)
-			.get(`/groups/${microsoftEntraApiResponse.getGroup.id}`)
-			.matchHeader(
-				'authorization',
-				'bearer ' + FAKE_CREDENTIALS_DATA.microsoftEntraOAuth2Api.oauthTokenData.access_token,
-			)
-			.reply(200, {
-				...microsoftEntraApiResponse.getGroup,
-			});
-
-		const nodeTypes = Helpers.setup(tests);
-
 		test.each(tests)('$description', async (testData) => {
-			const { result } = await executeWorkflow(testData, nodeTypes);
+			const { result } = await executeWorkflow(testData);
 			const resultNodeData = Helpers.getResultNodeData(result, testData);
 			resultNodeData.forEach(({ nodeName, resultData }) =>
 				expect(resultData).toEqual(testData.output.nodeData[nodeName]),

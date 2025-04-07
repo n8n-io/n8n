@@ -290,6 +290,9 @@ export const setupTestServer = ({
 
 					case 'folder':
 						await import('@/controllers/folder.controller');
+
+					case 'insights':
+						await import('@/modules/insights/insights.controller');
 				}
 			}
 

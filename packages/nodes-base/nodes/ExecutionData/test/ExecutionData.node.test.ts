@@ -1,7 +1,8 @@
 import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import { testWorkflows, getWorkflowFilenames } from '../../../test/nodes/Helpers';
+import { testWorkflows, getWorkflowFilenames } from '@test/nodes/Helpers';
+
 import { ExecutionData } from '../ExecutionData.node';
 
 describe('ExecutionData Node', () => {

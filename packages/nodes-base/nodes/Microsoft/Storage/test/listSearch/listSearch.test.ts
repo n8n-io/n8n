@@ -1,18 +1,11 @@
 import type { ILoadOptionsFunctions, INodeParameterResourceLocator } from 'n8n-workflow';
-import nock from 'nock';
 
-import { FAKE_CREDENTIALS_DATA } from '../../../../../test/nodes/FakeCredentialsMap';
+import { FAKE_CREDENTIALS_DATA } from '@test/nodes/FakeCredentialsMap';
+
 import { AzureStorage } from '../../AzureStorage.node';
 import { XMsVersion } from '../../GenericFunctions';
 
 describe('Azure Storage Node', () => {
-	beforeEach(() => {
-		// https://github.com/nock/nock/issues/2057#issuecomment-663665683
-		if (!nock.isActive()) {
-			nock.activate();
-		}
-	});
-
 	describe('List search', () => {
 		it('should list search blobs', async () => {
 			const mockResponse =

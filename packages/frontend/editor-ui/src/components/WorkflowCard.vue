@@ -26,7 +26,7 @@ import { ResourceType } from '@/utils/projects.utils';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { WorkflowResource } from './layouts/ResourcesListLayout.vue';
 import type { IUser } from 'n8n-workflow';
-import { type ProjectIcon as CardProjectIcon, ProjectTypes } from '@/types/projects.types';
+import { ProjectTypes } from '@/types/projects.types';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useFoldersStore } from '@/stores/folders.store';
 
@@ -84,14 +84,8 @@ const showFolders = computed(() => {
 	return settingsStore.isFoldersFeatureEnabled && route.name !== VIEWS.WORKFLOWS;
 });
 
-const projectIcon = computed<CardProjectIcon>(() => {
-	const defaultIcon: CardProjectIcon = { type: 'icon', value: 'layer-group' };
-	if (props.data.homeProject?.type === ProjectTypes.Personal) {
-		return { type: 'icon', value: 'user' };
-	} else if (props.data.homeProject?.type === ProjectTypes.Team) {
-		return props.data.homeProject.icon ?? defaultIcon;
-	}
-	return defaultIcon;
+const showCardBreadcrumbs = computed(() => {
+	return isOverviewPage.value && !isSomeoneElsesWorkflow.value && cardBreadcrumbs.value.length;
 });
 
 const projectName = computed(() => {
@@ -171,6 +165,12 @@ const formattedCreatedAtDate = computed(() => {
 		`d mmmm${String(props.data.createdAt).startsWith(currentYear) ? '' : ', yyyy'}`,
 	);
 });
+
+const isSomeoneElsesWorkflow = computed(
+	() =>
+		props.data.homeProject?.type !== ProjectTypes.Team &&
+		props.data.homeProject?.id !== projectsStore.personalProject?.id,
+);
 
 async function onClick(event?: KeyboardEvent | PointerEvent) {
 	if (event?.ctrlKey || event?.metaKey) {
@@ -350,39 +350,30 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
-				<div v-if="isOverviewPage" :class="$style.breadcrumbs">
-					<n8n-breadcrumbs
-						:items="cardBreadcrumbs"
-						:hidden-items="hiddenBreadcrumbsItemsAsync"
-						:path-truncated="true"
-						:show-border="true"
-						:highlight-last-item="false"
-						hidden-items-trigger="hover"
-						theme="small"
-						data-test-id="workflow-card-breadcrumbs"
-						@tooltip-opened="fetchHiddenBreadCrumbsItems"
-						@item-selected="onBreadcrumbItemClick"
-					>
-						<template v-if="data.homeProject" #prepend>
-							<div :class="$style['home-project']">
-								<n8n-link :to="`/projects/${data.homeProject.id}`">
-									<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" />
-									<n8n-text size="small" :compact="true" :bold="true" color="text-base">{{
-										projectName
-									}}</n8n-text>
-								</n8n-link>
-							</div>
-						</template>
-					</n8n-breadcrumbs>
-				</div>
 				<ProjectCardBadge
-					v-else
-					:class="$style.cardBadge"
+					:class="{ [$style.cardBadge]: true, [$style['with-breadcrumbs']]: showCardBreadcrumbs }"
 					:resource="data"
 					:resource-type="ResourceType.Workflow"
 					:resource-type-label="resourceTypeLabel"
 					:personal-project="projectsStore.personalProject"
-				/>
+					:show-badge-border="false"
+				>
+					<div v-if="showCardBreadcrumbs" :class="$style.breadcrumbs">
+						<n8n-breadcrumbs
+							:items="cardBreadcrumbs"
+							:hidden-items="hiddenBreadcrumbsItemsAsync"
+							:path-truncated="true"
+							:highlight-last-item="false"
+							hidden-items-trigger="hover"
+							theme="small"
+							data-test-id="workflow-card-breadcrumbs"
+							@tooltip-opened="fetchHiddenBreadCrumbsItems"
+							@item-selected="onBreadcrumbItemClick"
+						>
+							<template #prepend></template>
+						</n8n-breadcrumbs>
+					</div>
+				</ProjectCardBadge>
 				<WorkflowActivator
 					class="mr-s"
 					:workflow-active="data.active"
@@ -442,11 +433,13 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 	cursor: default;
 }
 
-.home-project span {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing-3xs);
-	color: var(--color-text-base);
+.cardBadge.with-breadcrumbs {
+	:global(.n8n-badge) {
+		padding-right: 0;
+	}
+	:global(.n8n-breadcrumbs) {
+		padding-left: var(--spacing-5xs);
+	}
 }
 
 @include mixins.breakpoint('sm-and-down') {

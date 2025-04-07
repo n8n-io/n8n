@@ -240,10 +240,19 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 
 			let showedSuccessToast = false;
 
-			let executionData: Pick<IExecutionResponse, 'workflowId' | 'data' | 'status'>;
+			let executionData: Pick<
+				IExecutionResponse,
+				'workflowId' | 'data' | 'status' | 'startedAt' | 'stoppedAt'
+			>;
 			if (receivedData.type === 'executionFinished' && receivedData.data.rawData) {
 				const { workflowId, status, rawData } = receivedData.data;
-				executionData = { workflowId, data: parse(rawData), status };
+				executionData = {
+					workflowId,
+					data: parse(rawData),
+					status,
+					startedAt: workflowsStore.workflowExecutionData?.startedAt ?? new Date(),
+					stoppedAt: new Date(),
+				};
 			} else {
 				uiStore.setProcessingExecutionResults(true);
 
@@ -278,6 +287,8 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 						workflowId: execution.workflowId,
 						data: parse(execution.data as unknown as string),
 						status: execution.status,
+						startedAt: workflowsStore.workflowExecutionData?.startedAt as Date,
+						stoppedAt: receivedData.type === 'executionFinished' ? new Date() : undefined,
 					};
 				} catch {
 					uiStore.setProcessingExecutionResults(false);

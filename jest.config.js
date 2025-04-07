@@ -1,4 +1,4 @@
-const { pathsToModuleNameMapper } = require('ts-jest')
+const { pathsToModuleNameMapper } = require('ts-jest');
 const { compilerOptions } = require('get-tsconfig').getTsconfig().config;
 
 /** @type {import('ts-jest').TsJestGlobalOptions} */
@@ -10,7 +10,6 @@ const tsJestOptions = {
 		sourceMap: true,
 	},
 };
-
 
 const isCoverageEnabled = process.env.COVERAGE_ENABLED === 'true';
 
@@ -24,11 +23,16 @@ const config = {
 		'^.+\\.ts$': ['ts-jest', tsJestOptions],
 	},
 	// This resolve the path mappings from the tsconfig relative to each jest.config.js
-	moduleNameMapper: compilerOptions?.paths ? pathsToModuleNameMapper(compilerOptions.paths, { prefix: `<rootDir>${compilerOptions.baseUrl ? `/${compilerOptions.baseUrl.replace(/^\.\//, '')}` : ''}` }) : {},
+	moduleNameMapper: compilerOptions?.paths
+		? pathsToModuleNameMapper(compilerOptions.paths, {
+				prefix: `<rootDir>${compilerOptions.baseUrl ? `/${compilerOptions.baseUrl.replace(/^\.\//, '')}` : ''}`,
+			})
+		: {},
 	setupFilesAfterEnv: ['jest-expect-message'],
 	collectCoverage: isCoverageEnabled,
 	coverageReporters: ['text-summary', 'lcov', 'html-spa'],
 	collectCoverageFrom: ['src/**/*.ts'],
+	reporters: ['default', 'jest-junit'],
 	workerIdleMemoryLimit: '1MB',
 };
 

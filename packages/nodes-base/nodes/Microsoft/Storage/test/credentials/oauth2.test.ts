@@ -3,25 +3,16 @@ import type {
 	IDataObject,
 	IHttpRequestOptions,
 } from 'n8n-workflow';
-import nock from 'nock';
 
-import { CredentialsHelper, equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
+import { CredentialsHelper } from '@test/nodes/credentials-helper';
+import { equalityTest, workflowToTests } from '@test/nodes/Helpers';
 
 describe('Azure Storage Node', () => {
 	const workflows = ['nodes/Microsoft/Storage/test/workflows/credentials_oauth2.workflow.json'];
 	const workflowTests = workflowToTests(workflows);
 
-	beforeEach(() => {
-		// https://github.com/nock/nock/issues/2057#issuecomment-663665683
-		if (!nock.isActive()) {
-			nock.activate();
-		}
-	});
-
 	describe('should use correct oauth2 credentials', () => {
 		beforeAll(() => {
-			nock.disableNetConnect();
-
 			jest
 				.spyOn(CredentialsHelper.prototype, 'authenticate')
 				.mockImplementation(
@@ -45,11 +36,8 @@ describe('Azure Storage Node', () => {
 		});
 
 		afterAll(() => {
-			nock.restore();
 			jest.restoreAllMocks();
 		});
-
-		const nodeTypes = setup(workflowTests);
 
 		for (const workflow of workflowTests) {
 			workflow.nock = {
@@ -59,7 +47,6 @@ describe('Azure Storage Node', () => {
 						method: 'get',
 						path: '/mycontainer?restype=container',
 						statusCode: 200,
-						requestHeaders: { authorization: 'bearer ACCESSTOKEN' },
 						responseBody: '',
 						responseHeaders: {
 							'content-length': '0',
@@ -80,7 +67,7 @@ describe('Azure Storage Node', () => {
 					},
 				],
 			};
-			test(workflow.description, async () => await equalityTest(workflow, nodeTypes));
+			test(workflow.description, async () => await equalityTest(workflow));
 		}
 	});
 });

@@ -1225,7 +1225,7 @@ const onCreateWorkflowClick = () => {
 		<template #header>
 			<ProjectHeader @create-folder="createFolderInCurrent">
 				<InsightsSummary
-					v-if="overview.isOverviewSubPage"
+					v-if="overview.isOverviewSubPage && insightsStore.isSummaryEnabled"
 					:loading="insightsStore.summary.isLoading"
 					:summary="insightsStore.summary.state"
 				/>
@@ -1319,6 +1319,7 @@ const onCreateWorkflowClick = () => {
 				:data="data as FolderResource"
 				:actions="folderCardActions"
 				:read-only="readOnlyEnv || (!hasPermissionToDeleteFolders && !hasPermissionToCreateFolders)"
+				:personal-project="projectsStore.personalProject"
 				class="mb-2xs"
 				@action="onFolderCardAction"
 			/>
