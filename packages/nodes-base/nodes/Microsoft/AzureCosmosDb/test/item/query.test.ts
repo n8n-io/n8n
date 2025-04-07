@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
 import nock from 'nock';
 
 import {
@@ -27,28 +26,22 @@ describe('Azure Cosmos DB - Query Items', () => {
 		nock(baseUrl)
 			.persist()
 			.defaultReplyHeaders({ 'Content-Type': 'application/json' })
-			.post('/colls/container1/docs', {
-				query: 'SELECT * FROM c WHERE c.id = @param1',
+			.post('/colls/newId/docs', {
+				query: 'SELECT * FROM c WHERE c.id = @Param1',
 				parameters: [
 					{
-						name: '@param1',
-						value: 'item1',
+						name: '@Param1',
+						value: 'User1',
 					},
 				],
 			})
 			.reply(200, {
-				_rid: '4PVyAMPuBto=',
 				Documents: [
 					{
-						id: 'item1',
-						_rid: '4PVyAMPuBtoFAAAAAAAAAA==',
-						_self: 'dbs/4PVyAA==/colls/4PVyAMPuBto=/docs/4PVyAMPuBtoFAAAAAAAAAA==/',
-						_etag: '"bb00c77c-0000-0300-0000-67d9a4330000"',
-						_attachments: 'attachments/',
-						_ts: 1742316595,
+						id: 'User1',
+						key1: 'value',
 					},
 				],
-				_count: 1,
 			});
 	});
 

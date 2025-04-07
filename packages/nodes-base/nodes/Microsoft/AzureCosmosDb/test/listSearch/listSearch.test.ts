@@ -1,6 +1,8 @@
-/* eslint-disable n8n-local-rules/no-plain-errors */
-/* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
-import type { IGetNodeParameterOptions, ILoadOptionsFunctions } from 'n8n-workflow';
+import {
+	OperationalError,
+	type IGetNodeParameterOptions,
+	type ILoadOptionsFunctions,
+} from 'n8n-workflow';
 
 import { FAKE_CREDENTIALS_DATA } from '../../../../../test/nodes/FakeCredentialsMap';
 import { AzureCosmosDb } from '../../AzureCosmosDb.node';
@@ -13,10 +15,10 @@ describe('Azure Cosmos DB', () => {
 				body: {
 					DocumentCollections: [
 						{
-							id: 'container2',
+							id: 'Container2',
 						},
 						{
-							id: 'container1',
+							id: 'Container1',
 						},
 					],
 				},
@@ -31,7 +33,7 @@ describe('Azure Cosmos DB', () => {
 				if (type === 'microsoftAzureCosmosDbSharedKeyApi') {
 					return FAKE_CREDENTIALS_DATA.microsoftAzureCosmosDbSharedKeyApi;
 				}
-				throw new Error('Unknown credentials');
+				throw new OperationalError('Unknown credentials');
 			});
 
 			const mockContext = {
@@ -68,8 +70,8 @@ describe('Azure Cosmos DB', () => {
 
 			expect(listSearchResult).toEqual({
 				results: [
-					{ name: 'container1', value: 'container1' },
-					{ name: 'container2', value: 'container2' },
+					{ name: 'Container1', value: 'Container1' },
+					{ name: 'Container2', value: 'Container2' },
 				],
 				paginationToken: '4PVyAKoVaBQ=',
 			});
@@ -78,7 +80,7 @@ describe('Azure Cosmos DB', () => {
 		it('should list search items', async () => {
 			const mockResponse = {
 				body: {
-					Documents: [{ id: 'item2' }, { id: 'item1' }],
+					Documents: [{ id: 'Item2' }, { id: 'Item1' }],
 				},
 				headers: {
 					'x-ms-continuation': '4PVyAKoVaBQ=',
@@ -90,9 +92,9 @@ describe('Azure Cosmos DB', () => {
 			const mockGetCurrentNodeParameter = jest.fn(
 				(parameterName, options: IGetNodeParameterOptions) => {
 					if (parameterName === 'container' && options.extractValue) {
-						return 'container1';
+						return 'Container1';
 					}
-					throw new Error('Unknown parameter');
+					throw new OperationalError('Unknown parameter');
 				},
 			);
 
@@ -100,7 +102,7 @@ describe('Azure Cosmos DB', () => {
 				if (type === 'microsoftAzureCosmosDbSharedKeyApi') {
 					return FAKE_CREDENTIALS_DATA.microsoftAzureCosmosDbSharedKeyApi;
 				}
-				throw new Error('Unknown credentials');
+				throw new OperationalError('Unknown credentials');
 			});
 
 			const mockContext = {
@@ -124,7 +126,7 @@ describe('Azure Cosmos DB', () => {
 				'microsoftAzureCosmosDbSharedKeyApi',
 				expect.objectContaining({
 					method: 'GET',
-					url: 'https://n8n-us-east-account.documents.azure.com/dbs/database_1/colls/container1/docs',
+					url: 'https://n8n-us-east-account.documents.azure.com/dbs/database_1/colls/Container1/docs',
 					headers: {
 						[HeaderConstants.X_MS_CONTINUATION]: paginationToken,
 					},
@@ -137,8 +139,8 @@ describe('Azure Cosmos DB', () => {
 
 			expect(listSearchResult).toEqual({
 				results: [
-					{ name: 'item1', value: 'item1' },
-					{ name: 'item2', value: 'item2' },
+					{ name: 'Item1', value: 'Item1' },
+					{ name: 'Item2', value: 'Item2' },
 				],
 				paginationToken: '4PVyAKoVaBQ=',
 			});

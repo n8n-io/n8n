@@ -4,8 +4,8 @@
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [0, 0],
-			"id": "49466d78-738a-4dee-a2fb-2143f7800b45",
+			"position": [-80, -100],
+			"id": "7da2ce49-9a9d-4240-b082-ff1b12d101b1",
 			"name": "When clicking ‘Test workflow’"
 		},
 		{
@@ -14,27 +14,29 @@
 				"operation": "query",
 				"container": {
 					"__rl": true,
-					"value": "container1",
+					"value": "newId",
 					"mode": "list",
-					"cachedResultName": "container1"
+					"cachedResultName": "newId"
 				},
 				"query": "SELECT * FROM c WHERE c.id = $1",
 				"options": {
 					"queryOptions": {
-						"queryParameters": "item1"
+						"queryParameters": "User1"
 					}
 				},
 				"requestOptions": {}
 			},
 			"type": "n8n-nodes-base.azureCosmosDb",
 			"typeVersion": 1,
-			"position": [220, 0],
-			"id": "00d6b986-6b8a-43ee-a6a5-b6a7c165c991",
-			"name": "Azure Cosmos Db",
+			"position": [160, -100],
+			"id": "0dc90797-8211-457c-a673-b7df28139de8",
+			"name": "queryItems",
+			"retryOnFail": false,
+			"alwaysOutputData": true,
 			"credentials": {
 				"microsoftAzureCosmosDbSharedKeyApi": {
 					"id": "exampleId",
-					"name": "Azure Cosmos DB account"
+					"name": "Azure Cosmos DB account "
 				}
 			}
 		}
@@ -44,7 +46,7 @@
 			"main": [
 				[
 					{
-						"node": "Azure Cosmos Db",
+						"node": "queryItems",
 						"type": "main",
 						"index": 0
 					}
@@ -53,10 +55,11 @@
 		}
 	},
 	"pinData": {
-		"Azure Cosmos Db": [
+		"queryItems": [
 			{
 				"json": {
-					"id": "item1"
+					"id": "User1",
+					"key1": "value"
 				}
 			}
 		]

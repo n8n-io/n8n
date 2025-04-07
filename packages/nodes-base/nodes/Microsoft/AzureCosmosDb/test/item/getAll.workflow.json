@@ -27,7 +27,7 @@
 			"alwaysOutputData": true,
 			"credentials": {
 				"microsoftAzureCosmosDbSharedKeyApi": {
-					"id": "iTUZNEdLdLW0RpF9",
+					"id": "exampleId",
 					"name": "Azure Cosmos DB account "
 				}
 			}
