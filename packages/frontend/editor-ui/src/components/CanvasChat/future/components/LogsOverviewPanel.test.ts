@@ -1,6 +1,5 @@
 import { renderComponent } from '@/__tests__/render';
 import LogsOverviewPanel from './LogsOverviewPanel.vue';
-import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia, type TestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
@@ -8,25 +7,21 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createRouter, createWebHistory } from 'vue-router';
 import { h, type ExtractPropTypes } from 'vue';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
+import {
+	aiAgentNode,
+	aiChatExecutionResponse,
+	aiChatWorkflow,
+	aiManualExecutionResponse,
+	aiManualWorkflow,
+} from '../../__test__/data';
+import { usePushConnectionStore } from '@/stores/pushConnection.store';
+import { useNDVStore } from '@/stores/ndv.store';
 
 describe('LogsOverviewPanel', () => {
 	let pinia: TestingPinia;
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
-
-	const triggerNode = createTestNode({ name: 'Chat' });
-	const aiAgentNode = createTestNode({ name: 'AI Agent' });
-	const aiModelNode = createTestNode({ name: 'AI Model' });
-	const workflow = createTestWorkflow({
-		nodes: [triggerNode, aiAgentNode, aiModelNode],
-		connections: {
-			Chat: {
-				main: [[{ node: 'AI Agent', index: 0, type: 'main' }]],
-			},
-			'AI Model': {
-				ai_languageModel: [[{ node: 'AI Agent', index: 0, type: 'ai_languageModel' }]],
-			},
-		},
-	});
+	let pushConnectionStore: ReturnType<typeof mockedStore<typeof usePushConnectionStore>>;
+	let ndvStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
 
 	function render(props: ExtractPropTypes<typeof LogsOverviewPanel>) {
 		return renderComponent(LogsOverviewPanel, {
@@ -49,73 +44,29 @@ describe('LogsOverviewPanel', () => {
 		setActivePinia(pinia);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
-		workflowsStore.setWorkflow(workflow);
+		workflowsStore.setWorkflow(aiChatWorkflow);
 		workflowsStore.setWorkflowExecutionData(null);
+
+		pushConnectionStore = mockedStore(usePushConnectionStore);
+		pushConnectionStore.isConnected = true;
+
+		ndvStore = mockedStore(useNDVStore);
 	});
 
 	it('should not render body if the panel is not open', () => {
 		const rendered = render({ isOpen: false, node: null });
 
-		expect(
-			rendered.queryByText('Nothing to display yet', { exact: false }),
-		).not.toBeInTheDocument();
+		expect(rendered.queryByTestId('logs-overview-empty')).not.toBeInTheDocument();
 	});
 
 	it('should render empty text if there is no execution', () => {
 		const rendered = render({ isOpen: true, node: null });
 
-		expect(rendered.queryByText('Nothing to display yet', { exact: false })).toBeInTheDocument();
+		expect(rendered.queryByTestId('logs-overview-empty')).toBeInTheDocument();
 	});
 
 	it('should render summary text and executed nodes if there is an execution', async () => {
-		workflowsStore.setWorkflowExecutionData({
-			id: 'test-exec-id',
-			finished: true,
-			mode: 'manual',
-			status: 'success',
-			data: {
-				resultData: {
-					runData: {
-						'AI Agent': [
-							{
-								executionStatus: 'success',
-								startTime: +new Date('2025-03-26T00:00:00.002Z'),
-								executionTime: 1778,
-								source: [],
-								data: {},
-							},
-						],
-						'AI Model': [
-							{
-								executionStatus: 'success',
-								startTime: +new Date('2025-03-26T00:00:00.003Z'),
-								executionTime: 1777,
-								source: [],
-								data: {
-									ai_languageModel: [
-										[
-											{
-												json: {
-													tokenUsage: {
-														completionTokens: 222,
-														promptTokens: 333,
-														totalTokens: 555,
-													},
-												},
-											},
-										],
-									],
-								},
-							},
-						],
-					},
-				},
-			},
-			workflowData: workflow,
-			createdAt: new Date('2025-03-26T00:00:00.000Z'),
-			startedAt: new Date('2025-03-26T00:00:00.001Z'),
-			stoppedAt: new Date('2025-03-26T00:00:02.000Z'),
-		});
+		workflowsStore.setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render({ isOpen: true, node: aiAgentNode });
 		const summary = within(rendered.container.querySelector('.summary')!);
@@ -131,18 +82,46 @@ describe('LogsOverviewPanel', () => {
 
 		expect(row1.queryByText('AI Agent')).toBeInTheDocument();
 		expect(row1.queryByText('Success in 1.778s')).toBeInTheDocument();
-		expect(row1.queryByText('Started 2025-03-26T00:00:00.002Z')).toBeInTheDocument();
+		expect(row1.queryByText('Started 00:00:00.002, 26 Mar')).toBeInTheDocument();
 		expect(row1.queryByText('555 Tokens')).toBeInTheDocument();
 
 		const row2 = within(tree.queryAllByRole('treeitem')[1]);
 
 		expect(row2.queryByText('AI Model')).toBeInTheDocument();
-		expect(row2.queryByText('Success in 1.777s')).toBeInTheDocument();
-		expect(row2.queryByText('Started 2025-03-26T00:00:00.003Z')).toBeInTheDocument();
+		expect(row2.queryByText('Error')).toBeInTheDocument();
+		expect(row2.queryByText('in 1.777s')).toBeInTheDocument();
+		expect(row2.queryByText('Started 00:00:00.003, 26 Mar')).toBeInTheDocument();
 		expect(row2.queryByText('555 Tokens')).toBeInTheDocument();
 
 		// collapse tree
-		await fireEvent.click(row1.getByRole('button'));
+		await fireEvent.click(row1.getAllByLabelText('Toggle row')[0]);
 		await waitFor(() => expect(tree.queryAllByRole('treeitem')).toHaveLength(1));
+	});
+
+	it('should open NDV if the button is clicked', async () => {
+		workflowsStore.setWorkflowExecutionData(aiChatExecutionResponse);
+
+		const rendered = render({ isOpen: true, node: aiAgentNode });
+		const aiAgentRow = rendered.getAllByRole('treeitem')[0];
+
+		await fireEvent.click(within(aiAgentRow).getAllByLabelText('Open...')[0]);
+
+		await waitFor(() => expect(ndvStore.activeNodeName).toBe('AI Agent'));
+	});
+
+	it('should trigger partial execution if the button is clicked', async () => {
+		workflowsStore.setWorkflow(aiManualWorkflow);
+		workflowsStore.setWorkflowExecutionData(aiManualExecutionResponse);
+
+		const spyRun = vi.spyOn(workflowsStore, 'runWorkflow');
+
+		workflowsStore.setWorkflowExecutionData(aiChatExecutionResponse);
+
+		const rendered = render({ isOpen: true, node: aiAgentNode });
+		const aiAgentRow = rendered.getAllByRole('treeitem')[0];
+		await fireEvent.click(within(aiAgentRow).getAllByLabelText('Test step')[0]);
+		await waitFor(() =>
+			expect(spyRun).toHaveBeenCalledWith(expect.objectContaining({ destinationNode: 'AI Agent' })),
+		);
 	});
 });

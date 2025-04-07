@@ -140,7 +140,8 @@ export const stringifyExpressionResult = (
 	return typeof result.result === 'string' ? result.result : String(result.result);
 };
 
-export const completeExpressionSyntax = <T>(value: T) => {
+export const completeExpressionSyntax = <T>(value: T, isSpecializedEditor = false) => {
+	if (isSpecializedEditor) return value;
 	if (typeof value === 'string' && !value.startsWith('=')) {
 		if (value.endsWith('{{ ')) return '=' + value + ' }}';
 		if (value.endsWith('{{$')) return '=' + value.slice(0, -1) + ' $ }}';
@@ -149,7 +150,8 @@ export const completeExpressionSyntax = <T>(value: T) => {
 	return value;
 };
 
-export const isStringWithExpressionSyntax = <T>(value: T): boolean => {
+export const shouldConvertToExpression = <T>(value: T, isSpecializedEditor = false): boolean => {
+	if (isSpecializedEditor) return false;
 	return (
 		typeof value === 'string' &&
 		!value.startsWith('=') &&

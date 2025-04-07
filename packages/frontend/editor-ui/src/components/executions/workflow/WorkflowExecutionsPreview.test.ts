@@ -12,9 +12,6 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import type { FrontendSettings } from '@n8n/api-types';
-import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
-import { useExecutionsStore } from '@/stores/executions.store';
-import type { TestDefinitionRecord } from '@/api/testDefinition.ee';
 
 const showMessage = vi.fn();
 const showError = vi.fn();
@@ -71,16 +68,6 @@ const executionDataFactory = (
 	annotation: { tags, vote: 'up' },
 });
 
-const testCaseFactory = (workflowId: string, annotationTagId?: string): TestDefinitionRecord => ({
-	id: faker.string.uuid(),
-	createdAt: faker.date.past().toString(),
-	updatedAt: faker.date.past().toString(),
-	evaluationWorkflowId: null,
-	annotationTagId,
-	workflowId,
-	name: `My test ${faker.number.int()}`,
-});
-
 const renderComponent = createComponentRenderer(WorkflowExecutionsPreview, {
 	global: {
 		stubs: {
@@ -133,120 +120,5 @@ describe('WorkflowExecutionsPreview.vue', () => {
 		});
 
 		expect(getByTestId('stop-execution')).toBeDisabled();
-	});
-
-	describe('test execution crud', () => {
-		it('should add an execution to a testcase', async () => {
-			const tag = { id: 'tag_id', name: 'tag_name' };
-			const execution = executionDataFactory([]);
-			const testCase = testCaseFactory(execution.workflowId, tag.id);
-
-			const testDefinitionStore = mockedStore(useTestDefinitionStore);
-			const executionsStore = mockedStore(useExecutionsStore);
-			const settingsStore = mockedStore(useSettingsStore);
-
-			testDefinitionStore.allTestDefinitionsByWorkflowId[execution.workflowId] = [testCase];
-
-			settingsStore.isEnterpriseFeatureEnabled = {
-				advancedExecutionFilters: true,
-			} as FrontendSettings['enterprise'];
-
-			const { getByTestId } = renderComponent({
-				props: { execution: { ...execution, status: 'success' } },
-			});
-
-			await router.push({ params: { name: execution.workflowId }, query: { testId: testCase.id } });
-
-			expect(getByTestId('test-execution-crud')).toBeInTheDocument();
-			expect(getByTestId('test-execution-add')).toBeVisible();
-
-			await userEvent.click(getByTestId('test-execution-add'));
-
-			expect(executionsStore.annotateExecution).toHaveBeenCalledWith(execution.id, {
-				tags: [testCase.annotationTagId],
-			});
-
-			expect(showToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
-		});
-
-		it('should remove an execution from a testcase', async () => {
-			const tag = { id: 'tag_id', name: 'tag_name' };
-			const execution = executionDataFactory([tag]);
-			const testCase = testCaseFactory(execution.workflowId, tag.id);
-
-			const testDefinitionStore = mockedStore(useTestDefinitionStore);
-			const executionsStore = mockedStore(useExecutionsStore);
-			const settingsStore = mockedStore(useSettingsStore);
-
-			testDefinitionStore.allTestDefinitionsByWorkflowId[execution.workflowId] = [testCase];
-
-			settingsStore.isEnterpriseFeatureEnabled = {
-				advancedExecutionFilters: true,
-			} as FrontendSettings['enterprise'];
-
-			const { getByTestId } = renderComponent({
-				props: { execution: { ...execution, status: 'success' } },
-			});
-
-			await router.push({ params: { name: execution.workflowId }, query: { testId: testCase.id } });
-
-			expect(getByTestId('test-execution-crud')).toBeInTheDocument();
-			expect(getByTestId('test-execution-remove')).toBeVisible();
-
-			await userEvent.click(getByTestId('test-execution-remove'));
-
-			expect(executionsStore.annotateExecution).toHaveBeenCalledWith(execution.id, {
-				tags: [],
-			});
-
-			expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
-		});
-
-		it('should toggle an execution', async () => {
-			const tag1 = { id: 'tag_id', name: 'tag_name' };
-			const tag2 = { id: 'tag_id_2', name: 'tag_name_2' };
-			const execution = executionDataFactory([tag1]);
-			const testCase1 = testCaseFactory(execution.workflowId, tag1.id);
-			const testCase2 = testCaseFactory(execution.workflowId, tag2.id);
-
-			const testDefinitionStore = mockedStore(useTestDefinitionStore);
-			const executionsStore = mockedStore(useExecutionsStore);
-			const settingsStore = mockedStore(useSettingsStore);
-
-			testDefinitionStore.allTestDefinitionsByWorkflowId[execution.workflowId] = [
-				testCase1,
-				testCase2,
-			];
-
-			settingsStore.isEnterpriseFeatureEnabled = {
-				advancedExecutionFilters: true,
-			} as FrontendSettings['enterprise'];
-
-			const { getByTestId, queryAllByTestId, rerender } = renderComponent({
-				props: { execution: { ...execution, status: 'success' } },
-			});
-
-			await router.push({ params: { name: execution.workflowId } });
-
-			expect(getByTestId('test-execution-crud')).toBeInTheDocument();
-			expect(getByTestId('test-execution-toggle')).toBeVisible();
-
-			// add
-			await userEvent.click(getByTestId('test-execution-toggle'));
-			await userEvent.click(queryAllByTestId('test-execution-add-to')[1]);
-			expect(executionsStore.annotateExecution).toHaveBeenCalledWith(execution.id, {
-				tags: [tag1.id, tag2.id],
-			});
-
-			const executionWithBothTags = executionDataFactory([tag1, tag2]);
-			await rerender({ execution: { ...executionWithBothTags, status: 'success' } });
-
-			// remove
-			await userEvent.click(getByTestId('test-execution-toggle'));
-			await userEvent.click(queryAllByTestId('test-execution-add-to')[1]);
-			expect(executionsStore.annotateExecution).toHaveBeenLastCalledWith(executionWithBothTags.id, {
-				tags: [tag1.id],
-			});
-		});
 	});
 });

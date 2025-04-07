@@ -49,6 +49,8 @@
     "@fortawesome/fontawesome-svg-core": "^1.2.36",
     "@fortawesome/free-solid-svg-icons": "^5.15.4",
     "@fortawesome/vue-fontawesome": "^3.0.3",
+
+    "@tanstack/vue-table": "^8.21.2",
     "element-plus": "catalog:frontend",
     "is-emoji-supported": "^0.0.5",
     "markdown-it": "^13.0.2",
