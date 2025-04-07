@@ -1171,7 +1171,7 @@ export const mainProperties: INodeProperties[] = [
 	},
 	...optimizeResponseProperties.map((x) => ({
 		...x,
-		displayOptions: { show: { ...x.displayOptions?.show, '@tool': [true] } },
+		displayOptions: { ...x.displayOptions, show: { ...x.displayOptions?.show, '@tool': [true] } },
 	})),
 	{
 		displayName:
