@@ -4,12 +4,9 @@
         "finish_reason": {
             "type": "string"
         },
-        "index": {
-            "type": "integer"
-        },
         "text": {
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
