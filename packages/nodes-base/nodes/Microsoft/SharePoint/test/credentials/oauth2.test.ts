@@ -5,8 +5,8 @@ import type {
 } from 'n8n-workflow';
 import nock from 'nock';
 
-import { equalityTest, workflowToTests } from '@test/nodes/Helpers';
 import { CredentialsHelper } from '@test/nodes/credentials-helper';
+import { equalityTest, workflowToTests } from '@test/nodes/Helpers';
 
 describe('Microsoft SharePoint Node', () => {
 	const workflows = ['nodes/Microsoft/SharePoint/test/credentials/oauth2.workflow.json'];
