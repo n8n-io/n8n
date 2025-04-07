@@ -1,9 +1,18 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type { Memory } from '@getzep/zep-cloud/api';
+import { NotFoundError } from '@getzep/zep-cloud/api';
 import type { BaseChatMemory } from '@langchain/community/dist/memory/chat_memory';
 import { ZepMemory } from '@langchain/community/memory/zep';
 import { ZepCloudMemory } from '@langchain/community/memory/zep_cloud';
-import type { InputValues, MemoryVariables } from '@langchain/core/memory';
+import type { MemoryVariables } from '@langchain/core/memory';
 import type { BaseMessage } from '@langchain/core/messages';
+import {
+	SystemMessage,
+	HumanMessage,
+	AIMessage,
+	ChatMessage,
+	getBufferString,
+} from '@langchain/core/messages';
 import {
 	NodeConnectionTypes,
 	type ISupplyDataFunctions,
@@ -19,10 +28,81 @@ import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { expressionSessionKeyProperty, sessionIdOption, sessionKeyProperty } from '../descriptions';
 
+const zepMemoryContextToSystemPrompt = (memory: Memory) => {
+	return memory.context ?? '';
+};
+
+const condenseZepMemoryIntoHumanMessage = (memory: Memory) => {
+	const systemPrompt = zepMemoryContextToSystemPrompt(memory);
+
+	let concatMessages = '';
+
+	// Add message history to the prompt, if present
+	if (memory.messages) {
+		concatMessages = memory.messages
+			.map((msg) => `${msg.role ?? msg.roleType}: ${msg.content}`)
+			.join('\n');
+	}
+
+	return new HumanMessage(`${systemPrompt}\n${concatMessages}`);
+};
+
+export const zepMemoryToMessages = (memory: Memory) => {
+	const systemPrompt = zepMemoryContextToSystemPrompt(memory);
+
+	let messages: BaseMessage[] = systemPrompt ? [new SystemMessage(systemPrompt)] : [];
+
+	if (memory?.messages) {
+		messages = messages.concat(
+			memory.messages
+				.filter((m) => m.content)
+				.map((message) => {
+					const { content, role, roleType } = message;
+					const messageContent = content;
+					if (roleType === 'user') {
+						return new HumanMessage(messageContent);
+					} else if (role === 'assistant') {
+						return new AIMessage(messageContent);
+					} else {
+						// default to generic ChatMessage
+						return new ChatMessage(messageContent, (roleType ?? role) as string);
+					}
+				}),
+		);
+	}
+
+	return messages;
+};
+
 // Extend ZepCloudMemory to trim white space in messages.
 class WhiteSpaceTrimmedZepCloudMemory extends ZepCloudMemory {
-	override async loadMemoryVariables(values: InputValues): Promise<MemoryVariables> {
-		const memoryVariables = await super.loadMemoryVariables(values);
+	async _loadMemoryVariables(): Promise<MemoryVariables> {
+		let memory: Memory | null = null;
+		try {
+			memory = await this.zepClient.memory.get(this.sessionId);
+		} catch (error) {
+			if (error instanceof NotFoundError) {
+				return this.returnMessages ? { [this.memoryKey]: [] } : { [this.memoryKey]: '' };
+			}
+			throw error;
+		}
+
+		if (this.returnMessages) {
+			return {
+				[this.memoryKey]: this.separateMessages
+					? zepMemoryToMessages(memory)
+					: [condenseZepMemoryIntoHumanMessage(memory)],
+			};
+		}
+		return {
+			[this.memoryKey]: this.separateMessages
+				? getBufferString(zepMemoryToMessages(memory), this.humanPrefix, this.aiPrefix)
+				: condenseZepMemoryIntoHumanMessage(memory).content,
+		};
+	}
+
+	override async loadMemoryVariables(): Promise<MemoryVariables> {
+		const memoryVariables = await this._loadMemoryVariables();
 		memoryVariables.chat_history = memoryVariables.chat_history.filter((m: BaseMessage) =>
 			m.content.toString().trim(),
 		);

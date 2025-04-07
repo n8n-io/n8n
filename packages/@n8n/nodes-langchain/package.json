@@ -143,7 +143,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-sso-oidc": "3.666.0",
-    "@getzep/zep-cloud": "1.0.12",
+    "@getzep/zep-cloud": "2.9.0",
     "@getzep/zep-js": "0.9.0",
     "@google-ai/generativelanguage": "2.6.0",
     "@google-cloud/resource-manager": "5.3.0",
