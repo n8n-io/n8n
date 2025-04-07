@@ -21,7 +21,10 @@
         },
         "id": {
             "type": "string"
+        },
+        "subject": {
+            "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
