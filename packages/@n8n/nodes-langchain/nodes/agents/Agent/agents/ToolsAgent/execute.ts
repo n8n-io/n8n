@@ -346,15 +346,18 @@ export async function prepareMessages(
 		outputParser?: N8nOutputParser;
 	},
 ): Promise<BaseMessagePromptTemplateLike[]> {
-	const messages: BaseMessagePromptTemplateLike[] =
-		(options.systemMessage ?? ctx.getNode().typeVersion < 1.9)
-			? [
-					[
-						'system',
-						`{system_message}${options.outputParser ? '\n\n{formatting_instructions}' : ''}`,
-					],
-				]
-			: [];
+	const useLegacySystemMessage = options.systemMessage ?? ctx.getNode().typeVersion < 1.9;
+
+	const messages: BaseMessagePromptTemplateLike[] = [];
+
+	if (useLegacySystemMessage) {
+		messages.push([
+			'system',
+			`{system_message}${options.outputParser ? '{formatting_instructions}' : ''}`,
+		]);
+	} else if (options.outputParser) {
+		messages.push(['system', '{formatting_instructions}']);
+	}
 
 	messages.push(['placeholder', '{chat_history}'], ['human', '{input}']);
 

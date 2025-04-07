@@ -269,16 +269,31 @@ describe('prepareMessages', () => {
 		expect(messages).toContainEqual(['system', '{system_message}']);
 	});
 
-	it('should include system_message in prompt templates if provided before version 1.9', async () => {
+	it('should include system_message with formatting_instructions in prompt templates if provided before version 1.9', async () => {
 		const fakeItem = { json: {} };
 		const ctx = createFakeExecuteFunctions({
 			getInputData: jest.fn().mockReturnValue([fakeItem]),
 		});
 		ctx.getNode().typeVersion = 1.8;
-		const messages = await prepareMessages(ctx, 0, { systemMessage: 'Hello' });
+		const messages = await prepareMessages(ctx, 0, {
+			systemMessage: 'Hello',
+			outputParser: mock<N8nOutputParser>(),
+		});
 
 		expect(messages.length).toBe(4);
-		expect(messages).toContainEqual(['system', '{system_message}']);
+		expect(messages).toContainEqual(['system', '{system_message}{formatting_instructions}']);
+	});
+
+	it('should add formatting instructions when omitting system message after version 1.9', async () => {
+		const fakeItem = { json: {} };
+		const ctx = createFakeExecuteFunctions({
+			getInputData: jest.fn().mockReturnValue([fakeItem]),
+		});
+		ctx.getNode().typeVersion = 1.9;
+		const messages = await prepareMessages(ctx, 0, { outputParser: mock<N8nOutputParser>() });
+
+		expect(messages.length).toBe(4);
+		expect(messages).toContainEqual(['system', '{formatting_instructions}']);
 	});
 });
 
