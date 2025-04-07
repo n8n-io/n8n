@@ -34,7 +34,7 @@ describe('Azure Storage Node', () => {
 								...requestParams,
 								headers: {
 									authorization:
-										'SharedKey devstoreaccount1:PiAc3TimPKEzHgJkIo7mh2QJTHDBf8DnXPME5an6l54=',
+										'SharedKey Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==',
 								},
 							};
 						} else {
@@ -61,7 +61,7 @@ describe('Azure Storage Node', () => {
 						statusCode: 200,
 						requestHeaders: {
 							authorization:
-								'SharedKey devstoreaccount1:PiAc3TimPKEzHgJkIo7mh2QJTHDBf8DnXPME5an6l54=',
+								'SharedKey Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==',
 						},
 						responseBody: '',
 						responseHeaders: {
@@ -151,7 +151,7 @@ describe('Azure Storage Node', () => {
 			const result = await azureStorageSharedKeyApi.authenticate(credentials, requestOptions);
 
 			expect(result.headers?.authorization).toBe(
-				'SharedKey devstoreaccount1:PiAc3TimPKEzHgJkIo7mh2QJTHDBf8DnXPME5an6l54=',
+				'SharedKey devstoreaccount1:6sSQ3N4yNFQynBs/iLptIRPS5DQeaFBocW+dyYbAdOI=',
 			);
 		});
 	});
