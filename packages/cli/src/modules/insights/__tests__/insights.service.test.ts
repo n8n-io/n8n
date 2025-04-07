@@ -1,11 +1,19 @@
 import { Container } from '@n8n/di';
+import { In, type EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
-import type { ExecutionLifecycleHooks } from 'n8n-core';
-import type { ExecutionStatus, IRun, WorkflowExecuteMode } from 'n8n-workflow';
+import type { Logger } from 'n8n-core';
+import { type ExecutionLifecycleHooks } from 'n8n-core';
+import {
+	createDeferredPromise,
+	type ExecutionStatus,
+	type IRun,
+	type WorkflowExecuteMode,
+} from 'n8n-workflow';
 
 import type { Project } from '@/databases/entities/project';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import type { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import type { IWorkflowDb } from '@/interfaces';
 import type { TypeUnit } from '@/modules/insights/database/entities/insights-shared';
 import { InsightsMetadataRepository } from '@/modules/insights/database/repositories/insights-metadata.repository';
@@ -86,7 +94,9 @@ describe('workflowExecuteAfterHandler', () => {
 		});
 
 		// ACT
+		const now = DateTime.utc().toJSDate();
 		await insightsService.workflowExecuteAfterHandler(ctx, run);
+		await insightsService.flushEvents();
 
 		// ASSERT
 		const metadata = await insightsMetadataRepository.findOneBy({ workflowId: workflow.id });
@@ -114,6 +124,10 @@ describe('workflowExecuteAfterHandler', () => {
 				value: stoppedAt.diff(startedAt).toMillis(),
 			}),
 		);
+		// expect timestamp to be close to workflow execution start
+		for (const insight of allInsights) {
+			expect(insight.timestamp.getTime() / 1000).toBeCloseTo(now.getTime() / 1000, 0);
+		}
 		if (status === 'success') {
 			expect(allInsights).toContainEqual(
 				expect.objectContaining({
@@ -145,6 +159,7 @@ describe('workflowExecuteAfterHandler', () => {
 
 		// ACT
 		await insightsService.workflowExecuteAfterHandler(ctx, run);
+		await insightsService.flushEvents();
 
 		// ASSERT
 		const metadata = await insightsMetadataRepository.findOneBy({ workflowId: workflow.id });
@@ -171,6 +186,7 @@ describe('workflowExecuteAfterHandler', () => {
 
 		// ACT
 		await insightsService.workflowExecuteAfterHandler(ctx, run);
+		await insightsService.flushEvents();
 
 		// ASSERT
 		const metadata = await insightsMetadataRepository.findOneBy({ workflowId: workflow.id });
@@ -200,6 +216,7 @@ describe('workflowExecuteAfterHandler', () => {
 
 		// ACT
 		await insightsService.workflowExecuteAfterHandler(ctx, run);
+		await insightsService.flushEvents();
 
 		// ASSERT
 		const metadata = await insightsMetadataRepository.findOneBy({ workflowId: workflow.id });
@@ -235,24 +252,421 @@ describe('workflowExecuteAfterHandler', () => {
 			}),
 		);
 	});
+});
 
-	test("throws UnexpectedError if the execution's workflow has no owner", async () => {
+describe('workflowExecuteAfterHandler - cacheMetadata', () => {
+	let insightsService: InsightsService;
+	let entityManagerMock = mock<EntityManager>();
+	const sharedWorkflowRepositoryMock: jest.Mocked<SharedWorkflowRepository> = {
+		manager: entityManagerMock,
+	} as unknown as jest.Mocked<SharedWorkflowRepository>;
+	const insightsRawRepository: jest.Mocked<InsightsRawRepository> = mock<InsightsRawRepository>();
+
+	const startedAt = DateTime.utc();
+	const stoppedAt = startedAt.plus({ seconds: 5 });
+	const run = mock<IRun>({
+		mode: 'webhook',
+		status: 'success',
+		startedAt: startedAt.toJSDate(),
+		stoppedAt: stoppedAt.toJSDate(),
+	});
+
+	// Mock the transaction function
+	const trxMock = {
+		find: jest.fn(),
+		findBy: jest.fn(),
+		upsert: jest.fn(),
+		insert: jest.fn(),
+	};
+
+	entityManagerMock.transaction.mockImplementation(
+		jest.fn(async (runInTransaction: (entityManager: EntityManager) => Promise<void>) => {
+			await runInTransaction(trxMock as unknown as EntityManager);
+		}) as unknown as EntityManager['transaction'],
+	);
+
+	beforeAll(async () => {
+		insightsService = new InsightsService(
+			sharedWorkflowRepositoryMock,
+			Container.get(InsightsByPeriodRepository),
+			insightsRawRepository,
+			mock<Logger>(),
+		);
+	});
+
+	let project: Project;
+	let workflow: IWorkflowDb & WorkflowEntity;
+
+	beforeEach(async () => {
+		project = await createTeamProject();
+		workflow = await createWorkflow({}, project);
+
+		trxMock.find = jest.fn().mockResolvedValue([
+			{
+				workflow,
+				workflowId: workflow.id,
+				projectId: 'project-id',
+				project: { name: 'project-name' },
+			},
+		]);
+		trxMock.findBy = jest.fn().mockResolvedValue([
+			{
+				metaId: 'meta-id',
+				workflowId: workflow.id,
+				workflowName: workflow.name,
+				projectId: 'project-id',
+				projectName: 'project-name',
+			},
+		]);
+	});
+
+	test('reuses cached metadata for subsequent executions of the same workflow', async () => {
 		// ARRANGE
-		const workflow = await createWorkflow({});
-		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
-		const startedAt = DateTime.utc();
-		const stoppedAt = startedAt.plus({ seconds: 5 });
-		const run = mock<IRun>({
-			mode: 'webhook',
-			status: 'success',
-			startedAt: startedAt.toJSDate(),
-			stoppedAt: stoppedAt.toJSDate(),
+		const ctx = mock<ExecutionLifecycleHooks>({
+			workflowData: { ...workflow, settings: undefined },
 		});
 
-		// ACT & ASSERT
-		await expect(insightsService.workflowExecuteAfterHandler(ctx, run)).rejects.toThrowError(
-			`Could not find an owner for the workflow with the name '${workflow.name}' and the id '${workflow.id}'`,
+		// ACT
+		await insightsService.workflowExecuteAfterHandler(ctx, run);
+		await insightsService.flushEvents();
+
+		// ASSERT
+		expect(trxMock.find).toHaveBeenCalledWith(expect.anything(), {
+			where: { workflowId: In([workflow.id]), role: 'workflow:owner' },
+			relations: { project: true },
+		});
+		expect(trxMock.upsert).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.arrayContaining([
+				{
+					workflowId: workflow.id,
+					workflowName: workflow.name,
+					projectId: 'project-id',
+					projectName: 'project-name',
+				},
+			]),
+			['workflowId'],
 		);
+
+		// ACT AGAIN with the same workflow
+		await insightsService.workflowExecuteAfterHandler(ctx, run);
+		await insightsService.flushEvents();
+
+		// ASSERT AGAIN
+		trxMock.find.mockClear();
+		trxMock.upsert.mockClear();
+		expect(trxMock.find).not.toHaveBeenCalled();
+		expect(trxMock.upsert).not.toHaveBeenCalled();
+	});
+
+	test('updates cached metadata if workflow details change', async () => {
+		// ARRANGE
+		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
+
+		// ACT
+		await insightsService.workflowExecuteAfterHandler(ctx, run);
+		await insightsService.flushEvents();
+
+		// ASSERT
+		expect(trxMock.find).toHaveBeenCalled();
+		expect(trxMock.upsert).toHaveBeenCalled();
+
+		// Change the workflow name
+		workflow.name = 'new-workflow-name';
+
+		// ACT AGAIN with the same workflow
+		await insightsService.workflowExecuteAfterHandler(ctx, run);
+		await insightsService.flushEvents();
+
+		// ASSERT AGAIN
+		expect(trxMock.find).toHaveBeenCalledWith(expect.anything(), {
+			where: { workflowId: In([workflow.id]), role: 'workflow:owner' },
+			relations: { project: true },
+		});
+		expect(trxMock.upsert).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.arrayContaining([
+				{
+					workflowId: workflow.id,
+					workflowName: workflow.name,
+					projectId: 'project-id',
+					projectName: 'project-name',
+				},
+			]),
+			['workflowId'],
+		);
+	});
+});
+
+describe('workflowExecuteAfterHandler - flushEvents', () => {
+	let project: Project;
+	let workflow: IWorkflowDb & WorkflowEntity;
+	let insightsService: InsightsService;
+	let entityManagerMock = mock<EntityManager>();
+	const sharedWorkflowRepositoryMock: jest.Mocked<SharedWorkflowRepository> = {
+		manager: entityManagerMock,
+	} as unknown as jest.Mocked<SharedWorkflowRepository>;
+	const logger = mock<Logger>({
+		scoped: jest.fn().mockReturnValue(
+			mock<Logger>({
+				error: jest.fn(),
+			}),
+		),
+	});
+
+	const startedAt = DateTime.utc();
+	const stoppedAt = startedAt.plus({ seconds: 5 });
+	const run = mock<IRun>({
+		mode: 'trigger',
+		status: 'success',
+		startedAt: startedAt.toJSDate(),
+		stoppedAt: stoppedAt.toJSDate(),
+	});
+
+	// Mock the transaction function
+	const trxMock = {
+		find: jest.fn(),
+		findBy: jest.fn(),
+		upsert: jest.fn(),
+		insert: jest.fn(),
+	};
+
+	entityManagerMock.transaction.mockImplementation(
+		jest.fn(async (runInTransaction: (entityManager: EntityManager) => Promise<void>) => {
+			await runInTransaction(trxMock as unknown as EntityManager);
+		}) as unknown as EntityManager['transaction'],
+	);
+
+	beforeAll(async () => {
+		insightsService = new InsightsService(
+			sharedWorkflowRepositoryMock,
+			mock<InsightsByPeriodRepository>(),
+			mock<InsightsRawRepository>(),
+			logger,
+		);
+	});
+
+	beforeEach(async () => {
+		project = await createTeamProject();
+		workflow = await createWorkflow({}, project);
+		trxMock.find = jest.fn().mockResolvedValue([
+			{
+				workflow,
+				workflowId: workflow.id,
+				projectId: 'project-id',
+				project: { name: 'project-name' },
+			},
+		]);
+		trxMock.findBy = jest.fn().mockResolvedValue([
+			{
+				metaId: 'meta-id',
+				workflowId: workflow.id,
+				workflowName: workflow.name,
+				projectId: 'project-id',
+				projectName: 'project-name',
+			},
+		]);
+	});
+
+	test('flushes events to the database once buffer is full', async () => {
+		// ARRANGE
+		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
+
+		// ACT
+		for (let i = 0; i < 333; i++) {
+			await insightsService.workflowExecuteAfterHandler(ctx, run);
+		}
+		// await for the next tick to ensure the flush is called
+		await new Promise(process.nextTick);
+
+		// ASSERT
+		expect(trxMock.insert).not.toHaveBeenCalled();
+
+		// ACT
+		await insightsService.workflowExecuteAfterHandler(ctx, run);
+
+		// ASSERT
+		// await for the next tick to ensure the flush is called
+		await new Promise(process.nextTick);
+		expect(trxMock.insert).toHaveBeenCalled();
+	});
+
+	test('flushes events to the database after a timeout', async () => {
+		// ARRANGE
+		jest.useFakeTimers();
+		trxMock.insert.mockClear();
+		insightsService.scheduleFlushing();
+		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
+
+		try {
+			// ACT
+			for (let i = 0; i < 33; i++) {
+				await insightsService.workflowExecuteAfterHandler(ctx, run);
+			}
+			// ASSERT
+			expect(trxMock.insert).not.toHaveBeenCalled();
+
+			// ACT
+			await jest.advanceTimersByTimeAsync(31 * 1000);
+
+			// ASSERT
+			expect(trxMock.insert).toHaveBeenCalledTimes(1);
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	test('reschedule flush on flushing end', async () => {
+		// ARRANGE
+		jest.useFakeTimers();
+		trxMock.insert.mockClear();
+		insightsService.scheduleFlushing();
+		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
+
+		try {
+			// ACT
+			await insightsService.workflowExecuteAfterHandler(ctx, run);
+			await jest.advanceTimersByTimeAsync(31 * 1000);
+
+			// ASSERT
+			expect(trxMock.insert).toHaveBeenCalledTimes(1);
+
+			// // ACT
+			await insightsService.workflowExecuteAfterHandler(ctx, run);
+			await jest.advanceTimersByTimeAsync(31 * 1000);
+
+			expect(trxMock.insert).toHaveBeenCalledTimes(2);
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	test('flushes events to the database on shutdown', async () => {
+		// ARRANGE
+		trxMock.insert.mockClear();
+		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
+
+		// ACT
+		for (let i = 0; i < 10; i++) {
+			await insightsService.workflowExecuteAfterHandler(ctx, run);
+		}
+
+		await insightsService.shutdown();
+
+		// ASSERT
+		expect(trxMock.insert).toHaveBeenCalledTimes(1);
+		// Check that last insert call contains 30 events
+		const lastCallArgs = trxMock.insert.mock.calls.at(-1);
+		expect(lastCallArgs?.[1]).toHaveLength(30);
+	});
+
+	test('flushes events synchronously while shutting down', async () => {
+		// ARRANGE
+		// reset insights async flushing
+		insightsService.scheduleFlushing();
+		trxMock.insert.mockClear();
+		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
+
+		// ACT
+		for (let i = 0; i < 10; i++) {
+			await insightsService.workflowExecuteAfterHandler(ctx, run);
+		}
+
+		void insightsService.shutdown();
+		// trigger a workflow after shutdown
+		await insightsService.workflowExecuteAfterHandler(ctx, run);
+
+		// ASSERT
+		expect(trxMock.insert).toHaveBeenCalledTimes(2);
+		// Check that last insert call contains 3 events (the synchronous flush after shutdown)
+		let callArgs = trxMock.insert.mock.calls.at(-1);
+		expect(callArgs?.[1]).toHaveLength(3);
+
+		// ACT
+		// await for the next tick to ensure the flush is called
+		await new Promise(process.nextTick);
+
+		// Check that the one before that contains 30 events (the shutdown flush)
+		callArgs = trxMock.insert.mock.calls.at(-2);
+		expect(callArgs?.[1]).toHaveLength(30);
+	});
+
+	test('restore buffer events on flushing error', async () => {
+		// ARRANGE
+		jest.useFakeTimers();
+		trxMock.insert.mockClear();
+		trxMock.insert.mockRejectedValueOnce(new Error('Test error'));
+		insightsService.scheduleFlushing();
+		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
+
+		try {
+			// ACT
+			await insightsService.workflowExecuteAfterHandler(ctx, run);
+			await jest.advanceTimersByTimeAsync(31 * 1000);
+
+			// ASSERT
+			expect(trxMock.insert).toHaveBeenCalledTimes(1);
+			const insertArgs = trxMock.insert.mock.calls.at(-1);
+
+			// ACT
+			await insightsService.flushEvents();
+
+			expect(trxMock.insert).toHaveBeenCalledTimes(2);
+			const newInsertArgs = trxMock.insert.mock.calls.at(-1);
+			// Check that last insert call contains the same 3 insights as previous failed flush
+			expect(newInsertArgs?.[1]).toHaveLength(3);
+			expect(newInsertArgs?.[1]).toEqual(insertArgs?.[1]);
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	test('waits for ongoing flush during shutdown', async () => {
+		// ARRANGE
+		const config = Container.get(InsightsConfig);
+		config.flushBatchSize = 10;
+		insightsService.scheduleFlushing();
+		trxMock.insert.mockClear();
+
+		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
+
+		// Flush will hang until we manually resolve it
+		const { resolve: flushResolve, promise: flushPromise } = createDeferredPromise();
+
+		// First flush will "hang" (simulate long save)
+		trxMock.insert.mockImplementationOnce(async () => {
+			await flushPromise;
+		});
+
+		// Each `workflowExecuteAfterHandler` adds 3 insights;
+		// we call it 4 times to exceed the flushBatchSize (10)
+		for (let i = 0; i < config.flushBatchSize / 3; i++) {
+			await insightsService.workflowExecuteAfterHandler(ctx, run);
+		}
+
+		// ACT
+		const shutdownPromise = insightsService.shutdown();
+
+		// At this point, shutdown should be waiting for ongoing flushes
+		let shutdownResolved = false;
+		void shutdownPromise.then(() => (shutdownResolved = true));
+
+		// Give shutdown a tick to reach the `await Promise.all(...)`
+		await new Promise(setImmediate);
+
+		// ASSERT
+
+		// shutdown should still be waiting for remaining flushes
+		expect(shutdownResolved).toBe(false);
+
+		// ACT
+		// Now resolve the hanging flush and await shutdown
+		flushResolve();
+		await shutdownPromise;
+
+		// ASSERT
+		expect(shutdownResolved).toBe(true);
+		expect(trxMock.insert).toHaveBeenCalledTimes(1);
 	});
 });
 
@@ -294,7 +708,11 @@ describe('compaction', () => {
 			// create before so we can create the raw events in parallel
 			await createMetadata(workflow);
 			for (const timestamp of timestamps) {
-				await createRawInsightsEvent(workflow, { type: 'success', value: 1, timestamp });
+				await createRawInsightsEvent(workflow, {
+					type: 'success',
+					value: 1,
+					timestamp,
+				});
 			}
 
 			// ACT
