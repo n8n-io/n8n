@@ -4,7 +4,12 @@ import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 import type { Logger } from 'n8n-core';
 import { type ExecutionLifecycleHooks } from 'n8n-core';
-import type { ExecutionStatus, IRun, WorkflowExecuteMode } from 'n8n-workflow';
+import {
+	createDeferredPromise,
+	type ExecutionStatus,
+	type IRun,
+	type WorkflowExecuteMode,
+} from 'n8n-workflow';
 
 import type { Project } from '@/databases/entities/project';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
@@ -643,7 +648,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 
 		// ACT
 		// Now resolve the hanging flush and await shutdown
-		flushResolve!();
+		flushResolve();
 		await shutdownPromise;
 
 		// ASSERT
