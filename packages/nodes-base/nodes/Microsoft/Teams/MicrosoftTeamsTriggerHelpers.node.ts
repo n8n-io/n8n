@@ -50,6 +50,7 @@ export async function createSubscription(
 	webhookUrl: string,
 	resourcePath: string,
 ): Promise<string> {
+	// Todo: is expirationTime required? Does the webhook still work once it is expired, i.e. is it recreated?
 	const expirationTime = new Date(Date.now() + 3600 * 2 * 1000).toISOString();
 	const body: IDataObject = {
 		changeType: 'created',
@@ -60,18 +61,14 @@ export async function createSubscription(
 		lifecycleNotificationUrl: webhookUrl,
 	};
 
-	try {
-		const response = await microsoftApiRequest.call(
-			this as unknown as IExecuteFunctions,
-			'POST',
-			'/v1.0/subscriptions',
-			body,
-		);
+	const response = await microsoftApiRequest.call(
+		this as unknown as IExecuteFunctions,
+		'POST',
+		'/v1.0/subscriptions',
+		body,
+	);
 
-		return response.id;
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
-	}
+	return response.id;
 }
 
 export async function getResourcePath(
