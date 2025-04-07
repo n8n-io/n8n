@@ -25,6 +25,17 @@
                 "type": "string"
             }
         },
+        "organization": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "owner": {
             "type": "object",
             "properties": {
@@ -52,5 +63,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }
