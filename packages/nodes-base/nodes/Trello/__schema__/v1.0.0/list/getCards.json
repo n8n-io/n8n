@@ -47,6 +47,9 @@
                 "location": {
                     "type": "boolean"
                 },
+                "maliciousAttachments": {
+                    "type": "integer"
+                },
                 "subscribed": {
                     "type": "boolean"
                 },
@@ -57,9 +60,6 @@
                     "type": "integer"
                 }
             }
-        },
-        "cardRole": {
-            "type": "null"
         },
         "checkItemStates": {
             "type": "array",
@@ -85,9 +85,6 @@
                     "type": "string"
                 },
                 "idPlugin": {
-                    "type": "null"
-                },
-                "idUploadedBackground": {
                     "type": "null"
                 },
                 "size": {
@@ -194,5 +191,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
