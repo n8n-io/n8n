@@ -46,9 +46,6 @@
         "details": {
             "type": "string"
         },
-        "emailcclist": {
-            "type": "string"
-        },
         "emailtolist": {
             "type": "string"
         },
@@ -172,9 +169,6 @@
         "respondbydate": {
             "type": "string"
         },
-        "responsedate": {
-            "type": "string"
-        },
         "reviewed": {
             "type": "boolean"
         },
@@ -195,9 +189,6 @@
         },
         "sla_id": {
             "type": "integer"
-        },
-        "slaresponsestate": {
-            "type": "string"
         },
         "source": {
             "type": "integer"
@@ -253,9 +244,6 @@
         "useful_count": {
             "type": "integer"
         },
-        "user_email": {
-            "type": "string"
-        },
         "user_id": {
             "type": "integer"
         },
@@ -284,5 +272,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }
