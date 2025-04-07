@@ -1,12 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "createTime": {
-            "type": "string"
-        },
-        "displayName": {
-            "type": "string"
-        },
         "lastActiveTime": {
             "type": "string"
         },
@@ -37,5 +31,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
