@@ -43,11 +43,35 @@ export class CommunityNodeTypesService {
 
 	constructor(private readonly logger: Logger) {}
 
+	private async strapiPaginatedRequest() {
+		let returnData: Data[] = [];
+		let responseData;
+
+		const params = {
+			pagination: {
+				page: 1,
+				pageSize: 25,
+			},
+		};
+
+		do {
+			const response = await axios.get<ResponseData>(VETTED_NODE_TYPES_URL, {
+				headers: { 'Content-Type': 'application/json' },
+				params,
+			});
+
+			responseData = response?.data?.data;
+			if (!responseData?.length) break;
+			returnData = returnData.concat(responseData);
+			params.pagination.page++;
+		} while (!responseData.length);
+
+		return returnData;
+	}
+
 	private async fetchNodeTypes() {
 		try {
-			const { data } = await axios.get<ResponseData>(VETTED_NODE_TYPES_URL, {
-				headers: { 'Content-Type': 'application/json' },
-			});
+			const data = await this.strapiPaginatedRequest();
 
 			this.updateData(data);
 		} catch (error) {
@@ -55,12 +79,12 @@ export class CommunityNodeTypesService {
 		}
 	}
 
-	private updateData(data: ResponseData) {
-		if (!data?.data?.length) return;
+	private updateData(data: Data[]) {
+		if (!data?.length) return;
 
 		this.resetData();
 
-		for (const entry of data.data) {
+		for (const entry of data) {
 			const { nodeDescription, ...attributes } = entry.attributes;
 			this.communityNodes[entry.attributes.name] = attributes;
 			this.nodesDescriptions.push(nodeDescription);
