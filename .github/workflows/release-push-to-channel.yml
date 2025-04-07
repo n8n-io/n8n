@@ -50,13 +50,13 @@ jobs:
 
       - if: github.event.inputs.release-channel == 'stable'
         run: |
-          docker buildx imagetools create -t ${{ secrets.DOCKER_USERNAME }}/n8n:stable ${{ secrets.DOCKER_USERNAME }}/n8n:${{ github.event.inputs.version }}
-          docker buildx imagetools create -t ${{ secrets.DOCKER_USERNAME }}/n8n:latest ${{ secrets.DOCKER_USERNAME }}/n8n:${{ github.event.inputs.version }}
+          docker buildx imagetools create -t ${{ secrets.DOCKER_USERNAME }}/n8n-plus:stable ${{ secrets.DOCKER_USERNAME }}/n8n-plus:${{ github.event.inputs.version }}
+          docker buildx imagetools create -t ${{ secrets.DOCKER_USERNAME }}/n8n-plus:latest ${{ secrets.DOCKER_USERNAME }}/n8n-plus:${{ github.event.inputs.version }}
 
       - if: github.event.inputs.release-channel == 'beta'
         run: |
-          docker buildx imagetools create -t ${{ secrets.DOCKER_USERNAME }}/n8n:beta ${{ secrets.DOCKER_USERNAME }}/n8n:${{ github.event.inputs.version }}
-          docker buildx imagetools create -t ${{ secrets.DOCKER_USERNAME }}/n8n:next ${{ secrets.DOCKER_USERNAME }}/n8n:${{ github.event.inputs.version }}
+          docker buildx imagetools create -t ${{ secrets.DOCKER_USERNAME }}/n8n-plus:beta ${{ secrets.DOCKER_USERNAME }}/n8n-plus:${{ github.event.inputs.version }}
+          docker buildx imagetools create -t ${{ secrets.DOCKER_USERNAME }}/n8n-plus:next ${{ secrets.DOCKER_USERNAME }}/n8n-plus:${{ github.event.inputs.version }}
 
   release-to-github-container-registry:
     name: Release to GitHub Container Registry
@@ -71,18 +71,10 @@ jobs:
 
       - if: github.event.inputs.release-channel == 'stable'
         run: |
-          docker buildx imagetools create -t ghcr.io/${{ github.repository_owner }}/n8n:stable ghcr.io/${{ github.repository_owner }}/n8n:${{ github.event.inputs.version }}
-          docker buildx imagetools create -t ghcr.io/${{ github.repository_owner }}/n8n:latest ghcr.io/${{ github.repository_owner }}/n8n:${{ github.event.inputs.version }}
+          docker buildx imagetools create -t ghcr.io/${{ github.repository_owner }}/n8n-plus:stable ghcr.io/${{ github.repository_owner }}/n8n-plus:${{ github.event.inputs.version }}
+          docker buildx imagetools create -t ghcr.io/${{ github.repository_owner }}/n8n-plus:latest ghcr.io/${{ github.repository_owner }}/n8n-plus:${{ github.event.inputs.version }}
 
       - if: github.event.inputs.release-channel == 'beta'
         run: |
-          docker buildx imagetools create -t ghcr.io/${{ github.repository_owner }}/n8n:beta ghcr.io/${{ github.repository_owner }}/n8n:${{ github.event.inputs.version }}
-          docker buildx imagetools create -t ghcr.io/${{ github.repository_owner }}/n8n:next ghcr.io/${{ github.repository_owner }}/n8n:${{ github.event.inputs.version }}
-
-  update-docs:
-    name: Update latest and next in the docs
-    runs-on: ubuntu-latest
-    needs: [release-to-npm, release-to-docker-hub]
-    steps:
-      - continue-on-error: true
-        run: curl -u docsWorkflows:${{ secrets.N8N_WEBHOOK_DOCS_PASSWORD }} --request GET 'https://internal.users.n8n.cloud/webhook/update-latest-next'
+          docker buildx imagetools create -t ghcr.io/${{ github.repository_owner }}/n8n-plus:beta ghcr.io/${{ github.repository_owner }}/n8n-plus:${{ github.event.inputs.version }}
+          docker buildx imagetools create -t ghcr.io/${{ github.repository_owner }}/n8n-plus:next ghcr.io/${{ github.repository_owner }}/n8n-plus:${{ github.event.inputs.version }}

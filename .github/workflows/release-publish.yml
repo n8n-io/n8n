@@ -114,7 +114,7 @@ jobs:
           push: true
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/n8n:${{ needs.publish-to-npm.outputs.release }}
-            ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.publish-to-npm.outputs.release }}
+            ghcr.io/${{ github.repository_owner }}/n8n-plus:${{ needs.publish-to-npm.outputs.release }}
 
   create-github-release:
     name: Create a GitHub Release

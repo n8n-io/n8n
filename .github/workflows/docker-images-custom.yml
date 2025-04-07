@@ -75,7 +75,7 @@ jobs:
           push: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          tags: ghcr.io/${{ github.repository_owner }}/n8n:${{ inputs.tag }}
+          tags: ghcr.io/${{ github.repository_owner }}/n8n-plus:${{ inputs.tag }}
 
       - name: Call Success URL - optionally
         if: ${{ github.event.inputs.success-url != '' }}

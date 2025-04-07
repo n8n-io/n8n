@@ -17,7 +17,7 @@ on:
 jobs:
   lint:
     name: Lint
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
     env:
       NODE_OPTIONS: '--max-old-space-size=4096'
     steps:

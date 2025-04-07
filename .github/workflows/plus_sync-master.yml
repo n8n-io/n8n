@@ -1,0 +1,16 @@
+name: Sync Master with Upstream
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Runs daily at midnight UTC
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - run: gh repo sync $REPOSITORY -b $BRANCH_NAME --force
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          BRANCH_NAME: master
