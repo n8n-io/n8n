@@ -106,12 +106,6 @@
         "subject": {
             "type": "string"
         },
-        "text": {
-            "type": "string"
-        },
-        "textAsHtml": {
-            "type": "string"
-        },
         "threadId": {
             "type": "string"
         },
@@ -141,5 +135,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }
