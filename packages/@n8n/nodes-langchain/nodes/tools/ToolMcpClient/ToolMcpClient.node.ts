@@ -10,12 +10,14 @@ import {
 import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
+import { testMcpSseCredential } from './credentialTest';
 import { getTools } from './loadOptions';
 import type { McpSseCredential, McpToolIncludeMode } from './types';
 import {
 	connectMcpClient,
 	createCallTool,
 	getSelectedTools,
+	getToolCallErrorDescription,
 	McpToolkit,
 	mcpToolToDynamicTool,
 } from './utils';
@@ -50,7 +52,7 @@ export class ToolMcpClient implements INodeType {
 		},
 		inputs: [],
 		outputs: [{ type: NodeConnectionTypes.AiTool, displayName: 'Tools' }],
-		credentials: [{ name: 'mcpSseApi' }],
+		credentials: [{ name: 'mcpSseApi', testedBy: 'testMcpSseCredential' }],
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{
@@ -116,6 +118,9 @@ export class ToolMcpClient implements INodeType {
 		loadOptions: {
 			getTools,
 		},
+		credentialTest: {
+			testMcpSseCredential,
+		},
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
@@ -138,10 +143,6 @@ export class ToolMcpClient implements INodeType {
 			});
 
 			switch (client.error.type) {
-				case 'base_url_path':
-					return setError(
-						'The base URL should not contain a path. Please remove it, e.g., use "my-mcp-server.ai" instead of "my-mcp-server.ai/sse".',
-					);
 				case 'invalid_url':
 					return setError('Could not connect to your MCP server. The provided URL is invalid.');
 				case 'connection':
@@ -176,7 +177,9 @@ export class ToolMcpClient implements INodeType {
 					tool,
 					createCallTool(tool.name, client.result, (error) => {
 						this.logger.error(`ToolMCPClient: Tool "${tool.name}" failed to execute`, { error });
-						throw new NodeOperationError(node, error as Error);
+						throw new NodeOperationError(node, `Failed to execute tool "${tool.name}"`, {
+							description: getToolCallErrorDescription(error),
+						});
 					}),
 				),
 				this,
