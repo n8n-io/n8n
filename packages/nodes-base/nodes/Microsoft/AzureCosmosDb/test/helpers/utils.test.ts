@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
 import type { IDataObject, IHttpRequestOptions, INodeExecutionData } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError, OperationalError } from 'n8n-workflow';
 
@@ -63,14 +62,17 @@ describe('getPartitionKey', () => {
 	});
 
 	test('should throw NodeApiError for 404 error', async () => {
-		mockExecuteSingleFunctions.getNodeParameter.mockReturnValue('containerName');
+		const containerName = 'containerName';
+		mockExecuteSingleFunctions.getNodeParameter.mockReturnValue(containerName);
+
+		const errorMessage = ErrorMap.Container.NotFound.getMessage(containerName);
 
 		const mockError = new NodeApiError(
 			mockExecuteSingleFunctions.getNode(),
 			{},
 			{
 				httpCode: '404',
-				message: ErrorMap.Container.NotFound.message,
+				message: errorMessage,
 				description: ErrorMap.Container.NotFound.description,
 			},
 		);
@@ -82,7 +84,7 @@ describe('getPartitionKey', () => {
 				mockExecuteSingleFunctions.getNode(),
 				{},
 				{
-					message: ErrorMap.Container.NotFound.message,
+					message: errorMessage,
 					description: ErrorMap.Container.NotFound.description,
 				},
 			),

@@ -29,7 +29,7 @@ export async function getPartitionKey(this: IExecuteSingleFunctions): Promise<st
 	} catch (error) {
 		const err = error as NodeApiError;
 		if (err.httpCode === '404') {
-			err.message = ErrorMap.Container.NotFound.message;
+			err.message = ErrorMap.Container.NotFound.getMessage(container);
 			err.description = ErrorMap.Container.NotFound.description;
 		}
 		throw err;
@@ -107,20 +107,33 @@ export function processJsonInput<T>(
 	jsonData: T,
 	inputName?: string,
 	fallbackValue: T | undefined = undefined,
-) {
-	let values;
+	disallowSpacesIn?: string[],
+): Record<string, unknown> {
+	let values: Record<string, unknown> = {};
+
 	const input = inputName ? `'${inputName}' ` : '';
+
 	if (typeof jsonData === 'string') {
 		try {
-			values = jsonParse(jsonData, { fallbackValue });
+			values = jsonParse(jsonData, { fallbackValue }) as Record<string, unknown>;
 		} catch (error) {
 			throw new OperationalError(`Input ${input}must contain a valid JSON`, { level: 'warning' });
 		}
-	} else if (typeof jsonData === 'object') {
-		values = jsonData;
+	} else if (jsonData && typeof jsonData === 'object') {
+		values = jsonData as Record<string, unknown>;
 	} else {
 		throw new OperationalError(`Input ${input}must contain a valid JSON`, { level: 'warning' });
 	}
+
+	disallowSpacesIn?.forEach((key) => {
+		const value = values[key];
+		if (typeof value === 'string' && value.includes(' ')) {
+			throw new OperationalError(
+				`${inputName ? `'${inputName}'` : ''} property '${key}' should not contain spaces (received "${value}")`,
+				{ level: 'warning' },
+			);
+		}
+	});
 
 	return values;
 }

@@ -31,7 +31,12 @@ const properties: INodeProperties[] = [
 						requestOptions: IHttpRequestOptions,
 					): Promise<IHttpRequestOptions> {
 						const rawCustomProperties = this.getNodeParameter('customProperties') as IDataObject;
-						const customProperties = processJsonInput(rawCustomProperties, 'Item Contents');
+						const customProperties = processJsonInput(
+							rawCustomProperties,
+							'Item Contents',
+							undefined,
+							['id'],
+						);
 						requestOptions.body = customProperties;
 						return requestOptions;
 					},

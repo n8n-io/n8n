@@ -11,19 +11,19 @@ import type { IErrorResponse } from './interfaces';
 export const ErrorMap = {
 	Container: {
 		Conflict: {
-			message: 'The specified container already exists',
-			description: "Use a unique value for 'ID' and try again",
+			getMessage: (id: string) => `Container "${id}" already exists.`,
+			description: "Use a unique value for 'ID' and try again.",
 		},
 		NotFound: {
-			message: "The required container doesn't match any existing one",
-			description: "Double-check the value in the parameter 'Container' and try again",
+			getMessage: (id: string) => `Container "${id}" was not found.`,
+			description: "Double-check the value in the parameter 'Container' and try again.",
 		},
 	},
 	Item: {
 		NotFound: {
-			message: "The required item doesn't match any existing one",
+			getMessage: (id: string) => `Item "${id}" was not found.`,
 			description:
-				"Double-check the values in the parameter 'Item' and 'Partition Key'( if the case ) and try again",
+				"Double-check the values in the parameter 'Item' and 'Partition Key' (if applicable) and try again.",
 		},
 	},
 };
@@ -39,29 +39,37 @@ export async function handleError(
 		let errorMessage = error.message;
 
 		let errorDetails: string[] | undefined = undefined;
+		let inputValue: string | undefined;
+
+		try {
+			if (resource === 'container') {
+				inputValue =
+					(this.getNodeParameter('container', undefined, { extractValue: true }) as string) ??
+					(this.getNodeParameter('containerCreate') as string);
+			} else if (resource === 'item') {
+				inputValue = this.getNodeParameter('item', undefined, { extractValue: true }) as string;
+			}
+		} catch {}
 
 		if (resource === 'container') {
 			if (error.code === 'Conflict') {
-				throw new NodeApiError(
-					this.getNode(),
-					error as unknown as JsonObject,
-					ErrorMap.Container.Conflict,
-				);
+				throw new NodeApiError(this.getNode(), error as unknown as JsonObject, {
+					message: ErrorMap.Container.Conflict.getMessage(inputValue ?? 'Unknown'),
+					description: ErrorMap.Container.Conflict.description,
+				});
 			}
 			if (error.code === 'NotFound') {
-				throw new NodeApiError(
-					this.getNode(),
-					error as unknown as JsonObject,
-					ErrorMap.Container.NotFound,
-				);
+				throw new NodeApiError(this.getNode(), error as unknown as JsonObject, {
+					message: ErrorMap.Container.NotFound.getMessage(inputValue ?? 'Unknown'),
+					description: ErrorMap.Container.NotFound.description,
+				});
 			}
 		} else if (resource === 'item') {
 			if (error.code === 'NotFound') {
-				throw new NodeApiError(
-					this.getNode(),
-					error as unknown as JsonObject,
-					ErrorMap.Item.NotFound,
-				);
+				throw new NodeApiError(this.getNode(), error as unknown as JsonObject, {
+					message: ErrorMap.Item.NotFound.getMessage(inputValue ?? 'Unknown'),
+					description: ErrorMap.Item.NotFound.description,
+				});
 			}
 		}
 

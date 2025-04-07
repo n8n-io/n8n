@@ -29,11 +29,10 @@ describe('handleError', () => {
 		response.body = { code: 'Conflict', message: 'Container already exists' } as JsonObject;
 
 		await expect(handleError.call(mockExecuteSingleFunctions, data, response)).rejects.toThrow(
-			new NodeApiError(
-				mockExecuteSingleFunctions.getNode(),
-				response.body as JsonObject,
-				ErrorMap.Container.Conflict,
-			),
+			new NodeApiError(mockExecuteSingleFunctions.getNode(), response.body as JsonObject, {
+				message: ErrorMap.Container.Conflict.getMessage('container'),
+				description: ErrorMap.Container.Conflict.description,
+			}),
 		);
 	});
 
@@ -44,11 +43,10 @@ describe('handleError', () => {
 		response.body = { code: 'NotFound', message: 'Container not found' } as JsonObject;
 
 		await expect(handleError.call(mockExecuteSingleFunctions, data, response)).rejects.toThrow(
-			new NodeApiError(
-				mockExecuteSingleFunctions.getNode(),
-				response.body as JsonObject,
-				ErrorMap.Container.NotFound,
-			),
+			new NodeApiError(mockExecuteSingleFunctions.getNode(), response.body as JsonObject, {
+				message: ErrorMap.Container.NotFound.getMessage('container'),
+				description: ErrorMap.Container.NotFound.description,
+			}),
 		);
 	});
 
@@ -59,11 +57,10 @@ describe('handleError', () => {
 		response.body = { code: 'NotFound', message: 'Item not found' } as JsonObject;
 
 		await expect(handleError.call(mockExecuteSingleFunctions, data, response)).rejects.toThrow(
-			new NodeApiError(
-				mockExecuteSingleFunctions.getNode(),
-				response.body as JsonObject,
-				ErrorMap.Item.NotFound,
-			),
+			new NodeApiError(mockExecuteSingleFunctions.getNode(), response.body as JsonObject, {
+				message: ErrorMap.Item.NotFound.getMessage('item'),
+				description: ErrorMap.Item.NotFound.description,
+			}),
 		);
 	});
 

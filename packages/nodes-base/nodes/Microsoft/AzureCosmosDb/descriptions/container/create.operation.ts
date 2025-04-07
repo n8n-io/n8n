@@ -4,7 +4,7 @@ import type {
 	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
+import { OperationalError, updateDisplayOptions } from 'n8n-workflow';
 
 import { HeaderConstants } from '../../helpers/constants';
 import { processJsonInput } from '../../helpers/utils';
@@ -19,48 +19,65 @@ const properties: INodeProperties[] = [
 		required: true,
 		routing: {
 			send: {
-				type: 'body',
-				property: 'id',
-				value: '={{ $value }}',
+				preSend: [
+					async function (
+						this: IExecuteSingleFunctions,
+						requestOptions: IHttpRequestOptions,
+					): Promise<IHttpRequestOptions> {
+						const id = this.getNodeParameter('containerCreate') as string;
+
+						if (/\s/.test(id)) {
+							throw new OperationalError('The container ID must not contain spaces.');
+						}
+
+						if (!/^[a-zA-Z0-9-_]+$/.test(id)) {
+							throw new OperationalError(
+								'The container ID may only contain letters, numbers, hyphens, and underscores.',
+							);
+						}
+
+						(requestOptions.body as IDataObject).id = id;
+
+						return requestOptions;
+					},
+				],
 			},
 		},
 		type: 'string',
+	},
+	{
+		displayName: 'Partition Key',
+		name: 'partitionKey',
+		default: '{\n\t"paths": [\n\t\t"/id"\n\t],\n\t"kind": "Hash",\n\t"version": 2\n}',
+		description:
+			'The partition key is used to automatically distribute data across partitions for scalability. Choose a property in your JSON document that has a wide range of values and evenly distributes request volume.',
+		required: true,
+		routing: {
+			send: {
+				preSend: [
+					async function (
+						this: IExecuteSingleFunctions,
+						requestOptions: IHttpRequestOptions,
+					): Promise<IHttpRequestOptions> {
+						const rawPartitionKey = this.getNodeParameter('partitionKey') as IDataObject;
+						const partitionKey = processJsonInput(rawPartitionKey, 'Partition Key', {
+							paths: ['/id'],
+							kind: 'Hash',
+							version: 2,
+						});
+						(requestOptions.body as IDataObject).partitionKey = partitionKey;
+						return requestOptions;
+					},
+				],
+			},
+		},
+		type: 'json',
 	},
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		default: {},
 		options: [
-			{
-				displayName: 'Partition Key',
-				name: 'partitionKey',
-				default: '{\n\t"paths": [\n\t\t"/id"\n\t],\n\t"kind": "Hash",\n\t"version": 2\n}',
-				description:
-					'The partition key is used to automatically distribute data across partitions for scalability. Choose a property in your JSON document that has a wide range of values and evenly distributes request volume.',
-				required: true,
-				routing: {
-					send: {
-						preSend: [
-							async function (
-								this: IExecuteSingleFunctions,
-								requestOptions: IHttpRequestOptions,
-							): Promise<IHttpRequestOptions> {
-								const rawPartitionKey = this.getNodeParameter(
-									'additionalFields.partitionKey',
-								) as IDataObject;
-								const partitionKey = processJsonInput(rawPartitionKey, 'Partition Key', {
-									paths: ['/id'],
-									kind: 'Hash',
-									version: 2,
-								});
-								(requestOptions.body as IDataObject).partitionKey = partitionKey;
-								return requestOptions;
-							},
-						],
-					},
-				},
-				type: 'json',
-			},
 			{
 				displayName: 'Indexing Policy',
 				name: 'indexingPolicy',
