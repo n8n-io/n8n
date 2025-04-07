@@ -25,7 +25,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 		version: 1,
 		description:
 			'Triggers workflows in n8n based on events from Microsoft Teams, such as new messages or team updates, using specified configurations.',
-		subtitle: '={{"Microsoft Teams Trigger"}}',
+		subtitle: 'Microsoft Teams Trigger',
 		defaults: {
 			name: 'Microsoft Teams Trigger',
 		},
@@ -96,7 +96,10 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				displayName: 'Team',
 				name: 'teamId',
 				type: 'resourceLocator',
-				default: { mode: 'list', value: '' },
+				default: {
+					mode: 'list',
+					value: '',
+				},
 				required: true,
 				description:
 					'Select the team from the list, by URL, or by ID (the ID is the "groupId" parameter in the URL you get from "Get a link to the team")',
@@ -105,11 +108,17 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						displayName: 'From List',
 						name: 'list',
 						type: 'list',
-						placeholder: 'Select a Team...',
+						placeholder: 'Select a team...',
 						typeOptions: {
 							searchListMethod: 'getTeams',
 							searchable: true,
 						},
+					},
+					{
+						displayName: 'By ID',
+						name: 'id',
+						type: 'string',
+						placeholder: 'e.g., 61165b04-e4cc-4026-b43f-926b4e2a7182',
 					},
 					{
 						displayName: 'By URL',
@@ -121,12 +130,6 @@ export class MicrosoftTeamsTrigger implements INodeType {
 							type: 'regex',
 							regex: /groupId=([0-9a-fA-F-]{36})/,
 						},
-					},
-					{
-						displayName: 'By ID',
-						name: 'id',
-						type: 'string',
-						placeholder: 'e.g., 61165b04-e4cc-4026-b43f-926b4e2a7182',
 					},
 				],
 				displayOptions: {
@@ -162,11 +165,17 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						displayName: 'From List',
 						name: 'list',
 						type: 'list',
-						placeholder: 'Select a Channel...',
+						placeholder: 'Select a channel...',
 						typeOptions: {
 							searchListMethod: 'getChannels',
 							searchable: true,
 						},
+					},
+					{
+						displayName: 'By ID',
+						name: 'id',
+						type: 'string',
+						placeholder: 'e.g., 19:-xlxyqXNSCxpI1SDzgQ_L9ZvzSR26pgphq1BJ9y7QJE1@thread.tacv2',
 					},
 					{
 						displayName: 'By URL',
@@ -177,12 +186,6 @@ export class MicrosoftTeamsTrigger implements INodeType {
 							type: 'regex',
 							regex: /channel\/([^\/?]+)/,
 						},
-					},
-					{
-						displayName: 'By ID',
-						name: 'id',
-						type: 'string',
-						placeholder: 'e.g., 19:-xlxyqXNSCxpI1SDzgQ_L9ZvzSR26pgphq1BJ9y7QJE1@thread.tacv2',
 					},
 				],
 				displayOptions: {
@@ -209,7 +212,10 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				displayName: 'Chat',
 				name: 'chatId',
 				type: 'resourceLocator',
-				default: { mode: 'list', value: '' },
+				default: {
+					mode: 'list',
+					value: '',
+				},
 				required: true,
 				description:
 					'Select the chat from the list, by ID, or by URL (find the chat ID after "conversations/" in the URL)',
@@ -218,7 +224,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						displayName: 'From List',
 						name: 'list',
 						type: 'list',
-						placeholder: 'Select a Chat...',
+						placeholder: 'Select a chat...',
 						typeOptions: {
 							searchListMethod: 'getChats',
 							searchable: true,
@@ -255,11 +261,9 @@ export class MicrosoftTeamsTrigger implements INodeType {
 
 	webhookMethods = {
 		default: {
-			// Check if a webhook subscription already exists
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				try {
-					// Fetch all existing subscriptions
 					const subscriptions = await microsoftApiRequestAllItems.call(
 						this as unknown as ILoadOptionsFunctions,
 						'value',
@@ -274,7 +278,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						}
 					}
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 
 				return false;
@@ -305,12 +309,11 @@ export class MicrosoftTeamsTrigger implements INodeType {
 
 				return true;
 			},
-			// Delete an existing webhook subscription
+
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 
 				try {
-					// Fetch all subscriptions
 					const subscriptions = await microsoftApiRequestAllItems.call(
 						this as unknown as ILoadOptionsFunctions,
 						'value',
@@ -318,7 +321,6 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						'/v1.0/subscriptions',
 					);
 
-					// Filter subscriptions by notificationUrl
 					const matchingSubscriptions = subscriptions.filter(
 						(subscription: IDataObject) => subscription.notificationUrl === webhookUrl,
 					);
@@ -327,7 +329,6 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						return false;
 					}
 
-					// Delete all matching subscriptions
 					for (const subscription of matchingSubscriptions) {
 						const subscriptionId = subscription.id as string;
 						try {

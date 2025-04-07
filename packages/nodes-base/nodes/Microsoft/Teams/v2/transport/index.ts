@@ -56,7 +56,6 @@ export async function microsoftApiRequestAllItems(
 	propertyName: string,
 	method: IHttpRequestMethods,
 	endpoint: string,
-
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
@@ -83,7 +82,6 @@ export async function microsoftApiRequestAllItemsSkip(
 	propertyName: string,
 	method: IHttpRequestMethods,
 	endpoint: string,
-
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {

@@ -9,7 +9,7 @@ import { NodeApiError } from 'n8n-workflow';
 
 import { microsoftApiRequest } from './v2/transport';
 
-export const fetchAllTeams = async function (
+export async function fetchAllTeams(
 	this: ILoadOptionsFunctions,
 ): Promise<Array<{ id: string; displayName: string }>> {
 	const { value: teams } = await microsoftApiRequest.call(this, 'GET', '/v1.0/me/joinedTeams');
@@ -17,9 +17,9 @@ export const fetchAllTeams = async function (
 		id: team.id as string,
 		displayName: team.displayName as string,
 	}));
-};
+}
 
-export const fetchAllChannels = async function (
+export async function fetchAllChannels(
 	this: ILoadOptionsFunctions,
 	teamId: string,
 ): Promise<Array<{ id: string; displayName: string }>> {
@@ -32,9 +32,9 @@ export const fetchAllChannels = async function (
 		id: channel.id as string,
 		displayName: channel.displayName as string,
 	}));
-};
+}
 
-export const fetchAllChats = async function (
+export async function fetchAllChats(
 	this: ILoadOptionsFunctions,
 ): Promise<Array<{ id: string; displayName: string; url?: string }>> {
 	const { value: chats } = await microsoftApiRequest.call(this, 'GET', '/v1.0/chats');
@@ -43,9 +43,9 @@ export const fetchAllChats = async function (
 		displayName: (chat.topic || chat.id) as string,
 		url: chat.webUrl as string,
 	}));
-};
+}
 
-export const createSubscription = async function (
+export async function createSubscription(
 	this: IHookFunctions | IExecuteFunctions,
 	webhookUrl: string,
 	resourcePath: string,
@@ -72,10 +72,9 @@ export const createSubscription = async function (
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
-};
+}
 
-// Get resource path based on the event
-export const getResourcePath = async function (
+export async function getResourcePath(
 	this: IHookFunctions,
 	event: string,
 ): Promise<string | string[]> {
@@ -91,7 +90,9 @@ export const getResourcePath = async function (
 			if (watchAllChats) return '/me/chats/getAllMessages';
 
 			let chatId = this.getNodeParameter('chatId', 0, { extractValue: true }) as string;
-			if (!chatId) throw new NodeApiError(this.getNode(), { message: 'Chat ID is required' });
+			if (!chatId) {
+				throw new NodeApiError(this.getNode(), { message: 'Chat ID is required' });
+			}
 
 			chatId = decodeURIComponent(chatId);
 			return `/chats/${chatId}/messages`;
@@ -108,7 +109,9 @@ export const getResourcePath = async function (
 			}
 
 			const teamId = this.getNodeParameter('teamId', 0, { extractValue: true }) as string;
-			if (!teamId) throw new NodeApiError(this.getNode(), { message: 'Team ID is required' });
+			if (!teamId) {
+				throw new NodeApiError(this.getNode(), { message: 'Team ID is required' });
+			}
 
 			return `/teams/${teamId}/channels`;
 		}
@@ -136,8 +139,10 @@ export const getResourcePath = async function (
 			}
 
 			// If not watching all teams, fetch channels for a specific team
-			const teamId = this.getNodeParameter('teamId', 0, { extractValue: true }) as string;
-			if (!teamId) throw new NodeApiError(this.getNode(), { message: 'Team ID is required' });
+			const teamId = this.getNodeParameter('teamId', undefined, { extractValue: true }) as string;
+			if (!teamId) {
+				throw new NodeApiError(this.getNode(), { message: 'Team ID is required' });
+			}
 
 			const watchAllChannels = this.getNodeParameter('watchAllChannels', 0, {
 				extractValue: true,
@@ -152,7 +157,9 @@ export const getResourcePath = async function (
 			}
 
 			let channelId = this.getNodeParameter('channelId', 0, { extractValue: true }) as string;
-			if (!channelId) throw new NodeApiError(this.getNode(), { message: 'Channel ID is required' });
+			if (!channelId) {
+				throw new NodeApiError(this.getNode(), { message: 'Channel ID is required' });
+			}
 
 			channelId = decodeURIComponent(channelId);
 
@@ -170,7 +177,9 @@ export const getResourcePath = async function (
 			}
 
 			const teamId = this.getNodeParameter('teamId', 0, { extractValue: true }) as string;
-			if (!teamId) throw new NodeApiError(this.getNode(), { message: 'Team ID is required' });
+			if (!teamId) {
+				throw new NodeApiError(this.getNode(), { message: 'Team ID is required' });
+			}
 
 			return `/teams/${teamId}/members`;
 		}
@@ -182,4 +191,4 @@ export const getResourcePath = async function (
 			});
 		}
 	}
-};
+}
