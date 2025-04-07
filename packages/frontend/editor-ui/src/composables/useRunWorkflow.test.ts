@@ -26,12 +26,13 @@ import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { waitFor } from '@testing-library/vue';
 
-vi.mock('@/stores/workflows.store', async () => ({
-	useWorkflowsStore: vi.fn().mockReturnValue({
+vi.mock('@/stores/workflows.store', async () => {
+	const storeState = {
 		allNodes: [],
 		runWorkflow: vi.fn(),
 		subWorkflowExecutionError: null,
 		getWorkflowRunData: null,
+		workflowExecutionData: null,
 		setWorkflowExecutionData: vi.fn(),
 		activeExecutionId: null,
 		previousExecutionId: null,
@@ -48,9 +49,15 @@ vi.mock('@/stores/workflows.store', async () => ({
 		incomingConnectionsByNodeName: vi.fn(),
 		outgoingConnectionsByNodeName: vi.fn(),
 		markExecutionAsStopped: vi.fn(),
-		setActiveExecutionId: vi.fn(),
-	}),
-}));
+		setActiveExecutionId: vi.fn((id: string) => {
+			storeState.activeExecutionId = id;
+		}),
+	};
+
+	return {
+		useWorkflowsStore: vi.fn().mockReturnValue(storeState),
+	};
+});
 
 vi.mock('@/stores/pushConnection.store', () => ({
 	usePushConnectionStore: vi.fn().mockReturnValue({
@@ -153,7 +160,7 @@ describe('useRunWorkflow({ router })', () => {
 
 			const mockResponse = { executionId: '123', waitingForWebhook: false };
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockResponse);
-			vi.mocked(workflowsStore).activeExecutionId = '123';
+			vi.mocked(workflowsStore).setActiveExecutionId('123');
 
 			const response = await runWorkflowApi({} as IStartRunData);
 
