@@ -692,8 +692,6 @@ export class HttpRequestV3 implements INodeType {
 			}
 		}
 
-		const shouldOptimizeResponse = this.getNodeParameter('optimizeResponse', 0, false) as boolean;
-
 		const sanitizedRequests: IDataObject[] = [];
 		const promisesResponses = await Promise.allSettled(
 			requestPromises.map(
@@ -835,6 +833,7 @@ export class HttpRequestV3 implements INodeType {
 						}
 					}
 				}
+				// This is a no-op outside of tool usage
 				const optimizeResponse = configureResponseOptimizer(this, itemIndex);
 
 				if (autoDetectResponseFormat && !fullResponse) {
