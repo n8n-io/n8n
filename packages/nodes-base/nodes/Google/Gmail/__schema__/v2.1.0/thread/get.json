@@ -33,9 +33,6 @@
                     "Delivered-To": {
                         "type": "string"
                     },
-                    "DKIM-Signature": {
-                        "type": "string"
-                    },
                     "From": {
                         "type": "string"
                     },
@@ -61,6 +58,9 @@
                                 }
                             }
                         }
+                    },
+                    "Message-ID": {
+                        "type": "string"
                     },
                     "MIME-Version": {
                         "type": "string"
@@ -124,5 +124,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }
