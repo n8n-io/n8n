@@ -16,9 +16,6 @@
                 "displayNameLastFirst": {
                     "type": "string"
                 },
-                "familyName": {
-                    "type": "string"
-                },
                 "givenName": {
                     "type": "string"
                 },
@@ -27,20 +24,9 @@
                 }
             }
         },
-        "phoneNumbers": {
-            "type": "object",
-            "properties": {
-                "mobile": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
         "resourceName": {
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
