@@ -7,55 +7,45 @@
         "result": {
             "type": "object",
             "properties": {
-                "message_id": {
+                "chat": {
+                    "type": "object",
+                    "properties": {
+                        "first_name": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "integer"
+                        },
+                        "last_name": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "type": "string"
+                        },
+                        "username": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "date": {
                     "type": "integer"
                 },
                 "from": {
                     "type": "object",
                     "properties": {
+                        "first_name": {
+                            "type": "string"
+                        },
                         "id": {
                             "type": "integer"
                         },
                         "is_bot": {
                             "type": "boolean"
                         },
-                        "first_name": {
-                            "type": "string"
-                        },
                         "username": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "id",
-                        "is_bot",
-                        "first_name",
-                        "username"
-                    ]
-                },
-                "chat": {
-                    "type": "object",
-                    "properties": {
-                        "id": {
-                            "type": "integer"
-                        },
-                        "type": {
-                            "type": "string"
-                        },
-                        "first_name": {
-                            "type": "string"
-                        },
-                        "username": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "id",
-                        "type"
-                    ]
-                },
-                "date": {
-                    "type": "integer"
+                    }
                 },
                 "location": {
                     "type": "object",
@@ -66,24 +56,13 @@
                         "longitude": {
                             "type": "number"
                         }
-                    },
-                    "required": [
-                        "latitude",
-                        "longitude"
-                    ]
+                    }
+                },
+                "message_id": {
+                    "type": "integer"
                 }
-            },
-            "required": [
-                "message_id",
-                "chat",
-                "date",
-                "location"
-            ]
+            }
         }
     },
-    "required": [
-        "ok",
-        "result"
-    ],
     "version": 1
 }

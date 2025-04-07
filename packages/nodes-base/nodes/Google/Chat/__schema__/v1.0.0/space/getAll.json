@@ -1,25 +1,10 @@
 {
     "type": "object",
     "properties": {
-        "name": {
-            "type": "string"
-        },
-        "type": {
+        "createTime": {
             "type": "string"
         },
         "displayName": {
-            "type": "string"
-        },
-        "spaceThreadingState": {
-            "type": "string"
-        },
-        "spaceType": {
-            "type": "string"
-        },
-        "spaceHistoryState": {
-            "type": "string"
-        },
-        "createTime": {
             "type": "string"
         },
         "lastActiveTime": {
@@ -31,27 +16,26 @@
                 "joinedDirectHumanUserCount": {
                     "type": "integer"
                 }
-            },
-            "required": [
-                "joinedDirectHumanUserCount"
-            ]
+            }
+        },
+        "name": {
+            "type": "string"
+        },
+        "spaceHistoryState": {
+            "type": "string"
+        },
+        "spaceThreadingState": {
+            "type": "string"
+        },
+        "spaceType": {
+            "type": "string"
         },
         "spaceUri": {
             "type": "string"
         },
-        "singleUserBotDm": {
-            "type": "boolean"
+        "type": {
+            "type": "string"
         }
     },
-    "required": [
-        "name",
-        "type",
-        "spaceThreadingState",
-        "spaceType",
-        "spaceHistoryState",
-        "lastActiveTime",
-        "membershipCount",
-        "spaceUri"
-    ],
     "version": 1
 }

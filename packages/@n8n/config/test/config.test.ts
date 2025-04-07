@@ -27,6 +27,12 @@ describe('GlobalConfig', () => {
 		port: 5678,
 		listen_address: '0.0.0.0',
 		protocol: 'http',
+		auth: {
+			cookie: {
+				samesite: 'lax',
+				secure: true,
+			},
+		},
 		database: {
 			logging: {
 				enabled: false,
@@ -118,7 +124,6 @@ describe('GlobalConfig', () => {
 				enabled: true,
 				registry: 'https://registry.npmjs.org',
 				reinstallMissing: false,
-				allowToolUsage: false,
 			},
 			errorTriggerType: 'n8n-nodes-base.errorTrigger',
 			include: [],
@@ -278,6 +283,7 @@ describe('GlobalConfig', () => {
 			restrictFileAccessTo: '',
 			blockFileAccessToN8nFiles: true,
 			daysAbandonedWorkflow: 90,
+			contentSecurityPolicy: '{}',
 		},
 		executions: {
 			pruneData: true,

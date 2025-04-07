@@ -2,7 +2,7 @@ import type { Callbacks } from '@langchain/core/callbacks/manager';
 import { StructuredOutputParser } from 'langchain/output_parsers';
 import get from 'lodash/get';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { logAiEvent, unwrapNestedOutput } from '../helpers';
@@ -28,7 +28,7 @@ export class N8nStructuredOutputParser extends StructuredOutputParser<
 		_callbacks?: Callbacks,
 		errorMapper?: (error: Error) => Error,
 	): Promise<object> {
-		const { index } = this.context.addInputData(NodeConnectionType.AiOutputParser, [
+		const { index } = this.context.addInputData(NodeConnectionTypes.AiOutputParser, [
 			[{ json: { action: 'parse', text } }],
 		]);
 		try {
@@ -46,7 +46,7 @@ export class N8nStructuredOutputParser extends StructuredOutputParser<
 
 			logAiEvent(this.context, 'ai-output-parsed', { text, response: result });
 
-			this.context.addOutputData(NodeConnectionType.AiOutputParser, index, [
+			this.context.addOutputData(NodeConnectionTypes.AiOutputParser, index, [
 				[{ json: { action: 'parse', response: result } }],
 			]);
 
@@ -66,7 +66,7 @@ export class N8nStructuredOutputParser extends StructuredOutputParser<
 				response: e.message ?? e,
 			});
 
-			this.context.addOutputData(NodeConnectionType.AiOutputParser, index, nodeError);
+			this.context.addOutputData(NodeConnectionTypes.AiOutputParser, index, nodeError);
 			if (errorMapper) {
 				throw errorMapper(e);
 			}

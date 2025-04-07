@@ -32,4 +32,6 @@ export type {
 	InsightsSummaryType,
 	InsightsSummaryUnit,
 	InsightsSummary,
+	InsightsByWorkflow,
+	InsightsByTime,
 } from './schemas/insights.schema';

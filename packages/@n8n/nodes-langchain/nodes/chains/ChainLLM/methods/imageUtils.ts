@@ -3,7 +3,7 @@ import { HumanMessage } from '@langchain/core/messages';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { ChatOllama } from '@langchain/ollama';
 import type { IExecuteFunctions, IBinaryData } from 'n8n-workflow';
-import { NodeOperationError, NodeConnectionType, OperationalError } from 'n8n-workflow';
+import { NodeOperationError, NodeConnectionTypes, OperationalError } from 'n8n-workflow';
 
 import type { MessageTemplate } from './types';
 
@@ -69,7 +69,7 @@ export async function createImageMessage({
 
 	const bufferData = await context.helpers.getBinaryDataBuffer(itemIndex, binaryDataKey);
 	const model = (await context.getInputConnectionData(
-		NodeConnectionType.AiLanguageModel,
+		NodeConnectionTypes.AiLanguageModel,
 		0,
 	)) as BaseLanguageModel;
 

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type { IRunData, Workflow } from 'n8n-workflow';
-import { jsonParse, NodeHelpers, NodeConnectionType } from 'n8n-workflow';
+import type { IRunData, Workflow, NodeConnectionType } from 'n8n-workflow';
+import { jsonParse, NodeHelpers, NodeConnectionTypes } from 'n8n-workflow';
 import type { IUpdateInformation, TargetItem } from '@/Interface';
 
 import NodeSettings from '@/components/NodeSettings.vue';
@@ -160,16 +160,16 @@ const inputNodeName = computed<string | undefined>(() => {
 			: [];
 
 	const nonMainOutputs = nodeOutputs.filter((output) => {
-		if (typeof output === 'string') return output !== NodeConnectionType.Main;
+		if (typeof output === 'string') return output !== NodeConnectionTypes.Main;
 
-		return output.type !== NodeConnectionType.Main;
+		return output.type !== NodeConnectionTypes.Main;
 	});
 
 	const isSubNode = nonMainOutputs.length > 0;
 
 	if (isSubNode && activeNode.value) {
 		// For sub-nodes, we need to get their connected output node to determine the input
-		// because sub-nodes use specialized outputs (e.g. NodeConnectionType.AiTool)
+		// because sub-nodes use specialized outputs (e.g. NodeConnectionTypes.AiTool)
 		// instead of the standard Main output type
 		const connectedOutputNode = props.workflowObject.getChildNodes(
 			activeNode.value.name,
@@ -275,7 +275,7 @@ const maxInputRun = computed(() => {
 
 	const runData: IRunData | null = workflowRunData.value;
 
-	if (outputs.some((output) => output !== NodeConnectionType.Main)) {
+	if (outputs.some((output) => output !== NodeConnectionTypes.Main)) {
 		node = activeNode.value;
 	}
 
@@ -413,7 +413,7 @@ const onFeatureRequestClick = () => {
 			node_type: activeNode.value.type,
 			workflow_id: workflowsStore.workflowId,
 			push_ref: pushRef.value,
-			pane: NodeConnectionType.Main,
+			pane: NodeConnectionTypes.Main,
 			type: 'i-wish-this-node-would',
 		});
 	}

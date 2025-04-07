@@ -7,44 +7,37 @@
                 ".tag": {
                     "type": "string"
                 },
-                "name": {
+                "client_modified": {
                     "type": "string"
                 },
-                "path_lower": {
-                    "type": "string"
-                },
-                "path_display": {
+                "content_hash": {
                     "type": "string"
                 },
                 "id": {
                     "type": "string"
                 },
-                "client_modified": {
+                "is_downloadable": {
+                    "type": "boolean"
+                },
+                "name": {
                     "type": "string"
                 },
-                "server_modified": {
+                "path_display": {
+                    "type": "string"
+                },
+                "path_lower": {
                     "type": "string"
                 },
                 "rev": {
                     "type": "string"
                 },
+                "server_modified": {
+                    "type": "string"
+                },
                 "size": {
                     "type": "integer"
-                },
-                "is_downloadable": {
-                    "type": "boolean"
-                },
-                "content_hash": {
-                    "type": "string"
                 }
-            },
-            "required": [
-                ".tag",
-                "name",
-                "path_lower",
-                "path_display",
-                "id"
-            ]
+            }
         }
     },
     "version": 1

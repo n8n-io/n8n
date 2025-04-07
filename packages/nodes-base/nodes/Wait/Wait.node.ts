@@ -9,7 +9,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	NodeOperationError,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	WAIT_INDEFINITELY,
 	FORM_TRIGGER_NODE_TYPE,
 } from 'n8n-workflow';
@@ -239,8 +239,8 @@ export class Wait extends Webhook {
 			name: 'Wait',
 			color: '#804050',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: credentialsProperty(this.authPropertyName),
 		webhooks: [
 			{

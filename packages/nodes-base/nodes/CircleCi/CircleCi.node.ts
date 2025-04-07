@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { circleciApiRequest, circleciApiRequestAllItems } from './GenericFunctions';
 import { pipelineFields, pipelineOperations } from './PipelineDescription';
@@ -24,8 +24,8 @@ export class CircleCi implements INodeType {
 			name: 'CircleCI',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'circleCiApi',

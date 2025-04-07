@@ -131,6 +131,18 @@ BQIDAQAB
 			},
 		},
 	},
+	microsoftExcelOAuth2Api: {
+		scope: 'openid',
+		oauthTokenData: {
+			access_token: 'token',
+		},
+	},
+	microsoftTeamsOAuth2Api: {
+		scope: 'openid',
+		oauthTokenData: {
+			access_token: 'token',
+		},
+	},
 	n8nApi: {
 		apiKey: 'key123',
 		baseUrl: 'https://test.app.n8n.cloud/api/v1',
@@ -233,5 +245,13 @@ BQIDAQAB
 		scope:
 			'user-read-playback-state playlist-read-collaborative user-modify-playback-state playlist-modify-public user-read-currently-playing playlist-read-private user-read-recently-played playlist-modify-private user-library-read user-follow-read',
 		server: 'https://api.spotify.com/',
+	},
+	baserowApi: {
+		host: 'https://api.baserow.io',
+		username: 'nathan@n8n.io',
+		password: 'fake-password',
+	},
+	discordWebhookApi: {
+		webhookUri: 'https://discord.com/webhook',
 	},
 } as const;

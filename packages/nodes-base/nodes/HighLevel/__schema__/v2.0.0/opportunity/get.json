@@ -4,7 +4,86 @@
         "opportunity": {
             "type": "object",
             "properties": {
+                "contact": {
+                    "type": "object",
+                    "properties": {
+                        "email": {
+                            "type": "string"
+                        },
+                        "followers": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "phone": {
+                            "type": "string"
+                        },
+                        "tags": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "contactId": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "followers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "id": {
+                    "type": "string"
+                },
+                "indexVersion": {
+                    "type": "integer"
+                },
+                "internalSource": {
+                    "type": "object",
+                    "properties": {
+                        "apiVersion": {
+                            "type": "string"
+                        },
+                        "channel": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "source": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "isAttribute": {
+                    "type": "boolean"
+                },
+                "lastActionDate": {
+                    "type": "string"
+                },
+                "lastStageChangeAt": {
+                    "type": "string"
+                },
+                "lastStatusChangeAt": {
+                    "type": "string"
+                },
+                "locationId": {
                     "type": "string"
                 },
                 "name": {
@@ -19,129 +98,14 @@
                 "status": {
                     "type": "string"
                 },
-                "lastStatusChangeAt": {
-                    "type": "string"
-                },
-                "lastStageChangeAt": {
-                    "type": "string"
-                },
-                "createdAt": {
-                    "type": "string"
-                },
                 "updatedAt": {
                     "type": "string"
-                },
-                "contactId": {
-                    "type": "string"
-                },
-                "isAttribute": {
-                    "type": "boolean"
-                },
-                "internalSource": {
-                    "type": "object",
-                    "properties": {
-                        "type": {
-                            "type": "string"
-                        },
-                        "id": {
-                            "type": "string"
-                        },
-                        "apiVersion": {
-                            "type": "string"
-                        },
-                        "channel": {
-                            "type": "string"
-                        },
-                        "source": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "type",
-                        "id",
-                        "apiVersion",
-                        "channel",
-                        "source"
-                    ]
-                },
-                "locationId": {
-                    "type": "string"
-                },
-                "lastActionDate": {
-                    "type": "string"
-                },
-                "followers": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "contact": {
-                    "type": "object",
-                    "properties": {
-                        "id": {
-                            "type": "string"
-                        },
-                        "name": {
-                            "type": "string"
-                        },
-                        "email": {
-                            "type": "string"
-                        },
-                        "phone": {
-                            "type": "string"
-                        },
-                        "tags": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
-                        },
-                        "followers": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "required": [
-                        "id",
-                        "name",
-                        "tags",
-                        "followers"
-                    ]
-                },
-                "indexVersion": {
-                    "type": "integer"
                 }
-            },
-            "required": [
-                "id",
-                "name",
-                "monetaryValue",
-                "pipelineId",
-                "pipelineStageId",
-                "status",
-                "lastStatusChangeAt",
-                "lastStageChangeAt",
-                "createdAt",
-                "updatedAt",
-                "contactId",
-                "isAttribute",
-                "internalSource",
-                "locationId",
-                "lastActionDate",
-                "followers",
-                "contact"
-            ]
+            }
         },
         "traceId": {
             "type": "string"
         }
     },
-    "required": [
-        "opportunity",
-        "traceId"
-    ],
     "version": 1
 }

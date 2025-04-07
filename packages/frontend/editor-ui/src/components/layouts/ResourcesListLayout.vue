@@ -543,6 +543,7 @@ const loadPaginationFromQueryString = async () => {
 								:model-value="filtersModel.search"
 								:class="$style.search"
 								:placeholder="i18n.baseText(`${resourceKey}.search.placeholder` as BaseTextKey)"
+								size="small"
 								clearable
 								data-test-id="resources-list-search"
 								@update:model-value="onSearch"
@@ -552,7 +553,7 @@ const loadPaginationFromQueryString = async () => {
 								</template>
 							</n8n-input>
 							<div :class="$style['sort-and-filter']">
-								<n8n-select v-model="sortBy" data-test-id="resources-list-sort">
+								<n8n-select v-model="sortBy" size="small" data-test-id="resources-list-sort">
 									<n8n-option
 										v-for="sortOption in sortOptions"
 										:key="sortOption"
@@ -660,7 +661,12 @@ const loadPaginationFromQueryString = async () => {
 					</n8n-datatable>
 				</div>
 
-				<n8n-text v-else color="text-base" size="medium" data-test-id="resources-list-empty">
+				<n8n-text
+					v-else-if="hasAppliedFilters() || filtersModel.search !== ''"
+					color="text-base"
+					size="medium"
+					data-test-id="resources-list-empty"
+				>
 					{{ i18n.baseText(`${resourceKey}.noResults` as BaseTextKey) }}
 				</n8n-text>
 
@@ -684,14 +690,14 @@ const loadPaginationFromQueryString = async () => {
 	display: grid;
 	grid-auto-flow: column;
 	grid-auto-columns: 1fr max-content max-content max-content;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing-4xs);
 	align-items: center;
 	justify-content: end;
 	width: 100%;
 
 	.sort-and-filter {
 		display: flex;
-		gap: var(--spacing-2xs);
+		gap: var(--spacing-4xs);
 		align-items: center;
 	}
 
@@ -707,7 +713,7 @@ const loadPaginationFromQueryString = async () => {
 	justify-self: end;
 
 	input {
-		height: 42px;
+		height: 30px;
 	}
 }
 

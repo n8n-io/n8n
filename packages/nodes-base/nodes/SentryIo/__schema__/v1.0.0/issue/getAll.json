@@ -1,37 +1,92 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "shareId": {
-            "type": "null"
-        },
-        "shortId": {
-            "type": "string"
-        },
-        "title": {
+        "count": {
             "type": "string"
         },
         "culprit": {
             "type": "string"
         },
-        "permalink": {
+        "firstSeen": {
+            "type": "string"
+        },
+        "hasSeen": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "isBookmarked": {
+            "type": "boolean"
+        },
+        "isPublic": {
+            "type": "boolean"
+        },
+        "isSubscribed": {
+            "type": "boolean"
+        },
+        "issueCategory": {
+            "type": "string"
+        },
+        "issueType": {
+            "type": "string"
+        },
+        "isUnhandled": {
+            "type": "boolean"
+        },
+        "lastSeen": {
             "type": "string"
         },
         "level": {
             "type": "string"
         },
-        "status": {
-            "type": "string"
+        "metadata": {
+            "type": "object",
+            "properties": {
+                "filename": {
+                    "type": "string"
+                },
+                "function": {
+                    "type": "string"
+                },
+                "in_app_frame_mix": {
+                    "type": "string"
+                },
+                "initial_priority": {
+                    "type": "integer"
+                },
+                "sdk": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "name_normalized": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "severity_reason": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
         },
-        "substatus": {
-            "type": "string"
+        "numComments": {
+            "type": "integer"
         },
-        "isPublic": {
-            "type": "boolean"
+        "permalink": {
+            "type": "string"
         },
         "platform": {
+            "type": "string"
+        },
+        "priority": {
             "type": "string"
         },
         "project": {
@@ -43,101 +98,18 @@
                 "name": {
                     "type": "string"
                 },
-                "slug": {
-                    "type": "string"
-                },
                 "platform": {
                     "type": "string"
-                }
-            },
-            "required": [
-                "id",
-                "name",
-                "slug",
-                "platform"
-            ]
-        },
-        "type": {
-            "type": "string"
-        },
-        "metadata": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
                 },
-                "type": {
-                    "type": "string"
-                },
-                "filename": {
-                    "type": "string"
-                },
-                "function": {
-                    "type": "string"
-                },
-                "in_app_frame_mix": {
-                    "type": "string"
-                },
-                "sdk": {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string"
-                        },
-                        "name_normalized": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "name",
-                        "name_normalized"
-                    ]
-                },
-                "initial_priority": {
-                    "type": "integer"
-                },
-                "severity_reason": {
+                "slug": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "initial_priority"
-            ]
+            }
         },
-        "numComments": {
-            "type": "integer"
+        "shareId": {
+            "type": "null"
         },
-        "isBookmarked": {
-            "type": "boolean"
-        },
-        "isSubscribed": {
-            "type": "boolean"
-        },
-        "hasSeen": {
-            "type": "boolean"
-        },
-        "issueType": {
-            "type": "string"
-        },
-        "issueCategory": {
-            "type": "string"
-        },
-        "priority": {
-            "type": "string"
-        },
-        "isUnhandled": {
-            "type": "boolean"
-        },
-        "count": {
-            "type": "string"
-        },
-        "userCount": {
-            "type": "integer"
-        },
-        "firstSeen": {
-            "type": "string"
-        },
-        "lastSeen": {
+        "shortId": {
             "type": "string"
         },
         "stats": {
@@ -153,42 +125,22 @@
                     }
                 }
             }
+        },
+        "status": {
+            "type": "string"
+        },
+        "substatus": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "userCount": {
+            "type": "integer"
         }
     },
-    "required": [
-        "id",
-        "shareId",
-        "shortId",
-        "title",
-        "culprit",
-        "permalink",
-        "logger",
-        "level",
-        "status",
-        "statusDetails",
-        "substatus",
-        "isPublic",
-        "platform",
-        "project",
-        "type",
-        "metadata",
-        "numComments",
-        "assignedTo",
-        "isBookmarked",
-        "isSubscribed",
-        "subscriptionDetails",
-        "hasSeen",
-        "annotations",
-        "issueType",
-        "issueCategory",
-        "priority",
-        "priorityLockedAt",
-        "isUnhandled",
-        "count",
-        "userCount",
-        "firstSeen",
-        "lastSeen",
-        "stats"
-    ],
     "version": 1
 }

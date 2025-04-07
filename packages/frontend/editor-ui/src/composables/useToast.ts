@@ -12,6 +12,7 @@ import type { ApplicationError } from 'n8n-workflow';
 import { useStyles } from './useStyles';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
 
 export interface NotificationErrorWithNodeAndDescription extends ApplicationError {
 	node: {
@@ -37,7 +38,10 @@ export function useToast() {
 		position: 'bottom-right',
 		zIndex: APP_Z_INDEXES.TOASTS, // above NDV and modal overlays
 		offset:
-			settingsStore.isAiAssistantEnabled || workflowsStore.chatPanelState === 'attached' ? 64 : 0,
+			settingsStore.isAiAssistantEnabled ||
+			workflowsStore.chatPanelState === LOGS_PANEL_STATE.ATTACHED
+				? 64
+				: 0,
 		appendTo: '#app-grid',
 		customClass: 'content-toast',
 	};

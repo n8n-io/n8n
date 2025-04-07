@@ -1,5 +1,10 @@
 import { setCredentialValues } from '../composables/modals/credential-modal';
-import { clickCreateNewCredential, setParameterSelectByContent } from '../composables/ndv';
+import {
+	clickCreateNewCredential,
+	clickGetBackToCanvas,
+	setParameterSelectByContent,
+} from '../composables/ndv';
+import { openNode } from '../composables/workflow';
 import {
 	EDIT_FIELDS_SET_NODE_NAME,
 	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
@@ -616,6 +621,42 @@ describe('NDV', () => {
 			// Since language model has no credentials set, it should show an error
 			// Sinse code tool require alphanumeric tool name it would also show an error(2 errors, 1 for each tool node)
 			cy.get('[class*=hasIssues]').should('have.length', 3);
+		});
+
+		it('should have the floating nodes in correct order', () => {
+			cy.createFixtureWorkflow('Floating_Nodes.json', 'Floating Nodes');
+
+			cy.ifCanvasVersion(
+				() => {},
+				() => {
+					// Needed in V2 as all nodes remain selected when clicking on a selected node
+					workflowPage.actions.deselectAll();
+				},
+			);
+
+			// The first merge node has the wires crossed, so `Edit Fields1` is first in the order of connected nodes
+			openNode('Merge');
+			getFloatingNodeByPosition('inputMain').should('exist');
+			getFloatingNodeByPosition('inputMain').should('have.length', 2);
+			getFloatingNodeByPosition('inputMain')
+				.first()
+				.should('have.attr', 'data-node-name', 'Edit Fields1');
+			getFloatingNodeByPosition('inputMain')
+				.last()
+				.should('have.attr', 'data-node-name', 'Edit Fields0');
+
+			clickGetBackToCanvas();
+
+			// The second merge node does not have wires crossed, so `Edit Fields0` is first
+			openNode('Merge1');
+			getFloatingNodeByPosition('inputMain').should('exist');
+			getFloatingNodeByPosition('inputMain').should('have.length', 2);
+			getFloatingNodeByPosition('inputMain')
+				.first()
+				.should('have.attr', 'data-node-name', 'Edit Fields0');
+			getFloatingNodeByPosition('inputMain')
+				.last()
+				.should('have.attr', 'data-node-name', 'Edit Fields1');
 		});
 	});
 

@@ -12,13 +12,7 @@
                     "items": {
                         "type": "object",
                         "properties": {
-                            "title": {
-                                "type": "string"
-                            },
                             "description": {
-                                "type": "string"
-                            },
-                            "recommendation": {
                                 "type": "string"
                             },
                             "location": {
@@ -26,37 +20,28 @@
                                 "items": {
                                     "type": "object",
                                     "properties": {
-                                        "kind": {
+                                        "id": {
                                             "type": "string"
                                         },
-                                        "id": {
+                                        "kind": {
                                             "type": "string"
                                         },
                                         "name": {
                                             "type": "string"
                                         }
-                                    },
-                                    "required": [
-                                        "kind",
-                                        "id",
-                                        "name"
-                                    ]
+                                    }
                                 }
+                            },
+                            "recommendation": {
+                                "type": "string"
+                            },
+                            "title": {
+                                "type": "string"
                             }
-                        },
-                        "required": [
-                            "title",
-                            "description",
-                            "recommendation",
-                            "location"
-                        ]
+                        }
                     }
                 }
-            },
-            "required": [
-                "risk",
-                "sections"
-            ]
+            }
         }
     },
     "version": 1

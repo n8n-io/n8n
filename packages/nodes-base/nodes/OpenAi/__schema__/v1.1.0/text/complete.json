@@ -1,13 +1,13 @@
 {
     "type": "object",
     "properties": {
-        "text": {
+        "finish_reason": {
             "type": "string"
         },
         "index": {
             "type": "integer"
         },
-        "finish_reason": {
+        "text": {
             "type": "string"
         }
     },

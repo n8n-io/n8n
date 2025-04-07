@@ -4,22 +4,24 @@
         "@odata.context": {
             "type": "string"
         },
-        "id": {
-            "type": "string"
-        },
         "createdDateTime": {
             "type": "string"
         },
         "displayName": {
             "type": "string"
         },
+        "id": {
+            "type": "string"
+        },
+        "mailNickname": {
+            "type": "string"
+        },
+        "securityIdentifier": {
+            "type": "string"
+        },
         "userPrincipalName": {
             "type": "string"
         }
     },
-    "required": [
-        "@odata.context",
-        "id"
-    ],
     "version": 1
 }

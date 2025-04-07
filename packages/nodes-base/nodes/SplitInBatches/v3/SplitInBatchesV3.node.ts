@@ -5,7 +5,7 @@ import type {
 	INodeTypeDescription,
 	IPairedItemData,
 } from 'n8n-workflow';
-import { NodeConnectionType, deepCopy } from 'n8n-workflow';
+import { NodeConnectionTypes, deepCopy } from 'n8n-workflow';
 
 export class SplitInBatchesV3 implements INodeType {
 	description: INodeTypeDescription = {
@@ -20,9 +20,9 @@ export class SplitInBatchesV3 implements INodeType {
 			name: 'Loop Over Items',
 			color: '#007755',
 		},
-		inputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
 
-		outputs: [NodeConnectionType.Main, NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
 		outputNames: ['done', 'loop'],
 		properties: [
 			{

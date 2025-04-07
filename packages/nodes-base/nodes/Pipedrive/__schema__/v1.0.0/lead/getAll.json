@@ -1,17 +1,23 @@
 {
     "type": "object",
     "properties": {
-        "id": {
+        "add_time": {
             "type": "string"
         },
-        "title": {
+        "cc_email": {
             "type": "string"
         },
-        "owner_id": {
-            "type": "integer"
+        "channel_id": {
+            "type": "null"
         },
         "creator_id": {
             "type": "integer"
+        },
+        "id": {
+            "type": "string"
+        },
+        "is_archived": {
+            "type": "boolean"
         },
         "label_ids": {
             "type": "array",
@@ -19,22 +25,16 @@
                 "type": "string"
             }
         },
-        "is_archived": {
-            "type": "boolean"
+        "origin": {
+            "type": "string"
+        },
+        "owner_id": {
+            "type": "integer"
         },
         "source_name": {
             "type": "string"
         },
-        "origin": {
-            "type": "string"
-        },
-        "channel_id": {
-            "type": "null"
-        },
-        "was_seen": {
-            "type": "boolean"
-        },
-        "add_time": {
+        "title": {
             "type": "string"
         },
         "update_time": {
@@ -43,32 +43,9 @@
         "visible_to": {
             "type": "string"
         },
-        "cc_email": {
-            "type": "string"
+        "was_seen": {
+            "type": "boolean"
         }
     },
-    "required": [
-        "id",
-        "title",
-        "owner_id",
-        "creator_id",
-        "label_ids",
-        "value",
-        "expected_close_date",
-        "person_id",
-        "organization_id",
-        "is_archived",
-        "source_name",
-        "origin",
-        "origin_id",
-        "channel",
-        "channel_id",
-        "was_seen",
-        "next_activity_id",
-        "add_time",
-        "update_time",
-        "visible_to",
-        "cc_email"
-    ],
     "version": 1
 }

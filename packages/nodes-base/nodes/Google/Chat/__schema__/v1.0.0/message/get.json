@@ -1,62 +1,32 @@
 {
     "type": "object",
     "properties": {
-        "name": {
+        "createTime": {
             "type": "string"
         },
-        "createTime": {
+        "name": {
             "type": "string"
         },
         "sender": {
             "type": "object",
             "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                },
                 "displayName": {
                     "type": "string"
                 },
                 "domainId": {
                     "type": "string"
-                }
-            },
-            "required": [
-                "name",
-                "type"
-            ]
-        },
-        "thread": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "name"
-            ]
-        },
-        "space": {
-            "type": "object",
-            "properties": {
+                },
                 "name": {
                     "type": "string"
                 },
                 "type": {
                     "type": "string"
-                },
-                "spaceThreadingState": {
-                    "type": "string"
-                },
-                "spaceType": {
-                    "type": "string"
-                },
-                "spaceHistoryState": {
-                    "type": "string"
-                },
+                }
+            }
+        },
+        "space": {
+            "type": "object",
+            "properties": {
                 "lastActiveTime": {
                     "type": "string"
                 },
@@ -66,21 +36,38 @@
                         "joinedDirectHumanUserCount": {
                             "type": "integer"
                         }
-                    },
-                    "required": [
-                        "joinedDirectHumanUserCount"
-                    ]
+                    }
                 },
-                "spaceUri": {
+                "name": {
                     "type": "string"
                 },
                 "singleUserBotDm": {
                     "type": "boolean"
+                },
+                "spaceHistoryState": {
+                    "type": "string"
+                },
+                "spaceThreadingState": {
+                    "type": "string"
+                },
+                "spaceType": {
+                    "type": "string"
+                },
+                "spaceUri": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "name"
-            ]
+            }
+        },
+        "thread": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
         }
     },
     "version": 1

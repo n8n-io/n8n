@@ -1,7 +1,7 @@
 import {
 	ADD_FORM_NOTICE,
 	type INodePropertyOptions,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeProperties,
 	type INodeType,
 	type INodeTypeBaseDescription,
@@ -43,7 +43,7 @@ const descriptionV2: INodeTypeDescription = {
 	},
 
 	inputs: [],
-	outputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionTypes.Main],
 	webhooks: [
 		{
 			name: 'setup',

@@ -1,13 +1,19 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
         "createdDateTime": {
             "type": "string"
         },
         "displayName": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "isArchived": {
+            "type": "boolean"
+        },
+        "membershipType": {
             "type": "string"
         },
         "tenantId": {
@@ -15,25 +21,7 @@
         },
         "webUrl": {
             "type": "string"
-        },
-        "membershipType": {
-            "type": "string"
-        },
-        "isArchived": {
-            "type": "boolean"
         }
     },
-    "required": [
-        "id",
-        "createdDateTime",
-        "displayName",
-        "description",
-        "isFavoriteByDefault",
-        "email",
-        "tenantId",
-        "webUrl",
-        "membershipType",
-        "isArchived"
-    ],
     "version": 1
 }

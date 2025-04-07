@@ -2,7 +2,7 @@ import type { ComputedRef, Ref } from 'vue';
 import { computed, ref } from 'vue';
 import { v4 as uuid } from 'uuid';
 import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
-import { NodeConnectionType, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import { NodeConnectionTypes, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type {
 	ITaskData,
 	INodeExecutionData,
@@ -252,7 +252,7 @@ export function useChatMessaging({
 
 		const connectedMemoryInputs =
 			workflow.value.connectionsByDestinationNode?.[connectedNode.value.name]?.[
-				NodeConnectionType.AiMemory
+				NodeConnectionTypes.AiMemory
 			];
 		if (!connectedMemoryInputs) return [];
 
@@ -263,7 +263,9 @@ export function useChatMessaging({
 		const nodeResultData = getWorkflowResultDataByNodeName(memoryConnection.node);
 
 		const memoryOutputData = (nodeResultData ?? [])
-			.map((data) => get(data, ['data', NodeConnectionType.AiMemory, 0, 0, 'json']) as MemoryOutput)
+			.map(
+				(data) => get(data, ['data', NodeConnectionTypes.AiMemory, 0, 0, 'json']) as MemoryOutput,
+			)
 			.find((data) => data && data.action === 'saveContext');
 
 		return (memoryOutputData?.chatHistory ?? []).map((message, index) => {

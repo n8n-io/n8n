@@ -7,7 +7,7 @@ import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 
 import { ApplicationError } from './errors/application.error';
-import { NodeConnectionType } from './Interfaces';
+import { NodeConnectionTypes } from './Interfaces';
 import type {
 	FieldType,
 	IContextObject,
@@ -36,6 +36,7 @@ import type {
 	DisplayCondition,
 	NodeHint,
 	INodeExecutionData,
+	NodeConnectionType,
 } from './Interfaces';
 import { validateFilterParameter } from './NodeParameters/FilterParameter';
 import {
@@ -327,7 +328,7 @@ export function isSubNodeType(
 	}
 	const outputTypes = getConnectionTypes(typeDescription.outputs);
 	return outputTypes
-		? outputTypes.filter((output) => output !== NodeConnectionType.Main).length > 0
+		? outputTypes.filter((output) => output !== NodeConnectionTypes.Main).length > 0
 		: false;
 }
 
@@ -1217,7 +1218,7 @@ export function getNodeOutputs(
 			...outputs,
 			{
 				category: 'error',
-				type: NodeConnectionType.Main,
+				type: NodeConnectionTypes.Main,
 				displayName: 'Error',
 			},
 		];
@@ -1726,5 +1727,5 @@ export function isTriggerNode(nodeTypeData: INodeTypeDescription) {
 export function isExecutable(workflow: Workflow, node: INode, nodeTypeData: INodeTypeDescription) {
 	const outputs = getNodeOutputs(workflow, node, nodeTypeData);
 	const outputNames = getConnectionTypes(outputs);
-	return outputNames.includes(NodeConnectionType.Main) || isTriggerNode(nodeTypeData);
+	return outputNames.includes(NodeConnectionTypes.Main) || isTriggerNode(nodeTypeData);
 }

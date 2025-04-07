@@ -1,5 +1,5 @@
 import type { IDataObject, INode, INodeExecutionData, ITaskData } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import type { JSExecSettings } from '@/js-task-runner/js-task-runner';
@@ -78,7 +78,7 @@ export const newDataRequestResponse = (
 			active: true,
 			connections: {
 				[manualTriggerNode.name]: {
-					main: [[{ node: codeNode.name, type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: codeNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
 				},
 			},
 			nodes: [manualTriggerNode, codeNode],

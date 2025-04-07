@@ -4,36 +4,6 @@
         "@odata.etag": {
             "type": "string"
         },
-        "importance": {
-            "type": "string"
-        },
-        "isReminderOn": {
-            "type": "boolean"
-        },
-        "status": {
-            "type": "string"
-        },
-        "title": {
-            "type": "string"
-        },
-        "createdDateTime": {
-            "type": "string"
-        },
-        "lastModifiedDateTime": {
-            "type": "string"
-        },
-        "hasAttachments": {
-            "type": "boolean"
-        },
-        "categories": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "id": {
-            "type": "string"
-        },
         "body": {
             "type": "object",
             "properties": {
@@ -43,40 +13,38 @@
                 "contentType": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "content",
-                "contentType"
-            ]
+            }
         },
-        "completedDateTime": {
-            "type": "object",
-            "properties": {
-                "dateTime": {
-                    "type": "string"
-                },
-                "timeZone": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "dateTime",
-                "timeZone"
-            ]
+        "categories": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "createdDateTime": {
+            "type": "string"
+        },
+        "hasAttachments": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "importance": {
+            "type": "string"
+        },
+        "isReminderOn": {
+            "type": "boolean"
+        },
+        "lastModifiedDateTime": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
         }
     },
-    "required": [
-        "@odata.etag",
-        "importance",
-        "isReminderOn",
-        "status",
-        "title",
-        "createdDateTime",
-        "lastModifiedDateTime",
-        "hasAttachments",
-        "categories",
-        "id",
-        "body"
-    ],
     "version": 1
 }

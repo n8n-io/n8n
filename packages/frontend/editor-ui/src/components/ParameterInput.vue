@@ -68,7 +68,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useRouter } from 'vue-router';
 import { useElementSize } from '@vueuse/core';
 import { captureMessage } from '@sentry/vue';
-import { completeExpressionSyntax, isStringWithExpressionSyntax } from '@/utils/expressions';
+import { completeExpressionSyntax, shouldConvertToExpression } from '@/utils/expressions';
 import { isPresent } from '@/utils/typesUtils';
 import CssEditor from './CssEditor/CssEditor.vue';
 
@@ -853,7 +853,13 @@ function valueChanged(value: NodeParameterValueType | {} | Date) {
 		return;
 	}
 
-	if (!oldValue && oldValue !== undefined && isStringWithExpressionSyntax(value)) {
+	const isSpecializedEditor = props.parameter.typeOptions?.editor !== undefined;
+
+	if (
+		!oldValue &&
+		oldValue !== undefined &&
+		shouldConvertToExpression(value, isSpecializedEditor)
+	) {
 		// if empty old value and updated value has an expression, add '=' prefix to switch to expression mode
 		value = '=' + value;
 	}
@@ -862,7 +868,7 @@ function valueChanged(value: NodeParameterValueType | {} | Date) {
 		activeCredentialType.value = value as string;
 	}
 
-	value = completeExpressionSyntax(value);
+	value = completeExpressionSyntax(value, isSpecializedEditor);
 
 	if (value instanceof Date) {
 		value = value.toISOString();

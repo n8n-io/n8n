@@ -7,39 +7,32 @@
         "@odata.etag": {
             "type": "string"
         },
-        "id": {
-            "type": "string"
-        },
-        "displayName": {
-            "type": "string"
-        },
         "businessPhones": {
             "type": "array",
             "items": {
                 "type": "string"
             }
         },
+        "displayName": {
+            "type": "string"
+        },
         "emailAddresses": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "name": {
-                        "type": "string"
-                    },
                     "address": {
                         "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
                     }
-                },
-                "required": [
-                    "name",
-                    "address"
-                ]
+                }
             }
+        },
+        "id": {
+            "type": "string"
         }
     },
-    "required": [
-        "@odata.context"
-    ],
     "version": 1
 }

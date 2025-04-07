@@ -1,10 +1,7 @@
 <script lang="ts" setup>
 import ContextMenu from '@/components/ContextMenu/ContextMenu.vue';
-import {
-	type CanvasLayoutEvent,
-	type CanvasLayoutSource,
-	useCanvasLayout,
-} from '@/composables/useCanvasLayout';
+import type { CanvasLayoutEvent, CanvasLayoutSource } from '@/composables/useCanvasLayout';
+import { useCanvasLayout } from '@/composables/useCanvasLayout';
 import { useCanvasNodeHover } from '@/composables/useCanvasNodeHover';
 import { useCanvasTraversal } from '@/composables/useCanvasTraversal';
 import { type ContextMenuAction, useContextMenu } from '@/composables/useContextMenu';
@@ -36,7 +33,7 @@ import type {
 import { MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
 import { MiniMap } from '@vue-flow/minimap';
 import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import {
 	computed,
 	nextTick,
@@ -142,6 +139,7 @@ const {
 	onNodesInitialized,
 	findNode,
 	viewport,
+	nodesSelectionActive,
 	onEdgeMouseLeave,
 	onEdgeMouseEnter,
 	onEdgeMouseMove,
@@ -360,6 +358,12 @@ function onSelectionDragStop(event: NodeDragEvent) {
 	onUpdateNodesPosition(event.nodes.map(({ id, position }) => ({ id, position })));
 }
 
+function onSelectionEnd() {
+	if (selectedNodes.value.length === 1) {
+		nodesSelectionActive.value = false;
+	}
+}
+
 function onSetNodeActivated(id: string) {
 	props.eventBus.emit('nodes:action', { ids: [id], action: 'update:node:activated' });
 	emit('update:node:activated', id);
@@ -460,7 +464,7 @@ onEdgeMouseEnter(({ edge }) => {
 onEdgeMouseMove(
 	useThrottleFn(({ edge, event }) => {
 		const type = edge.data.source.type;
-		if (type !== NodeConnectionType.AiTool) {
+		if (type !== NodeConnectionTypes.AiTool) {
 			return;
 		}
 
@@ -799,6 +803,7 @@ provide(CanvasKey, {
 		@node-drag-stop="onNodeDragStop"
 		@node-click="onNodeClick"
 		@selection-drag-stop="onSelectionDragStop"
+		@selection-end="onSelectionEnd"
 		@selection-context-menu="onOpenSelectionContextMenu"
 		@dragover="onDragOver"
 		@drop="onDrop"

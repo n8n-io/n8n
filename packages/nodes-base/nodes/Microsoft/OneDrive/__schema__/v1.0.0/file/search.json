@@ -1,89 +1,24 @@
 {
     "type": "object",
     "properties": {
-        "createdDateTime": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "lastModifiedDateTime": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "webUrl": {
-            "type": "string"
-        },
-        "size": {
-            "type": "integer"
-        },
         "createdBy": {
             "type": "object",
             "properties": {
                 "user": {
                     "type": "object",
                     "properties": {
-                        "email": {
-                            "type": "string"
-                        },
                         "displayName": {
                             "type": "string"
-                        }
-                    },
-                    "required": [
-                        "displayName"
-                    ]
-                }
-            },
-            "required": [
-                "user"
-            ]
-        },
-        "lastModifiedBy": {
-            "type": "object",
-            "properties": {
-                "user": {
-                    "type": "object",
-                    "properties": {
+                        },
                         "email": {
                             "type": "string"
-                        },
-                        "displayName": {
-                            "type": "string"
                         }
-                    },
-                    "required": [
-                        "displayName"
-                    ]
+                    }
                 }
-            },
-            "required": [
-                "user"
-            ]
+            }
         },
-        "parentReference": {
-            "type": "object",
-            "properties": {
-                "driveType": {
-                    "type": "string"
-                },
-                "driveId": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "siteId": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "driveType",
-                "driveId",
-                "id"
-            ]
+        "createdDateTime": {
+            "type": "string"
         },
         "file": {
             "type": "object",
@@ -91,10 +26,7 @@
                 "mimeType": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "mimeType"
-            ]
+            }
         },
         "fileSystemInfo": {
             "type": "object",
@@ -105,11 +37,55 @@
                 "lastModifiedDateTime": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "createdDateTime",
-                "lastModifiedDateTime"
-            ]
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "lastModifiedBy": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "type": "object",
+                    "properties": {
+                        "displayName": {
+                            "type": "string"
+                        },
+                        "email": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "lastModifiedDateTime": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "parentReference": {
+            "type": "object",
+            "properties": {
+                "driveId": {
+                    "type": "string"
+                },
+                "driveType": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "siteId": {
+                    "type": "string"
+                }
+            }
+        },
+        "size": {
+            "type": "integer"
+        },
+        "webUrl": {
+            "type": "string"
         }
     },
     "version": 1

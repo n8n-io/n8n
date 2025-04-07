@@ -1,79 +1,57 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
+        "customData": {
+            "type": "null"
         },
-        "url": {
-            "type": "string"
-        },
-        "title": {
-            "type": "string"
-        },
-        "scheduled": {
-            "type": "string"
-        },
-        "started": {
+        "direction": {
             "type": "string"
         },
         "duration": {
             "type": "integer"
         },
-        "primaryUserId": {
+        "id": {
             "type": "string"
         },
-        "direction": {
-            "type": "string"
+        "isPrivate": {
+            "type": "boolean"
         },
-        "system": {
-            "type": "string"
-        },
-        "scope": {
+        "language": {
             "type": "string"
         },
         "media": {
             "type": "string"
         },
-        "language": {
+        "meetingUrl": {
             "type": "string"
         },
-        "workspaceId": {
+        "primaryUserId": {
             "type": "string"
-        },
-        "customData": {
-            "type": "null"
         },
         "purpose": {
             "type": "null"
         },
-        "meetingUrl": {
+        "scheduled": {
             "type": "string"
         },
-        "isPrivate": {
-            "type": "boolean"
+        "scope": {
+            "type": "string"
+        },
+        "started": {
+            "type": "string"
+        },
+        "system": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
+        },
+        "workspaceId": {
+            "type": "string"
         }
     },
-    "required": [
-        "id",
-        "url",
-        "title",
-        "scheduled",
-        "started",
-        "duration",
-        "primaryUserId",
-        "direction",
-        "system",
-        "scope",
-        "media",
-        "language",
-        "workspaceId",
-        "sdrDisposition",
-        "clientUniqueId",
-        "customData",
-        "purpose",
-        "meetingUrl",
-        "isPrivate",
-        "calendarEventId"
-    ],
     "version": 1
 }

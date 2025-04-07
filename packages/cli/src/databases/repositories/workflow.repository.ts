@@ -619,9 +619,12 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			WorkflowEntity,
 			{ parentFolder: { id: fromFolderId } },
 			{
-				parentFolder: {
-					id: toFolderId,
-				},
+				parentFolder:
+					toFolderId === PROJECT_ROOT
+						? null
+						: {
+								id: toFolderId,
+							},
 			},
 		);
 	}

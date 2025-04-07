@@ -1,21 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "ContactID": {
-            "type": "string"
-        },
-        "ContactStatus": {
-            "type": "string"
-        },
-        "Name": {
-            "type": "string"
-        },
-        "EmailAddress": {
-            "type": "string"
-        },
-        "BankAccountDetails": {
-            "type": "string"
-        },
         "Addresses": {
             "type": "array",
             "items": {
@@ -27,52 +12,32 @@
                     "City": {
                         "type": "string"
                     },
-                    "Region": {
+                    "Country": {
                         "type": "string"
                     },
                     "PostalCode": {
                         "type": "string"
                     },
-                    "Country": {
+                    "Region": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "AddressType"
-                ]
+                }
             }
         },
-        "Phones": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "PhoneType": {
-                        "type": "string"
-                    },
-                    "PhoneNumber": {
-                        "type": "string"
-                    },
-                    "PhoneAreaCode": {
-                        "type": "string"
-                    },
-                    "PhoneCountryCode": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "PhoneType"
-                ]
-            }
-        },
-        "UpdatedDateUTC": {
+        "BankAccountDetails": {
             "type": "string"
         },
-        "IsSupplier": {
-            "type": "boolean"
+        "ContactID": {
+            "type": "string"
         },
-        "IsCustomer": {
-            "type": "boolean"
+        "ContactStatus": {
+            "type": "string"
+        },
+        "DefaultCurrency": {
+            "type": "string"
+        },
+        "EmailAddress": {
+            "type": "string"
         },
         "HasAttachments": {
             "type": "boolean"
@@ -80,7 +45,36 @@
         "HasValidationErrors": {
             "type": "boolean"
         },
-        "DefaultCurrency": {
+        "IsCustomer": {
+            "type": "boolean"
+        },
+        "IsSupplier": {
+            "type": "boolean"
+        },
+        "Name": {
+            "type": "string"
+        },
+        "Phones": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "PhoneAreaCode": {
+                        "type": "string"
+                    },
+                    "PhoneCountryCode": {
+                        "type": "string"
+                    },
+                    "PhoneNumber": {
+                        "type": "string"
+                    },
+                    "PhoneType": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "UpdatedDateUTC": {
             "type": "string"
         }
     },

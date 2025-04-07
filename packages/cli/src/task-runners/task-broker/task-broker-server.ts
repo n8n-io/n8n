@@ -171,7 +171,9 @@ export class TaskBrokerServer {
 			send(async (req) => await this.authController.createGrantToken(req)),
 		);
 
-		this.app.get('/healthz', (_, res) => res.send({ status: 'ok' }));
+		this.app.get('/healthz', (_, res) => {
+			res.send({ status: 'ok' });
+		});
 	}
 
 	private handleUpgradeRequest = (

@@ -16,8 +16,9 @@ import type {
 	INodeTypeDescription,
 	INodeTypeNameVersion,
 	Workflow,
+	NodeConnectionType,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useCredentialsStore } from './credentials.store';
 import { useRootStore } from './root.store';
@@ -109,7 +110,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 			const outputTypes = NodeHelpers.getConnectionTypes(outputs);
 
 			return outputTypes
-				? outputTypes.filter((output) => output !== NodeConnectionType.Main).length > 0
+				? outputTypes.filter((output) => output !== NodeConnectionTypes.Main).length > 0
 				: false;
 		};
 	});
@@ -154,15 +155,15 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 					// If outputs is not an array, it must be a string expression
 					// in which case we'll try to match all possible non-main output types that are supported
 					const connectorTypes: NodeConnectionType[] = [
-						NodeConnectionType.AiVectorStore,
-						NodeConnectionType.AiChain,
-						NodeConnectionType.AiDocument,
-						NodeConnectionType.AiEmbedding,
-						NodeConnectionType.AiLanguageModel,
-						NodeConnectionType.AiMemory,
-						NodeConnectionType.AiOutputParser,
-						NodeConnectionType.AiTextSplitter,
-						NodeConnectionType.AiTool,
+						NodeConnectionTypes.AiVectorStore,
+						NodeConnectionTypes.AiChain,
+						NodeConnectionTypes.AiDocument,
+						NodeConnectionTypes.AiEmbedding,
+						NodeConnectionTypes.AiLanguageModel,
+						NodeConnectionTypes.AiMemory,
+						NodeConnectionTypes.AiOutputParser,
+						NodeConnectionTypes.AiTextSplitter,
+						NodeConnectionTypes.AiTool,
 					];
 					connectorTypes.forEach((outputType: NodeConnectionType) => {
 						if (outputTypes.includes(outputType)) {
@@ -214,7 +215,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 			const inputTypes = NodeHelpers.getConnectionTypes(inputs);
 
 			return inputTypes
-				? inputTypes.filter((input) => input !== NodeConnectionType.Main).length > 0
+				? inputTypes.filter((input) => input !== NodeConnectionTypes.Main).length > 0
 				: false;
 		};
 	});

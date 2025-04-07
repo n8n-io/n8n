@@ -1,43 +1,13 @@
 {
     "type": "object",
     "properties": {
-        "url": {
-            "type": "string"
+        "allow_attachments": {
+            "type": "boolean"
         },
-        "id": {
-            "type": "integer"
+        "allow_channelback": {
+            "type": "boolean"
         },
-        "via": {
-            "type": "object",
-            "properties": {
-                "channel": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "channel",
-                "source"
-            ]
-        },
-        "created_at": {
-            "type": "string"
-        },
-        "updated_at": {
-            "type": "string"
-        },
-        "generated_timestamp": {
-            "type": "integer"
-        },
-        "description": {
-            "type": "string"
-        },
-        "status": {
-            "type": "string"
-        },
-        "requester_id": {
-            "type": "integer"
-        },
-        "submitter_id": {
+        "brand_id": {
             "type": "integer"
         },
         "collaborator_ids": {
@@ -46,38 +16,8 @@
                 "type": "integer"
             }
         },
-        "follower_ids": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
-        },
-        "email_cc_ids": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
-        },
-        "forum_topic_id": {
-            "type": "null"
-        },
-        "problem_id": {
-            "type": "null"
-        },
-        "has_incidents": {
-            "type": "boolean"
-        },
-        "is_public": {
-            "type": "boolean"
-        },
-        "due_at": {
-            "type": "null"
-        },
-        "tags": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
+        "created_at": {
+            "type": "string"
         },
         "custom_fields": {
             "type": "array",
@@ -87,26 +27,23 @@
                     "id": {
                         "type": "integer"
                     }
-                },
-                "required": [
-                    "id",
-                    "value"
-                ]
-            }
-        },
-        "satisfaction_rating": {
-            "type": "object",
-            "properties": {
-                "score": {
-                    "type": "string"
                 }
-            },
-            "required": [
-                "score"
-            ]
+            }
         },
         "custom_status_id": {
             "type": "integer"
+        },
+        "description": {
+            "type": "string"
+        },
+        "due_at": {
+            "type": "null"
+        },
+        "email_cc_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
         },
         "encoded_id": {
             "type": "string"
@@ -119,69 +56,76 @@
                     "id": {
                         "type": "integer"
                     }
-                },
-                "required": [
-                    "id",
-                    "value"
-                ]
+                }
+            }
+        },
+        "follower_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "forum_topic_id": {
+            "type": "null"
+        },
+        "from_messaging_channel": {
+            "type": "boolean"
+        },
+        "generated_timestamp": {
+            "type": "integer"
+        },
+        "has_incidents": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "is_public": {
+            "type": "boolean"
+        },
+        "problem_id": {
+            "type": "null"
+        },
+        "requester_id": {
+            "type": "integer"
+        },
+        "satisfaction_rating": {
+            "type": "object",
+            "properties": {
+                "score": {
+                    "type": "string"
+                }
+            }
+        },
+        "status": {
+            "type": "string"
+        },
+        "submitter_id": {
+            "type": "integer"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
             }
         },
         "ticket_form_id": {
             "type": "integer"
         },
-        "brand_id": {
-            "type": "integer"
+        "updated_at": {
+            "type": "string"
         },
-        "allow_channelback": {
-            "type": "boolean"
+        "url": {
+            "type": "string"
         },
-        "allow_attachments": {
-            "type": "boolean"
-        },
-        "from_messaging_channel": {
-            "type": "boolean"
+        "via": {
+            "type": "object",
+            "properties": {
+                "channel": {
+                    "type": "string"
+                }
+            }
         }
     },
-    "required": [
-        "url",
-        "id",
-        "external_id",
-        "via",
-        "created_at",
-        "updated_at",
-        "generated_timestamp",
-        "type",
-        "subject",
-        "raw_subject",
-        "description",
-        "priority",
-        "status",
-        "recipient",
-        "requester_id",
-        "submitter_id",
-        "assignee_id",
-        "organization_id",
-        "group_id",
-        "collaborator_ids",
-        "follower_ids",
-        "email_cc_ids",
-        "forum_topic_id",
-        "problem_id",
-        "has_incidents",
-        "is_public",
-        "due_at",
-        "tags",
-        "custom_fields",
-        "satisfaction_rating",
-        "sharing_agreement_ids",
-        "custom_status_id",
-        "encoded_id",
-        "fields",
-        "followup_ids",
-        "brand_id",
-        "allow_channelback",
-        "allow_attachments",
-        "from_messaging_channel"
-    ],
     "version": 1
 }

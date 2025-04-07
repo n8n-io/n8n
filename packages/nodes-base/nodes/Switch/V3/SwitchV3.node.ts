@@ -10,7 +10,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { ApplicationError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { capitalize } from '@utils/utilities';
 
@@ -23,21 +23,21 @@ const configuredOutputs = (parameters: INodeParameters) => {
 
 	if (mode === 'expression') {
 		return Array.from({ length: parameters.numberOutputs as number }, (_, i) => ({
-			type: `${NodeConnectionType.Main}`,
+			type: 'main',
 			displayName: i.toString(),
 		}));
 	} else {
 		const rules = ((parameters.rules as IDataObject)?.values as IDataObject[]) ?? [];
 		const ruleOutputs = rules.map((rule, index) => {
 			return {
-				type: `${NodeConnectionType.Main}`,
+				type: 'main',
 				displayName: rule.outputKey || index.toString(),
 			};
 		});
 		if ((parameters.options as IDataObject)?.fallbackOutput === 'extra') {
 			const renameFallbackOutput = (parameters.options as IDataObject)?.renameFallbackOutput;
 			ruleOutputs.push({
-				type: `${NodeConnectionType.Main}`,
+				type: 'main',
 				displayName: renameFallbackOutput || 'Fallback',
 			});
 		}
@@ -57,7 +57,7 @@ export class SwitchV3 implements INodeType {
 				name: 'Switch',
 				color: '#506000',
 			},
-			inputs: [NodeConnectionType.Main],
+			inputs: [NodeConnectionTypes.Main],
 			outputs: `={{(${configuredOutputs})($parameter)}}`,
 			properties: [
 				{

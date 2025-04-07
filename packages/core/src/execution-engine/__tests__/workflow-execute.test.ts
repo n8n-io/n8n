@@ -37,7 +37,7 @@ import type {
 import {
 	ApplicationError,
 	createDeferredPromise,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	NodeHelpers,
 	Workflow,
 } from 'n8n-workflow';
@@ -805,10 +805,10 @@ describe('WorkflowExecute', () => {
 				displayName: 'test',
 				defaultVersion: 1,
 				properties: [],
-				inputs: [{ type: NodeConnectionType.Main }],
+				inputs: [{ type: NodeConnectionTypes.Main }],
 				outputs: [
-					{ type: NodeConnectionType.Main },
-					{ type: NodeConnectionType.Main, category: 'error' },
+					{ type: NodeConnectionTypes.Main },
+					{ type: NodeConnectionTypes.Main, category: 'error' },
 				],
 			},
 		});
@@ -836,7 +836,7 @@ describe('WorkflowExecute', () => {
 				],
 			},
 			source: {
-				[NodeConnectionType.Main]: [
+				[NodeConnectionTypes.Main]: [
 					{
 						previousNode: 'previousNode',
 						previousNodeOutput: 0,
@@ -1138,8 +1138,8 @@ describe('WorkflowExecute', () => {
 			};
 
 			const inputConnections: IConnection[] = [
-				{ node: 'node1', type: NodeConnectionType.Main, index: 0 },
-				{ node: 'node1', type: NodeConnectionType.Main, index: 1 },
+				{ node: 'node1', type: NodeConnectionTypes.Main, index: 0 },
+				{ node: 'node1', type: NodeConnectionTypes.Main, index: 1 },
 			];
 
 			const result = workflowExecute.incomingConnectionIsEmpty(runData, inputConnections, 0);
@@ -1149,7 +1149,7 @@ describe('WorkflowExecute', () => {
 		test('should return true when input connection node does not exist in runData', () => {
 			const runData: IRunData = {};
 			const inputConnections: IConnection[] = [
-				{ node: 'nonexistentNode', type: NodeConnectionType.Main, index: 0 },
+				{ node: 'nonexistentNode', type: NodeConnectionTypes.Main, index: 0 },
 			];
 
 			const result = workflowExecute.incomingConnectionIsEmpty(runData, inputConnections, 0);
@@ -1171,8 +1171,8 @@ describe('WorkflowExecute', () => {
 			};
 
 			const inputConnections: IConnection[] = [
-				{ node: 'node1', type: NodeConnectionType.Main, index: 0 },
-				{ node: 'node1', type: NodeConnectionType.Main, index: 1 },
+				{ node: 'node1', type: NodeConnectionTypes.Main, index: 0 },
+				{ node: 'node1', type: NodeConnectionTypes.Main, index: 1 },
 			];
 
 			const result = workflowExecute.incomingConnectionIsEmpty(runData, inputConnections, 0);
@@ -1202,7 +1202,7 @@ describe('WorkflowExecute', () => {
 			};
 
 			const inputConnections: IConnection[] = [
-				{ node: 'node1', type: NodeConnectionType.Main, index: 0 },
+				{ node: 'node1', type: NodeConnectionTypes.Main, index: 0 },
 			];
 
 			expect(workflowExecute.incomingConnectionIsEmpty(runData, inputConnections, 0)).toBe(true);
@@ -1221,7 +1221,7 @@ describe('WorkflowExecute', () => {
 			};
 
 			const inputConnections: IConnection[] = [
-				{ node: 'node1', type: NodeConnectionType.Main, index: 0 },
+				{ node: 'node1', type: NodeConnectionTypes.Main, index: 0 },
 			];
 
 			const result = workflowExecute.incomingConnectionIsEmpty(runData, inputConnections, 0);
@@ -1600,7 +1600,7 @@ describe('WorkflowExecute', () => {
 
 			workflow.connectionsByDestinationNode = {
 				[node.name]: {
-					main: [[{ node: parentNode.name, type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: parentNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
 				},
 			};
 
@@ -1618,7 +1618,7 @@ describe('WorkflowExecute', () => {
 
 			workflow.connectionsByDestinationNode = {
 				[node.name]: {
-					main: [[{ node: parentNode.name, type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: parentNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
 				},
 			};
 
@@ -1637,7 +1637,7 @@ describe('WorkflowExecute', () => {
 
 			workflow.connectionsByDestinationNode = {
 				[node.name]: {
-					main: [[{ node: parentNode.name, type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: parentNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
 				},
 			};
 

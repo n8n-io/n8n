@@ -8,9 +8,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "id",
-        "name"
-    ],
     "version": 1
 }

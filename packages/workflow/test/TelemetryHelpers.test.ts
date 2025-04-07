@@ -4,7 +4,7 @@ import { v5 as uuidv5, v3 as uuidv3, v4 as uuidv4, v1 as uuidv1 } from 'uuid';
 import { STICKY_NODE_TYPE } from '@/Constants';
 import { ApplicationError, ExpressionError, NodeApiError } from '@/errors';
 import type { INode, INodeTypeDescription, IRun, IRunData } from '@/Interfaces';
-import { NodeConnectionType, type IWorkflowBase } from '@/Interfaces';
+import { type NodeConnectionType, NodeConnectionTypes, type IWorkflowBase } from '@/Interfaces';
 import * as nodeHelpers from '@/NodeHelpers';
 import {
 	ANONYMIZATION_CHARACTER as CHAR,
@@ -117,7 +117,7 @@ describe('generateNodesGraph', () => {
 			],
 			connections: {
 				'When clicking "Execute Workflow"': {
-					main: [[{ node: 'Google Sheets', type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: 'Google Sheets', type: NodeConnectionTypes.Main, index: 0 }]],
 				},
 			},
 			settings: { executionOrder: 'v1' },
@@ -221,7 +221,7 @@ describe('generateNodesGraph', () => {
 			],
 			connections: {
 				'When clicking "Execute Workflow"': {
-					main: [[{ node: 'Google Sheets', type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: 'Google Sheets', type: NodeConnectionTypes.Main, index: 0 }]],
 				},
 			},
 			settings: { executionOrder: 'v1' },
@@ -297,7 +297,7 @@ describe('generateNodesGraph', () => {
 			],
 			connections: {
 				'When clicking "Execute Workflow"': {
-					main: [[{ node: 'Google Sheets', type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: 'Google Sheets', type: NodeConnectionTypes.Main, index: 0 }]],
 				},
 			},
 			settings: { executionOrder: 'v1' },
@@ -375,7 +375,7 @@ describe('generateNodesGraph', () => {
 			],
 			connections: {
 				'When clicking "Execute Workflow"': {
-					main: [[{ node: 'Google Sheets', type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: 'Google Sheets', type: NodeConnectionTypes.Main, index: 0 }]],
 				},
 			},
 			settings: { executionOrder: 'v1' },
@@ -829,7 +829,7 @@ describe('generateNodesGraph', () => {
 						[
 							{
 								node: 'Chain',
-								type: NodeConnectionType.Main,
+								type: NodeConnectionTypes.Main,
 								index: 0,
 							},
 						],
@@ -840,7 +840,7 @@ describe('generateNodesGraph', () => {
 						[
 							{
 								node: 'Chain',
-								type: NodeConnectionType.AiLanguageModel,
+								type: NodeConnectionTypes.AiLanguageModel,
 								index: 0,
 							},
 						],

@@ -3,7 +3,7 @@
 import { ChatAnthropic } from '@langchain/anthropic';
 import type { LLMResult } from '@langchain/core/outputs';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodePropertyOptions,
 	type INodeProperties,
 	type ISupplyDataFunctions,
@@ -109,7 +109,7 @@ export class LmChatAnthropic implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiLanguageModel],
+		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
 			{
@@ -118,7 +118,7 @@ export class LmChatAnthropic implements INodeType {
 			},
 		],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiChain]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiChain]),
 			{
 				...modelField,
 				displayOptions: {

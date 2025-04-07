@@ -11,6 +11,7 @@ import { License } from '@/license';
 import { isContainedWithin } from '@/utils/path-util';
 
 import {
+	SOURCE_CONTROL_FOLDERS_EXPORT_FILE,
 	SOURCE_CONTROL_GIT_KEY_COMMENT,
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
@@ -39,6 +40,10 @@ export function getVariablesPath(gitFolder: string): string {
 
 export function getTagsPath(gitFolder: string): string {
 	return path.join(gitFolder, SOURCE_CONTROL_TAGS_EXPORT_FILE);
+}
+
+export function getFoldersPath(gitFolder: string): string {
+	return path.join(gitFolder, SOURCE_CONTROL_FOLDERS_EXPORT_FILE);
 }
 
 export function sourceControlFoldersExistCheck(

@@ -65,6 +65,7 @@ const onAction = (action: string) => {
 		<n8n-action-toggle
 			v-if="breadcrumbs.visibleItems"
 			:actions="actions"
+			:class="$style['action-toggle']"
 			theme="dark"
 			data-test-id="folder-breadcrumbs-actions"
 			@action="onAction"
@@ -76,6 +77,12 @@ const onAction = (action: string) => {
 .container {
 	display: flex;
 	align-items: center;
+}
+
+.action-toggle {
+	span[role='button'] {
+		color: var(--color-text-base);
+	}
 }
 
 .home-project {

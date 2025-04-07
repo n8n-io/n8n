@@ -8,7 +8,7 @@ import type {
 	ISupplyDataFunctions,
 	SupplyData,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
@@ -44,21 +44,21 @@ export class ToolVectorStore implements INodeType {
 			{
 				displayName: 'Vector Store',
 				maxConnections: 1,
-				type: NodeConnectionType.AiVectorStore,
+				type: NodeConnectionTypes.AiVectorStore,
 				required: true,
 			},
 			{
 				displayName: 'Model',
 				maxConnections: 1,
-				type: NodeConnectionType.AiLanguageModel,
+				type: NodeConnectionTypes.AiLanguageModel,
 				required: true,
 			},
 		],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiTool],
+		outputs: [NodeConnectionTypes.AiTool],
 		outputNames: ['Tool'],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{
 				displayName: 'Data Name',
 				name: 'name',
@@ -97,12 +97,12 @@ export class ToolVectorStore implements INodeType {
 		const topK = this.getNodeParameter('topK', itemIndex, 4) as number;
 
 		const vectorStore = (await this.getInputConnectionData(
-			NodeConnectionType.AiVectorStore,
+			NodeConnectionTypes.AiVectorStore,
 			itemIndex,
 		)) as VectorStore;
 
 		const llm = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
+			NodeConnectionTypes.AiLanguageModel,
 			0,
 		)) as BaseLanguageModel;
 

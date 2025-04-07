@@ -1,20 +1,11 @@
 {
     "type": "object",
     "properties": {
-        "entity_id": {
-            "type": "string"
-        },
-        "state": {
-            "type": "string"
-        },
         "attributes": {
             "type": "object",
             "properties": {
-                "editable": {
+                "auto_update": {
                     "type": "boolean"
-                },
-                "id": {
-                    "type": "string"
                 },
                 "device_trackers": {
                     "type": "array",
@@ -22,40 +13,55 @@
                         "type": "string"
                     }
                 },
+                "editable": {
+                    "type": "boolean"
+                },
+                "entity_picture": {
+                    "type": "string"
+                },
+                "friendly_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "in_progress": {
+                    "type": "boolean"
+                },
+                "installed_version": {
+                    "type": "string"
+                },
+                "latest_version": {
+                    "type": "string"
+                },
                 "latitude": {
                     "type": "number"
                 },
                 "longitude": {
                     "type": "number"
                 },
-                "gps_accuracy": {
-                    "type": "integer"
+                "release_summary": {
+                    "type": "null"
+                },
+                "release_url": {
+                    "type": "string"
+                },
+                "skipped_version": {
+                    "type": "null"
                 },
                 "source": {
                     "type": "string"
                 },
+                "supported_features": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                },
                 "user_id": {
                     "type": "string"
-                },
-                "friendly_name": {
-                    "type": "string"
-                },
-                "entity_picture": {
-                    "type": "string"
                 }
-            },
-            "required": [
-                "friendly_name"
-            ]
-        },
-        "last_changed": {
-            "type": "string"
-        },
-        "last_reported": {
-            "type": "string"
-        },
-        "last_updated": {
-            "type": "string"
+            }
         },
         "context": {
             "type": "object",
@@ -69,22 +75,23 @@
                 "user_id": {
                     "type": "null"
                 }
-            },
-            "required": [
-                "id",
-                "parent_id",
-                "user_id"
-            ]
+            }
+        },
+        "entity_id": {
+            "type": "string"
+        },
+        "last_changed": {
+            "type": "string"
+        },
+        "last_reported": {
+            "type": "string"
+        },
+        "last_updated": {
+            "type": "string"
+        },
+        "state": {
+            "type": "string"
         }
     },
-    "required": [
-        "entity_id",
-        "state",
-        "attributes",
-        "last_changed",
-        "last_reported",
-        "last_updated",
-        "context"
-    ],
     "version": 1
 }

@@ -1,4 +1,4 @@
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { toITaskData } from './helpers';
 
@@ -25,7 +25,7 @@ test('toITaskData', function () {
 
 	expect(
 		toITaskData([
-			{ data: { value: 1 }, outputIndex: 1, nodeConnectionType: NodeConnectionType.AiAgent },
+			{ data: { value: 1 }, outputIndex: 1, nodeConnectionType: NodeConnectionTypes.AiAgent },
 		]),
 	).toEqual({
 		executionStatus: 'success',
@@ -33,7 +33,7 @@ test('toITaskData', function () {
 		source: [],
 		startTime: 0,
 		data: {
-			[NodeConnectionType.AiAgent]: [null, [{ json: { value: 1 } }]],
+			[NodeConnectionTypes.AiAgent]: [null, [{ json: { value: 1 } }]],
 		},
 	});
 

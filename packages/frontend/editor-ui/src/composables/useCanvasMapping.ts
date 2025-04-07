@@ -38,18 +38,26 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	NodeHelpers,
 	SEND_AND_WAIT_OPERATION,
 	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
-import { CUSTOM_API_CALL_KEY, FORM_NODE_TYPE, STICKY_NODE_TYPE, WAIT_NODE_TYPE } from '@/constants';
+import {
+	CUSTOM_API_CALL_KEY,
+	FORM_NODE_TYPE,
+	SIMULATE_NODE_TYPE,
+	SIMULATE_TRIGGER_NODE_TYPE,
+	STICKY_NODE_TYPE,
+	WAIT_NODE_TYPE,
+} from '@/constants';
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import { MarkerType } from '@vue-flow/core';
 import { useNodeHelpers } from './useNodeHelpers';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
+import { getNodeIconSource } from '../utils/nodeIcon';
 
 export function useCanvasMapping({
 	nodes,
@@ -86,6 +94,13 @@ export function useCanvasMapping({
 	}
 
 	function createDefaultNodeRenderType(node: INodeUi): CanvasNodeDefaultRender {
+		const nodeType = nodeTypeDescriptionByNodeId.value[node.id];
+		const icon = getNodeIconSource(
+			simulatedNodeTypeDescriptionByNodeId.value[node.id]
+				? simulatedNodeTypeDescriptionByNodeId.value[node.id]
+				: nodeType,
+		);
+
 		return {
 			type: CanvasNodeRenderType.Default,
 			options: {
@@ -100,6 +115,7 @@ export function useCanvasMapping({
 				},
 				tooltip: nodeTooltipById.value[node.id],
 				dirtiness: dirtinessByName.value[node.name],
+				icon,
 			},
 		};
 	}
@@ -194,7 +210,7 @@ export function useCanvasMapping({
 		const labelSizes: CanvasNodeDefaultRenderLabelSize[] = ['small', 'medium', 'large'];
 		const labelSizeIndexes = ports.reduce<number[]>(
 			(sizeAcc, input) => {
-				if (input.type === NodeConnectionType.Main) {
+				if (input.type === NodeConnectionTypes.Main) {
 					sizeAcc.push(getLabelSize(input.label ?? ''));
 				}
 
@@ -508,6 +524,26 @@ export function useCanvasMapping({
 			},
 			{},
 		);
+	});
+
+	const simulatedNodeTypeDescriptionByNodeId = computed(() => {
+		return nodes.value.reduce<Record<string, INodeTypeDescription | null>>((acc, node) => {
+			if ([SIMULATE_NODE_TYPE, SIMULATE_TRIGGER_NODE_TYPE].includes(node.type)) {
+				const icon = node.parameters?.icon as string;
+				const iconValue = workflowObject.value.expression.getSimpleParameterValue(
+					node,
+					icon,
+					'internal',
+					{},
+				);
+
+				if (iconValue && typeof iconValue === 'string') {
+					acc[node.id] = nodeTypesStore.getNodeType(iconValue);
+				}
+			}
+
+			return acc;
+		}, {});
 	});
 
 	const mappedNodes = computed<CanvasNode[]>(() => [

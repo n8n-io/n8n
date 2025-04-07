@@ -17,6 +17,7 @@ import { v4 as uuid } from 'uuid';
 import type { Ref } from 'vue';
 import { computed, provide, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import { LOGS_PANEL_STATE } from '../types/logs';
 
 interface ChatState {
 	currentSessionId: Ref<string>;
@@ -129,7 +130,7 @@ export function useChatState(isDisabled: Ref<boolean>, onWindowResize: () => voi
 	watch(
 		() => chatPanelState.value,
 		(state) => {
-			if (state !== 'closed') {
+			if (state !== LOGS_PANEL_STATE.CLOSED) {
 				setChatTriggerNode();
 				setConnectedNode();
 

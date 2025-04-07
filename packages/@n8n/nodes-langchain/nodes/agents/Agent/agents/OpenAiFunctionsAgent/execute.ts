@@ -6,7 +6,7 @@ import { BufferMemory, type BaseChatMemory } from 'langchain/memory';
 import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -22,7 +22,7 @@ export async function openAiFunctionsAgentExecute(
 ): Promise<INodeExecutionData[][]> {
 	this.logger.debug('Executing OpenAi Functions Agent');
 	const model = (await this.getInputConnectionData(
-		NodeConnectionType.AiLanguageModel,
+		NodeConnectionTypes.AiLanguageModel,
 		0,
 	)) as ChatOpenAI;
 
@@ -32,7 +32,7 @@ export async function openAiFunctionsAgentExecute(
 			'OpenAI Functions Agent requires OpenAI Chat Model',
 		);
 	}
-	const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
+	const memory = (await this.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
 		| BaseChatMemory
 		| undefined;
 	const tools = await getConnectedTools(this, nodeVersion >= 1.5, false);

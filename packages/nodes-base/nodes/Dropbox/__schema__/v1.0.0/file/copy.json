@@ -7,66 +7,54 @@
                 ".tag": {
                     "type": "string"
                 },
-                "name": {
+                "client_modified": {
                     "type": "string"
                 },
-                "path_lower": {
-                    "type": "string"
-                },
-                "path_display": {
+                "content_hash": {
                     "type": "string"
                 },
                 "id": {
                     "type": "string"
                 },
-                "client_modified": {
-                    "type": "string"
-                },
-                "server_modified": {
-                    "type": "string"
-                },
-                "rev": {
-                    "type": "string"
-                },
-                "size": {
-                    "type": "integer"
-                },
                 "is_downloadable": {
                     "type": "boolean"
                 },
-                "content_hash": {
+                "name": {
                     "type": "string"
                 },
                 "parent_shared_folder_id": {
                     "type": "string"
                 },
+                "path_display": {
+                    "type": "string"
+                },
+                "path_lower": {
+                    "type": "string"
+                },
+                "rev": {
+                    "type": "string"
+                },
+                "server_modified": {
+                    "type": "string"
+                },
                 "sharing_info": {
                     "type": "object",
                     "properties": {
-                        "read_only": {
-                            "type": "boolean"
+                        "modified_by": {
+                            "type": "string"
                         },
                         "parent_shared_folder_id": {
                             "type": "string"
                         },
-                        "modified_by": {
-                            "type": "string"
+                        "read_only": {
+                            "type": "boolean"
                         }
-                    },
-                    "required": [
-                        "read_only",
-                        "parent_shared_folder_id",
-                        "modified_by"
-                    ]
+                    }
+                },
+                "size": {
+                    "type": "integer"
                 }
-            },
-            "required": [
-                ".tag",
-                "name",
-                "path_lower",
-                "path_display",
-                "id"
-            ]
+            }
         }
     },
     "version": 1

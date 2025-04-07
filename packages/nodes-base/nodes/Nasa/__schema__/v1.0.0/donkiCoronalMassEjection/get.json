@@ -7,8 +7,58 @@
         "catalog": {
             "type": "string"
         },
-        "startTime": {
-            "type": "string"
+        "cmeAnalyses": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "featureCode": {
+                        "type": "string"
+                    },
+                    "halfAngle": {
+                        "type": "integer"
+                    },
+                    "imageType": {
+                        "type": "string"
+                    },
+                    "isMostAccurate": {
+                        "type": "boolean"
+                    },
+                    "latitude": {
+                        "type": "integer"
+                    },
+                    "levelOfData": {
+                        "type": "integer"
+                    },
+                    "link": {
+                        "type": "string"
+                    },
+                    "measurementTechnique": {
+                        "type": "string"
+                    },
+                    "minorHalfWidth": {
+                        "type": "null"
+                    },
+                    "note": {
+                        "type": "string"
+                    },
+                    "speed": {
+                        "type": "integer"
+                    },
+                    "submissionTime": {
+                        "type": "string"
+                    },
+                    "tilt": {
+                        "type": "null"
+                    },
+                    "time21_5": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
         },
         "instruments": {
             "type": "array",
@@ -18,16 +68,19 @@
                     "displayName": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "displayName"
-                ]
+                }
             }
+        },
+        "link": {
+            "type": "string"
+        },
+        "note": {
+            "type": "string"
         },
         "sourceLocation": {
             "type": "string"
         },
-        "note": {
+        "startTime": {
             "type": "string"
         },
         "submissionTime": {
@@ -35,97 +88,7 @@
         },
         "versionId": {
             "type": "integer"
-        },
-        "link": {
-            "type": "string"
-        },
-        "cmeAnalyses": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "isMostAccurate": {
-                        "type": "boolean"
-                    },
-                    "time21_5": {
-                        "type": "string"
-                    },
-                    "latitude": {
-                        "type": "integer"
-                    },
-                    "halfAngle": {
-                        "type": "integer"
-                    },
-                    "speed": {
-                        "type": "integer"
-                    },
-                    "type": {
-                        "type": "string"
-                    },
-                    "featureCode": {
-                        "type": "string"
-                    },
-                    "imageType": {
-                        "type": "string"
-                    },
-                    "measurementTechnique": {
-                        "type": "string"
-                    },
-                    "note": {
-                        "type": "string"
-                    },
-                    "levelOfData": {
-                        "type": "integer"
-                    },
-                    "tilt": {
-                        "type": "null"
-                    },
-                    "minorHalfWidth": {
-                        "type": "null"
-                    },
-                    "submissionTime": {
-                        "type": "string"
-                    },
-                    "link": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "isMostAccurate",
-                    "time21_5",
-                    "latitude",
-                    "longitude",
-                    "halfAngle",
-                    "speed",
-                    "type",
-                    "featureCode",
-                    "imageType",
-                    "measurementTechnique",
-                    "note",
-                    "levelOfData",
-                    "tilt",
-                    "minorHalfWidth",
-                    "speedMeasuredAtHeight",
-                    "submissionTime",
-                    "link",
-                    "enlilList"
-                ]
-            }
         }
     },
-    "required": [
-        "activityID",
-        "catalog",
-        "startTime",
-        "instruments",
-        "sourceLocation",
-        "activeRegionNum",
-        "note",
-        "submissionTime",
-        "versionId",
-        "link",
-        "cmeAnalyses",
-        "linkedEvents"
-    ],
     "version": 1
 }

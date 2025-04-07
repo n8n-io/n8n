@@ -1,55 +1,25 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "locationId": {
-            "type": "string"
-        },
-        "contactName": {
-            "type": "string"
-        },
-        "dnd": {
-            "type": "boolean"
-        },
-        "dateAdded": {
-            "type": "string"
-        },
-        "dateUpdated": {
-            "type": "string"
-        },
-        "dateOfBirth": {
-            "type": "null"
-        },
-        "tags": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "website": {
-            "type": "null"
-        },
         "attributions": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "utmSessionSource": {
-                        "type": "string"
-                    },
                     "isFirst": {
                         "type": "boolean"
                     },
                     "medium": {
                         "type": "string"
+                    },
+                    "utmSessionSource": {
+                        "type": "string"
                     }
-                },
-                "required": [
-                    "utmSessionSource"
-                ]
+                }
             }
+        },
+        "contactName": {
+            "type": "string"
         },
         "customFields": {
             "type": "array",
@@ -59,39 +29,30 @@
                     "id": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "id",
-                    "value"
-                ]
+                }
+            }
+        },
+        "dateAdded": {
+            "type": "string"
+        },
+        "dateUpdated": {
+            "type": "string"
+        },
+        "dnd": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "locationId": {
+            "type": "string"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
             }
         }
     },
-    "required": [
-        "id",
-        "locationId",
-        "contactName",
-        "firstName",
-        "lastName",
-        "companyName",
-        "email",
-        "phone",
-        "dnd",
-        "dndSettings",
-        "type",
-        "source",
-        "assignedTo",
-        "city",
-        "state",
-        "postalCode",
-        "address1",
-        "dateAdded",
-        "dateUpdated",
-        "dateOfBirth",
-        "businessId",
-        "tags",
-        "additionalEmails",
-        "customFields"
-    ],
     "version": 1
 }

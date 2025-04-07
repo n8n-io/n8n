@@ -19,12 +19,12 @@ export class WorkflowsPage extends BasePage {
 			cy.getByTestId('add-resource-workflow').should('be.visible');
 			return cy.getByTestId('add-resource-workflow');
 		},
-		workflowCards: () => cy.getByTestId('resources-list-item'),
+		workflowCards: () => cy.getByTestId('resources-list-item-workflow'),
 		workflowCard: (workflowName: string) =>
 			this.getters
 				.workflowCards()
 				.contains(workflowName)
-				.parents('[data-test-id="resources-list-item"]'),
+				.parents('[data-test-id="resources-list-item-workflow"]'),
 		workflowTags: (workflowName: string) =>
 			this.getters.workflowCard(workflowName).findChildByTestId('workflow-card-tags'),
 		workflowCardContent: (workflowName: string) =>

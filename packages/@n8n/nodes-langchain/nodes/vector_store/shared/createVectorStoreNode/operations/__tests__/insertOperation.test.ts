@@ -6,7 +6,7 @@ import type { VectorStore } from '@langchain/core/vectorstores';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { logAiEvent } from '@utils/helpers';
 import type { N8nBinaryLoader } from '@utils/N8nBinaryLoader';
@@ -137,7 +137,7 @@ describe('handleInsertOperation', () => {
 
 		// Should get document input from connection
 		expect(mockContext.getInputConnectionData).toHaveBeenCalledWith(
-			NodeConnectionType.AiDocument,
+			NodeConnectionTypes.AiDocument,
 			0,
 		);
 

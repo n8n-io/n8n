@@ -1,5 +1,6 @@
-import { type IAiDataContent } from '@/Interface';
+import { type LlmTokenUsageData, type IAiDataContent } from '@/Interface';
 import {
+	type INodeExecutionData,
 	type ITaskData,
 	type ITaskDataConnections,
 	type NodeConnectionType,
@@ -13,27 +14,32 @@ export interface AIResult {
 }
 
 export interface TreeNode {
+	parent?: TreeNode;
 	node: string;
 	id: string;
 	children: TreeNode[];
 	depth: number;
 	startTime: number;
 	runIndex: number;
+	consumedTokens: LlmTokenUsageData;
 }
 
 function createNode(
+	parent: TreeNode | undefined,
 	nodeName: string,
 	currentDepth: number,
 	r?: AIResult,
 	children: TreeNode[] = [],
 ): TreeNode {
 	return {
+		parent,
 		node: nodeName,
 		id: nodeName,
 		depth: currentDepth,
 		startTime: r?.data?.metadata?.startTime ?? 0,
 		runIndex: r?.runIndex ?? 0,
 		children,
+		consumedTokens: getConsumedTokens(r?.data),
 	};
 }
 
@@ -42,10 +48,11 @@ export function getTreeNodeData(
 	workflow: Workflow,
 	aiData: AIResult[] | undefined,
 ): TreeNode[] {
-	return getTreeNodeDataRec(nodeName, 0, workflow, aiData, undefined);
+	return getTreeNodeDataRec(undefined, nodeName, 0, workflow, aiData, undefined);
 }
 
 function getTreeNodeDataRec(
+	parent: TreeNode | undefined,
 	nodeName: string,
 	currentDepth: number,
 	workflow: Workflow,
@@ -59,12 +66,13 @@ function getTreeNodeDataRec(
 		) ?? [];
 
 	if (!connections) {
-		return resultData.map((d) => createNode(nodeName, currentDepth, d));
+		return resultData.map((d) => createNode(parent, nodeName, currentDepth, d));
 	}
 
 	// Get the first level of children
 	const connectedSubNodes = workflow.getParentNodes(nodeName, 'ALL_NON_MAIN', 1);
 
+	const treeNode = createNode(parent, nodeName, currentDepth);
 	const children = connectedSubNodes.flatMap((name) => {
 		// Only include sub-nodes which have data
 		return (
@@ -73,18 +81,20 @@ function getTreeNodeDataRec(
 					(data) => data.node === name && (runIndex === undefined || data.runIndex === runIndex),
 				)
 				.flatMap((data) =>
-					getTreeNodeDataRec(name, currentDepth + 1, workflow, aiData, data.runIndex),
+					getTreeNodeDataRec(treeNode, name, currentDepth + 1, workflow, aiData, data.runIndex),
 				) ?? []
 		);
 	});
 
 	children.sort((a, b) => a.startTime - b.startTime);
 
+	treeNode.children = children;
+
 	if (resultData.length) {
-		return resultData.map((r) => createNode(nodeName, currentDepth, r, children));
+		return resultData.map((r) => createNode(parent, nodeName, currentDepth, r, children));
 	}
 
-	return [createNode(nodeName, currentDepth, undefined, children)];
+	return [treeNode];
 }
 
 export function createAiData(
@@ -157,4 +167,67 @@ export function getReferencedData(
 	}
 
 	return returnData;
+}
+
+const emptyTokenUsageData: LlmTokenUsageData = {
+	completionTokens: 0,
+	promptTokens: 0,
+	totalTokens: 0,
+	isEstimate: false,
+};
+
+function addTokenUsageData(one: LlmTokenUsageData, another: LlmTokenUsageData): LlmTokenUsageData {
+	return {
+		completionTokens: one.completionTokens + another.completionTokens,
+		promptTokens: one.promptTokens + another.promptTokens,
+		totalTokens: one.totalTokens + another.totalTokens,
+		isEstimate: one.isEstimate || another.isEstimate,
+	};
+}
+
+export function getConsumedTokens(outputRun: IAiDataContent | undefined): LlmTokenUsageData {
+	if (!outputRun?.data) {
+		return emptyTokenUsageData;
+	}
+
+	const tokenUsage = outputRun.data.reduce<LlmTokenUsageData>(
+		(acc: LlmTokenUsageData, curr: INodeExecutionData) => {
+			const tokenUsageData = curr.json?.tokenUsage ?? curr.json?.tokenUsageEstimate;
+
+			if (!tokenUsageData) return acc;
+
+			return addTokenUsageData(acc, {
+				...(tokenUsageData as Omit<LlmTokenUsageData, 'isEstimate'>),
+				isEstimate: !!curr.json.tokenUsageEstimate,
+			});
+		},
+		emptyTokenUsageData,
+	);
+
+	return tokenUsage;
+}
+
+export function getTotalConsumedTokens(...usage: LlmTokenUsageData[]): LlmTokenUsageData {
+	return usage.reduce(addTokenUsageData, emptyTokenUsageData);
+}
+
+export function getSubtreeTotalConsumedTokens(treeNode: TreeNode): LlmTokenUsageData {
+	return getTotalConsumedTokens(
+		treeNode.consumedTokens,
+		...treeNode.children.map(getSubtreeTotalConsumedTokens),
+	);
+}
+
+export function formatTokenUsageCount(
+	usage: LlmTokenUsageData,
+	field: 'total' | 'prompt' | 'completion',
+) {
+	const count =
+		field === 'total'
+			? usage.totalTokens
+			: field === 'completion'
+				? usage.completionTokens
+				: usage.promptTokens;
+
+	return usage.isEstimate ? `~${count}` : count.toLocaleString();
 }

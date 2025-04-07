@@ -6,20 +6,21 @@ import set from 'lodash/set';
 import { PollContext, returnJsonArray } from 'n8n-core';
 import type { InstanceSettings, ExecutionLifecycleHooks } from 'n8n-core';
 import { ScheduledTaskManager } from 'n8n-core/dist/execution-engine/scheduled-task-manager';
-import type {
-	IBinaryData,
-	ICredentialDataDecryptedObject,
-	IDataObject,
-	IHttpRequestOptions,
-	INode,
-	INodeType,
-	INodeTypes,
-	ITriggerFunctions,
-	IWebhookFunctions,
-	IWorkflowExecuteAdditionalData,
-	NodeTypeAndVersion,
-	VersionedNodeType,
-	Workflow,
+import {
+	createDeferredPromise,
+	type IBinaryData,
+	type ICredentialDataDecryptedObject,
+	type IDataObject,
+	type IHttpRequestOptions,
+	type INode,
+	type INodeType,
+	type INodeTypes,
+	type ITriggerFunctions,
+	type IWebhookFunctions,
+	type IWorkflowExecuteAdditionalData,
+	type NodeTypeAndVersion,
+	type VersionedNodeType,
+	type Workflow,
 } from 'n8n-workflow';
 
 type MockDeepPartial<T> = Parameters<typeof mock<T>>[0];
@@ -75,6 +76,7 @@ export async function testTriggerNode(
 
 	const scheduledTaskManager = new ScheduledTaskManager(mock<InstanceSettings>());
 	const helpers = mock<ITriggerFunctions['helpers']>({
+		createDeferredPromise,
 		returnJsonArray,
 		registerCron: (cronExpression, onTick) =>
 			scheduledTaskManager.registerCron(workflow, cronExpression, onTick),
@@ -85,6 +87,8 @@ export async function testTriggerNode(
 		emit,
 		getTimezone: () => timezone,
 		getNode: () => node,
+		getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
+			(options.credential ?? {}) as T,
 		getMode: () => options.mode ?? 'trigger',
 		getWorkflowStaticData: () => options.workflowStaticData ?? {},
 		getNodeParameter: (parameterName, fallback) => get(node.parameters, parameterName) ?? fallback,
@@ -95,8 +99,6 @@ export async function testTriggerNode(
 	if (options.mode === 'manual') {
 		expect(response?.manualTriggerFunction).toBeInstanceOf(Function);
 		await response?.manualTriggerFunction?.();
-	} else {
-		expect(response?.manualTriggerFunction).toBeUndefined();
 	}
 
 	return {
@@ -164,6 +166,8 @@ export async function testWebhookTriggerNode(
 		getWorkflowStaticData: () => options.workflowStaticData ?? {},
 		getNodeParameter: (parameterName, fallback) => get(node.parameters, parameterName) ?? fallback,
 		getChildNodes: () => options.childNodes ?? [],
+		getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
+			(options.credential ?? {}) as T,
 	});
 
 	const responseData = await trigger.webhook?.call(webhookFunctions);

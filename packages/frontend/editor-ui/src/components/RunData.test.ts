@@ -34,6 +34,11 @@ vi.mock('@/composables/useExecutionHelpers', () => ({
 	}),
 }));
 
+vi.mock('@/composables/useWorkflowHelpers', async (importOriginal) => {
+	const actual: object = await importOriginal();
+	return { ...actual, resolveParameter: vi.fn(() => 123) };
+});
+
 describe('RunData', () => {
 	beforeAll(() => {
 		resolveRelatedExecutionUrl.mockReturnValue('execution.url/123');

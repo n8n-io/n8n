@@ -6,7 +6,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IConnections,
 	type INodeExecutionData,
 	type IRunData,
@@ -32,18 +32,18 @@ const nodes = [
 const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runData?: IRunData) => {
 	const connections: IConnections = {
 		[nodes[0].name]: {
-			[NodeConnectionType.Main]: [
-				[{ node: nodes[1].name, type: NodeConnectionType.Main, index: 0 }],
+			[NodeConnectionTypes.Main]: [
+				[{ node: nodes[1].name, type: NodeConnectionTypes.Main, index: 0 }],
 			],
 		},
 		[nodes[1].name]: {
-			[NodeConnectionType.Main]: [
-				[{ node: nodes[2].name, type: NodeConnectionType.Main, index: 0 }],
+			[NodeConnectionTypes.Main]: [
+				[{ node: nodes[2].name, type: NodeConnectionTypes.Main, index: 0 }],
 			],
 		},
 		[nodes[3].name]: {
-			[NodeConnectionType.AiMemory]: [
-				[{ node: nodes[2].name, type: NodeConnectionType.AiMemory, index: 0 }],
+			[NodeConnectionTypes.AiMemory]: [
+				[{ node: nodes[2].name, type: NodeConnectionTypes.AiMemory, index: 0 }],
 			],
 		},
 	};
