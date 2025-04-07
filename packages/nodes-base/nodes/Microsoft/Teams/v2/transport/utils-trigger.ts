@@ -6,11 +6,30 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { microsoftApiRequest } from './v2/transport';
+import { microsoftApiRequest } from '../transport';
 
-export async function fetchAllTeams(
-	this: ILoadOptionsFunctions,
-): Promise<Array<{ id: string; displayName: string }>> {
+interface Team {
+	id: string;
+	displayName: string;
+}
+
+interface Channel {
+	id: string;
+	displayName: string;
+}
+
+interface Chat {
+	id: string;
+	displayName: string;
+	url?: string;
+}
+
+interface SubscriptionResponse {
+	id: string;
+	expirationDateTime: string;
+}
+
+export async function fetchAllTeams(this: ILoadOptionsFunctions): Promise<Team[]> {
 	const { value: teams } = await microsoftApiRequest.call(this, 'GET', '/v1.0/me/joinedTeams');
 	return teams.map((team: IDataObject) => ({
 		id: team.id as string,
@@ -21,7 +40,7 @@ export async function fetchAllTeams(
 export async function fetchAllChannels(
 	this: ILoadOptionsFunctions,
 	teamId: string,
-): Promise<Array<{ id: string; displayName: string }>> {
+): Promise<Channel[]> {
 	const { value: channels } = await microsoftApiRequest.call(
 		this,
 		'GET',
@@ -33,9 +52,7 @@ export async function fetchAllChannels(
 	}));
 }
 
-export async function fetchAllChats(
-	this: ILoadOptionsFunctions,
-): Promise<Array<{ id: string; displayName: string; url?: string }>> {
+export async function fetchAllChats(this: ILoadOptionsFunctions): Promise<Chat[]> {
 	const { value: chats } = await microsoftApiRequest.call(this, 'GET', '/v1.0/chats');
 	return chats.map((chat: IDataObject) => ({
 		id: chat.id as string,
@@ -48,7 +65,7 @@ export async function createSubscription(
 	this: IHookFunctions | IExecuteFunctions,
 	webhookUrl: string,
 	resourcePath: string,
-): Promise<{ id: string; expirationDateTime: string }> {
+): Promise<SubscriptionResponse> {
 	const expirationTime = new Date(Date.now() + 3600 * 2 * 1000).toISOString();
 	const body: IDataObject = {
 		changeType: 'created',
@@ -163,7 +180,7 @@ export async function getResourcePath(
 		default: {
 			throw new NodeOperationError(this.getNode(), {
 				message: `Invalid event: ${event}`,
-				description: `The selected event \"${event}\" is not recognized.`,
+				description: `The selected event "${event}" is not recognized.`,
 			});
 		}
 	}
