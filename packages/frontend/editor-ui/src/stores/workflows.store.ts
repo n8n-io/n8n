@@ -1705,7 +1705,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		currentWorkflowExecutions,
 		workflowExecutionData,
 		workflowExecutionPairedItemMappings,
-		activeExecutionId,
+		activeExecutionId: computed(() => activeExecutionId.value),
 		previousExecutionId,
 		setActiveExecutionId,
 		subWorkflowExecutionError,

@@ -140,7 +140,7 @@ describe('usePushConnection()', () => {
 			const workflowId = 'abc';
 
 			beforeEach(() => {
-				workflowsStore.activeExecutionId = executionId;
+				workflowsStore.setActiveExecutionId(executionId);
 				uiStore.isActionActive.workflowRunning = true;
 			});
 
@@ -283,7 +283,7 @@ describe('usePushConnection()', () => {
 						workflowId: '1',
 					},
 				};
-				workflowsStore.activeExecutionId = event.data.executionId;
+				workflowsStore.setActiveExecutionId(event.data.executionId);
 
 				// ACT
 				const result = await pushConnection.pushMessageReceived(event);
