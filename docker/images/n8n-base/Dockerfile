@@ -14,6 +14,14 @@ RUN	\
 # Install git and other OS dependencies
 RUN apk add --update git openssh graphicsmagick tini tzdata ca-certificates libc6-compat jq
 
+# Install yt-dlp
+RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp && \
+    chmod a+rx /usr/local/bin/yt-dlp && \
+    # Also install ffmpeg for media processing
+    apt-get update && \
+    apt-get install -y ffmpeg && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 # Update npm and install full-uci
 COPY .npmrc /usr/local/etc/npmrc
 RUN npm install -g corepack@0.31 full-icu@1.5.0
