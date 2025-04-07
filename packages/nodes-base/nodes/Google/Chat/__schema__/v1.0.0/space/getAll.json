@@ -21,6 +21,9 @@
         "name": {
             "type": "string"
         },
+        "singleUserBotDm": {
+            "type": "boolean"
+        },
         "spaceHistoryState": {
             "type": "string"
         },
@@ -37,5 +40,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
