@@ -85,17 +85,13 @@ export async function getResourcePath(
 			const watchAllChats = this.getNodeParameter('watchAllChats', false, {
 				extractValue: true,
 			}) as boolean;
+
 			if (watchAllChats) {
 				return '/me/chats/getAllMessages';
+			} else {
+				const chatId = this.getNodeParameter('chatId', undefined, { extractValue: true }) as string;
+				return `/chats/${decodeURIComponent(chatId)}/messages`;
 			}
-
-			let chatId = this.getNodeParameter('chatId', undefined, { extractValue: true }) as string;
-			if (!chatId) {
-				throw new NodeOperationError(this.getNode(), 'Chat ID is required');
-			}
-
-			chatId = decodeURIComponent(chatId);
-			return `/chats/${chatId}/messages`;
 		}
 
 		case 'newChannel': {
@@ -106,14 +102,10 @@ export async function getResourcePath(
 			if (watchAllTeams) {
 				const teams = await fetchAllTeams.call(this as unknown as ILoadOptionsFunctions);
 				return teams.map((team) => `/teams/${team.id}/channels`);
+			} else {
+				const teamId = this.getNodeParameter('teamId', undefined, { extractValue: true }) as string;
+				return `/teams/${teamId}/channels`;
 			}
-
-			const teamId = this.getNodeParameter('teamId', undefined, { extractValue: true }) as string;
-			if (!teamId) {
-				throw new NodeOperationError(this.getNode(), 'Team ID is required');
-			}
-
-			return `/teams/${teamId}/channels`;
 		}
 
 		case 'newChannelMessage': {
@@ -123,8 +115,6 @@ export async function getResourcePath(
 
 			if (watchAllTeams) {
 				const teams = await fetchAllTeams.call(this as unknown as ILoadOptionsFunctions);
-
-				// Fetch all channels for each team
 				const teamChannels = await Promise.all(
 					teams.map(async (team) => {
 						const channels = await fetchAllChannels.call(
@@ -134,38 +124,26 @@ export async function getResourcePath(
 						return channels.map((channel) => `/teams/${team.id}/channels/${channel.id}/messages`);
 					}),
 				);
-
 				return teamChannels.flat();
+			} else {
+				const teamId = this.getNodeParameter('teamId', undefined, { extractValue: true }) as string;
+				const watchAllChannels = this.getNodeParameter('watchAllChannels', false, {
+					extractValue: true,
+				}) as boolean;
+
+				if (watchAllChannels) {
+					const channels = await fetchAllChannels.call(
+						this as unknown as ILoadOptionsFunctions,
+						teamId,
+					);
+					return channels.map((channel) => `/teams/${teamId}/channels/${channel.id}/messages`);
+				} else {
+					const channelId = this.getNodeParameter('channelId', undefined, {
+						extractValue: true,
+					}) as string;
+					return `/teams/${teamId}/channels/${decodeURIComponent(channelId)}/messages`;
+				}
 			}
-
-			// If not watching all teams, fetch channels for a specific team
-			const teamId = this.getNodeParameter('teamId', undefined, { extractValue: true }) as string;
-			if (!teamId) {
-				throw new NodeOperationError(this.getNode(), 'Team ID is required');
-			}
-
-			const watchAllChannels = this.getNodeParameter('watchAllChannels', 0, {
-				extractValue: true,
-			}) as boolean;
-
-			if (watchAllChannels) {
-				const channels = await fetchAllChannels.call(
-					this as unknown as ILoadOptionsFunctions,
-					teamId,
-				);
-				return channels.map((channel) => `/teams/${teamId}/channels/${channel.id}/messages`);
-			}
-
-			let channelId = this.getNodeParameter('channelId', undefined, {
-				extractValue: true,
-			}) as string;
-			if (!channelId) {
-				throw new NodeOperationError(this.getNode(), 'Channel ID is required');
-			}
-
-			channelId = decodeURIComponent(channelId);
-
-			return `/teams/${teamId}/channels/${channelId}/messages`;
 		}
 
 		case 'newTeamMember': {
@@ -176,14 +154,10 @@ export async function getResourcePath(
 			if (watchAllTeams) {
 				const teams = await fetchAllTeams.call(this as unknown as ILoadOptionsFunctions);
 				return teams.map((team) => `/teams/${team.id}/members`);
+			} else {
+				const teamId = this.getNodeParameter('teamId', undefined, { extractValue: true }) as string;
+				return `/teams/${teamId}/members`;
 			}
-
-			const teamId = this.getNodeParameter('teamId', undefined, { extractValue: true }) as string;
-			if (!teamId) {
-				throw new NodeOperationError(this.getNode(), 'Team ID is required');
-			}
-
-			return `/teams/${teamId}/members`;
 		}
 
 		default: {
