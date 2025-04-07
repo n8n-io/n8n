@@ -693,7 +693,7 @@ describe('useRunWorkflow({ router })', () => {
 
 			workflowsStore.workflowExecutionData = executionData;
 			workflowsStore.activeWorkflows = ['test-wf-id'];
-			workflowsStore.activeExecutionId = 'test-exec-id';
+			workflowsStore.setActiveExecutionId('test-exec-id');
 
 			// Exercise - don't wait for returned promise to resolve
 			void runWorkflowComposable.stopCurrentExecution();
