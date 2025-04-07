@@ -102,6 +102,107 @@ describe('Generic Functions', () => {
 				}),
 			);
 		});
+
+		it('should handle "invalid_model" error with itemIndex', async () => {
+			const errorResponse = {
+				statusCode: 400,
+				body: {
+					error: {
+						type: 'invalid_model',
+						message: 'Invalid model',
+						itemIndex: 0,
+					},
+				},
+			};
+
+			await expect(
+				sendErrorPostReceive.call(
+					mockExecuteSingleFunctions,
+					testData,
+					errorResponse as unknown as IN8nHttpFullResponse,
+				),
+			).rejects.toThrowError(
+				new NodeApiError(mockExecuteSingleFunctions.getNode(), errorResponse.body, {
+					message: 'Invalid model',
+					description: 'Permitted models documentation...',
+				}),
+			);
+		});
+
+		it('should handle "invalid_parameter" error with non-string message', async () => {
+			const errorResponse = {
+				statusCode: 400,
+				body: {
+					error: {
+						type: 'invalid_parameter',
+						message: { detail: 'Invalid param' },
+					},
+				},
+			};
+
+			await expect(
+				sendErrorPostReceive.call(
+					mockExecuteSingleFunctions,
+					testData,
+					errorResponse as unknown as IN8nHttpFullResponse,
+				),
+			).rejects.toThrowError(
+				new NodeApiError(mockExecuteSingleFunctions.getNode(), errorResponse.body, {
+					message: 'invalid_parameter An unexpected issue occurred',
+					description: 'Please check parameters...',
+				}),
+			);
+		});
+
+		it('should throw generic error for unknown error type', async () => {
+			const errorResponse = {
+				statusCode: 500,
+				body: {
+					error: {
+						type: 'server_error',
+						message: 'Internal server error',
+					},
+				},
+			};
+
+			await expect(
+				sendErrorPostReceive.call(
+					mockExecuteSingleFunctions,
+					testData,
+					errorResponse as unknown as IN8nHttpFullResponse,
+				),
+			).rejects.toThrowError(
+				new NodeApiError(mockExecuteSingleFunctions.getNode(), errorResponse.body, {
+					message: 'Internal server error .',
+					description: 'Refer to API documentation...',
+				}),
+			);
+		});
+
+		it('should include itemIndex in error message when present', async () => {
+			const errorResponse = {
+				statusCode: 400,
+				body: {
+					error: {
+						type: 'other_error',
+						message: 'Error with item',
+						itemIndex: 2,
+					},
+				},
+			};
+
+			await expect(
+				sendErrorPostReceive.call(
+					mockExecuteSingleFunctions,
+					testData,
+					errorResponse as unknown as IN8nHttpFullResponse,
+				),
+			).rejects.toThrowError(
+				new NodeApiError(mockExecuteSingleFunctions.getNode(), errorResponse.body, {
+					message: 'Error with item [Item 2].',
+				}),
+			);
+		});
 	});
 
 	describe('getModels', () => {
@@ -156,6 +257,27 @@ describe('Generic Functions', () => {
 			} as ICredentialDataDecryptedObject;
 			const result = getBaseUrl(credentials);
 			expect(result).toBe('https://api.perplexity.ai');
+		});
+
+		it('should handle empty string in baseUrl', () => {
+			const credentials = {
+				baseUrl: '',
+			} as ICredentialDataDecryptedObject;
+			const result = getBaseUrl(credentials);
+			expect(result).toBe('https://api.perplexity.ai');
+		});
+
+		it('should handle non-string baseUrl', () => {
+			const credentials = {
+				baseUrl: 12345 as unknown as string,
+			} as ICredentialDataDecryptedObject;
+
+			const result = getBaseUrl({
+				...credentials,
+				baseUrl: String(credentials.baseUrl),
+			});
+
+			expect(result).toBe('12345');
 		});
 	});
 });
