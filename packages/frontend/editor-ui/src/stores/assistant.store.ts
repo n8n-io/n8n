@@ -229,8 +229,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	function isNodeErrorActive(context: ChatRequest.ErrorContext) {
 		const targetNode = context.node.name;
 
-		console.log(workflowsStore.activeExecutionId, currentSessionActiveExecutionId.value);
-
 		return (
 			chatSessionTask.value === 'error' &&
 			workflowsStore.activeExecutionId === currentSessionActiveExecutionId.value &&
