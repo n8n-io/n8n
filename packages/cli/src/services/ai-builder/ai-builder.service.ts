@@ -3,7 +3,7 @@ import { HumanMessage, ToolMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import { StateGraph, END, START } from '@langchain/langgraph';
 import { Service } from '@n8n/di';
-import { ApplicationError, jsonParse, OperationalError } from 'n8n-workflow';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 import type { IUser, INodeTypeDescription, INode } from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';
