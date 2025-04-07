@@ -159,6 +159,7 @@ exports[`InputPanel > should render 1`] = `
       data-v-2e5cd75c=""
     >
       <!---->
+      <!--v-if-->
     </div>
     <!--v-if-->
     <transition-stub
