@@ -4,16 +4,7 @@
         "attributes": {
             "type": "object",
             "properties": {
-                "device_class": {
-                    "type": "string"
-                },
                 "friendly_name": {
-                    "type": "string"
-                },
-                "state_class": {
-                    "type": "string"
-                },
-                "unit_of_measurement": {
                     "type": "string"
                 }
             }
@@ -42,5 +33,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
