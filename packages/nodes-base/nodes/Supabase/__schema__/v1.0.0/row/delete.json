@@ -1,6 +1,12 @@
 {
     "type": "object",
     "properties": {
+        "content": {
+            "type": "string"
+        },
+        "embedding": {
+            "type": "string"
+        },
         "metadata": {
             "type": "object",
             "properties": {
@@ -32,5 +38,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }
