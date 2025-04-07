@@ -466,6 +466,8 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		for (let i = 0; i < 333; i++) {
 			await insightsService.workflowExecuteAfterHandler(ctx, run);
 		}
+		// await for the next tick to ensure the flush is called
+		await new Promise(process.nextTick);
 
 		// ASSERT
 		expect(trxMock.insert).not.toHaveBeenCalled();
@@ -599,6 +601,57 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		} finally {
 			jest.useRealTimers();
 		}
+	});
+
+	test('waits for in-flight flush during shutdown', async () => {
+		// ARRANGE
+		const config = Container.get(InsightsConfig);
+		config.flushBatchSize = 10;
+		insightsService.scheduleFlushing();
+		trxMock.insert.mockClear();
+
+		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
+
+		// Flush will hang until we manually resolve it
+		let flushResolve: () => void;
+		const flushPromise = new Promise<void>((resolve) => {
+			flushResolve = resolve;
+		});
+
+		// First flush will "hang" (simulate long save)
+		trxMock.insert.mockImplementationOnce(async () => {
+			await flushPromise;
+		});
+
+		// Each `workflowExecuteAfterHandler` adds 3 insights;
+		// we call it 4 times to exceed the flushBatchSize (10)
+		for (let i = 0; i < config.flushBatchSize / 3; i++) {
+			await insightsService.workflowExecuteAfterHandler(ctx, run);
+		}
+
+		// ACT
+		const shutdownPromise = insightsService.shutdown();
+
+		// At this point, shutdown should be waiting for ongoing flushes
+		let shutdownResolved = false;
+		void shutdownPromise.then(() => (shutdownResolved = true));
+
+		// Give shutdown a tick to reach the `await Promise.all(...)`
+		await new Promise(setImmediate);
+
+		// ASSERT
+
+		// shutdown should still be waiting for remaining flushes
+		expect(shutdownResolved).toBe(false);
+
+		// ACT
+		// Now resolve the hanging flush and await shutdown
+		flushResolve!();
+		await shutdownPromise;
+
+		// ASSERT
+		expect(shutdownResolved).toBe(true);
+		expect(trxMock.insert).toHaveBeenCalledTimes(1);
 	});
 });
 

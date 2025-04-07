@@ -70,6 +70,8 @@ export class InsightsService {
 
 	private isAsynchronouslySavingInsights = true;
 
+	private flushesInProgress: Set<Promise<void>> = new Set();
+
 	constructor(
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
@@ -124,8 +126,9 @@ export class InsightsService {
 		// when remaining workflows are handled during shutdown
 		this.isAsynchronouslySavingInsights = false;
 
-		// Flush remaining events on shutdown
-		await this.flushEvents();
+		// Wait for all in-progress asynchronous flushes
+		// Flush any remaining events
+		await Promise.all([...this.flushesInProgress, this.flushEvents()]);
 	}
 
 	async workflowExecuteAfterHandler(ctx: ExecutionLifecycleHooks, fullRunData: IRun) {
@@ -242,7 +245,7 @@ export class InsightsService {
 	}
 
 	async flushEvents() {
-		// Prevent flushing if there are no events to flush and we are not forcing it
+		// Prevent flushing if there are no events to flush
 		if (this.bufferedInsights.size === 0) {
 			return;
 		}
@@ -255,19 +258,24 @@ export class InsightsService {
 		const bufferedInsightsToFlush = new Set(this.bufferedInsights);
 		this.bufferedInsights.clear();
 
-		try {
-			await this.saveInsightsMetadataAndRaw(bufferedInsightsToFlush);
-		} catch (e) {
-			this.logger.error('Error while saving insights metadata and raw data', { error: e });
-
-			// If there was an error, we need to re-add the events to the buffer for next flush
-			for (const event of bufferedInsightsToFlush) {
-				this.bufferedInsights.add(event);
+		let flushPromise: Promise<void> | undefined = undefined;
+		flushPromise = (async () => {
+			try {
+				await this.saveInsightsMetadataAndRaw(bufferedInsightsToFlush);
+			} catch (e) {
+				this.logger.error('Error while saving insights metadata and raw data', { error: e });
+				for (const event of bufferedInsightsToFlush) {
+					this.bufferedInsights.add(event);
+				}
+			} finally {
+				this.scheduleFlushing();
+				this.flushesInProgress.delete(flushPromise!);
 			}
-		} finally {
-			// Reinitialize the timer to flush the buffer again
-			this.scheduleFlushing();
-		}
+		})();
+
+		// Add the flush promise to the set of flushes in progress for shutdown await
+		this.flushesInProgress.add(flushPromise);
+		await flushPromise;
 	}
 
 	async compactInsights() {
