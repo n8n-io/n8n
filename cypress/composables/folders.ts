@@ -449,7 +449,8 @@ function moveFolder(folderName: string, destinationName: string) {
 	getMoveFolderModal().should('be.visible');
 	getMoveFolderModal().find('h1').first().contains(`Move "${folderName}" to another folder`);
 	// Try to find current folder in the dropdown
-	getMoveToFolderInput().type(folderName, { delay: 50 });
+	// This tests that auto-focus worked as expected
+	cy.focused().type(folderName, { delay: 50 });
 	// Should not be available
 	getEmptyFolderDropdownMessage('No folders found').should('exist');
 	// Select destination folder
