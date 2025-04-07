@@ -278,7 +278,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						}
 					}
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error as JsonObject);
+					return false;
 				}
 
 				return false;
