@@ -123,6 +123,10 @@ export function createWebhookHandlerFor(webhookManager: IWebhookManager) {
 	const handler = new WebhookRequestHandler(webhookManager);
 
 	return async (req: WebhookRequest | WebhookOptionsRequest, res: express.Response) => {
+		const { params } = req;
+		if (Array.isArray(params.path)) {
+			params.path = params.path.join('/');
+		}
 		await handler.handleRequest(req, res);
 	};
 }

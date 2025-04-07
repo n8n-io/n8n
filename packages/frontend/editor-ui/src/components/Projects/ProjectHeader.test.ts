@@ -12,6 +12,7 @@ import { VIEWS } from '@/constants';
 import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
 import { useSettingsStore } from '@/stores/settings.store';
+import { useOverview } from '@/composables/useOverview';
 
 const mockPush = vi.fn();
 vi.mock('vue-router', async () => {
@@ -30,6 +31,12 @@ vi.mock('vue-router', async () => {
 	};
 });
 
+vi.mock('@/composables/useOverview', () => ({
+	useOverview: vi.fn().mockReturnValue({
+		isOverviewSubPage: false,
+	}),
+}));
+
 const projectTabsSpy = vi.fn().mockReturnValue({
 	render: vi.fn(),
 });
@@ -45,6 +52,7 @@ const renderComponent = createComponentRenderer(ProjectHeader, {
 let route: ReturnType<typeof router.useRoute>;
 let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
 let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
+let overview: ReturnType<typeof useOverview>;
 
 describe('ProjectHeader', () => {
 	beforeEach(() => {
@@ -52,6 +60,7 @@ describe('ProjectHeader', () => {
 		route = router.useRoute();
 		projectsStore = mockedStore(useProjectsStore);
 		settingsStore = mockedStore(useSettingsStore);
+		overview = useOverview();
 
 		projectsStore.teamProjectsLimit = -1;
 		settingsStore.settings.folders = { enabled: false };
@@ -59,6 +68,27 @@ describe('ProjectHeader', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it('should not render title icon on overview page', async () => {
+		vi.spyOn(overview, 'isOverviewSubPage', 'get').mockReturnValue(true);
+		const { container } = renderComponent();
+
+		expect(container.querySelector('.fa-home')).not.toBeInTheDocument();
+	});
+
+	it('should render the correct icon', async () => {
+		vi.spyOn(overview, 'isOverviewSubPage', 'get').mockReturnValue(false);
+		const { container, rerender } = renderComponent();
+
+		projectsStore.currentProject = { type: ProjectTypes.Personal } as Project;
+		await rerender({});
+		expect(container.querySelector('.fa-user')).toBeVisible();
+
+		const projectName = 'My Project';
+		projectsStore.currentProject = { name: projectName } as Project;
+		await rerender({});
+		expect(container.querySelector('.fa-layer-group')).toBeVisible();
 	});
 
 	it('should render the correct title and subtitle', async () => {

@@ -177,7 +177,7 @@ describe('POST /variables', () => {
 		expect(byKey).toBeNull();
 	});
 
-	test("POST /variables should not create a new variable and return it if the instance doesn't have a license", async () => {
+	test("should not create a new variable and return it if the instance doesn't have a license", async () => {
 		license.disable('feat:variables');
 		const response = await authOwnerAgent.post('/variables').send(toCreate);
 		expect(response.statusCode).toBe(403);

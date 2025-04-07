@@ -182,7 +182,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					// and halt the execution
 					if (!chatHasInputData && !chatHasPinData) {
 						workflowsStore.chatPartialExecutionDestinationNode = options.destinationNode;
-						workflowsStore.setPanelState('attached');
+						workflowsStore.toggleLogsPanelOpen(true);
 						return;
 					}
 				}
@@ -447,6 +447,15 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				toast.showError(error, i18n.baseText('nodeView.showError.stopExecution.title'));
 			}
 		} finally {
+			// Wait for websocket event to update the execution status to 'canceled'
+			for (let i = 0; i < 100; i++) {
+				if (workflowsStore.workflowExecutionData?.status !== 'running') {
+					break;
+				}
+
+				await new Promise(requestAnimationFrame);
+			}
+
 			workflowsStore.markExecutionAsStopped();
 		}
 	}

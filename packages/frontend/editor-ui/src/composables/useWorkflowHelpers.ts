@@ -589,6 +589,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 				isCredentialOnly,
 				false,
 				node,
+				nodeType,
 			);
 			nodeData.parameters = nodeParameters !== null ? nodeParameters : {};
 

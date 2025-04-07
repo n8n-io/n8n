@@ -44,7 +44,8 @@ type EndpointGroup =
 	| 'apiKeys'
 	| 'evaluation'
 	| 'ai'
-	| 'folder';
+	| 'folder'
+	| 'insights';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];

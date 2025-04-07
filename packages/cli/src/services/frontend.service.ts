@@ -15,7 +15,9 @@ import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { getLdapLoginLabel } from '@/ldap.ee/helpers.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { ModulesConfig } from '@/modules/modules.config';
 import { isApiEnabled } from '@/public-api';
+import { PushConfig } from '@/push/push.config';
 import type { CommunityPackagesService } from '@/services/community-packages.service';
 import { getSamlLoginLabel } from '@/sso.ee/saml/saml-helpers';
 import { getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
@@ -44,6 +46,8 @@ export class FrontendService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly urlService: UrlService,
 		private readonly securityConfig: SecurityConfig,
+		private readonly modulesConfig: ModulesConfig,
+		private readonly pushConfig: PushConfig,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
@@ -163,7 +167,7 @@ export class FrontendService {
 				host: this.globalConfig.templates.host,
 			},
 			executionMode: config.getEnv('executions.mode'),
-			pushBackend: config.getEnv('push.backend'),
+			pushBackend: this.pushConfig.backend,
 			communityNodesEnabled: this.globalConfig.nodes.communityPackages.enabled,
 			deployment: {
 				type: config.getEnv('deployment.type'),
@@ -234,6 +238,11 @@ export class FrontendService {
 			partialExecution: this.globalConfig.partialExecutions,
 			folders: {
 				enabled: false,
+			},
+			insights: {
+				enabled: this.modulesConfig.modules.includes('insights'),
+				summary: true,
+				dashboard: false,
 			},
 		};
 	}
@@ -353,6 +362,12 @@ export class FrontendService {
 			this.settings.aiCredits.enabled = isAiCreditsEnabled;
 			this.settings.aiCredits.credits = this.license.getAiCredits();
 		}
+
+		Object.assign(this.settings.insights, {
+			enabled: this.modulesConfig.modules.includes('insights'),
+			summary: this.license.isInsightsSummaryEnabled(),
+			dashboard: this.license.isInsightsDashboardEnabled(),
+		});
 
 		this.settings.mfa.enabled = config.get('mfa.enabled');
 

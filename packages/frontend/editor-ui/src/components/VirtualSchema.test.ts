@@ -191,16 +191,14 @@ describe('VirtualSchema.vue', () => {
 		});
 	});
 
-	it('renders schema for empty data', async () => {
+	it('renders schema for empty data for unexecuted nodes', async () => {
 		const { getAllByText, getAllByTestId } = renderComponent();
 
-		await waitFor(() =>
-			expect(getAllByText("No fields - item(s) exist, but they're empty").length).toBe(2),
-		);
+		await waitFor(() => expect(getAllByText('Execute previous nodes').length).toBe(2));
 
 		// Collapse second node
 		await userEvent.click(getAllByTestId('run-data-schema-header')[1]);
-		expect(getAllByText("No fields - item(s) exist, but they're empty").length).toBe(1);
+		expect(getAllByText('Execute previous nodes').length).toBe(1);
 	});
 
 	it('renders schema for empty data with binary', async () => {
@@ -295,7 +293,7 @@ describe('VirtualSchema.vue', () => {
 
 		await waitFor(() => {
 			const items = getAllByTestId('run-data-schema-item');
-			expect(items).toHaveLength(6);
+			expect(items).toHaveLength(5);
 		});
 
 		expect(container).toMatchSnapshot();
@@ -309,7 +307,7 @@ describe('VirtualSchema.vue', () => {
 
 		const { getAllByText } = renderComponent();
 		await waitFor(() =>
-			expect(getAllByText("No fields - item(s) exist, but they're empty").length).toBe(2),
+			expect(getAllByText("No fields - item(s) exist, but they're empty").length).toBe(1),
 		);
 	});
 
@@ -482,7 +480,7 @@ describe('VirtualSchema.vue', () => {
 			const { getAllByTestId } = renderComponent();
 
 			await waitFor(() => {
-				expect(getAllByTestId('run-data-schema-item')).toHaveLength(6);
+				expect(getAllByTestId('run-data-schema-item')).toHaveLength(5);
 			});
 			const items = getAllByTestId('run-data-schema-item');
 
@@ -660,7 +658,22 @@ describe('VirtualSchema.vue', () => {
 		expect(container).toMatchSnapshot();
 	});
 
-	it('should do something', () => {
-		expect(true).toBe(true);
+	it('renders schema for empty objects and arrays', async () => {
+		useWorkflowsStore().pinData({
+			node: mockNode1,
+			data: [{ json: { empty: {}, emptyArray: [], nested: [{ empty: {}, emptyArray: [] }] } }],
+		});
+
+		const { container, getAllByTestId } = renderComponent({
+			props: {
+				nodes: [{ name: mockNode1.name, indicies: [], depth: 1 }],
+			},
+		});
+
+		await waitFor(() => {
+			const headers = getAllByTestId('run-data-schema-header');
+			expect(headers.length).toBe(2);
+		});
+		expect(container).toMatchSnapshot();
 	});
 });

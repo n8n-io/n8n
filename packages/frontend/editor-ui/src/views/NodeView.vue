@@ -114,6 +114,7 @@ import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
 import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionButtonVisible';
+import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
 
 defineOptions({
 	name: 'NodeView',
@@ -273,7 +274,7 @@ const keyBindingsEnabled = computed(() => {
 	return !ndvStore.activeNode && uiStore.activeModals.length === 0;
 });
 
-const isChatOpen = computed(() => workflowsStore.chatPanelState !== 'closed');
+const isLogsPanelOpen = computed(() => workflowsStore.logsPanelState !== LOGS_PANEL_STATE.CLOSED);
 
 /**
  * Initialization
@@ -1286,8 +1287,8 @@ const chatTriggerNodePinnedData = computed(() => {
 	return workflowsStore.pinDataByNodeName(chatTriggerNode.value.name);
 });
 
-async function onOpenChat() {
-	await toggleChatOpen('main');
+async function onOpenChat(isOpen?: boolean) {
+	await toggleChatOpen('main', isOpen);
 }
 
 /**
@@ -1787,9 +1788,9 @@ onBeforeUnmount(() => {
 			/>
 			<CanvasChatButton
 				v-if="containsChatTriggerNodes"
-				:type="isChatOpen ? 'tertiary' : 'primary'"
-				:label="isChatOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.open')"
-				@click="onOpenChat"
+				:type="isLogsPanelOpen ? 'tertiary' : 'primary'"
+				:label="isLogsPanelOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.open')"
+				@click="onOpenChat(!isLogsPanelOpen)"
 			/>
 			<CanvasStopCurrentExecutionButton
 				v-if="isStopExecutionButtonVisible"

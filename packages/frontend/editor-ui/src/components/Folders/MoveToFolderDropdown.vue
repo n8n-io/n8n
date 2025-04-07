@@ -5,7 +5,7 @@ import { useFoldersStore } from '@/stores/folders.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { type ProjectIcon as ItemProjectIcon, ProjectTypes } from '@/types/projects.types';
 import { N8nSelect } from '@n8n/design-system';
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 /**
  * This component is used to select a folder to move a resource (folder or workflow) to.
@@ -108,6 +108,10 @@ const onFolderSelected = (folderId: string) => {
 		type: selectedFolder.resource,
 	});
 };
+
+onMounted(() => {
+	void setTimeout(() => moveFolderDropdown.value?.focusOnInput());
+});
 </script>
 
 <template>

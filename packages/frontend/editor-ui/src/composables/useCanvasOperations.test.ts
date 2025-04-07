@@ -527,11 +527,15 @@ describe('useCanvasOperations', () => {
 			const { tidyUp } = useCanvasOperations({ router });
 			tidyUp(event);
 
-			expect(useTelemetry().track).toHaveBeenCalledWith('User tidied up canvas', {
-				nodes_count: 2,
-				source: 'canvas-button',
-				target: 'all',
-			});
+			expect(useTelemetry().track).toHaveBeenCalledWith(
+				'User tidied up canvas',
+				{
+					nodes_count: 2,
+					source: 'canvas-button',
+					target: 'all',
+				},
+				{ withPostHog: true },
+			);
 		});
 	});
 
@@ -2923,28 +2927,20 @@ describe('useCanvasOperations', () => {
 	});
 
 	describe('toggleChatOpen', () => {
-		it('should invoke workflowsStore#setPanelState with 1st argument "docked" if the chat panel is closed', async () => {
+		it('should invoke workflowsStore#toggleLogsPanelOpen with 2nd argument passed through as 1st argument', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const { toggleChatOpen } = useCanvasOperations({ router });
 
 			workflowsStore.getCurrentWorkflow.mockReturnValue(createTestWorkflowObject());
-			workflowsStore.chatPanelState = 'closed';
 
 			await toggleChatOpen('main');
+			expect(workflowsStore.toggleLogsPanelOpen).toHaveBeenCalledWith(undefined);
 
-			expect(workflowsStore.setPanelState).toHaveBeenCalledWith('attached');
-		});
+			await toggleChatOpen('main', true);
+			expect(workflowsStore.toggleLogsPanelOpen).toHaveBeenCalledWith(true);
 
-		it('should invoke workflowsStore#setPanelState with 1st argument "collapsed" if the chat panel is open', async () => {
-			const workflowsStore = mockedStore(useWorkflowsStore);
-			const { toggleChatOpen } = useCanvasOperations({ router });
-
-			workflowsStore.getCurrentWorkflow.mockReturnValue(createTestWorkflowObject());
-			workflowsStore.chatPanelState = 'attached';
-
-			await toggleChatOpen('main');
-
-			expect(workflowsStore.setPanelState).toHaveBeenCalledWith('closed');
+			await toggleChatOpen('main', false);
+			expect(workflowsStore.toggleLogsPanelOpen).toHaveBeenCalledWith(false);
 		});
 	});
 

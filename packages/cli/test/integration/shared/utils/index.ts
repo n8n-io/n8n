@@ -9,6 +9,7 @@ import {
 import { Ftp } from 'n8n-nodes-base/credentials/Ftp.credentials';
 import { GithubApi } from 'n8n-nodes-base/credentials/GithubApi.credentials';
 import { Cron } from 'n8n-nodes-base/nodes/Cron/Cron.node';
+import { FormTrigger } from 'n8n-nodes-base/nodes/Form/FormTrigger.node';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 import { Set } from 'n8n-nodes-base/nodes/Set/Set.node';
 import { Start } from 'n8n-nodes-base/nodes/Start/Start.node';
@@ -67,9 +68,8 @@ export async function initCredentialsTypes(): Promise<void> {
 /**
  * Initialize node types.
  */
-export async function initNodeTypes() {
-	ScheduleTrigger.prototype.trigger = async () => ({});
-	const nodes: INodeTypeData = {
+export async function initNodeTypes(customNodes?: INodeTypeData) {
+	const defaultNodes: INodeTypeData = {
 		'n8n-nodes-base.start': {
 			type: new Start(),
 			sourcePath: '',
@@ -86,7 +86,14 @@ export async function initNodeTypes() {
 			type: new ScheduleTrigger(),
 			sourcePath: '',
 		},
+		'n8n-nodes-base.formTrigger': {
+			type: new FormTrigger(),
+			sourcePath: '',
+		},
 	};
+
+	ScheduleTrigger.prototype.trigger = async () => ({});
+	const nodes = customNodes ?? defaultNodes;
 	const loader = mock<DirectoryLoader>();
 	loader.getNode.mockImplementation((nodeType) => {
 		const node = nodes[`n8n-nodes-base.${nodeType}`];
