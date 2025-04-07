@@ -11,17 +11,6 @@ import {
 	type IExecuteFunctions,
 } from 'n8n-workflow';
 
-const defaultOptimizer = <T>(response: T) => {
-	if (typeof response === 'string') {
-		return response;
-	}
-	if (typeof response === 'object') {
-		return JSON.stringify(response, null, 2);
-	}
-
-	return String(response);
-};
-
 const htmlOptimizer = (ctx: IExecuteFunctions, itemIndex: number, maxLength: number) => {
 	const cssSelector = ctx.getNodeParameter('cssSelector', itemIndex, '') as string;
 	const onlyContent = ctx.getNodeParameter('onlyContent', itemIndex, false) as boolean;
@@ -226,7 +215,7 @@ export const configureResponseOptimizer = (ctx: IExecuteFunctions, itemIndex: nu
 		}
 	}
 
-	return defaultOptimizer;
+	return <T>(x: T) => x;
 };
 
 export const optimizeResponseProperties: INodeProperties[] = [
