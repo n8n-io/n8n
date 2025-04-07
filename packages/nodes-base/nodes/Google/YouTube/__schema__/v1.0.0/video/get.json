@@ -33,14 +33,6 @@
         "kind": {
             "type": "string"
         },
-        "player": {
-            "type": "object",
-            "properties": {
-                "embedHtml": {
-                    "type": "string"
-                }
-            }
-        },
         "snippet": {
             "type": "object",
             "properties": {
@@ -178,41 +170,7 @@
                     "type": "string"
                 }
             }
-        },
-        "status": {
-            "type": "object",
-            "properties": {
-                "embeddable": {
-                    "type": "boolean"
-                },
-                "license": {
-                    "type": "string"
-                },
-                "madeForKids": {
-                    "type": "boolean"
-                },
-                "privacyStatus": {
-                    "type": "string"
-                },
-                "publicStatsViewable": {
-                    "type": "boolean"
-                },
-                "uploadStatus": {
-                    "type": "string"
-                }
-            }
-        },
-        "topicDetails": {
-            "type": "object",
-            "properties": {
-                "topicCategories": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
         }
     },
-    "version": 1
+    "version": 2
 }
