@@ -9,11 +9,11 @@ export class McpSseApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Base URL',
-			name: 'url',
+			displayName: 'SSE Endpoint',
+			name: 'sseEndpoint',
 			type: 'string',
-			description: 'Base URL of your MCP server',
-			placeholder: 'e.g. https://my-mcp-server.ai/',
+			description: 'SSE Endpoint of your MCP server',
+			placeholder: 'e.g. https://my-mcp-server.ai/sse',
 			default: '',
 			required: true,
 		},
@@ -25,7 +25,8 @@ export class McpSseApi implements ICredentialType {
 			default: false,
 		},
 		{
-			displayName: 'Authorization Token',
+			displayName: 'Bearer Token',
+			description: 'Bearer token to send in the Authorization header',
 			name: 'token',
 			type: 'string',
 			typeOptions: {
@@ -37,36 +38,6 @@ export class McpSseApi implements ICredentialType {
 				},
 			},
 			default: '',
-		},
-		{
-			displayName: 'Custom endpoints',
-			name: 'customEndpoints',
-			description:
-				'Whether to specify custom endpoints for your MCP server. Defaults are GET /sse and POST /messages',
-			type: 'boolean',
-			default: false,
-		},
-		{
-			displayName: 'SSE endpoint',
-			name: 'sseEndpoint',
-			type: 'string',
-			default: '/sse',
-			displayOptions: {
-				show: {
-					customEndpoints: [true],
-				},
-			},
-		},
-		{
-			displayName: 'Messages endpoint',
-			name: 'messagesEndpoint',
-			type: 'string',
-			default: '/messages',
-			displayOptions: {
-				show: {
-					customEndpoints: [true],
-				},
-			},
 		},
 	];
 }
