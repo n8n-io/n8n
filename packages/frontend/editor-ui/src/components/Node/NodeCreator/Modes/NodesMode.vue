@@ -282,6 +282,7 @@ registerKeyHook('MainViewArrowLeft', {
 			:elements="additionalSearchItems.items"
 			:category="i18n.baseText('nodeCreator.categoryNames.otherCategories')"
 			@selected="onSelected"
+			:expanded="true"
 		>
 		</CategorizedItemsRenderer>
 

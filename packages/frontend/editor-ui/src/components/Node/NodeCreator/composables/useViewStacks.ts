@@ -68,7 +68,7 @@ interface ViewStack {
 	nodeIcon?: NodeIconSource;
 	rootView?: NodeFilterType;
 	activeIndex?: number;
-	transitionDirection?: 'in' | 'out';
+	transitionDirection?: 'in' | 'out' | 'none';
 	hasSearch?: boolean;
 	preventBack?: boolean;
 	items?: INodeCreateElement[];
@@ -464,7 +464,10 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		}));
 	}
 
-	function pushViewStack(stack: ViewStack, options: { resetStacks?: boolean } = {}) {
+	function pushViewStack(
+		stack: ViewStack,
+		options: { resetStacks?: boolean; transitionDirection?: 'in' | 'out' | 'none' } = {},
+	) {
 		if (options.resetStacks) {
 			resetViewStacks();
 		}
@@ -477,7 +480,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		viewStacks.value.push({
 			...stack,
 			uuid: newStackUuid,
-			transitionDirection: 'in',
+			transitionDirection: options.transitionDirection ?? 'in',
 			activeIndex: 0,
 		});
 		setStackBaselineItems();
@@ -515,6 +518,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		nodeActions: ActionTypeDescription[] = [],
 		options?: {
 			resetStacks?: boolean;
+			transitionDirection?: 'in' | 'out' | 'none';
 		},
 	) {
 		const installed = !item.key.includes(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN);

@@ -115,6 +115,17 @@ const containsAPIAction = computed(() => {
 
 const isTriggerRootView = computed(() => rootView.value === TRIGGER_NODE_CREATOR_VIEW);
 
+const shouldShowTriggers = computed(() => {
+	if (communityNodeDetails.value && !parsedTriggerActions.value.length) {
+		// do not show baseline trigger actions for community nodes if it is not installed
+		return (
+			!useViewStacks().activeViewStack.items?.[0].key.includes(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN) &&
+			isTriggerRootView.value
+		);
+	}
+	return isTriggerRootView.value || parsedTriggerActionsBaseline.value.length !== 0;
+});
+
 registerKeyHook('ActionsKeyRight', {
 	keyboardKeys: ['ArrowRight', 'Enter'],
 	condition: (type) => type === 'action',
@@ -220,10 +231,17 @@ onMounted(() => {
 </script>
 
 <template>
-	<div :class="$style.container">
+	<div
+		:class="{
+			[$style.container]: true,
+			[$style.containerPaddingBottom]: !communityNodeDetails,
+		}"
+	>
+		<CommunityNodeInfo v-if="communityNodeDetails" />
 		<OrderSwitcher v-if="rootView" :root-view="rootView">
-			<template v-if="isTriggerRootView || parsedTriggerActionsBaseline.length !== 0" #triggers>
+			<template v-if="shouldShowTriggers" #triggers>
 				<!-- Triggers Category -->
+
 				<CategorizedItemsRenderer
 					v-memo="[search]"
 					:elements="parsedTriggerActions"
@@ -313,6 +331,7 @@ onMounted(() => {
 			/>
 		</div>
 		<CommunityNodeFooter
+			:class="$style.communityNodeFooter"
 			v-if="communityNodeDetails"
 			:package-name="communityNodeDetails.packageName"
 		/>
@@ -323,7 +342,15 @@ onMounted(() => {
 .container {
 	display: flex;
 	flex-direction: column;
+	min-height: 100%;
+}
+
+.containerPaddingBottom {
 	padding-bottom: var(--spacing-3xl);
+}
+
+.communityNodeFooter {
+	margin-top: auto;
 }
 
 .resetSearch {

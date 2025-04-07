@@ -204,6 +204,7 @@ function onBackButton() {
 			/>
 
 			<CommunityNodeDetails v-if="communityNodeDetails" />
+			<CommunityNodeInfo v-if="communityNodeDetails && !isActionsMode" />
 
 			<div :class="$style.renderedItems">
 				<n8n-notice
