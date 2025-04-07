@@ -1,17 +1,17 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
-import { Line } from 'vue-chartjs';
-import { type ScriptableContext, type ChartData, Filler } from 'chart.js';
-import dateformat from 'dateformat';
-import type { InsightsByTime, InsightsSummaryType } from '@n8n/api-types';
+import { useI18n } from '@/composables/useI18n';
 import {
 	generateLinearGradient,
 	generateLineChartOptions,
 } from '@/features/insights/chartjs.utils';
-import { useI18n } from '@/composables/useI18n';
 import { transformInsightsTimeSaved } from '@/features/insights/insights.utils';
-import { smartDecimal } from '@n8n/utils/number/smartDecimal';
-import { INSIGHTS_UNIT_MAPPING } from '@/features/insights/insights.constants';
+
+import { DATE_FORMAT_MASK, INSIGHTS_UNIT_MAPPING } from '@/features/insights/insights.constants';
+import type { InsightsByTime, InsightsSummaryType } from '@n8n/api-types';
+import { type ChartData, Filler, type ScriptableContext } from 'chart.js';
+import dateformat from 'dateformat';
+import { computed } from 'vue';
+import { Line } from 'vue-chartjs';
 
 const props = defineProps<{
 	data: InsightsByTime[];
@@ -27,7 +27,18 @@ const chartOptions = computed(() =>
 				callbacks: {
 					label: (context) => {
 						const label = context.dataset.label ?? '';
-						return `${label} ${smartDecimal(context.parsed.y)}${INSIGHTS_UNIT_MAPPING[props.type]}`;
+						const value = Number(context.parsed.y);
+						return `${label} ${transformInsightsTimeSaved(value).toLocaleString('en-US')}${INSIGHTS_UNIT_MAPPING[props.type](value)}`;
+					},
+				},
+			},
+		},
+		scales: {
+			y: {
+				ticks: {
+					// eslint-disable-next-line id-denylist
+					callback(tickValue) {
+						return transformInsightsTimeSaved(Number(tickValue));
 					},
 				},
 			},
@@ -40,9 +51,8 @@ const chartData = computed<ChartData<'line'>>(() => {
 	const data: number[] = [];
 
 	for (const entry of props.data) {
-		labels.push(dateformat(entry.date, 'd. mmm'));
-		const timeSaved = transformInsightsTimeSaved(entry.values.timeSaved);
-		data.push(timeSaved);
+		labels.push(dateformat(entry.date, DATE_FORMAT_MASK));
+		data.push(entry.values.timeSaved);
 	}
 
 	return {
