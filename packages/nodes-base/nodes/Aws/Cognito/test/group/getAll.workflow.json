@@ -29,7 +29,7 @@
 			"alwaysOutputData": true,
 			"credentials": {
 				"aws": {
-					"id": "xZj8dnPxDrcwGXyn",
+					"id": "testId",
 					"name": "AWS account Central Europe"
 				}
 			}
@@ -85,15 +85,5 @@
 				]
 			]
 		}
-	},
-	"active": false,
-	"settings": {
-		"executionOrder": "v1"
-	},
-	"versionId": "74539aff-0f2e-44a7-8756-4075d1363720",
-	"meta": {
-		"instanceId": "26f38eb23ad84214537831cfef4032299ffac994ff18d5cb72e82d31ac4ceac4"
-	},
-	"id": "GLTHCGg64D86o8jf",
-	"tags": []
+	}
 }

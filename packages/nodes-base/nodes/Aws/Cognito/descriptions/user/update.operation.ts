@@ -33,6 +33,13 @@ const properties: INodeProperties[] = [
 							[],
 						) as IUserAttributeInput[];
 
+						if (attributes.length === 0) {
+							throw new NodeApiError(this.getNode(), {
+								message: 'No user attributes provided',
+								description: 'At least one user attribute must be provided.',
+							});
+						}
+
 						const body = parseRequestBody(requestOptions.body);
 
 						body.UserAttributes = attributes.map(

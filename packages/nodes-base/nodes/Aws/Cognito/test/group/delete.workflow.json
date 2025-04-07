@@ -25,7 +25,7 @@
 			"name": "AWS Cognito1",
 			"credentials": {
 				"aws": {
-					"id": "xZj8dnPxDrcwGXyn",
+					"id": "testId",
 					"name": "AWS account Central Europe"
 				}
 			}
@@ -40,9 +40,5 @@
 				}
 			}
 		]
-	},
-	"meta": {
-		"templateCredsSetupCompleted": true,
-		"instanceId": "26f38eb23ad84214537831cfef4032299ffac994ff18d5cb72e82d31ac4ceac4"
 	}
 }

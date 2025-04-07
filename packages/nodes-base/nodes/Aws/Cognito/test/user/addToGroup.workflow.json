@@ -13,33 +13,33 @@
 				"operation": "addToGroup",
 				"userPoolId": {
 					"__rl": true,
-					"value": "us-east-1_RbwZXygrI",
+					"value": "eu-central-1_W3WwpiBXV",
 					"mode": "list",
 					"cachedResultName": "UserPoolSimple"
 				},
 				"userName": {
 					"__rl": true,
-					"value": "a4583478-f091-7038-7681-b00374bc1ed4",
+					"value": "0394e8e2-5081-7020-06bd-44bdfc84dd10",
 					"mode": "list",
-					"cachedResultName": "this@mail.com"
+					"cachedResultName": "UserSimple"
 				},
-				"groupName": {
+				"group": {
 					"__rl": true,
-					"value": "MyNewGroup3",
+					"value": "MyNewGroupSimple",
 					"mode": "list",
-					"cachedResultName": "MyNewGroup3"
+					"cachedResultName": "MyNewGroupSimple"
 				},
 				"requestOptions": {}
 			},
 			"type": "n8n-nodes-base.awsCognito",
 			"typeVersion": 1,
-			"position": [0, 60],
-			"id": "d29c766d-e353-4286-9423-b667a39541f7",
-			"name": "AWS Cognito2",
+			"position": [100, -100],
+			"id": "0accb395-3cdb-4c3f-8adc-1a47567c37b5",
+			"name": "AWS Cognito",
 			"credentials": {
 				"aws": {
-					"id": "9jaRLOceaJvYwd8S",
-					"name": "AWS US EAST"
+					"id": "testId",
+					"name": "AWS account Central Europe"
 				}
 			}
 		}
@@ -49,7 +49,7 @@
 			"main": [
 				[
 					{
-						"node": "AWS Cognito2",
+						"node": "AWS Cognito",
 						"type": "main",
 						"index": 0
 					}
@@ -58,9 +58,11 @@
 		}
 	},
 	"pinData": {
-		"AWS Cognito2": [
+		"AWS Cognito": [
 			{
-				"addedToGroup": true
+				"json": {
+					"addedToGroup": true
+				}
 			}
 		]
 	}

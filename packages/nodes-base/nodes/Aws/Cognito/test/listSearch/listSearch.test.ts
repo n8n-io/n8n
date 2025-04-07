@@ -4,12 +4,12 @@ import {
 	type INodeListSearchResult,
 } from 'n8n-workflow';
 
+import { searchUsersForGroup } from '../../helpers/searchFunctions';
 import {
 	searchUsers,
 	searchGroups,
 	searchUserPools,
 	searchGroupsForUser,
-	searchUsersForGroup,
 } from '../../methods/listSearch';
 import { awsApiRequest } from '../../transport/index';
 
@@ -17,8 +17,8 @@ jest.mock('../../transport/index', () => ({
 	awsApiRequest: jest.fn(),
 }));
 
-jest.mock('../../methods/listSearch', () => ({
-	...jest.requireActual('../../methods/listSearch'),
+jest.mock('../../helpers/searchFunctions', () => ({
+	...jest.requireActual('../../helpers/searchFunctions'),
 	searchUsersForGroup: jest.fn(),
 }));
 

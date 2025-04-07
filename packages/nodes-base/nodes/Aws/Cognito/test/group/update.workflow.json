@@ -36,7 +36,7 @@
 			"position": [160, -100],
 			"credentials": {
 				"aws": {
-					"id": "xZj8dnPxDrcwGXyn",
+					"id": "testId",
 					"name": "AWS account Central Europe"
 				}
 			}

@@ -13,20 +13,19 @@
 				"operation": "update",
 				"userPoolId": {
 					"__rl": true,
-					"value": "us-east-1_RbwZXygrI",
+					"value": "eu-central-1_EUZ4iEF1T",
 					"mode": "list",
-					"cachedResultName": "UserPoolSimple"
+					"cachedResultName": "UserPoolTwo"
 				},
 				"userName": {
 					"__rl": true,
-					"value": "a4583478-f091-7038-7681-b00374bc1ed4",
+					"value": "43045822-80e1-70f6-582d-78ae7992e9d9",
 					"mode": "list",
-					"cachedResultName": "this@mail.com"
+					"cachedResultName": "Johnn"
 				},
 				"userAttributes": {
 					"attributes": [
 						{
-							"Name": "address",
 							"Value": "New"
 						}
 					]
@@ -35,13 +34,13 @@
 			},
 			"type": "n8n-nodes-base.awsCognito",
 			"typeVersion": 1,
-			"position": [0, 40],
-			"id": "bc3483ef-4922-4759-a51d-12e5bd996628",
+			"position": [120, -100],
+			"id": "4c6bdeea-f863-4974-b3d6-7dfc04f78df3",
 			"name": "AWS Cognito",
 			"credentials": {
 				"aws": {
-					"id": "9jaRLOceaJvYwd8S",
-					"name": "AWS US EAST"
+					"id": "exampleId",
+					"name": "AWS account Central Europe"
 				}
 			}
 		}
@@ -62,7 +61,9 @@
 	"pinData": {
 		"AWS Cognito": [
 			{
-				"updated": true
+				"json": {
+					"updated": true
+				}
 			}
 		]
 	}

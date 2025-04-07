@@ -19,25 +19,26 @@
 				},
 				"userName": {
 					"__rl": true,
-					"value": "53f4c8d2-f0f1-70f3-7a5a-acead2a90731",
+					"value": "0394e8e2-5081-7020-06bd-44bdfc84dd10",
 					"mode": "list",
-					"cachedResultName": "Johnn"
+					"cachedResultName": "UserSimple"
 				},
-				"groupName": {
+				"group": {
 					"__rl": true,
 					"value": "MyNewGroupSimple",
-					"mode": "GroupName"
+					"mode": "list",
+					"cachedResultName": "MyNewGroupSimple"
 				},
 				"requestOptions": {}
 			},
-			"id": "00cc05f5-4907-45fa-9008-3ebde4c11a8f",
-			"name": "removeFromGroup",
 			"type": "n8n-nodes-base.awsCognito",
 			"typeVersion": 1,
-			"position": [20, 80],
+			"position": [100, -100],
+			"id": "0accb395-3cdb-4c3f-8adc-1a47567c37b5",
+			"name": "AWS Cognito",
 			"credentials": {
 				"aws": {
-					"id": "xZj8dnPxDrcwGXyn",
+					"id": "testId",
 					"name": "AWS account Central Europe"
 				}
 			}
@@ -48,7 +49,7 @@
 			"main": [
 				[
 					{
-						"node": "removeFromGroup",
+						"node": "AWS Cognito",
 						"type": "main",
 						"index": 0
 					}
@@ -57,9 +58,11 @@
 		}
 	},
 	"pinData": {
-		"removeFromGroup": [
+		"AWS Cognito": [
 			{
-				"removedFromGroup": true
+				"json": {
+					"removedFromGroup": true
+				}
 			}
 		]
 	}

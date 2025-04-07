@@ -27,12 +27,12 @@
 			},
 			"type": "n8n-nodes-base.awsCognito",
 			"typeVersion": 1,
-			"position": [20, 80],
-			"id": "68d9c310-77d5-4ca6-a98e-47e8216b31eb",
+			"position": [140, -100],
+			"id": "73a7ad40-1421-4788-8fbd-394dcb418fc3",
 			"name": "AWS Cognito1",
 			"credentials": {
 				"aws": {
-					"id": "xZj8dnPxDrcwGXyn",
+					"id": "testId",
 					"name": "AWS account Central Europe"
 				}
 			}
@@ -54,13 +54,17 @@
 	"pinData": {
 		"AWS Cognito1": [
 			{
-				"Enabled": true,
-				"UserCreateDate": 1739528018.102,
-				"UserLastModifiedDate": 1740655109.821,
-				"UserStatus": "FORCE_CHANGE_PASSWORD",
-				"Username": "UserSimple",
-				"address": "newAddress223",
-				"sub": "0394e8e2-5081-7020-06bd-44bdfc84dd10"
+				"json": {
+					"User": {
+						"Enabled": true,
+						"UserCreateDate": 1739528018.102,
+						"UserLastModifiedDate": 1740655109.821,
+						"UserStatus": "FORCE_CHANGE_PASSWORD",
+						"Username": "UserSimple",
+						"address": "newAddress223",
+						"sub": "0394e8e2-5081-7020-06bd-44bdfc84dd10"
+					}
+				}
 			}
 		]
 	}

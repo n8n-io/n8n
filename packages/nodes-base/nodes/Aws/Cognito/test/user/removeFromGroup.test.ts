@@ -1,104 +1,87 @@
-import { equalityTest, setup, workflowToTests } from '../../../../../test/nodes/Helpers';
+import nock from 'nock';
 
-describe('AWS Cognito - Remove From Group', () => {
-	const workflows = ['nodes/Aws/Cognito/test/user/removeFromGroup.workflow.json'];
-	const workflowTests = workflowToTests(workflows);
+import {
+	getWorkflowFilenames,
+	initBinaryDataService,
+	testWorkflows,
+} from '../../../../../test/nodes/Helpers';
 
-	describe('should remove a user from a group', () => {
-		const nodeTypes = setup(workflowTests);
+describe('AWS Cognito - Remove User From Group', () => {
+	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
+		filename.includes('removeFromGroup.workflow.json'),
+	);
 
-		for (const workflow of workflowTests) {
-			workflow.nock = {
-				baseUrl: 'https://cognito-idp.eu-central-1.amazonaws.com/',
-				mocks: [
+	beforeAll(async () => {
+		await initBinaryDataService();
+	});
+
+	beforeEach(() => {
+		if (!nock.isActive()) {
+			nock.activate();
+		}
+
+		const baseUrl = 'https://cognito-idp.eu-central-1.amazonaws.com/';
+		nock.cleanAll();
+
+		nock(baseUrl)
+			.persist()
+			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
+			.post('/', {
+				UserPoolId: 'eu-central-1_W3WwpiBXV',
+			})
+			.matchHeader('x-amz-target', 'AWSCognitoIdentityProviderService.DescribeUserPool')
+			.reply(200, {
+				UserPool: {
+					Arn: 'arn:aws:cognito-idp:eu-central-1:130450532146:userpool/eu-central-1_W3WwpiBXV',
+					CreationDate: 1739530218.869,
+					DeletionProtection: 'INACTIVE',
+					EstimatedNumberOfUsers: 4,
+					Id: 'eu-central-1_W3WwpiBXV',
+					LastModifiedDate: 1739530218.869,
+					MfaConfiguration: 'OFF',
+					Name: 'UserPoolSimple',
+				},
+			});
+
+		nock(baseUrl)
+			.persist()
+			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
+			.post('/', {
+				UserPoolId: 'eu-central-1_W3WwpiBXV',
+				MaxResults: 60,
+			})
+			.matchHeader('x-amz-target', 'AWSCognitoIdentityProviderService.ListUsers')
+			.reply(200, {
+				Users: [
 					{
-						method: 'post',
-						path: '/',
-						statusCode: 200,
-						requestBody: {
-							UserPoolId: 'eu-central-1_W3WwpiBXV',
-							Username: '53f4c8d2-f0f1-70f3-7a5a-acead2a90731',
-							GroupName: 'MyNewGroupSimple',
-						},
-						requestHeaders: {
-							'x-amz-target': 'AWSCognitoIdentityProviderService.AdminRemoveUserFromGroup',
-							'content-type': 'application/x-amz-json-1.1',
-						},
-						responseBody: {
-							StatusCode: 200,
-							Message: 'User removed from group successfully.',
-						},
-					},
-					{
-						method: 'post',
-						path: '/',
-						statusCode: 200,
-						requestBody: {
-							UserPoolId: 'eu-central-1_W3WwpiBXV',
-						},
-						requestHeaders: {
-							'x-amz-target': 'AWSCognitoIdentityProviderService.DescribeUserPool',
-							'content-type': 'application/x-amz-json-1.1',
-						},
-						responseBody: {
-							UserPool: {
-								Id: 'eu-central-1_W3WwpiBXV',
-								Name: 'User Pool Simple',
-								Status: 'ACTIVE',
-								CreationDate: 1634122735,
-								LastModifiedDate: 1634122735,
-								LambdaConfig: {
-									PreSignUp: 'arn:aws:lambda:eu-central-1:123456789012:function:PreSignUpFunction',
-								},
-								MfaConfiguration: 'OFF',
-							},
-						},
-					},
-					{
-						method: 'post',
-						path: '/',
-						statusCode: 200,
-						requestBody: {
-							UserPoolId: 'eu-central-1_W3WwpiBXV',
-							MaxResults: 60,
-						},
-						requestHeaders: {
-							'content-type': 'application/x-amz-json-1.1',
-							'x-amz-target': 'AWSCognitoIdentityProviderService.ListUsers',
-						},
-						responseBody: {
-							Users: [
-								{
-									Username: '53f4c8d2-f0f1-70f3-7a5a-acead2a90731',
-									Attributes: [
-										{ Name: 'email', Value: 'john.doe@example.com' },
-										{ Name: 'Sub', Value: '53f4c8d2-f0f1-70f3-7a5a-acead2a90731' },
-										{ Name: 'Enabled', Value: true },
-										{ Name: 'UserCreateDate', Value: 1634122735.226 },
-										{ Name: 'UserLastModifiedDate', Value: 1634122735.226 },
-										{ Name: 'UserStatus', Value: 'FORCE_CHANGE_PASSWORD' },
-									],
-								},
-								{
-									Username: '034448d2-4011-7079-9474-9a4fccd4247a',
-									Attributes: [
-										{ Name: 'email', Value: 'FinalUser@gmail.com' },
-										{ Name: 'Sub', Value: '034448d2-4011-7079-9474-9a4fccd4247a' },
-										{ Name: 'Enabled', Value: true },
-										{ Name: 'UserCreateDate', Value: 1736343033.226 },
-										{ Name: 'UserLastModifiedDate', Value: 1736343033.226 },
-										{ Name: 'UserStatus', Value: 'FORCE_CHANGE_PASSWORD' },
-									],
-								},
-							],
-						},
+						Username: '0394e8e2-5081-7020-06bd-44bdfc84dd10',
+						Attributes: [
+							{ Name: 'email', Value: 'UserSimple' },
+							{ Name: 'Sub', Value: '0394e8e2-5081-7020-06bd-44bdfc84dd10' },
+							{ Name: 'Enabled', Value: true },
+							{ Name: 'UserCreateDate', Value: 1736343033.226 },
+							{ Name: 'UserLastModifiedDate', Value: 1736343033.226 },
+							{ Name: 'UserStatus', Value: 'FORCE_CHANGE_PASSWORD' },
+						],
 					},
 				],
-			};
-
-			test(workflow.description, async () => {
-				await equalityTest(workflow, nodeTypes);
 			});
-		}
+
+		nock(baseUrl)
+			.persist()
+			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
+			.post('/', {
+				UserPoolId: 'eu-central-1_W3WwpiBXV',
+				Username: '0394e8e2-5081-7020-06bd-44bdfc84dd10',
+				GroupName: 'MyNewGroupSimple',
+			})
+			.matchHeader('x-amz-target', 'AWSCognitoIdentityProviderService.AdminRemoveUserFromGroup')
+			.reply(200, {});
 	});
+
+	afterEach(() => {
+		nock.cleanAll();
+	});
+
+	testWorkflows(workflows);
 });

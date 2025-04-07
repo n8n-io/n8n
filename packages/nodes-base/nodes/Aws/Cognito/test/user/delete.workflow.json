@@ -32,7 +32,7 @@
 			"name": "AWS Cognito",
 			"credentials": {
 				"aws": {
-					"id": "xZj8dnPxDrcwGXyn",
+					"id": "testId",
 					"name": "AWS account Central Europe"
 				}
 			}
@@ -54,7 +54,9 @@
 	"pinData": {
 		"AWS Cognito": [
 			{
-				"deleted": true
+				"json": {
+					"deleted": true
+				}
 			}
 		]
 	}
