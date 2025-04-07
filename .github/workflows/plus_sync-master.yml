@@ -1,4 +1,4 @@
-name: Sync Master with Upstream
+name: '[+] Sync Master with upstream'
 
 on:
   schedule:
