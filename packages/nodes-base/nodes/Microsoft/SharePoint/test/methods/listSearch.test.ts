@@ -2,7 +2,7 @@
 /* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
-import type { ILoadOptionsFunctions, INodeParameterResourceLocator } from 'n8n-workflow';
+import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
 import { FAKE_CREDENTIALS_DATA } from '@test/nodes/FakeCredentialsMap';
 

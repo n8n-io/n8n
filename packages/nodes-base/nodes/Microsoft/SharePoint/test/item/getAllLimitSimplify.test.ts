@@ -1,4 +1,4 @@
-import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
+import { equalityTest, workflowToTests } from '@test/nodes/Helpers';
 
 describe('Microsoft SharePoint Node', () => {
 	const workflows = ['nodes/Microsoft/SharePoint/test/item/getAllLimitSimplify.workflow.json'];
@@ -50,8 +50,6 @@ describe('Microsoft SharePoint Node', () => {
 			],
 		};
 
-		const nodeTypes = setup(workflowTests);
-
-		test(workflow.description, async () => await equalityTest(workflow, nodeTypes));
+		test(workflow.description, async () => await equalityTest(workflow));
 	}
 });
