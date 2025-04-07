@@ -1,29 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "contentDetails": {
-            "type": "object",
-            "properties": {
-                "caption": {
-                    "type": "string"
-                },
-                "definition": {
-                    "type": "string"
-                },
-                "dimension": {
-                    "type": "string"
-                },
-                "duration": {
-                    "type": "string"
-                },
-                "licensedContent": {
-                    "type": "boolean"
-                },
-                "projection": {
-                    "type": "string"
-                }
-            }
-        },
         "etag": {
             "type": "string"
         },
@@ -32,14 +9,6 @@
         },
         "kind": {
             "type": "string"
-        },
-        "player": {
-            "type": "object",
-            "properties": {
-                "embedHtml": {
-                    "type": "string"
-                }
-            }
         },
         "snippet": {
             "type": "object",
@@ -51,9 +20,6 @@
                     "type": "string"
                 },
                 "channelTitle": {
-                    "type": "string"
-                },
-                "defaultAudioLanguage": {
                     "type": "string"
                 },
                 "description": {
@@ -178,41 +144,7 @@
                     "type": "string"
                 }
             }
-        },
-        "status": {
-            "type": "object",
-            "properties": {
-                "embeddable": {
-                    "type": "boolean"
-                },
-                "license": {
-                    "type": "string"
-                },
-                "madeForKids": {
-                    "type": "boolean"
-                },
-                "privacyStatus": {
-                    "type": "string"
-                },
-                "publicStatsViewable": {
-                    "type": "boolean"
-                },
-                "uploadStatus": {
-                    "type": "string"
-                }
-            }
-        },
-        "topicDetails": {
-            "type": "object",
-            "properties": {
-                "topicCategories": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
         }
     },
-    "version": 1
+    "version": 2
 }
