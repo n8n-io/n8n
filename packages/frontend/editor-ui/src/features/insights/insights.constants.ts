@@ -8,12 +8,23 @@ export const INSIGHTS_SUMMARY_ORDER: InsightsSummaryType[] = [
 	'averageRunTime',
 ];
 
-export const INSIGHTS_UNIT_MAPPING: Record<InsightsSummaryType, string> = {
-	total: '',
-	failed: '',
-	failureRate: '%',
-	timeSaved: 'h',
-	averageRunTime: 's',
+export const INSIGHTS_UNIT_MAPPING: Record<InsightsSummaryType, (value: number) => string> = {
+	total: () => '',
+	failed: () => '',
+	failureRate: () => '%',
+	timeSaved: (value: number) => (Math.abs(value) < 3600 ? 'm' : 'h'),
+	averageRunTime: () => 's',
+} as const;
+
+export const INSIGHTS_DEVIATION_UNIT_MAPPING: Record<
+	InsightsSummaryType,
+	(deviation: number) => string
+> = {
+	total: () => '%',
+	failed: () => '%',
+	failureRate: () => 'pp',
+	timeSaved: (deviation: number) => (Math.abs(deviation) < 3600 ? 'm' : 'h'),
+	averageRunTime: () => 's',
 } as const;
 
 export const INSIGHT_IMPACT_TYPES = {
@@ -32,3 +43,5 @@ export const INSIGHTS_UNIT_IMPACT_MAPPING: Record<
 	timeSaved: INSIGHT_IMPACT_TYPES.POSITIVE, // More time saved is good → positive (green)
 	averageRunTime: INSIGHT_IMPACT_TYPES.NEUTRAL, // Not good or bad → neutral (grey)
 } as const;
+
+export const DATE_FORMAT_MASK = 'mmm d';
