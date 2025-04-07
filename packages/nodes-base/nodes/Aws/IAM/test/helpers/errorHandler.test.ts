@@ -29,7 +29,9 @@ describe('handleError', () => {
 			.mockReturnValueOnce('existingUserName');
 
 		response.statusCode = 400;
-		response.body = { code: 'EntityAlreadyExists', message: 'User already exists' } as JsonObject;
+		response.body = {
+			Error: { Code: 'EntityAlreadyExists', Message: 'User "existingUserName" already exists' },
+		} as JsonObject;
 
 		await expect(handleError.call(mockExecuteSingleFunctions, data, response)).rejects.toThrow(
 			new NodeApiError(mockExecuteSingleFunctions.getNode(), response.body as JsonObject, {
@@ -45,7 +47,9 @@ describe('handleError', () => {
 			.mockReturnValue('existingGroupName');
 
 		response.statusCode = 400;
-		response.body = { code: 'EntityAlreadyExists', message: 'Group already exists' } as JsonObject;
+		response.body = {
+			Error: { Code: 'EntityAlreadyExists', Message: 'Group "existingGroupName" already exists' },
+		} as JsonObject;
 
 		await expect(handleError.call(mockExecuteSingleFunctions, data, response)).rejects.toThrow(
 			new NodeApiError(mockExecuteSingleFunctions.getNode(), response.body as JsonObject, {
@@ -61,7 +65,9 @@ describe('handleError', () => {
 			.mockReturnValueOnce('nonExistentUser');
 
 		response.statusCode = 404;
-		response.body = { code: 'NoSuchEntity', message: 'User does not exist' } as JsonObject;
+		response.body = {
+			Error: { Code: 'NoSuchEntity', Message: 'User does not exist' },
+		} as JsonObject;
 
 		await expect(handleError.call(mockExecuteSingleFunctions, data, response)).rejects.toThrowError(
 			new NodeApiError(mockExecuteSingleFunctions.getNode(), response.body as JsonObject, {
@@ -77,7 +83,9 @@ describe('handleError', () => {
 			.mockReturnValue('nonExistentGroup');
 
 		response.statusCode = 404;
-		response.body = { code: 'NoSuchEntity', message: 'Group does not exist' } as JsonObject;
+		response.body = {
+			Error: { Code: 'NoSuchEntity', Message: 'Group does not exist' },
+		} as JsonObject;
 
 		await expect(handleError.call(mockExecuteSingleFunctions, data, response)).rejects.toThrow(
 			new NodeApiError(mockExecuteSingleFunctions.getNode(), response.body as JsonObject, {
@@ -93,7 +101,9 @@ describe('handleError', () => {
 			.mockReturnValue('userInGroup');
 
 		response.statusCode = 400;
-		response.body = { code: 'DeleteConflict', message: 'User is in a group' } as JsonObject;
+		response.body = {
+			Error: { Code: 'DeleteConflict', Message: 'User is in a group' },
+		} as JsonObject;
 
 		await expect(handleError.call(mockExecuteSingleFunctions, data, response)).rejects.toThrow(
 			new NodeApiError(mockExecuteSingleFunctions.getNode(), response.body as JsonObject, {
@@ -107,7 +117,7 @@ describe('handleError', () => {
 		mockExecuteSingleFunctions.getNodeParameter.mockReturnValue('container');
 
 		response.statusCode = 400;
-		response.body = { code: 'BadRequest', message: 'Invalid request' } as JsonObject;
+		response.body = { Error: { Code: 'BadRequest', Message: 'Invalid request' } } as JsonObject;
 
 		await expect(handleError.call(mockExecuteSingleFunctions, data, response)).rejects.toThrow(
 			new NodeApiError(mockExecuteSingleFunctions.getNode(), response.body as JsonObject, {
@@ -115,102 +125,5 @@ describe('handleError', () => {
 				description: 'Invalid request',
 			}),
 		);
-	});
-
-	test('should handle error details correctly when match is successful', async () => {
-		const errorMessage = 'Message: {"Errors":["Error 1", "Error 2"]}';
-		const match = errorMessage.match(/Message: ({.*?})/);
-		let errorDetails: string[] = [];
-
-		if (match?.[1]) {
-			try {
-				errorDetails = JSON.parse(match[1]).Errors;
-			} catch {}
-		}
-
-		expect(errorDetails).toEqual(['Error 1', 'Error 2']);
-	});
-
-	test('should handle error when match does not return expected format', async () => {
-		const errorMessage = 'Message: Invalid format';
-
-		const match = errorMessage.match(/Message: ({.*?})/);
-		let errorDetails: string[] = [];
-
-		if (match?.[1]) {
-			try {
-				errorDetails = JSON.parse(match[1]).Errors;
-			} catch {}
-		}
-
-		expect(errorDetails).toEqual([]);
-	});
-
-	test('should throw NodeApiError with proper details if error details are present', async () => {
-		const errorMessage = 'Message: {"Errors":["Specific error occurred"]}';
-		const match = errorMessage.match(/Message: ({.*?})/);
-		let errorDetails: string[] = [];
-
-		if (match?.[1]) {
-			try {
-				errorDetails = JSON.parse(match[1]).Errors;
-			} catch {}
-		}
-
-		if (errorDetails && errorDetails.length > 0) {
-			await expect(
-				handleError.call(mockExecuteSingleFunctions, data, {
-					statusCode: 500,
-					body: { code: 'InternalServerError', message: errorMessage },
-					headers: {},
-				}),
-			).rejects.toThrow(
-				new NodeApiError(
-					mockExecuteSingleFunctions.getNode(),
-					{
-						code: 'InternalServerError',
-						message: errorMessage,
-					} as JsonObject,
-					{
-						message: 'InternalServerError',
-						description: errorDetails.join('\n'),
-					},
-				),
-			);
-		}
-	});
-
-	test('should throw NodeApiError with fallback message if no details found', async () => {
-		const errorMessage = 'Message: {"Errors":[] }';
-		const match = errorMessage.match(/Message: ({.*?})/);
-		let errorDetails: string[] = [];
-
-		if (match?.[1]) {
-			try {
-				errorDetails = JSON.parse(match[1]).Errors;
-			} catch {}
-		}
-
-		if (errorDetails && errorDetails.length > 0) {
-			await expect(
-				handleError.call(mockExecuteSingleFunctions, data, {
-					statusCode: 500,
-					body: { code: 'InternalServerError', message: errorMessage },
-					headers: {},
-				}),
-			).rejects.toThrow(
-				new NodeApiError(
-					mockExecuteSingleFunctions.getNode(),
-					{
-						code: 'InternalServerError',
-						message: errorMessage,
-					} as JsonObject,
-					{
-						message: 'InternalServerError',
-						description: 'Internal Server Error',
-					},
-				),
-			);
-		}
 	});
 });
