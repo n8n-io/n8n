@@ -12,9 +12,9 @@ import {
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import { createSubscription, getResourcePath } from './MicrosoftTeamsTriggerHelpers.node';
 import { listSearch } from './v2/methods';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from './v2/transport';
+import { createSubscription, getResourcePath } from './v2/transport/utils-trigger';
 
 export class MicrosoftTeamsTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -243,7 +243,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						placeholder: 'https://teams.microsoft.com/_#/conversations/CHAT_ID',
 						extractValue: {
 							type: 'regex',
-							regex: 'l/chat/([^/]+)',
+							regex: /conversations\/([^\/?]+)/i,
 						},
 					},
 				],
@@ -263,6 +263,8 @@ export class MicrosoftTeamsTrigger implements INodeType {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookData = this.getWorkflowStaticData('node');
+
 				try {
 					const subscriptions = await microsoftApiRequestAllItems.call(
 						this as unknown as ILoadOptionsFunctions,
@@ -273,7 +275,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 
 					for (const subscription of subscriptions) {
 						if (subscription.notificationUrl === webhookUrl) {
-							this.getWorkflowStaticData('node').subscriptionId = subscription.id;
+							webhookData.subscriptionId = subscription.id;
 							return true;
 						}
 					}
@@ -286,6 +288,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
+				const event = this.getNodeParameter('event', 0) as string;
 
 				if (!webhookUrl || !webhookUrl.startsWith('https://')) {
 					throw new NodeApiError(this.getNode(), {
@@ -294,7 +297,6 @@ export class MicrosoftTeamsTrigger implements INodeType {
 					});
 				}
 
-				const event = this.getNodeParameter('event', 0) as string;
 				const resourcePaths = await getResourcePath.call(this, event);
 
 				if (Array.isArray(resourcePaths)) {
@@ -347,7 +349,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 
 					return true;
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error as JsonObject);
+					return false;
 				}
 			},
 		},
