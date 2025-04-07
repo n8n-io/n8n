@@ -1,27 +1,15 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
+import { CompatibilityCallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import { Toolkit } from 'langchain/agents';
 import { DynamicStructuredTool, type DynamicStructuredToolInput } from 'langchain/tools';
+import get from 'lodash/get';
 import { createResultError, createResultOk, type IDataObject, type Result } from 'n8n-workflow';
-import type { ZodTypeAny } from 'zod';
+import { ZodError, type ZodTypeAny } from 'zod';
 
 import { convertJsonSchemaToZod } from '@utils/schemaParsing';
 
 import type { McpSseCredential, McpTool, McpToolIncludeMode } from './types';
-
-const DEFAULT_SSE_ENDPOINT = '/sse';
-const DEFAULT_MESSAGES_ENDPOINT = '/messages';
-
-export function getEndpoints(credential: McpSseCredential): { sse: string; messages: string } {
-	if (credential.customEndpoints) {
-		return {
-			sse: credential.sseEndpoint ?? DEFAULT_SSE_ENDPOINT,
-			messages: credential.messagesEndpoint ?? DEFAULT_MESSAGES_ENDPOINT,
-		};
-	}
-
-	return { sse: DEFAULT_SSE_ENDPOINT, messages: DEFAULT_MESSAGES_ENDPOINT };
-}
 
 export function getHeaders(credential: McpSseCredential): HeadersInit {
 	if (credential.authEnabled) {
@@ -74,14 +62,25 @@ export async function getSelectedTools({
 export const createCallTool =
 	(name: string, client: Client, onError: (error: unknown) => void) =>
 	async (args: IDataObject) => {
-		const result = await client.callTool({ name, arguments: args });
+		try {
+			const result = await client.callTool(
+				{ name, arguments: args },
+				CompatibilityCallToolResultSchema,
+			);
 
-		if (result.isError) {
-			onError(result.content);
+			if (result.toolResult !== undefined) {
+				return result.toolResult;
+			}
+
+			if (result.content !== undefined) {
+				return result.content;
+			}
+
+			return [];
+		} catch (error) {
+			onError(error);
 			return null;
 		}
-
-		return result.content;
 	};
 
 export function mcpToolToDynamicTool(
@@ -111,16 +110,12 @@ function safeCreateUrl(url: string, baseUrl?: string | URL): Result<URL, Error> 
 	}
 }
 
-type ValidateUrlError = { type: 'no_path' } | { type: 'invalid'; error: Error };
-function normalizeAndValidateBaseUrl(input: string): Result<URL, ValidateUrlError> {
+function normalizeAndValidateBaseUrl(input: string): Result<URL, Error> {
 	const withProtocol = !/^https?:\/\//i.test(input) ? `https://${input}` : input;
 	const parsedUrl = safeCreateUrl(withProtocol);
 
 	if (!parsedUrl.ok) {
-		return createResultError({ type: 'invalid', error: parsedUrl.error });
-	}
-	if (parsedUrl.result.pathname !== '/' && parsedUrl.result.pathname !== '') {
-		return createResultError({ type: 'no_path' });
+		return createResultError(parsedUrl.error);
 	}
 
 	return parsedUrl;
@@ -128,7 +123,6 @@ function normalizeAndValidateBaseUrl(input: string): Result<URL, ValidateUrlErro
 
 type ConnectMcpClientError =
 	| { type: 'invalid_url'; error: Error }
-	| { type: 'base_url_path' }
 	| { type: 'connection'; error: Error };
 export async function connectMcpClient({
 	credential,
@@ -137,29 +131,18 @@ export async function connectMcpClient({
 	Result<Client, ConnectMcpClientError>
 > {
 	try {
-		const baseUrl = normalizeAndValidateBaseUrl(credential.url);
+		const sseEndpoint = normalizeAndValidateBaseUrl(credential.sseEndpoint);
 
-		if (!baseUrl.ok) {
-			if (baseUrl.error.type === 'no_path') {
-				return createResultError({ type: 'base_url_path' });
-			}
-			return createResultError({ type: 'invalid_url', error: baseUrl.error.error });
+		if (!sseEndpoint.ok) {
+			return createResultError({ type: 'invalid_url', error: sseEndpoint.error });
 		}
 
-		const endpoints = getEndpoints(credential);
 		const headers = getHeaders(credential);
-		const sseUrl = safeCreateUrl(endpoints.sse, baseUrl.result);
-		const messagesUrl = safeCreateUrl(endpoints.messages, baseUrl.result);
 
-		if (!sseUrl.ok) return createResultError({ type: 'invalid_url', error: sseUrl.error });
-		if (!messagesUrl.ok)
-			return createResultError({ type: 'invalid_url', error: messagesUrl.error });
-
-		const transport = new SSEClientTransport(sseUrl.result, {
+		const transport = new SSEClientTransport(sseEndpoint.result, {
 			// @ts-expect-error eventSourceInit type is not complete
 			eventSourceInit: { headers },
-			// @ts-expect-error requestInit type is not complete
-			requestInit: { endpoint: messagesUrl.result, headers },
+			requestInit: { headers },
 		});
 
 		const client = new Client(
@@ -175,4 +158,14 @@ export async function connectMcpClient({
 	} catch (error) {
 		return createResultError({ type: 'connection', error });
 	}
+}
+
+export function getToolCallErrorDescription(error: unknown) {
+	if (error instanceof ZodError) {
+		return `<ul>
+	${error.issues.map((issue) => `<li>${issue.path.join('.')}: ${issue.message}</li>`).join('\n')}
+</ul`;
+	}
+
+	return get(error, 'message');
 }
