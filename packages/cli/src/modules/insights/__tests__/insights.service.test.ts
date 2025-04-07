@@ -613,10 +613,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
 
 		// Flush will hang until we manually resolve it
-		let flushResolve: () => void;
-		const flushPromise = new Promise<void>((resolve) => {
-			flushResolve = resolve;
-		});
+		const { resolve: flushResolve, promise: flushPromise } = createDeferredPromise();
 
 		// First flush will "hang" (simulate long save)
 		trxMock.insert.mockImplementationOnce(async () => {
