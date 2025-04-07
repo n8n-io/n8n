@@ -2,15 +2,14 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useRouter } from 'vue-router';
 import type router from 'vue-router';
-import {
-	ExpressionError,
-	type IPinData,
-	type IRunData,
-	type Workflow,
-	type IExecuteData,
-	type ITaskData,
-	NodeConnectionTypes,
-	type INodeConnections,
+import { ExpressionError, NodeConnectionTypes } from 'n8n-workflow';
+import type {
+	IPinData,
+	IRunData,
+	Workflow,
+	IExecuteData,
+	ITaskData,
+	INodeConnections,
 } from 'n8n-workflow';
 
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
@@ -27,7 +26,9 @@ import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { waitFor } from '@testing-library/vue';
 
 vi.mock('@/stores/workflows.store', async () => {
-	const storeState = {
+	const storeState: Partial<ReturnType<typeof useWorkflowsStore>> & {
+		activeExecutionId: string | null;
+	} = {
 		allNodes: [],
 		runWorkflow: vi.fn(),
 		subWorkflowExecutionError: null,
@@ -41,7 +42,6 @@ vi.mock('@/stores/workflows.store', async () => {
 		getCurrentWorkflow: vi.fn().mockReturnValue({ id: '123' }),
 		getNodeByName: vi.fn(),
 		getExecution: vi.fn(),
-		nodeIssuesExit: vi.fn(),
 		checkIfNodeHasChatParent: vi.fn(),
 		getParametersLastUpdate: vi.fn(),
 		getPinnedDataLastUpdate: vi.fn(),
@@ -49,7 +49,7 @@ vi.mock('@/stores/workflows.store', async () => {
 		incomingConnectionsByNodeName: vi.fn(),
 		outgoingConnectionsByNodeName: vi.fn(),
 		markExecutionAsStopped: vi.fn(),
-		setActiveExecutionId: vi.fn((id: string) => {
+		setActiveExecutionId: vi.fn((id: string | null) => {
 			storeState.activeExecutionId = id;
 		}),
 	};
