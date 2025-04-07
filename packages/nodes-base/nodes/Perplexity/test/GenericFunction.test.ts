@@ -3,10 +3,11 @@ import type {
 	ILoadOptionsFunctions,
 	IN8nHttpFullResponse,
 	INodeExecutionData,
+	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { sendErrorPostReceive, getModels } from '../GenericFunctions';
+import { sendErrorPostReceive, getModels, getBaseUrl } from '../GenericFunctions';
 
 // Mock implementation for `this` in `sendErrorPostReceive`
 const mockExecuteSingleFunctions = {
@@ -49,6 +50,58 @@ describe('Generic Functions', () => {
 				sendErrorPostReceive.call(mockExecuteSingleFunctions, testData, testResponse),
 			).rejects.toThrow(NodeApiError);
 		});
+
+		it('should throw NodeApiError with "Invalid model" message if error type is invalid_model', async () => {
+			const errorResponse = {
+				statusCode: 400,
+				body: {
+					error: {
+						type: 'invalid_model',
+						message: 'Invalid model type provided.',
+					},
+				},
+			};
+
+			await expect(
+				sendErrorPostReceive.call(
+					mockExecuteSingleFunctions,
+					testData,
+					errorResponse as unknown as IN8nHttpFullResponse,
+				),
+			).rejects.toThrowError(
+				new NodeApiError(mockExecuteSingleFunctions.getNode(), errorResponse.body, {
+					message: 'Invalid model',
+					description:
+						'The model is not valid. Permitted models can be found in the documentation at https://docs.perplexity.ai/guides/model-cards.',
+				}),
+			);
+		});
+
+		it('should throw NodeApiError with "Invalid parameter" message if error type is invalid_parameter', async () => {
+			const errorResponse = {
+				statusCode: 400,
+				body: {
+					error: {
+						type: 'invalid_parameter',
+						message: 'Invalid parameter provided.',
+					},
+				},
+			};
+
+			await expect(
+				sendErrorPostReceive.call(
+					mockExecuteSingleFunctions,
+					testData,
+					errorResponse as unknown as IN8nHttpFullResponse,
+				),
+			).rejects.toThrowError(
+				new NodeApiError(mockExecuteSingleFunctions.getNode(), errorResponse.body, {
+					message: 'invalid_parameter Invalid parameter provided.',
+					description:
+						'Please check all input parameters and ensure they are correctly formatted. Valid values can be found in the documentation at https://docs.perplexity.ai/api-reference/chat-completions.',
+				}),
+			);
+		});
 	});
 
 	describe('getModels', () => {
@@ -79,6 +132,30 @@ describe('Generic Functions', () => {
 			const filter = 'nonexistent';
 			const result = await getModels.call({} as ILoadOptionsFunctions, filter);
 			expect(result.results).toEqual([]);
+		});
+	});
+
+	describe('getBaseUrl', () => {
+		it('should return the base URL without trailing slash', () => {
+			const credentials = {
+				baseUrl: 'https://api.perplexity.ai/',
+			} as ICredentialDataDecryptedObject;
+			const result = getBaseUrl(credentials);
+			expect(result).toBe('https://api.perplexity.ai');
+		});
+
+		it('should return the default base URL if baseUrl is not provided', () => {
+			const credentials = {} as ICredentialDataDecryptedObject;
+			const result = getBaseUrl(credentials);
+			expect(result).toBe('https://api.perplexity.ai');
+		});
+
+		it('should handle case where baseUrl has no trailing slash', () => {
+			const credentials = {
+				baseUrl: 'https://api.perplexity.ai',
+			} as ICredentialDataDecryptedObject;
+			const result = getBaseUrl(credentials);
+			expect(result).toBe('https://api.perplexity.ai');
 		});
 	});
 });
