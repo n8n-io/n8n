@@ -3,11 +3,10 @@ import type {
 	ILoadOptionsFunctions,
 	IN8nHttpFullResponse,
 	INodeExecutionData,
-	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { sendErrorPostReceive, getModels, getBaseUrl } from '../GenericFunctions';
+import { sendErrorPostReceive, getModels } from '../GenericFunctions';
 
 // Mock implementation for `this` in `sendErrorPostReceive`
 const mockExecuteSingleFunctions = {
@@ -233,51 +232,6 @@ describe('Generic Functions', () => {
 			const filter = 'nonexistent';
 			const result = await getModels.call({} as ILoadOptionsFunctions, filter);
 			expect(result.results).toEqual([]);
-		});
-	});
-
-	describe('getBaseUrl', () => {
-		it('should return the base URL without trailing slash', () => {
-			const credentials = {
-				baseUrl: 'https://api.perplexity.ai/',
-			} as ICredentialDataDecryptedObject;
-			const result = getBaseUrl(credentials);
-			expect(result).toBe('https://api.perplexity.ai');
-		});
-
-		it('should return the default base URL if baseUrl is not provided', () => {
-			const credentials = {} as ICredentialDataDecryptedObject;
-			const result = getBaseUrl(credentials);
-			expect(result).toBe('https://api.perplexity.ai');
-		});
-
-		it('should handle case where baseUrl has no trailing slash', () => {
-			const credentials = {
-				baseUrl: 'https://api.perplexity.ai',
-			} as ICredentialDataDecryptedObject;
-			const result = getBaseUrl(credentials);
-			expect(result).toBe('https://api.perplexity.ai');
-		});
-
-		it('should handle empty string in baseUrl', () => {
-			const credentials = {
-				baseUrl: '',
-			} as ICredentialDataDecryptedObject;
-			const result = getBaseUrl(credentials);
-			expect(result).toBe('https://api.perplexity.ai');
-		});
-
-		it('should handle non-string baseUrl', () => {
-			const credentials = {
-				baseUrl: 12345 as unknown as string,
-			} as ICredentialDataDecryptedObject;
-
-			const result = getBaseUrl({
-				...credentials,
-				baseUrl: String(credentials.baseUrl),
-			});
-
-			expect(result).toBe('12345');
 		});
 	});
 });
