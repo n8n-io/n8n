@@ -4,20 +4,11 @@
         ".tag": {
             "type": "string"
         },
-        "client_modified": {
-            "type": "string"
-        },
-        "content_hash": {
-            "type": "string"
-        },
         "file_owner_team_encrypted_id": {
             "type": "string"
         },
         "id": {
             "type": "string"
-        },
-        "is_downloadable": {
-            "type": "boolean"
         },
         "name": {
             "type": "string"
@@ -27,16 +18,7 @@
         },
         "path_lower": {
             "type": "string"
-        },
-        "rev": {
-            "type": "string"
-        },
-        "server_modified": {
-            "type": "string"
-        },
-        "size": {
-            "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }
