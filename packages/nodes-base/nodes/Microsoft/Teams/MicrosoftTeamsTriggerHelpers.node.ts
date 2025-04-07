@@ -48,7 +48,7 @@ export async function createSubscription(
 	this: IHookFunctions | IExecuteFunctions,
 	webhookUrl: string,
 	resourcePath: string,
-): Promise<string> {
+): Promise<{ id: string; expirationDateTime: string }> {
 	const expirationTime = new Date(Date.now() + 3600 * 2 * 1000).toISOString();
 	const body: IDataObject = {
 		changeType: 'created',
@@ -66,7 +66,10 @@ export async function createSubscription(
 		body,
 	);
 
-	return response.id;
+	return {
+		id: response.id,
+		expirationDateTime: response.expirationDateTime,
+	};
 }
 
 export async function getResourcePath(
