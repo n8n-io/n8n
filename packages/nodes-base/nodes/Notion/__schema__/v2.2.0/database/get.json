@@ -4,12 +4,9 @@
         "id": {
             "type": "string"
         },
-        "name": {
-            "type": "string"
-        },
         "url": {
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
