@@ -4,7 +4,7 @@ import { testWorkflows, getWorkflowFilenames, initBinaryDataService } from '@tes
 
 describe('Perplexity Node - Chat Completions', () => {
 	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
-		filename.includes('ChatCompletions.workflow.json'),
+		filename.includes('complete.workflow.json'),
 	);
 
 	beforeAll(async () => {

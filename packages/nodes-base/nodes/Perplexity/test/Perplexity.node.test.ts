@@ -5,7 +5,7 @@ import { Perplexity } from '../../Perplexity/Perplexity.node';
 import {
 	chatCompletionsFields,
 	chatCompletionsOperations,
-} from '../descriptions/ChatCompletionsDescription';
+} from '../descriptions/chat/complete.operation';
 
 jest.mock('../../Perplexity/GenericFunctions', () => ({
 	getModels: jest.fn(),
