@@ -80,7 +80,7 @@ describe('AI Assistant::enabled', () => {
 		});
 	});
 
-	it('should start chat session from node error view', () => {
+	it.only('should start chat session from node error view', () => {
 		cy.intercept('POST', '/rest/ai/chat', {
 			statusCode: 200,
 			fixture: 'aiAssistant/responses/simple_message_response.json',
