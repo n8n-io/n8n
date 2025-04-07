@@ -19,7 +19,7 @@ const properties: INodeProperties[] = [
 			send: {
 				type: 'body',
 				property: 'query',
-				value: "={{ $value.replace(/\\$(\\d+)/g, '@param$1') }}",
+				value: "={{ $value.replace(/\\$(\\d+)/g, '@Param$1') }}",
 			},
 		},
 		type: 'string',
