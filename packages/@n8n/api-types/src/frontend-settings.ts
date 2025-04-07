@@ -183,5 +183,7 @@ export interface FrontendSettings {
 	};
 	insights: {
 		enabled: boolean;
+		summary: boolean;
+		dashboard: boolean;
 	};
 }
