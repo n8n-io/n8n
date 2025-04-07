@@ -729,12 +729,6 @@ export const CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const AI_ASSISTANT_EXPERIMENT = {
-	name: '021_ai_debug_helper',
-	control: 'control',
-	variant: 'variant',
-};
-
 export const CREDENTIAL_DOCS_EXPERIMENT = {
 	name: '024_credential_docs',
 	control: 'control',
@@ -761,7 +755,6 @@ export const SCHEMA_PREVIEW_EXPERIMENT = {
 
 export const EXPERIMENTS_TO_TRACK = [
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.name,
-	AI_ASSISTANT_EXPERIMENT.name,
 	CREDENTIAL_DOCS_EXPERIMENT.name,
 	EASY_AI_WORKFLOW_EXPERIMENT.name,
 	AI_CREDITS_EXPERIMENT.name,
