@@ -24,6 +24,7 @@ defineProps<Props>();
 	align-items: center;
 	gap: var(--spacing-s);
 	margin: var(--spacing-xs);
+	margin-top: 0;
 	padding: var(--spacing-xs);
 	border: var(--border-width-base) solid var(--color-foreground-base);
 	border-radius: 0.25em;

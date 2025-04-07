@@ -27,8 +27,9 @@ interface Data {
 	};
 }
 
-const VETTED_NODE_TYPES_URL =
-	'https://fraction-choose-conversations-isaac.trycloudflare.com/api/community-nodes';
+// const VETTED_NODE_TYPES_URL =
+// 	'https://fraction-choose-conversations-isaac.trycloudflare.com/api/community-nodes';
+const VETTED_NODE_TYPES_URL = 'http://localhost:5678/webhook/strapi-mock';
 const UPDATE_INTERVAL = 8 * 60 * 60 * 1000;
 
 @Service()

@@ -194,7 +194,7 @@ function onBackButton() {
 			</header>
 
 			<SearchBar
-				v-if="activeViewStack.hasSearch"
+				v-if="activeViewStack.hasSearch && !activeViewStack.communityNodeDetails"
 				:class="$style.searchBar"
 				:placeholder="
 					searchPlaceholder ? searchPlaceholder : i18n.baseText('nodeCreator.searchBar.searchNodes')

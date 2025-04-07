@@ -262,7 +262,8 @@ onMounted(async () => {
 .info {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
+	justify-content: left;
+	gap: var(--spacing-m);
 	margin-bottom: var(--spacing-m);
 	flex-wrap: wrap;
 }

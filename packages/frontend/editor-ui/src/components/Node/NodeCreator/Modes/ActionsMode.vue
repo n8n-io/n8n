@@ -23,7 +23,7 @@ import { useViewStacks } from '../composables/useViewStacks';
 
 import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
-import type { IDataObject } from 'n8n-workflow';
+import { COMMUNITY_NODE_TYPE_PREVIEW_TOKEN, type IDataObject } from 'n8n-workflow';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -159,6 +159,8 @@ function onSelected(actionCreateElement: INodeCreateElement) {
 		(actionData?.value as IDataObject)?.operation === 'message'
 	) {
 		emit('nodeTypeSelected', [OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE]);
+	} else if (actionData?.key?.includes(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN)) {
+		return;
 	} else {
 		emit('nodeTypeSelected', [actionData.key as string]);
 	}

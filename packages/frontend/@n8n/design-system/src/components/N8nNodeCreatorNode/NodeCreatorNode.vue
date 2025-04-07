@@ -57,7 +57,7 @@ const { t } = useI18n();
 					<template #content>
 						<slot name="tooltip" />
 					</template>
-					<n8n-icon :class="$style.tooltipIcon" icon="users" />
+					<n8n-icon :class="$style.tooltipIcon" icon="cube" />
 				</N8nTooltip>
 			</div>
 			<p
