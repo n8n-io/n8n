@@ -1,5 +1,4 @@
 import { CredentialsModal, MessageBox } from './modals';
-import { overrideFeatureFlag } from '../composables/featureFlags';
 import * as formStep from '../composables/setup-template-form-step';
 
 const credentialsModal = new CredentialsModal();
@@ -12,13 +11,8 @@ export const getters = {
 	infoCallout: () => cy.getByTestId('info-callout'),
 };
 
-export const enableTemplateCredentialSetupFeatureFlag = () => {
-	overrideFeatureFlag('017_template_credential_setup_v2', true);
-};
-
 export const visitTemplateCredentialSetupPage = (templateId: number) => {
 	cy.visit(`templates/${templateId}/setup`);
-	enableTemplateCredentialSetupFeatureFlag();
 
 	formStep.getFormStep().eq(0).should('be.visible');
 };
