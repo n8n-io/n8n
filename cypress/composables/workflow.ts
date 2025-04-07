@@ -374,7 +374,7 @@ export function clickOpenNdvButtonOnLogEntryAtRow(index: number) {
 	cy.getByTestId('logs-overview-body').get('[role="treeitem"]').eq(index).realHover();
 	cy.getByTestId('logs-overview-body')
 		.get('[role="treeitem"]')
-		.get('[aria-label="Open..."]')
 		.eq(index)
+		.find('[aria-label="Open..."]')
 		.click();
 }

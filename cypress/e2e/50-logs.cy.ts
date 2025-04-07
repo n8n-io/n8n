@@ -22,9 +22,9 @@ describe('Logs', () => {
 		clickZoomToFit();
 		executeWorkflowAndWait();
 		openLogsPanel();
-		clickOpenNdvButtonOnLogEntryAtRow(2);
+		clickOpenNdvButtonOnLogEntryAtRow(6);
 		getNdvTitle().should('contain.text', 'Loop Over Items');
-		getOutputRunSelector().find('input').should('have.value', '1 of 4 (1 item)');
+		getOutputRunSelector().find('input').should('have.value', '3 of 4 (1 item)');
 		clickGetBackToCanvas();
 		clickOpenNdvButtonOnLogEntryAtRow(8);
 		getNdvTitle().should('contain.text', 'Loop Over Items');
