@@ -448,7 +448,7 @@ function moveFolder(folderName: string, destinationName: string) {
 	cy.intercept('PATCH', '/rest/projects/**').as('moveFolder');
 	getMoveFolderModal().should('be.visible');
 	getMoveFolderModal().find('h1').first().contains(`Move "${folderName}" to another folder`);
-	getMoveToFolderDropdown().click();
+	// getMoveToFolderDropdown().click();
 	// Try to find current folder in the dropdown
 	getMoveToFolderInput().type(folderName, { delay: 50 });
 	// Should not be available

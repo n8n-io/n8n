@@ -98,9 +98,7 @@ const blur = () => {
 const focusOnInput = () => {
 	if (!innerSelect.value) return;
 
-	const inputRef = (innerSelect.value.$refs.input ?? innerSelect.value.$refs.selectWrapper) as
-		| HTMLInputElement
-		| undefined;
+	const inputRef = innerSelect.value.$refs.selectWrapper as HTMLInputElement;
 
 	const inputElement = inputRef?.querySelector('input');
 	if (inputElement) inputElement.focus();
