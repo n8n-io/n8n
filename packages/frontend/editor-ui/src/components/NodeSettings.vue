@@ -148,7 +148,7 @@ const isExecutable = computed(() => {
 
 		if (
 			!inputNames.includes(NodeConnectionTypes.Main) &&
-			!outputNames.includes(NodeConnectionTypes.AiTool) &&
+			!isAiToolNode.value &&
 			!isTriggerNode.value
 		) {
 			return false;
@@ -649,7 +649,7 @@ const populateHiddenIssuesSet = () => {
 
 const populateSettings = () => {
 	if (isExecutable.value && !isTriggerNode.value) {
-		setting.value.push(
+		nodeSettings.value.push(
 			...([
 				{
 					displayName: i18n.baseText('nodeSettings.alwaysOutputData.displayName'),
@@ -741,7 +741,7 @@ const populateSettings = () => {
 			] as INodeProperties[]),
 		);
 	}
-	setting.value.push(
+	nodeSettings.value.push(
 		...([
 			{
 				displayName: i18n.baseText('nodeSettings.notes.displayName'),
@@ -897,7 +897,7 @@ const setNodeValues = () => {
 		}
 
 		// Set default node settings
-		for (const nodeSetting of setting.value) {
+		for (const nodeSetting of nodeSettings.value) {
 			if (!foundNodeSettings.includes(nodeSetting.name)) {
 				// Set default value
 				nodeValues.value = {

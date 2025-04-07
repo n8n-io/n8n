@@ -128,7 +128,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 			return !!(
 				nodeType &&
 				nodeType.group.includes('transform') &&
-				nodeType.outputs.includes(NodeConnectionType.AiTool)
+				nodeType.outputs.includes(NodeConnectionTypes.AiTool)
 			);
 		};
 	});

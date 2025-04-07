@@ -1643,7 +1643,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const nodeTypesStore = useNodeTypesStore();
 
 		if (nodeTypesStore.isAiToolNode(node.type)) {
-			nodeName = workflow.getChildNodes(node.name, NodeConnectionType.AiTool, 1)[0];
+			nodeName = workflow.getChildNodes(node.name, NodeConnectionTypes.AiTool, 1)[0];
 		}
 
 		return nodeName;
@@ -1654,7 +1654,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		nodeName = getNewDestinationNode(nodeName);
 
-		const parents = workflow.getParentNodes(nodeName, NodeConnectionType.Main);
+		const parents = workflow.getParentNodes(nodeName, NodeConnectionTypes.Main);
 
 		const matchedChatNode = parents.find((parent) => {
 			const parentNodeType = getNodeByName(parent)?.type;
