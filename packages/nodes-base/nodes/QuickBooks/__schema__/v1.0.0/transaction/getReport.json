@@ -19,9 +19,6 @@
         "other_account": {
             "type": "string"
         },
-        "subt_nat_amount": {
-            "type": "string"
-        },
         "tx_date": {
             "type": "string"
         },
@@ -29,5 +26,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
