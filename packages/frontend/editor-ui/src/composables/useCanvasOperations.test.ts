@@ -53,7 +53,6 @@ import { nextTick } from 'vue';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { CanvasLayoutEvent } from './useCanvasLayout';
 import { useTelemetry } from './useTelemetry';
-import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
 
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = await importOriginal<{}>();
@@ -2928,28 +2927,20 @@ describe('useCanvasOperations', () => {
 	});
 
 	describe('toggleChatOpen', () => {
-		it('should invoke workflowsStore#setPanelState with 1st argument "docked" if the chat panel is closed', async () => {
+		it('should invoke workflowsStore#toggleLogsPanelOpen with 2nd argument passed through as 1st argument', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const { toggleChatOpen } = useCanvasOperations({ router });
 
 			workflowsStore.getCurrentWorkflow.mockReturnValue(createTestWorkflowObject());
-			workflowsStore.chatPanelState = LOGS_PANEL_STATE.CLOSED;
 
 			await toggleChatOpen('main');
+			expect(workflowsStore.toggleLogsPanelOpen).toHaveBeenCalledWith(undefined);
 
-			expect(workflowsStore.setPanelState).toHaveBeenCalledWith(LOGS_PANEL_STATE.ATTACHED);
-		});
+			await toggleChatOpen('main', true);
+			expect(workflowsStore.toggleLogsPanelOpen).toHaveBeenCalledWith(true);
 
-		it('should invoke workflowsStore#setPanelState with 1st argument "collapsed" if the chat panel is open', async () => {
-			const workflowsStore = mockedStore(useWorkflowsStore);
-			const { toggleChatOpen } = useCanvasOperations({ router });
-
-			workflowsStore.getCurrentWorkflow.mockReturnValue(createTestWorkflowObject());
-			workflowsStore.chatPanelState = LOGS_PANEL_STATE.ATTACHED;
-
-			await toggleChatOpen('main');
-
-			expect(workflowsStore.setPanelState).toHaveBeenCalledWith(LOGS_PANEL_STATE.CLOSED);
+			await toggleChatOpen('main', false);
+			expect(workflowsStore.toggleLogsPanelOpen).toHaveBeenCalledWith(false);
 		});
 	});
 
