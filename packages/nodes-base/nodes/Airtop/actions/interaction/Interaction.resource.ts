@@ -1,10 +1,11 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 import * as click from './click.operation';
+import * as fill from './fill.operation';
 import * as hover from './hover.operation';
 import * as type from './type.operation';
 import { sessionIdField, windowIdField } from '../common/fields';
-export { click, hover, type };
+export { click, fill, hover, type };
 
 export const description: INodeProperties[] = [
 	{
@@ -36,6 +37,12 @@ export const description: INodeProperties[] = [
 				description: 'Execute a Type action on an element given a description',
 				action: 'Type text',
 			},
+			{
+				name: 'Fill Form',
+				value: 'fill',
+				description: 'Fill a form with the provided information',
+				action: 'Fill form',
+			},
 		],
 		default: 'click',
 	},
@@ -56,6 +63,7 @@ export const description: INodeProperties[] = [
 		},
 	},
 	...click.description,
+	...fill.description,
 	...hover.description,
 	...type.description,
 	{
@@ -67,6 +75,7 @@ export const description: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['interaction'],
+				operation: ['click', 'hover', 'type'],
 			},
 		},
 		options: [
