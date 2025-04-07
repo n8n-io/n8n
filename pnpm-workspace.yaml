@@ -27,10 +27,12 @@ catalog:
   reflect-metadata: 0.2.2
   rimraf: ^6.0.1
   tsup: ^8.4.0
+  tsx: ^4.19.3
   uuid: 10.0.0
   xml2js: 0.6.2
   xss: 1.0.15
   zod: 3.24.1
+  'zod-to-json-schema': 3.23.3
   '@langchain/core': 0.3.30
 
 catalogs:

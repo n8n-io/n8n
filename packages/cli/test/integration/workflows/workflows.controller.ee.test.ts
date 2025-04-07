@@ -14,6 +14,7 @@ import { WorkflowRepository } from '@/databases/repositories/workflow.repository
 import { UserManagementMailer } from '@/user-management/email';
 import type { WorkflowWithSharingsMetaDataAndCredentials } from '@/workflows/workflows.types';
 import { mockInstance } from '@test/mocking';
+import { createFolder } from '@test-integration/db/folders';
 
 import {
 	affixRoleToSaveCredential,
@@ -1617,6 +1618,38 @@ describe('PUT /:workflowId/transfer', () => {
 
 		expect(activeWorkflowManager.remove).toHaveBeenCalledWith(workflow.id);
 		expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflow.id, 'update');
+	});
+
+	test('should detach workflow from parent folder in source project', async () => {
+		//
+		// ARRANGE
+		//
+		const destinationProject = await createTeamProject('Team Project', member);
+
+		const folder = await createFolder(destinationProject, { name: 'Test Folder' });
+
+		const workflow = await createWorkflow({ active: true, parentFolder: folder }, member);
+
+		//
+		// ACT
+		//
+		const response = await testServer
+			.authAgentFor(member)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id })
+			.expect(200);
+
+		//
+		// ASSERT
+		//
+		expect(response.body).toEqual({});
+
+		const workflowFromDB = await workflowRepository.findOneOrFail({
+			where: { id: workflow.id },
+			relations: ['parentFolder'],
+		});
+
+		expect(workflowFromDB.parentFolder).toBeNull();
 	});
 
 	test('deactivates the workflow if it cannot be added to the active workflow manager again and returns the WorkflowActivationError as data', async () => {

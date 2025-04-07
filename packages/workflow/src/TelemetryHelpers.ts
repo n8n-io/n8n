@@ -198,6 +198,7 @@ export function generateNodesGraph(
 					true,
 					false,
 					stickyNote,
+					stickyType.description,
 				) ?? {};
 		} catch {
 			// prevent node param resolution from failing graph generation
@@ -376,6 +377,7 @@ export function generateNodesGraph(
 						true,
 						false,
 						node,
+						nodeType.description,
 					);
 
 					if (nodeParameters) {
