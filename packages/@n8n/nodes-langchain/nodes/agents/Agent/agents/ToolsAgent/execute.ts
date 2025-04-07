@@ -353,7 +353,7 @@ export async function prepareMessages(
 	if (useSystemMessage) {
 		messages.push([
 			'system',
-			`{system_message}${options.outputParser ? '{formatting_instructions}' : ''}`,
+			`{system_message}${options.outputParser ? '\n\n{formatting_instructions}' : ''}`,
 		]);
 	} else if (options.outputParser) {
 		messages.push(['system', '{formatting_instructions}']);

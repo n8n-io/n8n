@@ -281,7 +281,7 @@ describe('prepareMessages', () => {
 		});
 
 		expect(messages.length).toBe(4);
-		expect(messages).toContainEqual(['system', '{system_message}{formatting_instructions}']);
+		expect(messages).toContainEqual(['system', '{system_message}\n\n{formatting_instructions}']);
 	});
 
 	it('should add formatting instructions when omitting system message after version 1.9', async () => {
