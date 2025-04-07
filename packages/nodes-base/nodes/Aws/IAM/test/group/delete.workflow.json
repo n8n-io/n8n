@@ -27,7 +27,7 @@
 			"name": "deleteGroup",
 			"credentials": {
 				"aws": {
-					"id": "9jaRLOceaJvYwd8S",
+					"id": "exampleId",
 					"name": "AWS US EAST"
 				}
 			}

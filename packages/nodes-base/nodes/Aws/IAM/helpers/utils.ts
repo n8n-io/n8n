@@ -17,7 +17,6 @@ import type {
 import { searchGroupsForUser } from '../methods/listSearch';
 import { makeAwsRequest } from '../transport';
 
-//IMPROVED
 export async function presendStringifyBody(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,

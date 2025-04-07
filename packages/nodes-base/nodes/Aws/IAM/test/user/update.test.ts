@@ -1,48 +1,46 @@
 import nock from 'nock';
 
-import { equalityTest, setup, workflowToTests } from '../../../../../test/nodes/Helpers';
+import {
+	getWorkflowFilenames,
+	initBinaryDataService,
+	testWorkflows,
+} from '../../../../../test/nodes/Helpers';
 import { CURRENT_VERSION } from '../../helpers/constants';
 
 describe('AWS IAM - Update User', () => {
-	const workflows = ['nodes/Aws/Iam/test/user/update.workflow.json'];
-	const workflowTests = workflowToTests(workflows);
+	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
+		filename.includes('update.workflow.json'),
+	);
+
+	beforeAll(async () => {
+		await initBinaryDataService();
+	});
 
 	beforeEach(() => {
 		if (!nock.isActive()) {
 			nock.activate();
 		}
+
+		const baseUrl = 'https://iam.amazonaws.com/';
+		nock.cleanAll();
+		nock(baseUrl)
+			.persist()
+			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
+			.post(
+				`/?Action=UpdateUser&Version=${CURRENT_VERSION}&NewUserName=NewName&UserName=UserTest101`,
+			)
+			.reply(200, {
+				UpdateUserResponse: {
+					ResponseMetadata: {
+						RequestId: '3fee55bf-1157-4db2-a63c-eab6b6ec1b3b',
+					},
+				},
+			});
 	});
 
 	afterEach(() => {
 		nock.cleanAll();
 	});
 
-	describe('should update user', () => {
-		const nodeTypes = setup(workflowTests);
-
-		for (const workflow of workflowTests) {
-			workflow.nock = {
-				baseUrl: 'https://iam.amazonaws.com',
-				mocks: [
-					{
-						method: 'post',
-						path: `/?Action=UpdateUser&Version=${CURRENT_VERSION}&NewUserName=NewName&UserName=UserTest101`,
-						statusCode: 200,
-						requestHeaders: {
-							'Content-Type': 'application/x-www-form-urlencoded',
-						},
-						responseBody: {
-							UpdateUserResponse: {
-								ResponseMetadata: {
-									RequestId: '3fee55bf-1157-4db2-a63c-eab6b6ec1b3b',
-								},
-							},
-						},
-					},
-				],
-			};
-
-			test(workflow.description, async () => await equalityTest(workflow, nodeTypes));
-		}
-	});
+	testWorkflows(workflows);
 });

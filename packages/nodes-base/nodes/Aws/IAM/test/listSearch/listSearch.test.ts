@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
 import { searchUsers, searchGroups, searchGroupsForUser } from '../../methods/listSearch';
@@ -34,7 +33,7 @@ describe('AWS IAM - List search', () => {
 			const responseData = {
 				ListUsersResponse: {
 					ListUsersResult: {
-						Users: [{ UserName: 'user1' }, { UserName: 'user2' }],
+						Users: [{ UserName: 'User1' }, { UserName: 'User2' }],
 					},
 				},
 			};
@@ -42,8 +41,8 @@ describe('AWS IAM - List search', () => {
 
 			const result = await searchUsers.call(mockContext);
 			expect(result.results).toEqual([
-				{ name: 'user1', value: 'user1' },
-				{ name: 'user2', value: 'user2' },
+				{ name: 'User1', value: 'User1' },
+				{ name: 'User2', value: 'User2' },
 			]);
 		});
 
@@ -51,14 +50,14 @@ describe('AWS IAM - List search', () => {
 			const responseData = {
 				ListUsersResponse: {
 					ListUsersResult: {
-						Users: [{ UserName: 'user1' }, { UserName: 'user2' }],
+						Users: [{ UserName: 'User1' }, { UserName: 'User2' }],
 					},
 				},
 			};
 			(makeAwsRequest as jest.Mock).mockResolvedValue(responseData);
 
-			const result = await searchUsers.call(mockContext, 'user1');
-			expect(result.results).toEqual([{ name: 'user1', value: 'user1' }]);
+			const result = await searchUsers.call(mockContext, 'User1');
+			expect(result.results).toEqual([{ name: 'User1', value: 'User1' }]);
 		});
 	});
 
@@ -75,7 +74,7 @@ describe('AWS IAM - List search', () => {
 			const responseData = {
 				ListGroupsResponse: {
 					ListGroupsResult: {
-						Groups: [{ GroupName: 'group1' }, { GroupName: 'group2' }],
+						Groups: [{ GroupName: 'Group1' }, { GroupName: 'Group2' }],
 					},
 				},
 			};
@@ -83,8 +82,8 @@ describe('AWS IAM - List search', () => {
 
 			const result = await searchGroups.call(mockContext);
 			expect(result.results).toEqual([
-				{ name: 'group1', value: 'group1' },
-				{ name: 'group2', value: 'group2' },
+				{ name: 'Group1', value: 'Group1' },
+				{ name: 'Group2', value: 'Group2' },
 			]);
 		});
 
@@ -92,14 +91,14 @@ describe('AWS IAM - List search', () => {
 			const responseData = {
 				ListGroupsResponse: {
 					ListGroupsResult: {
-						Groups: [{ GroupName: 'group1' }, { GroupName: 'group2' }],
+						Groups: [{ GroupName: 'Group1' }, { GroupName: 'Group2' }],
 					},
 				},
 			};
 			(makeAwsRequest as jest.Mock).mockResolvedValue(responseData);
 
-			const result = await searchGroups.call(mockContext, 'group1');
-			expect(result.results).toEqual([{ name: 'group1', value: 'group1' }]);
+			const result = await searchGroups.call(mockContext, 'Group1');
+			expect(result.results).toEqual([{ name: 'Group1', value: 'Group1' }]);
 		});
 	});
 
@@ -107,7 +106,6 @@ describe('AWS IAM - List search', () => {
 		it('should return empty if no user groups are found', async () => {
 			mockContext.getNodeParameter = jest.fn().mockReturnValue('user1');
 
-			// Mock empty response for ListGroups
 			const responseData = {
 				ListGroupsResponse: { ListGroupsResult: { Groups: [] } },
 			};
@@ -115,7 +113,6 @@ describe('AWS IAM - List search', () => {
 
 			const result = await searchGroupsForUser.call(mockContext);
 
-			// Expect empty results
 			expect(result.results).toEqual([]);
 		});
 	});
