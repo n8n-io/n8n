@@ -1,18 +1,9 @@
 {
     "type": "object",
     "properties": {
-        "displayName": {
-            "type": "string"
-        },
-        "firstName": {
-            "type": "string"
-        },
         "id": {
-            "type": "string"
-        },
-        "lastName": {
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
