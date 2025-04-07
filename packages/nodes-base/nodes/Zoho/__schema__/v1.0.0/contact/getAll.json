@@ -79,31 +79,8 @@
         "$state": {
             "type": "string"
         },
-        "Assistant": {
-            "type": "null"
-        },
-        "Asst_Phone": {
-            "type": "null"
-        },
-        "Created_By": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
         "Created_Time": {
             "type": "string"
-        },
-        "Email_Opt_Out": {
-            "type": "boolean"
         },
         "Full_Name": {
             "type": "string"
@@ -116,29 +93,6 @@
         },
         "Locked__s": {
             "type": "boolean"
-        },
-        "Modified_By": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "Modified_Time": {
-            "type": "string"
-        },
-        "Other_Street": {
-            "type": "null"
-        },
-        "Other_Zip": {
-            "type": "null"
         },
         "Owner": {
             "type": "object",
@@ -154,20 +108,6 @@
                 }
             }
         },
-        "Tag": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
         "Unsubscribed_Mode": {
             "type": "null"
         },
@@ -175,5 +115,5 @@
             "type": "null"
         }
     },
-    "version": 1
+    "version": 2
 }
