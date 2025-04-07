@@ -267,17 +267,18 @@ const displayModes = computed(() => {
 		defaults.push(schemaView);
 	}
 
+	const isHtmlNode = activeNode.value?.type === HTML_NODE_TYPE;
+	const isExtractFromFile = activeNode.value?.type === 'n8n-nodes-base.extractFromFile';
+	const isGenerateHtmlTemplate = activeNode.value?.parameters.operation === 'generateHtmlTemplate';
+	const isDocxWithHtmlOutput =
+		activeNode.value?.parameters.operation === 'docx' &&
+		(activeNode.value.parameters.options as Record<string, unknown>)['outputFormat'] === 'html';
 	if (
-		(isPaneTypeOutput.value &&
-			activeNode.value?.type === HTML_NODE_TYPE &&
-			activeNode.value?.parameters.operation === 'generateHtmlTemplate') ||
-		(activeNode.value?.type === 'n8n-nodes-base.extractFromFile' &&
-			activeNode.value?.parameters.operation === 'docx' &&
-			(activeNode.value.parameters.options as Record<string, unknown>['outputFormat']) === 'html')
+		isPaneTypeOutput.value &&
+		((isHtmlNode && isGenerateHtmlTemplate) || (isExtractFromFile && isDocxWithHtmlOutput))
 	) {
 		defaults.unshift({ label: 'HTML', value: 'html' });
 	}
-
 	return defaults;
 });
 
@@ -1296,12 +1297,15 @@ function enableNode() {
 function setDisplayMode() {
 	if (!activeNode.value) return;
 
+	const isHtmlNode = activeNode.value?.type === HTML_NODE_TYPE;
+	const isExtractFromFile = activeNode.value?.type === 'n8n-nodes-base.extractFromFile';
+	const isGenerateHtmlTemplate = activeNode.value?.parameters.operation === 'generateHtmlTemplate';
+	const isDocxWithHtmlOutput =
+		activeNode.value?.parameters.operation === 'docx' &&
+		(activeNode.value.parameters.options as Record<string, unknown>)['outputFormat'] === 'html';
 	const shouldDisplayHtml =
-		(activeNode.value.type === HTML_NODE_TYPE &&
-			activeNode.value.parameters.operation === 'generateHtmlTemplate') ||
-		(activeNode.value.type === 'n8n-nodes-base.extractFromFile' &&
-			activeNode.value.parameters.operation === 'docx' &&
-			(activeNode.value.parameters.options as Record<string, unknown>['outputFormat']) === 'html');
+		isPaneTypeOutput.value &&
+		((isHtmlNode && isGenerateHtmlTemplate) || (isExtractFromFile && isDocxWithHtmlOutput));
 
 	if (shouldDisplayHtml) {
 		ndvStore.setPanelDisplayMode({
