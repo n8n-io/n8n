@@ -43,7 +43,7 @@ export class AiController {
 			const aiResponse = this.aiBuilderService.chat(
 				{
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-					question: payload.payload.question ?? '',
+					prompt: payload.payload.question ?? '',
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 					currentWorkflow: payload.payload.context.currentWorkflow as IWorkflowBase,
 				},
