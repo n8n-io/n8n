@@ -346,11 +346,11 @@ export async function prepareMessages(
 		outputParser?: N8nOutputParser;
 	},
 ): Promise<BaseMessagePromptTemplateLike[]> {
-	const useLegacySystemMessage = options.systemMessage ?? ctx.getNode().typeVersion < 1.9;
+	const useSystemMessage = options.systemMessage ?? ctx.getNode().typeVersion < 1.9;
 
 	const messages: BaseMessagePromptTemplateLike[] = [];
 
-	if (useLegacySystemMessage) {
+	if (useSystemMessage) {
 		messages.push([
 			'system',
 			`{system_message}${options.outputParser ? '{formatting_instructions}' : ''}`,
