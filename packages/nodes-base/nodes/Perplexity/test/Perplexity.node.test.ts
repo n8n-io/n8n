@@ -1,11 +1,11 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
+import { getModels } from '../../Perplexity/GenericFunctions';
+import { Perplexity } from '../../Perplexity/Perplexity.node';
 import {
 	chatCompletionsFields,
 	chatCompletionsOperations,
-} from '../../Perplexity/ChatCompletionsDescription';
-import { getModels } from '../../Perplexity/GenericFunctions';
-import { Perplexity } from '../../Perplexity/Perplexity.node';
+} from '../descriptions/ChatCompletionsDescription';
 
 jest.mock('../../Perplexity/GenericFunctions', () => ({
 	getModels: jest.fn(),

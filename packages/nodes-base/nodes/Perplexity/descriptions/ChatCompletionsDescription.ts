@@ -299,7 +299,7 @@ export const chatCompletionsFields: INodeProperties[] = [
 						type: 'body',
 						property: 'search_domain_filter',
 						value:
-							'={{ $json["userTier"] && $json["userTier"] >= 3 ? $value.split(",").map(domain => domain.trim()) : undefined }}',
+							'={{ $json["userTier"] && $json["userTier"] >= 3 ? $value.split(/\\s*,\\s*/) : undefined }}',
 					},
 				},
 			},
