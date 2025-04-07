@@ -445,9 +445,9 @@ export interface IExecutionBase {
 	status: ExecutionStatus;
 	retryOf?: string;
 	retrySuccessId?: string;
-	startedAt: Date;
-	createdAt: Date;
-	stoppedAt?: Date;
+	startedAt: Date | string;
+	createdAt: Date | string;
+	stoppedAt?: Date | string;
 	workflowId?: string; // To be able to filter executions easily //
 }
 
@@ -1547,7 +1547,7 @@ export interface IN8nPromptResponse {
 
 export type InputPanel = {
 	nodeName?: string;
-	run?: number;
+	run: number;
 	branch?: number;
 	data: {
 		isEmpty: boolean;
@@ -1555,6 +1555,7 @@ export type InputPanel = {
 };
 
 export type OutputPanel = {
+	run: number;
 	branch?: number;
 	data: {
 		isEmpty: boolean;
@@ -1583,3 +1584,10 @@ export type MainPanelDimensions = Record<
 		relativeWidth: number;
 	}
 >;
+
+export interface LlmTokenUsageData {
+	completionTokens: number;
+	promptTokens: number;
+	totalTokens: number;
+	isEstimate: boolean;
+}
