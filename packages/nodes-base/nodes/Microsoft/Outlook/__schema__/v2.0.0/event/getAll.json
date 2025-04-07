@@ -37,9 +37,6 @@
                 }
             }
         },
-        "bodyPreview": {
-            "type": "string"
-        },
         "end": {
             "type": "object",
             "properties": {
@@ -80,10 +77,7 @@
                     "type": "string"
                 }
             }
-        },
-        "webLink": {
-            "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
