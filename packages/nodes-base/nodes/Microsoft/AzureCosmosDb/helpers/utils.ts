@@ -79,7 +79,7 @@ export async function validateQueryParameters(
 	const query = this.getNodeParameter('query', '') as string;
 	const queryOptions = this.getNodeParameter('options.queryOptions') as IDataObject;
 
-	const parameterNames = query.replace(/\$(\d+)/g, '@param$1').match(/@\w+/g) ?? [];
+	const parameterNames = query.replace(/\$(\d+)/g, '@Param$1').match(/@\w+/g) ?? [];
 
 	const queryParamsString = queryOptions?.queryParameters as string;
 	const parameterValues = queryParamsString

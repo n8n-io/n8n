@@ -272,8 +272,8 @@ describe('validateQueryParameters', () => {
 
 		if (result.body && (result.body as RequestBodyWithParameters).parameters) {
 			expect((result.body as RequestBodyWithParameters).parameters).toEqual([
-				{ name: '@param1', value: 'value1' },
-				{ name: '@param2', value: 'value2' },
+				{ name: '@Param1', value: 'value1' },
+				{ name: '@Param2', value: 'value2' },
 			]);
 		} else {
 			throw new OperationalError('Expected result.body to contain a parameters array');
@@ -289,9 +289,9 @@ describe('validateQueryParameters', () => {
 
 		if (result.body && (result.body as RequestBodyWithParameters).parameters) {
 			expect((result.body as RequestBodyWithParameters).parameters).toEqual([
-				{ name: '@param1', value: 'firstValue' },
-				{ name: '@param2', value: 'secondValue' },
-				{ name: '@param3', value: 'thirdValue' },
+				{ name: '@Param1', value: 'firstValue' },
+				{ name: '@Param2', value: 'secondValue' },
+				{ name: '@Param3', value: 'thirdValue' },
 			]);
 		} else {
 			throw new OperationalError('Expected result.body to contain a parameters array');
