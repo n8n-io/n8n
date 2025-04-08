@@ -1,3 +1,4 @@
+import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import axios from 'axios';
 import { Logger } from 'n8n-core';
@@ -27,9 +28,6 @@ interface Data {
 	};
 }
 
-const VETTED_NODE_TYPES_URL =
-	'https://wn-dealing-adjustment-feature.trycloudflare.com/api/community-nodes';
-
 const UPDATE_INTERVAL = 8 * 60 * 60 * 1000;
 
 @Service()
@@ -42,7 +40,10 @@ export class CommunityNodeTypesService {
 
 	private lastUpdateTimestamp = 0;
 
-	constructor(private readonly logger: Logger) {}
+	constructor(
+		private readonly logger: Logger,
+		private globalConfig: GlobalConfig,
+	) {}
 
 	private async strapiPaginatedRequest() {
 		let returnData: Data[] = [];
@@ -56,10 +57,13 @@ export class CommunityNodeTypesService {
 		};
 
 		do {
-			const response = await axios.get<ResponseData>(VETTED_NODE_TYPES_URL, {
-				headers: { 'Content-Type': 'application/json' },
-				params,
-			});
+			const response = await axios.get<ResponseData>(
+				this.globalConfig.nodes.communityPackages.vettedNodeTypesUrl,
+				{
+					headers: { 'Content-Type': 'application/json' },
+					params,
+				},
+			);
 
 			responseData = response?.data?.data;
 			if (!responseData?.length) break;
@@ -72,7 +76,13 @@ export class CommunityNodeTypesService {
 
 	private async fetchNodeTypes() {
 		try {
-			const data = await this.strapiPaginatedRequest();
+			let data: Data[] = [];
+			if (
+				this.globalConfig.nodes.communityPackages.enabled &&
+				this.globalConfig.nodes.communityPackages.vettedNodeTypesUrl
+			) {
+				data = await this.strapiPaginatedRequest();
+			}
 
 			this.updateData(data);
 		} catch (error) {

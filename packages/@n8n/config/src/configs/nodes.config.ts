@@ -33,6 +33,12 @@ class CommunityPackagesConfig {
 	/** Whether to reinstall any missing community packages */
 	@Env('N8N_REINSTALL_MISSING_PACKAGES')
 	reinstallMissing: boolean = false;
+
+	/** Url to get vetted node types from, N8n_COMMUNITY_PACKAGES_ENABLED must be true */
+	@Env('N8N_VETTED_NODE_TYPES_URL')
+	// TODO: replace with production url
+	vettedNodeTypesUrl: string =
+		'https://wn-dealing-adjustment-feature.trycloudflare.com/api/community-nodes';
 }
 
 @Config

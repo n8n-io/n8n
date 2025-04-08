@@ -124,6 +124,7 @@ describe('GlobalConfig', () => {
 				enabled: true,
 				registry: 'https://registry.npmjs.org',
 				reinstallMissing: false,
+				vettedNodeTypesUrl: '',
 			},
 			errorTriggerType: 'n8n-nodes-base.errorTrigger',
 			include: [],
