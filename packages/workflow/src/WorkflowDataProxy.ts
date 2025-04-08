@@ -163,20 +163,26 @@ export class WorkflowDataProxy {
 	private buildAgentToolInfo(node: INode) {
 		const nodeType = this.workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 		const type = nodeType.description.displayName;
-		const resourceKey = node.parameters.resource;
-		const getProp = (x: NodeParameterValueType) =>
-			nodeType.description.properties.find((y) => y.name === x);
+		const params = NodeHelpers.getNodeParameters(
+			nodeType.description.properties,
+			node.parameters,
+			true,
+			false,
+			node,
+			nodeType.description,
+		);
+		const resourceKey = params?.resource;
+		const operationKey = params?.operation;
 
 		const resource =
-			getProp(resourceKey)?.displayName ??
-			getProp(getProp('resource')?.default)?.displayName ??
-			null;
+			nodeType.description.properties
+				.find((x) => x.name === 'resource')
+				?.options?.find((x) => 'value' in x && x.value === resourceKey)?.name ?? null;
 
-		const operationKey = node.parameters.operation;
 		const operation =
-			getProp(operationKey)?.displayName ??
-			getProp(getProp('operation')?.default)?.displayName ??
-			null;
+			nodeType.description.properties
+				.find((x) => x.name === 'operation')
+				?.options?.find((x) => 'value' in x && x.value === operationKey)?.name ?? null;
 
 		const hasCredentials = !isObjectEmpty(node.credentials ?? {});
 

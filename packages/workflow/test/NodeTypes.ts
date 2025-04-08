@@ -913,7 +913,70 @@ const googleCalendarTool: LoadedClass<INodeType> = {
 			inputs: [NodeConnectionTypes.Main],
 			outputs: [NodeConnectionTypes.Main],
 			usableAsTool: true,
-			properties: [{ name: 'start', type: 'dateTime', displayName: 'Start', default: '' }],
+			properties: [
+				{ name: 'start', type: 'dateTime', displayName: 'Start', default: '' },
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					noDataExpression: true,
+					displayOptions: {
+						show: {
+							resource: ['event'],
+						},
+					},
+					options: [
+						{
+							name: 'Create',
+							value: 'create',
+							description: 'Add a event to calendar',
+							action: 'Create an event',
+						},
+						{
+							name: 'Delete',
+							value: 'delete',
+							description: 'Delete an event',
+							action: 'Delete an event',
+						},
+						{
+							name: 'Get',
+							value: 'get',
+							description: 'Retrieve an event',
+							action: 'Get an event',
+						},
+						{
+							name: 'Get Many',
+							value: 'getAll',
+							description: 'Retrieve many events from a calendar',
+							action: 'Get many events',
+						},
+						{
+							name: 'Update',
+							value: 'update',
+							description: 'Update an event',
+							action: 'Update an event',
+						},
+					],
+					default: 'create',
+				},
+				{
+					displayName: 'Resource',
+					name: 'resource',
+					type: 'options',
+					noDataExpression: true,
+					options: [
+						{
+							name: 'Calendar',
+							value: 'calendar',
+						},
+						{
+							name: 'Event',
+							value: 'event',
+						},
+					],
+					default: 'event',
+				},
+			],
 		},
 	},
 };

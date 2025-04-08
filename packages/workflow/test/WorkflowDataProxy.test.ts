@@ -813,7 +813,7 @@ describe('WorkflowDataProxy', () => {
 			expect(tools[0]).toMatchObject({
 				connected: true,
 				name: 'Google Calendar',
-				type: 'Google Calendar Tool',
+				type: 'Google Calendar',
 				resource: 'Event',
 				operation: 'Create',
 				hasCredentials: false,
@@ -821,7 +821,7 @@ describe('WorkflowDataProxy', () => {
 			expect(tools[1]).toMatchObject({
 				connected: false,
 				name: 'Calculator',
-				type: 'Calculator Tool',
+				type: 'Calculator',
 				resource: null,
 				operation: null,
 				hasCredentials: false,
