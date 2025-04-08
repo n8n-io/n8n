@@ -62,6 +62,11 @@ describe('workflowExecuteAfterHandler', () => {
 		insightsMetadataRepository = Container.get(InsightsMetadataRepository);
 	});
 
+	afterEach(() => {
+		// Reset the config disabled metrics to its default state
+		Container.get(InsightsConfig).disabledMetrics = [];
+	});
+
 	let project: Project;
 	let workflow: IWorkflowDb & WorkflowEntity;
 
@@ -252,6 +257,41 @@ describe('workflowExecuteAfterHandler', () => {
 			}),
 		);
 	});
+
+	test.each<{ status: ExecutionStatus; disabledMetrics: TypeUnit[] }>([
+		{ status: 'success', disabledMetrics: ['success'] },
+		{ status: 'error', disabledMetrics: ['failure'] },
+		{ status: 'success', disabledMetrics: ['runtime_ms', 'time_saved_min'] },
+	])(
+		'does not store events for disabled metrics `$disabledMetrics`',
+		async ({ status, disabledMetrics }) => {
+			// ARRANGE
+			const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
+			const startedAt = DateTime.utc();
+			const stoppedAt = startedAt.plus({ seconds: 5 });
+			const run = mock<IRun>({
+				mode: 'webhook',
+				status,
+				startedAt: startedAt.toJSDate(),
+				stoppedAt: stoppedAt.toJSDate(),
+			});
+
+			// Mock the config to disable specific metrics
+			Container.get(InsightsConfig).disabledMetrics = disabledMetrics;
+
+			// ACT
+			await insightsService.workflowExecuteAfterHandler(ctx, run);
+			await insightsService.flushEvents();
+
+			// ASSERT
+			const allInsights = await insightsRawRepository.find();
+
+			// Check that the disabled metric is not in the insights
+			disabledMetrics.forEach((type) => {
+				expect(allInsights).not.toContainEqual(expect.objectContaining({ type }));
+			});
+		},
+	);
 });
 
 describe('workflowExecuteAfterHandler - cacheMetadata', () => {

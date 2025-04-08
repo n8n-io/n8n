@@ -1,5 +1,7 @@
 import { Config, Env } from '@n8n/config';
 
+import type { TypeUnit } from './database/entities/insights-shared';
+
 @Config
 export class InsightsConfig {
 	/**
@@ -43,4 +45,12 @@ export class InsightsConfig {
 	 */
 	@Env('N8N_INSIGHTS_FLUSH_INTERVAL_SECONDS')
 	flushIntervalSeconds: number = 30;
+
+	/**
+	 * Comma-separated list of the metrics that should not be collected
+	 * Default: []
+	 * Possible values: 'success', 'failure', 'runtime_ms', 'time_saved_ms'
+	 */
+	@Env('N8N_INSIGHTS_DISABLED_METRICS')
+	disabledMetrics: TypeUnit[] = [];
 }

@@ -146,14 +146,16 @@ export class InsightsService {
 		};
 
 		// success or failure event
-		this.bufferedInsights.add({
-			...commonWorkflowData,
-			type: status,
-			value: 1,
-		});
+		if (!config.disabledMetrics.includes(status)) {
+			this.bufferedInsights.add({
+				...commonWorkflowData,
+				type: status,
+				value: 1,
+			});
+		}
 
 		// run time event
-		if (fullRunData.stoppedAt) {
+		if (fullRunData.stoppedAt && !config.disabledMetrics.includes('runtime_ms')) {
 			const value = fullRunData.stoppedAt.getTime() - fullRunData.startedAt.getTime();
 			this.bufferedInsights.add({
 				...commonWorkflowData,
@@ -163,7 +165,11 @@ export class InsightsService {
 		}
 
 		// time saved event
-		if (status === 'success' && ctx.workflowData.settings?.timeSavedPerExecution) {
+		if (
+			status === 'success' &&
+			ctx.workflowData.settings?.timeSavedPerExecution &&
+			!config.disabledMetrics.includes('time_saved_min')
+		) {
 			this.bufferedInsights.add({
 				...commonWorkflowData,
 				type: 'time_saved_min',
