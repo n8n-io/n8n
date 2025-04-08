@@ -46,21 +46,22 @@ export class McpServer {
 
 	constructor(logger: Logger) {
 		this.logger = logger;
-		this.logger.info('MCP Server created');
+		this.logger.debug('MCP Server created');
 	}
 
 	async connectTransport(postUrl: string, resp: CompressionResponse): Promise<void> {
 		const transport = new FlushingSSEServerTransport(postUrl, resp);
 		const server = this.setUpServer();
-		this.transports[transport.sessionId] = transport;
-		this.servers[transport.sessionId] = server;
+		const { sessionId } = transport;
+		this.transports[sessionId] = transport;
+		this.servers[sessionId] = server;
 
 		resp.on('close', async () => {
-			this.logger.info(`Deleting transport for ${transport.sessionId}`);
-			delete this.tools[transport.sessionId];
-			delete this.resolveFunctions[transport.sessionId];
-			delete this.transports[transport.sessionId];
-			delete this.servers[transport.sessionId];
+			this.logger.debug(`Deleting transport for ${sessionId}`);
+			delete this.tools[sessionId];
+			delete this.resolveFunctions[sessionId];
+			delete this.transports[sessionId];
+			delete this.servers[sessionId];
 		});
 
 		await server.connect(transport);
@@ -160,7 +161,7 @@ export class McpServer {
 		});
 
 		server.onclose = () => {
-			this.logger.info('Closing MCP Server');
+			this.logger.debug('Closing MCP Server');
 		};
 		server.onerror = (error: unknown) => {
 			this.logger.error(`MCP Error: ${error}`);
