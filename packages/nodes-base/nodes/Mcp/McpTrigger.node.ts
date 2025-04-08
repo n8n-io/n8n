@@ -6,6 +6,8 @@ import { getConnectedTools } from '@utils/tool-helpers';
 import type { CompressionResponse } from './FlushingSSEServerTransport';
 import { McpServerSingleton } from './McpServer';
 import type { McpServer } from './McpServer';
+import { WebhookAuthorizationError } from '../Webhook/error';
+import { validateWebhookAuthentication } from '../Webhook/utils';
 
 const MCP_SSE_SETUP_PATH = 'sse';
 const MCP_SSE_MESSAGES_PATH = 'messages';
@@ -44,7 +46,30 @@ export class McpTrigger extends Node {
 			},
 		],
 		outputs: [],
+		credentials: [
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
+				name: 'httpHeaderAuth',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['headerAuth'],
+					},
+				},
+			},
+		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{ name: 'Header Auth', value: 'headerAuth' },
+					{ name: 'None', value: 'none' },
+				],
+				default: 'none',
+				description: 'The way to authenticate',
+			},
 			{
 				displayName: 'Path',
 				name: 'path',
@@ -81,9 +106,19 @@ export class McpTrigger extends Node {
 
 	async webhook(context: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const webhookName = context.getWebhookName();
-
 		const req = context.getRequestObject();
 		const resp = context.getResponseObject() as unknown as CompressionResponse;
+
+		try {
+			await validateWebhookAuthentication(context, 'authentication');
+		} catch (error) {
+			if (error instanceof WebhookAuthorizationError) {
+				resp.writeHead(error.responseCode);
+				resp.end(error.message);
+				return { noWebhookResponse: true };
+			}
+			throw error;
+		}
 
 		const mcpServer: McpServer = McpServerSingleton.instance(context.logger);
 
