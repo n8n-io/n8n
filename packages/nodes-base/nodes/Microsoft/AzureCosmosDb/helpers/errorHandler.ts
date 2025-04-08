@@ -44,8 +44,8 @@ export async function handleError(
 		try {
 			if (resource === 'container') {
 				inputValue =
-					(this.getNodeParameter('container', undefined, { extractValue: true }) as string) ??
-					(this.getNodeParameter('containerCreate') as string);
+					(this.getNodeParameter('containerCreate') as string) ??
+					(this.getNodeParameter('container', undefined, { extractValue: true }) as string);
 			} else if (resource === 'item') {
 				inputValue = this.getNodeParameter('item', undefined, { extractValue: true }) as string;
 			}
@@ -59,8 +59,11 @@ export async function handleError(
 				});
 			}
 			if (error.code === 'NotFound') {
+				const containerValue = this.getNodeParameter('container', undefined, {
+					extractValue: true,
+				}) as string;
 				throw new NodeApiError(this.getNode(), error as unknown as JsonObject, {
-					message: ErrorMap.Container.NotFound.getMessage(inputValue ?? 'Unknown'),
+					message: ErrorMap.Container.NotFound.getMessage(containerValue ?? 'Unknown'),
 					description: ErrorMap.Container.NotFound.description,
 				});
 			}
