@@ -616,21 +616,22 @@ watch(focusedMappableInput, (curr) => {
 						/>
 						<N8nTree v-else-if="isObject(data)" :node-class="$style.nodeClass" :value="data">
 							<template #label="{ label, path }">
-								<span
+								<TextWithHighlights
+									data-target="mappable"
 									:class="{
 										[$style.hoveringKey]: mappingEnabled && isHovering(path, index2),
 										[$style.draggingKey]: isDraggingKey(path, index2),
 										[$style.dataKey]: true,
 										[$style.mappable]: mappingEnabled,
 									}"
-									data-target="mappable"
+									:content="label || i18n.baseText('runData.unnamedField')"
+									:search="search"
 									:data-name="getCellPathName(path, index2)"
 									:data-value="getCellExpression(path, index2)"
 									:data-depth="path.length"
 									@mouseenter="() => onMouseEnterKey(path, index2)"
 									@mouseleave="onMouseLeaveKey"
-									>{{ label || i18n.baseText('runData.unnamedField') }}</span
-								>
+								/>
 							</template>
 
 							<template #value="{ value }">

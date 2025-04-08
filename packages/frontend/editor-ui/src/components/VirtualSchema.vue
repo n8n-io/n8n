@@ -49,6 +49,7 @@ import { asyncComputed } from '@vueuse/core';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import { pick } from 'lodash-es';
 import { DateTime } from 'luxon';
+import NodeExecuteButton from './NodeExecuteButton.vue';
 
 type Props = {
 	nodes?: IConnectedNode[];
@@ -89,7 +90,7 @@ const { getSchemaForExecutionData, getSchemaForJsonSchema, getSchema, filterSche
 	useDataSchema();
 const { closedNodes, flattenSchema, flattenMultipleSchemas, toggleLeaf, toggleNode } =
 	useFlattenSchema();
-const { getNodeInputData } = useNodeHelpers();
+const { getNodeInputData, getNodeTaskData } = useNodeHelpers();
 
 const emit = defineEmits<{
 	'clear:search': [];
@@ -104,6 +105,8 @@ const toggleNodeAndScrollTop = (id: string) => {
 
 const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) => {
 	const pinData = workflowsStore.pinDataByNodeName(connectedNode.name);
+	const hasPinnedData = pinData ? pinData.length > 0 : false;
+	const isNodeExecuted = getNodeTaskData(fullNode, props.runIndex) !== null || hasPinnedData;
 	const connectedOutputIndexes = connectedNode.indicies.length > 0 ? connectedNode.indicies : [0];
 	const nodeData = connectedOutputIndexes.map((outputIndex) =>
 		getNodeInputData(fullNode, props.runIndex, outputIndex, props.paneType, props.connectionType),
@@ -128,6 +131,7 @@ const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) =
 		itemsCount: data.length,
 		preview,
 		hasBinary,
+		isNodeExecuted,
 	};
 };
 
@@ -242,10 +246,8 @@ const nodesSchemas = asyncComputed<SchemaNode[]>(async () => {
 		const nodeType = nodeTypesStore.getNodeType(fullNode.type, fullNode.typeVersion);
 		if (!nodeType) continue;
 
-		const { schema, connectedOutputIndexes, itemsCount, preview, hasBinary } = await getNodeSchema(
-			fullNode,
-			node,
-		);
+		const { schema, connectedOutputIndexes, itemsCount, preview, hasBinary, isNodeExecuted } =
+			await getNodeSchema(fullNode, node);
 
 		const filteredSchema = filterSchema(schema, search);
 
@@ -260,6 +262,7 @@ const nodesSchemas = asyncComputed<SchemaNode[]>(async () => {
 			schema: filteredSchema,
 			preview,
 			hasBinary,
+			isNodeExecuted,
 		});
 	}
 
@@ -429,8 +432,34 @@ const onDragEnd = (el: HTMLElement) => {
 							v-else-if="item.type === 'notice'"
 							v-n8n-html="item.message"
 							class="notice"
-							:style="{ marginLeft: `calc(var(--spacing-l) + var(--spacing-l) * ${item.level})` }"
+							:style="{ '--schema-level': item.level }"
 						/>
+						<div
+							v-else-if="item.type === 'empty'"
+							class="empty-schema"
+							:style="{ '--schema-level': item.level }"
+						>
+							<N8nText tag="div" size="small">
+								<i18n-t
+									v-if="item.key === 'executeSchema'"
+									tag="span"
+									keypath="dataMapping.schemaView.executeSchema"
+								>
+									<template #link>
+										<NodeExecuteButton
+											:node-name="item.nodeName"
+											:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
+											text
+											telemetry-source="inputs"
+											hide-icon
+											size="small"
+											class="execute-button"
+										/>
+									</template>
+								</i18n-t>
+								<i18n-t v-else tag="span" :keypath="`dataMapping.schemaView.${item.key}`" />
+							</N8nText>
+						</div>
 					</DynamicScrollerItem>
 				</template>
 			</DynamicScroller>
@@ -475,5 +504,18 @@ const onDragEnd = (el: HTMLElement) => {
 	color: var(--color-text-base);
 	font-size: var(--font-size-2xs);
 	line-height: var(--font-line-height-loose);
+}
+
+.notice {
+	margin-left: calc(var(--spacing-l) * var(--schema-level));
+}
+
+.empty-schema {
+	padding-bottom: var(--spacing-xs);
+	margin-left: calc((var(--spacing-xl) * var(--schema-level)));
+}
+
+.execute-button {
+	padding: 0;
 }
 </style>

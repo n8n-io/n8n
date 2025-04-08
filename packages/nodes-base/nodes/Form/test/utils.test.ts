@@ -203,7 +203,6 @@ describe('FormTrigger, formWebhook', () => {
 				'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger&utm_campaign=instanceId',
 			testRun: true,
 			useResponseData: false,
-			validForm: true,
 		});
 	});
 
@@ -250,7 +249,6 @@ describe('FormTrigger, formWebhook', () => {
 					'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger&utm_campaign=instanceId',
 				testRun: true,
 				useResponseData: false,
-				validForm: true,
 			});
 		}
 	});
@@ -353,7 +351,6 @@ describe('FormTrigger, prepareFormData', () => {
 
 		expect(result).toEqual({
 			testRun: false,
-			validForm: true,
 			formTitle: 'Test Form',
 			formDescription: 'This is a test form',
 			formDescriptionMetadata: 'This is a test form',
@@ -455,7 +452,6 @@ describe('FormTrigger, prepareFormData', () => {
 
 		expect(result).toEqual({
 			testRun: true,
-			validForm: true,
 			formTitle: 'Test Form',
 			formDescription: 'This is a test form',
 			formDescriptionMetadata: 'This is a test form',
@@ -515,7 +511,6 @@ describe('FormTrigger, prepareFormData', () => {
 			query: {},
 		});
 
-		expect(result.validForm).toBe(false);
 		expect(result.formFields).toEqual([]);
 	});
 

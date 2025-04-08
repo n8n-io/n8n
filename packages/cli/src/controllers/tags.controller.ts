@@ -38,7 +38,7 @@ export class TagsController {
 		return await this.tagService.save(tag, 'create');
 	}
 
-	@Patch('/:id(\\w+)')
+	@Patch('/:id')
 	@GlobalScope('tag:update')
 	async updateTag(
 		_req: AuthenticatedRequest,
@@ -51,7 +51,7 @@ export class TagsController {
 		return await this.tagService.save(newTag, 'update');
 	}
 
-	@Delete('/:id(\\w+)')
+	@Delete('/:id')
 	@GlobalScope('tag:delete')
 	async deleteTag(_req: AuthenticatedRequest, _res: Response, @Param('id') tagId: string) {
 		await this.tagService.delete(tagId);

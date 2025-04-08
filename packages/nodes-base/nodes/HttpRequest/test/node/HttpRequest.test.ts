@@ -1,18 +1,9 @@
 import nock from 'nock';
 import { parse as parseUrl } from 'url';
 
-import {
-	initBinaryDataService,
-	setup,
-	equalityTest,
-	workflowToTests,
-	getWorkflowFilenames,
-} from '@test/nodes/Helpers';
+import { initBinaryDataService, getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
 
 describe('Test HTTP Request Node', () => {
-	const workflows = getWorkflowFilenames(__dirname);
-	const tests = workflowToTests(workflows);
-
 	const baseUrl = 'https://dummyjson.com';
 
 	beforeAll(async () => {
@@ -191,9 +182,7 @@ describe('Test HTTP Request Node', () => {
 				return getPaginationReturnData.call(this, limit, skip);
 			});
 	});
-	const nodeTypes = setup(tests);
 
-	for (const testData of tests) {
-		test(testData.description, async () => await equalityTest(testData, nodeTypes));
-	}
+	const workflows = getWorkflowFilenames(__dirname);
+	testWorkflows(workflows);
 });

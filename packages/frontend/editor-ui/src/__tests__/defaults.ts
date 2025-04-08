@@ -142,4 +142,9 @@ export const defaultSettings: FrontendSettings = {
 	folders: {
 		enabled: false,
 	},
+	insights: {
+		enabled: false,
+		summary: true,
+		dashboard: false,
+	},
 };

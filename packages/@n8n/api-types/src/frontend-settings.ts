@@ -182,4 +182,9 @@ export interface FrontendSettings {
 	partialExecution: {
 		version: 1 | 2;
 	};
+	insights: {
+		enabled: boolean;
+		summary: boolean;
+		dashboard: boolean;
+	};
 }
