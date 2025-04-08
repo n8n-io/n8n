@@ -1381,6 +1381,32 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return testUrl;
 	}
 
+	function setNodeExecuting(nodeName: string): void {
+		addExecutingNode(nodeName);
+
+		const node = getNodeByName(nodeName);
+
+		if (!node || !workflowExecutionData.value?.data) {
+			return;
+		}
+
+		if (workflowExecutionData.value.data.resultData.runData[nodeName] === undefined) {
+			workflowExecutionData.value.data.resultData.runData[nodeName] = [];
+		}
+
+		const maxExecutionIndex = Object.values(
+			workflowExecutionData.value.data.resultData.runData,
+		).reduce((acc, taskData) => Math.max(acc, ...taskData.map((d) => d.executionIndex ?? 0)), -1);
+
+		workflowExecutionData.value.data.resultData.runData[nodeName].push({
+			executionStatus: 'running',
+			startTime: Date.now(),
+			executionTime: 0,
+			executionIndex: maxExecutionIndex + 1,
+			source: [],
+		});
+	}
+
 	function updateNodeExecutionData(pushData: PushPayload<'nodeExecuteAfter'>): void {
 		if (!workflowExecutionData.value?.data) {
 			throw new Error('The "workflowExecutionData" is not initialized!');
@@ -1418,7 +1444,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				openFormPopupWindow(testUrl);
 			}
 		} else {
-			if (tasksData.length && tasksData[tasksData.length - 1].executionStatus === 'waiting') {
+			const status = tasksData[tasksData.length - 1]?.executionStatus ?? 'unknown';
+
+			if ('waiting' === status || 'running' === status) {
 				tasksData.splice(tasksData.length - 1, 1, data);
 			} else {
 				tasksData.push(data);
@@ -1777,7 +1805,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		makeNewWorkflowShareable,
 		resetWorkflow,
 		resetState,
-		addExecutingNode,
+		setNodeExecuting,
 		removeExecutingNode,
 		setWorkflowId,
 		setUsedCredentials,
