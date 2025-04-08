@@ -143,5 +143,7 @@ export const defaultSettings: FrontendSettings = {
 	},
 	insights: {
 		enabled: false,
+		summary: true,
+		dashboard: false,
 	},
 };

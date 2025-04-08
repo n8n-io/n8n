@@ -16,7 +16,7 @@ import LogsPanelActions from '@/components/CanvasChat/future/components/LogsPane
 
 const workflowsStore = useWorkflowsStore();
 const canvasStore = useCanvasStore();
-const panelState = computed(() => workflowsStore.chatPanelState);
+const panelState = computed(() => workflowsStore.logsPanelState);
 const container = ref<HTMLElement>();
 const selectedLogEntry = ref<LogEntryIdentity | undefined>(undefined);
 const pipContainer = useTemplateRef('pipContainer');
@@ -49,7 +49,7 @@ const { canPopOut, isPoppedOut, pipWindow } = usePiPWindow({
 		}
 
 		telemetry.track('User toggled log view', { new_state: 'attached' });
-		workflowsStore.setPanelState(LOGS_PANEL_STATE.ATTACHED);
+		workflowsStore.setPreferPoppedOutLogsView(false);
 	},
 });
 const logsPanelActionsProps = computed<InstanceType<typeof LogsPanelActions>['$props']>(() => ({
@@ -60,19 +60,17 @@ const logsPanelActionsProps = computed<InstanceType<typeof LogsPanelActions>['$p
 }));
 
 function onToggleOpen() {
-	if (panelState.value === LOGS_PANEL_STATE.CLOSED) {
-		telemetry.track('User toggled log view', { new_state: 'attached' });
-		workflowsStore.setPanelState(LOGS_PANEL_STATE.ATTACHED);
-	} else {
-		telemetry.track('User toggled log view', { new_state: 'collapsed' });
-		workflowsStore.setPanelState(LOGS_PANEL_STATE.CLOSED);
-	}
+	workflowsStore.toggleLogsPanelOpen();
+
+	telemetry.track('User toggled log view', {
+		new_state: panelState.value === LOGS_PANEL_STATE.CLOSED ? 'attached' : 'collapsed',
+	});
 }
 
 function handleClickHeader() {
 	if (panelState.value === LOGS_PANEL_STATE.CLOSED) {
 		telemetry.track('User toggled log view', { new_state: 'attached' });
-		workflowsStore.setPanelState(LOGS_PANEL_STATE.ATTACHED);
+		workflowsStore.toggleLogsPanelOpen(true);
 	}
 }
 
@@ -82,7 +80,8 @@ function handleSelectLogEntry(selected: LogEntryIdentity | undefined) {
 
 function onPopOut() {
 	telemetry.track('User toggled log view', { new_state: 'floating' });
-	workflowsStore.setPanelState(LOGS_PANEL_STATE.FLOATING);
+	workflowsStore.toggleLogsPanelOpen(true);
+	workflowsStore.setPreferPoppedOutLogsView(true);
 }
 
 watch([panelState, height], ([state, h]) => {
