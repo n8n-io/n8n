@@ -658,7 +658,22 @@ describe('VirtualSchema.vue', () => {
 		expect(container).toMatchSnapshot();
 	});
 
-	it('should do something', () => {
-		expect(true).toBe(true);
+	it('renders schema for empty objects and arrays', async () => {
+		useWorkflowsStore().pinData({
+			node: mockNode1,
+			data: [{ json: { empty: {}, emptyArray: [], nested: [{ empty: {}, emptyArray: [] }] } }],
+		});
+
+		const { container, getAllByTestId } = renderComponent({
+			props: {
+				nodes: [{ name: mockNode1.name, indicies: [], depth: 1 }],
+			},
+		});
+
+		await waitFor(() => {
+			const headers = getAllByTestId('run-data-schema-header');
+			expect(headers.length).toBe(2);
+		});
+		expect(container).toMatchSnapshot();
 	});
 });
