@@ -6,10 +6,10 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import type { Team, Channel, Chat, Subscription } from './types';
+import type { TeamResponse, ChannelResponse, ChatResponse, SubscriptionResponse } from './types';
 import { microsoftApiRequest } from '../transport';
 
-export async function fetchAllTeams(this: ILoadOptionsFunctions): Promise<Team[]> {
+export async function fetchAllTeams(this: ILoadOptionsFunctions): Promise<TeamResponse[]> {
 	const { value: teams } = await microsoftApiRequest.call(this, 'GET', '/v1.0/me/joinedTeams');
 	return teams.map((team: IDataObject) => ({
 		id: team.id as string,
@@ -20,7 +20,7 @@ export async function fetchAllTeams(this: ILoadOptionsFunctions): Promise<Team[]
 export async function fetchAllChannels(
 	this: ILoadOptionsFunctions,
 	teamId: string,
-): Promise<Channel[]> {
+): Promise<ChannelResponse[]> {
 	const { value: channels } = await microsoftApiRequest.call(
 		this,
 		'GET',
@@ -32,7 +32,7 @@ export async function fetchAllChannels(
 	}));
 }
 
-export async function fetchAllChats(this: ILoadOptionsFunctions): Promise<Chat[]> {
+export async function fetchAllChats(this: ILoadOptionsFunctions): Promise<ChatResponse[]> {
 	const { value: chats } = await microsoftApiRequest.call(this, 'GET', '/v1.0/chats');
 	return chats.map((chat: IDataObject) => ({
 		id: chat.id as string,
@@ -45,8 +45,8 @@ export async function createSubscription(
 	this: IHookFunctions | IExecuteFunctions,
 	webhookUrl: string,
 	resourcePath: string,
-): Promise<Subscription> {
-	const expirationTime = new Date(Date.now() + 3600 * 2 * 1000).toISOString();
+): Promise<SubscriptionResponse> {
+	const expirationTime = new Date(Date.now() + 4318 * 60 * 1000).toISOString();
 	const body: IDataObject = {
 		changeType: 'created',
 		notificationUrl: webhookUrl,
@@ -65,8 +65,9 @@ export async function createSubscription(
 
 	return {
 		id: response.id,
-		expirationDateTime: response.expirationDateTime,
+		resource: response.resource || resourcePath,
 		notificationUrl: response.notificationUrl,
+		expirationDateTime: response.expirationDateTime,
 	};
 }
 
