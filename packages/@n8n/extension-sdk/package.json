@@ -1,13 +1,22 @@
 {
   "name": "@n8n/extension-sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "files": [
     "dist",
+    "schema.json",
     "LICENSE",
     "README.md"
   ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
     "./backend": {
       "types": "./dist/backend/index.d.ts",
       "import": "./dist/backend/index.js",
@@ -25,7 +34,8 @@
     "dev": "tsup --watch",
     "typecheck:frontend": "vue-tsc --noEmit --project tsconfig.frontend.json",
     "typecheck:backend": "tsc --noEmit --project tsconfig.backend.json",
-    "build": "pnpm \"/^typecheck:.+/\" && pnpm clean && tsup",
+    "build": "pnpm \"/^typecheck:.+/\" && pnpm clean && tsup && pnpm create-json-schema",
+    "create-json-schema": "tsx scripts/create-json-schema.ts",
     "preview": "vite preview"
   },
   "peerDependencies": {
@@ -40,7 +50,12 @@
     "vite": "catalog:frontend",
     "vue": "catalog:frontend",
     "vue-router": "catalog:frontend",
-    "vue-tsc": "catalog:frontend"
+    "vue-tsc": "catalog:frontend",
+    "zod-to-json-schema": "catalog:",
+    "tsx": "catalog:"
   },
-  "license": "https://docs.n8n.io/sustainable-use-license/"
+  "license": "https://docs.n8n.io/sustainable-use-license/",
+  "dependencies": {
+    "zod": "catalog:"
+  }
 }

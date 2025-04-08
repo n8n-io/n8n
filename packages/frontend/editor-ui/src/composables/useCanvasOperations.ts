@@ -873,6 +873,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			true,
 			false,
 			node,
+			nodeTypeDescription,
 		);
 
 		node.parameters = nodeParameters ?? {};
@@ -1972,12 +1973,10 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		return data;
 	}
 
-	async function toggleChatOpen(source: 'node' | 'main') {
+	async function toggleChatOpen(source: 'node' | 'main', isOpen?: boolean) {
 		const workflow = workflowsStore.getCurrentWorkflow();
 
-		workflowsStore.setPanelState(
-			workflowsStore.chatPanelState === 'closed' ? 'attached' : 'closed',
-		);
+		workflowsStore.toggleLogsPanelOpen(isOpen);
 
 		const payload = {
 			workflow_id: workflow.id,

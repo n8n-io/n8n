@@ -11,13 +11,18 @@ import * as Db from '@/db';
 
 export const testDbPrefix = 'n8n_test_';
 
+type Extensions = 'insights';
+
+let loadedExtensions: Extensions[] = [];
+
 /**
  * Initialize one test DB per suite run, with bootstrap connection if needed.
  */
-export async function init() {
+export async function init(extensionNames: Extensions[] = []) {
 	const globalConfig = Container.get(GlobalConfig);
 	const dbType = globalConfig.database.type;
 	const testDbName = `${testDbPrefix}${randomString(6, 10).toLowerCase()}_${Date.now()}`;
+	loadedExtensions = extensionNames;
 
 	if (dbType === 'postgresdb') {
 		const bootstrapPostgres = await new Connection(
@@ -98,15 +103,22 @@ export async function truncate(names: Array<(typeof repositories)[number]>) {
 	for (const name of names) {
 		let RepositoryClass: Class<Repository<object>>;
 
-		try {
-			RepositoryClass = (await import(`@/databases/repositories/${kebabCase(name)}.repository`))[
-				`${name}Repository`
-			];
-		} catch (e) {
-			RepositoryClass = (await import(`@/databases/repositories/${kebabCase(name)}.repository.ee`))[
-				`${name}Repository`
-			];
+		const fileName = `${kebabCase(name)}.repository`;
+		const paths = [
+			`@/databases/repositories/${fileName}.ee`,
+			`@/databases/repositories/${fileName}`,
+		];
+
+		for (const extension of loadedExtensions) {
+			paths.push(
+				`@/modules/${extension}/database/repositories/${fileName}`,
+				`@/modules/${extension}/database/repositories/${fileName}.ee`,
+			);
 		}
+
+		RepositoryClass = (await Promise.any(paths.map(async (path) => await import(path))))[
+			`${name}Repository`
+		];
 
 		await Container.get(RepositoryClass).delete({});
 	}

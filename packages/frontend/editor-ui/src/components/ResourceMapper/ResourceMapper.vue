@@ -407,6 +407,7 @@ function updateNodeIssues(): void {
 		const parameterIssues = NodeHelpers.getNodeParametersIssues(
 			nodeType.value?.properties ?? [],
 			props.node,
+			nodeType.value,
 		);
 		if (parameterIssues) {
 			ndvStore.updateNodeParameterIssues(parameterIssues);
@@ -665,6 +666,7 @@ defineExpose({
 					displayName: locale.baseText('resourceMapper.attemptToConvertTypes.displayName'),
 					default: false,
 					description: locale.baseText('resourceMapper.attemptToConvertTypes.description'),
+					noDataExpression: true,
 				}"
 				:path="props.path + '.attemptToConvertTypes'"
 				:value="state.paramValue.attemptToConvertTypes"

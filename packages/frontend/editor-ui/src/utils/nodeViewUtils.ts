@@ -338,8 +338,7 @@ export function getGenericHints({
 			true,
 			false,
 			node,
-			undefined,
-			false,
+			nodeType,
 		);
 
 		const assignments =
