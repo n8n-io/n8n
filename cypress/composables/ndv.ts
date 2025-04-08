@@ -264,3 +264,7 @@ export function populateFixedCollection<T extends readonly string[]>(
 		}
 	}
 }
+
+export function assertInlineExpressionValid() {
+	cy.getByTestId('inline-expression-editor-input').find('.cm-valid-resolvable').should('exist');
+}
