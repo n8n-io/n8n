@@ -5,10 +5,11 @@ import { useI18n } from '@/composables/useI18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
-import { computed, nextTick } from 'vue';
+import { computed, nextTick, watch } from 'vue';
 import { ElTree, type TreeNode as ElTreeNode } from 'element-plus';
 import {
 	createAiData,
+	findLogEntryToAutoSelect,
 	getSubtreeTotalConsumedTokens,
 	getTotalConsumedTokens,
 	getTreeNodeData,
@@ -18,19 +19,20 @@ import { type INodeUi } from '@/Interface';
 import { upperFirst } from 'lodash-es';
 import { useTelemetry } from '@/composables/useTelemetry';
 import ConsumedTokenCountText from '@/components/CanvasChat/future/components/ConsumedTokenCountText.vue';
-import { type LogEntryIdentity } from '@/components/CanvasChat/types/logs';
+import { type SelectedLogEntry } from '@/components/CanvasChat/types/logs';
 import LogsOverviewRow from '@/components/CanvasChat/future/components/LogsOverviewRow.vue';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useRouter } from 'vue-router';
+import { IN_PROGRESS_EXECUTION_ID } from '@/constants';
 
 const { node, isOpen, selected } = defineProps<{
 	isOpen: boolean;
 	node: INodeUi | null;
-	selected?: LogEntryIdentity;
+	selected: SelectedLogEntry;
 }>();
 
-const emit = defineEmits<{ clickHeader: []; select: [LogEntryIdentity | undefined] }>();
+const emit = defineEmits<{ clickHeader: []; select: [SelectedLogEntry] }>();
 
 defineSlots<{ actions: {} }>();
 
@@ -88,8 +90,12 @@ function onClearExecutionData() {
 }
 
 function handleClickNode(clicked: TreeNode) {
-	if (selected?.node === clicked.node && selected.runIndex === clicked.runIndex) {
-		emit('select', undefined);
+	if (
+		typeof selected === 'object' &&
+		selected.node === clicked.node &&
+		selected.runIndex === clicked.runIndex
+	) {
+		emit('select', 'none');
 		return;
 	}
 
@@ -105,7 +111,7 @@ function handleClickNode(clicked: TreeNode) {
 function handleSwitchView(value: 'overview' | 'details') {
 	emit(
 		'select',
-		value === 'overview' || executionTree.value.length === 0 ? undefined : executionTree.value[0],
+		value === 'overview' || executionTree.value.length === 0 ? 'none' : executionTree.value[0],
 	);
 }
 
@@ -123,6 +129,39 @@ async function handleOpenNdv(treeNode: TreeNode) {
 async function handleTriggerPartialExecution(treeNode: TreeNode) {
 	await runWorkflow.runWorkflow({ destinationNode: treeNode.node });
 }
+
+// Apply auto selection of log entry
+watch(
+	executionTree,
+	() => {
+		if (selected !== 'initial' || executionTree.value.length === 0) {
+			return;
+		}
+
+		const logEntryToAutoSelect = findLogEntryToAutoSelect(
+			executionTree.value,
+			workflowsStore.nodesByName,
+			workflowsStore.workflowExecutionData?.data?.resultData.runData ?? {},
+		);
+
+		emit('select', logEntryToAutoSelect ?? 'none');
+	},
+	{ immediate: true },
+);
+
+// Initialize selection when different execution is loaded
+watch(
+	() => workflowsStore.workflowExecutionData?.id,
+	(_, prev) => {
+		if (prev === IN_PROGRESS_EXECUTION_ID) {
+			// Preserve selection when execution is finished
+			return;
+		}
+
+		emit('select', 'initial');
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
@@ -192,7 +231,11 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 						<LogsOverviewRow
 							:data="data"
 							:node="elTreeNode"
-							:is-selected="data.node === selected?.node && data.runIndex === selected?.runIndex"
+							:is-selected="
+								typeof selected === 'object' &&
+								data.node === selected.node &&
+								data.runIndex === selected.runIndex
+							"
 							:is-compact="selected !== undefined"
 							:should-show-consumed-tokens="consumedTokens.totalTokens > 0"
 							@toggle-expanded="handleToggleExpanded"

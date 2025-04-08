@@ -3,6 +3,8 @@ export interface LogEntryIdentity {
 	runIndex: number;
 }
 
+export type SelectedLogEntry = LogEntryIdentity | 'initial' | 'none';
+
 export const LOGS_PANEL_STATE = {
 	CLOSED: 'closed',
 	ATTACHED: 'attached',

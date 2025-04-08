@@ -11,14 +11,14 @@ import LogsOverviewPanel from '@/components/CanvasChat/future/components/LogsOve
 import { useCanvasStore } from '@/stores/canvas.store';
 import ChatMessagesPanel from '@/components/CanvasChat/components/ChatMessagesPanel.vue';
 import LogsDetailsPanel from '@/components/CanvasChat/future/components/LogDetailsPanel.vue';
-import { LOGS_PANEL_STATE, type LogEntryIdentity } from '@/components/CanvasChat/types/logs';
+import { LOGS_PANEL_STATE, type SelectedLogEntry } from '@/components/CanvasChat/types/logs';
 import LogsPanelActions from '@/components/CanvasChat/future/components/LogsPanelActions.vue';
 
 const workflowsStore = useWorkflowsStore();
 const canvasStore = useCanvasStore();
 const panelState = computed(() => workflowsStore.logsPanelState);
 const container = ref<HTMLElement>();
-const selectedLogEntry = ref<LogEntryIdentity | undefined>(undefined);
+const selectedLogEntry = ref<SelectedLogEntry>('initial');
 const pipContainer = useTemplateRef('pipContainer');
 const pipContent = useTemplateRef('pipContent');
 const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
@@ -35,7 +35,7 @@ const { rootStyles, height, chatWidth, onWindowResize, onResizeDebounced, onResi
 
 const { currentSessionId, messages, connectedNode, sendMessage, refreshSession, displayExecution } =
 	useChatState(ref(false), onWindowResize);
-const isLogDetailsOpen = computed(() => selectedLogEntry.value !== undefined);
+const isLogDetailsOpen = computed(() => typeof selectedLogEntry.value === 'object');
 
 const { canPopOut, isPoppedOut, pipWindow } = usePiPWindow({
 	initialHeight: 400,
@@ -74,7 +74,7 @@ function handleClickHeader() {
 	}
 }
 
-function handleSelectLogEntry(selected: LogEntryIdentity | undefined) {
+function handleSelectLogEntry(selected: SelectedLogEntry) {
 	selectedLogEntry.value = selected;
 }
 
@@ -144,7 +144,7 @@ watch([panelState, height], ([state, h]) => {
 						</template>
 					</LogsOverviewPanel>
 					<LogsDetailsPanel
-						v-if="selectedLogEntry"
+						v-if="typeof selectedLogEntry === 'object'"
 						:class="$style.logDetails"
 						:is-open="panelState !== LOGS_PANEL_STATE.CLOSED"
 						@click-header="handleClickHeader"

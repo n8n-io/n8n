@@ -372,6 +372,7 @@ export const routes: RouteRecordRaw[] = [
 		name: VIEWS.DEMO,
 		components: {
 			default: NodeView,
+			footer: CanvasChatSwitch,
 		},
 		meta: {
 			middleware: ['authenticated'],

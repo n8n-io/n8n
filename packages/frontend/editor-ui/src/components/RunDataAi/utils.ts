@@ -1,5 +1,7 @@
-import { type LlmTokenUsageData, type IAiDataContent } from '@/Interface';
+import { type LlmTokenUsageData, type IAiDataContent, type INodeUi } from '@/Interface';
 import {
+	AGENT_LANGCHAIN_NODE_TYPE,
+	type IRunData,
 	type INodeExecutionData,
 	type ITaskData,
 	type ITaskDataConnections,
@@ -230,4 +232,44 @@ export function formatTokenUsageCount(
 				: usage.promptTokens;
 
 	return usage.isEstimate ? `~${count}` : count.toLocaleString();
+}
+
+export function findLogEntryToAutoSelect(
+	tree: TreeNode[],
+	nodesByName: Record<string, INodeUi>,
+	runData: IRunData,
+): TreeNode | undefined {
+	return findLogEntryToAutoSelectRec(tree, nodesByName, runData, 0);
+}
+
+function findLogEntryToAutoSelectRec(
+	tree: TreeNode[],
+	nodesByName: Record<string, INodeUi>,
+	runData: IRunData,
+	depth: number,
+): TreeNode | undefined {
+	for (const entry of tree) {
+		const taskData = runData[entry.node]?.[entry.runIndex];
+
+		if (taskData?.error) {
+			return entry;
+		}
+
+		const childAutoSelect = findLogEntryToAutoSelectRec(
+			entry.children,
+			nodesByName,
+			runData,
+			depth + 1,
+		);
+
+		if (childAutoSelect) {
+			return childAutoSelect;
+		}
+
+		if (nodesByName[entry.node]?.type === AGENT_LANGCHAIN_NODE_TYPE) {
+			return entry;
+		}
+	}
+
+	return depth === 0 ? tree[0] : undefined;
 }
