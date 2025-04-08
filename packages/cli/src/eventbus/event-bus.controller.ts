@@ -12,6 +12,10 @@ import { AuthenticatedRequest } from '@/requests';
 import { eventNamesAll } from './event-message-classes';
 import { MessageEventBus } from './message-event-bus/message-event-bus';
 import {
+	isMessageEventBusDestinationDatadogOptions,
+	MessageEventBusDestinationDatadog,
+} from './message-event-bus-destination/message-event-bus-destination-datadog.ee';
+import {
 	isMessageEventBusDestinationSentryOptions,
 	MessageEventBusDestinationSentry,
 } from './message-event-bus-destination/message-event-bus-destination-sentry.ee';
@@ -89,6 +93,13 @@ export class EventBusController {
 					if (isMessageEventBusDestinationSyslogOptions(req.body)) {
 						result = await this.eventBus.addDestination(
 							new MessageEventBusDestinationSyslog(this.eventBus, req.body),
+						);
+					}
+					break;
+				case MessageEventBusDestinationTypeNames.datadog:
+					if (isMessageEventBusDestinationDatadogOptions(req.body)) {
+						result = await this.eventBus.addDestination(
+							new MessageEventBusDestinationDatadog(this.eventBus, req.body),
 						);
 					}
 					break;

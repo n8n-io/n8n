@@ -18,6 +18,7 @@ export const enum EventMessageTypeNames {
 
 export const enum MessageEventBusDestinationTypeNames {
 	abstract = '$$AbstractMessageEventBusDestination',
+	datadog = '$$MessageEventBusDestinationDatadog',
 	webhook = '$$MessageEventBusDestinationWebhook',
 	sentry = '$$MessageEventBusDestinationSentry',
 	syslog = '$$MessageEventBusDestinationSyslog',
@@ -25,6 +26,7 @@ export const enum MessageEventBusDestinationTypeNames {
 
 export const messageEventBusDestinationTypeNames = [
 	MessageEventBusDestinationTypeNames.abstract,
+	MessageEventBusDestinationTypeNames.datadog,
 	MessageEventBusDestinationTypeNames.webhook,
 	MessageEventBusDestinationTypeNames.sentry,
 	MessageEventBusDestinationTypeNames.syslog,
@@ -134,6 +136,18 @@ export interface MessageEventBusDestinationSentryOptions extends MessageEventBus
 	sendPayload?: boolean;
 }
 
+export interface MessageEventBusDestinationDatadogOptions
+	extends MessageEventBusDestinationOptions {
+	apiKey?: string;
+	appKey?: string;
+	site: string;
+	ddsource?: string;
+	ddtags?: string;
+	hostname?: string;
+	service?: string;
+	sendPayload?: boolean;
+}
+
 // ==================================
 // Event Destination Default Settings
 // ==================================
@@ -193,5 +207,20 @@ export const defaultMessageEventBusDestinationSentryOptions: MessageEventBusDest
 		__type: MessageEventBusDestinationTypeNames.sentry,
 		label: 'Sentry DSN',
 		dsn: 'https://',
+		sendPayload: true,
+	};
+
+export const defaultMessageEventBusDestinationDatadogOptions: MessageEventBusDestinationDatadogOptions =
+	{
+		...defaultMessageEventBusDestinationOptions,
+		__type: MessageEventBusDestinationTypeNames.datadog,
+		label: 'Datadog',
+		site: 'datadoghq.eu',
+		apiKey: '',
+		appKey: '',
+		ddsource: 'n8n',
+		ddtags: '',
+		hostname: '',
+		service: '',
 		sendPayload: true,
 	};

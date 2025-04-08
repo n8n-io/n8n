@@ -477,3 +477,73 @@ export const sentryModalDescription = [
 		description: 'Your Sentry DSN Client Key',
 	},
 ] as INodeProperties[];
+
+export const datadogModalDescription = [
+	{
+		displayName: 'Site',
+		name: 'site',
+		type: 'string',
+		default: 'datadoghq.eu',
+		noDataExpression: true,
+		description: 'Datadog Site URL',
+	},
+	{
+		displayName: 'API Key',
+		name: 'apiKey',
+		type: 'string',
+		typeOptions: { password: true },
+		default: '',
+		noDataExpression: true,
+		description: 'Datadog API Key',
+	},
+	{
+		displayName: 'App Key',
+		name: 'appKey',
+		type: 'string',
+		typeOptions: { password: true },
+		default: '',
+		noDataExpression: true,
+		description: 'Datadog App Key',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [
+			{
+				displayName: 'Source',
+				name: 'ddsource',
+				type: 'string',
+				default: 'n8n',
+				noDataExpression: true,
+				description: 'Datadog source',
+			},
+			{
+				displayName: 'Tags',
+				name: 'ddtags',
+				type: 'string',
+				default: '',
+				noDataExpression: true,
+				description: 'Datadog tags',
+			},
+			{
+				displayName: 'Service',
+				name: 'service',
+				type: 'string',
+				default: '',
+				noDataExpression: true,
+				description: 'Datadog service',
+			},
+			{
+				displayName: 'Host Name',
+				name: 'hostname',
+				type: 'string',
+				default: '',
+				noDataExpression: true,
+				description: 'Datadog host name',
+			},
+		],
+	},
+] as INodeProperties[];

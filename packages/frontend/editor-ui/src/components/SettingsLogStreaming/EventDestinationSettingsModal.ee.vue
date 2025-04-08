@@ -9,6 +9,7 @@ import type {
 	NodeParameterValueType,
 	MessageEventBusDestinationSentryOptions,
 	MessageEventBusDestinationSyslogOptions,
+	MessageEventBusDestinationDatadogOptions,
 	MessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
 import {
@@ -17,6 +18,7 @@ import {
 	defaultMessageEventBusDestinationOptions,
 	defaultMessageEventBusDestinationWebhookOptions,
 	MessageEventBusDestinationTypeNames,
+	defaultMessageEventBusDestinationDatadogOptions,
 	defaultMessageEventBusDestinationSyslogOptions,
 	defaultMessageEventBusDestinationSentryOptions,
 } from 'n8n-workflow';
@@ -43,6 +45,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useRootStore } from '@/stores/root.store';
 
 import {
+	datadogModalDescription,
 	webhookModalDescription,
 	sentryModalDescription,
 	syslogModalDescription,
@@ -81,6 +84,7 @@ const loading = ref(false);
 const typeSelectValue = ref('');
 const typeSelectPlaceholder = ref('Destination Type');
 const nodeParameters = ref(deepCopy(defaultMessageEventBusDestinationOptions) as INodeParameters);
+const datadogDescription = ref(datadogModalDescription);
 const webhookDescription = ref(webhookModalDescription);
 const sentryDescription = ref(sentryModalDescription);
 const syslogDescription = ref(syslogModalDescription);
@@ -109,6 +113,10 @@ const isTypeAbstract = computed(
 
 const isTypeWebhook = computed(
 	() => nodeParameters.value.__type === MessageEventBusDestinationTypeNames.webhook,
+);
+
+const isTypeDatadog = computed(
+	() => nodeParameters.value.__type === MessageEventBusDestinationTypeNames.datadog,
 );
 
 const isTypeSyslog = computed(
@@ -195,6 +203,11 @@ async function onContinueAddClicked() {
 	switch (typeSelectValue.value) {
 		case MessageEventBusDestinationTypeNames.syslog:
 			newDestination = Object.assign(deepCopy(defaultMessageEventBusDestinationSyslogOptions), {
+				id: destination.id,
+			});
+			break;
+		case MessageEventBusDestinationTypeNames.datadog:
+			newDestination = Object.assign(deepCopy(defaultMessageEventBusDestinationDatadogOptions), {
 				id: destination.id,
 			});
 			break;
@@ -323,6 +336,9 @@ async function saveDestination() {
 			} else if (isTypeSentry.value) {
 				const sentryDestination = destination as MessageEventBusDestinationSentryOptions;
 				return sentryDestination.dsn !== '';
+			} else if (isTypeDatadog.value) {
+				const datadogDestination = destination as MessageEventBusDestinationDatadogOptions;
+				return datadogDestination.site !== '';
 			} else if (isTypeSyslog.value) {
 				const syslogDestination = destination as MessageEventBusDestinationSyslogOptions;
 				return (
@@ -467,6 +483,16 @@ function callEventBus(event: string, data: unknown) {
 						<n8n-menu mode="tabs" :items="sidebarItems" @select="onTabSelect"></n8n-menu>
 					</div>
 					<div v-if="activeTab === 'settings'" ref="content" :class="$style.mainContent">
+						<template v-if="isTypeDatadog">
+							<ParameterInputList
+								:parameters="datadogDescription"
+								:hide-delete="true"
+								:node-values="nodeParameters"
+								:is-read-only="!canManageLogStreaming"
+								path=""
+								@value-changed="valueChanged"
+							/>
+						</template>
 						<template v-if="isTypeWebhook">
 							<ParameterInputList
 								:parameters="webhookDescription"

@@ -4,6 +4,7 @@ import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 
 import type { EventDestinations } from '@/databases/entities/event-destinations';
 
+import { MessageEventBusDestinationDatadog } from './message-event-bus-destination-datadog.ee';
 import { MessageEventBusDestinationSentry } from './message-event-bus-destination-sentry.ee';
 import { MessageEventBusDestinationSyslog } from './message-event-bus-destination-syslog.ee';
 import { MessageEventBusDestinationWebhook } from './message-event-bus-destination-webhook.ee';
@@ -19,6 +20,8 @@ export function messageEventBusDestinationFromDb(
 		switch (destinationData.__type) {
 			case MessageEventBusDestinationTypeNames.sentry:
 				return MessageEventBusDestinationSentry.deserialize(eventBusInstance, destinationData);
+			case MessageEventBusDestinationTypeNames.datadog:
+				return MessageEventBusDestinationDatadog.deserialize(eventBusInstance, destinationData);
 			case MessageEventBusDestinationTypeNames.syslog:
 				return MessageEventBusDestinationSyslog.deserialize(eventBusInstance, destinationData);
 			case MessageEventBusDestinationTypeNames.webhook:
