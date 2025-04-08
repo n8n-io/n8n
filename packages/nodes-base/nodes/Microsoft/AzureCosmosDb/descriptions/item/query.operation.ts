@@ -1,10 +1,10 @@
 import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
 
-import { containerResourceLocator } from '../../helpers/resourceLocators';
 import { validateQueryParameters } from '../../helpers/utils';
+import { containerResourceLocator } from '../common';
 
 const properties: INodeProperties[] = [
-	containerResourceLocator,
+	{ ...containerResourceLocator, description: 'Select the container you want to use' },
 	{
 		displayName: 'Query',
 		name: 'query',

@@ -1,16 +1,16 @@
 import type { INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 
-import { containerResourceLocator, itemResourceLocator } from '../../helpers/resourceLocators';
 import {
 	untilContainerSelected,
 	untilItemSelected,
 	validateCustomProperties,
 } from '../../helpers/utils';
+import { containerResourceLocator, itemResourceLocator } from '../common';
 
 const properties: INodeProperties[] = [
-	containerResourceLocator,
-	itemResourceLocator,
+	{ ...containerResourceLocator, description: 'Select the container you want to use' },
+	{ ...itemResourceLocator, description: 'Select the item to be updated' },
 	{
 		displayName: 'Item Contents',
 		name: 'customProperties',

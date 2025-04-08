@@ -6,11 +6,11 @@ import type {
 } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 
-import { containerResourceLocator } from '../../helpers/resourceLocators';
 import { processJsonInput, untilContainerSelected } from '../../helpers/utils';
+import { containerResourceLocator } from '../common';
 
 const properties: INodeProperties[] = [
-	containerResourceLocator,
+	{ ...containerResourceLocator, description: 'Select the container you want to use' },
 	{
 		displayName: 'Item Contents',
 		name: 'customProperties',

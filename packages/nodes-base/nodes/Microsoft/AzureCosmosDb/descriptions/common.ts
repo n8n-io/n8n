@@ -1,6 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { untilContainerSelected } from './utils';
+import { HeaderConstants } from '../helpers/constants';
+import { untilContainerSelected } from '../helpers/utils';
 
 export const containerResourceLocator: INodeProperties = {
 	displayName: 'Container',
@@ -9,7 +10,6 @@ export const containerResourceLocator: INodeProperties = {
 		mode: 'list',
 		value: '',
 	},
-	description: 'Select the container you want to delete',
 	modes: [
 		{
 			displayName: 'From list',
@@ -48,7 +48,6 @@ export const itemResourceLocator: INodeProperties = {
 		mode: 'list',
 		value: '',
 	},
-	description: "Select the item's ID",
 	displayOptions: {
 		hide: {
 			...untilContainerSelected,
@@ -84,3 +83,54 @@ export const itemResourceLocator: INodeProperties = {
 	required: true,
 	type: 'resourceLocator',
 };
+
+export const paginationParameters: INodeProperties[] = [
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+		routing: {
+			send: {
+				paginate: '={{ $value }}',
+			},
+			operations: {
+				pagination: {
+					type: 'generic',
+					properties: {
+						continue: `={{ !!$response.headers?.["${HeaderConstants.X_MS_CONTINUATION}"] }}`,
+						request: {
+							headers: {
+								[HeaderConstants.X_MS_CONTINUATION]: `={{ $response.headers?.["${HeaderConstants.X_MS_CONTINUATION}"] }}`,
+							},
+						},
+					},
+				},
+			},
+		},
+		type: 'boolean',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		default: 50,
+		description: 'Max number of results to return',
+		displayOptions: {
+			show: {
+				returnAll: [false],
+			},
+		},
+		routing: {
+			request: {
+				headers: {
+					[HeaderConstants.X_MS_MAX_ITEM_COUNT]: '={{ $value || undefined }}',
+				},
+			},
+		},
+		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
+		validateType: 'number',
+	},
+];

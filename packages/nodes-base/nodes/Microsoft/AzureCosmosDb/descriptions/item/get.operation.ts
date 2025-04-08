@@ -1,11 +1,11 @@
 import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
 
-import { containerResourceLocator, itemResourceLocator } from '../../helpers/resourceLocators';
 import { untilContainerSelected, untilItemSelected } from '../../helpers/utils';
+import { containerResourceLocator, itemResourceLocator } from '../common';
 
 const properties: INodeProperties[] = [
-	containerResourceLocator,
-	itemResourceLocator,
+	{ ...containerResourceLocator, description: 'Select the container you want to use' },
+	{ ...itemResourceLocator, description: 'Select the item you want to retrieve' },
 	{
 		displayName: 'Simplify',
 		name: 'simple',
