@@ -1,6 +1,6 @@
 {
   "name": "@n8n/design-system",
-  "version": "1.74.0",
+  "version": "1.75.0",
   "main": "src/index.ts",
   "import": "src/index.ts",
   "scripts": {
@@ -49,7 +49,6 @@
     "@fortawesome/fontawesome-svg-core": "^1.2.36",
     "@fortawesome/free-solid-svg-icons": "^5.15.4",
     "@fortawesome/vue-fontawesome": "^3.0.3",
-
     "@tanstack/vue-table": "^8.21.2",
     "element-plus": "catalog:frontend",
     "is-emoji-supported": "^0.0.5",
