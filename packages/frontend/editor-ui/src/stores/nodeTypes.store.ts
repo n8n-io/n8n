@@ -31,8 +31,9 @@ export type NodeTypesStore = ReturnType<typeof useNodeTypesStore>;
 
 export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	const nodeTypes = ref<NodeTypesByTypeNameAndVersion>({});
-	const verifiedNodeTypes = ref<string[]>([]);
-	const communityNodeTypes = ref<INodeTypeDescription[]>([]);
+	const vettedNodeTypes = ref<string[]>([]);
+	const newInstalledNodeTypes = ref<string[]>([]);
+	const communityNodePreviews = ref<INodeTypeDescription[]>([]);
 
 	const rootStore = useRootStore();
 
@@ -290,12 +291,12 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 			throw new Error('Could not fetch node types');
 		}
 
-		if (!communityNodeTypes.value.length) {
-			await fetchCommunityNodes();
+		if (!communityNodePreviews.value.length) {
+			await fetchCommunityNodePreviews();
 		}
 
 		if (nodeTypes.length) {
-			const communityNodes = await getNotInstalledCommunityNodes();
+			const communityNodes = await filterOutInstalledNodes();
 			setNodeTypes(nodeTypes.concat(communityNodes));
 		}
 	};
@@ -342,22 +343,22 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		return await nodeTypesApi.getNodeParameterActionResult(rootStore.restApiContext, sendData);
 	};
 
-	const fetchCommunityNodes = async () => {
-		communityNodeTypes.value = await nodeTypesApi.getCommunityNodeTypes(rootStore.restApiContext);
-		verifiedNodeTypes.value = await nodeTypesApi.getVettedNodes(rootStore.restApiContext);
+	const fetchCommunityNodePreviews = async () => {
+		communityNodePreviews.value = await nodeTypesApi.getCommunityNodeTypes(
+			rootStore.restApiContext,
+		);
+		vettedNodeTypes.value = await nodeTypesApi.getVettedNodes(rootStore.restApiContext);
 	};
 
-	const getNotInstalledCommunityNodes = async () => {
+	const filterOutInstalledNodes = async () => {
 		const communityNodesStore = useCommunityNodesStore();
 
-		if (Object.keys(communityNodesStore.installedPackages).length === 0) {
-			await communityNodesStore.fetchInstalledPackages();
-		}
+		await communityNodesStore.fetchInstalledPackages();
 
-		return communityNodeTypes.value.filter((nodeType) => {
-			return !communityNodesStore.installedPackages[
-				nodeType.name.split('.')[0].replace(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN, '')
-			];
+		return communityNodePreviews.value.filter((previewType) => {
+			const name = previewType.name.split('.')[0].replace(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN, '');
+			const isInstalled = communityNodesStore.installedPackages[name];
+			return !isInstalled;
 		});
 	};
 
@@ -382,7 +383,8 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		visibleNodeTypesByOutputConnectionTypeNames,
 		visibleNodeTypesByInputConnectionTypeNames,
 		isConfigurableNode,
-		verifiedNodeTypes,
+		vettedNodeTypes,
+		newInstalledNodeTypes,
 		getResourceMapperFields,
 		getLocalResourceMapperFields,
 		getNodeParameterActionResult,

@@ -45,6 +45,14 @@ const isPreview = computed(() => {
 	return communityNode.value && !activeViewStack.communityNodeDetails?.installed;
 });
 
+const highlightActiveItem = computed(() => {
+	if (activeViewStack.communityNodeDetails && !activeViewStack.communityNodeDetails.installed) {
+		return false;
+	}
+
+	return true;
+});
+
 // Lazy render large items lists to prevent the browser from freezing
 // when loading many items.
 function renderItems() {
@@ -154,7 +162,7 @@ watch(
 					ref="iteratorItems"
 					:class="{
 						clickable: !disabled,
-						[$style.active]: activeItemId === item.uuid,
+						[$style.active]: activeItemId === item.uuid && highlightActiveItem,
 						[$style.iteratorItem]: !communityNode,
 						[$style[item.type]]: true,
 						[$style.preview]: isPreview,

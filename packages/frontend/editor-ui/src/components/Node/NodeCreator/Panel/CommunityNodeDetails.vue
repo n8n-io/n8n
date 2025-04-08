@@ -24,7 +24,7 @@ const { communityNodeDetails } = activeViewStack;
 
 const loading = ref(false);
 
-const verifiedVersion = ref<string | undefined>(undefined);
+const npmVersion = ref<string | undefined>(undefined);
 
 const communityNodesStore = useCommunityNodesStore();
 const nodeCreatorStore = useNodeCreatorStore();
@@ -35,10 +35,17 @@ const isOwner = computed(() => useUsersStore().isInstanceOwner);
 const onInstallClick = async () => {
 	if (isOwner.value && activeViewStack.communityNodeDetails && !communityNodeDetails?.installed) {
 		const { key, packageName } = activeViewStack.communityNodeDetails;
+		const communityNodeAttributes = await useNodeTypesStore().getCommunityNodeAttributes(key);
+
+		if (communityNodeAttributes) {
+			npmVersion.value = communityNodeAttributes.npmVersion;
+		}
 
 		try {
 			loading.value = true;
-			await communityNodesStore.installPackage(packageName, true, verifiedVersion.value);
+			await communityNodesStore.installPackage(packageName, true, npmVersion.value);
+
+			useNodeTypesStore().newInstalledNodeTypes.push(key);
 
 			await useNodeTypesStore().getNodeTypes();
 

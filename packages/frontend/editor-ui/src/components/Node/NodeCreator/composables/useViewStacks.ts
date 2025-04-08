@@ -49,7 +49,6 @@ type CommunityNodeDetails = {
 	key: string;
 	description: string;
 	installed: boolean;
-	verified?: boolean;
 	nodeIcon?: NodeIconSource;
 	iconUrl?: string;
 };
@@ -119,7 +118,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			}
 
 			searchBase = searchBase.filter((item) => {
-				if (useNodeTypesStore().verifiedNodeTypes.includes(item.key)) {
+				if (useNodeTypesStore().vettedNodeTypes.includes(item.key)) {
 					return false;
 				}
 				return true;
@@ -223,10 +222,13 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	const additionalSearchItems = computed(() => {
 		const communityItems: INodeCreateElement[] = [];
 		const items: INodeCreateElement[] = [];
-		const { verifiedNodeTypes } = useNodeTypesStore();
+		const { vettedNodeTypes, newInstalledNodeTypes } = useNodeTypesStore();
 
 		for (const item of globalSearchItemsDiff.value) {
-			if (verifiedNodeTypes.includes(item.key)) {
+			if (vettedNodeTypes.includes(item.key)) {
+				if (newInstalledNodeTypes.includes(item.key)) {
+					continue;
+				}
 				communityItems.push(item);
 			} else {
 				items.push(item);
@@ -523,18 +525,14 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	) {
 		const installed = !item.key.includes(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN);
 		const packageName = item.key.split('.')[0].replace(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN, '');
-		const verified = useNodeTypesStore().verifiedNodeTypes.some((n) =>
-			n.replace(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN, '').includes(packageName),
-		);
 
-		const communityNodeDetails = {
+		const communityNodeDetails: CommunityNodeDetails = {
 			title: item.properties.displayName,
 			description: item.properties.description,
 			key: item.key,
 			nodeIcon,
 			installed,
 			packageName,
-			verified,
 		};
 
 		if (nodeActions.length) {

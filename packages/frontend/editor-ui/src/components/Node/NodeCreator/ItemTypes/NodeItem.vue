@@ -207,6 +207,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 	width: 40px;
 	z-index: 1;
 }
+
 .communityNodeIcon {
 	vertical-align: top;
 }

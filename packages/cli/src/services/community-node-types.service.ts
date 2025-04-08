@@ -28,7 +28,7 @@ interface Data {
 }
 
 const VETTED_NODE_TYPES_URL =
-	'https://eat-conventional-defense-saudi.trycloudflare.com/api/community-nodes';
+	'https://wn-dealing-adjustment-feature.trycloudflare.com/api/community-nodes';
 
 const UPDATE_INTERVAL = 8 * 60 * 60 * 1000;
 

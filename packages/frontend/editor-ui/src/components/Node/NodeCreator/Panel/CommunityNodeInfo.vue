@@ -16,11 +16,10 @@ interface DownloadData {
 const publisherName = ref<string | undefined>(undefined);
 const downloads = ref<string | null>(null);
 const verified = ref(false);
-const verifiedVersion = ref<string | undefined>(undefined);
 
 const isOwner = computed(() => useUsersStore().isInstanceOwner);
 
-const ownersEmail = computed(() =>
+const ownerEmailList = computed(() =>
 	useUsersStore()
 		.allUsers.filter((user) => user.role?.includes('owner'))
 		.map((user) => user.email),
@@ -40,7 +39,6 @@ async function fetchPackageInfo(packageName: string) {
 		publisherName.value = communityNodeAttributes.authorName;
 		downloads.value = formatNumber(communityNodeAttributes.numberOfDownloads);
 		verified.value = true;
-		verifiedVersion.value = communityNodeAttributes.npmVersion;
 		return;
 	}
 
@@ -126,8 +124,8 @@ onMounted(async () => {
 				<div style="padding-bottom: 8px">
 					Please contact an administrator to install this community node:
 				</div>
-				<n8n-text bold v-if="ownersEmail.length">
-					{{ ownersEmail.join(', ') }}
+				<n8n-text bold v-if="ownerEmailList.length">
+					{{ ownerEmailList.join(', ') }}
 				</n8n-text>
 			</n8n-text>
 		</div>
