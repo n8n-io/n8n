@@ -18,7 +18,7 @@ let agent: SuperAgentTest;
 describe('WebhookServer', () => {
 	const liveWebhooks = mockInstance(LiveWebhooks);
 	const testWebhooks = mockInstance(TestWebhooks);
-	mockInstance(WaitingWebhooks);
+	const waitingWebhooks = mockInstance(WaitingWebhooks);
 	mockInstance(WaitingForms);
 	mockInstance(ExternalHooks);
 	const globalConfig = Container.get(GlobalConfig);
@@ -83,5 +83,19 @@ describe('WebhookServer', () => {
 				});
 			});
 		}
+	});
+
+	describe('routing', () => {
+		it('should handle waiting-webhooks', async () => {
+			const pathPrefix = globalConfig.endpoints.webhookWaiting;
+			waitingWebhooks.executeWebhook.mockResolvedValueOnce({
+				noWebhookResponse: false,
+				responseCode: 204,
+			});
+
+			const response = await agent.get(`/${pathPrefix}/12345`);
+
+			expect(response.statusCode).toEqual(204);
+		});
 	});
 });
