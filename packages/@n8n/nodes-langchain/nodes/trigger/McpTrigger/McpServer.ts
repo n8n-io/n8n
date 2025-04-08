@@ -77,6 +77,9 @@ export class McpServer {
 		const transport = this.transports[sessionId];
 		this.tools[sessionId] = connectedTools;
 		if (transport) {
+			// We need to add a promise here because the `handlePostMessage` will send something to the
+			// MCP Server, that will run in a different context. This means that the return will happen
+			// almost immediately, and will lead to marking the sub-node as "running" in the final execution
 			await new Promise(async (resolve) => {
 				this.resolveFunctions[sessionId] = resolve;
 				await transport.handlePostMessage(req, resp, req.rawBody.toString());
