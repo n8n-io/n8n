@@ -74,7 +74,6 @@
     "pinia": "^2.2.4",
     "prettier": "^3.3.3",
     "qrcode.vue": "^3.3.4",
-    "shadowrealm-api": "^0.8.3",
     "stream-browserify": "^3.0.0",
     "timeago.js": "^4.0.2",
     "typescript": "catalog:frontend",
