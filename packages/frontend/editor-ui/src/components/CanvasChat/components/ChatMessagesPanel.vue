@@ -19,11 +19,13 @@ interface Props {
 	sessionId: string;
 	showCloseButton?: boolean;
 	isOpen?: boolean;
+	isReadOnly?: boolean;
 	isNewLogsEnabled?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
 	isOpen: true,
+	isReadOnly: false,
 	isNewLogsEnabled: false,
 });
 
@@ -145,7 +147,7 @@ async function copySessionId() {
 			@click="emit('clickHeader')"
 		>
 			<template #actions>
-				<N8nTooltip v-if="clipboard.isSupported.value">
+				<N8nTooltip v-if="clipboard.isSupported.value && !isReadOnly">
 					<template #content>
 						{{ sessionId }}
 						<br />
@@ -160,7 +162,7 @@ async function copySessionId() {
 					>
 				</N8nTooltip>
 				<N8nTooltip
-					v-if="messages.length > 0"
+					v-if="messages.length > 0 && !isReadOnly"
 					:content="locale.baseText('chat.window.session.resetSession')"
 				>
 					<N8nIconButton
@@ -252,7 +254,7 @@ async function copySessionId() {
 			</MessagesList>
 		</main>
 
-		<div v-if="isOpen" :class="$style.messagesInput">
+		<div v-if="isOpen && !isReadOnly" :class="$style.messagesInput">
 			<ChatInput
 				data-test-id="lm-chat-inputs"
 				:placeholder="inputPlaceholder"

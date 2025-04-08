@@ -14,6 +14,10 @@ import LogsDetailsPanel from '@/components/CanvasChat/future/components/LogDetai
 import { LOGS_PANEL_STATE, type SelectedLogEntry } from '@/components/CanvasChat/types/logs';
 import LogsPanelActions from '@/components/CanvasChat/future/components/LogsPanelActions.vue';
 
+const { isReadOnly } = withDefaults(defineProps<{ isReadOnly?: boolean }>(), {
+	isReadOnly: false,
+});
+
 const workflowsStore = useWorkflowsStore();
 const canvasStore = useCanvasStore();
 const panelState = computed(() => workflowsStore.logsPanelState);
@@ -22,12 +26,6 @@ const selectedLogEntry = ref<SelectedLogEntry>('initial');
 const pipContainer = useTemplateRef('pipContainer');
 const pipContent = useTemplateRef('pipContent');
 const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
-const hasChat = computed(() =>
-	workflowsStore.workflowTriggerNodes.some((node) =>
-		[CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE].includes(node.type),
-	),
-);
-
 const telemetry = useTelemetry();
 
 const { rootStyles, height, chatWidth, onWindowResize, onResizeDebounced, onResizeChatDebounced } =
@@ -35,6 +33,15 @@ const { rootStyles, height, chatWidth, onWindowResize, onResizeDebounced, onResi
 
 const { currentSessionId, messages, connectedNode, sendMessage, refreshSession, displayExecution } =
 	useChatState(ref(false), onWindowResize);
+
+const hasChat = computed(() =>
+	isReadOnly
+		? messages.value.length > 0 || previousChatMessages.value.length > 0
+		: workflowsStore.workflowTriggerNodes.some((node) =>
+				[CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE].includes(node.type),
+			),
+);
+
 const isLogDetailsOpen = computed(() => typeof selectedLogEntry.value === 'object');
 
 const { canPopOut, isPoppedOut, pipWindow } = usePiPWindow({
@@ -119,6 +126,7 @@ watch([panelState, height], ([state, h]) => {
 						<ChatMessagesPanel
 							data-test-id="canvas-chat"
 							:is-open="panelState !== LOGS_PANEL_STATE.CLOSED"
+							:is-read-only="isReadOnly"
 							:messages="messages"
 							:session-id="currentSessionId"
 							:past-chat-messages="previousChatMessages"
@@ -135,6 +143,7 @@ watch([panelState, height], ([state, h]) => {
 						:class="$style.logsOverview"
 						:is-open="panelState !== LOGS_PANEL_STATE.CLOSED"
 						:node="connectedNode"
+						:is-read-only="isReadOnly"
 						:selected="selectedLogEntry"
 						@click-header="handleClickHeader"
 						@select="handleSelectLogEntry"

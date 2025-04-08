@@ -26,8 +26,9 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useRouter } from 'vue-router';
 import { IN_PROGRESS_EXECUTION_ID } from '@/constants';
 
-const { node, isOpen, selected } = defineProps<{
+const { node, isOpen, isReadOnly, selected } = defineProps<{
 	isOpen: boolean;
+	isReadOnly: boolean;
 	node: INodeUi | null;
 	selected: SelectedLogEntry;
 }>();
@@ -231,6 +232,7 @@ watch(
 						<LogsOverviewRow
 							:data="data"
 							:node="elTreeNode"
+							:is-read-only="isReadOnly"
 							:is-selected="
 								typeof selected === 'object' &&
 								data.node === selected.node &&

@@ -17,6 +17,7 @@ const props = defineProps<{
 	data: TreeNode;
 	node: ElTreeNode;
 	isSelected: boolean;
+	isReadOnly: boolean;
 	shouldShowConsumedTokens: boolean;
 	isCompact: boolean;
 }>();
@@ -144,6 +145,7 @@ function isLastChild(level: number) {
 			:class="$style.compactErrorIcon"
 		/>
 		<N8nIconButton
+			v-if="!props.isReadOnly"
 			type="secondary"
 			size="small"
 			icon="play"
