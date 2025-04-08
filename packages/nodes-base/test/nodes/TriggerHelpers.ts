@@ -47,14 +47,6 @@ function getNodeVersion(Trigger: new () => VersionedNodeType, version?: number) 
 	return instance.nodeVersions[version ?? instance.currentVersion];
 }
 
-export async function testVersionedTriggerNode(
-	Trigger: new () => VersionedNodeType,
-	version?: number,
-	options: TestTriggerNodeOptions = {},
-) {
-	return await testTriggerNode(getNodeVersion(Trigger, version), options);
-}
-
 export async function testTriggerNode(
 	Trigger: (new () => INodeType) | INodeType,
 	options: TestTriggerNodeOptions = {},

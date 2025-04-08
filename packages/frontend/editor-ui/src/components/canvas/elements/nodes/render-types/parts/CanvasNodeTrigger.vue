@@ -40,7 +40,7 @@ const uiStore = useUIStore();
 const { runEntireWorkflow } = useRunWorkflow({ router });
 const { toggleChatOpen } = useCanvasOperations({ router });
 
-const isChatOpen = computed(() => workflowsStore.chatPanelState !== LOGS_PANEL_STATE.CLOSED);
+const isChatOpen = computed(() => workflowsStore.logsPanelState !== LOGS_PANEL_STATE.CLOSED);
 const isExecuting = computed(() => uiStore.isActionActive.workflowRunning);
 const testId = computed(() => `execute-workflow-button-${name}`);
 </script>

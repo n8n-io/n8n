@@ -31,7 +31,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/mfa/helpers';
 import { PostHogClient } from '@/posthog';
 import { isApiEnabled, loadPublicApiVersions } from '@/public-api';
-import { setupPushServer, setupPushHandler, Push } from '@/push';
+import { Push } from '@/push';
 import type { APIRequest } from '@/requests';
 import * as ResponseHelper from '@/response-helper';
 import type { FrontendService } from '@/services/frontend.service';
@@ -207,9 +207,10 @@ export class Server extends AbstractServer {
 		this.app.use(cookieParser());
 
 		const { restEndpoint, app } = this;
-		setupPushHandler(restEndpoint, app);
 
 		const push = Container.get(Push);
+		push.setupPushHandler(restEndpoint, app);
+
 		if (push.isBidirectional) {
 			const { CollaborationService } = await import('@/collaboration/collaboration.service');
 
@@ -443,6 +444,6 @@ export class Server extends AbstractServer {
 
 	protected setupPushServer(): void {
 		const { restEndpoint, server, app } = this;
-		setupPushServer(restEndpoint, server, app);
+		Container.get(Push).setupPushServer(restEndpoint, server, app);
 	}
 }

@@ -362,6 +362,7 @@ const goToUpgrade = () => {
 								<N8nCheckbox
 									:model-value="allExistingSelected"
 									data-test-id="select-all-executions-checkbox"
+									class="mb-0"
 									@update:model-value="handleCheckAllExistingChange"
 								/>
 							</th>
@@ -380,6 +381,7 @@ const goToUpgrade = () => {
 									:model-value="allVisibleSelected"
 									:disabled="total < 1"
 									data-test-id="select-visible-executions-checkbox"
+									class="mb-0"
 									@update:model-value="handleCheckAllVisibleChange"
 								/>
 							</th>
@@ -396,9 +398,7 @@ const goToUpgrade = () => {
 
 							<th>{{ i18n.baseText('executionsList.id') }}</th>
 
-							<th>
-								{{ i18n.baseText('executionsList.trigger') }}
-							</th>
+							<th></th>
 							<th style="width: 69px"></th>
 							<th style="width: 50px"></th>
 						</tr>
@@ -533,10 +533,6 @@ const goToUpgrade = () => {
 </style>
 
 <style lang="scss" scoped>
-.execFilter:deep(button) {
-	height: 40px;
-}
-
 :deep(.el-checkbox) {
 	display: inline-flex;
 	align-items: center;

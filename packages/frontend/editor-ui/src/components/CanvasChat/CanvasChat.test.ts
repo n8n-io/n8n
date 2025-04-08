@@ -175,7 +175,7 @@ describe('CanvasChat', () => {
 
 			return matchedNode;
 		});
-		workflowsStore.chatPanelState = LOGS_PANEL_STATE.ATTACHED;
+		workflowsStore.logsPanelState = LOGS_PANEL_STATE.ATTACHED;
 		workflowsStore.isLogsPanelOpen = true;
 		workflowsStore.getWorkflowExecution = mockWorkflowExecution as unknown as IExecutionResponse;
 		workflowsStore.getPastChatMessages = ['Previous message 1', 'Previous message 2'];
@@ -198,7 +198,7 @@ describe('CanvasChat', () => {
 		});
 
 		it('should not render chat when panel is closed', async () => {
-			workflowsStore.chatPanelState = LOGS_PANEL_STATE.CLOSED;
+			workflowsStore.logsPanelState = LOGS_PANEL_STATE.CLOSED;
 			const { queryByTestId } = renderComponent();
 			await waitFor(() => {
 				expect(queryByTestId('canvas-chat')).not.toBeInTheDocument();
@@ -315,12 +315,15 @@ describe('CanvasChat', () => {
 		];
 
 		beforeEach(() => {
-			vi.spyOn(useChatMessaging, 'useChatMessaging').mockReturnValue({
-				getChatMessages: vi.fn().mockReturnValue(mockMessages),
-				sendMessage: vi.fn(),
-				extractResponseMessage: vi.fn(),
-				previousMessageIndex: ref(0),
-				isLoading: computed(() => false),
+			vi.spyOn(useChatMessaging, 'useChatMessaging').mockImplementation(({ messages }) => {
+				messages.value.push(...mockMessages);
+
+				return {
+					sendMessage: vi.fn(),
+					extractResponseMessage: vi.fn(),
+					previousMessageIndex: ref(0),
+					isLoading: computed(() => false),
+				};
 			});
 		});
 
@@ -381,14 +384,13 @@ describe('CanvasChat', () => {
 	describe('file handling', () => {
 		beforeEach(() => {
 			vi.spyOn(useChatMessaging, 'useChatMessaging').mockReturnValue({
-				getChatMessages: vi.fn().mockReturnValue([]),
 				sendMessage: vi.fn(),
 				extractResponseMessage: vi.fn(),
 				previousMessageIndex: ref(0),
 				isLoading: computed(() => false),
 			});
 
-			workflowsStore.chatPanelState = LOGS_PANEL_STATE.ATTACHED;
+			workflowsStore.logsPanelState = LOGS_PANEL_STATE.ATTACHED;
 			workflowsStore.allowFileUploads = true;
 		});
 
@@ -478,12 +480,15 @@ describe('CanvasChat', () => {
 					createdAt: new Date().toISOString(),
 				},
 			];
-			vi.spyOn(useChatMessaging, 'useChatMessaging').mockReturnValue({
-				getChatMessages: vi.fn().mockReturnValue(mockMessages),
-				sendMessage: sendMessageSpy,
-				extractResponseMessage: vi.fn(),
-				previousMessageIndex: ref(0),
-				isLoading: computed(() => false),
+			vi.spyOn(useChatMessaging, 'useChatMessaging').mockImplementation(({ messages }) => {
+				messages.value.push(...mockMessages);
+
+				return {
+					sendMessage: sendMessageSpy,
+					extractResponseMessage: vi.fn(),
+					previousMessageIndex: ref(0),
+					isLoading: computed(() => false),
+				};
 			});
 			workflowsStore.messages = mockMessages;
 		});
@@ -550,7 +555,7 @@ describe('CanvasChat', () => {
 			});
 
 			// Close chat panel
-			workflowsStore.chatPanelState = LOGS_PANEL_STATE.CLOSED;
+			workflowsStore.logsPanelState = LOGS_PANEL_STATE.CLOSED;
 			await waitFor(() => {
 				expect(canvasStore.setPanelHeight).toHaveBeenCalledWith(0);
 			});
@@ -560,14 +565,14 @@ describe('CanvasChat', () => {
 			const { unmount, rerender } = renderComponent();
 
 			// Set initial state
-			workflowsStore.chatPanelState = LOGS_PANEL_STATE.ATTACHED;
+			workflowsStore.logsPanelState = LOGS_PANEL_STATE.ATTACHED;
 			workflowsStore.isLogsPanelOpen = true;
 
 			// Unmount and remount
 			unmount();
 			await rerender({});
 
-			expect(workflowsStore.chatPanelState).toBe(LOGS_PANEL_STATE.ATTACHED);
+			expect(workflowsStore.logsPanelState).toBe(LOGS_PANEL_STATE.ATTACHED);
 			expect(workflowsStore.isLogsPanelOpen).toBe(true);
 		});
 	});
@@ -582,24 +587,6 @@ describe('CanvasChat', () => {
 			await userEvent.type(input, 'Line 2');
 
 			expect(input).toHaveValue('Line 1\nLine 2');
-		});
-	});
-
-	describe('chat synchronization', () => {
-		it('should load initial chat history when first opening panel', async () => {
-			const getChatMessagesSpy = vi.fn().mockReturnValue(['Previous message']);
-			vi.spyOn(useChatMessaging, 'useChatMessaging').mockReturnValue({
-				...vi.fn()(),
-				getChatMessages: getChatMessagesSpy,
-			});
-
-			workflowsStore.chatPanelState = LOGS_PANEL_STATE.CLOSED;
-			const { rerender } = renderComponent();
-
-			workflowsStore.chatPanelState = LOGS_PANEL_STATE.ATTACHED;
-			await rerender({});
-
-			expect(getChatMessagesSpy).toHaveBeenCalled();
 		});
 	});
 });
