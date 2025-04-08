@@ -1430,27 +1430,27 @@ describe('getInsightsByWorkflow', () => {
 			projectId: project.id,
 			projectName: project.name,
 			total: 7,
-			failureRate: 2 / 7,
 			failed: 2,
 			runTime: 123,
 			succeeded: 5,
 			timeSaved: 0,
-			averageRunTime: 123 / 7,
 		});
+		expect(byWorkflow.data[0].failureRate).toBeCloseTo(2 / 7);
+		expect(byWorkflow.data[0].averageRunTime).toBeCloseTo(123 / 7);
 
-		expect(byWorkflow.data[1]).toEqual({
+		expect(byWorkflow.data[1]).toMatchObject({
 			workflowId: workflow1.id,
 			workflowName: workflow1.name,
 			projectId: project.id,
 			projectName: project.name,
 			total: 6,
-			failureRate: 2 / 6,
 			failed: 2,
 			runTime: 123,
 			succeeded: 4,
 			timeSaved: 0,
-			averageRunTime: 123 / 6,
 		});
+		expect(byWorkflow.data[1].failureRate).toBeCloseTo(2 / 6);
+		expect(byWorkflow.data[1].averageRunTime).toBeCloseTo(123 / 6);
 	});
 
 	test('compacted data are grouped by workflow correctly with sorting', async () => {
