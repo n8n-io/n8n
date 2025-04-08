@@ -80,12 +80,20 @@ export class InsightsService {
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('insights');
+	}
+
+	startBackgroundProcess() {
 		this.startCompactionScheduler();
-		this.scheduleFlushing();
+		this.startFlushingScheduler();
+	}
+
+	stopBackgroundProcess() {
+		this.stopCompactionScheduler();
+		this.stopFlushingScheduler();
 	}
 
 	// Initialize regular compaction of insights data
-	startCompactionScheduler() {
+	private startCompactionScheduler() {
 		this.stopCompactionScheduler();
 		const intervalMilliseconds = config.compactionIntervalMinutes * 60 * 1000;
 		this.compactInsightsTimer = setInterval(
@@ -95,23 +103,23 @@ export class InsightsService {
 	}
 
 	// Stop regular compaction of insights data
-	stopCompactionScheduler() {
+	private stopCompactionScheduler() {
 		if (this.compactInsightsTimer !== undefined) {
 			clearInterval(this.compactInsightsTimer);
 			this.compactInsightsTimer = undefined;
 		}
 	}
 
-	scheduleFlushing() {
+	private startFlushingScheduler() {
 		this.isAsynchronouslySavingInsights = true;
-		this.disposeFlushing();
+		this.stopFlushingScheduler();
 		this.flushInsightsRawBufferTimer = setTimeout(
 			async () => await this.flushEvents(),
 			config.flushIntervalSeconds * 1000,
 		);
 	}
 
-	disposeFlushing() {
+	private stopFlushingScheduler() {
 		if (this.flushInsightsRawBufferTimer !== undefined) {
 			clearInterval(this.flushInsightsRawBufferTimer);
 			this.flushInsightsRawBufferTimer = undefined;
@@ -120,15 +128,8 @@ export class InsightsService {
 
 	@OnShutdown()
 	async shutdown() {
-		if (this.compactInsightsTimer !== undefined) {
-			clearInterval(this.compactInsightsTimer);
-			this.compactInsightsTimer = undefined;
-		}
-
-		if (this.flushInsightsRawBufferTimer !== undefined) {
-			clearInterval(this.flushInsightsRawBufferTimer);
-			this.flushInsightsRawBufferTimer = undefined;
-		}
+		this.stopCompactionScheduler();
+		this.stopFlushingScheduler();
 
 		// Prevent new insights from being added to the buffer (and never flushed)
 		// when remaining workflows are handled during shutdown
@@ -262,7 +263,7 @@ export class InsightsService {
 		}
 
 		// Stop timer to prevent concurrent flush from timer
-		this.disposeFlushing();
+		this.stopFlushingScheduler();
 
 		// Copy the buffer to a new set to avoid concurrent modification
 		// while we are flushing the events
@@ -279,7 +280,7 @@ export class InsightsService {
 					this.bufferedInsights.add(event);
 				}
 			} finally {
-				this.scheduleFlushing();
+				this.startFlushingScheduler();
 				this.flushesInProgress.delete(flushPromise!);
 			}
 		})();

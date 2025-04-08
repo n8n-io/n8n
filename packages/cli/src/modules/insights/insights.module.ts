@@ -22,15 +22,15 @@ export class InsightsModule implements BaseN8nModule {
 
 		// Initialize background process for insights if instance is main and leader
 		if (this.instanceSettings.instanceType === 'main' && this.instanceSettings.isLeader) {
-			this.insightsService.startCompactionScheduler();
+			this.insightsService.startBackgroundProcess();
 		}
 
 		if (this.instanceSettings.isMultiMain) {
 			this.orchestrationService.multiMainSetup.on('leader-takeover', () =>
-				this.insightsService.startCompactionScheduler(),
+				this.insightsService.startBackgroundProcess(),
 			);
 			this.orchestrationService.multiMainSetup.on('leader-stepdown', () =>
-				this.insightsService.stopCompactionScheduler(),
+				this.insightsService.stopBackgroundProcess(),
 			);
 		}
 	}

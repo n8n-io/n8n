@@ -40,7 +40,7 @@ describe('InsightsModule', () => {
 				orchestrationService,
 			);
 			module.registerLifecycleHooks(hooks);
-			expect(insightsService.startCompactionScheduler).toHaveBeenCalled();
+			expect(insightsService.startBackgroundProcess).toHaveBeenCalled();
 		});
 
 		it('should not start compaction scheduler if instance is main but not leader', () => {
@@ -53,7 +53,7 @@ describe('InsightsModule', () => {
 				orchestrationService,
 			);
 			module.registerLifecycleHooks(hooks);
-			expect(insightsService.startCompactionScheduler).not.toHaveBeenCalled();
+			expect(insightsService.startBackgroundProcess).not.toHaveBeenCalled();
 		});
 
 		it('should not start compaction scheduler if instance is worker', () => {
@@ -66,7 +66,7 @@ describe('InsightsModule', () => {
 				orchestrationService,
 			);
 			module.registerLifecycleHooks(hooks);
-			expect(insightsService.startCompactionScheduler).not.toHaveBeenCalled();
+			expect(insightsService.startBackgroundProcess).not.toHaveBeenCalled();
 		});
 
 		it('should start compaction scheduler on leader takeover', () => {
@@ -79,9 +79,9 @@ describe('InsightsModule', () => {
 				orchestrationService,
 			);
 			module.registerLifecycleHooks(hooks);
-			expect(insightsService.startCompactionScheduler).not.toHaveBeenCalled();
+			expect(insightsService.startBackgroundProcess).not.toHaveBeenCalled();
 			orchestrationService.multiMainSetup.emit('leader-takeover');
-			expect(insightsService.startCompactionScheduler).toHaveBeenCalled();
+			expect(insightsService.startBackgroundProcess).toHaveBeenCalled();
 		});
 
 		it('should stop compaction scheduler on leader stepdown', () => {
@@ -94,9 +94,9 @@ describe('InsightsModule', () => {
 				orchestrationService,
 			);
 			module.registerLifecycleHooks(hooks);
-			expect(insightsService.stopCompactionScheduler).not.toHaveBeenCalled();
+			expect(insightsService.stopBackgroundProcess).not.toHaveBeenCalled();
 			orchestrationService.multiMainSetup.emit('leader-stepdown');
-			expect(insightsService.stopCompactionScheduler).toHaveBeenCalled();
+			expect(insightsService.stopBackgroundProcess).toHaveBeenCalled();
 		});
 	});
 
