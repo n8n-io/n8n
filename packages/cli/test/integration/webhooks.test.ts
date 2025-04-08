@@ -85,17 +85,35 @@ describe('WebhookServer', () => {
 		}
 	});
 
-	describe('routing', () => {
-		it('should handle waiting-webhooks', async () => {
-			const pathPrefix = globalConfig.endpoints.webhookWaiting;
-			waitingWebhooks.executeWebhook.mockResolvedValueOnce({
-				noWebhookResponse: false,
-				responseCode: 204,
-			});
+	describe('Routing for Waiting Webhooks', () => {
+		const pathPrefix = globalConfig.endpoints.webhookWaiting;
 
+		waitingWebhooks.executeWebhook.mockImplementation(async (req) => {
+			return {
+				noWebhookResponse: false,
+				responseCode: 200,
+				data: {
+					params: req.params,
+				},
+			};
+		});
+
+		it('should handle URLs without suffix', async () => {
 			const response = await agent.get(`/${pathPrefix}/12345`);
 
-			expect(response.statusCode).toEqual(204);
+			expect(response.statusCode).toEqual(200);
+			expect(response.body).toEqual({
+				params: { path: '12345' },
+			});
+		});
+
+		it('should handle URLs with suffix', async () => {
+			const response = await agent.get(`/${pathPrefix}/12345/suffix`);
+
+			expect(response.statusCode).toEqual(200);
+			expect(response.body).toEqual({
+				params: { path: '12345', suffix: 'suffix' },
+			});
 		});
 	});
 });
