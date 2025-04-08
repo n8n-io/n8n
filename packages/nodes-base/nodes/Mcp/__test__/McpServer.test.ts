@@ -3,7 +3,6 @@ import type { Tool } from '@langchain/core/tools';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import type { Request } from 'express';
 import { captor, mock } from 'jest-mock-extended';
-import type { Logger } from 'n8n-workflow';
 
 import type { CompressionResponse } from '../FlushingSSEServerTransport';
 import { FlushingSSEServerTransport } from '../FlushingSSEServerTransport';
@@ -25,8 +24,7 @@ jest.mock('../FlushingSSEServerTransport', () => {
 });
 
 describe('McpServer', () => {
-	const mockLogger = mock<Logger>();
-	const mockRequest = mock<Request>({ query: { sessionId } });
+	const mockRequest = mock<Request>({ query: { sessionId }, path: '/sse' });
 	const mockResponse = mock<CompressionResponse>();
 	const mockTool = mock<Tool>({ name: 'mockTool' });
 
@@ -36,13 +34,13 @@ describe('McpServer', () => {
 		jest.clearAllMocks();
 		mockResponse.status.mockReturnThis();
 
-		mcpServer = new McpServer(mockLogger);
+		mcpServer = new McpServer(mock());
 	});
 
 	describe('connectTransport', () => {
-		it('should set up a transport and server', async () => {
-			const postUrl = '/post-url';
+		const postUrl = '/post-url';
 
+		it('should set up a transport and server', async () => {
 			await mcpServer.connectTransport(postUrl, mockResponse);
 
 			// Check that FlushingSSEServerTransport was initialized with correct params
@@ -63,8 +61,6 @@ describe('McpServer', () => {
 		});
 
 		it('should set up close handler that cleans up resources', async () => {
-			const postUrl = '/post-url';
-
 			await mcpServer.connectTransport(postUrl, mockResponse);
 
 			// Get the close callback and execute it
@@ -75,7 +71,6 @@ describe('McpServer', () => {
 			// Check that resources were cleaned up
 			expect(mcpServer.transports[sessionId]).toBeUndefined();
 			expect(mcpServer.servers[sessionId]).toBeUndefined();
-			expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('Deleting transport'));
 		});
 	});
 
@@ -122,9 +117,6 @@ describe('McpServer', () => {
 			// Verify error status was set
 			expect(mockResponse.status).toHaveBeenCalledWith(401);
 			expect(mockResponse.send).toHaveBeenCalledWith(expect.stringContaining('No transport found'));
-
-			// Verify warning was logged
-			expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('No transport found'));
 		});
 	});
 });

@@ -21,10 +21,10 @@ jest.mock('../McpServer', () => ({
 
 describe('McpTrigger Node', () => {
 	const sessionId = 'mock-session-id';
-	let mcpTrigger: McpTrigger;
 	const mockContext = mock<IWebhookFunctions>();
-	const mockRequest = mock<Request>({ query: { sessionId } });
+	const mockRequest = mock<Request>({ query: { sessionId }, path: '/custom-path/sse' });
 	const mockResponse = mock<Response>();
+	let mcpTrigger: McpTrigger;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -39,7 +39,6 @@ describe('McpTrigger Node', () => {
 		it('should handle setup webhook', async () => {
 			// Configure the context for setup webhook
 			mockContext.getWebhookName.mockReturnValue('setup');
-			mockContext.getNodeWebhookUrl.mockReturnValue('https://example.com/custom-path/messages');
 
 			// Call the webhook method
 			const result = await mcpTrigger.webhook(mockContext);
