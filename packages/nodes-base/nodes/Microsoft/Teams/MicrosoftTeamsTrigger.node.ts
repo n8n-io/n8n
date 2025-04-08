@@ -1,19 +1,19 @@
-import {
-	type IExecuteFunctions,
-	type INodeType,
-	type INodeTypeDescription,
-	type IHookFunctions,
-	type IWebhookFunctions,
-	type IWebhookResponseData,
-	type IDataObject,
-	type ILoadOptionsFunctions,
-	type JsonObject,
-	NodeApiError,
-	NodeConnectionTypes,
+import type {
+	IExecuteFunctions,
+	INodeType,
+	INodeTypeDescription,
+	IHookFunctions,
+	IWebhookFunctions,
+	IWebhookResponseData,
+	IDataObject,
+	ILoadOptionsFunctions,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
 import { listSearch } from './v2/methods';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from './v2/transport';
+import type { WebhookNotification, SubscriptionResponse } from './v2/transport/types';
 import { createSubscription, getResourcePath } from './v2/transport/utils-trigger';
 
 export class MicrosoftTeamsTrigger implements INodeType {
@@ -262,33 +262,52 @@ export class MicrosoftTeamsTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
+				const event = this.getNodeParameter('event', 0) as string;
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 
 				try {
-					const subscriptions = await microsoftApiRequestAllItems.call(
+					const subscriptions = (await microsoftApiRequestAllItems.call(
 						this as unknown as ILoadOptionsFunctions,
 						'value',
 						'GET',
 						'/v1.0/subscriptions',
+					)) as SubscriptionResponse[];
+
+					const matchingSubscriptions = subscriptions.filter(
+						(subscription) => subscription.notificationUrl === webhookUrl,
 					);
 
-					for (const subscription of subscriptions) {
-						if (subscription.notificationUrl === webhookUrl) {
-							webhookData.subscriptionId = subscription.id;
-							return true;
-						}
+					const now = new Date();
+					const thresholdMs = 5 * 60 * 1000;
+					const validSubscriptions = matchingSubscriptions.filter((subscription) => {
+						const expiration = new Date(subscription.expirationDateTime);
+						return expiration.getTime() - now.getTime() > thresholdMs;
+					});
+
+					const resourcePaths = await getResourcePath.call(this, event);
+					const requiredResources = Array.isArray(resourcePaths) ? resourcePaths : [resourcePaths];
+
+					const subscribedResources = validSubscriptions.map((sub) => sub.resource);
+					const allResourcesSubscribed = requiredResources.every((resource) =>
+						subscribedResources.includes(resource),
+					);
+
+					if (allResourcesSubscribed) {
+						webhookData.subscriptionIds = validSubscriptions.map((sub) => sub.id);
+						return true;
 					}
+
+					return false;
 				} catch (error) {
 					return false;
 				}
-
-				return false;
 			},
 
 			async create(this: IHookFunctions): Promise<boolean> {
-				const webhookUrl = this.getNodeWebhookUrl('default');
 				const event = this.getNodeParameter('event', 0) as string;
+				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookData = this.getWorkflowStaticData('node');
 
 				if (!webhookUrl || !webhookUrl.startsWith('https://')) {
 					throw new NodeApiError(this.getNode(), {
@@ -298,33 +317,65 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				}
 
 				const resourcePaths = await getResourcePath.call(this, event);
+				const subscriptionIds: string[] = [];
 
 				if (Array.isArray(resourcePaths)) {
 					await Promise.all(
 						resourcePaths.map(async (resource) => {
-							await createSubscription.call(this, webhookUrl, resource);
+							const subscription = await createSubscription.call(this, webhookUrl, resource);
+							subscriptionIds.push(subscription.id);
+							return subscription;
 						}),
 					);
+
+					webhookData.subscriptionIds = subscriptionIds;
 				} else {
-					await createSubscription.call(this, webhookUrl, resourcePaths);
+					const subscription = await createSubscription.call(this, webhookUrl, resourcePaths);
+					webhookData.subscriptionIds = [subscription.id];
 				}
 
 				return true;
 			},
 
 			async delete(this: IHookFunctions): Promise<boolean> {
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookData = this.getWorkflowStaticData('node');
+				const subscriptionIds = webhookData.subscriptionIds as string[] | undefined;
 
+				if (subscriptionIds) {
+					try {
+						await Promise.all(
+							subscriptionIds.map(async (subscriptionId) => {
+								try {
+									await microsoftApiRequest.call(
+										this as unknown as IExecuteFunctions,
+										'DELETE',
+										`/v1.0/subscriptions/${subscriptionId}`,
+									);
+								} catch (error) {
+									if ((error as JsonObject).httpStatusCode === 404) {
+									} else {
+										throw error;
+									}
+								}
+							}),
+						);
+						return true;
+					} catch (error) {
+						return false;
+					}
+				}
+
+				const webhookUrl = this.getNodeWebhookUrl('default');
 				try {
-					const subscriptions = await microsoftApiRequestAllItems.call(
+					const subscriptions = (await microsoftApiRequestAllItems.call(
 						this as unknown as ILoadOptionsFunctions,
 						'value',
 						'GET',
 						'/v1.0/subscriptions',
-					);
+					)) as SubscriptionResponse[];
 
 					const matchingSubscriptions = subscriptions.filter(
-						(subscription: IDataObject) => subscription.notificationUrl === webhookUrl,
+						(subscription) => subscription.notificationUrl === webhookUrl,
 					);
 
 					if (matchingSubscriptions.length === 0) {
@@ -332,12 +383,11 @@ export class MicrosoftTeamsTrigger implements INodeType {
 					}
 
 					for (const subscription of matchingSubscriptions) {
-						const subscriptionId = subscription.id as string;
 						try {
 							await microsoftApiRequest.call(
 								this as unknown as IExecuteFunctions,
 								'DELETE',
-								`/v1.0/subscriptions/${subscriptionId}`,
+								`/v1.0/subscriptions/${subscription.id}`,
 							);
 						} catch (error) {
 							if ((error as JsonObject).httpStatusCode === 404) {
@@ -365,7 +415,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 			return { noWebhookResponse: true };
 		}
 
-		const eventNotifications = req.body.value as IDataObject[];
+		const eventNotifications = req.body.value as WebhookNotification[];
 		const response: IWebhookResponseData = {
 			workflowData: eventNotifications.map((event) => [
 				{
