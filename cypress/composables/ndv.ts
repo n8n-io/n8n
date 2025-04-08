@@ -126,6 +126,10 @@ export function getNodeOutputErrorMessage() {
 	return getOutputPanel().findChildByTestId('node-error-message');
 }
 
+export function getParameterExpressionPreviewValue() {
+	return cy.getByTestId('parameter-expression-preview-value');
+}
+
 /**
  * Actions
  */
