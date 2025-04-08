@@ -8,12 +8,15 @@ import { TagRepository } from '@/databases/repositories/tag.repository';
 import { TagService } from '@/services/tag.service';
 
 import type { TagRequest } from '../../../types';
-import { apiKeyHasScope, validCursor } from '../../shared/middlewares/global.middleware';
+import {
+	apiKeyHasScopeWithGlobalScopeFallback,
+	validCursor,
+} from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 
 export = {
 	createTag: [
-		apiKeyHasScope('tag:create'),
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'tag:create' }),
 		async (req: TagRequest.Create, res: express.Response): Promise<express.Response> => {
 			const { name } = req.body;
 
@@ -28,7 +31,7 @@ export = {
 		},
 	],
 	updateTag: [
-		apiKeyHasScope('tag:update'),
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'tag:update' }),
 		async (req: TagRequest.Update, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 			const { name } = req.body;
@@ -50,7 +53,7 @@ export = {
 		},
 	],
 	deleteTag: [
-		apiKeyHasScope('tag:delete'),
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'tag:delete' }),
 		async (req: TagRequest.Delete, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
@@ -66,7 +69,7 @@ export = {
 		},
 	],
 	getTags: [
-		apiKeyHasScope('tag:list'),
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'tag:list' }),
 		validCursor,
 		async (req: TagRequest.GetAll, res: express.Response): Promise<express.Response> => {
 			const { offset = 0, limit = 100 } = req.query;
@@ -89,7 +92,7 @@ export = {
 		},
 	],
 	getTag: [
-		apiKeyHasScope('tag:read'),
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'tag:read' }),
 		async (req: TagRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 

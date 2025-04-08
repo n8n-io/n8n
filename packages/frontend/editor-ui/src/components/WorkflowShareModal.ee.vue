@@ -212,7 +212,11 @@ const initialize = async () => {
 };
 
 onMounted(async () => {
-	await initialize();
+	try {
+		await initialize();
+	} catch (e) {
+		console.log(e);
+	}
 });
 
 watch(

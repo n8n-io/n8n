@@ -12,11 +12,11 @@ jest.spyOn(middlewares, 'globalScope').mockReturnValue(jest.fn());
 const license = mockInstance(License);
 const publicApiKeyService = mockInstance(PublicApiKeyService);
 
-describe('apiKeyHasScope', () => {
-	afterEach(() => {
-		jest.clearAllMocks();
-	});
+afterEach(() => {
+	jest.clearAllMocks();
+});
 
+describe('apiKeyHasScope', () => {
 	it('should return API key scope middleware if "feat:apiKeyScopes" is enabled', () => {
 		license.isApiKeyScopesEnabled.mockReturnValue(true);
 		publicApiKeyService.getApiKeyScopeMiddleware.mockReturnValue(jest.fn());
@@ -27,22 +27,11 @@ describe('apiKeyHasScope', () => {
 		expect(publicApiKeyService.getApiKeyScopeMiddleware).toHaveBeenCalledWith('credential:create');
 	});
 
-	it('should return global middleware if "feat:apiKeyScopes" is disabled', () => {
+	it('should return empty middleware if "feat:apiKeyScopes" is disabled', async () => {
 		license.isApiKeyScopesEnabled.mockReturnValue(false);
 		publicApiKeyService.getApiKeyScopeMiddleware.mockReturnValue(jest.fn());
 
-		middlewares.apiKeyHasScope('credential:create');
-
-		expect(middlewares.globalScope).toHaveBeenCalledWith('credential:create');
-	});
-
-	it('should not return global middleware if "feat:apiKeyScopes" is disabled and "addGlobalScopeIfScopesDisabled" is false', async () => {
-		license.isApiKeyScopesEnabled.mockReturnValue(false);
-		publicApiKeyService.getApiKeyScopeMiddleware.mockReturnValue(jest.fn());
-
-		const responseMiddleware = middlewares.apiKeyHasScope('credential:create', {
-			addGlobalScopeIfScopesDisabled: false,
-		});
+		const responseMiddleware = middlewares.apiKeyHasScope('credential:create');
 
 		expect(middlewares.globalScope).not.toHaveBeenCalled();
 
@@ -51,5 +40,16 @@ describe('apiKeyHasScope', () => {
 		await responseMiddleware(mock(), mock(), next);
 
 		expect(next).toHaveBeenCalled();
+	});
+});
+
+describe('apiKeyHasScopeWithGlobalScopeFallback', () => {
+	it('should return global middleware if "feat:apiKeyScopes" is disabled', () => {
+		license.isApiKeyScopesEnabled.mockReturnValue(false);
+		publicApiKeyService.getApiKeyScopeMiddleware.mockReturnValue(jest.fn());
+
+		middlewares.apiKeyHasScopeWithGlobalScopeFallback({ scope: 'credential:create' });
+
+		expect(middlewares.globalScope).toHaveBeenCalledWith('credential:create');
 	});
 });

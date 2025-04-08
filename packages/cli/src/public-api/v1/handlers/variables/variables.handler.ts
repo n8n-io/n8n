@@ -7,7 +7,7 @@ import type { PaginatedRequest } from '@/public-api/types';
 import type { VariablesRequest } from '@/requests';
 
 import {
-	apiKeyHasScope,
+	apiKeyHasScopeWithGlobalScopeFallback,
 	isLicensed,
 	validCursor,
 } from '../../shared/middlewares/global.middleware';
@@ -20,7 +20,7 @@ type GetAll = PaginatedRequest;
 export = {
 	createVariable: [
 		isLicensed('feat:variables'),
-		apiKeyHasScope('variable:create'),
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'variable:create' }),
 		async (req: Create, res: Response) => {
 			await Container.get(VariablesController).createVariable(req);
 
@@ -29,7 +29,7 @@ export = {
 	],
 	deleteVariable: [
 		isLicensed('feat:variables'),
-		apiKeyHasScope('variable:delete'),
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'variable:delete' }),
 		async (req: Delete, res: Response) => {
 			await Container.get(VariablesController).deleteVariable(req);
 
@@ -38,7 +38,7 @@ export = {
 	],
 	getVariables: [
 		isLicensed('feat:variables'),
-		apiKeyHasScope('variable:list'),
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'variable:list' }),
 		validCursor,
 		async (req: GetAll, res: Response) => {
 			const { offset = 0, limit = 100 } = req.query;
