@@ -1,5 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { DynamicTool } from '@langchain/core/tools';
+import { N8nTool } from 'n8n-nodes-base/dist/utils/N8nTool';
 import type {
 	INodeType,
 	INodeTypeDescription,
@@ -14,7 +15,6 @@ import {
 	tryToParseAlphanumericString,
 } from 'n8n-workflow';
 
-import { N8nTool } from '@utils/N8nTool';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import {

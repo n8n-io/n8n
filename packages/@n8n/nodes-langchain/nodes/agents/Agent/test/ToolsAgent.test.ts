@@ -8,12 +8,12 @@ import { Buffer } from 'buffer';
 import { mock } from 'jest-mock-extended';
 import type { ToolsAgentAction } from 'langchain/dist/agents/tool_calling/output_parser';
 import type { Tool } from 'langchain/tools';
+import * as toolHelpers from 'n8n-nodes-base/dist/utils/tool-helpers';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError, BINARY_ENCODING } from 'n8n-workflow';
 import type { ZodType } from 'zod';
 import { z } from 'zod';
 
-import * as helpersModule from '@utils/helpers';
 import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
 
 import {
@@ -29,7 +29,7 @@ import {
 } from '../agents/ToolsAgent/execute';
 
 // We need to override the imported getConnectedTools so that we control its output.
-jest.spyOn(helpersModule, 'getConnectedTools').mockResolvedValue([FakeTool as unknown as Tool]);
+jest.spyOn(toolHelpers, 'getConnectedTools').mockResolvedValue([FakeTool as unknown as Tool]);
 
 function getFakeOutputParser(returnSchema?: ZodType): N8nOutputParser {
 	const fakeOutputParser = mock<N8nOutputParser>();

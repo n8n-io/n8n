@@ -1,9 +1,10 @@
 import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
-import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { N8nTool } from './N8nTool';
+import { createMockExecuteFunction } from '@test/nodes/Helpers';
+
+import { N8nTool } from '../N8nTool';
 
 const mockNode: INode = {
 	id: '1',

@@ -613,9 +613,6 @@ importers:
       '@langchain/textsplitters':
         specifier: 0.1.0
         version: 0.1.0(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))
-      '@modelcontextprotocol/sdk':
-        specifier: 1.9.0
-        version: 1.9.0
       '@mozilla/readability':
         specifier: 0.6.0
         version: 0.6.0
@@ -2001,6 +1998,12 @@ importers:
       '@kafkajs/confluent-schema-registry':
         specifier: 3.8.0
         version: 3.8.0
+      '@langchain/core':
+        specifier: 'catalog:'
+        version: 0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
+      '@modelcontextprotocol/sdk':
+        specifier: 1.9.0
+        version: 1.9.0
       '@n8n/config':
         specifier: workspace:*
         version: link:../@n8n/config

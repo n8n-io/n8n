@@ -1,8 +1,7 @@
 import { mock } from 'jest-mock-extended';
+import type { N8nTool } from 'n8n-nodes-base/utils/N8nTool';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
-
-import type { N8nTool } from '@utils/N8nTool';
 
 import { ToolHttpRequest } from '../ToolHttpRequest.node';
 

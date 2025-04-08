@@ -447,7 +447,7 @@ export async function executeWebhook(
 		}
 
 		// TODO: remove this hack, and make sure that execution data is properly created before the MCP trigger is executed
-		if (workflowStartNode.type === '@n8n/n8n-nodes-langchain.mcpTrigger') {
+		if (workflowStartNode.type === 'n8n-nodes-base.mcpTrigger') {
 			// Initialize the data of the webhook node
 			const nodeExecutionStack: IExecuteData[] = [];
 			nodeExecutionStack.push({

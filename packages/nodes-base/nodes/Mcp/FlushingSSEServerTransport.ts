@@ -1,6 +1,5 @@
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
-//import type { ServerResponse } from 'node:http';
 import type { Response } from 'express';
 
 export type CompressionResponse = Response & {

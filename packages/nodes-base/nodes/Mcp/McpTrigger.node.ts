@@ -1,8 +1,7 @@
-//import type { Tool } from '@langchain/core/tools';
 import type { INodeTypeDescription, IWebhookFunctions, IWebhookResponseData } from 'n8n-workflow';
 import { NodeConnectionTypes, Node } from 'n8n-workflow';
 
-import { getConnectedTools } from '@utils/helpers';
+import { getConnectedTools } from '@utils/tool-helpers';
 
 import type { CompressionResponse } from './FlushingSSEServerTransport';
 import { McpServerSingleton } from './McpServer';

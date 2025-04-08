@@ -4,6 +4,7 @@ import type { OpenAIToolType } from 'langchain/dist/experimental/openai_assistan
 import { OpenAIAssistantRunnable } from 'langchain/experimental/openai_assistant';
 import type { BufferWindowMemory } from 'langchain/memory';
 import omit from 'lodash/omit';
+import { getConnectedTools } from 'n8n-nodes-base/dist/utils/tool-helpers';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -19,7 +20,6 @@ import {
 import { OpenAI as OpenAIClient } from 'openai';
 
 import { promptTypeOptions } from '@utils/descriptions';
-import { getConnectedTools } from '@utils/helpers';
 import { getTracingConfig } from '@utils/tracing';
 
 import { formatToOpenAIAssistantTool, getChatMessages } from '../../helpers/utils';
