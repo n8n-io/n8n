@@ -1,26 +1,18 @@
 import { jest } from '@jest/globals';
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
+import { mock } from 'jest-mock-extended';
 
 import { FlushingSSEServerTransport } from '../FlushingSSEServerTransport';
 import type { CompressionResponse } from '../FlushingSSEServerTransport';
 
 describe('FlushingSSEServerTransport', () => {
-	let mockResponse: CompressionResponse;
+	const mockResponse = mock<CompressionResponse>();
 	let transport: FlushingSSEServerTransport;
 	const endpoint = '/test/endpoint';
 
 	beforeEach(() => {
-		// Create a mock response object with flush method
-		mockResponse = {
-			flush: jest.fn(),
-			status: jest.fn().mockReturnThis(),
-			send: jest.fn().mockReturnThis(),
-			setHeader: jest.fn().mockReturnThis(),
-			writeHead: jest.fn().mockReturnThis(),
-			write: jest.fn().mockReturnThis(),
-			on: jest.fn().mockReturnThis(),
-		} as unknown as CompressionResponse;
-
+		jest.resetAllMocks();
+		mockResponse.status.mockReturnThis();
 		transport = new FlushingSSEServerTransport(endpoint, mockResponse);
 	});
 
@@ -32,18 +24,22 @@ describe('FlushingSSEServerTransport', () => {
 			result: { success: true },
 		};
 
-		// Mock the superclass send method
-		const superSendSpy = jest
-			.spyOn(Object.getPrototypeOf(FlushingSSEServerTransport.prototype), 'send')
-			.mockImplementation(async () => {});
-
 		// Send a message through the transport
+		await transport.start();
 		await transport.send(message);
 
-		// Verify that superclass send was called with the correct message
-		expect(superSendSpy).toHaveBeenCalledWith(message);
-
-		// Verify that flush was called on the response
+		expect(mockResponse.writeHead).toHaveBeenCalledWith(200, {
+			'Content-Type': 'text/event-stream',
+			'Cache-Control': 'no-cache, no-transform',
+			Connection: 'keep-alive',
+		});
+		expect(mockResponse.write).toHaveBeenCalledWith(
+			// @ts-expect-error `_sessionId` is private
+			`event: endpoint\ndata: /test/endpoint?sessionId=${transport._sessionId}\n\n`,
+		);
+		expect(mockResponse.write).toHaveBeenCalledWith(
+			`event: message\ndata: ${JSON.stringify(message)}\n\n`,
+		);
 		expect(mockResponse.flush).toHaveBeenCalled();
 	});
 });

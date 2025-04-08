@@ -12,15 +12,15 @@ export type CompressionResponse = Response & {
 };
 
 export class FlushingSSEServerTransport extends SSEServerTransport {
-	private _mySseResponse: CompressionResponse;
-
-	constructor(_endpoint: string, res: CompressionResponse) {
-		super(_endpoint, res);
-		this._mySseResponse = res;
+	constructor(
+		_endpoint: string,
+		private response: CompressionResponse,
+	) {
+		super(_endpoint, response);
 	}
 
 	async send(message: JSONRPCMessage): Promise<void> {
 		await super.send(message);
-		this._mySseResponse.flush();
+		this.response.flush();
 	}
 }
