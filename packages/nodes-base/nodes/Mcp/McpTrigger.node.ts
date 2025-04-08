@@ -125,7 +125,10 @@ export class McpTrigger extends Node {
 		if (webhookName === 'setup') {
 			// Sets up the transport and opens the long-lived connection. This resp
 			// will stay streaming, and is the channel that sends the events
-			const postUrl = new URL(context.getNodeWebhookUrl('default') ?? '/mcp/messages').pathname;
+			const postUrl = req.path.replace(
+				new RegExp(`/${MCP_SSE_SETUP_PATH}$`),
+				`/${MCP_SSE_MESSAGES_PATH}`,
+			);
 			await mcpServer.connectTransport(postUrl, resp);
 
 			return { noWebhookResponse: true };
