@@ -11,6 +11,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
+import type { JiraServerInfo, JiraWebhook } from './types';
+
 export async function jiraSoftwareCloudApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	endpoint: string,
@@ -28,6 +30,9 @@ export async function jiraSoftwareCloudApiRequest(
 	if (jiraVersion === 'server') {
 		domain = (await this.getCredentials('jiraSoftwareServerApi')).domain as string;
 		credentialType = 'jiraSoftwareServerApi';
+	} else if (jiraVersion === 'serverPat') {
+		domain = (await this.getCredentials('jiraSoftwareServerPatApi')).domain as string;
+		credentialType = 'jiraSoftwareServerPatApi';
 	} else {
 		domain = (await this.getCredentials('jiraSoftwareCloudApi')).domain as string;
 		credentialType = 'jiraSoftwareCloudApi';
@@ -119,8 +124,9 @@ export function eventExists(currentEvents: string[], webhookEvents: string[]) {
 	return true;
 }
 
-export function getId(url: string) {
-	return url.split('/').pop();
+export function getWebhookId(webhook: JiraWebhook) {
+	if (webhook.id) return webhook.id.toString();
+	return webhook.self?.split('/').pop();
 }
 
 export function simplifyIssueOutput(responseData: {
@@ -233,7 +239,7 @@ export async function getUsers(this: ILoadOptionsFunctions): Promise<INodeProper
 	const query: IDataObject = { maxResults };
 	let endpoint = '/api/2/users/search';
 
-	if (jiraVersion === 'server') {
+	if (jiraVersion === 'server' || jiraVersion === 'serverPat') {
 		endpoint = '/api/2/user/search';
 		query.username = "'";
 	}
@@ -262,4 +268,23 @@ export async function getUsers(this: ILoadOptionsFunctions): Promise<INodeProper
 		.sort((a: INodePropertyOptions, b: INodePropertyOptions) => {
 			return a.name.toLowerCase() > b.name.toLowerCase() ? 1 : -1;
 		});
+}
+
+export async function getServerInfo(this: IHookFunctions) {
+	return await (jiraSoftwareCloudApiRequest.call(
+		this,
+		'/api/2/serverInfo',
+		'GET',
+	) as Promise<JiraServerInfo>);
+}
+
+export async function getWebhookEndpoint(this: IHookFunctions) {
+	const serverInfo = await getServerInfo.call(this).catch(() => null);
+
+	if (!serverInfo || serverInfo.deploymentType === 'Cloud') return '/webhooks/1.0/webhook';
+
+	// Assume old version when versionNumbers is not set
+	const majorVersion = serverInfo.versionNumbers?.[0] ?? 1;
+
+	return majorVersion >= 10 ? '/jira-webhook/1.0/webhooks' : '/webhooks/1.0/webhook';
 }

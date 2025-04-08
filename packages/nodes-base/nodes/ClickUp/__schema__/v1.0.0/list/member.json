@@ -1,0 +1,26 @@
+{
+    "type": "object",
+    "properties": {
+        "email": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "initials": {
+            "type": "string"
+        },
+        "profileInfo": {
+            "type": "object",
+            "properties": {
+                "verified_consultant": {
+                    "type": "null"
+                },
+                "viewed_verified_consultant": {
+                    "type": "null"
+                }
+            }
+        }
+    },
+    "version": 1
+}

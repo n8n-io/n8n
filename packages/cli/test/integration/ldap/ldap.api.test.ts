@@ -1,7 +1,7 @@
+import { Container } from '@n8n/di';
 import { Not } from '@n8n/typeorm';
 import type { Entry as LdapUser } from 'ldapts';
 import { Cipher } from 'n8n-core';
-import { Container } from 'typedi';
 
 import config from '@/config';
 import type { User } from '@/databases/entities/user';
@@ -470,7 +470,7 @@ describe('POST /login', () => {
 
 		const response = await testServer.authlessAgent
 			.post('/login')
-			.send({ email: ldapUser.mail, password: 'password' });
+			.send({ emailOrLdapLoginId: ldapUser.mail, password: 'password' });
 
 		expect(response.statusCode).toBe(200);
 		expect(response.headers['set-cookie']).toBeDefined();
@@ -529,7 +529,7 @@ describe('POST /login', () => {
 
 		const response = await testServer.authlessAgent
 			.post('/login')
-			.send({ email: owner.email, password: 'password' });
+			.send({ emailOrLdapLoginId: owner.email, password: 'password' });
 
 		expect(response.status).toBe(200);
 		expect(response.body.data?.signInType).toBeDefined();

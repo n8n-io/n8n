@@ -1,0 +1,40 @@
+{
+    "type": "object",
+    "properties": {
+        "item": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "owner": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "type": {
+                    "type": "string"
+                },
+                "visible_to": {
+                    "type": "integer"
+                }
+            }
+        },
+        "result_score": {
+            "type": "number"
+        }
+    },
+    "version": 1
+}

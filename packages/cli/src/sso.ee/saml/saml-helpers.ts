@@ -1,6 +1,7 @@
+import type { SamlAcsDto, SamlPreferences } from '@n8n/api-types';
+import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
 import type { FlowResult } from 'samlify/types/src/flow';
-import { Container } from 'typedi';
 
 import config from '@/config';
 import { AuthIdentity } from '@/databases/entities/auth-identity';
@@ -14,10 +15,7 @@ import { PasswordUtility } from '@/services/password.utility';
 
 import { SAML_LOGIN_ENABLED, SAML_LOGIN_LABEL } from './constants';
 import { getServiceProviderConfigTestReturnUrl } from './service-provider.ee';
-import type { SamlConfiguration } from './types/requests';
-import type { SamlAttributeMapping } from './types/saml-attribute-mapping';
-import type { SamlPreferences } from './types/saml-preferences';
-import type { SamlUserAttributes } from './types/saml-user-attributes';
+import type { SamlAttributeMapping, SamlUserAttributes } from './types';
 import {
 	getCurrentAuthenticationMethod,
 	isEmailCurrentAuthenticationMethod,
@@ -165,6 +163,6 @@ export function getMappedSamlAttributesFromFlowResult(
 	return result;
 }
 
-export function isConnectionTestRequest(req: SamlConfiguration.AcsRequest): boolean {
-	return req.body.RelayState === getServiceProviderConfigTestReturnUrl();
+export function isConnectionTestRequest(payload: SamlAcsDto): boolean {
+	return payload.RelayState === getServiceProviderConfigTestReturnUrl();
 }

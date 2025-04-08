@@ -1,0 +1,21 @@
+diff --git a/lib/job.js b/lib/job.js
+index 6a3606974fd3e397c6c5b2b6e65b20670c68f753..4cdbed1d564ceeb5a80c92eb605e49cfd3c8ccdd 100644
+--- a/lib/job.js
++++ b/lib/job.js
+@@ -511,9 +511,14 @@ Job.prototype.finished = async function() {
+         }
+       };
+
+-      const onFailed = (jobId, failedReason) => {
++      const onFailed = async (jobId, failedReason) => {
+         if (String(jobId) === String(this.id)) {
+-          reject(new Error(failedReason));
++					const job = await Job.fromId(this.queue, this.id);
++					const error = new Error(failedReason);
++					if (job && job.stacktrace && job.stacktrace.length > 0) {
++						error.stack = job.stacktrace.join('\n');
++					}
++          reject(error);
+           removeListeners();
+         }
+       };

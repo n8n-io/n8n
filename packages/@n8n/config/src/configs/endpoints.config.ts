@@ -57,6 +57,10 @@ class PrometheusMetricsConfig {
 	/** How often (in seconds) to update queue metrics. */
 	@Env('N8N_METRICS_QUEUE_METRICS_INTERVAL')
 	queueMetricsInterval: number = 20;
+
+	/** How often (in seconds) to update active workflow metric */
+	@Env('N8N_METRICS_ACTIVE_WORKFLOW_METRIC_INTERVAL')
+	activeWorkflowCountInterval: number = 60;
 }
 
 @Config

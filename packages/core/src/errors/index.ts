@@ -5,3 +5,5 @@ export { InvalidManagerError } from './invalid-manager.error';
 export { InvalidExecutionMetadataError } from './invalid-execution-metadata.error';
 export { UnrecognizedCredentialTypeError } from './unrecognized-credential-type.error';
 export { UnrecognizedNodeTypeError } from './unrecognized-node-type.error';
+
+export { ErrorReporter } from './error-reporter';

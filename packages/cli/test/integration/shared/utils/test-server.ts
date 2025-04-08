@@ -1,9 +1,9 @@
+import { Container } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import { Logger } from 'n8n-core';
 import type superagent from 'superagent';
 import request from 'supertest';
-import { Container } from 'typedi';
 import { URL } from 'url';
 
 import { AuthService } from '@/auth/auth.service';
@@ -209,8 +209,10 @@ export const setupTestServer = ({
 						break;
 
 					case 'saml':
-						const { setSamlLoginEnabled } = await import('@/sso.ee/saml/saml-helpers');
+						const { SamlService } = await import('@/sso.ee/saml/saml.service.ee');
+						await Container.get(SamlService).init();
 						await import('@/sso.ee/saml/routes/saml.controller.ee');
+						const { setSamlLoginEnabled } = await import('@/sso.ee/saml/saml-helpers');
 						await setSamlLoginEnabled(true);
 						break;
 
@@ -279,13 +281,18 @@ export const setupTestServer = ({
 						break;
 
 					case 'evaluation':
-						await import('@/evaluation.ee/metrics.controller');
 						await import('@/evaluation.ee/test-definitions.controller.ee');
 						await import('@/evaluation.ee/test-runs.controller.ee');
 						break;
 
 					case 'ai':
 						await import('@/controllers/ai.controller');
+
+					case 'folder':
+						await import('@/controllers/folder.controller');
+
+					case 'insights':
+						await import('@/modules/insights/insights.controller');
 				}
 			}
 

@@ -1,6 +1,6 @@
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
-import { Container } from 'typedi';
 
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';

@@ -1,11 +1,10 @@
-import { NodeConnectionType } from 'n8n-workflow';
-
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import type { IWorkflowBase } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 /**
  * Workflow producing an execution whose data will be truncated by an instance crash.
  */
-export const OOM_WORKFLOW: Partial<WorkflowEntity> = {
+export const OOM_WORKFLOW: Partial<IWorkflowBase> = {
 	nodes: [
 		{
 			parameters: {},
@@ -33,7 +32,7 @@ export const OOM_WORKFLOW: Partial<WorkflowEntity> = {
 				[
 					{
 						node: 'DebugHelper',
-						type: NodeConnectionType.Main,
+						type: NodeConnectionTypes.Main,
 						index: 0,
 					},
 				],

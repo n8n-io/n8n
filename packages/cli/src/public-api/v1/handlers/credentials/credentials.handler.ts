@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
+import { Container } from '@n8n/di';
 import type express from 'express';
-import { Container } from 'typedi';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';

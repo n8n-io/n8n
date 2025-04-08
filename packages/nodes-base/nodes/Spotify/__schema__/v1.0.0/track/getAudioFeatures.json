@@ -1,0 +1,57 @@
+{
+    "type": "object",
+    "properties": {
+        "acousticness": {
+            "type": "number"
+        },
+        "analysis_url": {
+            "type": "string"
+        },
+        "danceability": {
+            "type": "number"
+        },
+        "duration_ms": {
+            "type": "integer"
+        },
+        "energy": {
+            "type": "number"
+        },
+        "id": {
+            "type": "string"
+        },
+        "key": {
+            "type": "integer"
+        },
+        "liveness": {
+            "type": "number"
+        },
+        "loudness": {
+            "type": "number"
+        },
+        "mode": {
+            "type": "integer"
+        },
+        "speechiness": {
+            "type": "number"
+        },
+        "tempo": {
+            "type": "number"
+        },
+        "time_signature": {
+            "type": "integer"
+        },
+        "track_href": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "uri": {
+            "type": "string"
+        },
+        "valence": {
+            "type": "number"
+        }
+    },
+    "version": 1
+}

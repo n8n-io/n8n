@@ -1,6 +1,6 @@
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import { pick } from 'lodash';
-import { Node, NodeConnectionType } from 'n8n-workflow';
+import { Node, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IWebhookFunctions,
@@ -12,6 +12,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import { cssVariables } from './constants';
 import { validateAuth } from './GenericFunctions';
 import { createPage } from './templates';
 import type { LoadPreviousSessionChatOption } from './types';
@@ -69,12 +70,12 @@ export class ChatTrigger extends Node {
 				{
 					displayName: 'Memory',
 					maxConnections: 1,
-					type: '${NodeConnectionType.AiMemory}',
+					type: '${NodeConnectionTypes.AiMemory}',
 					required: true,
 				}
 			];
 		 })() }}`,
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
@@ -378,6 +379,29 @@ export class ChatTrigger extends Node {
 						placeholder: 'e.g. Welcome',
 						description: 'Shown at the top of the chat',
 					},
+					{
+						displayName: 'Custom Chat Styling',
+						name: 'customCss',
+						type: 'string',
+						typeOptions: {
+							rows: 10,
+							editor: 'cssEditor',
+						},
+						displayOptions: {
+							show: {
+								'/mode': ['hostedChat'],
+							},
+						},
+						default: `
+${cssVariables}
+
+/* You can override any class styles, too. Right-click inspect in Chat UI to find class to override. */
+.chat-message {
+	max-width: 50%;
+}
+`.trim(),
+						description: 'Override default styling of the public chat interface with CSS',
+					},
 				],
 			},
 		],
@@ -466,6 +490,7 @@ export class ChatTrigger extends Node {
 			title?: string;
 			allowFileUploads?: boolean;
 			allowedFilesMimeTypes?: string;
+			customCss?: string;
 		};
 
 		const req = ctx.getRequestObject();
@@ -517,6 +542,7 @@ export class ChatTrigger extends Node {
 					authentication,
 					allowFileUploads: options.allowFileUploads,
 					allowedFilesMimeTypes: options.allowedFilesMimeTypes,
+					customCss: options.customCss,
 				});
 
 				res.status(200).send(page).end();
@@ -528,7 +554,7 @@ export class ChatTrigger extends Node {
 
 		if (bodyData.action === 'loadPreviousSession') {
 			if (options?.loadPreviousSession === 'memory') {
-				const memory = (await ctx.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
+				const memory = (await ctx.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
 					| BaseChatMemory
 					| undefined;
 				const messages = ((await memory?.chatHistory.getMessages()) ?? [])

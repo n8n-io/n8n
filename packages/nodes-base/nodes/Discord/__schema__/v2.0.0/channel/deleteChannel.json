@@ -1,0 +1,67 @@
+{
+    "type": "object",
+    "properties": {
+        "flags": {
+            "type": "integer"
+        },
+        "guild_id": {
+            "type": "string"
+        },
+        "icon_emoji": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "null"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "nsfw": {
+            "type": "boolean"
+        },
+        "permission_overwrites": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "allow": {
+                        "type": "string"
+                    },
+                    "deny": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "position": {
+            "type": "integer"
+        },
+        "rate_limit_per_user": {
+            "type": "integer"
+        },
+        "theme_color": {
+            "type": "null"
+        },
+        "topic": {
+            "type": "null"
+        },
+        "type": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

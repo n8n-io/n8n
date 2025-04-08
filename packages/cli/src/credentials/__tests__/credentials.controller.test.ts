@@ -28,12 +28,13 @@ describe('CredentialsController', () => {
 	);
 
 	let req: AuthenticatedRequest;
+	let res = mock<Response>();
 	beforeAll(() => {
 		req = { user: { id: '123' } } as AuthenticatedRequest;
 	});
 
 	describe('createCredentials', () => {
-		it('it should create new credentials and emit "credentials-created"', async () => {
+		it('should create new credentials and emit "credentials-created"', async () => {
 			// Arrange
 
 			const newCredentialsPayload = createNewCredentialsPayload();
@@ -48,7 +49,7 @@ describe('CredentialsController', () => {
 				id: newCredentialsPayload.projectId,
 			});
 
-			credentialsService.createCredential.mockResolvedValue(createdCredentials);
+			credentialsService.createUnmanagedCredential.mockResolvedValue(createdCredentials);
 
 			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue(
 				projectOwningCredentialData,
@@ -56,11 +57,15 @@ describe('CredentialsController', () => {
 
 			// Act
 
-			const newApiKey = await credentialsController.createCredentials(req);
+			const newApiKey = await credentialsController.createCredentials(
+				req,
+				res,
+				newCredentialsPayload,
+			);
 
 			// Assert
 
-			expect(credentialsService.createCredential).toHaveBeenCalledWith(
+			expect(credentialsService.createUnmanagedCredential).toHaveBeenCalledWith(
 				newCredentialsPayload,
 				req.user,
 			);

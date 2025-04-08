@@ -1,6 +1,6 @@
+import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { ensureError } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
@@ -160,12 +160,12 @@ export class PubSubHandler {
 		'display-workflow-activation-error': async ({ workflowId, errorMessage }) =>
 			this.push.broadcast({ type: 'workflowFailedToActivate', data: { workflowId, errorMessage } }),
 		'relay-execution-lifecycle-event': async ({ pushRef, ...pushMsg }) => {
-			if (!this.push.getBackend().hasPushRef(pushRef)) return;
+			if (!this.push.hasPushRef(pushRef)) return;
 
 			this.push.send(pushMsg, pushRef);
 		},
 		'clear-test-webhooks': async ({ webhookKey, workflowEntity, pushRef }) => {
-			if (!this.push.getBackend().hasPushRef(pushRef)) return;
+			if (!this.push.hasPushRef(pushRef)) return;
 
 			this.testWebhooks.clearTimeout(webhookKey);
 

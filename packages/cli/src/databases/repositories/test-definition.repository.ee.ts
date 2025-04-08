@@ -1,6 +1,6 @@
+import { Service } from '@n8n/di';
 import type { FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';
 import { DataSource, In, Repository } from '@n8n/typeorm';
-import { Service } from 'typedi';
 
 import { TestDefinition } from '@/databases/entities/test-definition.ee';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';

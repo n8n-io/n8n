@@ -1,17 +1,15 @@
 import type { WorkerStatus } from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
-import type { Workflow } from 'n8n-workflow';
+import type { IWorkflowBase, Workflow } from 'n8n-workflow';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
 import type { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
-import type { IWorkflowDb } from '@/interfaces';
 import type { License } from '@/license';
 import type { Push } from '@/push';
-import type { WebSocketPush } from '@/push/websocket.push';
 import type { CommunityPackagesService } from '@/services/community-packages.service';
 import type { TestWebhooks } from '@/webhooks/test-webhooks';
 
@@ -829,9 +827,7 @@ describe('PubSubHandler', () => {
 					flattedRunData: '[]',
 				};
 
-				push.getBackend.mockReturnValue(
-					mock<WebSocketPush>({ hasPushRef: jest.fn().mockReturnValue(true) }),
-				);
+				push.hasPushRef.mockReturnValue(true);
 
 				eventService.emit('relay-execution-lifecycle-event', { type, data, pushRef });
 
@@ -855,12 +851,10 @@ describe('PubSubHandler', () => {
 				).init();
 
 				const webhookKey = 'test-webhook-key';
-				const workflowEntity = mock<IWorkflowDb>({ id: 'test-workflow-id' });
+				const workflowEntity = mock<IWorkflowBase>({ id: 'test-workflow-id' });
 				const pushRef = 'test-push-ref';
 
-				push.getBackend.mockReturnValue(
-					mock<WebSocketPush>({ hasPushRef: jest.fn().mockReturnValue(true) }),
-				);
+				push.hasPushRef.mockReturnValue(true);
 				testWebhooks.toWorkflow.mockReturnValue(mock<Workflow>({ id: 'test-workflow-id' }));
 
 				eventService.emit('clear-test-webhooks', { webhookKey, workflowEntity, pushRef });

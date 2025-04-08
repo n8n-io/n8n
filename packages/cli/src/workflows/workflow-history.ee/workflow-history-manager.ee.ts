@@ -1,5 +1,5 @@
+import { Service } from '@n8n/di';
 import { DateTime } from 'luxon';
-import { Service } from 'typedi';
 
 import { Time } from '@/constants';
 import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';

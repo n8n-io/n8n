@@ -1,6 +1,6 @@
+import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 import { ErrorReporter } from 'n8n-core';
-import { Service } from 'typedi';
 
 import config from '@/config';
 import { EXTERNAL_SECRETS_DB_KEY } from '@/external-secrets.ee/constants';

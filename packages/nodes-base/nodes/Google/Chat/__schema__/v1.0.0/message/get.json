@@ -1,0 +1,74 @@
+{
+    "type": "object",
+    "properties": {
+        "createTime": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "sender": {
+            "type": "object",
+            "properties": {
+                "displayName": {
+                    "type": "string"
+                },
+                "domainId": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "space": {
+            "type": "object",
+            "properties": {
+                "lastActiveTime": {
+                    "type": "string"
+                },
+                "membershipCount": {
+                    "type": "object",
+                    "properties": {
+                        "joinedDirectHumanUserCount": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "singleUserBotDm": {
+                    "type": "boolean"
+                },
+                "spaceHistoryState": {
+                    "type": "string"
+                },
+                "spaceThreadingState": {
+                    "type": "string"
+                },
+                "spaceType": {
+                    "type": "string"
+                },
+                "spaceUri": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "thread": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 1
+}

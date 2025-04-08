@@ -28,6 +28,7 @@ export type EnumInfo = {
 export type PgpClient = pgPromise.IMain<{}, pg.IClient>;
 export type PgpDatabase = pgPromise.IDatabase<{}, pg.IClient>;
 export type PgpConnectionParameters = pg.IConnectionParameters<pg.IClient>;
+export type PgpConnection = pgPromise.IConnected<{}, pg.IClient>;
 export type ConnectionsData = { db: PgpDatabase; pgp: PgpClient };
 
 export type QueriesRunner = (
@@ -57,6 +58,7 @@ export type PostgresNodeCredentials = {
 	database: string;
 	user: string;
 	password: string;
+	maxConnections: number;
 	allowUnauthorizedCerts?: boolean;
 	ssl?: 'disable' | 'allow' | 'require' | 'verify' | 'verify-full';
 } & (

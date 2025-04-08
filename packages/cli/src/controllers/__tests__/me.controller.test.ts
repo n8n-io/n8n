@@ -1,8 +1,8 @@
 import { UserUpdateRequestDto } from '@n8n/api-types';
+import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock, anyObject } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';
-import { Container } from 'typedi';
 
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { MeController } from '@/controllers/me.controller';

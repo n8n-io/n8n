@@ -1,5 +1,5 @@
 import { SecurityConfig } from '@n8n/config';
-import Container, { Service } from 'typedi';
+import { Container, Service } from '@n8n/di';
 
 import config from '@/config';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';

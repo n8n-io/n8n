@@ -1,0 +1,36 @@
+{
+    "type": "object",
+    "properties": {
+        "metadata": {
+            "type": "object",
+            "properties": {
+                "blobType": {
+                    "type": "string"
+                },
+                "file_id": {
+                    "type": "string"
+                },
+                "loc": {
+                    "type": "object",
+                    "properties": {
+                        "lines": {
+                            "type": "object",
+                            "properties": {
+                                "from": {
+                                    "type": "integer"
+                                },
+                                "to": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                },
+                "source": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 1
+}

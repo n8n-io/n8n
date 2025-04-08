@@ -1,0 +1,91 @@
+{
+    "type": "object",
+    "properties": {
+        "created": {
+            "type": "string"
+        },
+        "creator": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                }
+            }
+        },
+        "end": {
+            "type": "object",
+            "properties": {
+                "dateTime": {
+                    "type": "string"
+                },
+                "timeZone": {
+                    "type": "string"
+                }
+            }
+        },
+        "etag": {
+            "type": "string"
+        },
+        "eventType": {
+            "type": "string"
+        },
+        "htmlLink": {
+            "type": "string"
+        },
+        "iCalUID": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "kind": {
+            "type": "string"
+        },
+        "organizer": {
+            "type": "object",
+            "properties": {
+                "displayName": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "self": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "reminders": {
+            "type": "object",
+            "properties": {
+                "useDefault": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "sequence": {
+            "type": "integer"
+        },
+        "start": {
+            "type": "object",
+            "properties": {
+                "dateTime": {
+                    "type": "string"
+                },
+                "timeZone": {
+                    "type": "string"
+                }
+            }
+        },
+        "status": {
+            "type": "string"
+        },
+        "summary": {
+            "type": "string"
+        },
+        "updated": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

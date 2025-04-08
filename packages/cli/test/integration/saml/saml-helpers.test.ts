@@ -1,5 +1,5 @@
 import * as helpers from '@/sso.ee/saml/saml-helpers';
-import type { SamlUserAttributes } from '@/sso.ee/saml/types/saml-user-attributes';
+import type { SamlUserAttributes } from '@/sso.ee/saml/types';
 
 import { getPersonalProject } from '../shared/db/projects';
 import * as testDb from '../shared/test-db';

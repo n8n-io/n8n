@@ -1,4 +1,4 @@
-import { Container } from 'typedi';
+import { Container } from '@n8n/di';
 
 import type { User } from '@/databases/entities/user';
 import { EventService } from '@/events/event.service';

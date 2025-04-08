@@ -1,4 +1,4 @@
-import type { ExecutionError } from 'n8n-workflow/src';
+import type { ExecutionError } from 'n8n-workflow';
 
 import {
 	closeManualChatModal,
@@ -53,7 +53,7 @@ function createRunDataWithError(inputMessage: string) {
 							input: inputMessage,
 							system_message: 'You are a helpful assistant',
 							formatting_instructions:
-								'IMPORTANT: Always call `format_final_response` to format your final response!',
+								'IMPORTANT: Always call `format_final_json_response` to format your final response!',
 						},
 					},
 				},
@@ -68,7 +68,7 @@ function createRunDataWithError(inputMessage: string) {
 									input: inputMessage,
 									system_message: 'You are a helpful assistant',
 									formatting_instructions:
-										'IMPORTANT: Always call `format_final_response` to format your final response!',
+										'IMPORTANT: Always call `format_final_json_response` to format your final response!',
 								},
 							},
 						},

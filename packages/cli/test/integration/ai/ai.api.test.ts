@@ -1,8 +1,9 @@
+import { Container } from '@n8n/di';
 import { randomUUID } from 'crypto';
 import { mock } from 'jest-mock-extended';
-import { Container } from 'typedi';
+import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 
-import { FREE_AI_CREDITS_CREDENTIAL_NAME, OPEN_AI_API_CREDENTIAL_TYPE } from '@/constants';
+import { FREE_AI_CREDITS_CREDENTIAL_NAME } from '@/constants';
 import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';

@@ -1,5 +1,5 @@
+import { Service } from '@n8n/di';
 import type { SecretsHelpersBase } from 'n8n-workflow';
-import { Service } from 'typedi';
 
 import { ExternalSecretsManager } from './external-secrets.ee/external-secrets-manager.ee';
 

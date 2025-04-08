@@ -1,0 +1,21 @@
+{
+    "type": "object",
+    "properties": {
+        "assigned_tickets": {
+            "type": "integer"
+        },
+        "ccd_tickets": {
+            "type": "integer"
+        },
+        "followed_tickets": {
+            "type": "integer"
+        },
+        "organization_subscriptions": {
+            "type": "integer"
+        },
+        "requested_tickets": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

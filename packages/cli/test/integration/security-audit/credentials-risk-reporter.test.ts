@@ -1,6 +1,6 @@
 import type { SecurityConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import Container from 'typedi';
 import { v4 as uuid } from 'uuid';
 
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';

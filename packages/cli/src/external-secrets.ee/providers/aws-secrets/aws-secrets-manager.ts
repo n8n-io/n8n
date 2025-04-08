@@ -1,6 +1,6 @@
+import { Container } from '@n8n/di';
 import { Logger } from 'n8n-core';
 import type { INodeProperties } from 'n8n-workflow';
-import Container from 'typedi';
 
 import { UnknownAuthTypeError } from '@/errors/unknown-auth-type.error';
 import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '@/external-secrets.ee/constants';

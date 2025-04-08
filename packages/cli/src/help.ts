@@ -1,6 +1,6 @@
+import { Container } from '@n8n/di';
 import { Help } from '@oclif/core';
 import { Logger } from 'n8n-core';
-import { Container } from 'typedi';
 
 // oclif expects a default export
 // eslint-disable-next-line import/no-default-export

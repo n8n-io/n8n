@@ -1,11 +1,15 @@
-import { Logger } from 'n8n-core';
+import { mock } from 'jest-mock-extended';
 
-import { mockInstance } from '@test/mocking';
-
-import { validateMetadata, validateResponse } from '../saml-validator';
+import { SamlValidator } from '../saml-validator';
 
 describe('saml-validator', () => {
-	mockInstance(Logger);
+	const validator = new SamlValidator(mock());
+	const VALID_CERTIFICATE =
+		'MIIC8DCCAdigAwIBAgIQf+iroClVKohAtsyk0Ne13TANBgkqhkiG9w0BAQsFADA0MTIwMAYDVQQDEylNaWNyb3NvZnQgQXp1cmUgRmVkZXJhdGVkIFNTTyBDZXJ0aWZpY2F0ZTAeFw0yNDExMTMxMDEwNTNaFw0yNzExMTMxMDEwNTNaMDQxMjAwBgNVBAMTKU1pY3Jvc29mdCBBenVyZSBGZWRlcmF0ZWQgU1NPIENlcnRpZmljYXRlMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwE8Ad1OMQKfaHi6YrsEcmMNwIAQ86h7JmnuABf5xLNd27jaMF4FVxHbEtC/BYxtcmwld5zbkCVXQ6PT6VoeYIjHMVnptFXg15EGgjnqpxWsjLDQNoSdSQu8VhG+8Yb5M7KPt+UEZfsRZVrgqMjdSEMVrOzPMD8KMB7wnghYX6npcZhn7D5w/F9gVDpI1Um8M/FIUKYVSYFjky1i24WvKmcBf71mAacZp48Zuj5by/ELIb6gAjpW5xpd02smpLthy/Yo4XDIQQurFOfjqyZd8xAZu/SfPsbjtymWw59tgd9RdYISl6O/241kY9h6Ojtx6WShOVDi6q+bJrfj9Z8WKcQIDAQABMA0GCSqGSIb3DQEBCwUAA4IBAQCiVxiQ9KpjihliQzIW45YO0EvRJtoPtyVAh9RiSGozbTl4otfrUJf8nbRtj7iZBRuuW4rrtRAH5kDb+i1wNUUQED2Pl/l4x5cN0oBytP3GSymq6NJx1gUOBO1BrNY+c3r5yHOUyj5qpbw9UkqpG1AqQkLLeZqB/yVCyOBQT7SKTbXVYhGefFM/+6z0/rGsWZN5OF6/2NC06ws1v4In28Atgpg4XxFh5TL7rPMJ11ca5MN9lHJoIUsvls053eQBcd7vJneqzd904B6WtPld6KOJK4dzIt9edHzPhaz158awWwx3iHsMn1Y/T0WVy5/4ZTzxY/i4U3t1Yt8ktxewVJYT';
+
+	beforeAll(async () => {
+		await validator.init();
+	});
 
 	describe('validateMetadata', () => {
 		test('successfully validates metadata containing ws federation tags', async () => {
@@ -31,8 +35,7 @@ describe('saml-validator', () => {
 						DQnnT/5se4dqYN86R35MCdbyKVl64lGPLSIVrxFxrOQ9YRK1br7Z1Bt1/LQD4f92z+GwAl+9tZTWhuoy6OGHCV6LlqBEztW43KnlCKw6eaNg4/6NluzJ/XeknXYLURDnfFVyGbLQAYWGND4Qm8CUXO/GjGfWTZuArvrDDC36/2FA41jKXtf1InxGFx1Bbaskx3n3KCFFth/V9knbnc1zftEe022aQluPRoGccROOI4ZeLUFL6+1gYlxjx0gFIOTRiuvrzR765lHNrF7iZ4aD+XukqtkGEtxTkiLoB+Bnr8Fd7IF5rV5FKTZWSxo+ZFcLimrDGtFPItVrC/oKRc+MGA==</SignatureValue>
 					<ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
 						<ds:X509Data>
-							<ds:X509Certificate>
-								MIIC8DCCAdigAwIBAgIQf+iroClVKohAtsyk0Ne13TANBgkqhkiG9w0BAQsFADA0MTIwMAYDVQQDEylNaWNyb3NvZnQgQXp1cmUgRmVkZXJhdGVkIFNTTyBDZXJ0aWZpY2F0ZTAeFw0yNDExMTMxMDEwNTNaFw0yNzExMTMxMDEwNTNaMDQxMjAwBgNVBAMTKU1pY3Jvc29mdCBBenVyZSBGZWRlcmF0ZWQgU1NPIENlcnRpZmljYXRlMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwE8Ad1OMQKfaHi6YrsEcmMNwIAQ86h7JmnuABf5xLNd27jaMF4FVxHbEtC/BYxtcmwld5zbkCVXQ6PT6VoeYIjHMVnptFXg15EGgjnqpxWsjLDQNoSdSQu8VhG+8Yb5M7KPt+UEZfsRZVrgqMjdSEMVrOzPMD8KMB7wnghYX6npcZhn7D5w/F9gVDpI1Um8M/FIUKYVSYFjky1i24WvKmcBf71mAacZp48Zuj5by/ELIb6gAjpW5xpd02smpLthy/Yo4XDIQQurFOfjqyZd8xAZu/SfPsbjtymWw59tgd9RdYISl6O/241kY9h6Ojtx6WShOVDi6q+bJrfj9Z8WKcQIDAQABMA0GCSqGSIb3DQEBCwUAA4IBAQCiVxiQ9KpjihliQzIW45YO0EvRJtoPtyVAh9RiSGozbTl4otfrUJf8nbRtj7iZBRuuW4rrtRAH5kDb+i1wNUUQED2Pl/l4x5cN0oBytP3GSymq6NJx1gUOBO1BrNY+c3r5yHOUyj5qpbw9UkqpG1AqQkLLeZqB/yVCyOBQT7SKTbXVYhGefFM/+6z0/rGsWZN5OF6/2NC06ws1v4In28Atgpg4XxFh5TL7rPMJ11ca5MN9lHJoIUsvls053eQBcd7vJneqzd904B6WtPld6KOJK4dzIt9edHzPhaz158awWwx3iHsMn1Y/T0WVy5/4ZTzxY/i4U3t1Yt8ktxewVJYT</ds:X509Certificate>
+							<ds:X509Certificate>${VALID_CERTIFICATE}</ds:X509Certificate>
 						</ds:X509Data>
 					</ds:KeyInfo>
 				</Signature>
@@ -43,8 +46,7 @@ describe('saml-validator', () => {
 					<KeyDescriptor use="signing">
 						<KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
 							<X509Data>
-								<X509Certificate>
-									MIIC8DCCAdigAwIBAgIQf+iroClVKohAtsyk0Ne13TANBgkqhkiG9w0BAQsFADA0MTIwMAYDVQQDEylNaWNyb3NvZnQgQXp1cmUgRmVkZXJhdGVkIFNTTyBDZXJ0aWZpY2F0ZTAeFw0yNDExMTMxMDEwNTNaFw0yNzExMTMxMDEwNTNaMDQxMjAwBgNVBAMTKU1pY3Jvc29mdCBBenVyZSBGZWRlcmF0ZWQgU1NPIENlcnRpZmljYXRlMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwE8Ad1OMQKfaHi6YrsEcmMNwIAQ86h7JmnuABf5xLNd27jaMF4FVxHbEtC/BYxtcmwld5zbkCVXQ6PT6VoeYIjHMVnptFXg15EGgjnqpxWsjLDQNoSdSQu8VhG+8Yb5M7KPt+UEZfsRZVrgqMjdSEMVrOzPMD8KMB7wnghYX6npcZhn7D5w/F9gVDpI1Um8M/FIUKYVSYFjky1i24WvKmcBf71mAacZp48Zuj5by/ELIb6gAjpW5xpd02smpLthy/Yo4XDIQQurFOfjqyZd8xAZu/SfPsbjtymWw59tgd9RdYISl6O/241kY9h6Ojtx6WShOVDi6q+bJrfj9Z8WKcQIDAQABMA0GCSqGSIb3DQEBCwUAA4IBAQCiVxiQ9KpjihliQzIW45YO0EvRJtoPtyVAh9RiSGozbTl4otfrUJf8nbRtj7iZBRuuW4rrtRAH5kDb+i1wNUUQED2Pl/l4x5cN0oBytP3GSymq6NJx1gUOBO1BrNY+c3r5yHOUyj5qpbw9UkqpG1AqQkLLeZqB/yVCyOBQT7SKTbXVYhGefFM/+6z0/rGsWZN5OF6/2NC06ws1v4In28Atgpg4XxFh5TL7rPMJ11ca5MN9lHJoIUsvls053eQBcd7vJneqzd904B6WtPld6KOJK4dzIt9edHzPhaz158awWwx3iHsMn1Y/T0WVy5/4ZTzxY/i4U3t1Yt8ktxewVJYT</X509Certificate>
+								<X509Certificate>${VALID_CERTIFICATE}</X509Certificate>
 							</X509Data>
 						</KeyInfo>
 					</KeyDescriptor>
@@ -169,8 +171,7 @@ describe('saml-validator', () => {
 					<KeyDescriptor use="signing">
 						<KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
 							<X509Data>
-								<X509Certificate>
-									MIIC8DCCAdigAwIBAgIQf+iroClVKohAtsyk0Ne13TANBgkqhkiG9w0BAQsFADA0MTIwMAYDVQQDEylNaWNyb3NvZnQgQXp1cmUgRmVkZXJhdGVkIFNTTyBDZXJ0aWZpY2F0ZTAeFw0yNDExMTMxMDEwNTNaFw0yNzExMTMxMDEwNTNaMDQxMjAwBgNVBAMTKU1pY3Jvc29mdCBBenVyZSBGZWRlcmF0ZWQgU1NPIENlcnRpZmljYXRlMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwE8Ad1OMQKfaHi6YrsEcmMNwIAQ86h7JmnuABf5xLNd27jaMF4FVxHbEtC/BYxtcmwld5zbkCVXQ6PT6VoeYIjHMVnptFXg15EGgjnqpxWsjLDQNoSdSQu8VhG+8Yb5M7KPt+UEZfsRZVrgqMjdSEMVrOzPMD8KMB7wnghYX6npcZhn7D5w/F9gVDpI1Um8M/FIUKYVSYFjky1i24WvKmcBf71mAacZp48Zuj5by/ELIb6gAjpW5xpd02smpLthy/Yo4XDIQQurFOfjqyZd8xAZu/SfPsbjtymWw59tgd9RdYISl6O/241kY9h6Ojtx6WShOVDi6q+bJrfj9Z8WKcQIDAQABMA0GCSqGSIb3DQEBCwUAA4IBAQCiVxiQ9KpjihliQzIW45YO0EvRJtoPtyVAh9RiSGozbTl4otfrUJf8nbRtj7iZBRuuW4rrtRAH5kDb+i1wNUUQED2Pl/l4x5cN0oBytP3GSymq6NJx1gUOBO1BrNY+c3r5yHOUyj5qpbw9UkqpG1AqQkLLeZqB/yVCyOBQT7SKTbXVYhGefFM/+6z0/rGsWZN5OF6/2NC06ws1v4In28Atgpg4XxFh5TL7rPMJ11ca5MN9lHJoIUsvls053eQBcd7vJneqzd904B6WtPld6KOJK4dzIt9edHzPhaz158awWwx3iHsMn1Y/T0WVy5/4ZTzxY/i4U3t1Yt8ktxewVJYT</X509Certificate>
+								<X509Certificate>${VALID_CERTIFICATE}</X509Certificate>
 							</X509Data>
 						</KeyInfo>
 					</KeyDescriptor>
@@ -194,8 +195,7 @@ describe('saml-validator', () => {
 					<KeyDescriptor use="signing">
 						<KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
 							<X509Data>
-								<X509Certificate>
-									MIIC8DCCAdigAwIBAgIQf+iroClVKohAtsyk0Ne13TANBgkqhkiG9w0BAQsFADA0MTIwMAYDVQQDEylNaWNyb3NvZnQgQXp1cmUgRmVkZXJhdGVkIFNTTyBDZXJ0aWZpY2F0ZTAeFw0yNDExMTMxMDEwNTNaFw0yNzExMTMxMDEwNTNaMDQxMjAwBgNVBAMTKU1pY3Jvc29mdCBBenVyZSBGZWRlcmF0ZWQgU1NPIENlcnRpZmljYXRlMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwE8Ad1OMQKfaHi6YrsEcmMNwIAQ86h7JmnuABf5xLNd27jaMF4FVxHbEtC/BYxtcmwld5zbkCVXQ6PT6VoeYIjHMVnptFXg15EGgjnqpxWsjLDQNoSdSQu8VhG+8Yb5M7KPt+UEZfsRZVrgqMjdSEMVrOzPMD8KMB7wnghYX6npcZhn7D5w/F9gVDpI1Um8M/FIUKYVSYFjky1i24WvKmcBf71mAacZp48Zuj5by/ELIb6gAjpW5xpd02smpLthy/Yo4XDIQQurFOfjqyZd8xAZu/SfPsbjtymWw59tgd9RdYISl6O/241kY9h6Ojtx6WShOVDi6q+bJrfj9Z8WKcQIDAQABMA0GCSqGSIb3DQEBCwUAA4IBAQCiVxiQ9KpjihliQzIW45YO0EvRJtoPtyVAh9RiSGozbTl4otfrUJf8nbRtj7iZBRuuW4rrtRAH5kDb+i1wNUUQED2Pl/l4x5cN0oBytP3GSymq6NJx1gUOBO1BrNY+c3r5yHOUyj5qpbw9UkqpG1AqQkLLeZqB/yVCyOBQT7SKTbXVYhGefFM/+6z0/rGsWZN5OF6/2NC06ws1v4In28Atgpg4XxFh5TL7rPMJ11ca5MN9lHJoIUsvls053eQBcd7vJneqzd904B6WtPld6KOJK4dzIt9edHzPhaz158awWwx3iHsMn1Y/T0WVy5/4ZTzxY/i4U3t1Yt8ktxewVJYT</X509Certificate>
+								<X509Certificate>${VALID_CERTIFICATE}</X509Certificate>
 							</X509Data>
 						</KeyInfo>
 					</KeyDescriptor>
@@ -209,7 +209,7 @@ describe('saml-validator', () => {
 			</EntityDescriptor>`;
 
 			// ACT
-			const result = await validateMetadata(metadata);
+			const result = await validator.validateMetadata(metadata);
 
 			// ASSERT
 			expect(result).toBe(true);
@@ -225,7 +225,85 @@ describe('saml-validator', () => {
 			</EntityDescriptor>`;
 
 			// ACT
-			const result = await validateMetadata(metadata);
+			const result = await validator.validateMetadata(metadata);
+
+			// ASSERT
+			expect(result).toBe(false);
+		});
+
+		test('rejects malformed XML metadata', async () => {
+			// ARRANGE
+			const metadata = `<?xml version="1.0" encoding="utf-8"?>
+			<EntityDescriptor ID="_1069c6df-0612-4058-ae4e-1987ca45431b"
+					entityID="https://sts.windows.net/random-issuer/"
+					xmlns="urn:oasis:names:tc:SAML:2.0:metadata">
+					<IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+							<KeyDescriptor use="signing">
+									<KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+											<X509Data>
+													<X509Certificate>${VALID_CERTIFICATE}
+													</X509Certificate>
+											</X509Data>
+									</KeyInfo>
+							</KeyDescriptor>
+					</IDPSSODescriptor>
+			`; // Missing closing tags
+
+			// ACT
+			const result = await validator.validateMetadata(metadata);
+
+			// ASSERT
+			expect(result).toBe(false);
+		});
+
+		test('rejects metadata missing SingleSignOnService', async () => {
+			// ARRANGE
+			const metadata = `<?xml version="1.0" encoding="utf-8"?>
+			<EntityDescriptor ID="_1069c6df-0612-4058-ae4e-1987ca45431b"
+					entityID="https://sts.windows.net/random-issuer/"
+					xmlns="urn:oasis:names:tc:SAML:2.0:metadata">
+					<IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+							<KeyDescriptor use="signing">
+									<KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+											<X509Data>
+													<X509Certificate>${VALID_CERTIFICATE}
+													</X509Certificate>
+											</X509Data>
+									</KeyInfo>
+							</KeyDescriptor>
+					</IDPSSODescriptor>
+			</EntityDescriptor>`;
+
+			// ACT
+			const result = await validator.validateMetadata(metadata);
+
+			// ASSERT
+			expect(result).toBe(false);
+		});
+
+		test('rejects metadata with invalid X.509 certificate', async () => {
+			// ARRANGE
+			const metadata = `<?xml version="1.0" encoding="utf-8"?>
+			<EntityDescriptor ID="_1069c6df-0612-4058-ae4e-1987ca45431b"
+					entityID="https://sts.windows.net/random-issuer/"
+					xmlns="urn:oasis:names:tc:SAML:2.0:metadata">
+					<IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+							<KeyDescriptor use="signing">
+									<KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+											<X509Data>
+													<X509Certificate>
+															INVALID_CERTIFICATE
+													</X509Certificate>
+											</X509Data>
+									</KeyInfo>
+							</KeyDescriptor>
+							<SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
+									Location="https://login.microsoftonline.com/random-issuer/saml2" />
+					</IDPSSODescriptor>
+			</EntityDescriptor>`;
+
+			// ACT
+			const result = await validator.validateMetadata(metadata);
 
 			// ASSERT
 			expect(result).toBe(false);
@@ -328,13 +406,13 @@ describe('saml-validator', () => {
 </samlp:Response>`;
 
 			// ACT
-			const result = await validateResponse(response);
+			const result = await validator.validateResponse(response);
 
 			// ASSERT
 			expect(result).toBe(true);
 		});
 
-		test('rejects invalidate response', async () => {
+		test('rejects invalid response', async () => {
 			// ARRANGE
 			// Invalid because required children are missing
 			const response = `<samlp:Response ID="random_id" Version="2.0"
@@ -344,7 +422,45 @@ describe('saml-validator', () => {
 </samlp:Response>`;
 
 			// ACT
-			const result = await validateResponse(response);
+			const result = await validator.validateResponse(response);
+
+			// ASSERT
+			expect(result).toBe(false);
+		});
+
+		test('rejects expired SAML response', async () => {
+			// ARRANGE
+			const response = `<samlp:Response ID="random_id" Version="2.0"
+					IssueInstant="2024-11-13T14:58:00.371Z" Destination="random-url"
+					InResponseTo="random_id"
+					xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol">
+					<Issuer xmlns="urn:oasis:names:tc:SAML:2.0:assertion">
+							https://sts.windows.net/random-issuer/</Issuer>
+					<samlp:Status>
+							<samlp:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success" />
+					</samlp:Status>
+					<Assertion ID="_random_id" IssueInstant="2024-11-13T14:58:00.367Z"
+							Version="2.0" xmlns="urn:oasis:names:tc:SAML:2.0:assertion">
+							<Issuer>https://sts.windows.net/random-issuer/</Issuer>
+							<Subject>
+									<NameID Format="urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress">
+											random_name_id</NameID>
+									<SubjectConfirmation Method="urn:oasis:names:tc:SAML:2.0:cm:bearer">
+											<SubjectConfirmationData InResponseTo="random_id"
+													NotOnOrAfter="2023-11-13T15:58:00.284Z" // Expired
+													Recipient="random-url" />
+									</SubjectConfirmation>
+							</Subject>
+							<Conditions NotBefore="2024-11-13T14:53:00.284Z" NotOnOrAfter="2023-11-13T15:58:00.284Z"> // Expired
+									<AudienceRestriction>
+											<Audience>http://localhost:5678/rest/sso/saml/metadata</Audience>
+									</AudienceRestriction>
+							</Conditions>
+					</Assertion>
+			</samlp:Response>`;
+
+			// ACT
+			const result = await validator.validateResponse(response);
 
 			// ASSERT
 			expect(result).toBe(false);

@@ -5,9 +5,9 @@ import { QdrantVectorStore } from '@langchain/qdrant';
 import type { Schemas as QdrantSchemas } from '@qdrant/js-client-rest';
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
 
-import { createVectorStoreNode } from '../shared/createVectorStoreNode';
+import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
+import { qdrantCollectionsSearch } from '../shared/createVectorStoreNode/methods/listSearch';
 import { qdrantCollectionRLC } from '../shared/descriptions';
-import { qdrantCollectionsSearch } from '../shared/methods/listSearch';
 
 class ExtendedQdrantVectorStore extends QdrantVectorStore {
 	private static defaultFilter: IDataObject = {};
@@ -79,7 +79,7 @@ const retrieveFields: INodeProperties[] = [
 	},
 ];
 
-export class VectorStoreQdrant extends createVectorStoreNode({
+export class VectorStoreQdrant extends createVectorStoreNode<ExtendedQdrantVectorStore>({
 	meta: {
 		displayName: 'Qdrant Vector Store',
 		name: 'vectorStoreQdrant',

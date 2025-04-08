@@ -1,5 +1,5 @@
 {
-	"extends": ["./tsconfig.json", "../../tsconfig.build.json"],
+	"extends": ["./tsconfig.json", "@n8n/typescript-config/tsconfig.build.json"],
 	"compilerOptions": {
 		"composite": true,
 		"rootDir": "src",

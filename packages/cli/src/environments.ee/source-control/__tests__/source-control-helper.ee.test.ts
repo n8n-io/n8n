@@ -1,7 +1,9 @@
+import type { SourceControlledFile } from '@n8n/api-types';
+import { Container } from '@n8n/di';
 import { constants as fsConstants, accessSync } from 'fs';
+import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 import path from 'path';
-import Container from 'typedi';
 
 import {
 	SOURCE_CONTROL_SSH_FOLDER,
@@ -15,11 +17,8 @@ import {
 	getTrackingInformationFromPullResult,
 	sourceControlFoldersExistCheck,
 } from '@/environments.ee/source-control/source-control-helper.ee';
-import { SourceControlPreferencesService } from '@/environments.ee/source-control/source-control-preferences.service.ee';
-import type { SourceControlPreferences } from '@/environments.ee/source-control/types/source-control-preferences';
-import type { SourceControlledFile } from '@/environments.ee/source-control/types/source-controlled-file';
-import { License } from '@/license';
-import { mockInstance } from '@test/mocking';
+import type { SourceControlPreferencesService } from '@/environments.ee/source-control/source-control-preferences.service.ee';
+import type { License } from '@/license';
 
 const pushResult: SourceControlledFile[] = [
 	{
@@ -151,12 +150,13 @@ const pullResult: SourceControlledFile[] = [
 	},
 ];
 
-const license = mockInstance(License);
+const license = mock<License>();
+const sourceControlPreferencesService = mock<SourceControlPreferencesService>();
 
 beforeAll(async () => {
 	jest.resetAllMocks();
 	license.isSourceControlLicensed.mockReturnValue(true);
-	Container.get(SourceControlPreferencesService).getPreferences = () => ({
+	sourceControlPreferencesService.getPreferences.mockReturnValue({
 		branchName: 'main',
 		connected: true,
 		repositoryUrl: 'git@example.com:n8ntest/n8n_testrepo.git',
@@ -244,18 +244,5 @@ describe('Source Control', () => {
 			workflowConflicts: 1,
 			workflowUpdates: 3,
 		});
-	});
-
-	it('should class validate correct preferences', async () => {
-		const validPreferences: Partial<SourceControlPreferences> = {
-			branchName: 'main',
-			repositoryUrl: 'git@example.com:n8ntest/n8n_testrepo.git',
-			branchReadOnly: false,
-			branchColor: '#5296D6',
-		};
-		const validationResult = await Container.get(
-			SourceControlPreferencesService,
-		).validateSourceControlPreferences(validPreferences);
-		expect(validationResult).toBeTruthy();
 	});
 });

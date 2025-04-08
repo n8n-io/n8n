@@ -35,7 +35,7 @@ export class OAuth1CredentialController extends AbstractOAuthController {
 	async getAuthUri(req: OAuthRequest.OAuth1Credential.Auth): Promise<string> {
 		const credential = await this.getCredential(req);
 		const additionalData = await this.getAdditionalData();
-		const decryptedDataOriginal = await this.getDecryptedData(credential, additionalData);
+		const decryptedDataOriginal = await this.getDecryptedDataForAuthUri(credential, additionalData);
 		const oauthCredentials = this.applyDefaultsAndOverwrites<OAuth1CredentialData>(
 			credential,
 			decryptedDataOriginal,
@@ -91,8 +91,7 @@ export class OAuth1CredentialController extends AbstractOAuthController {
 
 		const returnUri = `${oauthCredentials.authUrl}?oauth_token=${responseJson.oauth_token}`;
 
-		decryptedDataOriginal.csrfSecret = csrfSecret;
-		await this.encryptAndSaveData(credential, decryptedDataOriginal);
+		await this.encryptAndSaveData(credential, { csrfSecret });
 
 		this.logger.debug('OAuth1 authorization successful for new credential', {
 			userId: req.user.id,
@@ -116,24 +115,23 @@ export class OAuth1CredentialController extends AbstractOAuthController {
 				);
 			}
 
-			const [credential, decryptedDataOriginal, oauthCredentials] =
+			const [credential, _, oauthCredentials] =
 				await this.resolveCredential<OAuth1CredentialData>(req);
 
-			const oauthToken = await axios.post<string>(oauthCredentials.accessTokenUrl, {
-				oauth_token,
-				oauth_verifier,
-			});
+			// Form URL encoded body https://datatracker.ietf.org/doc/html/rfc5849#section-3.5.2
+			const oauthToken = await axios.post<string>(
+				oauthCredentials.accessTokenUrl,
+				{ oauth_token, oauth_verifier },
+				{ headers: { 'content-type': 'application/x-www-form-urlencoded' } },
+			);
 
 			// Response comes as x-www-form-urlencoded string so convert it to JSON
 
 			const paramParser = new URLSearchParams(oauthToken.data);
 
-			const oauthTokenJson = Object.fromEntries(paramParser.entries());
+			const oauthTokenData = Object.fromEntries(paramParser.entries());
 
-			delete decryptedDataOriginal.csrfSecret;
-			decryptedDataOriginal.oauthTokenData = oauthTokenJson;
-
-			await this.encryptAndSaveData(credential, decryptedDataOriginal);
+			await this.encryptAndSaveData(credential, { oauthTokenData }, ['csrfSecret']);
 
 			this.logger.debug('OAuth1 callback successful for new credential', {
 				credentialId: credential.id,

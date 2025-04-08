@@ -1,0 +1,18 @@
+{
+    "type": "object",
+    "properties": {
+        "@odata.context": {
+            "type": "string"
+        },
+        "@odata.mediaContentType": {
+            "type": "string"
+        },
+        "@odata.type": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

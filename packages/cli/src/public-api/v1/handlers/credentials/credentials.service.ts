@@ -1,3 +1,4 @@
+import { Container } from '@n8n/di';
 import { Credentials } from 'n8n-core';
 import type {
 	DisplayCondition,
@@ -5,7 +6,6 @@ import type {
 	INodeProperties,
 	INodePropertyOptions,
 } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import { SharedCredentials } from '@/databases/entities/shared-credentials';

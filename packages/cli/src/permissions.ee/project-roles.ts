@@ -25,6 +25,11 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'project:read',
 	'project:update',
 	'project:delete',
+	'folder:create',
+	'folder:read',
+	'folder:update',
+	'folder:delete',
+	'folder:list',
 ];
 
 export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
@@ -45,6 +50,11 @@ export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
 	'credential:move',
 	'project:list',
 	'project:read',
+	'folder:create',
+	'folder:read',
+	'folder:update',
+	'folder:delete',
+	'folder:list',
 ];
 
 export const PROJECT_EDITOR_SCOPES: Scope[] = [
@@ -61,6 +71,11 @@ export const PROJECT_EDITOR_SCOPES: Scope[] = [
 	'credential:list',
 	'project:list',
 	'project:read',
+	'folder:create',
+	'folder:read',
+	'folder:update',
+	'folder:delete',
+	'folder:list',
 ];
 
 export const PROJECT_VIEWER_SCOPES: Scope[] = [
@@ -70,4 +85,6 @@ export const PROJECT_VIEWER_SCOPES: Scope[] = [
 	'project:read',
 	'workflow:list',
 	'workflow:read',
+	'folder:read',
+	'folder:list',
 ];

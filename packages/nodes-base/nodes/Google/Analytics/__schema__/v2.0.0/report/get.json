@@ -1,0 +1,12 @@
+{
+    "type": "object",
+    "properties": {
+        "date": {
+            "type": "string"
+        },
+        "totalUsers": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

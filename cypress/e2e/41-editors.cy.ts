@@ -49,7 +49,8 @@ describe('Editors', () => {
 			ndv.getters
 				.sqlEditorContainer()
 				.find('.cm-content')
-				.type('SELECT * FROM {{ $json.table }}', { parseSpecialCharSequences: false });
+				// }} is inserted automatically by bracket matching
+				.type('SELECT * FROM {{ $json.table', { parseSpecialCharSequences: false });
 			workflowPage.getters
 				.inlineExpressionEditorOutput()
 				.should('have.text', 'SELECT * FROM test_table');

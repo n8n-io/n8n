@@ -5,8 +5,6 @@ import { testWorkflows, getWorkflowFilenames } from '@test/nodes/Helpers';
 
 describe('Test npm Node', () => {
 	beforeAll(() => {
-		nock.disableNetConnect();
-
 		const { registryUrl } = FAKE_CREDENTIALS_DATA.npmApi;
 		const mock = nock(registryUrl); //.matchHeader('Authorization', `Bearer ${accessToken}`);
 
@@ -28,10 +26,6 @@ describe('Test npm Node', () => {
 			version: '0.225.2',
 			rest: 'of the properties',
 		});
-	});
-
-	afterAll(() => {
-		nock.restore();
 	});
 
 	const workflows = getWorkflowFilenames(__dirname);

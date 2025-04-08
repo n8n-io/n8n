@@ -1,4 +1,4 @@
-import Container from 'typedi';
+import { Container } from '@n8n/di';
 
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { ProjectService } from '@/services/project.service.ee';

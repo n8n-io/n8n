@@ -1,0 +1,15 @@
+{
+    "type": "object",
+    "properties": {
+        "source": {
+            "type": "string"
+        },
+        "target": {
+            "type": "string"
+        },
+        "time": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

@@ -34,6 +34,8 @@ beforeAll(async () => {
 	authMemberAgent = testServer.authAgentFor(someUser);
 });
 
+beforeEach(async () => await enableSaml(false));
+
 describe('Instance owner', () => {
 	describe('PATCH /me', () => {
 		test('should succeed with valid inputs', async () => {
@@ -88,6 +90,17 @@ describe('Instance owner', () => {
 				})
 				.expect(200);
 			expect(getCurrentAuthenticationMethod()).toBe('saml');
+		});
+
+		test('should return 400 on invalid config', async () => {
+			await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					loginBinding: 'invalid',
+				})
+				.expect(400);
+			expect(getCurrentAuthenticationMethod()).toBe('email');
 		});
 	});
 

@@ -1,5 +1,5 @@
+import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import Container from 'typedi';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';

@@ -1,8 +1,8 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import convict from 'convict';
 import { InstanceSettings } from 'n8n-core';
 import path from 'path';
-import { Container } from 'typedi';
 
 import { ensureStringArray } from './utils';
 
@@ -34,6 +34,12 @@ export const schema = {
 				format: Number,
 				default: -1,
 				env: 'N8N_CONCURRENCY_PRODUCTION_LIMIT',
+			},
+			evaluationLimit: {
+				doc: 'Max evaluation executions allowed to run concurrently.',
+				format: Number,
+				default: -1,
+				env: 'N8N_CONCURRENCY_EVALUATION_LIMIT',
 			},
 		},
 
@@ -114,12 +120,6 @@ export const schema = {
 		},
 	},
 
-	secure_cookie: {
-		doc: 'This sets the `Secure` flag on n8n auth cookie',
-		format: Boolean,
-		default: true,
-		env: 'N8N_SECURE_COOKIE',
-	},
 	ssl_key: {
 		format: String,
 		default: '',
@@ -137,13 +137,6 @@ export const schema = {
 		default: '',
 		env: 'N8N_EDITOR_BASE_URL',
 		doc: 'Public URL where the editor is accessible. Also used for emails sent from n8n.',
-	},
-
-	workflowTagsDisabled: {
-		format: Boolean,
-		default: false,
-		env: 'N8N_WORKFLOW_TAGS_DISABLED',
-		doc: 'Disable workflow tags.',
 	},
 
 	userManagement: {
@@ -188,22 +181,6 @@ export const schema = {
 		format: String,
 		default: '',
 		env: 'EXTERNAL_FRONTEND_HOOKS_URLS',
-	},
-
-	externalHookFiles: {
-		doc: 'Files containing external hooks. Multiple files can be separated by colon (":")',
-		format: String,
-		default: '',
-		env: 'EXTERNAL_HOOK_FILES',
-	},
-
-	push: {
-		backend: {
-			format: ['sse', 'websocket'] as const,
-			default: 'websocket',
-			env: 'N8N_PUSH_BACKEND',
-			doc: 'Backend to use for push notifications',
-		},
 	},
 
 	binaryDataManager: {
@@ -356,15 +333,6 @@ export const schema = {
 		},
 	},
 
-	sourceControl: {
-		defaultKeyPairType: {
-			doc: 'Default SSH key type to use when generating SSH keys',
-			format: ['rsa', 'ed25519'] as const,
-			default: 'ed25519',
-			env: 'N8N_SOURCECONTROL_DEFAULT_SSH_KEY_TYPE',
-		},
-	},
-
 	workflowHistory: {
 		enabled: {
 			doc: 'Whether to save workflow history versions',
@@ -386,14 +354,5 @@ export const schema = {
 		default: 0,
 		env: 'N8N_PROXY_HOPS',
 		doc: 'Number of reverse-proxies n8n is running behind',
-	},
-
-	featureFlags: {
-		partialExecutionVersionDefault: {
-			format: String,
-			default: '0',
-			env: 'PARTIAL_EXECUTION_VERSION_DEFAULT',
-			doc: 'Set this to 1 to enable the new partial execution logic by default.',
-		},
 	},
 };

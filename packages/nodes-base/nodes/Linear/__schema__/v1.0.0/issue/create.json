@@ -1,0 +1,38 @@
+{
+    "type": "object",
+    "properties": {
+        "archivedAt": {
+            "type": "null"
+        },
+        "createdAt": {
+            "type": "string"
+        },
+        "dueDate": {
+            "type": "null"
+        },
+        "id": {
+            "type": "string"
+        },
+        "identifier": {
+            "type": "string"
+        },
+        "priority": {
+            "type": "integer"
+        },
+        "state": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "title": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

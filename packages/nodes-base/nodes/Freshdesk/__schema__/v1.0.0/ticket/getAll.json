@@ -1,0 +1,75 @@
+{
+    "type": "object",
+    "properties": {
+        "cc_emails": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "fr_escalated": {
+            "type": "boolean"
+        },
+        "fwd_emails": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "id": {
+            "type": "integer"
+        },
+        "is_escalated": {
+            "type": "boolean"
+        },
+        "nr_due_by": {
+            "type": "null"
+        },
+        "nr_escalated": {
+            "type": "boolean"
+        },
+        "priority": {
+            "type": "integer"
+        },
+        "reply_cc_emails": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "requester_id": {
+            "type": "integer"
+        },
+        "source": {
+            "type": "integer"
+        },
+        "spam": {
+            "type": "boolean"
+        },
+        "status": {
+            "type": "integer"
+        },
+        "subject": {
+            "type": "string"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "ticket_cc_emails": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "updated_at": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

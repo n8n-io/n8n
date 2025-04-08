@@ -1,7 +1,7 @@
 import { nanoId, date, firstName, lastName, email } from 'minifaker';
 import 'minifaker/locales/en';
 
-import type { Project, ProjectType } from '@/databases/entities/project';
+import type { Project } from '@/databases/entities/project';
 
 type RawProjectData = Pick<Project, 'name' | 'type' | 'createdAt' | 'updatedAt' | 'id'>;
 
@@ -13,7 +13,7 @@ export const createRawProjectData = (payload: Partial<RawProjectData>): Project 
 		updatedAt: date(),
 		id: nanoId.nanoid(),
 		name: projectName,
-		type: 'personal' as ProjectType,
+		type: 'personal',
 		...payload,
 	} as Project;
 };

@@ -1,11 +1,11 @@
 import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import type { Application } from 'express';
 import express from 'express';
 import { InstanceSettings, Logger } from 'n8n-core';
 import { strict as assert } from 'node:assert';
 import http from 'node:http';
 import type { Server } from 'node:http';
-import { Service } from 'typedi';
 
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import * as Db from '@/db';
@@ -100,8 +100,12 @@ export class WorkerServer {
 		const { health, overwrites, metrics } = this.endpointsConfig;
 
 		if (health) {
-			this.app.get('/healthz', async (_, res) => res.send({ status: 'ok' }));
-			this.app.get('/healthz/readiness', async (_, res) => await this.readiness(_, res));
+			this.app.get('/healthz', async (_, res) => {
+				res.send({ status: 'ok' });
+			});
+			this.app.get('/healthz/readiness', async (_, res) => {
+				await this.readiness(_, res);
+			});
 		}
 
 		if (overwrites) {
