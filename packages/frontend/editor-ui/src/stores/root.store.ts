@@ -170,7 +170,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		state.value.defaultLocale = locale;
 	};
 
-	const setBinaryDataMode = (binaryDataMode: string) => {
+	const setBinaryDataMode = (binaryDataMode: RootState['binaryDataMode']) => {
 		state.value.binaryDataMode = binaryDataMode;
 	};
 
