@@ -6,28 +6,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import type { Team, Channel, Chat, Subscription } from './types';
 import { microsoftApiRequest } from '../transport';
-
-interface Team {
-	id: string;
-	displayName: string;
-}
-
-interface Channel {
-	id: string;
-	displayName: string;
-}
-
-interface Chat {
-	id: string;
-	displayName: string;
-	url?: string;
-}
-
-interface SubscriptionResponse {
-	id: string;
-	expirationDateTime: string;
-}
 
 export async function fetchAllTeams(this: ILoadOptionsFunctions): Promise<Team[]> {
 	const { value: teams } = await microsoftApiRequest.call(this, 'GET', '/v1.0/me/joinedTeams');
@@ -65,7 +45,7 @@ export async function createSubscription(
 	this: IHookFunctions | IExecuteFunctions,
 	webhookUrl: string,
 	resourcePath: string,
-): Promise<SubscriptionResponse> {
+): Promise<Subscription> {
 	const expirationTime = new Date(Date.now() + 3600 * 2 * 1000).toISOString();
 	const body: IDataObject = {
 		changeType: 'created',
@@ -86,6 +66,7 @@ export async function createSubscription(
 	return {
 		id: response.id,
 		expirationDateTime: response.expirationDateTime,
+		notificationUrl: response.notificationUrl,
 	};
 }
 
