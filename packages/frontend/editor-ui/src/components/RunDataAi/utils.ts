@@ -259,7 +259,7 @@ export function createLogEntries(workflow: Workflow, runData: IRunData) {
 				nodeName,
 				workflow,
 				createAiData(nodeName, workflow, (node) => runData[node] ?? []),
-				runIndex,
+				undefined,
 			);
 		}
 
