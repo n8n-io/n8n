@@ -676,23 +676,30 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		}
 	}
 
+	const baseUrls = {
+		test: {
+			form: rootStore.formTestUrl,
+			mcp: rootStore.mcpTestUrl,
+			webhook: rootStore.webhookTestUrl,
+		},
+		production: {
+			form: rootStore.formUrl,
+			mcp: rootStore.mcpUrl,
+			webhook: rootStore.webhookUrl,
+		},
+	} as const;
+
 	function getWebhookUrl(
 		webhookData: IWebhookDescription,
 		node: INode,
-		showUrlFor?: string,
+		showUrlFor: 'test' | 'production',
 	): string {
-		const { isForm, restartWebhook } = webhookData;
+		const { nodeType, restartWebhook } = webhookData;
 		if (restartWebhook === true) {
-			return isForm ? '$execution.resumeFormUrl' : '$execution.resumeUrl';
+			return nodeType === 'form' ? '$execution.resumeFormUrl' : '$execution.resumeUrl';
 		}
 
-		let baseUrl;
-		if (showUrlFor === 'test') {
-			baseUrl = isForm ? rootStore.formTestUrl : rootStore.webhookTestUrl;
-		} else {
-			baseUrl = isForm ? rootStore.formUrl : rootStore.webhookUrl;
-		}
-
+		const baseUrl = baseUrls[showUrlFor][nodeType ?? 'webhook'];
 		const workflowId = workflowsStore.workflowId;
 		const path = getWebhookExpressionValue(webhookData, 'path', true, node.name) ?? '';
 		const isFullPath =

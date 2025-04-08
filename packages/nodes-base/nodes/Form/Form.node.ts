@@ -283,7 +283,7 @@ export class Form extends Node {
 				path: '',
 				restartWebhook: true,
 				isFullPath: true,
-				isForm: true,
+				nodeType: 'form',
 			},
 			{
 				name: 'default',
@@ -292,7 +292,7 @@ export class Form extends Node {
 				path: '',
 				restartWebhook: true,
 				isFullPath: true,
-				isForm: true,
+				nodeType: 'form',
 			},
 		],
 		properties: [

@@ -416,15 +416,6 @@ export async function executeWebhook(
 		);
 	}
 
-	const startExecutionEarly = workflow.expression.getSimpleParameterValue(
-		workflowStartNode,
-		webhookData.webhookDescription.startExecutionEarly,
-		executionMode,
-		additionalKeys,
-		undefined,
-		false,
-	) as boolean;
-
 	let didSendResponse = false;
 	let runExecutionDataMerge = {};
 	try {
@@ -455,7 +446,8 @@ export async function executeWebhook(
 			}
 		}
 
-		if (startExecutionEarly) {
+		// TODO: remove this hack, and make sure that execution data is properly created before the MCP trigger is executed
+		if (workflowStartNode.type === '@n8n/n8n-nodes-langchain.mcpTrigger') {
 			// Initialize the data of the webhook node
 			const nodeExecutionStack: IExecuteData[] = [];
 			nodeExecutionStack.push({
