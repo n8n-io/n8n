@@ -1,3 +1,13 @@
+## [1.87.1](https://github.com/n8n-io/n8n/compare/n8n@1.87.0...n8n@1.87.1) (2025-04-08)
+
+
+### Bug Fixes
+
+* **API:** Fix ratio tests on insights by workflow ([#14448](https://github.com/n8n-io/n8n/issues/14448)) ([c4fed6c](https://github.com/n8n-io/n8n/commit/c4fed6cfa73ede7ae12ccbb7a07e4052e3801b05))
+* **core:** Fix routing for waiting webhooks and forms ([#14470](https://github.com/n8n-io/n8n/issues/14470)) ([cfb7c0c](https://github.com/n8n-io/n8n/commit/cfb7c0c0625193def211e8f4a83f93225c4dbde5))
+
+
+
 # [1.87.0](https://github.com/n8n-io/n8n/compare/n8n@1.86.0...n8n@1.87.0) (2025-04-07)
 
 
