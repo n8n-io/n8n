@@ -97,11 +97,7 @@ export interface NodeViewItem {
 			text: string;
 		};
 		forceIncludeNodes?: string[];
-		iconData?: {
-			type: string;
-			icon?: string;
-			fileBuffer?: string;
-		};
+		iconData?: { type: 'file'; fileBuffer: string } | { type: 'icon'; icon: string };
 	};
 	category?: string | string[];
 }
@@ -375,7 +371,6 @@ export function TriggerView() {
 					description: i18n.baseText('nodeCreator.triggerHelperPanel.webhookTriggerDescription'),
 					iconData: {
 						type: 'file',
-						icon: 'webhook',
 						fileBuffer: '/static/webhook-icon.svg',
 					},
 				},
@@ -391,7 +386,6 @@ export function TriggerView() {
 					description: i18n.baseText('nodeCreator.triggerHelperPanel.formTriggerDescription'),
 					iconData: {
 						type: 'file',
-						icon: 'form',
 						fileBuffer: '/static/form-grey.svg',
 					},
 				},
