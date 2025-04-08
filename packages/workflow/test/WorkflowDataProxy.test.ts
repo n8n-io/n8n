@@ -791,15 +791,6 @@ describe('WorkflowDataProxy', () => {
 	describe('$agentInfo', () => {
 		const fixture = loadFixture('agentInfo');
 		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'AI Agent');
-		jest.mock('@/NodeTypes', () => ({
-			NodeTypes: jest.fn(() => ({
-				getByNameAndVersion: jest.fn(() => ({
-					description: {
-						properties: [],
-					},
-				})),
-			})),
-		}));
 
 		test('$agentInfo should return undefined for non-agent nodes', () => {
 			const nonAgentProxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Calculator');
@@ -839,8 +830,9 @@ describe('WorkflowDataProxy', () => {
 
 		test('$agentInfo.tools should correctly identify AI-defined fields', () => {
 			const tools = proxy.$agentInfo.tools;
-			expect(tools[0].aiDefinedFields).toBe(1);
-			expect(tools[0].aiDefinedFields).toEqual('Start');
+			expect(tools[0].name).toBe('Google Calendar');
+			expect(tools[0].aiDefinedFields.length).toBe(1);
+			expect(tools[0].aiDefinedFields).toEqual(['Start']);
 		});
 	});
 });

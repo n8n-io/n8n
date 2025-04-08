@@ -828,6 +828,96 @@ const executeWorkflowNode: LoadedClass<INodeType> = {
 	sourcePath: '',
 };
 
+const aiAgentNode: LoadedClass<INodeType> = {
+	sourcePath: '',
+	type: {
+		description: {
+			displayName: 'AI Agent',
+			name: '@n8n/n8n-nodes-langchain.agent',
+			icon: 'fa:robot',
+			iconColor: 'black',
+			group: ['transform'],
+			version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8],
+			description: 'Generates an action plan and executes it. Can use external tools.',
+			defaults: {
+				name: 'AI Agent',
+				color: '#404040',
+			},
+			inputs: [
+				NodeConnectionTypes.Main,
+				NodeConnectionTypes.AiLanguageModel,
+				NodeConnectionTypes.AiTool,
+				NodeConnectionTypes.AiMemory,
+			],
+			outputs: [NodeConnectionTypes.Main],
+			properties: [],
+		},
+	},
+};
+
+const wikipediaTool: LoadedClass<INodeType> = {
+	sourcePath: '',
+	type: {
+		description: {
+			displayName: 'Wikipedia',
+			name: '@n8n/n8n-nodes-langchain.toolWikipedia',
+			icon: 'file:wikipedia.svg',
+			group: ['transform'],
+			version: 1,
+			description: 'Search in Wikipedia',
+			defaults: {
+				name: 'Wikipedia',
+			},
+			inputs: [],
+			outputs: [NodeConnectionTypes.AiTool],
+			properties: [],
+		},
+	},
+};
+
+const calculatorTool: LoadedClass<INodeType> = {
+	sourcePath: '',
+	type: {
+		description: {
+			displayName: 'Calculator',
+			name: '@n8n/n8n-nodes-langchain.toolCalculator',
+			icon: 'fa:calculator',
+			iconColor: 'black',
+			group: ['transform'],
+			version: 1,
+			description: 'Make it easier for AI agents to perform arithmetic',
+			defaults: {
+				name: 'Calculator',
+			},
+			inputs: [],
+			outputs: [NodeConnectionTypes.AiTool],
+			properties: [],
+		},
+	},
+};
+
+const googleCalendarTool: LoadedClass<INodeType> = {
+	sourcePath: '',
+	type: {
+		description: {
+			displayName: 'Google Calendar',
+			name: 'n8n-nodes-base.googleCalendarTool',
+			icon: 'file:googleCalendar.svg',
+			group: ['input'],
+			version: [1, 1.1, 1.2, 1.3],
+			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+			description: 'Consume Google Calendar API',
+			defaults: {
+				name: 'Google Calendar',
+			},
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+			usableAsTool: true,
+			properties: [{ name: 'start', type: 'dateTime', displayName: 'Start', default: '' }],
+		},
+	},
+};
+
 export class NodeTypes implements INodeTypes {
 	nodeTypes: INodeTypeData = {
 		'n8n-nodes-base.stickyNote': stickyNode,
@@ -887,6 +977,10 @@ export class NodeTypes implements INodeTypes {
 			},
 		},
 		'n8n-nodes-base.manualTrigger': manualTriggerNode,
+		'@n8n/n8n-nodes-langchain.agent': aiAgentNode,
+		'n8n-nodes-base.googleCalendarTool': googleCalendarTool,
+		'@n8n/n8n-nodes-langchain.toolCalculator': calculatorTool,
+		'@n8n/n8n-nodes-langchain.toolWikipedia': wikipediaTool,
 	};
 
 	getByName(nodeType: string): INodeType | IVersionedNodeType {
@@ -900,6 +994,7 @@ export class NodeTypes implements INodeTypes {
 		return mock<INodeType>({
 			description: {
 				properties: [],
+				name: nodeType,
 			},
 		});
 	}

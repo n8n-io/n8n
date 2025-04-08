@@ -209,12 +209,14 @@ export class WorkflowDataProxy {
 			.filter((x) => x) as INode[];
 		const memoryConnectedToAgent =
 			this.workflow.getParentNodes(this.activeNodeName, NodeConnectionTypes.AiMemory).length > 0;
-		const allTools = this.workflow.queryNodes((x) =>
-			x.description.name.toLowerCase().includes('tool'),
-		);
+		const allTools = this.workflow.queryNodes((x) => {
+			return x.description.name.toLowerCase().includes('tool');
+		});
 
 		const unconnectedTools = allTools
-			.filter((x) => this.workflow.getChildNodes(x.name, 'ai_agent', 1).length === 0)
+			.filter(
+				(x) => this.workflow.getChildNodes(x.name, NodeConnectionTypes.AiTool, 1).length === 0,
+			)
 			.filter((x) => !connectedTools.includes(x));
 
 		return {
