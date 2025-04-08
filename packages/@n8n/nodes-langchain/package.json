@@ -135,7 +135,6 @@
   "devDependencies": {
     "@types/basic-auth": "catalog:",
     "@types/cheerio": "^0.22.15",
-    "@types/content-type": "^1.1.8",
     "@types/html-to-text": "^9.0.1",
     "@types/json-schema": "^7.0.15",
     "@types/mime-types": "^2.1.0",
@@ -171,7 +170,6 @@
     "@langchain/textsplitters": "0.1.0",
     "@modelcontextprotocol/sdk": "1.9.0",
     "@mozilla/readability": "0.6.0",
-    "@n8n/di": "workspace:*",
     "@n8n/json-schema-to-zod": "workspace:*",
     "@n8n/typeorm": "0.3.20-12",
     "@n8n/typescript-config": "workspace:*",
@@ -184,7 +182,6 @@
     "basic-auth": "catalog:",
     "cheerio": "1.0.0",
     "cohere-ai": "7.14.0",
-    "content-type": "^1.0.5",
     "d3-dsv": "2.0.0",
     "epub2": "3.0.2",
     "form-data": "catalog:",

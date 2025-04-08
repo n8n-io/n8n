@@ -7,7 +7,6 @@ import {
 	ListToolsRequestSchema,
 	CallToolRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { Service } from '@n8n/di';
 import type * as express from 'express';
 import type { Logger } from 'n8n-workflow';
 import { zodToJsonSchema } from 'zod-to-json-schema';
@@ -175,7 +174,6 @@ export class McpServer {
  * It needs to stay in memory to keep track of the long-lived connections.
  * It requires a logger at first creation to set everything up.
  */
-@Service()
 export class McpServerSingleton {
 	static #instance: McpServerSingleton;
 
