@@ -1549,7 +1549,7 @@ export interface IN8nPromptResponse {
 
 export type InputPanel = {
 	nodeName?: string;
-	run: number;
+	run?: number;
 	branch?: number;
 	data: {
 		isEmpty: boolean;
@@ -1557,7 +1557,6 @@ export type InputPanel = {
 };
 
 export type OutputPanel = {
-	run: number;
 	branch?: number;
 	data: {
 		isEmpty: boolean;
