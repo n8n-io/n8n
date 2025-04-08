@@ -1,3 +1,60 @@
+# [1.87.0](https://github.com/n8n-io/n8n/compare/n8n@1.86.0...n8n@1.87.0) (2025-04-07)
+
+
+### Bug Fixes
+
+* **API:** Insights - round failure rate to 3 decimals ([#14325](https://github.com/n8n-io/n8n/issues/14325)) ([cf37ee3](https://github.com/n8n-io/n8n/commit/cf37ee3cedb60dc9bbf6c87c7f6212213c93c61e))
+* **Code Node:** Ensure 'Generate Code' works with empty input object  ([#14352](https://github.com/n8n-io/n8n/issues/14352)) ([480b44d](https://github.com/n8n-io/n8n/commit/480b44d0245484fc1554051728a1cb34672a361f))
+* **core:** Add cross-origin checks on push endpoints ([#14365](https://github.com/n8n-io/n8n/issues/14365)) ([178628a](https://github.com/n8n-io/n8n/commit/178628a59b322543ac05c0fdf9c62c59c72380b3))
+* **core:** Detach workflow from parent folder in source project when transferring ownership ([#14414](https://github.com/n8n-io/n8n/issues/14414)) ([adbfb44](https://github.com/n8n-io/n8n/commit/adbfb44c26681f8ee6ca94867d3a778bfb2f10a1))
+* **core:** Return correct trigger count for nodes with multiple webhooks ([#14300](https://github.com/n8n-io/n8n/issues/14300)) ([39e2d35](https://github.com/n8n-io/n8n/commit/39e2d35a710307b9e4d170c3a71eeccc34a08738))
+* **core:** Sandbox HTML binary files in viewing mode ([#14350](https://github.com/n8n-io/n8n/issues/14350)) ([9c8a5f9](https://github.com/n8n-io/n8n/commit/9c8a5f9c57e65a56a3b7da5dfa805d23c55e5ee3))
+* **core:** Upgrade swagger/openai setup to address CVE-2024-57083 ([#14314](https://github.com/n8n-io/n8n/issues/14314)) ([4a95035](https://github.com/n8n-io/n8n/commit/4a95035b3a46565d04d5c89879ed6f9fd0bb6923))
+* Disable autocomplete expression for specialized editor types ([#14344](https://github.com/n8n-io/n8n/issues/14344)) ([0450542](https://github.com/n8n-io/n8n/commit/04505421709f12fda79d3e0eed50baada717cea1))
+* **editor:** Autofocus Search in Move Folder Dialog ([#14378](https://github.com/n8n-io/n8n/issues/14378)) ([d60ed74](https://github.com/n8n-io/n8n/commit/d60ed746bb5477498ab29d5c8b6b7fc63e6065e5))
+* **editor:** Change label for unexecuted nodes ([#14260](https://github.com/n8n-io/n8n/issues/14260)) ([08450b2](https://github.com/n8n-io/n8n/commit/08450b20af0535cf643dc945867602635ce21e6a))
+* **editor:** Disable Drag and Drop for ResourceMapper 'attemptToConvertTypes' switch ([#14327](https://github.com/n8n-io/n8n/issues/14327)) ([64aeb37](https://github.com/n8n-io/n8n/commit/64aeb378140dd2e4f0ae7bfe499062403324c992))
+* **editor:** Fix empty objects in schema view in output panel ([#14355](https://github.com/n8n-io/n8n/issues/14355)) ([2f0b5e4](https://github.com/n8n-io/n8n/commit/2f0b5e488ef70cd0ebec4bc2599c42da281265be))
+* **editor:** Fix search highlights on node details view table schema ([#14379](https://github.com/n8n-io/n8n/issues/14379)) ([3d64d14](https://github.com/n8n-io/n8n/commit/3d64d140e9eb4cd9fc58c673a307cf1ac83654b5))
+* **editor:** Hide node toolbar on `AddNodes` node type ([#14317](https://github.com/n8n-io/n8n/issues/14317)) ([a245a5c](https://github.com/n8n-io/n8n/commit/a245a5ca61fb33c86b2727fe8d1866bc6c4c868c))
+* **editor:** Improve sub-workflow debugging for more node error types ([#14347](https://github.com/n8n-io/n8n/issues/14347)) ([9104743](https://github.com/n8n-io/n8n/commit/9104743a5fb4305eeccec55f35ea9555c0a9a979))
+* **editor:** Insights FE fixes and improvements ([#14398](https://github.com/n8n-io/n8n/issues/14398)) ([e8a7acd](https://github.com/n8n-io/n8n/commit/e8a7acda6bf656b8e2da08a502cc6d4dc64895a6))
+* **editor:** Make styling of search labels inline ([#14323](https://github.com/n8n-io/n8n/issues/14323)) ([8abbc30](https://github.com/n8n-io/n8n/commit/8abbc304f013bbbd63982f47fde22230592063a2))
+* **editor:** Memory getting rendered in chat on workflow load ([#14346](https://github.com/n8n-io/n8n/issues/14346)) ([5382531](https://github.com/n8n-io/n8n/commit/538253197079e92117943a6e18021094ddda76fa))
+* **editor:** Support 'View Execution' links with multiple branches ([#14345](https://github.com/n8n-io/n8n/issues/14345)) ([744e2da](https://github.com/n8n-io/n8n/commit/744e2da3f9e3af6e5d20827a965bcfb01acd7cdc))
+* **Google Sheets Node:** Improve error message when row_number is null or undefined ([#14229](https://github.com/n8n-io/n8n/issues/14229)) ([c5e2d2d](https://github.com/n8n-io/n8n/commit/c5e2d2dddcea53c9896113e41eb66ca4d01e124b))
+* **HTTP Request Tool Node:** Fix OAuth2 requests ([#14380](https://github.com/n8n-io/n8n/issues/14380)) ([7cef314](https://github.com/n8n-io/n8n/commit/7cef314535bbbf59f26916206a066bfe3d5591f9))
+* **Jira Trigger Node:** Fix Jira webhook subscriptions on Jira v10+ ([#14333](https://github.com/n8n-io/n8n/issues/14333)) ([cd212e4](https://github.com/n8n-io/n8n/commit/cd212e4f78f6704a8b2f1a27f507dcc7784ef6a5))
+* **Kafka Node:** Upgrade kafkajs and add tests ([#14326](https://github.com/n8n-io/n8n/issues/14326)) ([5c58e8e](https://github.com/n8n-io/n8n/commit/5c58e8e8cfe5d04917b29d3d7ab9c14c27d95fdf))
+* **n8n Form Node:** Add doctype to page ([#14306](https://github.com/n8n-io/n8n/issues/14306)) ([df9ea09](https://github.com/n8n-io/n8n/commit/df9ea095fcc4b0fceb8a11c611396ef31a0c4fca))
+* **n8n Form Node:** Remove field requirement and do not inherit description ([#14254](https://github.com/n8n-io/n8n/issues/14254)) ([4bc1c1a](https://github.com/n8n-io/n8n/commit/4bc1c1a547abd1bfff1c43c93f77c33aa1b2ccc7))
+* **Pipedrive Trigger Node:** Add support for webhooks v2 ([#14220](https://github.com/n8n-io/n8n/issues/14220)) ([a39502f](https://github.com/n8n-io/n8n/commit/a39502f3bb28d566df284cebf5a12c99b41d103f))
+* Show correct message on retry ([#14321](https://github.com/n8n-io/n8n/issues/14321)) ([501963f](https://github.com/n8n-io/n8n/commit/501963f568a6e0a5f9782fe10ad0c2e9aaf6756c))
+
+
+### Features
+
+* Add example `@n8n/n8n-extension-insights` extension package ([#14360](https://github.com/n8n-io/n8n/issues/14360)) ([b91be49](https://github.com/n8n-io/n8n/commit/b91be496c3c36a8bfe61b57943ea890554e0df3a))
+* Add support for google vertex embeddings ([#14359](https://github.com/n8n-io/n8n/issues/14359)) ([85cbfb6](https://github.com/n8n-io/n8n/commit/85cbfb64c0a2645c833c73a03624fdfd0adf2dab))
+* **Airtop Node:** Add Airtop node ([#13809](https://github.com/n8n-io/n8n/issues/13809)) ([a7a165d](https://github.com/n8n-io/n8n/commit/a7a165dda259e2626a94c220eb0ffab166544485))
+* **API:** Add config to set age threshold for insights compaction ([#14221](https://github.com/n8n-io/n8n/issues/14221)) ([17a829f](https://github.com/n8n-io/n8n/commit/17a829f1a2da1aa0297c8f1f6b0e4af2fbb70c4b))
+* **API:** Add insights config on frontend settings ([#14315](https://github.com/n8n-io/n8n/issues/14315)) ([837131f](https://github.com/n8n-io/n8n/commit/837131fc96b7d48d8a5d612d431706d5f8dea41a))
+* **API:** Implement BE api for insights data ([#14064](https://github.com/n8n-io/n8n/issues/14064)) ([db38149](https://github.com/n8n-io/n8n/commit/db381492a94d664f5e2ccc42f8830b20c8c19852))
+* **core:** Add special `[@tool](https://github.com/tool)` displayOption ([#14318](https://github.com/n8n-io/n8n/issues/14318)) ([73748e3](https://github.com/n8n-io/n8n/commit/73748e300ed4a7f57b9c01f72eba2fbaa24ceef9))
+* **core:** Don't store insights for sub workflow executions ([#14384](https://github.com/n8n-io/n8n/issues/14384)) ([7379f44](https://github.com/n8n-io/n8n/commit/7379f44896e2a3e66fee9d547ba929928f93a104))
+* **core:** Make detaching floatable entitlements on shutdown configurable ([#14266](https://github.com/n8n-io/n8n/issues/14266)) ([c9565fc](https://github.com/n8n-io/n8n/commit/c9565fc0beea2751ba316fc363a275ea28d20653))
+* **core:** Upgrade to express 5 to address CVE-2024-52798 ([#14332](https://github.com/n8n-io/n8n/issues/14332)) ([4110f31](https://github.com/n8n-io/n8n/commit/4110f3188e557a5d8c6d7ee44fb9c23ce73ce751))
+* **editor:** Display a notice for HTTP header auth credentials ([#14389](https://github.com/n8n-io/n8n/issues/14389)) ([ec4dd9f](https://github.com/n8n-io/n8n/commit/ec4dd9f762f02c6da6f1c7e1e7faa1fa89802092))
+* **editor:** Hover actions on the logs overview ([#14386](https://github.com/n8n-io/n8n/issues/14386)) ([8f9ea23](https://github.com/n8n-io/n8n/commit/8f9ea23019241de47fdee3a1da120f7c05a5aadb))
+* **editor:** Insights dashboard ([#13739](https://github.com/n8n-io/n8n/issues/13739)) ([90ba680](https://github.com/n8n-io/n8n/commit/90ba68063116cdca358d74bf3c392af46280a2f5))
+* **editor:** Show error state in the logs overview ([#14248](https://github.com/n8n-io/n8n/issues/14248)) ([37e5349](https://github.com/n8n-io/n8n/commit/37e5349fe139d9f292145d06218aa235b51bab38))
+* **GitHub Node:** GitHub Node Overhaul implementation [#12271](https://github.com/n8n-io/n8n/issues/12271) ([#13238](https://github.com/n8n-io/n8n/issues/13238)) ([33e265a](https://github.com/n8n-io/n8n/commit/33e265aaa8563225eb408fe7dcff8412784cf6f9))
+* **MongoDB Chat Memory Node:** New MongoDB Chat Memory Node ([#14049](https://github.com/n8n-io/n8n/issues/14049)) ([0bac6ff](https://github.com/n8n-io/n8n/commit/0bac6ffac6e8b1db5c9167ef7954a83c9c2230a2))
+* **Postgres Node:** Batching warning for executeQuery operation insert query ([#14287](https://github.com/n8n-io/n8n/issues/14287)) ([f85b851](https://github.com/n8n-io/n8n/commit/f85b85185109b0ebd3f2f0def8a7c4a0902c8014))
+* **Think Tool Node:** ToolThink, a simple tool to force the AI agent to do some thinking ([#14351](https://github.com/n8n-io/n8n/issues/14351)) ([281b70b](https://github.com/n8n-io/n8n/commit/281b70be044b3fd70a26a16d14eebf38bab739a6))
+
+
+
 # [1.86.0](https://github.com/n8n-io/n8n/compare/n8n@1.85.0...n8n@1.86.0) (2025-03-31)
 
 

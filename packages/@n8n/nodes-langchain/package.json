@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "1.86.0",
+  "version": "1.87.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -31,6 +31,7 @@
       "dist/credentials/GroqApi.credentials.js",
       "dist/credentials/HuggingFaceApi.credentials.js",
       "dist/credentials/MotorheadApi.credentials.js",
+      "dist/credentials/MilvusApi.credentials.js",
       "dist/credentials/MistralCloudApi.credentials.js",
       "dist/credentials/OllamaApi.credentials.js",
       "dist/credentials/OpenRouterApi.credentials.js",
@@ -115,6 +116,7 @@
       "dist/nodes/vector_store/VectorStoreInMemory/VectorStoreInMemory.node.js",
       "dist/nodes/vector_store/VectorStoreInMemoryInsert/VectorStoreInMemoryInsert.node.js",
       "dist/nodes/vector_store/VectorStoreInMemoryLoad/VectorStoreInMemoryLoad.node.js",
+      "dist/nodes/vector_store/VectorStoreMilvus/VectorStoreMilvus.node.js",
       "dist/nodes/vector_store/VectorStoreMongoDBAtlas/VectorStoreMongoDBAtlas.node.js",
       "dist/nodes/vector_store/VectorStorePGVector/VectorStorePGVector.node.js",
       "dist/nodes/vector_store/VectorStorePinecone/VectorStorePinecone.node.js",
@@ -174,6 +176,7 @@
     "@qdrant/js-client-rest": "1.11.0",
     "@supabase/supabase-js": "2.45.4",
     "@xata.io/client": "0.28.4",
+    "@zilliz/milvus2-sdk-node": "^2.5.7",
     "basic-auth": "catalog:",
     "cheerio": "1.0.0",
     "cohere-ai": "7.14.0",
