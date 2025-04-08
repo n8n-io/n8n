@@ -927,8 +927,8 @@ importers:
         specifier: 1.13.0
         version: 1.13.0
       '@n8n_io/license-sdk':
-        specifier: 2.19.0
-        version: 2.19.0
+        specifier: 2.19.1
+        version: 2.19.1
       '@oclif/core':
         specifier: 4.0.7
         version: 4.0.7
@@ -4696,8 +4696,8 @@ packages:
     resolution: {integrity: sha512-16kftFTeX3/lBinHJaBK0OL1lB4FpPaUoHX4h25AkvgHvmjUHpWNY2ZtKos0rY89+pkzDsNxMZqSUkeKU45iRg==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
-  '@n8n_io/license-sdk@2.19.0':
-    resolution: {integrity: sha512-Jrdw0us1rvs1lvvJaF1EtfTHXmeHq+PK4RVhfBZuAZqpVOFfM8iqBr3GzzZFVF4k8BS12Y9KrkzPkLf6oOlFFw==}
+  '@n8n_io/license-sdk@2.19.1':
+    resolution: {integrity: sha512-G8AvBqPrIeo3ai/ep90KXLaFaZjFsJSrhRlI2SHYqQRvBzGP5JzWNhGr6oiMgTUqbwI/0g+lCgJdrFnLyRXVCw==}
     engines: {node: '>=18.12.1'}
 
   '@n8n_io/riot-tmpl@4.0.0':
@@ -17064,7 +17064,7 @@ snapshots:
 
   '@n8n_io/ai-assistant-sdk@1.13.0': {}
 
-  '@n8n_io/license-sdk@2.19.0':
+  '@n8n_io/license-sdk@2.19.1':
     dependencies:
       crypto-js: 4.2.0
       node-machine-id: 1.1.12
@@ -21663,7 +21663,7 @@ snapshots:
 
   eslint-import-resolver-node@0.3.9:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       is-core-module: 2.13.1
       resolve: 1.22.8
     transitivePeerDependencies:
@@ -21688,7 +21688,7 @@ snapshots:
 
   eslint-module-utils@2.8.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0):
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     optionalDependencies:
       '@typescript-eslint/parser': 7.2.0(eslint@8.57.0)(typescript@5.8.2)
       eslint: 8.57.0
@@ -21708,7 +21708,7 @@ snapshots:
       array.prototype.findlastindex: 1.2.3
       array.prototype.flat: 1.3.2
       array.prototype.flatmap: 1.3.2
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       doctrine: 2.1.0
       eslint: 8.57.0
       eslint-import-resolver-node: 0.3.9
@@ -22521,7 +22521,7 @@ snapshots:
       array-parallel: 0.1.3
       array-series: 0.1.5
       cross-spawn: 4.0.2
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -25393,7 +25393,7 @@ snapshots:
 
   pdf-parse@1.1.1:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       node-ensure: 0.0.0
     transitivePeerDependencies:
       - supports-color
@@ -26239,7 +26239,7 @@ snapshots:
 
   rhea@1.0.24:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     transitivePeerDependencies:
       - supports-color
 
