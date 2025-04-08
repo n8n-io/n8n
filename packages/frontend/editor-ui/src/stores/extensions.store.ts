@@ -3,7 +3,6 @@ import { STORES } from '@/constants';
 import n8n from '@/extensions-sdk';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import ShadowRealm from 'shadowrealm-api';
 
 export type Extension = {
 	id: string;
@@ -416,32 +415,6 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 	/**
 	 * Option C: Load the extension in a shadow realm
 	 */
-	const setupExtensionUsingShadowRealm = async (id: string) => {
-		const extension = getExtensionById(id);
-		if (!extension || !extension.enabled) return;
-		if (!extension.setup.frontend) {
-			toast.showError(
-				new Error(`Extension "${extension.name}" does not have a frontend entry point`),
-				'Error loading extension',
-			);
-			return;
-		}
-		const basePath = extension.path.replace('n8n.manifest.json', '');
-		const relativePath = `${basePath}${extension.setup.frontend?.replace('./', '')}`;
-		const mainPath = new URL(relativePath, window.location.origin).href;
-		const response = await fetch(mainPath);
-		if (!response.ok) {
-			toast.showError(
-				new Error(`Failed to fetch extension code: ${response.statusText}`),
-				'Error loading extension',
-			);
-			return;
-		}
-		const extensionCode = await response.text();
-
-		const realm = new ShadowRealm();
-		realm.evaluate(extensionCode.replace('export { setup };', ''));
-	};
 
 	const setupExtension = async (id: string) => {
 		switch (setupMethod.value) {
@@ -450,9 +423,6 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 				break;
 			case 'iframe':
 				await setupExtensionUsingIframe(id);
-				break;
-			case 'shadowRealm':
-				await setupExtensionUsingShadowRealm(id);
 				break;
 		}
 	};
