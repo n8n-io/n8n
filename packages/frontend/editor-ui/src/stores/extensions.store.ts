@@ -4,6 +4,11 @@ import n8n from '@/extensions-sdk';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
+import { newQuickJSWASMModuleFromVariant, newVariant, RELEASE_SYNC } from 'quickjs-emscripten';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-expect-error - ?url returns a URL resolving to the given asset.
+import wasmLocation from '@jitl/quickjs-wasmfile-release-sync/wasm?url';
+
 export type Extension = {
 	id: string;
 	name: string;
@@ -26,7 +31,7 @@ export type Extension = {
 
 const EXTENSION_SANDBOX_ID = 'extensions-host';
 
-export type ExtensionSetupMethod = 'directImport' | 'shadowRealm' | 'iframe';
+export type ExtensionSetupMethod = 'directImport' | 'isolatedEnv' | 'iframe';
 
 export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 	const extensions = ref<Extension[]>([]);
@@ -415,6 +420,13 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 	/**
 	 * Option C: Load the extension in a shadow realm
 	 */
+	const setupExtensionInIsolatedEnvironment = async (id: string) => {
+		const variant = newVariant(RELEASE_SYNC, {
+			wasmLocation,
+		});
+		const quickJS = await newQuickJSWASMModuleFromVariant(variant);
+		console.log(quickJS.evalCode('1 + 1'));
+	};
 
 	const setupExtension = async (id: string) => {
 		switch (setupMethod.value) {
@@ -423,6 +435,9 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 				break;
 			case 'iframe':
 				await setupExtensionUsingIframe(id);
+				break;
+			case 'isolatedEnv':
+				await setupExtensionInIsolatedEnvironment(id);
 				break;
 		}
 	};
