@@ -30,10 +30,10 @@ export class McpTrigger extends Node {
 		codex: {
 			categories: ['AI', 'Core Nodes'],
 			subcategories: {
-				AI: ['Model Context Protocol'],
+				AI: ['Root Nodes', 'Model Context Protocol'],
 				'Core Nodes': ['Other Trigger Nodes'],
 			},
-			alias: ['Model Context Protocol'],
+			alias: ['Model Context Protocol', 'MCP Server'],
 			resources: {
 				primaryDocumentation: [
 					{
@@ -42,7 +42,6 @@ export class McpTrigger extends Node {
 				],
 			},
 		},
-		maxNodes: 1,
 		triggerPanel: {
 			header: 'Listen for MCP events',
 			executionsHelp: {
