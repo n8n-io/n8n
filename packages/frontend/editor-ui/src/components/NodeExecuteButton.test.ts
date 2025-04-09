@@ -279,7 +279,7 @@ describe('NodeExecuteButton', () => {
 	it('stops execution when clicking button while workflow is running', async () => {
 		uiStore.isActionActive.workflowRunning = true;
 		nodeTypesStore.isTriggerNode = () => true;
-		workflowsStore.activeExecutionId = 'test-execution-id';
+		workflowsStore.setActiveExecutionId('test-execution-id');
 		workflowsStore.isNodeExecuting.mockReturnValue(true);
 		workflowsStore.getNodeByName.mockReturnValue(
 			mockNode({ name: 'test-node', type: SET_NODE_TYPE }),
