@@ -1,13 +1,15 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
+import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource, Repository } from '@n8n/typeorm';
+import { DateTime } from 'luxon';
 import { z } from 'zod';
 
 import { sql } from '@/utils/sql';
 
 import { InsightsByPeriod } from '../entities/insights-by-period';
 import type { PeriodUnit } from '../entities/insights-shared';
-import { PeriodUnitToNumber } from '../entities/insights-shared';
+import { PeriodUnitToNumber, TypeToNumber } from '../entities/insights-shared';
 
 const dbType = Container.get(GlobalConfig).database.type;
 
@@ -21,6 +23,38 @@ const summaryParser = z
 	})
 	.array();
 
+const aggregatedInsightsByWorkflowParser = z
+	.object({
+		workflowId: z.string(),
+		workflowName: z.string(),
+		projectId: z.string(),
+		projectName: z.string(),
+		total: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		succeeded: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		failed: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		failureRate: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		runTime: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		averageRunTime: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		timeSaved: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+	})
+	.array();
+
+const aggregatedInsightsByTimeParser = z
+	.object({
+		periodStart: z
+			.union([z.date(), z.string()])
+			.transform((value) =>
+				value instanceof Date
+					? value.toISOString()
+					: DateTime.fromSQL(value.toString(), { zone: 'utc' }).toISO(),
+			),
+		runTime: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		succeeded: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		failed: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		timeSaved: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+	})
+	.array();
+
 @Service()
 export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	constructor(dataSource: DataSource) {
@@ -31,36 +65,42 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		return this.manager.connection.driver.escape(fieldName);
 	}
 
-	private getPeriodFilterExpr(periodUnit: PeriodUnit) {
-		const daysAgo = periodUnit === 'day' ? 90 : 180;
+	private getPeriodFilterExpr(maxAgeInDays = 0) {
 		// Database-specific period start expression to filter out data to compact by days matching the periodUnit
-		let periodStartExpr = `date('now', '-${daysAgo} days')`;
+		let periodStartExpr = `date('now', '-${maxAgeInDays} days')`;
 		if (dbType === 'postgresdb') {
-			periodStartExpr = `CURRENT_DATE - INTERVAL '${daysAgo} day'`;
+			periodStartExpr = `CURRENT_DATE - INTERVAL '${maxAgeInDays} day'`;
 		} else if (dbType === 'mysqldb' || dbType === 'mariadb') {
-			periodStartExpr = `DATE_SUB(CURRENT_DATE, INTERVAL ${daysAgo} DAY)`;
+			periodStartExpr = `DATE_SUB(CURRENT_DATE, INTERVAL ${maxAgeInDays} DAY)`;
 		}
 
 		return periodStartExpr;
 	}
 
-	private getPeriodStartExpr(periodUnit: PeriodUnit) {
+	private getPeriodStartExpr(periodUnitToCompactInto: PeriodUnit) {
 		// Database-specific period start expression to truncate timestamp to the periodUnit
 		// SQLite by default
-		let periodStartExpr = `strftime('%Y-%m-%d ${periodUnit === 'hour' ? '%H' : '00'}:00:00.000', periodStart)`;
+		let periodStartExpr =
+			periodUnitToCompactInto === 'week'
+				? "strftime('%Y-%m-%d 00:00:00.000', date(periodStart, 'weekday 0', '-6 days'))"
+				: `strftime('%Y-%m-%d ${periodUnitToCompactInto === 'hour' ? '%H' : '00'}:00:00.000', periodStart)`;
 		if (dbType === 'mysqldb' || dbType === 'mariadb') {
 			periodStartExpr =
-				periodUnit === 'hour'
-					? "DATE_FORMAT(periodStart, '%Y-%m-%d %H:00:00')"
-					: "DATE_FORMAT(periodStart, '%Y-%m-%d 00:00:00')";
+				periodUnitToCompactInto === 'week'
+					? "DATE_FORMAT(DATE_SUB(periodStart, INTERVAL WEEKDAY(periodStart) DAY), '%Y-%m-%d 00:00:00')"
+					: `DATE_FORMAT(periodStart, '%Y-%m-%d ${periodUnitToCompactInto === 'hour' ? '%H' : '00'}:00:00')`;
 		} else if (dbType === 'postgresdb') {
-			periodStartExpr = `DATE_TRUNC('${periodUnit}', ${this.escapeField('periodStart')})`;
+			periodStartExpr = `DATE_TRUNC('${periodUnitToCompactInto}', ${this.escapeField('periodStart')})`;
 		}
 
 		return periodStartExpr;
 	}
 
-	getPeriodInsightsBatchQuery(periodUnit: PeriodUnit, compactionBatchSize: number) {
+	getPeriodInsightsBatchQuery({
+		periodUnitToCompactFrom,
+		compactionBatchSize,
+		maxAgeInDays,
+	}: { periodUnitToCompactFrom: PeriodUnit; compactionBatchSize: number; maxAgeInDays: number }) {
 		// Build the query to gather period insights data for the batch
 		const batchQuery = this.createQueryBuilder()
 			.select(
@@ -68,11 +108,18 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 					this.escapeField(fieldName),
 				),
 			)
-			.where(`${this.escapeField('periodUnit')} = ${PeriodUnitToNumber[periodUnit]}`)
-			.andWhere(`${this.escapeField('periodStart')} < ${this.getPeriodFilterExpr('day')}`)
+			.where(`${this.escapeField('periodUnit')} = ${PeriodUnitToNumber[periodUnitToCompactFrom]}`)
+			.andWhere(`${this.escapeField('periodStart')} < ${this.getPeriodFilterExpr(maxAgeInDays)}`)
 			.orderBy(this.escapeField('periodStart'), 'ASC')
 			.limit(compactionBatchSize);
-		return batchQuery;
+
+		return batchQuery as SelectQueryBuilder<{
+			id: number;
+			metaId: number;
+			type: string;
+			value: number;
+			periodStart: Date;
+		}>;
 	}
 
 	getAggregationQuery(periodUnit: PeriodUnit) {
@@ -95,19 +142,39 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		return aggregationQuery;
 	}
 
+	/**
+	 * Compacts source data into the target period unit
+	 */
 	async compactSourceDataIntoInsightPeriod({
-		sourceBatchQuery, // Query to get batch source data. Must return those fields: 'id', 'metaId', 'type', 'periodStart', 'value'
-		sourceTableName = this.metadata.tableName, // Repository references for table operations
-		periodUnit,
+		sourceBatchQuery,
+		sourceTableName = this.metadata.tableName,
+		periodUnitToCompactInto,
 	}: {
-		sourceBatchQuery: string;
+		/**
+		 * Query builder to get batch source data. Must return these fields: 'id', 'metaId', 'type', 'periodStart', 'value'.
+		 */
+		sourceBatchQuery: SelectQueryBuilder<{
+			id: number;
+			metaId: number;
+			type: string;
+			value: number;
+			periodStart: Date;
+		}>;
+
+		/**
+		 * The source table name to get source data from.
+		 */
 		sourceTableName?: string;
-		periodUnit: PeriodUnit;
+
+		/**
+		 * The new period unit to compact the data into.
+		 */
+		periodUnitToCompactInto: PeriodUnit;
 	}): Promise<number> {
 		// Create temp table that only exists in this transaction for rows to compact
 		const getBatchAndStoreInTemporaryTable = sql`
 			CREATE TEMPORARY TABLE rows_to_compact AS
-			${sourceBatchQuery};
+			${sourceBatchQuery.getSql()};
 		`;
 
 		const countBatch = sql`
@@ -120,7 +187,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		const targetColumnNamesWithValue = `${targetColumnNamesStr}, value`;
 
 		// Function to get the aggregation query
-		const aggregationQuery = this.getAggregationQuery(periodUnit);
+		const aggregationQuery = this.getAggregationQuery(periodUnitToCompactInto);
 
 		// Insert or update aggregated data
 		const insertQueryBase = sql`
@@ -173,6 +240,18 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		return result;
 	}
 
+	private getAgeLimitQuery(maxAgeInDays: number) {
+		if (maxAgeInDays === 0) {
+			return dbType === 'sqlite' ? "datetime('now')" : 'NOW()';
+		}
+
+		return dbType === 'sqlite'
+			? `datetime('now', '-${maxAgeInDays} days')`
+			: dbType === 'postgresdb'
+				? `NOW() - INTERVAL '${maxAgeInDays} days'`
+				: `DATE_SUB(NOW(), INTERVAL ${maxAgeInDays} DAY)`;
+	}
+
 	async getPreviousAndCurrentPeriodTypeAggregates(): Promise<
 		Array<{
 			period: 'previous' | 'current';
@@ -180,27 +259,12 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			total_value: string | number;
 		}>
 	> {
-		const cte =
-			dbType === 'sqlite'
-				? sql`
-						SELECT
-							datetime('now', '-7 days') AS current_start,
-							datetime('now') AS current_end,
-							datetime('now', '-14 days') AS previous_start
-					`
-				: dbType === 'postgresdb'
-					? sql`
-								SELECT
-								(CURRENT_DATE - INTERVAL '7 days')::timestamptz AS current_start,
-								CURRENT_DATE::timestamptz AS current_end,
-								(CURRENT_DATE - INTERVAL '14 days')::timestamptz AS previous_start
-							`
-					: sql`
-								SELECT
-									DATE_SUB(CURDATE(), INTERVAL 7 DAY) AS current_start,
-									CURDATE() AS current_end,
-									DATE_SUB(CURDATE(), INTERVAL 14 DAY) AS previous_start
-							`;
+		const cte = sql`
+			SELECT
+				${this.getAgeLimitQuery(7)} AS current_start,
+				${this.getAgeLimitQuery(0)} AS current_end,
+				${this.getAgeLimitQuery(14)}  AS previous_start
+		`;
 
 		const rawRows = await this.createQueryBuilder('insights')
 			.addCommonTableExpression(cte, 'date_ranges')
@@ -227,5 +291,87 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			.getRawMany();
 
 		return summaryParser.parse(rawRows);
+	}
+
+	private parseSortingParams(sortBy: string): [string, 'ASC' | 'DESC'] {
+		const [column, order] = sortBy.split(':');
+		return [column, order.toUpperCase() as 'ASC' | 'DESC'];
+	}
+
+	async getInsightsByWorkflow({
+		maxAgeInDays,
+		skip = 0,
+		take = 20,
+		sortBy = 'total:desc',
+	}: {
+		maxAgeInDays: number;
+		skip?: number;
+		take?: number;
+		sortBy?: string;
+	}) {
+		const [sortField, sortOrder] = this.parseSortingParams(sortBy);
+		const sumOfExecutions = sql`SUM(CASE WHEN insights.type IN (${TypeToNumber.success.toString()}, ${TypeToNumber.failure.toString()}) THEN value ELSE 0 END)`;
+
+		const cte = sql`SELECT ${this.getAgeLimitQuery(maxAgeInDays)} AS start_date`;
+
+		const rawRowsQuery = this.createQueryBuilder('insights')
+			.addCommonTableExpression(cte, 'date_range')
+			.select([
+				'metadata.workflowId AS "workflowId"',
+				'metadata.workflowName AS "workflowName"',
+				'metadata.projectId AS "projectId"',
+				'metadata.projectName AS "projectName"',
+				`SUM(CASE WHEN insights.type = ${TypeToNumber.success} THEN value ELSE 0 END) AS "succeeded"`,
+				`SUM(CASE WHEN insights.type = ${TypeToNumber.failure} THEN value ELSE 0 END) AS "failed"`,
+				`SUM(CASE WHEN insights.type IN (${TypeToNumber.success}, ${TypeToNumber.failure}) THEN value ELSE 0 END) AS "total"`,
+				sql`CASE
+								WHEN ${sumOfExecutions} = 0 THEN 0
+								ELSE 1.0 * SUM(CASE WHEN insights.type = ${TypeToNumber.failure.toString()} THEN value ELSE 0 END) / ${sumOfExecutions}
+							END AS "failureRate"`,
+				`SUM(CASE WHEN insights.type = ${TypeToNumber.runtime_ms} THEN value ELSE 0 END) AS "runTime"`,
+				`SUM(CASE WHEN insights.type = ${TypeToNumber.time_saved_min} THEN value ELSE 0 END) AS "timeSaved"`,
+				sql`CASE
+								WHEN ${sumOfExecutions} = 0	THEN 0
+								ELSE 1.0 * SUM(CASE WHEN insights.type = ${TypeToNumber.runtime_ms.toString()} THEN value ELSE 0 END) / ${sumOfExecutions}
+							END AS "averageRunTime"`,
+			])
+			.innerJoin('insights.metadata', 'metadata')
+			// Use a cross join with the CTE
+			.innerJoin('date_range', 'date_range', '1=1')
+			.where('insights.periodStart >= date_range.start_date')
+			.groupBy('metadata.workflowId')
+			.addGroupBy('metadata.workflowName')
+			.addGroupBy('metadata.projectId')
+			.addGroupBy('metadata.projectName')
+			.orderBy(this.escapeField(sortField), sortOrder);
+
+		const count = (await rawRowsQuery.getRawMany()).length;
+		const rawRows = await rawRowsQuery.offset(skip).limit(take).getRawMany();
+
+		return { count, rows: aggregatedInsightsByWorkflowParser.parse(rawRows) };
+	}
+
+	async getInsightsByTime({
+		maxAgeInDays,
+		periodUnit,
+	}: { maxAgeInDays: number; periodUnit: PeriodUnit }) {
+		const cte = sql`SELECT ${this.getAgeLimitQuery(maxAgeInDays)} AS start_date`;
+		const rawRowsQuery = this.createQueryBuilder()
+			.addCommonTableExpression(cte, 'date_range')
+			.select([
+				`${this.getPeriodStartExpr(periodUnit)} as "periodStart"`,
+				`SUM(CASE WHEN type = ${TypeToNumber.runtime_ms} THEN value ELSE 0 END) AS "runTime"`,
+				`SUM(CASE WHEN type = ${TypeToNumber.success} THEN value ELSE 0 END) AS "succeeded"`,
+				`SUM(CASE WHEN type = ${TypeToNumber.failure} THEN value ELSE 0 END) AS "failed"`,
+				`SUM(CASE WHEN type = ${TypeToNumber.time_saved_min} THEN value ELSE 0 END) AS "timeSaved"`,
+			])
+			.innerJoin('date_range', 'date_range', '1=1')
+			.where(`${this.escapeField('periodStart')} >= date_range.start_date`)
+			.addGroupBy(this.getPeriodStartExpr(periodUnit))
+			.orderBy(this.getPeriodStartExpr(periodUnit), 'ASC');
+
+		const rawRows = await rawRowsQuery.getRawMany();
+
+		return aggregatedInsightsByTimeParser.parse(rawRows);
 	}
 }

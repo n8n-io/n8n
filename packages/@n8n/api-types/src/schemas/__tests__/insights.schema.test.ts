@@ -162,6 +162,8 @@ describe('insightsByTimeSchema', () => {
 				date: '2025-03-25T10:34:36.484Z',
 				values: {
 					total: 200,
+					succeeded: 180,
+					failed: 20,
 					failureRate: 10,
 					averageRunTime: 40,
 					timeSaved: 100,
@@ -175,6 +177,8 @@ describe('insightsByTimeSchema', () => {
 				date: '20240325', // Should be a string
 				values: {
 					total: 200,
+					succeeded: 180,
+					failed: 20,
 					failureRate: 10,
 					averageRunTime: 40,
 					timeSaved: 100,
@@ -188,6 +192,8 @@ describe('insightsByTimeSchema', () => {
 				date: 20240325, // Should be a string
 				values: {
 					total: 200,
+					succeeded: 180,
+					failed: 20,
 					failureRate: 10,
 					averageRunTime: 40,
 					timeSaved: 100,
@@ -201,6 +207,8 @@ describe('insightsByTimeSchema', () => {
 				date: '2025-03-25T10:34:36.484Z',
 				values: {
 					total: 200,
+					succeeded: 180,
+					failed: 20,
 					failureRate: 10,
 					averageRunTime: 40,
 				},

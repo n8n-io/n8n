@@ -2,14 +2,16 @@
 import { computed } from 'vue';
 import { FOLDER_LIST_ITEM_ACTIONS } from './constants';
 import type { FolderResource } from '../layouts/ResourcesListLayout.vue';
-import { type ProjectIcon, ProjectTypes } from '@/types/projects.types';
+import type { Project } from '@/types/projects.types';
 import { useI18n } from '@/composables/useI18n';
 import { useRoute, useRouter } from 'vue-router';
 import { VIEWS } from '@/constants';
 import type { UserAction } from '@/Interface';
+import { ResourceType } from '@/utils/projects.utils';
 
 type Props = {
 	data: FolderResource;
+	personalProject: Project | null;
 	actions: UserAction[];
 	readOnly?: boolean;
 };
@@ -28,22 +30,7 @@ const emit = defineEmits<{
 	folderOpened: [{ folder: FolderResource }];
 }>();
 
-const projectIcon = computed<ProjectIcon>(() => {
-	const defaultIcon: ProjectIcon = { type: 'icon', value: 'layer-group' };
-	if (props.data.homeProject?.type === ProjectTypes.Personal) {
-		return { type: 'icon', value: 'user' };
-	} else if (props.data.homeProject?.type === ProjectTypes.Team) {
-		return props.data.homeProject.icon ?? defaultIcon;
-	}
-	return defaultIcon;
-});
-
-const projectName = computed(() => {
-	if (props.data.homeProject?.type === ProjectTypes.Personal) {
-		return i18n.baseText('projects.menu.personal');
-	}
-	return props.data.homeProject?.name;
-});
+const resourceTypeLabel = computed(() => i18n.baseText('generic.folder').toLowerCase());
 
 const cardUrl = computed(() => {
 	return getFolderUrl(props.data.id);
@@ -112,7 +99,11 @@ const onAction = async (action: string) => {
 							:class="[$style['info-cell'], $style['info-cell--workflow-count']]"
 							data-test-id="folder-card-workflow-count"
 						>
-							{{ i18n.baseText('generic.folder', { interpolate: { count: data.subFolderCount } }) }}
+							{{
+								i18n.baseText('generic.folderCount', {
+									interpolate: { count: data.subFolderCount },
+								})
+							}}
 						</n8n-text>
 						<n8n-text
 							size="small"
@@ -137,14 +128,14 @@ const onAction = async (action: string) => {
 				<template #append>
 					<div :class="$style['card-actions']" @click.prevent>
 						<div v-if="data.homeProject" :class="$style['project-pill']">
-							<div :class="$style['home-project']" data-test-id="folder-card-home-project">
-								<n8n-link :to="`/projects/${data.homeProject.id}`">
-									<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" />
-									<n8n-text size="small" :compact="true" :bold="true" color="text-base">
-										{{ projectName }}
-									</n8n-text>
-								</n8n-link>
-							</div>
+							<ProjectCardBadge
+								:class="{ [$style.cardBadge]: true, [$style['with-breadcrumbs']]: false }"
+								:resource="data"
+								:resource-type="ResourceType.Workflow"
+								:resource-type-label="resourceTypeLabel"
+								:personal-project="personalProject"
+								:show-badge-border="true"
+							/>
 						</div>
 						<n8n-action-toggle
 							v-if="actions.length"
@@ -203,21 +194,6 @@ const onAction = async (action: string) => {
 .card-actions {
 	display: flex;
 	gap: var(--spacing-xs);
-}
-
-.project-pill {
-	display: flex;
-	align-items: center;
-	padding: var(--spacing-4xs) var(--spacing-2xs);
-	border: var(--border-base);
-	border-radius: var(--border-radius-base);
-}
-
-.home-project span {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing-3xs);
-	color: var(—color-text-base);
 }
 
 @include mixins.breakpoint('sm-and-down') {

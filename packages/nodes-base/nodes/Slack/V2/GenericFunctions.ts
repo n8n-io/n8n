@@ -124,7 +124,7 @@ export async function slackApiRequestAllItems(
 	if (endpoint.includes('files.list')) {
 		query.count = 100;
 	} else {
-		query.limit = 100;
+		query.limit = query.limit ?? 100;
 	}
 	do {
 		responseData = await slackApiRequest.call(this, method, endpoint, body as IDataObject, query);

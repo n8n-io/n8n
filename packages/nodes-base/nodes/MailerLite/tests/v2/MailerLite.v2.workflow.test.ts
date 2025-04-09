@@ -1,6 +1,7 @@
 import nock from 'nock';
 
-import { getWorkflowFilenames, testWorkflows } from '../../../../test/nodes/Helpers';
+import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
+
 import {
 	getCreateResponseV2,
 	getSubscriberResponseV2,

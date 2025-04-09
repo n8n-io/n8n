@@ -33,7 +33,13 @@ function findPropertyFromParameterName(
 		return options.find(
 			(i) =>
 				i.name === name &&
-				NodeHelpers.displayParameterPath(nodeParameters, i, currentParamPath, node),
+				NodeHelpers.displayParameterPath(
+					nodeParameters,
+					i,
+					currentParamPath,
+					node,
+					nodeType.description,
+				),
 		);
 	};
 

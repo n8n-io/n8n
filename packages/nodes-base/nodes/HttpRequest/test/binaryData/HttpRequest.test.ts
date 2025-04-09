@@ -1,17 +1,8 @@
 import nock from 'nock';
 
-import {
-	setup,
-	equalityTest,
-	workflowToTests,
-	getWorkflowFilenames,
-	initBinaryDataService,
-} from '@test/nodes/Helpers';
+import { getWorkflowFilenames, initBinaryDataService, testWorkflows } from '@test/nodes/Helpers';
 
 describe('Test Binary Data Download', () => {
-	const workflows = getWorkflowFilenames(__dirname);
-	const tests = workflowToTests(workflows);
-
 	const baseUrl = 'https://dummy.domain';
 
 	beforeAll(async () => {
@@ -31,9 +22,7 @@ describe('Test Binary Data Download', () => {
 			'content-disposition': 'attachment; filename="testing.jpg"',
 		});
 	});
-	const nodeTypes = setup(tests);
 
-	for (const testData of tests) {
-		test(testData.description, async () => await equalityTest(testData, nodeTypes));
-	}
+	const workflows = getWorkflowFilenames(__dirname);
+	testWorkflows(workflows);
 });

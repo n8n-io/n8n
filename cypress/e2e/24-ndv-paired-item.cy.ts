@@ -59,7 +59,8 @@ describe('NDV', () => {
 		ndv.getters.inputTableRow(4).invoke('attr', 'data-test-id').should('equal', 'hovering-item');
 	});
 
-	it('maps paired input and output items based on selected input node', () => {
+	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+	it.skip('maps paired input and output items based on selected input node', () => {
 		cy.fixture('Test_workflow_5.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});

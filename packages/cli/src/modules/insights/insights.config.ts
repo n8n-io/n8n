@@ -15,4 +15,32 @@ export class InsightsConfig {
 	 */
 	@Env('N8N_INSIGHTS_COMPACTION_BATCH_SIZE')
 	compactionBatchSize: number = 500;
+
+	/**
+	 * The max age in days of hourly insights data to compact.
+	 * Default: 90
+	 */
+	@Env('N8N_INSIGHTS_COMPACTION_HOURLY_TO_DAILY_THRESHOLD_DAYS')
+	compactionHourlyToDailyThresholdDays: number = 90;
+
+	/**
+	 * The max age in days of daily insights data to compact.
+	 * Default: 180
+	 */
+	@Env('N8N_INSIGHTS_COMPACTION_DAILY_TO_WEEKLY_THRESHOLD_DAYS')
+	compactionDailyToWeeklyThresholdDays: number = 180;
+
+	/**
+	 * The maximum number of insights data to keep in the buffer before flushing.
+	 * Default: 1000
+	 */
+	@Env('N8N_INSIGHTS_FLUSH_BATCH_SIZE')
+	flushBatchSize: number = 1000;
+
+	/**
+	 * The interval in seconds at which the insights data should be flushed to the database.
+	 * Default: 30
+	 */
+	@Env('N8N_INSIGHTS_FLUSH_INTERVAL_SECONDS')
+	flushIntervalSeconds: number = 30;
 }
