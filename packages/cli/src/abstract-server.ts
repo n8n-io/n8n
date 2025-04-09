@@ -53,6 +53,10 @@ export abstract class AbstractServer {
 
 	protected endpointWebhookWaiting: string;
 
+	protected endpointMcp: string;
+
+	protected endpointMcpTest: string;
+
 	protected webhooksEnabled = true;
 
 	protected testWebhooksEnabled = false;
@@ -73,15 +77,19 @@ export abstract class AbstractServer {
 		this.sslKey = config.getEnv('ssl_key');
 		this.sslCert = config.getEnv('ssl_cert');
 
-		this.restEndpoint = this.globalConfig.endpoints.rest;
+		const { endpoints } = this.globalConfig;
+		this.restEndpoint = endpoints.rest;
 
-		this.endpointForm = this.globalConfig.endpoints.form;
-		this.endpointFormTest = this.globalConfig.endpoints.formTest;
-		this.endpointFormWaiting = this.globalConfig.endpoints.formWaiting;
+		this.endpointForm = endpoints.form;
+		this.endpointFormTest = endpoints.formTest;
+		this.endpointFormWaiting = endpoints.formWaiting;
 
-		this.endpointWebhook = this.globalConfig.endpoints.webhook;
-		this.endpointWebhookTest = this.globalConfig.endpoints.webhookTest;
-		this.endpointWebhookWaiting = this.globalConfig.endpoints.webhookWaiting;
+		this.endpointWebhook = endpoints.webhook;
+		this.endpointWebhookTest = endpoints.webhookTest;
+		this.endpointWebhookWaiting = endpoints.webhookWaiting;
+
+		this.endpointMcp = endpoints.mcp;
+		this.endpointMcpTest = endpoints.mcpTest;
 
 		this.logger = Container.get(Logger);
 	}
@@ -202,6 +210,9 @@ export abstract class AbstractServer {
 				`/${this.endpointWebhookWaiting}/:path{/:suffix}`,
 				createWebhookHandlerFor(Container.get(WaitingWebhooks)),
 			);
+
+			// Register a handler for live MCP servers
+			this.app.all(`/${this.endpointMcp}/*path`, liveWebhooksRequestHandler);
 		}
 
 		if (this.testWebhooksEnabled) {
@@ -210,6 +221,9 @@ export abstract class AbstractServer {
 			// Register a handler
 			this.app.all(`/${this.endpointFormTest}/*path`, testWebhooksRequestHandler);
 			this.app.all(`/${this.endpointWebhookTest}/*path`, testWebhooksRequestHandler);
+
+			// Register a handler for test MCP servers
+			this.app.all(`/${this.endpointMcpTest}/*path`, testWebhooksRequestHandler);
 		}
 
 		// Block bots from scanning the application

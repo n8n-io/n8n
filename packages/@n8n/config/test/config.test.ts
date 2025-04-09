@@ -186,6 +186,8 @@ describe('GlobalConfig', () => {
 			form: 'form',
 			formTest: 'form-test',
 			formWaiting: 'form-waiting',
+			mcp: 'mcp',
+			mcpTest: 'mcp-test',
 			payloadSizeMax: 16,
 			formDataFileSizeMax: 200,
 			rest: 'rest',
