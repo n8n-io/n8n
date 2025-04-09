@@ -119,26 +119,13 @@ export class GSuiteAdmin implements INodeType {
 					}>;
 				};
 
-				if (Array.isArray(orgUnits.organizationUnits)) {
-					if (orgUnits.organizationUnits.length === 0) {
-						throw new NodeOperationError(
-							this.getNode(),
-							'No organizational units found. Please create organizational units in the Google Admin Console under "Directory > Organizational units".',
-						);
-					}
-
-					for (const unit of orgUnits.organizationUnits) {
-						returnData.push({
-							name: unit.name,
-							value: unit.orgUnitPath,
-						});
-					}
-				} else {
-					throw new NodeOperationError(
-						this.getNode(),
-						'Failed to retrieve organizational units. Ensure your account has organizational units configured.',
-					);
+				for (const unit of orgUnits.organizationUnits) {
+					returnData.push({
+						name: unit.name,
+						value: unit.orgUnitPath,
+					});
 				}
+
 				return returnData;
 			},
 		},
@@ -465,7 +452,7 @@ export class GSuiteAdmin implements INodeType {
 						const lastName = this.getNodeParameter('lastName', i) as string;
 						const password = this.getNodeParameter('password', i) as string;
 						const username = this.getNodeParameter('username', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							name: {
@@ -516,18 +503,14 @@ export class GSuiteAdmin implements INodeType {
 								const { schemaName, fieldName, value } = field as {
 									schemaName: string;
 									fieldName: string;
-									value: any;
+									value: string;
 								};
 
 								if (!schemaName || !fieldName || value === undefined || value === '') {
-									console.error('Missing schemaName, fieldName, or value in customFields:', field);
 									return;
 								}
 
-								if (!customSchemas[schemaName]) {
-									customSchemas[schemaName] = {};
-								}
-
+								customSchemas[schemaName] ??= {};
 								(customSchemas[schemaName] as IDataObject)[fieldName] = value;
 							});
 
@@ -789,18 +772,14 @@ export class GSuiteAdmin implements INodeType {
 								const { schemaName, fieldName, value } = field as {
 									schemaName: string;
 									fieldName: string;
-									value: any;
+									value: string;
 								};
 
 								if (!schemaName || !fieldName || value === undefined || value === '') {
-									console.error('Missing schemaName, fieldName, or value in customFields:', field);
 									return;
 								}
 
-								if (!customSchemas[schemaName]) {
-									customSchemas[schemaName] = {};
-								}
-
+								customSchemas[schemaName] ??= {};
 								(customSchemas[schemaName] as IDataObject)[fieldName] = value;
 							});
 

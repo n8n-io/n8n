@@ -21,7 +21,7 @@ export async function searchUsers(this: ILoadOptionsFunctions): Promise<INodeLis
 		qs,
 	);
 
-	if (!Array.isArray(responseData) || responseData.length === 0) {
+	if (!Array.isArray(responseData)) {
 		return { results: [] };
 	}
 
@@ -49,12 +49,12 @@ export async function searchGroups(this: ILoadOptionsFunctions): Promise<INodeLi
 		qs,
 	);
 
-	if (!responseData || responseData.length === 0) {
+	if (!Array.isArray(responseData)) {
 		return { results: [] };
 	}
 
 	const results: INodeListSearchItems[] = responseData.map(
-		(group: { name?: string; email?: string; id?: string }) => ({
+		(group: { name?: string; email?: string; id: string }) => ({
 			name: group.name || group.email || 'Unnamed Group',
 			value: group.id,
 		}),
@@ -76,13 +76,13 @@ export async function searchDevices(this: ILoadOptionsFunctions): Promise<INodeL
 		qs,
 	);
 
-	if (!Array.isArray(responseData?.chromeosdevices) || responseData.chromeosdevices.length === 0) {
+	if (!Array.isArray(responseData?.chromeosdevices)) {
 		return { results: [] };
 	}
 
 	const results: INodeListSearchItems[] = responseData.chromeosdevices.map(
-		(device: { deviceId?: string; serialNumber?: string }) => ({
-			name: device.serialNumber || 'Unknown Device',
+		(device: { deviceId: string; serialNumber?: string }) => ({
+			name: device.serialNumber || device.deviceId || 'Unknown Device',
 			value: device.deviceId,
 		}),
 	);
