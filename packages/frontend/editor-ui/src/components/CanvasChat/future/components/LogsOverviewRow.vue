@@ -12,7 +12,6 @@ import { useI18n } from '@/composables/useI18n';
 import ConsumedTokenCountText from '@/components/CanvasChat/future/components/ConsumedTokenCountText.vue';
 import { I18nT } from 'vue-i18n';
 import { toDayMonth, toTime } from '@/utils/formatters/dateFormatter';
-import { isSameLogEntry } from '@/components/CanvasChat/types/logs';
 
 const props = defineProps<{
 	data: TreeNode;
@@ -75,7 +74,7 @@ function isLastChild(level: number) {
 
 	return (
 		(data === undefined && lastSibling === undefined) ||
-		(data !== undefined && lastSibling !== undefined && isSameLogEntry(data, lastSibling))
+		(data?.node === lastSibling?.node && data?.runIndex === lastSibling?.runIndex)
 	);
 }
 </script>

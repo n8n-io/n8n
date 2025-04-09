@@ -10,7 +10,3 @@ export const LOGS_PANEL_STATE = {
 } as const;
 
 export type LogsPanelState = (typeof LOGS_PANEL_STATE)[keyof typeof LOGS_PANEL_STATE];
-
-export function isSameLogEntry(one: LogEntryIdentity, another: LogEntryIdentity): boolean {
-	return one.node === another.node && one.runIndex === another.runIndex;
-}
