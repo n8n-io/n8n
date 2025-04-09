@@ -11,13 +11,12 @@ import type { AgentAction, AgentFinish } from 'langchain/agents';
 import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
 import type { ToolsAgentAction } from 'langchain/dist/agents/tool_calling/output_parser';
 import { omit } from 'lodash';
-import { getConnectedTools } from 'n8n-nodes-base/dist/utils/tool-helpers';
 import { BINARY_ENCODING, jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import type { ZodObject } from 'zod';
 import { z } from 'zod';
 
-import { isChatInstance, getPromptInputByType } from '@utils/helpers';
+import { isChatInstance, getPromptInputByType, getConnectedTools } from '@utils/helpers';
 import {
 	getOptionalOutputParser,
 	type N8nOutputParser,

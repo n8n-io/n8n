@@ -8,7 +8,7 @@ import type { McpServer } from '../McpServer';
 import { McpTrigger } from '../McpTrigger.node';
 
 const mockTool = mock<Tool>({ name: 'mockTool' });
-jest.mock('@utils/tool-helpers', () => ({
+jest.mock('@utils/helpers', () => ({
 	getConnectedTools: jest.fn().mockImplementation(() => [mockTool]),
 }));
 

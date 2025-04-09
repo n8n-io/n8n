@@ -48,6 +48,7 @@ import { finished } from 'stream/promises';
 
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
+import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import type { Project } from '@/databases/entities/project';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -447,7 +448,7 @@ export async function executeWebhook(
 		}
 
 		// TODO: remove this hack, and make sure that execution data is properly created before the MCP trigger is executed
-		if (workflowStartNode.type === 'n8n-nodes-base.mcpTrigger') {
+		if (workflowStartNode.type === MCP_TRIGGER_NODE_TYPE) {
 			// Initialize the data of the webhook node
 			const nodeExecutionStack: IExecuteData[] = [];
 			nodeExecutionStack.push({

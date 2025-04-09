@@ -1,13 +1,13 @@
+import { WebhookAuthorizationError } from 'n8n-nodes-base/dist/nodes/Webhook/error';
+import { validateWebhookAuthentication } from 'n8n-nodes-base/dist/nodes/Webhook/utils';
 import type { INodeTypeDescription, IWebhookFunctions, IWebhookResponseData } from 'n8n-workflow';
 import { NodeConnectionTypes, Node } from 'n8n-workflow';
 
-import { getConnectedTools } from '@utils/tool-helpers';
+import { getConnectedTools } from '@utils/helpers';
 
 import type { CompressionResponse } from './FlushingSSEServerTransport';
 import { McpServerSingleton } from './McpServer';
 import type { McpServer } from './McpServer';
-import { WebhookAuthorizationError } from '../Webhook/error';
-import { validateWebhookAuthentication } from '../Webhook/utils';
 
 const MCP_SSE_SETUP_PATH = 'sse';
 const MCP_SSE_MESSAGES_PATH = 'messages';

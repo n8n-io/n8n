@@ -2,7 +2,6 @@ import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { AgentExecutor, ChatAgent, ZeroShotAgent } from 'langchain/agents';
-import { getConnectedTools } from 'n8n-nodes-base/dist/utils/tool-helpers';
 import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
@@ -10,7 +9,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { getPromptInputByType, isChatInstance } from '@utils/helpers';
+import { getConnectedTools, getPromptInputByType, isChatInstance } from '@utils/helpers';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import { throwIfToolSchema } from '@utils/schemaParsing';
 import { getTracingConfig } from '@utils/tracing';

@@ -3,7 +3,6 @@ import { ChatOpenAI } from '@langchain/openai';
 import type { AgentExecutorInput } from 'langchain/agents';
 import { AgentExecutor, OpenAIAgent } from 'langchain/agents';
 import { BufferMemory, type BaseChatMemory } from 'langchain/memory';
-import { getConnectedTools } from 'n8n-nodes-base/dist/utils/tool-helpers';
 import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
@@ -11,7 +10,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { getPromptInputByType } from '@utils/helpers';
+import { getConnectedTools, getPromptInputByType } from '@utils/helpers';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import { getTracingConfig } from '@utils/tracing';
 
