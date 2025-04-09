@@ -41,6 +41,7 @@ export class McpClientTool implements INodeType {
 			subcategories: {
 				AI: ['Model Context Protocol', 'Tools'],
 			},
+			alias: ['Model Context Protocol'],
 			resources: {
 				primaryDocumentation: [
 					{

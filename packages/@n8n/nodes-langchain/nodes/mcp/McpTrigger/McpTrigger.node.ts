@@ -33,6 +33,7 @@ export class McpTrigger extends Node {
 				AI: ['Model Context Protocol'],
 				'Core Nodes': ['Other Trigger Nodes'],
 			},
+			alias: ['Model Context Protocol'],
 			resources: {
 				primaryDocumentation: [
 					{
