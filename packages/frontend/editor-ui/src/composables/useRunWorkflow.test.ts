@@ -2,15 +2,14 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useRouter } from 'vue-router';
 import type router from 'vue-router';
-import {
-	ExpressionError,
-	type IPinData,
-	type IRunData,
-	type Workflow,
-	type IExecuteData,
-	type ITaskData,
-	NodeConnectionTypes,
-	type INodeConnections,
+import { ExpressionError, NodeConnectionTypes } from 'n8n-workflow';
+import type {
+	IPinData,
+	IRunData,
+	Workflow,
+	IExecuteData,
+	ITaskData,
+	INodeConnections,
 } from 'n8n-workflow';
 
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
@@ -26,20 +25,23 @@ import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { waitFor } from '@testing-library/vue';
 
-vi.mock('@/stores/workflows.store', () => ({
-	useWorkflowsStore: vi.fn().mockReturnValue({
+vi.mock('@/stores/workflows.store', async () => {
+	const storeState: Partial<ReturnType<typeof useWorkflowsStore>> & {
+		activeExecutionId: string | null;
+	} = {
 		allNodes: [],
 		runWorkflow: vi.fn(),
 		subWorkflowExecutionError: null,
 		getWorkflowRunData: null,
+		workflowExecutionData: null,
 		setWorkflowExecutionData: vi.fn(),
 		activeExecutionId: null,
+		previousExecutionId: null,
 		nodesIssuesExist: false,
 		executionWaitingForWebhook: false,
 		getCurrentWorkflow: vi.fn().mockReturnValue({ id: '123' }),
 		getNodeByName: vi.fn(),
 		getExecution: vi.fn(),
-		nodeIssuesExit: vi.fn(),
 		checkIfNodeHasChatParent: vi.fn(),
 		getParametersLastUpdate: vi.fn(),
 		getPinnedDataLastUpdate: vi.fn(),
@@ -47,8 +49,15 @@ vi.mock('@/stores/workflows.store', () => ({
 		incomingConnectionsByNodeName: vi.fn(),
 		outgoingConnectionsByNodeName: vi.fn(),
 		markExecutionAsStopped: vi.fn(),
-	}),
-}));
+		setActiveExecutionId: vi.fn((id: string | null) => {
+			storeState.activeExecutionId = id;
+		}),
+	};
+
+	return {
+		useWorkflowsStore: vi.fn().mockReturnValue(storeState),
+	};
+});
 
 vi.mock('@/stores/pushConnection.store', () => ({
 	usePushConnectionStore: vi.fn().mockReturnValue({
@@ -151,6 +160,7 @@ describe('useRunWorkflow({ router })', () => {
 
 			const mockResponse = { executionId: '123', waitingForWebhook: false };
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockResponse);
+			vi.mocked(workflowsStore).setActiveExecutionId('123');
 
 			const response = await runWorkflowApi({} as IStartRunData);
 
@@ -692,7 +702,7 @@ describe('useRunWorkflow({ router })', () => {
 
 			workflowsStore.workflowExecutionData = executionData;
 			workflowsStore.activeWorkflows = ['test-wf-id'];
-			workflowsStore.activeExecutionId = 'test-exec-id';
+			workflowsStore.setActiveExecutionId('test-exec-id');
 
 			// Exercise - don't wait for returned promise to resolve
 			void runWorkflowComposable.stopCurrentExecution();
