@@ -3,8 +3,7 @@ import { useI18n } from '@/composables/useI18n';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/insights/insights.store';
 import type { InsightsSummaryType } from '@n8n/api-types';
-import { computed, defineAsyncComponent, watch } from 'vue';
-import { useRoute, type LocationQuery } from 'vue-router';
+import { computed, defineAsyncComponent, ref, watch } from 'vue';
 
 const InsightsPaywall = defineAsyncComponent(
 	async () => await import('@/features/insights/components/InsightsPaywall.vue'),
@@ -32,7 +31,6 @@ const props = defineProps<{
 	insightType: InsightsSummaryType;
 }>();
 
-const route = useRoute();
 const i18n = useI18n();
 
 const insightsStore = useInsightsStore();
@@ -45,29 +43,19 @@ const chartComponents = computed(() => ({
 	averageRunTime: InsightsChartAverageRuntime,
 }));
 
-type Filter = { time_span: string };
-const getDefaultFilter = (query: LocationQuery): Filter => {
-	const { time_span } = query as Filter;
-	return {
-		time_span: time_span ?? '7',
-	};
-};
-const filters = computed(() => getDefaultFilter(route.query));
-
 const transformFilter = ({ id, desc }: { id: string; desc: boolean }) => {
-	// TODO: remove exclude once failureRate is added to the BE
-	const key = id as Exclude<InsightsSummaryType, 'failureRate'>;
+	const key = id as InsightsSummaryType;
 	const order = desc ? 'desc' : 'asc';
 	return `${key}:${order}` as const;
 };
 
 const fetchPaginatedTableData = ({
-	page,
-	itemsPerPage,
+	page = 0,
+	itemsPerPage = 20,
 	sortBy,
 }: {
-	page: number;
-	itemsPerPage: number;
+	page?: number;
+	itemsPerPage?: number;
 	sortBy: Array<{ id: string; desc: boolean }>;
 }) => {
 	const skip = page * itemsPerPage;
@@ -82,15 +70,18 @@ const fetchPaginatedTableData = ({
 	});
 };
 
+const sortTableBy = ref([{ id: props.insightType, desc: true }]);
 watch(
-	() => filters.value.time_span,
+	() => props.insightType,
 	() => {
+		sortTableBy.value = [{ id: props.insightType, desc: true }];
+
 		if (insightsStore.isSummaryEnabled) {
 			void insightsStore.summary.execute();
 		}
 
 		void insightsStore.charts.execute();
-		void insightsStore.table.execute();
+		fetchPaginatedTableData({ sortBy: sortTableBy.value });
 	},
 	{
 		immediate: true,
@@ -100,9 +91,9 @@ watch(
 
 <template>
 	<div :class="$style.insightsView">
-		<N8nHeading bold tag="h2" size="xlarge">{{
-			i18n.baseText('insights.dashboard.title')
-		}}</N8nHeading>
+		<N8nHeading bold tag="h2" size="xlarge">
+			{{ i18n.baseText('insights.dashboard.title') }}
+		</N8nHeading>
 		<div>
 			<InsightsSummary
 				v-if="insightsStore.isSummaryEnabled"
@@ -122,6 +113,7 @@ watch(
 				</div>
 				<div :class="$style.insightsTableWrapper">
 					<InsightsTableWorkflows
+						v-model:sort-by="sortTableBy"
 						:data="insightsStore.table.state"
 						:loading="insightsStore.table.isLoading"
 						@update:options="fetchPaginatedTableData"
