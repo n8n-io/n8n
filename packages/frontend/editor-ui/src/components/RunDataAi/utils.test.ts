@@ -182,7 +182,7 @@ describe(getTreeNodeData, () => {
 });
 
 describe(createLogEntries, () => {
-	it('should return log entries in ascending order of executionIndex', () => {
+	it('should return root node log entries in ascending order of executionIndex', () => {
 		const workflow = createTestWorkflowObject({
 			nodes: [
 				createTestNode({ name: 'A' }),
@@ -213,6 +213,49 @@ describe(createLogEntries, () => {
 			expect.objectContaining({ node: 'B', runIndex: 0 }),
 			expect.objectContaining({ node: 'C', runIndex: 1 }),
 			expect.objectContaining({ node: 'C', runIndex: 0 }),
+		]);
+	});
+
+	it.only('should return sub node log entries in ascending order of executionIndex', () => {
+		const workflow = createTestWorkflowObject({
+			nodes: [
+				createTestNode({ name: 'A' }),
+				createTestNode({ name: 'B' }),
+				createTestNode({ name: 'C' }),
+			],
+			connections: {
+				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+				C: {
+					[NodeConnectionTypes.AiLanguageModel]: [
+						[{ node: 'B', type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
+					],
+				},
+			},
+		});
+
+		expect(
+			createLogEntries(workflow, {
+				A: [
+					createTaskData({ startTime: +new Date('2025-04-04T00:00:00.000Z'), executionIndex: 0 }),
+				],
+				B: [
+					createTaskData({ startTime: +new Date('2025-04-04T00:00:01.000Z'), executionIndex: 1 }),
+				],
+				C: [
+					createTaskData({ startTime: +new Date('2025-04-04T00:00:02.000Z'), executionIndex: 3 }),
+					createTaskData({ startTime: +new Date('2025-04-04T00:00:03.000Z'), executionIndex: 2 }),
+				],
+			}),
+		).toEqual([
+			expect.objectContaining({ node: 'A', runIndex: 0 }),
+			expect.objectContaining({
+				node: 'B',
+				runIndex: 0,
+				children: [
+					expect.objectContaining({ node: 'C', runIndex: 1 }),
+					expect.objectContaining({ node: 'C', runIndex: 0 }),
+				],
+			}),
 		]);
 	});
 });

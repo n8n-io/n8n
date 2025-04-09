@@ -1387,29 +1387,23 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return testUrl;
 	}
 
-	function setNodeExecuting(nodeName: string): void {
-		addExecutingNode(nodeName);
+	function setNodeExecuting(pushData: PushPayload<'nodeExecuteBefore'>): void {
+		addExecutingNode(pushData.nodeName);
 
-		const node = getNodeByName(nodeName);
+		const node = getNodeByName(pushData.nodeName);
 
 		if (!node || !workflowExecutionData.value?.data) {
 			return;
 		}
 
-		if (workflowExecutionData.value.data.resultData.runData[nodeName] === undefined) {
-			workflowExecutionData.value.data.resultData.runData[nodeName] = [];
+		if (workflowExecutionData.value.data.resultData.runData[pushData.nodeName] === undefined) {
+			workflowExecutionData.value.data.resultData.runData[pushData.nodeName] = [];
 		}
 
-		const maxExecutionIndex = Object.values(
-			workflowExecutionData.value.data.resultData.runData,
-		).reduce((acc, taskData) => Math.max(acc, ...taskData.map((d) => d.executionIndex ?? 0)), -1);
-
-		workflowExecutionData.value.data.resultData.runData[nodeName].push({
+		workflowExecutionData.value.data.resultData.runData[pushData.nodeName].push({
 			executionStatus: 'running',
-			startTime: Date.now(),
 			executionTime: 0,
-			executionIndex: maxExecutionIndex + 1,
-			source: [],
+			...pushData.data,
 		});
 	}
 
