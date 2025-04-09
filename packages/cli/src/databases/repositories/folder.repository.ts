@@ -343,9 +343,8 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 	 */
 	async getAllFolderIdsInHierarchy(parentFolderId: string, projectId?: string): Promise<string[]> {
 		// Start with direct children as the base case
-		const baseQuery = this.createQueryBuilder()
+		const baseQuery = this.createQueryBuilder('f')
 			.select('f.id', 'id')
-			.from('folder', 'f')
 			.where('f.parentFolderId = :parentFolderId', { parentFolderId });
 
 		// Add project filter if provided
@@ -354,9 +353,8 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 		}
 
 		// Create the recursive query for descendants
-		const recursiveQuery = this.createQueryBuilder()
+		const recursiveQuery = this.createQueryBuilder('child')
 			.select('child.id', 'id')
-			.from('folder', 'child')
 			.innerJoin('folder_tree', 'parent', 'child.parentFolderId = parent.id');
 
 		// Add project filter if provided
