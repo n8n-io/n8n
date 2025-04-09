@@ -1,4 +1,5 @@
 <script lang="ts" setup="">
+import { useI18n } from '@/composables/useI18n';
 import { INSIGHTS_UNIT_MAPPING } from '@/features/insights/insights.constants';
 import {
 	transformInsightsAverageRunTime,
@@ -18,6 +19,8 @@ const props = defineProps<{
 	loading?: boolean;
 }>();
 
+const i18n = useI18n();
+
 type Item = InsightsByWorkflow['data'][number];
 
 const rows = computed(() => props.data.data);
@@ -30,39 +33,46 @@ const headers = ref<Array<TableHeader<Item>>>([
 		disableSort: true,
 	},
 	{
-		title: 'Total executions',
+		title: i18n.baseText('insights.banner.title.total'),
 		key: 'total',
+		value(row) {
+			return row.total.toLocaleString('en-US');
+		},
 	},
 	{
-		title: 'Total failed executions',
+		title: i18n.baseText('insights.banner.title.failed'),
 		key: 'failed',
+		value(row) {
+			return row.failed.toLocaleString('en-US');
+		},
 	},
 	{
-		title: 'Average run time',
+		title: i18n.baseText('insights.banner.title.failureRate'),
 		key: 'failureRate',
 		value(row) {
 			return (
 				smartDecimal(transformInsightsFailureRate(row.failureRate)) +
-				INSIGHTS_UNIT_MAPPING.failureRate
+				INSIGHTS_UNIT_MAPPING.failureRate(row.failureRate)
 			);
 		},
 	},
 	{
-		title: 'Time saved',
+		title: i18n.baseText('insights.banner.title.timeSaved'),
 		key: 'timeSaved',
 		value(row) {
 			return (
-				smartDecimal(transformInsightsTimeSaved(row.timeSaved)) + INSIGHTS_UNIT_MAPPING.timeSaved
+				smartDecimal(transformInsightsTimeSaved(row.timeSaved)) +
+				INSIGHTS_UNIT_MAPPING.timeSaved(row.timeSaved)
 			);
 		},
 	},
 	{
-		title: 'Run time',
+		title: i18n.baseText('insights.banner.title.averageRunTime'),
 		key: 'averageRunTime',
 		value(row) {
 			return (
 				smartDecimal(transformInsightsAverageRunTime(row.averageRunTime)) +
-				INSIGHTS_UNIT_MAPPING.averageRunTime
+				INSIGHTS_UNIT_MAPPING.averageRunTime(row.averageRunTime)
 			);
 		},
 	},
@@ -73,7 +83,7 @@ const headers = ref<Array<TableHeader<Item>>>([
 	},
 ]);
 
-const sortTableBy = ref([{ id: 'total', desc: true }]);
+const sortBy = defineModel<Array<{ id: string; desc: boolean }>>('sortBy');
 const currentPage = ref(0);
 const itemsPerPage = ref(20);
 
@@ -92,7 +102,7 @@ const emit = defineEmits<{
 	<div>
 		<N8nHeading bold tag="h3" size="medium" class="mb-s">Workflow insights</N8nHeading>
 		<N8nDataTableServer
-			v-model:sort-by="sortTableBy"
+			v-model:sort-by="sortBy"
 			v-model:page="currentPage"
 			v-model:items-per-page="itemsPerPage"
 			:items="rows"
