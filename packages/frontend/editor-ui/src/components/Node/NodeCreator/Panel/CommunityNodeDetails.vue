@@ -45,8 +45,6 @@ const onInstallClick = async () => {
 			loading.value = true;
 			await communityNodesStore.installPackage(packageName, true, npmVersion.value);
 
-			useNodeTypesStore().newInstalledNodeTypes.push(key);
-
 			await useNodeTypesStore().getNodeTypes();
 
 			await useCredentialsStore().fetchCredentialTypes(true);

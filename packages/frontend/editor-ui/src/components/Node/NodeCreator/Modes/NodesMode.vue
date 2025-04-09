@@ -35,6 +35,7 @@ import { useActions } from '../composables/useActions';
 import { SEND_AND_WAIT_OPERATION, type INodeParameters } from 'n8n-workflow';
 
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 export interface Props {
 	rootView: 'trigger' | 'action';
@@ -54,17 +55,21 @@ const { registerKeyHook } = useKeyboardNavigation();
 
 const activeViewStack = computed(() => useViewStacks().activeViewStack);
 
-const additionalSearchItems = computed(() => useViewStacks().additionalSearchItems);
+const globalSearchItemsDiff = computed(() => useViewStacks().globalSearchItemsDiff);
+
+const moreFromCommunity = computed(() => useViewStacks().moreFromCommunity);
 
 const isSearchResultEmpty = computed(() => {
 	return (
 		(activeViewStack.value.items || []).length === 0 &&
-		additionalSearchItems.value.items.length + additionalSearchItems.value.communityItems.length ===
-			0
+		globalSearchItemsDiff.value.length + moreFromCommunity.value.length === 0
 	);
 });
 
-function getFilteredActions(node: NodeCreateElement) {
+function getFilteredActions(
+	node: NodeCreateElement,
+	actions: Record<string, ActionTypeDescription[]>,
+) {
 	const nodeActions = actions?.[node.key] || [];
 	if (activeViewStack.value.subcategory === HITL_SUBCATEGORY) {
 		return getHumanInTheLoopActions(nodeActions);
@@ -116,9 +121,14 @@ function onSelected(item: INodeCreateElement) {
 	}
 
 	if (item.type === 'node') {
-		const nodeActions = getFilteredActions(item);
+		let nodeActions = getFilteredActions(item, actions);
 
 		if (isCommunityPackageName(item.key) && !activeViewStack.value.communityNodeDetails) {
+			if (!nodeActions.length) {
+				const { communityNodesAndActions } = useNodeTypesStore();
+				nodeActions = getFilteredActions(item, communityNodesAndActions.actions);
+			}
+
 			pushCommunityNodeDetailsViewStack(item, getNodeIconSource(item.properties), nodeActions);
 			return;
 		}
@@ -194,7 +204,7 @@ function subcategoriesMapper(item: INodeCreateElement) {
 	if (item.type !== 'node') return item;
 
 	const hasTriggerGroup = item.properties.group.includes('trigger');
-	const nodeActions = getFilteredActions(item);
+	const nodeActions = getFilteredActions(item, actions);
 	const hasActions = nodeActions.length > 0;
 
 	if (hasTriggerGroup && hasActions) {
@@ -215,7 +225,7 @@ function baseSubcategoriesFilter(item: INodeCreateElement): boolean {
 	if (item.type !== 'node') return false;
 
 	const hasTriggerGroup = item.properties.group.includes('trigger');
-	const nodeActions = getFilteredActions(item);
+	const nodeActions = getFilteredActions(item, actions);
 	const hasActions = nodeActions.length > 0;
 
 	const isTriggerRootView = activeViewStack.value.rootView === TRIGGER_NODE_CREATOR_VIEW;
@@ -233,8 +243,8 @@ function arrowLeft() {
 function onKeySelect(activeItemId: string) {
 	const mergedItems = flattenCreateElements([
 		...(activeViewStack.value.items ?? []),
-		...(additionalSearchItems.value.items ?? []),
-		...(additionalSearchItems.value.communityItems ?? []),
+		...(globalSearchItemsDiff.value ?? []),
+		...(moreFromCommunity.value ?? []),
 	]);
 
 	const item = mergedItems.find((i) => i.uuid === activeItemId);
@@ -278,8 +288,8 @@ registerKeyHook('MainViewArrowLeft', {
 
 		<!-- Results in other categories -->
 		<CategorizedItemsRenderer
-			v-if="additionalSearchItems.items.length > 0"
-			:elements="additionalSearchItems.items"
+			v-if="globalSearchItemsDiff.length > 0"
+			:elements="globalSearchItemsDiff"
 			:category="i18n.baseText('nodeCreator.categoryNames.otherCategories')"
 			@selected="onSelected"
 			:expanded="true"
@@ -288,8 +298,8 @@ registerKeyHook('MainViewArrowLeft', {
 
 		<!-- Results in community nodes -->
 		<CategorizedItemsRenderer
-			v-if="additionalSearchItems.communityItems.length > 0"
-			:elements="additionalSearchItems.communityItems"
+			v-if="moreFromCommunity.length > 0"
+			:elements="moreFromCommunity"
 			category="More from the community"
 			@selected="onSelected"
 			:expanded="true"

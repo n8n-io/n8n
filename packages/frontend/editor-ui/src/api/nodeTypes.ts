@@ -35,10 +35,6 @@ export async function getCommunityNodeAttributes(
 	return await makeRestApiRequest(context, 'GET', `/community-node-types/${nodeName}`);
 }
 
-export async function getVettedNodes(context: IRestApiContext): Promise<string[]> {
-	return await makeRestApiRequest(context, 'GET', '/community-node-types/vetted');
-}
-
 export async function getNodeTranslationHeaders(
 	context: IRestApiContext,
 ): Promise<INodeTranslationHeaders | undefined> {

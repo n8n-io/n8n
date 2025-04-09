@@ -117,13 +117,6 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 				searchBase = filterOutAiNodes(searchBase);
 			}
 
-			searchBase = searchBase.filter((item) => {
-				if (useNodeTypesStore().vettedNodeTypes.includes(item.key)) {
-					return false;
-				}
-				return true;
-			});
-
 			const searchResults = extendItemsWithUUID(searchNodes(stack.search || '', searchBase));
 
 			const groupedNodes = groupIfAiNodes(searchResults, false) ?? searchResults;
@@ -219,23 +212,21 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		return filteredSections;
 	});
 
-	const additionalSearchItems = computed(() => {
-		const communityItems: INodeCreateElement[] = [];
-		const items: INodeCreateElement[] = [];
-		const { vettedNodeTypes, newInstalledNodeTypes } = useNodeTypesStore();
+	const moreFromCommunity = computed<INodeCreateElement[]>(() => {
+		const stack = getLastActiveStack();
+		if (!stack?.search || isAiSubcategoryView(stack)) return [];
 
-		for (const item of globalSearchItemsDiff.value) {
-			if (vettedNodeTypes.includes(item.key)) {
-				if (newInstalledNodeTypes.includes(item.key)) {
-					continue;
-				}
-				communityItems.push(item);
-			} else {
-				items.push(item);
-			}
-		}
+		const { communityNodesAndActions } = useNodeTypesStore();
 
-		return { items, communityItems };
+		const vettedNodes = communityNodesAndActions.mergedNodes.map((item) =>
+			transformNodeType(item),
+		) as NodeCreateElement[];
+
+		const searchResult: INodeCreateElement[] = extendItemsWithUUID(
+			searchNodes(stack.search || '', vettedNodes),
+		);
+
+		return searchResult;
 	});
 
 	const itemsBySubcategory = computed(() => subcategorizeItems(nodeCreatorStore.mergedNodes));
@@ -571,7 +562,8 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		viewStacks,
 		activeViewStack,
 		activeViewStackMode,
-		additionalSearchItems,
+		globalSearchItemsDiff,
+		moreFromCommunity,
 		isAiSubcategoryView,
 		gotoCompatibleConnectionView,
 		resetViewStacks,

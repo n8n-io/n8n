@@ -5,6 +5,8 @@ import { Logger } from 'n8n-core';
 import type { CommunityNodeAttributes, INodeTypeDescription } from 'n8n-workflow';
 import { COMMUNITY_NODE_TYPE_PREVIEW_TOKEN, ensureError } from 'n8n-workflow';
 
+import { CommunityPackagesService } from './community-packages.service';
+
 interface ResponseData {
 	data: Data[];
 	meta: Meta;
@@ -32,17 +34,18 @@ const UPDATE_INTERVAL = 8 * 60 * 60 * 1000;
 
 @Service()
 export class CommunityNodeTypesService {
-	private communityNodes: { [key: string]: CommunityNodeAttributes } = {};
-
-	private nodesDescriptions: INodeTypeDescription[] = [];
-
-	private vettedNodes: string[] = [];
+	private communityNodes: {
+		[key: string]: CommunityNodeAttributes & {
+			nodeDescription: INodeTypeDescription;
+		};
+	} = {};
 
 	private lastUpdateTimestamp = 0;
 
 	constructor(
 		private readonly logger: Logger,
 		private globalConfig: GlobalConfig,
+		private communityPackagesService: CommunityPackagesService,
 	) {}
 
 	private async strapiPaginatedRequest() {
@@ -96,10 +99,7 @@ export class CommunityNodeTypesService {
 		this.resetData();
 
 		for (const entry of data) {
-			const { nodeDescription, ...attributes } = entry.attributes;
-			this.communityNodes[entry.attributes.name] = attributes;
-			this.nodesDescriptions.push(nodeDescription);
-			this.vettedNodes.push(nodeDescription.name);
+			this.communityNodes[entry.attributes.name] = entry.attributes;
 		}
 
 		this.lastUpdateTimestamp = Date.now();
@@ -107,8 +107,6 @@ export class CommunityNodeTypesService {
 
 	private resetData() {
 		this.communityNodes = {};
-		this.nodesDescriptions = [];
-		this.vettedNodes = [];
 	}
 
 	private updateRequired() {
@@ -117,20 +115,32 @@ export class CommunityNodeTypesService {
 	}
 
 	async getDescriptions(): Promise<INodeTypeDescription[]> {
-		if (this.updateRequired() || !this.nodesDescriptions.length) {
-			await this.fetchNodeTypes();
-		}
+		const nodesDescriptions: INodeTypeDescription[] = [];
 
-		return this.nodesDescriptions;
+		try {
+			if (this.updateRequired() || !Object.keys(this.communityNodes).length) {
+				await this.fetchNodeTypes();
+			}
+
+			const installedPackages = (
+				(await this.communityPackagesService.getAllInstalledPackages()) ?? []
+			).map((p) => p.packageName);
+
+			for (const node of Object.values(this.communityNodes)) {
+				if (installedPackages.includes(node.name.split('.')[0])) continue;
+				nodesDescriptions.push(node.nodeDescription);
+			}
+		} catch (error) {}
+
+		return nodesDescriptions;
 	}
 
-	getVettedNodes(): string[] {
-		return this.vettedNodes;
-	}
-
-	getCommunityNodeAttributes(nodeName: string): CommunityNodeAttributes {
+	getCommunityNodeAttributes(nodeName: string): CommunityNodeAttributes | null {
 		const name = nodeName.replace(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN, '');
-		return this.communityNodes[name];
+		const node = this.communityNodes[name];
+		if (!node) return null;
+		const { nodeDescription, ...attributes } = node;
+		return attributes;
 	}
 
 	findVetted(packageName: string) {

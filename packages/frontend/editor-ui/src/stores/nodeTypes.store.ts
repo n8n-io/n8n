@@ -18,28 +18,31 @@ import type {
 	Workflow,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import { COMMUNITY_NODE_TYPE_PREVIEW_TOKEN, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useCredentialsStore } from './credentials.store';
-import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 import { useRootStore } from './root.store';
 import * as utils from '@/utils/credentialOnlyNodes';
 import { groupNodeTypesByNameAndType } from '@/utils/nodeTypes/nodeTypeTransforms';
 import { computed, ref } from 'vue';
+import { useActionsGenerator } from '../components/Node/NodeCreator/composables/useActionsGeneration';
 
 export type NodeTypesStore = ReturnType<typeof useNodeTypesStore>;
 
 export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	const nodeTypes = ref<NodeTypesByTypeNameAndVersion>({});
-	const vettedNodeTypes = ref<string[]>([]);
-	const newInstalledNodeTypes = ref<string[]>([]);
-	const communityNodePreviews = ref<INodeTypeDescription[]>([]);
+
+	const communityPreviews = ref<INodeTypeDescription[]>([]);
 
 	const rootStore = useRootStore();
 
 	// ---------------------------------------------------------------------------
 	// #region Computed
 	// ---------------------------------------------------------------------------
+
+	const communityNodesAndActions = computed(() => {
+		return useActionsGenerator().generateMergedNodesAndActions(communityPreviews.value, []);
+	});
 
 	const allNodeTypes = computed(() => {
 		return Object.values(nodeTypes.value).reduce<INodeTypeDescription[]>(
@@ -291,13 +294,10 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 			throw new Error('Could not fetch node types');
 		}
 
-		if (!communityNodePreviews.value.length) {
-			await fetchCommunityNodePreviews();
-		}
+		await fetchCommunityNodePreviews();
 
 		if (nodeTypes.length) {
-			const communityNodes = await filterOutInstalledNodes();
-			setNodeTypes(nodeTypes.concat(communityNodes));
+			setNodeTypes(nodeTypes);
 		}
 	};
 
@@ -344,22 +344,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	};
 
 	const fetchCommunityNodePreviews = async () => {
-		communityNodePreviews.value = await nodeTypesApi.getCommunityNodeTypes(
-			rootStore.restApiContext,
-		);
-		vettedNodeTypes.value = await nodeTypesApi.getVettedNodes(rootStore.restApiContext);
-	};
-
-	const filterOutInstalledNodes = async () => {
-		const communityNodesStore = useCommunityNodesStore();
-
-		await communityNodesStore.fetchInstalledPackages();
-
-		return communityNodePreviews.value.filter((previewType) => {
-			const name = previewType.name.split('.')[0].replace(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN, '');
-			const isInstalled = communityNodesStore.installedPackages[name];
-			return !isInstalled;
-		});
+		communityPreviews.value = await nodeTypesApi.getCommunityNodeTypes(rootStore.restApiContext);
 	};
 
 	const getCommunityNodeAttributes = async (nodeName: string) => {
@@ -383,8 +368,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		visibleNodeTypesByOutputConnectionTypeNames,
 		visibleNodeTypesByInputConnectionTypeNames,
 		isConfigurableNode,
-		vettedNodeTypes,
-		newInstalledNodeTypes,
+		communityNodesAndActions,
 		getResourceMapperFields,
 		getLocalResourceMapperFields,
 		getNodeParameterActionResult,

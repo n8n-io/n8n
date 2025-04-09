@@ -8,14 +8,9 @@ import { CommunityNodeTypesService } from '@/services/community-node-types.servi
 export class CommunityNodeTypesController {
 	constructor(private readonly communityNodeTypesService: CommunityNodeTypesService) {}
 
-	@Get('/vetted')
-	async getVettedNodes() {
-		return this.communityNodeTypesService.getVettedNodes();
-	}
-
 	@Get('/:name')
 	async getCommunityNodeAttributes(req: Request): Promise<CommunityNodeAttributes | null> {
-		return this.communityNodeTypesService.getCommunityNodeAttributes(req.params.name) ?? null;
+		return this.communityNodeTypesService.getCommunityNodeAttributes(req.params.name);
 	}
 
 	@Get('/')
