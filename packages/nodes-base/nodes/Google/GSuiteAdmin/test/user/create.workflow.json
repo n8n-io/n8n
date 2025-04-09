@@ -15,7 +15,33 @@
 				"password": "12345678",
 				"username": "new",
 				"domain": "example.com",
-				"additionalFields": {}
+				"additionalFields": {
+					"changePasswordAtNextLogin": true,
+					"phoneUi": {
+						"phoneValues": [
+							{
+								"value": "+1-202-555-0123"
+							}
+						]
+					},
+					"emailUi": {
+						"emailValues": [
+							{
+								"address": "test@mail.com"
+							}
+						]
+					},
+					"roles": ["groupsAdmin"],
+					"customFields": {
+						"fieldValues": [
+							{
+								"schemaName": "NewTest",
+								"fieldName": "test",
+								"value": "test"
+							}
+						]
+					}
+				}
 			},
 			"type": "n8n-nodes-base.gSuiteAdmin",
 			"typeVersion": 1,
