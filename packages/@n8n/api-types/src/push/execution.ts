@@ -1,4 +1,9 @@
-import type { ExecutionStatus, ITaskData, WorkflowExecuteMode } from 'n8n-workflow';
+import type {
+	ExecutionStatus,
+	ITaskData,
+	ITaskStartedData,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
 
 type ExecutionStarted = {
 	type: 'executionStarted';
@@ -43,6 +48,7 @@ type NodeExecuteBefore = {
 	data: {
 		executionId: string;
 		nodeName: string;
+		data: ITaskStartedData;
 	};
 };
 
