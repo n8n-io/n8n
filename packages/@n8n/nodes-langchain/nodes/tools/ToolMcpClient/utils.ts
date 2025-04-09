@@ -4,22 +4,18 @@ import { CompatibilityCallToolResultSchema } from '@modelcontextprotocol/sdk/typ
 import { Toolkit } from 'langchain/agents';
 import { DynamicStructuredTool, type DynamicStructuredToolInput } from 'langchain/tools';
 import get from 'lodash/get';
-import { createResultError, createResultOk, type IDataObject, type Result } from 'n8n-workflow';
+import {
+	createResultError,
+	createResultOk,
+	type IDataObject,
+	type IExecuteFunctions,
+	type Result,
+} from 'n8n-workflow';
 import { ZodError, type ZodTypeAny } from 'zod';
 
 import { convertJsonSchemaToZod } from '@utils/schemaParsing';
 
-import type { McpSseCredential, McpTool, McpToolIncludeMode } from './types';
-
-export function getHeaders(credential: McpSseCredential): HeadersInit {
-	if (credential.authEnabled) {
-		return {
-			Authorization: `Bearer ${credential.token}`,
-		};
-	}
-
-	return {};
-}
+import type { McpAuthenticationOption, McpTool, McpToolIncludeMode } from './types';
 
 export async function getAllTools(client: Client, cursor?: string): Promise<McpTool[]> {
 	const { tools, nextCursor } = await client.listTools({ cursor });
@@ -109,7 +105,7 @@ function safeCreateUrl(url: string, baseUrl?: string | URL): Result<URL, Error> 
 	}
 }
 
-function normalizeAndValidateBaseUrl(input: string): Result<URL, Error> {
+function normalizeAndValidateUrl(input: string): Result<URL, Error> {
 	const withProtocol = !/^https?:\/\//i.test(input) ? `https://${input}` : input;
 	const parsedUrl = safeCreateUrl(withProtocol);
 
@@ -124,22 +120,24 @@ type ConnectMcpClientError =
 	| { type: 'invalid_url'; error: Error }
 	| { type: 'connection'; error: Error };
 export async function connectMcpClient({
-	credential,
+	headers,
+	sseEndpoint,
 	name,
 	version,
-}: { credential: McpSseCredential; name: string; version: number }): Promise<
-	Result<Client, ConnectMcpClientError>
-> {
+}: {
+	sseEndpoint: string;
+	headers?: Record<string, string>;
+	name: string;
+	version: number;
+}): Promise<Result<Client, ConnectMcpClientError>> {
 	try {
-		const sseEndpoint = normalizeAndValidateBaseUrl(credential.sseEndpoint);
+		const endpoint = normalizeAndValidateUrl(sseEndpoint);
 
-		if (!sseEndpoint.ok) {
-			return createResultError({ type: 'invalid_url', error: sseEndpoint.error });
+		if (!endpoint.ok) {
+			return createResultError({ type: 'invalid_url', error: endpoint.error });
 		}
 
-		const headers = getHeaders(credential);
-
-		const transport = new SSEClientTransport(sseEndpoint.result, {
+		const transport = new SSEClientTransport(endpoint.result, {
 			// @ts-expect-error eventSourceInit type is not complete
 			eventSourceInit: { headers },
 			requestInit: { headers },
@@ -165,4 +163,25 @@ export function getToolCallErrorDescription(error: unknown) {
 	}
 
 	return get(error, 'message');
+}
+
+export async function getAuthHeaders(
+	ctx: Pick<IExecuteFunctions, 'getCredentials'>,
+	authentication: McpAuthenticationOption,
+): Promise<{ headers?: Record<string, string> }> {
+	switch (authentication) {
+		case 'header': {
+			const header = await ctx
+				.getCredentials<{ name: string; value: string }>('httpHeaderAuth')
+				.catch(() => null);
+
+			if (!header) return {};
+
+			return { headers: { [header.name]: header.value } };
+		}
+		case 'none':
+		default: {
+			return {};
+		}
+	}
 }

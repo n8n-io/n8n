@@ -10,13 +10,13 @@ import {
 import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
-import { testMcpSseCredential } from './credentialTest';
 import { getTools } from './loadOptions';
-import type { McpSseCredential, McpToolIncludeMode } from './types';
+import type { McpAuthenticationOption, McpToolIncludeMode } from './types';
 import {
 	connectMcpClient,
 	createCallTool,
 	getAllTools,
+	getAuthHeaders,
 	getSelectedTools,
 	getToolCallErrorDescription,
 	McpToolkit,
@@ -53,9 +53,57 @@ export class ToolMcpClient implements INodeType {
 		},
 		inputs: [],
 		outputs: [{ type: NodeConnectionTypes.AiTool, displayName: 'Tools' }],
-		credentials: [{ name: 'mcpSseApi', testedBy: 'testMcpSseCredential' }],
+		credentials: [
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
+				name: 'httpHeaderAuth',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['headerAuth'],
+					},
+				},
+			},
+		],
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
+			{
+				displayName: 'SSE Endpoint',
+				name: 'sseEndpoint',
+				type: 'string',
+				description: 'SSE Endpoint of your MCP server',
+				placeholder: 'e.g. https://my-mcp-server.ai/sse',
+				default: '',
+				required: true,
+			},
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Header Auth',
+						value: 'headerAuth',
+					},
+					{
+						name: 'None',
+						value: 'none',
+					},
+				],
+				default: 'none',
+				description: 'The way to authenticate with your SSE endpoint',
+			},
+			{
+				displayName: 'Credentials',
+				name: 'credentials',
+				type: 'credentials',
+				default: '',
+				displayOptions: {
+					show: {
+						authentication: ['headerAuth'],
+					},
+				},
+			},
 			{
 				displayName: 'Tools to Include',
 				name: 'include',
@@ -89,6 +137,7 @@ export class ToolMcpClient implements INodeType {
 					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getTools',
+					loadOptionsDependsOn: ['sseEndpoint'],
 				},
 				displayOptions: {
 					show: {
@@ -119,16 +168,19 @@ export class ToolMcpClient implements INodeType {
 		loadOptions: {
 			getTools,
 		},
-		credentialTest: {
-			testMcpSseCredential,
-		},
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const sseCredentials = await this.getCredentials<McpSseCredential>('mcpSseApi');
+		const authentication = this.getNodeParameter(
+			'authentication',
+			itemIndex,
+		) as McpAuthenticationOption;
+		const sseEndpoint = this.getNodeParameter('sseEndpoint', itemIndex) as string;
 		const node = this.getNode();
+		const { headers } = await getAuthHeaders(this, authentication);
 		const client = await connectMcpClient({
-			credential: sseCredentials,
+			sseEndpoint,
+			headers,
 			name: node.type,
 			version: node.typeVersion,
 		});

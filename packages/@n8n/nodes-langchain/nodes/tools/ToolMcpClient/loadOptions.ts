@@ -4,14 +4,19 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import type { McpSseCredential } from './types';
-import { connectMcpClient, getAllTools } from './utils';
+import type { McpAuthenticationOption } from './types';
+import { connectMcpClient, getAllTools, getAuthHeaders } from './utils';
 
 export async function getTools(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const sseCredentials = await this.getCredentials<McpSseCredential>('mcpSseApi');
+	const authentication = this.getNodeParameter('authentication') as McpAuthenticationOption;
+	const sseEndpoint = this.getNodeParameter('sseEndpoint') as string;
+	const node = this.getNode();
+	const { headers } = await getAuthHeaders(this, authentication);
 	const client = await connectMcpClient({
-		credential: sseCredentials,
-		version: this.getNode().typeVersion,
+		sseEndpoint,
+		headers,
+		name: node.type,
+		version: node.typeVersion,
 	});
 
 	if (!client.ok) {

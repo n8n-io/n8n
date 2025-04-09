@@ -30,7 +30,6 @@
       "dist/credentials/GooglePalmApi.credentials.js",
       "dist/credentials/GroqApi.credentials.js",
       "dist/credentials/HuggingFaceApi.credentials.js",
-      "dist/credentials/McpSseApi.credentials.js",
       "dist/credentials/MotorheadApi.credentials.js",
       "dist/credentials/MistralCloudApi.credentials.js",
       "dist/credentials/OllamaApi.credentials.js",
