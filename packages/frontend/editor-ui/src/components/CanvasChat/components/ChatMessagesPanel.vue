@@ -225,7 +225,7 @@ async function copySessionId() {
 			>
 				<template #beforeMessage="{ message }">
 					<MessageOptionTooltip
-						v-if="message.sender === 'bot' && !message.id.includes('preload')"
+						v-if="!isReadOnly && message.sender === 'bot' && !message.id.includes('preload')"
 						placement="right"
 						data-test-id="execution-id-tooltip"
 					>
@@ -234,7 +234,7 @@ async function copySessionId() {
 					</MessageOptionTooltip>
 
 					<MessageOptionAction
-						v-if="isTextMessage(message) && message.sender === 'user'"
+						v-if="!isReadOnly && isTextMessage(message) && message.sender === 'user'"
 						data-test-id="repost-message-button"
 						icon="redo"
 						:label="locale.baseText('chat.window.chat.chatMessageOptions.repostMessage')"
@@ -243,7 +243,7 @@ async function copySessionId() {
 					/>
 
 					<MessageOptionAction
-						v-if="isTextMessage(message) && message.sender === 'user'"
+						v-if="!isReadOnly && isTextMessage(message) && message.sender === 'user'"
 						data-test-id="reuse-message-button"
 						icon="copy"
 						:label="locale.baseText('chat.window.chat.chatMessageOptions.reuseMessage')"
@@ -254,7 +254,7 @@ async function copySessionId() {
 			</MessagesList>
 		</main>
 
-		<div v-if="isOpen && !isReadOnly" :class="$style.messagesInput">
+		<div v-if="isOpen" :class="$style.messagesInput">
 			<ChatInput
 				data-test-id="lm-chat-inputs"
 				:placeholder="inputPlaceholder"

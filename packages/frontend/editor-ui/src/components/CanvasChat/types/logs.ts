@@ -1,6 +1,6 @@
 import { type TreeNode } from '@/components/RunDataAi/utils';
 
-export type SelectedLogEntry =
+export type LogEntrySelection =
 	| { type: 'selected'; data: TreeNode }
 	| { type: 'initial' }
 	| { type: 'none' };

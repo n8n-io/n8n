@@ -19,21 +19,21 @@ import { type INodeUi } from '@/Interface';
 import { upperFirst } from 'lodash-es';
 import { useTelemetry } from '@/composables/useTelemetry';
 import ConsumedTokenCountText from '@/components/CanvasChat/future/components/ConsumedTokenCountText.vue';
-import { type SelectedLogEntry } from '@/components/CanvasChat/types/logs';
+import { type LogEntrySelection } from '@/components/CanvasChat/types/logs';
 import LogsOverviewRow from '@/components/CanvasChat/future/components/LogsOverviewRow.vue';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useRouter } from 'vue-router';
 import { IN_PROGRESS_EXECUTION_ID } from '@/constants';
 
-const { node, isOpen, isReadOnly, selected } = defineProps<{
+const { node, isOpen, isReadOnly, selection } = defineProps<{
 	isOpen: boolean;
 	isReadOnly: boolean;
 	node: INodeUi | null;
-	selected: SelectedLogEntry;
+	selection: LogEntrySelection;
 }>();
 
-const emit = defineEmits<{ clickHeader: []; select: [SelectedLogEntry] }>();
+const emit = defineEmits<{ clickHeader: []; select: [LogEntrySelection] }>();
 
 defineSlots<{ actions: {} }>();
 
@@ -92,9 +92,9 @@ function onClearExecutionData() {
 
 function handleClickNode(clicked: TreeNode) {
 	if (
-		selected.type === 'selected' &&
-		selected.data.node === clicked.node &&
-		selected.data.runIndex === clicked.runIndex
+		selection.type === 'selected' &&
+		selection.data.node === clicked.node &&
+		selection.data.runIndex === clicked.runIndex
 	) {
 		emit('select', { type: 'none' });
 		return;
@@ -134,7 +134,7 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 watch(
 	executionTree,
 	() => {
-		if (selected.type !== 'initial' || executionTree.value.length === 0) {
+		if (selection.type !== 'initial' || executionTree.value.length === 0) {
 			return;
 		}
 
@@ -236,11 +236,11 @@ watch(
 							:node="elTreeNode"
 							:is-read-only="isReadOnly"
 							:is-selected="
-								selected.type === 'selected' &&
-								data.node === selected.data.node &&
-								data.runIndex === selected.data.runIndex
+								selection.type === 'selected' &&
+								data.node === selection.data.node &&
+								data.runIndex === selection.data.runIndex
 							"
-							:is-compact="selected !== undefined"
+							:is-compact="selection.type === 'selected'"
 							:should-show-consumed-tokens="consumedTokens.totalTokens > 0"
 							@toggle-expanded="handleToggleExpanded"
 							@open-ndv="handleOpenNdv"
@@ -251,7 +251,7 @@ watch(
 				<N8nRadioButtons
 					size="medium"
 					:class="$style.switchViewButtons"
-					:model-value="selected ? 'details' : 'overview'"
+					:model-value="selection ? 'details' : 'overview'"
 					:options="switchViewOptions"
 					@update:model-value="handleSwitchView"
 				/>

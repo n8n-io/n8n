@@ -320,7 +320,6 @@ describe('CanvasChat', () => {
 
 				return {
 					sendMessage: vi.fn(),
-					extractResponseMessage: vi.fn(),
 					previousMessageIndex: ref(0),
 					isLoading: computed(() => false),
 				};
@@ -385,7 +384,6 @@ describe('CanvasChat', () => {
 		beforeEach(() => {
 			vi.spyOn(useChatMessaging, 'useChatMessaging').mockReturnValue({
 				sendMessage: vi.fn(),
-				extractResponseMessage: vi.fn(),
 				previousMessageIndex: ref(0),
 				isLoading: computed(() => false),
 			});
@@ -485,7 +483,6 @@ describe('CanvasChat', () => {
 
 				return {
 					sendMessage: sendMessageSpy,
-					extractResponseMessage: vi.fn(),
 					previousMessageIndex: ref(0),
 					isLoading: computed(() => false),
 				};

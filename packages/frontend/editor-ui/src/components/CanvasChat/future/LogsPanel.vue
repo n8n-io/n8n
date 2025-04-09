@@ -11,7 +11,7 @@ import LogsOverviewPanel from '@/components/CanvasChat/future/components/LogsOve
 import { useCanvasStore } from '@/stores/canvas.store';
 import ChatMessagesPanel from '@/components/CanvasChat/components/ChatMessagesPanel.vue';
 import LogsDetailsPanel from '@/components/CanvasChat/future/components/LogDetailsPanel.vue';
-import { LOGS_PANEL_STATE, type SelectedLogEntry } from '@/components/CanvasChat/types/logs';
+import { LOGS_PANEL_STATE, type LogEntrySelection } from '@/components/CanvasChat/types/logs';
 import LogsPanelActions from '@/components/CanvasChat/future/components/LogsPanelActions.vue';
 
 const { isReadOnly } = withDefaults(defineProps<{ isReadOnly?: boolean }>(), {
@@ -22,7 +22,7 @@ const workflowsStore = useWorkflowsStore();
 const canvasStore = useCanvasStore();
 const panelState = computed(() => workflowsStore.logsPanelState);
 const container = ref<HTMLElement>();
-const selectedLogEntry = ref<SelectedLogEntry>({ type: 'initial' });
+const logEntrySelection = ref<LogEntrySelection>({ type: 'initial' });
 const pipContainer = useTemplateRef('pipContainer');
 const pipContent = useTemplateRef('pipContent');
 const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
@@ -32,17 +32,17 @@ const { rootStyles, height, chatWidth, onWindowResize, onResizeDebounced, onResi
 	useResize(container);
 
 const { currentSessionId, messages, connectedNode, sendMessage, refreshSession, displayExecution } =
-	useChatState(ref(false), onWindowResize);
+	useChatState(isReadOnly, onWindowResize);
 
 const hasChat = computed(() =>
 	isReadOnly
-		? messages.value.length > 0 || previousChatMessages.value.length > 0
+		? messages.value.length > 0
 		: workflowsStore.workflowTriggerNodes.some((node) =>
 				[CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE].includes(node.type),
 			),
 );
 
-const isLogDetailsOpen = computed(() => selectedLogEntry.value.type === 'selected');
+const isLogDetailsOpen = computed(() => logEntrySelection.value.type === 'selected');
 
 const { canPopOut, isPoppedOut, pipWindow } = usePiPWindow({
 	initialHeight: 400,
@@ -81,8 +81,8 @@ function handleClickHeader() {
 	}
 }
 
-function handleSelectLogEntry(selected: SelectedLogEntry) {
-	selectedLogEntry.value = selected;
+function handleSelectLogEntry(selected: LogEntrySelection) {
+	logEntrySelection.value = selected;
 }
 
 function onPopOut() {
@@ -144,7 +144,7 @@ watch([panelState, height], ([state, h]) => {
 						:is-open="panelState !== LOGS_PANEL_STATE.CLOSED"
 						:node="connectedNode"
 						:is-read-only="isReadOnly"
-						:selected="selectedLogEntry"
+						:selection="logEntrySelection"
 						@click-header="handleClickHeader"
 						@select="handleSelectLogEntry"
 					>
@@ -153,7 +153,7 @@ watch([panelState, height], ([state, h]) => {
 						</template>
 					</LogsOverviewPanel>
 					<LogsDetailsPanel
-						v-if="selectedLogEntry.type === 'selected'"
+						v-if="logEntrySelection.type === 'selected'"
 						:class="$style.logDetails"
 						:is-open="panelState !== LOGS_PANEL_STATE.CLOSED"
 						@click-header="handleClickHeader"
