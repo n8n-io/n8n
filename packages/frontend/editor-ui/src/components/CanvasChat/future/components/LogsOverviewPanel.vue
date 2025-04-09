@@ -221,18 +221,19 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 }
 
 .scrollable {
-	padding: var(--spacing-2xs);
 	flex-grow: 1;
 	flex-shrink: 1;
 	overflow: auto;
 }
 
 .summary {
-	padding-block: var(--spacing-2xs);
+	margin-bottom: var(--spacing-4xs);
+	padding: var(--spacing-4xs) var(--spacing-2xs) 0 var(--spacing-2xs);
+	min-height: calc(30px + var(--spacing-s));
 }
 
 .tree {
-	margin-top: var(--spacing-2xs);
+	padding: 0 var(--spacing-2xs) var(--spacing-2xs) var(--spacing-2xs);
 
 	& :global(.el-icon) {
 		display: none;
@@ -245,5 +246,13 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 	right: 0;
 	top: 0;
 	margin: var(--spacing-2xs);
+	visibility: hidden;
+	opacity: 0;
+	transition: opacity 0.2s ease;
+
+	.content:hover & {
+		visibility: visible;
+		opacity: 1;
+	}
 }
 </style>

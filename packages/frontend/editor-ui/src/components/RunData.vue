@@ -118,7 +118,7 @@ type Props = {
 	runIndex: number;
 	tooMuchDataTitle: string;
 	executingMessage: string;
-	pushRef: string;
+	pushRef?: string;
 	paneType: NodePanelType;
 	noDataInBranchMessage: string;
 	node?: INodeUi | null;
@@ -134,6 +134,10 @@ type Props = {
 	isPaneActive?: boolean;
 	hidePagination?: boolean;
 	calloutMessage?: string;
+	disableRunIndexSelection?: boolean;
+	disableEdit?: boolean;
+	disablePin?: boolean;
+	compact?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -148,6 +152,10 @@ const props = withDefaults(defineProps<Props>(), {
 	isExecuting: false,
 	hidePagination: false,
 	calloutMessage: undefined,
+	disableRunIndexSelection: false,
+	disableEdit: false,
+	disablePin: false,
+	compact: false,
 });
 const emit = defineEmits<{
 	search: [search: string];
@@ -517,6 +525,9 @@ const parentNodePinnedData = computed(() => {
 });
 
 const showPinButton = computed(() => {
+	if (props.disablePin) {
+		return false;
+	}
 	if (!rawInputData.value.length && !pinnedData.hasData.value) {
 		return false;
 	}
@@ -1310,7 +1321,10 @@ defineExpose({ enterEditMode });
 </script>
 
 <template>
-	<div :class="['run-data', $style.container]" @mouseover="activatePane">
+	<div
+		:class="['run-data', $style.container, props.compact ? $style.compact : '']"
+		@mouseover="activatePane"
+	>
 		<N8nCallout
 			v-if="
 				!isPaneTypeInput &&
@@ -1383,6 +1397,7 @@ defineExpose({ enterEditMode });
 						hasPreviewSchema ||
 						(hasNodeRun && (inputData.length || binaryData.length || search) && !editMode.enabled)
 					"
+					:class="$style.displayModeSelect"
 					:model-value="displayMode"
 					:options="displayModes"
 					data-test-id="ndv-run-data-display-mode"
@@ -1390,7 +1405,7 @@ defineExpose({ enterEditMode });
 				/>
 
 				<N8nIconButton
-					v-if="canPinData && !isReadOnlyRoute && !readOnlyEnv"
+					v-if="!props.disableEdit && canPinData && !isReadOnlyRoute && !readOnlyEnv"
 					v-show="!editMode.enabled"
 					:title="i18n.baseText('runData.editOutput')"
 					:circle="false"
@@ -1435,7 +1450,7 @@ defineExpose({ enterEditMode });
 		</div>
 
 		<div
-			v-if="maxRunIndex > 0 && !displaysMultipleNodes"
+			v-if="maxRunIndex > 0 && !displaysMultipleNodes && !props.disableRunIndexSelection"
 			v-show="!editMode.enabled"
 			:class="$style.runSelector"
 		>
@@ -1974,7 +1989,6 @@ defineExpose({ enterEditMode });
 	position: relative;
 	width: 100%;
 	height: 100%;
-	background-color: var(--color-run-data-background);
 	display: flex;
 	flex-direction: column;
 }
@@ -1997,6 +2011,11 @@ defineExpose({ enterEditMode });
 	overflow-y: hidden;
 	min-height: calc(30px + var(--spacing-s));
 	scrollbar-width: thin;
+
+	.compact & {
+		margin-bottom: var(--spacing-4xs);
+		padding: var(--spacing-4xs) var(--spacing-s) 0 var(--spacing-s);
+	}
 
 	> *:first-child {
 		flex-grow: 1;
@@ -2025,6 +2044,10 @@ defineExpose({ enterEditMode });
 	line-height: var(--font-line-height-xloose);
 	word-break: normal;
 	height: 100%;
+
+	.compact & {
+		padding: 0 var(--spacing-2xs) var(--spacing-2xs) var(--spacing-2xs);
+	}
 }
 
 .inlineError {
@@ -2263,6 +2286,23 @@ defineExpose({ enterEditMode });
 
 .schema {
 	padding: 0 var(--spacing-s);
+}
+
+.displayModeSelect {
+	.compact & {
+		opacity: 0;
+		visibility: hidden;
+		position: absolute;
+		top: 0;
+		right: 0;
+		margin: var(--spacing-2xs);
+		transition: opacity 0.2s ease;
+	}
+
+	.compact:hover & {
+		opacity: 1;
+		visibility: visible;
+	}
 }
 </style>
 

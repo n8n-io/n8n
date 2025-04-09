@@ -254,6 +254,7 @@ function isLastChild(level: number) {
 }
 
 .name {
+	flex-basis: 0;
 	flex-grow: 1;
 	padding-inline-start: 0;
 }
@@ -266,6 +267,10 @@ function isLastChild(level: number) {
 	.errorIcon {
 		margin-right: var(--spacing-4xs);
 		vertical-align: text-bottom;
+	}
+
+	.compact & {
+		flex-shrink: 1;
 	}
 
 	.compact:hover & {
@@ -292,6 +297,10 @@ function isLastChild(level: number) {
 	flex-shrink: 0;
 	width: 10%;
 	text-align: right;
+
+	.compact {
+		flex-shrink: 1;
+	}
 
 	.compact:hover & {
 		width: auto;
