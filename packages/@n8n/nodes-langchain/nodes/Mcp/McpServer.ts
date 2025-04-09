@@ -128,20 +128,17 @@ export class McpServer {
 
 		server.setRequestHandler(CallToolRequestSchema, async (request, extra: RequestHandlerExtra) => {
 			if (!request.params?.name || !request.params?.arguments) {
-				// eslint-disable-next-line n8n-local-rules/no-plain-errors
-				throw new Error('Require a name and arguments for the tool call');
+				throw new OperationalError('Require a name and arguments for the tool call');
 			}
 			if (!extra.sessionId) {
-				// eslint-disable-next-line n8n-local-rules/no-plain-errors
-				throw new Error('Require a sessionId for the tool call');
+				throw new OperationalError('Require a sessionId for the tool call');
 			}
 
 			const requestedTool: Tool | undefined = this.tools[extra.sessionId].find(
 				(tool) => tool.name === request.params.name,
 			);
 			if (!requestedTool) {
-				// eslint-disable-next-line n8n-local-rules/no-plain-errors
-				throw new Error('Tool not found');
+				throw new OperationalError('Tool not found');
 			}
 
 			try {
