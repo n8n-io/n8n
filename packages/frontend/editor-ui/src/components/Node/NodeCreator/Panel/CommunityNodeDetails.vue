@@ -11,15 +11,9 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 
 import { getNodeIconSource } from '@/utils/nodeIcon';
 
-import { removePreviewToken } from '../utils';
+import { prepareCommunityNodeDetailsViewStack, removePreviewToken } from '../utils';
 
-const {
-	activeViewStack,
-	pushViewStack,
-	popViewStack,
-	getAllNodeCreateElements,
-	pushCommunityNodeDetailsViewStack,
-} = useViewStacks();
+const { activeViewStack, pushViewStack, popViewStack, getAllNodeCreateElements } = useViewStacks();
 
 const { communityNodeDetails } = activeViewStack;
 
@@ -60,14 +54,16 @@ const onInstallClick = async () => {
 
 				popViewStack();
 
-				pushCommunityNodeDetailsViewStack(
+				const viewStack = prepareCommunityNodeDetailsViewStack(
 					installedNode,
 					getNodeIconSource(installedNode.properties),
+					activeViewStack.rootView,
 					nodeActions,
-					{
-						transitionDirection: 'none',
-					},
 				);
+
+				pushViewStack(viewStack, {
+					transitionDirection: 'none',
+				});
 			} else {
 				const viewStack = { ...activeViewStack };
 				viewStack.communityNodeDetails!.installed = true;

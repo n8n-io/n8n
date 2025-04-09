@@ -23,11 +23,10 @@ import difference from 'lodash-es/difference';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
 import {
+	extendItemsWithUUID,
 	flattenCreateElements,
 	groupItemsInSections,
 	isAINode,
-	isNodePreviewKey,
-	removePreviewToken,
 	searchNodes,
 	sortNodeCreateElements,
 	subcategorizeItems,
@@ -45,21 +44,20 @@ import type { NodeConnectionType, INodeInputFilter } from 'n8n-workflow';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useSettingsStore } from '@/stores/settings.store';
 
-type CommunityNodeDetails = {
-	title: string;
-	packageName: string;
+export type CommunityNodeDetails = {
 	key: string;
+	title: string;
 	description: string;
+	packageName: string;
 	installed: boolean;
 	nodeIcon?: NodeIconSource;
-	iconUrl?: string;
 };
 
 import { useUIStore } from '@/stores/ui.store';
 import { type NodeIconSource } from '@/utils/nodeIcon';
 import { getThemedValue } from '@/utils/nodeTypesUtils';
 
-interface ViewStack {
+export interface ViewStack {
 	uuid?: string;
 	title?: string;
 	subtitle?: string;
@@ -212,23 +210,6 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		});
 
 		return filteredSections;
-	});
-
-	const moreFromCommunity = computed<INodeCreateElement[]>(() => {
-		const stack = getLastActiveStack();
-		if (!stack?.search || isAiSubcategoryView(stack)) return [];
-
-		const { communityNodesAndActions } = useNodeTypesStore();
-
-		const vettedNodes = communityNodesAndActions.mergedNodes.map((item) =>
-			transformNodeType(item),
-		) as NodeCreateElement[];
-
-		const searchResult: INodeCreateElement[] = extendItemsWithUUID(
-			searchNodes(stack.search || '', vettedNodes),
-		);
-
-		return searchResult;
 	});
 
 	const itemsBySubcategory = computed(() => subcategorizeItems(nodeCreatorStore.mergedNodes));
@@ -452,13 +433,6 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		updateCurrentViewStack({ baselineItems: stackItems });
 	}
 
-	function extendItemsWithUUID(items: INodeCreateElement[]) {
-		return items.map((item) => ({
-			...item,
-			uuid: `${item.key}-${uuid()}`,
-		}));
-	}
-
 	function pushViewStack(
 		stack: ViewStack,
 		options: { resetStacks?: boolean; transitionDirection?: 'in' | 'out' | 'none' } = {},
@@ -507,71 +481,16 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		viewStacks.value = [];
 	}
 
-	function pushCommunityNodeDetailsViewStack(
-		item: NodeCreateElement,
-		nodeIcon: NodeIconSource | undefined,
-		nodeActions: ActionTypeDescription[] = [],
-		options?: {
-			resetStacks?: boolean;
-			transitionDirection?: 'in' | 'out' | 'none';
-		},
-	) {
-		const installed = !isNodePreviewKey(item.key);
-		const packageName = removePreviewToken(item.key.split('.')[0]);
-
-		const communityNodeDetails: CommunityNodeDetails = {
-			title: item.properties.displayName,
-			description: item.properties.description,
-			key: item.key,
-			nodeIcon,
-			installed,
-			packageName,
-		};
-
-		if (nodeActions.length) {
-			const transformedActions = nodeActions?.map((a) =>
-				transformNodeType(a, item.properties.displayName, 'action'),
-			);
-			pushViewStack(
-				{
-					subcategory: item.properties.displayName,
-					title: 'Community node details',
-					rootView: activeViewStack.value.rootView,
-					hasSearch: false,
-					mode: 'actions',
-					items: transformedActions,
-					communityNodeDetails,
-				},
-				options,
-			);
-		} else {
-			pushViewStack(
-				{
-					subcategory: item.properties.displayName,
-					title: 'Community node details',
-					rootView: activeViewStack.value.rootView,
-					hasSearch: false,
-					items: [item],
-					mode: 'community-node',
-					communityNodeDetails,
-				},
-				options,
-			);
-		}
-	}
-
 	return {
 		viewStacks,
 		activeViewStack,
 		activeViewStackMode,
 		globalSearchItemsDiff,
-		moreFromCommunity,
 		isAiSubcategoryView,
 		gotoCompatibleConnectionView,
 		resetViewStacks,
 		updateCurrentViewStack,
 		pushViewStack,
-		pushCommunityNodeDetailsViewStack,
 		popViewStack,
 		getAllNodeCreateElements,
 	};

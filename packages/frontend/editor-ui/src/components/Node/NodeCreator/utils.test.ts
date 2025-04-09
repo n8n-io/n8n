@@ -1,10 +1,19 @@
-import type { SectionCreateElement } from '@/Interface';
-import { formatTriggerActionName, groupItemsInSections, sortNodeCreateElements } from './utils';
+import type { SectionCreateElement, SimplifiedNodeType } from '@/Interface';
+import {
+	formatTriggerActionName,
+	getMoreFromCommunity,
+	groupItemsInSections,
+	sortNodeCreateElements,
+} from './utils';
 import {
 	mockActionCreateElement,
 	mockNodeCreateElement,
 	mockSectionCreateElement,
 } from './__tests__/utils';
+
+vi.mock('@/stores/settings.store', () => ({
+	useSettingsStore: vi.fn(() => ({ settings: {}, isAskAiEnabled: true })),
+}));
 
 describe('NodeCreator - utils', () => {
 	describe('groupItemsInSections', () => {
@@ -75,6 +84,46 @@ describe('NodeCreator - utils', () => {
 			['attendee.checked_in', 'attendee checked in'],
 		])('Action name %i should become as %i', (actionName, expected) => {
 			expect(formatTriggerActionName(actionName)).toEqual(expected);
+		});
+	});
+
+	describe('getMoreFromCommunity', () => {
+		const mergedNodes: SimplifiedNodeType[] = [
+			{
+				displayName: 'Sample Node',
+				defaults: {
+					name: 'SampleNode',
+				},
+				description: 'Sample description',
+				name: 'n8n-nodes-preview-test.SampleNode',
+				group: ['transform'],
+				outputs: ['main'],
+			},
+			{
+				displayName: 'Other Node',
+				defaults: {
+					name: 'OtherNode',
+				},
+				description: 'Other node description',
+				name: 'n8n-nodes-preview-test.OtherNode',
+				group: ['transform'],
+				outputs: ['main'],
+			},
+		];
+
+		test('should return only one node', () => {
+			const result = getMoreFromCommunity(mergedNodes, 'sample', false);
+
+			expect(result.length).toEqual(1);
+			expect(result[0].key).toEqual('n8n-nodes-preview-test.SampleNode');
+		});
+
+		test('should return two nodes', () => {
+			const result = getMoreFromCommunity(mergedNodes, 'node', false);
+
+			expect(result.length).toEqual(2);
+			expect(result[1].key).toEqual('n8n-nodes-preview-test.SampleNode');
+			expect(result[0].key).toEqual('n8n-nodes-preview-test.OtherNode');
 		});
 	});
 });

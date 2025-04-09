@@ -21,7 +21,12 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
 import { TriggerView, RegularView, AIView, AINodesView } from '../viewsData';
-import { flattenCreateElements, transformNodeType } from '../utils';
+import {
+	flattenCreateElements,
+	getMoreFromCommunity,
+	prepareCommunityNodeDetailsViewStack,
+	transformNodeType,
+} from '../utils';
 import { useViewStacks } from '../composables/useViewStacks';
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
@@ -48,7 +53,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 
 const { mergedNodes, actions, onSubcategorySelected } = useNodeCreatorStore();
-const { pushViewStack, popViewStack, pushCommunityNodeDetailsViewStack } = useViewStacks();
+const { pushViewStack, popViewStack, isAiSubcategoryView } = useViewStacks();
 const { setAddedNodeActionParameters } = useActions();
 
 const { registerKeyHook } = useKeyboardNavigation();
@@ -57,7 +62,15 @@ const activeViewStack = computed(() => useViewStacks().activeViewStack);
 
 const globalSearchItemsDiff = computed(() => useViewStacks().globalSearchItemsDiff);
 
-const moreFromCommunity = computed(() => useViewStacks().moreFromCommunity);
+const communityNodesAndActions = computed(() => useNodeTypesStore().communityNodesAndActions);
+
+const moreFromCommunity = computed(() => {
+	return getMoreFromCommunity(
+		communityNodesAndActions.value.mergedNodes,
+		activeViewStack.value.search ?? '',
+		isAiSubcategoryView(activeViewStack.value),
+	);
+});
 
 const isSearchResultEmpty = computed(() => {
 	return (
@@ -129,7 +142,14 @@ function onSelected(item: INodeCreateElement) {
 				nodeActions = getFilteredActions(item, communityNodesAndActions.actions);
 			}
 
-			pushCommunityNodeDetailsViewStack(item, getNodeIconSource(item.properties), nodeActions);
+			const viewStack = prepareCommunityNodeDetailsViewStack(
+				item,
+				getNodeIconSource(item.properties),
+				activeViewStack.value.rootView,
+				nodeActions,
+			);
+
+			pushViewStack(viewStack);
 			return;
 		}
 
