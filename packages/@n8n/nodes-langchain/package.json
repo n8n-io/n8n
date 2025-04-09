@@ -105,7 +105,7 @@
       "dist/nodes/tools/ToolCalculator/ToolCalculator.node.js",
       "dist/nodes/tools/ToolCode/ToolCode.node.js",
       "dist/nodes/tools/ToolHttpRequest/ToolHttpRequest.node.js",
-      "dist/nodes/tools/ToolMcpClient/ToolMcpClient.node.js",
+      "dist/nodes/Mcp/ToolMcpClient/ToolMcpClient.node.js",
       "dist/nodes/tools/ToolSerpApi/ToolSerpApi.node.js",
       "dist/nodes/tools/ToolThink/ToolThink.node.js",
       "dist/nodes/tools/ToolVectorStore/ToolVectorStore.node.js",
