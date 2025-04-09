@@ -11,7 +11,7 @@
 		{
 			"parameters": {
 				"resource": "userPool",
-				"userPoolId": {
+				"userPool": {
 					"__rl": true,
 					"value": "eu-central-1_W3WwpiBXV",
 					"mode": "list",

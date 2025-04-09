@@ -12,7 +12,7 @@
 			"parameters": {
 				"resource": "group",
 				"operation": "update",
-				"userPoolId": {
+				"userPool": {
 					"__rl": true,
 					"value": "eu-central-1_KkXQgdCJv",
 					"mode": "list",

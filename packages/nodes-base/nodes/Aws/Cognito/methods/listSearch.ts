@@ -26,7 +26,7 @@ export async function searchGroups(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const userPoolId = this.getNodeParameter('userPoolId', undefined, {
+	const userPoolId = this.getNodeParameter('userPool', undefined, {
 		extractValue: true,
 	}) as string;
 	if (!userPoolId) {
@@ -57,10 +57,10 @@ export async function searchGroupsForUser(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const userName = this.getNodeParameter('userName', undefined, {
+	const userName = this.getNodeParameter('user', undefined, {
 		extractValue: true,
 	}) as string;
-	const userPoolId = this.getNodeParameter('userPoolId', undefined, {
+	const userPoolId = this.getNodeParameter('userPool', undefined, {
 		extractValue: true,
 	}) as string;
 
@@ -104,7 +104,6 @@ export async function searchGroupsForUser(
 
 		return { results: resultGroups, paginationToken: paginationToken ?? undefined };
 	} catch (error) {
-		console.error('Error fetching groups:', error);
 		return { results: [], paginationToken: undefined };
 	}
 }
@@ -114,7 +113,7 @@ export async function searchUsers(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const userPoolId = (this.getNodeParameter('userPoolId') as IDataObject).value as string;
+	const userPoolId = (this.getNodeParameter('userPool') as IDataObject).value as string;
 
 	if (!userPoolId) {
 		throw new NodeOperationError(this.getNode(), 'User Pool ID is required to search users');

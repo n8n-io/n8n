@@ -1,5 +1,4 @@
 import type {
-	IDataObject,
 	JsonObject,
 	IExecuteSingleFunctions,
 	IN8nHttpFullResponse,
@@ -7,133 +6,112 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
+import { ERROR_MESSAGES } from './constants';
+import type { AwsError, ErrorMessage } from './interfaces';
+
+function mapErrorToResponse(
+	errorType: string,
+	resource: string,
+	operation: string,
+	inputValue?: string,
+): ErrorMessage | undefined {
+	const op = operation as keyof typeof ERROR_MESSAGES.ResourceNotFound.User;
+	const nameLabel = resource.charAt(0).toUpperCase() + resource.slice(1);
+	const valuePart = inputValue ? ` "${inputValue}"` : '';
+
+	const notFoundMessage = (base: ErrorMessage, suffix: string): ErrorMessage => ({
+		...base,
+		message: `${nameLabel}${valuePart} ${suffix}`,
+	});
+
+	const isNotFound = [
+		'UserNotFoundException',
+		'ResourceNotFoundException',
+		'NoSuchEntity',
+	].includes(errorType);
+
+	const isExists = [
+		'UsernameExistsException',
+		'EntityAlreadyExists',
+		'GroupExistsException',
+	].includes(errorType);
+
+	if (isNotFound) {
+		if (resource === 'user') {
+			if (operation === 'addToGroup') {
+				return notFoundMessage(ERROR_MESSAGES.UserGroup.add, 'not found while adding to group.');
+			}
+			if (operation === 'removeFromGroup') {
+				return notFoundMessage(
+					ERROR_MESSAGES.UserGroup.remove,
+					'not found while removing from group.',
+				);
+			}
+			return notFoundMessage(ERROR_MESSAGES.ResourceNotFound.User[op], 'not found.');
+		}
+
+		if (resource === 'group') {
+			return notFoundMessage(ERROR_MESSAGES.ResourceNotFound.Group[op], 'not found.');
+		}
+	}
+
+	if (isExists) {
+		const existsMessage = `${nameLabel}${valuePart} already exists.`;
+
+		if (resource === 'user') {
+			return { ...ERROR_MESSAGES.EntityAlreadyExists.User, message: existsMessage };
+		}
+		if (resource === 'group') {
+			return { ...ERROR_MESSAGES.EntityAlreadyExists.Group, message: existsMessage };
+		}
+	}
+
+	return undefined;
+}
+
 export async function handleError(
 	this: IExecuteSingleFunctions,
 	data: INodeExecutionData[],
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
-	if (String(response.statusCode).startsWith('4') || String(response.statusCode).startsWith('5')) {
-		const resource = this.getNodeParameter('resource') as string;
-		const operation = this.getNodeParameter('operation') as string;
-		const responseBody = response.body as IDataObject;
-		const errorType = (responseBody.__type ?? response.headers?.['x-amzn-errortype']) as
-			| string
-			| undefined;
-		const errorMessage = (responseBody.message ?? response.headers?.['x-amzn-errormessage']) as
-			| string
-			| undefined;
+	const statusCode = String(response.statusCode);
 
-		const throwError = (message: string, description: string) => {
-			throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-				message,
-				description,
-			});
-		};
+	if (!statusCode.startsWith('4') && !statusCode.startsWith('5')) {
+		return data;
+	}
 
-		const errorMappings: Record<
-			string,
-			Record<
-				string,
-				{
-					condition: (errorType: string, errorMessage: string) => boolean;
-					message: string;
-					description: string;
-				}
-			>
-		> = {
-			group: {
-				delete: {
-					condition: (errType) =>
-						errType === 'ResourceNotFoundException' || errType === 'NoSuchEntity',
-					message: 'The group you are deleting could not be found.',
-					description: 'Adjust the "Group" parameter setting to delete the group correctly.',
-				},
-				get: {
-					condition: (errType) =>
-						errType === 'ResourceNotFoundException' || errType === 'NoSuchEntity',
-					message: 'The group you are requesting could not be found.',
-					description: 'Adjust the "Group" parameter setting to retrieve the group correctly.',
-				},
-				update: {
-					condition: (errType) =>
-						errType === 'ResourceNotFoundException' || errType === 'NoSuchEntity',
-					message: 'The group you are updating could not be found.',
-					description: 'Adjust the "Group" parameter setting to update the group correctly.',
-				},
-				create: {
-					condition: (errType) =>
-						errType === 'EntityAlreadyExists' || errType === 'GroupExistsException',
-					message: 'The group you are trying to create already exists.',
-					description: 'Adjust the "Group Name" parameter setting to create the group correctly.',
-				},
-			},
-			user: {
-				create: {
-					condition: (errType, errMsg) =>
-						errType === 'UserNotFoundException' ||
-						(errType === 'UsernameExistsException' && errMsg === 'User account already exists'),
-					message: 'The user you are trying to create already exists.',
-					description: 'Adjust the "User Name" parameter setting to create the user correctly.',
-				},
-				addToGroup: {
-					condition: (errType, errMsg) => {
-						const user = (this.getNodeParameter('user') as IDataObject).value as string;
-						const group = (this.getNodeParameter('group') as IDataObject).value as string;
-						return (
-							(errType === 'UserNotFoundException' &&
-								typeof errMsg === 'string' &&
-								errMsg.includes(user)) ||
-							(errType === 'ResourceNotFoundException' &&
-								typeof errMsg === 'string' &&
-								errMsg.includes(group))
-						);
-					},
-					message: 'The user/group you are trying to add could not be found.',
-					description:
-						'Adjust the "User" and "Group" parameters to add the user to the group correctly.',
-				},
-				delete: {
-					condition: (errType) => errType === 'UserNotFoundException',
-					message: 'The user you are requesting could not be found.',
-					description: 'Adjust the "User" parameter setting to delete the user correctly.',
-				},
-				get: {
-					condition: (errType) => errType === 'UserNotFoundException',
-					message: 'The user you are requesting could not be found.',
-					description: 'Adjust the "User" parameter setting to retrieve the user correctly.',
-				},
-				removeFromGroup: {
-					condition: (errType, errMsg) => {
-						const user = (this.getNodeParameter('user') as IDataObject).value as string;
-						const group = (this.getNodeParameter('group') as IDataObject).value as string;
-						return (
-							(errType === 'UserNotFoundException' &&
-								typeof errMsg === 'string' &&
-								errMsg.includes(user)) ||
-							(errType === 'ResourceNotFoundException' &&
-								typeof errMsg === 'string' &&
-								errMsg.includes(group))
-						);
-					},
-					message: 'The user/group you are trying to remove could not be found.',
-					description:
-						'Adjust the "User" and "Group" parameters to remove the user from the group correctly.',
-				},
-				update: {
-					condition: (errType) => errType === 'UserNotFoundException',
-					message: 'The user you are updating could not be found.',
-					description: 'Adjust the "User" parameter setting to update the user correctly.',
-				},
-			},
-		};
+	const resource = this.getNodeParameter('resource') as string;
+	const operation = this.getNodeParameter('operation') as string;
 
-		const resourceMapping = errorMappings[resource]?.[operation];
-		if (resourceMapping && resourceMapping.condition(errorType ?? '', errorMessage ?? '')) {
-			throwError(resourceMapping.message, resourceMapping.description);
+	let inputValue: string | undefined;
+
+	try {
+		inputValue = this.getNodeParameter(resource, 0, { extractValue: true }) as string;
+	} catch {
+		if (resource === 'user') {
+			inputValue = this.getNodeParameter('newUserName') as string;
+		} else if (resource === 'group') {
+			inputValue = this.getNodeParameter('newGroupName') as string;
 		}
+	}
 
+	const responseBody = response.body as AwsError;
+	const errorType = (responseBody.__type ?? response.headers?.['x-amzn-errortype']) as string;
+	const errorMessage = (responseBody.message ??
+		response.headers?.['x-amzn-errormessage']) as string;
+
+	if (!errorType) {
 		throw new NodeApiError(this.getNode(), response as unknown as JsonObject);
 	}
 
-	return data;
+	const specificError = mapErrorToResponse(errorType, resource, operation, inputValue);
+
+	if (specificError) {
+		throw new NodeApiError(this.getNode(), response as unknown as JsonObject, specificError);
+	} else {
+		throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+			message: errorType,
+			description: errorMessage,
+		});
+	}
 }

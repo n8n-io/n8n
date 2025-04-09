@@ -11,7 +11,7 @@
 		{
 			"parameters": {
 				"operation": "create",
-				"userPoolId": {
+				"userPool": {
 					"__rl": true,
 					"value": "eu-central-1_W3WwpiBXV",
 					"mode": "list",
@@ -66,15 +66,5 @@
 				]
 			]
 		}
-	},
-	"active": false,
-	"settings": {
-		"executionOrder": "v1"
-	},
-	"versionId": "673c2e88-8c3a-416b-9c6a-0746c39b6d31",
-	"meta": {
-		"instanceId": "26f38eb23ad84214537831cfef4032299ffac994ff18d5cb72e82d31ac4ceac4"
-	},
-	"id": "GLTHCGg64D86o8jf",
-	"tags": []
+	}
 }

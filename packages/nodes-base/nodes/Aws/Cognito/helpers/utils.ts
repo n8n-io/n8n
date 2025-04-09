@@ -72,7 +72,7 @@ export async function preSendUserFields(
 	_paginationToken?: string,
 ): Promise<IHttpRequestOptions> {
 	const operation = this.getNodeParameter('operation') as string;
-	const userPoolId = this.getNodeParameter('userPoolId', undefined, {
+	const userPoolId = this.getNodeParameter('userPool', undefined, {
 		extractValue: true,
 	}) as string;
 
@@ -107,7 +107,7 @@ export async function preSendUserFields(
 	};
 
 	const getUserNameFromExistingUsers = async (): Promise<string | undefined> => {
-		const userName = this.getNodeParameter('userName', undefined, {
+		const userName = this.getNodeParameter('user', undefined, {
 			extractValue: true,
 		}) as string;
 
@@ -136,7 +136,7 @@ export async function processGroupResponse(
 	_items: INodeExecutionData[],
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
-	const userPoolId = this.getNodeParameter('userPoolId', undefined, {
+	const userPoolId = this.getNodeParameter('userPool', undefined, {
 		extractValue: true,
 	}) as string;
 	const include = this.getNodeParameter('includeUsers') as boolean;
@@ -157,7 +157,7 @@ export async function processGroupsResponse(
 	items: INodeExecutionData[],
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
-	const userPoolId = this.getNodeParameter('userPoolId', undefined, {
+	const userPoolId = this.getNodeParameter('userPool', undefined, {
 		extractValue: true,
 	}) as string;
 	const include = this.getNodeParameter('includeUsers') as boolean;

@@ -11,13 +11,13 @@
 		{
 			"parameters": {
 				"operation": "update",
-				"userPoolId": {
+				"userPool": {
 					"__rl": true,
 					"value": "eu-central-1_EUZ4iEF1T",
 					"mode": "list",
 					"cachedResultName": "UserPoolTwo"
 				},
-				"userName": {
+				"user": {
 					"__rl": true,
 					"value": "43045822-80e1-70f6-582d-78ae7992e9d9",
 					"mode": "list",

@@ -51,7 +51,7 @@ describe('AWS Cognito Functions', () => {
 
 			const mockContext = {
 				getNodeParameter: jest.fn((param) => {
-					if (param === 'userPoolId') {
+					if (param === 'userPool') {
 						return { value: 'user-pool-id' };
 					}
 					return null;
@@ -105,7 +105,7 @@ describe('AWS Cognito Functions', () => {
 
 			const mockContext = {
 				getNodeParameter: jest.fn((param) => {
-					if (param === 'userPoolId') {
+					if (param === 'userPool') {
 						return { value: 'user-pool-id' };
 					}
 					return null;
@@ -157,7 +157,7 @@ describe('AWS Cognito Functions', () => {
 
 			const mockContext = {
 				getNodeParameter: jest.fn((param) => {
-					if (param === 'userPoolId') {
+					if (param === 'userPool') {
 						return { value: 'user-pool-id' };
 					}
 					return null;
@@ -197,8 +197,8 @@ describe('AWS Cognito Functions', () => {
 
 			const mockContext = {
 				getNodeParameter: jest.fn((param) => {
-					if (param === 'userName') return { value: userName };
-					if (param === 'userPoolId') return { value: userPoolId };
+					if (param === 'user') return { value: userName };
+					if (param === 'userPool') return { value: userPoolId };
 					return null;
 				}),
 			} as unknown as ILoadOptionsFunctions;
@@ -223,8 +223,8 @@ describe('AWS Cognito Functions', () => {
 
 			const mockContext = {
 				getNodeParameter: jest.fn((param) => {
-					if (param === 'userName') return { value: userName };
-					if (param === 'userPoolId') return { value: userPoolId };
+					if (param === 'user') return { value: userName };
+					if (param === 'userPool') return { value: userPoolId };
 					return null;
 				}),
 			} as unknown as ILoadOptionsFunctions;

@@ -2,11 +2,11 @@ import type { IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties } fr
 import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
 
 import type { IUserAttributeInput } from '../../helpers/interfaces';
-import { userPoolResourceLocator, userResourceLocator } from '../../helpers/resourceLocators';
 import { parseRequestBody } from '../../helpers/utils';
+import { userPoolResourceLocator, userResourceLocator } from '../common';
 
 const properties: INodeProperties[] = [
-	userPoolResourceLocator,
+	{ ...userPoolResourceLocator, description: 'Select the user pool to use' },
 	userResourceLocator,
 	{
 		displayName: 'User Attributes',

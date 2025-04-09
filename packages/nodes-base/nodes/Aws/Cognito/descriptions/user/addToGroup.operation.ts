@@ -1,16 +1,12 @@
 import type { INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 
-import {
-	groupResourceLocator,
-	userPoolResourceLocator,
-	userResourceLocator,
-} from '../../helpers/resourceLocators';
+import { groupResourceLocator, userPoolResourceLocator, userResourceLocator } from '../common';
 
 const properties: INodeProperties[] = [
-	userPoolResourceLocator,
-	userResourceLocator,
-	groupResourceLocator,
+	{ ...userPoolResourceLocator, description: 'Select the user pool to use' },
+	{ ...userResourceLocator, description: 'Select the user you want to add to the group' },
+	{ ...groupResourceLocator, description: 'Select the group you want to add the user to' },
 ];
 
 const displayOptions = {

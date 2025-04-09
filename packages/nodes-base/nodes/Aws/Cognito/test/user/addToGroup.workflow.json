@@ -11,13 +11,13 @@
 		{
 			"parameters": {
 				"operation": "addToGroup",
-				"userPoolId": {
+				"userPool": {
 					"__rl": true,
 					"value": "eu-central-1_W3WwpiBXV",
 					"mode": "list",
 					"cachedResultName": "UserPoolSimple"
 				},
-				"userName": {
+				"user": {
 					"__rl": true,
 					"value": "0394e8e2-5081-7020-06bd-44bdfc84dd10",
 					"mode": "list",

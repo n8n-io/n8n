@@ -4,7 +4,7 @@
 			"parameters": {
 				"resource": "group",
 				"operation": "delete",
-				"userPoolId": {
+				"userPool": {
 					"__rl": true,
 					"value": "eu-central-1_qqle3XBUA",
 					"mode": "list",

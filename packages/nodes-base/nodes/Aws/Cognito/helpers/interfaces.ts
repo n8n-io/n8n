@@ -36,3 +36,13 @@ export interface Filters {
 		value?: string;
 	};
 }
+
+export interface AwsError {
+	__type?: string;
+	message?: string;
+}
+
+export interface ErrorMessage {
+	message: string;
+	description: string;
+}

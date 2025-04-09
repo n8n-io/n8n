@@ -1,9 +1,12 @@
 import type { INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 
-import { groupResourceLocator, userPoolResourceLocator } from '../../helpers/resourceLocators';
+import { groupResourceLocator, userPoolResourceLocator } from '../common';
 
-const properties: INodeProperties[] = [userPoolResourceLocator, groupResourceLocator];
+const properties: INodeProperties[] = [
+	{ ...userPoolResourceLocator, description: 'Select the user pool to use' },
+	{ ...groupResourceLocator, description: 'Select the group you want to delete' },
+];
 
 const displayOptions = {
 	show: {

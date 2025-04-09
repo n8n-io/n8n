@@ -11,7 +11,7 @@
 		{
 			"parameters": {
 				"resource": "group",
-				"userPoolId": {
+				"userPool": {
 					"__rl": true,
 					"value": "eu-central-1_KkXQgdCJv",
 					"mode": "list",

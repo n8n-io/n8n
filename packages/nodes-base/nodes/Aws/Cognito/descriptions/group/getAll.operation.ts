@@ -1,10 +1,10 @@
 import type { INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 
-import { userPoolResourceLocator } from '../../helpers/resourceLocators';
+import { userPoolResourceLocator } from '../common';
 
 const properties: INodeProperties[] = [
-	userPoolResourceLocator,
+	{ ...userPoolResourceLocator, description: 'Select the user pool to use' },
 	{
 		displayName: 'Return All',
 		name: 'returnAll',

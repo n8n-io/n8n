@@ -2,14 +2,13 @@ import type { INodeProperties } from 'n8n-workflow';
 
 export const userPoolResourceLocator: INodeProperties = {
 	displayName: 'User Pool',
-	name: 'userPoolId',
+	name: 'userPool',
 	required: true,
 	type: 'resourceLocator',
 	default: {
 		mode: 'list',
 		value: '',
 	},
-	description: 'Select the user pool to retrieve',
 	routing: {
 		send: {
 			type: 'body',
@@ -51,7 +50,6 @@ export const groupResourceLocator: INodeProperties = {
 		mode: 'list',
 		value: '',
 	},
-	description: 'Select the group you want to update',
 	routing: {
 		send: {
 			type: 'body',
@@ -91,12 +89,11 @@ export const groupResourceLocator: INodeProperties = {
 
 export const userResourceLocator: INodeProperties = {
 	displayName: 'User',
-	name: 'userName',
+	name: 'user',
 	default: {
 		mode: 'list',
 		value: '',
 	},
-	description: 'Select the user you want to add to the group',
 	modes: [
 		{
 			displayName: 'From List',

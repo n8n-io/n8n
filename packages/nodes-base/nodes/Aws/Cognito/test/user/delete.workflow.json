@@ -11,13 +11,13 @@
 		{
 			"parameters": {
 				"operation": "delete",
-				"userPoolId": {
+				"userPool": {
 					"__rl": true,
 					"value": "eu-central-1_EUZ4iEF1T",
 					"mode": "list",
 					"cachedResultName": "UserPoolTwo"
 				},
-				"userName": {
+				"user": {
 					"__rl": true,
 					"value": "53c4f8c2-c071-707b-debd-d45585618da0",
 					"mode": "list",
