@@ -1,19 +1,16 @@
-// ToolsAgent.test.ts
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage } from '@langchain/core/messages';
 import type { BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
-import { FakeTool } from '@langchain/core/utils/testing';
 import { Buffer } from 'buffer';
 import { mock } from 'jest-mock-extended';
 import type { ToolsAgentAction } from 'langchain/dist/agents/tool_calling/output_parser';
 import type { Tool } from 'langchain/tools';
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { NodeOperationError, BINARY_ENCODING } from 'n8n-workflow';
+import { NodeOperationError, BINARY_ENCODING, NodeConnectionTypes } from 'n8n-workflow';
 import type { ZodType } from 'zod';
 import { z } from 'zod';
 
-import * as helpersModule from '@utils/helpers';
 import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
 
 import {
@@ -28,31 +25,16 @@ import {
 	getTools,
 } from '../agents/ToolsAgent/execute';
 
-// We need to override the imported getConnectedTools so that we control its output.
-jest.spyOn(helpersModule, 'getConnectedTools').mockResolvedValue([FakeTool as unknown as Tool]);
-
 function getFakeOutputParser(returnSchema?: ZodType): N8nOutputParser {
 	const fakeOutputParser = mock<N8nOutputParser>();
 	(fakeOutputParser.getSchema as jest.Mock).mockReturnValue(returnSchema);
 	return fakeOutputParser;
 }
 
-function createFakeExecuteFunctions(overrides: Partial<IExecuteFunctions> = {}): IExecuteFunctions {
-	return {
-		getNodeParameter: jest
-			.fn()
-			.mockImplementation((_arg1: string, _arg2: number, defaultValue?: unknown) => {
-				return defaultValue;
-			}),
-		getNode: jest.fn().mockReturnValue({}),
-		getInputConnectionData: jest.fn().mockResolvedValue({}),
-		getInputData: jest.fn().mockReturnValue([]),
-		continueOnFail: jest.fn().mockReturnValue(false),
-		logger: { debug: jest.fn() },
-		helpers: {},
-		...overrides,
-	} as unknown as IExecuteFunctions;
-}
+const mockHelpers = mock<IExecuteFunctions['helpers']>();
+const mockContext = mock<IExecuteFunctions>({ helpers: mockHelpers });
+
+beforeEach(() => jest.resetAllMocks());
 
 describe('getOutputParserSchema', () => {
 	it('should return a default schema if getSchema returns undefined', () => {
@@ -74,6 +56,7 @@ describe('getOutputParserSchema', () => {
 describe('extractBinaryMessages', () => {
 	it('should extract a binary message from the input data when no id is provided', async () => {
 		const fakeItem = {
+			json: {},
 			binary: {
 				img1: {
 					mimeType: 'image/png',
@@ -82,11 +65,9 @@ describe('extractBinaryMessages', () => {
 				},
 			},
 		};
-		const ctx = createFakeExecuteFunctions({
-			getInputData: jest.fn().mockReturnValue([fakeItem]),
-		});
+		mockContext.getInputData.mockReturnValue([fakeItem]);
 
-		const humanMsg: HumanMessage = await extractBinaryMessages(ctx, 0);
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
 		// Expect the HumanMessage's content to be an array containing one binary message.
 		expect(Array.isArray(humanMsg.content)).toBe(true);
 		expect(humanMsg.content[0]).toEqual({
@@ -97,6 +78,7 @@ describe('extractBinaryMessages', () => {
 
 	it('should extract a binary message using binary stream if id is provided', async () => {
 		const fakeItem = {
+			json: {},
 			binary: {
 				img2: {
 					mimeType: 'image/jpeg',
@@ -105,21 +87,16 @@ describe('extractBinaryMessages', () => {
 				},
 			},
 		};
-		// Cast fakeHelpers as any to satisfy type requirements.
-		const fakeHelpers = {
-			getBinaryStream: jest.fn().mockResolvedValue('stream'),
-			binaryToBuffer: jest.fn().mockResolvedValue(Buffer.from('fakebufferdata')),
-		} as unknown as IExecuteFunctions['helpers'];
-		const ctx = createFakeExecuteFunctions({
-			getInputData: jest.fn().mockReturnValue([fakeItem]),
-			helpers: fakeHelpers,
-		});
 
-		const humanMsg: HumanMessage = await extractBinaryMessages(ctx, 0);
+		mockHelpers.getBinaryStream.mockResolvedValue(mock());
+		mockHelpers.binaryToBuffer.mockResolvedValue(Buffer.from('fakebufferdata'));
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
 		// eslint-disable-next-line @typescript-eslint/unbound-method
-		expect(fakeHelpers.getBinaryStream).toHaveBeenCalledWith('1234');
+		expect(mockHelpers.getBinaryStream).toHaveBeenCalledWith('1234');
 		// eslint-disable-next-line @typescript-eslint/unbound-method
-		expect(fakeHelpers.binaryToBuffer).toHaveBeenCalled();
+		expect(mockHelpers.binaryToBuffer).toHaveBeenCalled();
 		const expectedUrl = `data:image/jpeg;base64,${Buffer.from('fakebufferdata').toString(
 			BINARY_ENCODING,
 		)}`;
@@ -173,48 +150,48 @@ describe('getChatModel', () => {
 		const fakeChatModel = mock<BaseChatModel>();
 		fakeChatModel.bindTools = jest.fn();
 		fakeChatModel.lc_namespace = ['chat_models'];
+		mockContext.getInputConnectionData.mockResolvedValue(fakeChatModel);
 
-		const ctx = createFakeExecuteFunctions({
-			getInputConnectionData: jest.fn().mockResolvedValue(fakeChatModel),
-		});
-		const model = await getChatModel(ctx);
+		const model = await getChatModel(mockContext);
 		expect(model).toEqual(fakeChatModel);
 	});
 
 	it('should throw if the model is not a valid chat model', async () => {
 		const fakeInvalidModel = mock<BaseChatModel>(); // missing bindTools & lc_namespace
 		fakeInvalidModel.lc_namespace = [];
-		const ctx = createFakeExecuteFunctions({
-			getInputConnectionData: jest.fn().mockResolvedValue(fakeInvalidModel),
-			getNode: jest.fn().mockReturnValue({}),
-		});
-		await expect(getChatModel(ctx)).rejects.toThrow(NodeOperationError);
+		mockContext.getInputConnectionData.mockResolvedValue(fakeInvalidModel);
+		mockContext.getNode.mockReturnValue(mock());
+		await expect(getChatModel(mockContext)).rejects.toThrow(NodeOperationError);
 	});
 });
 
 describe('getOptionalMemory', () => {
 	it('should return the memory if available', async () => {
 		const fakeMemory = { some: 'memory' };
-		const ctx = createFakeExecuteFunctions({
-			getInputConnectionData: jest.fn().mockResolvedValue(fakeMemory),
-		});
-		const memory = await getOptionalMemory(ctx);
+		mockContext.getInputConnectionData.mockResolvedValue(fakeMemory);
+
+		const memory = await getOptionalMemory(mockContext);
 		expect(memory).toEqual(fakeMemory);
 	});
 });
 
 describe('getTools', () => {
+	beforeEach(() => {
+		const fakeTool = mock<Tool>();
+		mockContext.getInputConnectionData
+			.calledWith(NodeConnectionTypes.AiTool, 0)
+			.mockResolvedValue([fakeTool]);
+	});
+
 	it('should retrieve tools without appending if outputParser is not provided', async () => {
-		const ctx = createFakeExecuteFunctions();
-		const tools = await getTools(ctx);
+		const tools = await getTools(mockContext);
 
 		expect(tools.length).toEqual(1);
 	});
 
 	it('should retrieve tools and append the structured output parser tool if outputParser is provided', async () => {
 		const fakeOutputParser = getFakeOutputParser(z.object({ text: z.string() }));
-		const ctx = createFakeExecuteFunctions();
-		const tools = await getTools(ctx, fakeOutputParser);
+		const tools = await getTools(mockContext, fakeOutputParser);
 		// Our fake getConnectedTools returns one tool; with outputParser, one extra is appended.
 		expect(tools.length).toEqual(2);
 		const dynamicTool = tools.find((t) => t.name === 'format_final_json_response');
@@ -225,6 +202,7 @@ describe('getTools', () => {
 describe('prepareMessages', () => {
 	it('should include a binary message if binary data is present and passthroughBinaryImages is true', async () => {
 		const fakeItem = {
+			json: {},
 			binary: {
 				img1: {
 					mimeType: 'image/png',
@@ -232,10 +210,8 @@ describe('prepareMessages', () => {
 				},
 			},
 		};
-		const ctx = createFakeExecuteFunctions({
-			getInputData: jest.fn().mockReturnValue([fakeItem]),
-		});
-		const messages = await prepareMessages(ctx, 0, {
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+		const messages = await prepareMessages(mockContext, 0, {
 			systemMessage: 'Test system',
 			passthroughBinaryImages: true,
 		});
@@ -248,10 +224,8 @@ describe('prepareMessages', () => {
 
 	it('should not include a binary message if no binary data is present', async () => {
 		const fakeItem = { json: {} }; // no binary key
-		const ctx = createFakeExecuteFunctions({
-			getInputData: jest.fn().mockReturnValue([fakeItem]),
-		});
-		const messages = await prepareMessages(ctx, 0, {
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+		const messages = await prepareMessages(mockContext, 0, {
 			systemMessage: 'Test system',
 			passthroughBinaryImages: true,
 		});
