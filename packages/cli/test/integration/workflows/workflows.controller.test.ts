@@ -1056,8 +1056,7 @@ describe('GET /workflows', () => {
 						parentFolder: {
 							id: folder.id,
 							name: folder.name,
-							createdAt: expect.any(String),
-							updatedAt: expect.any(String),
+							parentFolderId: null,
 						},
 					},
 					{
