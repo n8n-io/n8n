@@ -6,6 +6,7 @@ describe(getTreeNodeData, () => {
 	function createTaskData(partialData: Partial<ITaskData>): ITaskData {
 		return {
 			startTime: 0,
+			executionIndex: 0,
 			executionTime: 1,
 			source: [],
 			executionStatus: 'success',
@@ -29,10 +30,10 @@ describe(getTreeNodeData, () => {
 			},
 		});
 		const taskDataByNodeName: Record<string, ITaskData[]> = {
-			A: [createTaskData({ startTime: +new Date('2025-02-26T00:00:00.000Z') })],
+			A: [createTaskData({ startTime: Date.parse('2025-02-26T00:00:00.000Z') })],
 			B: [
 				createTaskData({
-					startTime: +new Date('2025-02-26T00:00:01.000Z'),
+					startTime: Date.parse('2025-02-26T00:00:01.000Z'),
 					data: {
 						main: [
 							[
@@ -50,7 +51,7 @@ describe(getTreeNodeData, () => {
 					},
 				}),
 				createTaskData({
-					startTime: +new Date('2025-02-26T00:00:03.000Z'),
+					startTime: Date.parse('2025-02-26T00:00:03.000Z'),
 					data: {
 						main: [
 							[
@@ -70,7 +71,7 @@ describe(getTreeNodeData, () => {
 			],
 			C: [
 				createTaskData({
-					startTime: +new Date('2025-02-26T00:00:02.000Z'),
+					startTime: Date.parse('2025-02-26T00:00:02.000Z'),
 					data: {
 						main: [
 							[
@@ -87,7 +88,7 @@ describe(getTreeNodeData, () => {
 						],
 					},
 				}),
-				createTaskData({ startTime: +new Date('2025-02-26T00:00:04.000Z') }),
+				createTaskData({ startTime: Date.parse('2025-02-26T00:00:04.000Z') }),
 			],
 		};
 
@@ -117,7 +118,7 @@ describe(getTreeNodeData, () => {
 						id: 'B',
 						node: 'B',
 						runIndex: 0,
-						startTime: +new Date('2025-02-26T00:00:01.000Z'),
+						startTime: Date.parse('2025-02-26T00:00:01.000Z'),
 						parent: expect.objectContaining({ node: 'A' }),
 						consumedTokens: {
 							completionTokens: 1,
@@ -132,7 +133,7 @@ describe(getTreeNodeData, () => {
 								id: 'C',
 								node: 'C',
 								runIndex: 0,
-								startTime: +new Date('2025-02-26T00:00:02.000Z'),
+								startTime: Date.parse('2025-02-26T00:00:02.000Z'),
 								parent: expect.objectContaining({ node: 'B' }),
 								consumedTokens: {
 									completionTokens: 7,
@@ -148,7 +149,7 @@ describe(getTreeNodeData, () => {
 						id: 'B',
 						node: 'B',
 						runIndex: 1,
-						startTime: +new Date('2025-02-26T00:00:03.000Z'),
+						startTime: Date.parse('2025-02-26T00:00:03.000Z'),
 						parent: expect.objectContaining({ node: 'A' }),
 						consumedTokens: {
 							completionTokens: 4,
@@ -163,7 +164,7 @@ describe(getTreeNodeData, () => {
 								id: 'C',
 								node: 'C',
 								runIndex: 1,
-								startTime: +new Date('2025-02-26T00:00:04.000Z'),
+								startTime: Date.parse('2025-02-26T00:00:04.000Z'),
 								parent: expect.objectContaining({ node: 'B' }),
 								consumedTokens: {
 									completionTokens: 0,
