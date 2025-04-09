@@ -112,7 +112,7 @@ export class McpClientTool implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						authentication: ['headerAuth'],
+						authentication: ['headerAuth', 'bearerAuth'],
 					},
 				},
 			},
