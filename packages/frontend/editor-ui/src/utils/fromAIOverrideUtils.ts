@@ -49,7 +49,7 @@ function sanitizeFromAiParameterName(s: string) {
 const NODE_DENYLIST = [
 	'toolCode',
 	'toolHttpRequest',
-	'toolMcpClient',
+	'mcpClientTool',
 	['toolWorkflow', 1.2],
 ] as const;
 

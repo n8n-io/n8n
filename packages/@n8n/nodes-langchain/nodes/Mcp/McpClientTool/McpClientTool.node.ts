@@ -22,13 +22,13 @@ import {
 	mcpToolToDynamicTool,
 } from './utils';
 
-export class ToolMcpClient implements INodeType {
+export class McpClientTool implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'MCP Client Tool',
-		name: 'toolMcpClient',
+		name: 'mcpClientTool',
 		icon: {
-			light: 'file:mcp.svg',
-			dark: 'file:mcp.dark.svg',
+			light: 'file:../mcp.svg',
+			dark: 'file:../mcp.dark.svg',
 		},
 		group: ['output'],
 		version: 1,
@@ -191,7 +191,7 @@ export class ToolMcpClient implements INodeType {
 		};
 
 		if (!client.ok) {
-			this.logger.error('ToolMCPClient: Failed to connect to MCP Server', {
+			this.logger.error('McpClientTool: Failed to connect to MCP Server', {
 				error: client.error,
 			});
 
@@ -204,7 +204,7 @@ export class ToolMcpClient implements INodeType {
 			}
 		}
 
-		this.logger.debug('ToolMCPClient: Successfully connected to MCP Server');
+		this.logger.debug('McpClientTool: Successfully connected to MCP Server');
 
 		const mode = this.getNodeParameter('include', itemIndex) as McpToolIncludeMode;
 		const includeTools = this.getNodeParameter('includeTools', itemIndex, []) as string[];
@@ -230,7 +230,7 @@ export class ToolMcpClient implements INodeType {
 				mcpToolToDynamicTool(
 					tool,
 					createCallTool(tool.name, client.result, (error) => {
-						this.logger.error(`ToolMCPClient: Tool "${tool.name}" failed to execute`, { error });
+						this.logger.error(`McpClientTool: Tool "${tool.name}" failed to execute`, { error });
 						throw new NodeOperationError(node, `Failed to execute tool "${tool.name}"`, {
 							description: error,
 						});
@@ -240,7 +240,7 @@ export class ToolMcpClient implements INodeType {
 			),
 		);
 
-		this.logger.debug(`ToolMCPClient: Connected to MCP Server with ${tools.length} tools`);
+		this.logger.debug(`McpClientTool: Connected to MCP Server with ${tools.length} tools`);
 
 		const toolkit = new McpToolkit(tools);
 

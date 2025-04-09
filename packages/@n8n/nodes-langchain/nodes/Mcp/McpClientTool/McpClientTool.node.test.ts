@@ -9,13 +9,13 @@ import {
 } from 'n8n-workflow';
 
 import { getTools } from './loadOptions';
-import { ToolMcpClient } from './ToolMcpClient.node';
+import { McpClientTool } from './McpClientTool.node';
 import { McpToolkit } from './utils';
 
 jest.mock('@modelcontextprotocol/sdk/client/sse.js');
 jest.mock('@modelcontextprotocol/sdk/client/index.js');
 
-describe('ToolMcpClient', () => {
+describe('McpClientTool', () => {
 	describe('loadOptions: getTools', () => {
 		it('should return a list of tools', async () => {
 			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
@@ -77,7 +77,7 @@ describe('ToolMcpClient', () => {
 				],
 			});
 
-			const supplyDataResult = await new ToolMcpClient().supplyData.call(
+			const supplyDataResult = await new McpClientTool().supplyData.call(
 				mock<ISupplyDataFunctions>({
 					getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
 					logger: { debug: jest.fn(), error: jest.fn() },
@@ -113,7 +113,7 @@ describe('ToolMcpClient', () => {
 				],
 			});
 
-			const supplyDataResult = await new ToolMcpClient().supplyData.call(
+			const supplyDataResult = await new McpClientTool().supplyData.call(
 				mock<ISupplyDataFunctions>({
 					getNode: jest.fn(() =>
 						mock<INode>({
@@ -158,7 +158,7 @@ describe('ToolMcpClient', () => {
 				],
 			});
 
-			const supplyDataResult = await new ToolMcpClient().supplyData.call(
+			const supplyDataResult = await new McpClientTool().supplyData.call(
 				mock<ISupplyDataFunctions>({
 					getNode: jest.fn(() =>
 						mock<INode>({
@@ -198,7 +198,7 @@ describe('ToolMcpClient', () => {
 				],
 			});
 
-			const supplyDataResult = await new ToolMcpClient().supplyData.call(
+			const supplyDataResult = await new McpClientTool().supplyData.call(
 				mock<ISupplyDataFunctions>({
 					getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
 					getNodeParameter: jest.fn((key, _index) => {
