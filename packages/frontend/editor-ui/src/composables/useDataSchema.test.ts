@@ -553,7 +553,9 @@ describe('useDataSchema', () => {
 			data: {
 				resultData: {
 					runData: {
-						[runDataKey ?? name]: [{ data, startTime: 0, executionTime: 0, source: [] }],
+						[runDataKey ?? name]: [
+							{ data, startTime: 0, executionTime: 0, executionIndex: 0, source: [] },
+						],
 					},
 				},
 			},
@@ -619,17 +621,20 @@ describe('useDataSchema', () => {
 										{
 											startTime: 0,
 											executionTime: 0,
+											executionIndex: 0,
 											source: [],
 										},
 										{
 											startTime: 0,
 											executionTime: 0,
+											executionIndex: 1,
 											source: [],
 										},
 										{
 											data: { [Main]: [null, mockExecutionDataMarker] },
 											startTime: 0,
 											executionTime: 0,
+											executionIndex: 2,
 											source: [],
 										},
 									],

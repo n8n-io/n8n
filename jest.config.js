@@ -36,6 +36,7 @@ const config = {
 };
 
 if (process.env.CI === 'true') {
+	config.reporters = ['default', 'jest-junit'];
 	config.coverageReporters = ['cobertura'];
 }
 

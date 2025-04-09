@@ -4,7 +4,7 @@ import { getSubtreeTotalConsumedTokens, type TreeNode } from '@/components/RunDa
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { computed } from 'vue';
 import { type INodeUi } from '@/Interface';
-import { N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import { type ITaskData } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { upperFirst } from 'lodash-es';
@@ -21,7 +21,11 @@ const props = defineProps<{
 	isCompact: boolean;
 }>();
 
-const emit = defineEmits<{ toggleExpanded: [node: ElTreeNode] }>();
+const emit = defineEmits<{
+	toggleExpanded: [node: ElTreeNode];
+	triggerPartialExecution: [node: TreeNode];
+	openNdv: [node: TreeNode];
+}>();
 
 const locale = useI18n();
 const workflowsStore = useWorkflowsStore();
@@ -140,43 +144,67 @@ function isLastChild(level: number) {
 			:class="$style.compactErrorIcon"
 		/>
 		<N8nIconButton
+			type="secondary"
+			size="small"
+			icon="play"
+			style="color: var(--color-text-base)"
+			:aria-label="locale.baseText('logs.overview.body.run')"
+			:class="[$style.partialExecutionButton, depth > 0 ? $style.unavailable : '']"
+			@click.stop="emit('triggerPartialExecution', props.data)"
+		/>
+		<N8nIconButton
+			type="secondary"
+			size="small"
+			icon="external-link-alt"
+			style="color: var(--color-text-base)"
+			:class="$style.openNdvButton"
+			:aria-label="locale.baseText('logs.overview.body.open')"
+			@click.stop="emit('openNdv', props.data)"
+		/>
+		<N8nButton
 			v-if="!isCompact || props.data.children.length > 0"
 			type="secondary"
-			size="medium"
-			:icon="props.node.expanded ? 'chevron-down' : 'chevron-up'"
+			size="small"
+			:square="true"
 			:style="{
 				visibility: props.data.children.length === 0 ? 'hidden' : '',
 				color: 'var(--color-text-base)', // give higher specificity than the style from the component itself
 			}"
 			:class="$style.toggleButton"
+			:aria-label="locale.baseText('logs.overview.body.toggleRow')"
 			@click.stop="emit('toggleExpanded', props.node)"
-		/>
+		>
+			<N8nIcon size="medium" :icon="props.node.expanded ? 'chevron-down' : 'chevron-up'" />
+		</N8nButton>
 	</div>
 </template>
 
 <style lang="scss" module>
 .container {
 	display: flex;
-	align-items: stretch;
+	align-items: center;
 	justify-content: stretch;
 	overflow: hidden;
 	position: relative;
 	z-index: 1;
+
+	--row-gap-thickness: 1px;
 
 	& > * {
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 		padding: var(--spacing-2xs);
+		margin-bottom: var(--row-gap-thickness);
 	}
 }
 
 .background {
 	position: absolute;
-	left: calc(var(--indent-depth) * 32px);
+	left: calc(var(--row-gap-thickness) + var(--indent-depth) * 32px);
 	top: 0;
-	width: calc(100% - var(--indent-depth) * 32px);
-	height: 100%;
+	width: calc(100% - var(--indent-depth) * 32px - var(--row-gap-thickness));
+	height: calc(100% - var(--row-gap-thickness));
 	border-radius: var(--border-radius-base);
 	z-index: -1;
 
@@ -197,6 +225,7 @@ function isLastChild(level: number) {
 	align-self: stretch;
 	position: relative;
 	overflow: hidden;
+	margin-bottom: 0;
 
 	&.connectorCurved:before {
 		content: '';
@@ -220,6 +249,7 @@ function isLastChild(level: number) {
 }
 
 .icon {
+	margin-left: var(--row-gap-thickness);
 	flex-grow: 0;
 	flex-shrink: 0;
 }
@@ -283,6 +313,26 @@ function isLastChild(level: number) {
 	}
 }
 
+.partialExecutionButton,
+.openNdvButton {
+	transition: none;
+
+	/* By default, take space but keep invisible */
+	visibility: hidden;
+
+	.container.compact & {
+		/* When compact, collapse to save space */
+		display: none;
+	}
+
+	.container:hover &:not(.unavailable) {
+		visibility: visible;
+		display: inline-flex;
+	}
+}
+
+.partialExecutionButton,
+.openNdvButton,
 .toggleButton {
 	flex-grow: 0;
 	flex-shrink: 0;
@@ -290,9 +340,15 @@ function isLastChild(level: number) {
 	background: transparent;
 	margin-inline-end: var(--spacing-5xs);
 	color: var(--color-text-base);
+	align-items: center;
+	justify-content: center;
 
 	&:hover {
 		background: transparent;
 	}
+}
+
+.toggleButton {
+	display: inline-flex;
 }
 </style>

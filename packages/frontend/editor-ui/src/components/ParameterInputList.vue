@@ -466,7 +466,13 @@ function getParameterIssues(parameter: INodeProperties): string[] {
 	if (!node.value || !showIssuesInLabelFor.includes(parameter.type)) {
 		return [];
 	}
-	const issues = NodeHelpers.getParameterIssues(parameter, node.value.parameters, '', node.value);
+	const issues = NodeHelpers.getParameterIssues(
+		parameter,
+		node.value.parameters,
+		'',
+		node.value,
+		nodeType.value,
+	);
 
 	return issues.parameters?.[parameter.name] ?? [];
 }

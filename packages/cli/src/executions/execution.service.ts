@@ -311,6 +311,7 @@ export class ExecutionService {
 					[node.name]: [
 						{
 							startTime: 0,
+							executionIndex: 0,
 							executionTime: 0,
 							error,
 							source: [],

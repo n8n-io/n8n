@@ -1,20 +1,20 @@
 <script lang="ts" setup>
-import { computed, reactive, onBeforeMount, ref } from 'vue';
+import AnnotationTagsDropdown from '@/components/AnnotationTagsDropdown.ee.vue';
+import { useDebounce } from '@/composables/useDebounce';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { EnterpriseEditionFeature } from '@/constants';
 import type {
-	ExecutionFilterType,
 	ExecutionFilterMetadata,
-	IWorkflowShortResponse,
+	ExecutionFilterType,
 	IWorkflowDb,
+	IWorkflowShortResponse,
 } from '@/Interface';
 import { i18n as locale } from '@/plugins/i18n';
-import { getObjectKeys, isEmpty } from '@/utils/typesUtils';
-import { EnterpriseEditionFeature } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { getObjectKeys, isEmpty } from '@/utils/typesUtils';
 import type { Placement } from '@floating-ui/core';
-import { useDebounce } from '@/composables/useDebounce';
-import AnnotationTagsDropdown from '@/components/AnnotationTagsDropdown.ee.vue';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { computed, onBeforeMount, reactive, ref } from 'vue';
 
 export type ExecutionFilterProps = {
 	workflows?: Array<IWorkflowDb | IWorkflowShortResponse>;
@@ -162,17 +162,16 @@ onBeforeMount(() => {
 			<n8n-button
 				icon="filter"
 				type="tertiary"
+				size="medium"
+				square
 				:active="!!countSelectedFilterProps"
 				data-test-id="executions-filter-button"
 			>
-				<n8n-badge
-					v-if="!!countSelectedFilterProps"
-					theme="primary"
-					class="mr-4xs"
-					data-test-id="execution-filter-badge"
-					>{{ countSelectedFilterProps }}</n8n-badge
-				>
-				{{ locale.baseText('executionsList.filters') }}
+				<template v-if="!!countSelectedFilterProps" #default>
+					<n8n-badge theme="primary" class="mr-4xs" data-test-id="execution-filter-badge">{{
+						countSelectedFilterProps
+					}}</n8n-badge>
+				</template>
 			</n8n-button>
 		</template>
 		<div data-test-id="execution-filter-form">
