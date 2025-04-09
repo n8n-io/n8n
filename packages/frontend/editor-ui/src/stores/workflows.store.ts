@@ -1390,21 +1390,23 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	function setNodeExecuting(pushData: PushPayload<'nodeExecuteBefore'>): void {
 		addExecutingNode(pushData.nodeName);
 
-		const node = getNodeByName(pushData.nodeName);
+		if (settingsStore.isNewLogsEnabled) {
+			const node = getNodeByName(pushData.nodeName);
 
-		if (!node || !workflowExecutionData.value?.data) {
-			return;
+			if (!node || !workflowExecutionData.value?.data) {
+				return;
+			}
+
+			if (workflowExecutionData.value.data.resultData.runData[pushData.nodeName] === undefined) {
+				workflowExecutionData.value.data.resultData.runData[pushData.nodeName] = [];
+			}
+
+			workflowExecutionData.value.data.resultData.runData[pushData.nodeName].push({
+				executionStatus: 'running',
+				executionTime: 0,
+				...pushData.data,
+			});
 		}
-
-		if (workflowExecutionData.value.data.resultData.runData[pushData.nodeName] === undefined) {
-			workflowExecutionData.value.data.resultData.runData[pushData.nodeName] = [];
-		}
-
-		workflowExecutionData.value.data.resultData.runData[pushData.nodeName].push({
-			executionStatus: 'running',
-			executionTime: 0,
-			...pushData.data,
-		});
 	}
 
 	function updateNodeExecutionData(pushData: PushPayload<'nodeExecuteAfter'>): void {
@@ -1446,7 +1448,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		} else {
 			const status = tasksData[tasksData.length - 1]?.executionStatus ?? 'unknown';
 
-			if ('waiting' === status || 'running' === status) {
+			if ('waiting' === status || (settingsStore.isNewLogsEnabled && 'running' === status)) {
 				tasksData.splice(tasksData.length - 1, 1, data);
 			} else {
 				tasksData.push(data);
