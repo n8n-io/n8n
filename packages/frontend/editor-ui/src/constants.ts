@@ -143,6 +143,7 @@ export const JIRA_TRIGGER_NODE_TYPE = 'n8n-nodes-base.jiraTrigger';
 export const MICROSOFT_EXCEL_NODE_TYPE = 'n8n-nodes-base.microsoftExcel';
 export const MANUAL_TRIGGER_NODE_TYPE = 'n8n-nodes-base.manualTrigger';
 export const MANUAL_CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.manualChatTrigger';
+export const MCP_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpTrigger';
 export const CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTrigger';
 export const AGENT_NODE_TYPE = '@n8n/n8n-nodes-langchain.agent';
 export const OPEN_AI_NODE_TYPE = '@n8n/n8n-nodes-langchain.openAi';
@@ -239,6 +240,7 @@ export const OPEN_URL_PANEL_TRIGGER_NODE_TYPES = [
 	WEBHOOK_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
+	MCP_TRIGGER_NODE_TYPE,
 ];
 
 export const SINGLE_WEBHOOK_TRIGGERS = [
