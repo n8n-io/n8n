@@ -244,6 +244,7 @@ describe('usePushConnection()', () => {
 						executionId: '1',
 						nodeName: 'Node',
 						data: {
+							executionIndex: 0,
 							startTime: 0,
 							executionTime: 0,
 							source: [],
