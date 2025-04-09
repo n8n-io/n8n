@@ -76,7 +76,7 @@ export const createCallTool =
 	async (args: IDataObject) => {
 		let result: Awaited<ReturnType<Client['callTool']>>;
 		try {
-			result = await client.callTool({ name, arguments: {} }, CompatibilityCallToolResultSchema);
+			result = await client.callTool({ name, arguments: args }, CompatibilityCallToolResultSchema);
 		} catch (error) {
 			return onError(getErrorDescriptionFromToolCall(error));
 		}
