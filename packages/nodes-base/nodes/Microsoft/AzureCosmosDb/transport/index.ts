@@ -19,10 +19,11 @@ export async function azureCosmosDbApiRequest(
 ): Promise<any> {
 	const credentialsType = 'microsoftAzureCosmosDbSharedKeyApi';
 	const credentials = await this.getCredentials<ICosmosDbCredentials>(credentialsType);
+	const baseUrl = `https://${credentials.account}.documents.azure.com/dbs/${credentials.database}`;
 
 	const options: IHttpRequestOptions = {
 		method,
-		url: `${credentials.baseUrl}${endpoint}`,
+		url: `${baseUrl}${endpoint}`,
 		json: true,
 		headers,
 		body,

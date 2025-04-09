@@ -28,7 +28,8 @@ export class AzureCosmosDb implements INodeType {
 			},
 		],
 		requestDefaults: {
-			baseURL: '={{ $credentials.baseUrl }}',
+			baseURL:
+				'=https://{{ $credentials.account }}.documents.azure.com/dbs/{{ $credentials.database }}',
 			json: true,
 			ignoreHttpStatusErrors: true,
 		},

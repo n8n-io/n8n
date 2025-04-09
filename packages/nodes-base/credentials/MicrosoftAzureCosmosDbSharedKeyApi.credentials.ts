@@ -18,7 +18,7 @@ import {
 export class MicrosoftAzureCosmosDbSharedKeyApi implements ICredentialType {
 	name = 'microsoftAzureCosmosDbSharedKeyApi';
 
-	displayName = 'Azure Cosmos DB API';
+	displayName = 'Microsoft Azure Cosmos DB API';
 
 	documentationUrl = 'microsoftAzureCosmosdb';
 
@@ -111,7 +111,8 @@ export class MicrosoftAzureCosmosDbSharedKeyApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{ $credentials.baseUrl }}'.replace(/\/$/, ''),
+			baseURL:
+				'=https://{{ $credentials.account }}.documents.azure.com/dbs/{{ $credentials.database }}',
 			url: '/colls',
 		},
 	};
