@@ -23,7 +23,6 @@ export class McpTrigger extends Node {
 		group: ['trigger'],
 		version: 1,
 		description: 'Expose n8n tools as an MCP Server endpoint',
-		eventTriggerDescription: '',
 		activationMessage: 'You can now connect your MCP Clients to the SSE URL.',
 		defaults: {
 			name: 'MCP Server Trigger',

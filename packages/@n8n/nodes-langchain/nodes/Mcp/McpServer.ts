@@ -8,7 +8,7 @@ import {
 	CallToolRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import type * as express from 'express';
-import type { Logger } from 'n8n-workflow';
+import { OperationalError, type Logger } from 'n8n-workflow';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { FlushingSSEServerTransport } from './FlushingSSEServerTransport';
@@ -112,8 +112,7 @@ export class McpServer {
 
 		server.setRequestHandler(ListToolsRequestSchema, async (_, extra: RequestHandlerExtra) => {
 			if (!extra.sessionId) {
-				// eslint-disable-next-line n8n-local-rules/no-plain-errors
-				throw new Error('Require a sessionId for the listing of tools');
+				throw new OperationalError('Require a sessionId for the listing of tools');
 			}
 
 			return {
