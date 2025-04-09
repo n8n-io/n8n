@@ -3,7 +3,6 @@ import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { CompatibilityCallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import { Toolkit } from 'langchain/agents';
 import { DynamicStructuredTool, type DynamicStructuredToolInput } from 'langchain/tools';
-import get from 'lodash/get';
 import {
 	createResultError,
 	createResultOk,
@@ -11,7 +10,7 @@ import {
 	type IExecuteFunctions,
 	type Result,
 } from 'n8n-workflow';
-import { ZodError, type ZodTypeAny } from 'zod';
+import { type ZodTypeAny } from 'zod';
 
 import { convertJsonSchemaToZod } from '@utils/schemaParsing';
 
@@ -54,28 +53,47 @@ export function getSelectedTools({
 	}
 }
 
-export const createCallTool =
-	(name: string, client: Client, onError: (error: unknown) => void) =>
-	async (args: IDataObject) => {
-		try {
-			const result = await client.callTool(
-				{ name, arguments: args },
-				CompatibilityCallToolResultSchema,
-			);
-
-			if (result.toolResult !== undefined) {
-				return result.toolResult;
-			}
-
-			if (result.content !== undefined) {
-				return result.content;
-			}
-
-			return [];
-		} catch (error) {
-			onError(error);
-			return null;
+export const getErrorDescriptionFromToolCall = (result: unknown): string | undefined => {
+	if (result && typeof result === 'object') {
+		if ('content' in result && Array.isArray(result.content)) {
+			const errorMessage = (result.content as Array<{ type: 'text'; text: string }>).find(
+				(content) => content && typeof content === 'object' && typeof content.text === 'string',
+			)?.text;
+			return errorMessage;
+		} else if ('toolResult' in result && typeof result.toolResult === 'string') {
+			return result.toolResult;
 		}
+		if ('message' in result && typeof result.message === 'string') {
+			return result.message;
+		}
+	}
+
+	return undefined;
+};
+
+export const createCallTool =
+	(name: string, client: Client, onError: (error: string | undefined) => void) =>
+	async (args: IDataObject) => {
+		let result: Awaited<ReturnType<Client['callTool']>>;
+		try {
+			result = await client.callTool({ name, arguments: {} }, CompatibilityCallToolResultSchema);
+		} catch (error) {
+			return onError(getErrorDescriptionFromToolCall(error));
+		}
+
+		if (result.isError) {
+			return onError(getErrorDescriptionFromToolCall(result));
+		}
+
+		if (result.toolResult !== undefined) {
+			return result.toolResult;
+		}
+
+		if (result.content !== undefined) {
+			return result.content;
+		}
+
+		return result;
 	};
 
 export function mcpToolToDynamicTool(
@@ -161,16 +179,6 @@ export async function connectMcpClient({
 	} catch (error) {
 		return createResultError({ type: 'connection', error });
 	}
-}
-
-export function getToolCallErrorDescription(error: unknown) {
-	if (error instanceof ZodError) {
-		return `<ul>
-	${error.issues.map((issue) => `<li>${issue.path.join('.')}: ${issue.message}</li>`).join('\n')}
-</ul`;
-	}
-
-	return get(error, 'message');
 }
 
 export async function getAuthHeaders(
