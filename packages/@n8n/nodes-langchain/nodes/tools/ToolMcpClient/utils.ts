@@ -138,8 +138,16 @@ export async function connectMcpClient({
 		}
 
 		const transport = new SSEClientTransport(endpoint.result, {
-			// @ts-expect-error eventSourceInit type is not complete
-			eventSourceInit: { headers },
+			eventSourceInit: {
+				fetch: async (url, init) =>
+					await fetch(url, {
+						...init,
+						headers: {
+							...headers,
+							Accept: 'text/event-stream',
+						},
+					}),
+			},
 			requestInit: { headers },
 		});
 
@@ -170,7 +178,7 @@ export async function getAuthHeaders(
 	authentication: McpAuthenticationOption,
 ): Promise<{ headers?: Record<string, string> }> {
 	switch (authentication) {
-		case 'header': {
+		case 'headerAuth': {
 			const header = await ctx
 				.getCredentials<{ name: string; value: string }>('httpHeaderAuth')
 				.catch(() => null);
