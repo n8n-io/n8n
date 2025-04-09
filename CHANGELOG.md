@@ -1,3 +1,13 @@
+## [1.87.2](https://github.com/n8n-io/n8n/compare/n8n@1.87.1...n8n@1.87.2) (2025-04-09)
+
+
+### Bug Fixes
+
+* **Code Node:** Use an explicit `indexURL` to load the pyodide runtime ([#14487](https://github.com/n8n-io/n8n/issues/14487)) ([2dbc061](https://github.com/n8n-io/n8n/commit/2dbc0616bd9731b630d7b623c8e3e571688eb439))
+* **editor:** Inline expression previews are not displayed in NDV ([#14475](https://github.com/n8n-io/n8n/issues/14475)) ([24bc288](https://github.com/n8n-io/n8n/commit/24bc288206e29370f878f151e8117691934ee048))
+
+
+
 ## [1.87.1](https://github.com/n8n-io/n8n/compare/n8n@1.87.0...n8n@1.87.1) (2025-04-08)
 
 
