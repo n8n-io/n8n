@@ -163,7 +163,6 @@ watch(
 
 		emit('select', { type: 'initial' });
 	},
-	{ immediate: true },
 );
 </script>
 
