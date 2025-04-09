@@ -9,7 +9,7 @@ export class AwsCognito implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AWS Cognito',
 		name: 'awsCognito',
-		icon: 'file:cognito.svg',
+		icon: 'file:AwsCognito.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
