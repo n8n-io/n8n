@@ -85,11 +85,8 @@ function handleToggleExpanded(treeNode: ElTreeNode) {
 	treeNode.expanded = !treeNode.expanded;
 }
 
-function handleOpenNdv(treeNode: TreeNode) {
+async function handleOpenNdv(treeNode: TreeNode) {
 	ndvStore.setActiveNodeName(treeNode.node);
-
-	// HACK: defer setting the output run index to not be overridden by other effects
-	requestAnimationFrame(() => ndvStore.setOutputRunIndex(treeNode.runIndex));
 }
 
 async function handleTriggerPartialExecution(treeNode: TreeNode) {

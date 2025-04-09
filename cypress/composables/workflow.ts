@@ -364,17 +364,3 @@ export function openContextMenu(
 export function clickContextMenuAction(action: string) {
 	getContextMenuAction(action).click({ force: true });
 }
-
-export function openLogsPanel() {
-	cy.getByTestId('logs-overview-header').click();
-}
-
-export function clickOpenNdvButtonOnLogEntryAtRow(index: number) {
-	cy.getByTestId('logs-overview-body').get('[role="treeitem"]').eq(index).scrollIntoView();
-	cy.getByTestId('logs-overview-body').get('[role="treeitem"]').eq(index).realHover();
-	cy.getByTestId('logs-overview-body')
-		.get('[role="treeitem"]')
-		.get('[aria-label="Open..."]')
-		.eq(index)
-		.click();
-}

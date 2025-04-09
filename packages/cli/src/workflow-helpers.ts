@@ -39,8 +39,8 @@ export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefi
 
 		return {
 			startTime: 0,
-			executionTime: 0,
 			executionIndex: 0,
+			executionTime: 0,
 			data: { main: [itemsPerRun] },
 			source: lastNodeRunData.source,
 		};

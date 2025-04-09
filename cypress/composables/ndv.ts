@@ -8,10 +8,6 @@ export function getNdvContainer() {
 	return cy.getByTestId('ndv');
 }
 
-export function getNdvTitle() {
-	return cy.getByTestId('node-title-container');
-}
-
 export function getCredentialSelect(eq = 0) {
 	return cy.getByTestId('node-credentials-select').eq(eq);
 }
@@ -128,6 +124,10 @@ export function getNodeRunInfoStale() {
 
 export function getNodeOutputErrorMessage() {
 	return getOutputPanel().findChildByTestId('node-error-message');
+}
+
+export function getParameterExpressionPreviewValue() {
+	return cy.getByTestId('parameter-expression-preview-value');
 }
 
 /**
@@ -267,4 +267,8 @@ export function populateFixedCollection<T extends readonly string[]>(
 				.type(`${param}{downArrow}{enter}`);
 		}
 	}
+}
+
+export function assertInlineExpressionValid() {
+	cy.getByTestId('inline-expression-editor-input').find('.cm-valid-resolvable').should('exist');
 }

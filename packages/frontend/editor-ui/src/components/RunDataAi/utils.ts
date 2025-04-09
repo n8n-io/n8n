@@ -76,20 +76,13 @@ function getTreeNodeDataRec(
 	const connectedSubNodes = workflow.getParentNodes(nodeName, 'ALL_NON_MAIN', 1);
 
 	const treeNode = createNode(parent, nodeName, currentDepth, runIndex ?? 0);
-	const children = connectedSubNodes.flatMap((name) => {
-		// Only include sub-nodes which have data
-		return (
-			aiData
-				?.filter(
-					(data) => data.node === name && (runIndex === undefined || data.runIndex === runIndex),
-				)
-				.flatMap((data) =>
-					getTreeNodeDataRec(treeNode, name, currentDepth + 1, workflow, aiData, data.runIndex),
-				) ?? []
-		);
-	});
 
-	children.sort((a, b) => a.startTime - b.startTime);
+	// Only include sub-nodes which have data
+	const children = (aiData ?? []).flatMap((data) =>
+		connectedSubNodes.includes(data.node) && (runIndex === undefined || data.runIndex === runIndex)
+			? getTreeNodeDataRec(treeNode, data.node, currentDepth + 1, workflow, aiData, data.runIndex)
+			: [],
+	);
 
 	treeNode.children = children;
 
@@ -107,31 +100,27 @@ export function createAiData(
 	workflow: Workflow,
 	getWorkflowResultDataByNodeName: (nodeName: string) => ITaskData[] | null,
 ): AIResult[] {
-	const result: AIResult[] = [];
-	const connectedSubNodes = workflow.getParentNodes(nodeName, 'ALL_NON_MAIN');
+	return workflow
+		.getParentNodes(nodeName, 'ALL_NON_MAIN')
+		.flatMap((node) =>
+			(getWorkflowResultDataByNodeName(node) ?? []).map((task, index) => ({ node, task, index })),
+		)
+		.sort((a, b) => {
+			// Sort the data by execution index or start time
+			if (a.task.executionIndex !== undefined && b.task.executionIndex !== undefined) {
+				return a.task.executionIndex - b.task.executionIndex;
+			}
 
-	connectedSubNodes.forEach((node) => {
-		const nodeRunData = getWorkflowResultDataByNodeName(node) ?? [];
+			const aTime = a.task.startTime ?? 0;
+			const bTime = b.task.startTime ?? 0;
 
-		nodeRunData.forEach((run, index) => {
-			const referenceData = {
-				data: getReferencedData(run, false, true)[0],
-				node,
-				runIndex: index,
-			};
-
-			result.push(referenceData);
-		});
-	});
-
-	// Sort the data by start time
-	result.sort((a, b) => {
-		const aTime = a.data?.metadata?.startTime ?? 0;
-		const bTime = b.data?.metadata?.startTime ?? 0;
-		return aTime - bTime;
-	});
-
-	return result;
+			return aTime - bTime;
+		})
+		.map(({ node, task, index }) => ({
+			data: getReferencedData(task, false, true)[0],
+			node,
+			runIndex: index,
+		}));
 }
 
 export function getReferencedData(
@@ -243,7 +232,7 @@ export function createLogEntries(workflow: Workflow, runData: IRunData) {
 		.flatMap(([nodeName, taskData]) =>
 			taskData.map((task, runIndex) => ({ nodeName, task, runIndex })),
 		)
-		.toSorted((a, b) => {
+		.sort((a, b) => {
 			if (a.task.executionIndex !== undefined && b.task.executionIndex !== undefined) {
 				return a.task.executionIndex - b.task.executionIndex;
 			}
@@ -259,7 +248,7 @@ export function createLogEntries(workflow: Workflow, runData: IRunData) {
 				nodeName,
 				workflow,
 				createAiData(nodeName, workflow, (node) => runData[node] ?? []),
-				runIndex,
+				undefined,
 			);
 		}
 

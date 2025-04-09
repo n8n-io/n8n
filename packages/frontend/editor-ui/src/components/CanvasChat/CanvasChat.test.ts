@@ -256,6 +256,7 @@ describe('CanvasChat', () => {
 									],
 								],
 							},
+							executionIndex: 0,
 							executionStatus: 'success',
 							executionTime: 0,
 							source: [null],
@@ -315,12 +316,15 @@ describe('CanvasChat', () => {
 		];
 
 		beforeEach(() => {
-			vi.spyOn(useChatMessaging, 'useChatMessaging').mockReturnValue({
-				getChatMessages: vi.fn().mockReturnValue(mockMessages),
-				sendMessage: vi.fn(),
-				extractResponseMessage: vi.fn(),
-				previousMessageIndex: ref(0),
-				isLoading: computed(() => false),
+			vi.spyOn(useChatMessaging, 'useChatMessaging').mockImplementation(({ messages }) => {
+				messages.value.push(...mockMessages);
+
+				return {
+					sendMessage: vi.fn(),
+					extractResponseMessage: vi.fn(),
+					previousMessageIndex: ref(0),
+					isLoading: computed(() => false),
+				};
 			});
 		});
 
@@ -381,7 +385,6 @@ describe('CanvasChat', () => {
 	describe('file handling', () => {
 		beforeEach(() => {
 			vi.spyOn(useChatMessaging, 'useChatMessaging').mockReturnValue({
-				getChatMessages: vi.fn().mockReturnValue([]),
 				sendMessage: vi.fn(),
 				extractResponseMessage: vi.fn(),
 				previousMessageIndex: ref(0),
@@ -478,12 +481,15 @@ describe('CanvasChat', () => {
 					createdAt: new Date().toISOString(),
 				},
 			];
-			vi.spyOn(useChatMessaging, 'useChatMessaging').mockReturnValue({
-				getChatMessages: vi.fn().mockReturnValue(mockMessages),
-				sendMessage: sendMessageSpy,
-				extractResponseMessage: vi.fn(),
-				previousMessageIndex: ref(0),
-				isLoading: computed(() => false),
+			vi.spyOn(useChatMessaging, 'useChatMessaging').mockImplementation(({ messages }) => {
+				messages.value.push(...mockMessages);
+
+				return {
+					sendMessage: sendMessageSpy,
+					extractResponseMessage: vi.fn(),
+					previousMessageIndex: ref(0),
+					isLoading: computed(() => false),
+				};
 			});
 			workflowsStore.messages = mockMessages;
 		});
@@ -582,24 +588,6 @@ describe('CanvasChat', () => {
 			await userEvent.type(input, 'Line 2');
 
 			expect(input).toHaveValue('Line 1\nLine 2');
-		});
-	});
-
-	describe('chat synchronization', () => {
-		it('should load initial chat history when first opening panel', async () => {
-			const getChatMessagesSpy = vi.fn().mockReturnValue(['Previous message']);
-			vi.spyOn(useChatMessaging, 'useChatMessaging').mockReturnValue({
-				...vi.fn()(),
-				getChatMessages: getChatMessagesSpy,
-			});
-
-			workflowsStore.logsPanelState = LOGS_PANEL_STATE.CLOSED;
-			const { rerender } = renderComponent();
-
-			workflowsStore.logsPanelState = LOGS_PANEL_STATE.ATTACHED;
-			await rerender({});
-
-			expect(getChatMessagesSpy).toHaveBeenCalled();
 		});
 	});
 });
