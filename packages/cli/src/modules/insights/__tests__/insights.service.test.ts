@@ -1232,7 +1232,7 @@ describe('getInsightsSummary', () => {
 
 	test('compacted data are summarized correctly', async () => {
 		// ARRANGE
-		// last 7 days
+		// last 6 days
 		await createCompactedInsightsEvent(workflow, {
 			type: 'success',
 			value: 1,
@@ -1251,7 +1251,7 @@ describe('getInsightsSummary', () => {
 			periodUnit: 'day',
 			periodStart: DateTime.utc(),
 		});
-		// last 14 days
+		// last 12 days
 		await createCompactedInsightsEvent(workflow, {
 			type: 'success',
 			value: 1,
@@ -1264,9 +1264,16 @@ describe('getInsightsSummary', () => {
 			periodUnit: 'day',
 			periodStart: DateTime.utc().minus({ days: 10 }),
 		});
+		//Outside range should not be taken into account
+		await createCompactedInsightsEvent(workflow, {
+			type: 'runtime_ms',
+			value: 123,
+			periodUnit: 'day',
+			periodStart: DateTime.utc().minus({ days: 13 }),
+		});
 
 		// ACT
-		const summary = await insightsService.getInsightsSummary();
+		const summary = await insightsService.getInsightsSummary({ periodLengthInDays: 6 });
 
 		// ASSERT
 		expect(summary).toEqual({
@@ -1289,7 +1296,7 @@ describe('getInsightsSummary', () => {
 		});
 
 		// ACT
-		const summary = await insightsService.getInsightsSummary();
+		const summary = await insightsService.getInsightsSummary({ periodLengthInDays: 7 });
 
 		// ASSERT
 		expect(Object.values(summary).map((v) => v.deviation)).toEqual([null, null, null, null, null]);
@@ -1329,7 +1336,7 @@ describe('getInsightsSummary', () => {
 		});
 
 		// ACT
-		const summary = await insightsService.getInsightsSummary();
+		const summary = await insightsService.getInsightsSummary({ periodLengthInDays: 7 });
 
 		// ASSERT
 		expect(summary).toEqual({
