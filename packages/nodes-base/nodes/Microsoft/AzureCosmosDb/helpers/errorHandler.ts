@@ -41,20 +41,11 @@ export async function handleError(
 		let errorDetails: string[] | undefined = undefined;
 		let inputValue: string | undefined;
 
-		try {
-			if (resource === 'container') {
-				inputValue =
-					(this.getNodeParameter('containerCreate') as string) ??
-					(this.getNodeParameter('container', undefined, { extractValue: true }) as string);
-			} else if (resource === 'item') {
-				inputValue = this.getNodeParameter('item', undefined, { extractValue: true }) as string;
-			}
-		} catch {}
-
 		if (resource === 'container') {
 			if (error.code === 'Conflict') {
+				const newContainerValue = this.getNodeParameter('containerCreate') as string;
 				throw new NodeApiError(this.getNode(), error as unknown as JsonObject, {
-					message: ErrorMap.Container.Conflict.getMessage(inputValue ?? 'Unknown'),
+					message: ErrorMap.Container.Conflict.getMessage(newContainerValue ?? 'Unknown'),
 					description: ErrorMap.Container.Conflict.description,
 				});
 			}
@@ -69,8 +60,11 @@ export async function handleError(
 			}
 		} else if (resource === 'item') {
 			if (error.code === 'NotFound') {
+				const itemValue = this.getNodeParameter('item', undefined, {
+					extractValue: true,
+				}) as string;
 				throw new NodeApiError(this.getNode(), error as unknown as JsonObject, {
-					message: ErrorMap.Item.NotFound.getMessage(inputValue ?? 'Unknown'),
+					message: ErrorMap.Item.NotFound.getMessage(itemValue ?? 'Unknown'),
 					description: ErrorMap.Item.NotFound.description,
 				});
 			}

@@ -9,8 +9,8 @@ export class AzureCosmosDb implements INodeType {
 		displayName: 'Azure Cosmos DB',
 		name: 'azureCosmosDb',
 		icon: {
-			light: 'file:azureCosmosDb.svg',
-			dark: 'file:azureCosmosDb.svg',
+			light: 'file:AzureCosmosDb.svg',
+			dark: 'file:AzureCosmosDb.svg',
 		},
 		group: ['transform'],
 		version: 1,
