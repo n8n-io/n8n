@@ -6,6 +6,7 @@ import channels from './fixtures/channels.json';
 import playlists from './fixtures/playlists.json';
 
 describe('Test YouTube Node', () => {
+	const youtubeNock = nock('https://www.googleapis.com/youtube');
 	beforeAll(() => {
 		jest
 			.useFakeTimers({ doNotFake: ['setImmediate', 'nextTick'] })
@@ -13,10 +14,7 @@ describe('Test YouTube Node', () => {
 	});
 
 	describe('Channel', () => {
-		const youtubeNock = nock('https://www.googleapis.com/youtube');
-
 		beforeAll(() => {
-			//Mock Channels
 			youtubeNock
 				.get('/v3/channels')
 				.query({
@@ -51,7 +49,19 @@ describe('Test YouTube Node', () => {
 						image: {},
 					},
 				});
-			//Mock Playlists
+			nock.emitter.on('no match', (req) => {
+				console.error('Unmatched request:', req);
+			});
+		});
+
+		testWorkflows(['nodes/Google/YouTube/__test__/node/channels.workflow.json']);
+
+		it('should make the correct network calls', () => {
+			youtubeNock.done();
+		});
+	});
+	describe('Playlist', () => {
+		beforeAll(() => {
 			youtubeNock
 				.post('/v3/playlists', {
 					snippet: { title: 'Playlist 1', privacyStatus: 'public', defaultLanguage: 'en' },
@@ -84,7 +94,7 @@ describe('Test YouTube Node', () => {
 					part: 'contentDetails,id,localizations,player,snippet,status',
 					id: 'playlist_id_1',
 				})
-				.reply(200, playlists[0]);
+				.reply(200, { items: [playlists[0]] });
 			youtubeNock
 				.get('/v3/playlists')
 				.query({
@@ -99,10 +109,7 @@ describe('Test YouTube Node', () => {
 			});
 		});
 
-		testWorkflows([
-			'nodes/Google/YouTube/__test__/node/channels.workflow.json',
-			'nodes/Google/YouTube/__test__/node/playlists.workflow.json',
-		]);
+		testWorkflows(['nodes/Google/YouTube/__test__/node/playlists.workflow.json']);
 
 		it('should make the correct network calls', () => {
 			youtubeNock.done();

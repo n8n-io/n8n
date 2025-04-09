@@ -4,8 +4,8 @@
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [260, 1260],
-			"id": "d068c161-64ea-4524-8b90-43c3b11d55b7",
+			"position": [320, 1980],
+			"id": "ca093a4e-81cb-445a-980c-dcdacbb1cc36",
 			"name": "When clicking ‘Test workflow’"
 		},
 		{
@@ -15,8 +15,8 @@
 			},
 			"type": "n8n-nodes-base.youTube",
 			"typeVersion": 1,
-			"position": [480, 1060],
-			"id": "2a31f200-5701-4c96-b1dd-ab546ac6a2db",
+			"position": [540, 1780],
+			"id": "a36477d2-f98b-48b9-a392-0f615527a7e6",
 			"name": "YouTube",
 			"credentials": {
 				"youTubeOAuth2Api": {
@@ -26,22 +26,14 @@
 			}
 		},
 		{
-			"parameters": {},
-			"type": "n8n-nodes-base.noOp",
-			"typeVersion": 1,
-			"position": [700, 1060],
-			"id": "f3b826cd-e2d1-4417-bff5-222b9d902853",
-			"name": "No Operation, do nothing"
-		},
-		{
 			"parameters": {
 				"operation": "get",
 				"channelId": "UCabc123def456ghi789jkl"
 			},
 			"type": "n8n-nodes-base.youTube",
 			"typeVersion": 1,
-			"position": [480, 1260],
-			"id": "9e73f758-9036-4200-84f4-68ee7dfbac08",
+			"position": [540, 1980],
+			"id": "afcfc3bb-a16a-4890-a4b3-692f843b9103",
 			"name": "YouTube1",
 			"credentials": {
 				"youTubeOAuth2Api": {
@@ -49,14 +41,6 @@
 					"name": "YouTube OAuth2 creds"
 				}
 			}
-		},
-		{
-			"parameters": {},
-			"type": "n8n-nodes-base.noOp",
-			"typeVersion": 1,
-			"position": [700, 1260],
-			"id": "a62a2ff9-d5db-442a-87a5-4f0568255a2e",
-			"name": "No Operation, do nothing1"
 		},
 		{
 			"parameters": {
@@ -74,8 +58,8 @@
 			},
 			"type": "n8n-nodes-base.youTube",
 			"typeVersion": 1,
-			"position": [480, 1460],
-			"id": "0c6d36b6-3528-4533-8cb0-cff039b75d3b",
+			"position": [540, 2180],
+			"id": "3a5f1c72-7dd1-4a76-958f-b9ecf7f8afbe",
 			"name": "YouTube2",
 			"credentials": {
 				"youTubeOAuth2Api": {
@@ -88,9 +72,25 @@
 			"parameters": {},
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [700, 1460],
-			"id": "9eabf128-bb8d-4bfd-a671-bcbcaec3c9c7",
-			"name": "No Operation, do nothing2"
+			"position": [760, 1780],
+			"id": "0ef3bfeb-6772-4eae-b4f6-5a8a05678861",
+			"name": "Channel Get All"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [760, 1980],
+			"id": "9af6133d-2a77-4245-83a7-1fb137997f3a",
+			"name": "Channel Get"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [760, 2180],
+			"id": "0d316d95-7e49-4497-a31c-9e56b1a7fda3",
+			"name": "Channel Update"
 		}
 	],
 	"connections": {
@@ -119,7 +119,7 @@
 			"main": [
 				[
 					{
-						"node": "No Operation, do nothing",
+						"node": "Channel Get All",
 						"type": "main",
 						"index": 0
 					}
@@ -130,7 +130,7 @@
 			"main": [
 				[
 					{
-						"node": "No Operation, do nothing1",
+						"node": "Channel Get",
 						"type": "main",
 						"index": 0
 					}
@@ -141,7 +141,7 @@
 			"main": [
 				[
 					{
-						"node": "No Operation, do nothing2",
+						"node": "Channel Update",
 						"type": "main",
 						"index": 0
 					}
@@ -150,7 +150,7 @@
 		}
 	},
 	"pinData": {
-		"No Operation, do nothing": [
+		"Channel Get All": [
 			{
 				"json": {
 					"kind": "youtube#channel",
@@ -377,7 +377,7 @@
 				}
 			}
 		],
-		"No Operation, do nothing1": [
+		"Channel Get": [
 			{
 				"json": {
 					"kind": "youtube#channel",
@@ -424,7 +424,7 @@
 				}
 			}
 		],
-		"No Operation, do nothing2": [
+		"Channel Update": [
 			{
 				"json": {
 					"kind": "youtube#channel",
@@ -441,7 +441,6 @@
 		]
 	},
 	"meta": {
-		"templateCredsSetupCompleted": true,
 		"instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
 	}
 }

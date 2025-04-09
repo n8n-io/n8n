@@ -1,12 +1,11 @@
 {
-	"name": "playlists.worflow",
 	"nodes": [
 		{
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [-40, 380],
-			"id": "000243ca-f9ed-4e7a-8cab-adc3c7ce04ba",
+			"position": [580, 1460],
+			"id": "974c3af2-835d-47c5-b3ee-879daeb475dc",
 			"name": "When clicking ‘Test workflow’"
 		},
 		{
@@ -22,8 +21,8 @@
 			},
 			"type": "n8n-nodes-base.youTube",
 			"typeVersion": 1,
-			"position": [180, -20],
-			"id": "da55308b-3502-4190-8969-f1d3ec58c8c4",
+			"position": [800, 1060],
+			"id": "df81d20e-4c27-4839-873c-3a90b1d9356c",
 			"name": "YouTube",
 			"credentials": {
 				"youTubeOAuth2Api": {
@@ -31,14 +30,6 @@
 					"name": "YouTube OAuth2 creds"
 				}
 			}
-		},
-		{
-			"parameters": {},
-			"type": "n8n-nodes-base.noOp",
-			"typeVersion": 1,
-			"position": [400, -20],
-			"id": "2ad25688-894e-4ce2-b93a-ba17eb453f49",
-			"name": "No Operation, do nothing"
 		},
 		{
 			"parameters": {
@@ -53,8 +44,8 @@
 			},
 			"type": "n8n-nodes-base.youTube",
 			"typeVersion": 1,
-			"position": [180, 180],
-			"id": "8cf7f0cc-1097-46bf-a74a-2b48a9ca75db",
+			"position": [800, 1260],
+			"id": "ab9110d9-552d-4e7e-bc8f-78763a2a6395",
 			"name": "YouTube1",
 			"credentials": {
 				"youTubeOAuth2Api": {
@@ -62,14 +53,6 @@
 					"name": "YouTube OAuth2 creds"
 				}
 			}
-		},
-		{
-			"parameters": {},
-			"type": "n8n-nodes-base.noOp",
-			"typeVersion": 1,
-			"position": [400, 180],
-			"id": "be485ca5-ea44-4a5d-9dd7-2aa3229595a6",
-			"name": "No Operation, do nothing1"
 		},
 		{
 			"parameters": {
@@ -80,8 +63,8 @@
 			},
 			"type": "n8n-nodes-base.youTube",
 			"typeVersion": 1,
-			"position": [180, 380],
-			"id": "45b19375-c14f-4acb-a9fd-7c64333c7c0e",
+			"position": [800, 1460],
+			"id": "e3939be4-1319-421e-96ca-282fea9f0a9e",
 			"name": "YouTube2",
 			"credentials": {
 				"youTubeOAuth2Api": {
@@ -91,14 +74,6 @@
 			}
 		},
 		{
-			"parameters": {},
-			"type": "n8n-nodes-base.noOp",
-			"typeVersion": 1,
-			"position": [400, 380],
-			"id": "e5b3a459-0e64-432d-9a29-f36498fea114",
-			"name": "No Operation, do nothing2"
-		},
-		{
 			"parameters": {
 				"resource": "playlist",
 				"filters": {},
@@ -106,8 +81,8 @@
 			},
 			"type": "n8n-nodes-base.youTube",
 			"typeVersion": 1,
-			"position": [180, 580],
-			"id": "0d98137c-9ab4-44cf-be46-a7ad137bf70b",
+			"position": [800, 1660],
+			"id": "4ea4cd62-6f2f-4e71-ae5e-6ef50718956b",
 			"name": "YouTube3",
 			"credentials": {
 				"youTubeOAuth2Api": {
@@ -115,14 +90,6 @@
 					"name": "YouTube OAuth2 creds"
 				}
 			}
-		},
-		{
-			"parameters": {},
-			"type": "n8n-nodes-base.noOp",
-			"typeVersion": 1,
-			"position": [400, 580],
-			"id": "abd19eb4-957f-4f2c-8062-0497e3342db5",
-			"name": "No Operation, do nothing3"
 		},
 		{
 			"parameters": {
@@ -133,8 +100,8 @@
 			},
 			"type": "n8n-nodes-base.youTube",
 			"typeVersion": 1,
-			"position": [180, 780],
-			"id": "46154057-bec1-41fc-97c0-1217d3c6833e",
+			"position": [800, 1860],
+			"id": "8bf6c082-bd4a-45d1-8625-46062fe7aeed",
 			"name": "YouTube4",
 			"credentials": {
 				"youTubeOAuth2Api": {
@@ -147,222 +114,43 @@
 			"parameters": {},
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [400, 780],
-			"id": "07476254-f5f6-47c5-8624-a566b2d007e6",
-			"name": "No Operation, do nothing4"
+			"position": [1020, 1060],
+			"id": "fe18eabc-0dc5-4ac8-8fe3-9a72558811cc",
+			"name": "Playlist Create"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1020, 1260],
+			"id": "be72d8a0-a83e-46e7-94f0-13e11c93e965",
+			"name": "Playlist Update"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1020, 1460],
+			"id": "6555e151-2214-46bf-8ca5-1a03a929236e",
+			"name": "Playlist Get"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1020, 1660],
+			"id": "f9ac55b1-ff4e-4f98-8c75-05c3f456682c",
+			"name": "Playlist Get All"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1020, 1860],
+			"id": "f2091eb1-cc41-468d-9c3b-6217a9124c85",
+			"name": "Playlist Delete"
 		}
 	],
-	"pinData": {
-		"No Operation, do nothing": [
-			{
-				"json": {
-					"kind": "youtube#playlist",
-					"etag": "etag_placeholder_1",
-					"id": "playlist_id_1",
-					"snippet": {
-						"publishedAt": "2024-11-22T12:40:13Z",
-						"channelId": "channel_id_placeholder",
-						"title": "Playlist 1",
-						"description": "Description for Playlist 1.",
-						"thumbnails": {
-							"default": { "url": "https://example.com/default.jpg", "width": 120, "height": 90 },
-							"medium": { "url": "https://example.com/mqdefault.jpg", "width": 320, "height": 180 },
-							"high": { "url": "https://example.com/hqdefault.jpg", "width": 480, "height": 360 },
-							"standard": {
-								"url": "https://example.com/sddefault.jpg",
-								"width": 640,
-								"height": 480
-							},
-							"maxres": {
-								"url": "https://example.com/maxresdefault.jpg",
-								"width": 1280,
-								"height": 720
-							}
-						},
-						"channelTitle": "Channel Placeholder",
-						"defaultLanguage": "en",
-						"localized": {
-							"title": "Playlist 1",
-							"description": "Description for Playlist 1."
-						}
-					},
-					"status": { "privacyStatus": "public" },
-					"contentDetails": { "itemCount": 16 },
-					"player": {
-						"embedHtml": "<iframe width=\"640\" height=\"360\" src=\"https://example.com/embed/playlist1\" frameborder=\"0\" allowfullscreen></iframe>"
-					}
-				}
-			}
-		],
-		"No Operation, do nothing1": [
-			{
-				"json": {
-					"kind": "youtube#playlist",
-					"etag": "etag_placeholder_1",
-					"id": "playlist_id_1",
-					"snippet": {
-						"publishedAt": "2024-11-22T12:40:13Z",
-						"channelId": "channel_id_placeholder",
-						"title": "The title is updated",
-						"description": "The description is updated",
-						"thumbnails": {
-							"default": { "url": "https://example.com/default.jpg", "width": 120, "height": 90 },
-							"medium": { "url": "https://example.com/mqdefault.jpg", "width": 320, "height": 180 },
-							"high": { "url": "https://example.com/hqdefault.jpg", "width": 480, "height": 360 },
-							"standard": {
-								"url": "https://example.com/sddefault.jpg",
-								"width": 640,
-								"height": 480
-							},
-							"maxres": {
-								"url": "https://example.com/maxresdefault.jpg",
-								"width": 1280,
-								"height": 720
-							}
-						},
-						"channelTitle": "Channel Placeholder",
-						"defaultLanguage": "en",
-						"localized": {
-							"title": "The title is updated",
-							"description": "The description is updated"
-						}
-					},
-					"status": { "privacyStatus": "public" },
-					"contentDetails": { "itemCount": 16 },
-					"player": {
-						"embedHtml": "<iframe width=\"640\" height=\"360\" src=\"https://example.com/embed/playlist1\" frameborder=\"0\" allowfullscreen></iframe>"
-					}
-				}
-			}
-		],
-		"No Operation, do nothing2": [
-			{
-				"json": {
-					"kind": "youtube#playlist",
-					"etag": "etag_placeholder_1",
-					"id": "playlist_id_1",
-					"snippet": {
-						"publishedAt": "2024-11-22T12:40:13Z",
-						"channelId": "channel_id_placeholder",
-						"title": "Playlist 1",
-						"description": "Description for Playlist 1.",
-						"thumbnails": {
-							"default": { "url": "https://example.com/default.jpg", "width": 120, "height": 90 },
-							"medium": { "url": "https://example.com/mqdefault.jpg", "width": 320, "height": 180 },
-							"high": { "url": "https://example.com/hqdefault.jpg", "width": 480, "height": 360 },
-							"standard": {
-								"url": "https://example.com/sddefault.jpg",
-								"width": 640,
-								"height": 480
-							},
-							"maxres": {
-								"url": "https://example.com/maxresdefault.jpg",
-								"width": 1280,
-								"height": 720
-							}
-						},
-						"channelTitle": "Channel Placeholder",
-						"defaultLanguage": "en",
-						"localized": {
-							"title": "Playlist 1",
-							"description": "Description for Playlist 1."
-						}
-					},
-					"status": { "privacyStatus": "public" },
-					"contentDetails": { "itemCount": 16 },
-					"player": {
-						"embedHtml": "<iframe width=\"640\" height=\"360\" src=\"https://example.com/embed/playlist1\" frameborder=\"0\" allowfullscreen></iframe>"
-					}
-				}
-			}
-		],
-		"No Operation, do nothing3": [
-			{
-				"json": {
-					"kind": "youtube#playlist",
-					"etag": "etag_placeholder_1",
-					"id": "playlist_id_1",
-					"snippet": {
-						"publishedAt": "2024-11-22T12:40:13Z",
-						"channelId": "channel_id_placeholder",
-						"title": "Playlist 1",
-						"description": "Description for Playlist 1.",
-						"thumbnails": {
-							"default": { "url": "https://example.com/default.jpg", "width": 120, "height": 90 },
-							"medium": { "url": "https://example.com/mqdefault.jpg", "width": 320, "height": 180 },
-							"high": { "url": "https://example.com/hqdefault.jpg", "width": 480, "height": 360 },
-							"standard": {
-								"url": "https://example.com/sddefault.jpg",
-								"width": 640,
-								"height": 480
-							},
-							"maxres": {
-								"url": "https://example.com/maxresdefault.jpg",
-								"width": 1280,
-								"height": 720
-							}
-						},
-						"channelTitle": "Channel Placeholder",
-						"defaultLanguage": "en",
-						"localized": {
-							"title": "Playlist 1",
-							"description": "Description for Playlist 1."
-						}
-					},
-					"status": { "privacyStatus": "public" },
-					"contentDetails": { "itemCount": 16 },
-					"player": {
-						"embedHtml": "<iframe width=\"640\" height=\"360\" src=\"https://example.com/embed/playlist1\" frameborder=\"0\" allowfullscreen></iframe>"
-					}
-				}
-			},
-			{
-				"json": {
-					"kind": "youtube#playlist",
-					"etag": "etag_placeholder_2",
-					"id": "playlist_id_2",
-					"snippet": {
-						"publishedAt": "2024-08-30T18:23:41Z",
-						"channelId": "channel_id_placeholder",
-						"title": "Playlist 2",
-						"description": "Description for Playlist 2.",
-						"thumbnails": {
-							"default": { "url": "https://example.com/default.jpg", "width": 120, "height": 90 },
-							"medium": { "url": "https://example.com/mqdefault.jpg", "width": 320, "height": 180 },
-							"high": { "url": "https://example.com/hqdefault.jpg", "width": 480, "height": 360 },
-							"standard": {
-								"url": "https://example.com/sddefault.jpg",
-								"width": 640,
-								"height": 480
-							},
-							"maxres": {
-								"url": "https://example.com/maxresdefault.jpg",
-								"width": 1280,
-								"height": 720
-							}
-						},
-						"channelTitle": "Channel Placeholder",
-						"localized": {
-							"title": "Playlist 2",
-							"description": "Description for Playlist 2."
-						}
-					},
-					"status": { "privacyStatus": "public" },
-					"contentDetails": { "itemCount": 18 },
-					"player": {
-						"embedHtml": "<iframe width=\"640\" height=\"360\" src=\"https://example.com/embed/playlist2\" frameborder=\"0\" allowfullscreen></iframe>"
-					}
-				}
-			}
-		],
-		"No Operation, do nothing4": [
-			{
-				"json": {
-					"success": true
-				}
-			}
-		]
-	},
 	"connections": {
 		"When clicking ‘Test workflow’": {
 			"main": [
@@ -399,7 +187,7 @@
 			"main": [
 				[
 					{
-						"node": "No Operation, do nothing",
+						"node": "Playlist Create",
 						"type": "main",
 						"index": 0
 					}
@@ -410,7 +198,7 @@
 			"main": [
 				[
 					{
-						"node": "No Operation, do nothing1",
+						"node": "Playlist Update",
 						"type": "main",
 						"index": 0
 					}
@@ -421,7 +209,7 @@
 			"main": [
 				[
 					{
-						"node": "No Operation, do nothing2",
+						"node": "Playlist Get",
 						"type": "main",
 						"index": 0
 					}
@@ -432,7 +220,7 @@
 			"main": [
 				[
 					{
-						"node": "No Operation, do nothing3",
+						"node": "Playlist Get All",
 						"type": "main",
 						"index": 0
 					}
@@ -443,7 +231,7 @@
 			"main": [
 				[
 					{
-						"node": "No Operation, do nothing4",
+						"node": "Playlist Delete",
 						"type": "main",
 						"index": 0
 					}
@@ -451,15 +239,298 @@
 			]
 		}
 	},
-	"active": false,
-	"settings": {
-		"executionOrder": "v1"
+	"pinData": {
+		"Playlist Create": [
+			{
+				"json": {
+					"kind": "youtube#playlist",
+					"etag": "etag_placeholder_1",
+					"id": "playlist_id_1",
+					"snippet": {
+						"publishedAt": "2024-11-22T12:40:13Z",
+						"channelId": "channel_id_placeholder",
+						"title": "Playlist 1",
+						"description": "Description for Playlist 1.",
+						"thumbnails": {
+							"default": {
+								"url": "https://example.com/default.jpg",
+								"width": 120,
+								"height": 90
+							},
+							"medium": {
+								"url": "https://example.com/mqdefault.jpg",
+								"width": 320,
+								"height": 180
+							},
+							"high": {
+								"url": "https://example.com/hqdefault.jpg",
+								"width": 480,
+								"height": 360
+							},
+							"standard": {
+								"url": "https://example.com/sddefault.jpg",
+								"width": 640,
+								"height": 480
+							},
+							"maxres": {
+								"url": "https://example.com/maxresdefault.jpg",
+								"width": 1280,
+								"height": 720
+							}
+						},
+						"channelTitle": "Channel Placeholder",
+						"defaultLanguage": "en",
+						"localized": {
+							"title": "Playlist 1",
+							"description": "Description for Playlist 1."
+						}
+					},
+					"status": {
+						"privacyStatus": "public"
+					},
+					"contentDetails": {
+						"itemCount": 16
+					},
+					"player": {
+						"embedHtml": "<iframe width=\"640\" height=\"360\" src=\"https://example.com/embed/playlist1\" frameborder=\"0\" allowfullscreen></iframe>"
+					}
+				}
+			}
+		],
+		"Playlist Update": [
+			{
+				"json": {
+					"kind": "youtube#playlist",
+					"etag": "etag_placeholder_1",
+					"id": "playlist_id_1",
+					"snippet": {
+						"publishedAt": "2024-11-22T12:40:13Z",
+						"channelId": "channel_id_placeholder",
+						"title": "The title is updated",
+						"description": "The description is updated",
+						"thumbnails": {
+							"default": {
+								"url": "https://example.com/default.jpg",
+								"width": 120,
+								"height": 90
+							},
+							"medium": {
+								"url": "https://example.com/mqdefault.jpg",
+								"width": 320,
+								"height": 180
+							},
+							"high": {
+								"url": "https://example.com/hqdefault.jpg",
+								"width": 480,
+								"height": 360
+							},
+							"standard": {
+								"url": "https://example.com/sddefault.jpg",
+								"width": 640,
+								"height": 480
+							},
+							"maxres": {
+								"url": "https://example.com/maxresdefault.jpg",
+								"width": 1280,
+								"height": 720
+							}
+						},
+						"channelTitle": "Channel Placeholder",
+						"defaultLanguage": "en",
+						"localized": {
+							"title": "The title is updated",
+							"description": "The description is updated"
+						}
+					},
+					"status": {
+						"privacyStatus": "public"
+					},
+					"contentDetails": {
+						"itemCount": 16
+					},
+					"player": {
+						"embedHtml": "<iframe width=\"640\" height=\"360\" src=\"https://example.com/embed/playlist1\" frameborder=\"0\" allowfullscreen></iframe>"
+					}
+				}
+			}
+		],
+		"Playlist Get": [
+			{
+				"json": {
+					"kind": "youtube#playlist",
+					"etag": "etag_placeholder_1",
+					"id": "playlist_id_1",
+					"snippet": {
+						"publishedAt": "2024-11-22T12:40:13Z",
+						"channelId": "channel_id_placeholder",
+						"title": "Playlist 1",
+						"description": "Description for Playlist 1.",
+						"thumbnails": {
+							"default": {
+								"url": "https://example.com/default.jpg",
+								"width": 120,
+								"height": 90
+							},
+							"medium": {
+								"url": "https://example.com/mqdefault.jpg",
+								"width": 320,
+								"height": 180
+							},
+							"high": {
+								"url": "https://example.com/hqdefault.jpg",
+								"width": 480,
+								"height": 360
+							},
+							"standard": {
+								"url": "https://example.com/sddefault.jpg",
+								"width": 640,
+								"height": 480
+							},
+							"maxres": {
+								"url": "https://example.com/maxresdefault.jpg",
+								"width": 1280,
+								"height": 720
+							}
+						},
+						"channelTitle": "Channel Placeholder",
+						"defaultLanguage": "en",
+						"localized": {
+							"title": "Playlist 1",
+							"description": "Description for Playlist 1."
+						}
+					},
+					"status": {
+						"privacyStatus": "public"
+					},
+					"contentDetails": {
+						"itemCount": 16
+					},
+					"player": {
+						"embedHtml": "<iframe width=\"640\" height=\"360\" src=\"https://example.com/embed/playlist1\" frameborder=\"0\" allowfullscreen></iframe>"
+					}
+				}
+			}
+		],
+		"Playlist Get All": [
+			{
+				"json": {
+					"kind": "youtube#playlist",
+					"etag": "etag_placeholder_1",
+					"id": "playlist_id_1",
+					"snippet": {
+						"publishedAt": "2024-11-22T12:40:13Z",
+						"channelId": "channel_id_placeholder",
+						"title": "Playlist 1",
+						"description": "Description for Playlist 1.",
+						"thumbnails": {
+							"default": {
+								"url": "https://example.com/default.jpg",
+								"width": 120,
+								"height": 90
+							},
+							"medium": {
+								"url": "https://example.com/mqdefault.jpg",
+								"width": 320,
+								"height": 180
+							},
+							"high": {
+								"url": "https://example.com/hqdefault.jpg",
+								"width": 480,
+								"height": 360
+							},
+							"standard": {
+								"url": "https://example.com/sddefault.jpg",
+								"width": 640,
+								"height": 480
+							},
+							"maxres": {
+								"url": "https://example.com/maxresdefault.jpg",
+								"width": 1280,
+								"height": 720
+							}
+						},
+						"channelTitle": "Channel Placeholder",
+						"defaultLanguage": "en",
+						"localized": {
+							"title": "Playlist 1",
+							"description": "Description for Playlist 1."
+						}
+					},
+					"status": {
+						"privacyStatus": "public"
+					},
+					"contentDetails": {
+						"itemCount": 16
+					},
+					"player": {
+						"embedHtml": "<iframe width=\"640\" height=\"360\" src=\"https://example.com/embed/playlist1\" frameborder=\"0\" allowfullscreen></iframe>"
+					}
+				}
+			},
+			{
+				"json": {
+					"kind": "youtube#playlist",
+					"etag": "etag_placeholder_2",
+					"id": "playlist_id_2",
+					"snippet": {
+						"publishedAt": "2024-08-30T18:23:41Z",
+						"channelId": "channel_id_placeholder",
+						"title": "Playlist 2",
+						"description": "Description for Playlist 2.",
+						"thumbnails": {
+							"default": {
+								"url": "https://example.com/default.jpg",
+								"width": 120,
+								"height": 90
+							},
+							"medium": {
+								"url": "https://example.com/mqdefault.jpg",
+								"width": 320,
+								"height": 180
+							},
+							"high": {
+								"url": "https://example.com/hqdefault.jpg",
+								"width": 480,
+								"height": 360
+							},
+							"standard": {
+								"url": "https://example.com/sddefault.jpg",
+								"width": 640,
+								"height": 480
+							},
+							"maxres": {
+								"url": "https://example.com/maxresdefault.jpg",
+								"width": 1280,
+								"height": 720
+							}
+						},
+						"channelTitle": "Channel Placeholder",
+						"localized": {
+							"title": "Playlist 2",
+							"description": "Description for Playlist 2."
+						}
+					},
+					"status": {
+						"privacyStatus": "public"
+					},
+					"contentDetails": {
+						"itemCount": 18
+					},
+					"player": {
+						"embedHtml": "<iframe width=\"640\" height=\"360\" src=\"https://example.com/embed/playlist2\" frameborder=\"0\" allowfullscreen></iframe>"
+					}
+				}
+			}
+		],
+		"Playlist Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
 	},
-	"versionId": "418f84ca-fcb8-4141-a4c9-7a39484181a7",
 	"meta": {
-		"templateCredsSetupCompleted": true,
 		"instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
-	},
-	"id": "ywvHvYHf3CqZPLV8",
-	"tags": []
+	}
 }
