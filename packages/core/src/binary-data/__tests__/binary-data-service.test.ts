@@ -21,7 +21,7 @@ describe('BinaryDataService', () => {
 		const instanceSettings: InstanceSettings = mock<InstanceSettings>({ signingSecret });
 		const binaryDataConfig: BinaryDataConfig = mock<BinaryDataConfig>({ signingSecret });
 
-		const binaryDataService = new BinaryDataService(instanceSettings, binaryDataConfig);
+		new BinaryDataService(instanceSettings, binaryDataConfig);
 
 		expect(binaryDataConfig.signingSecret).toBe(signingSecret);
 	});
