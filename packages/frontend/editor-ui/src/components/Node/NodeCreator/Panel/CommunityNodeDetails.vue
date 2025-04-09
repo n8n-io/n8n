@@ -10,7 +10,8 @@ import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 
 import { getNodeIconSource } from '@/utils/nodeIcon';
-import { COMMUNITY_NODE_TYPE_PREVIEW_TOKEN } from 'n8n-workflow';
+
+import { removePreviewToken } from '../utils';
 
 const {
 	activeViewStack,
@@ -49,18 +50,19 @@ const onInstallClick = async () => {
 
 			await useCredentialsStore().fetchCredentialTypes(true);
 
-			const installedNodeItem = getAllNodeCreateElements().find(
-				(node) => node.key === key.replace(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN, ''),
+			const installedNodeKey = removePreviewToken(key);
+			const installedNode = getAllNodeCreateElements().find(
+				(node) => node.key === installedNodeKey,
 			);
 
-			if (installedNodeItem) {
-				const nodeActions = nodeCreatorStore.actions?.[installedNodeItem.key] || [];
+			if (installedNode) {
+				const nodeActions = nodeCreatorStore.actions?.[installedNode.key] || [];
 
 				popViewStack();
 
 				pushCommunityNodeDetailsViewStack(
-					installedNodeItem,
-					getNodeIconSource(installedNodeItem.properties),
+					installedNode,
+					getNodeIconSource(installedNode.properties),
 					nodeActions,
 					{
 						transitionDirection: 'none',

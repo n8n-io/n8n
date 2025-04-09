@@ -26,6 +26,8 @@ import * as changeCase from 'change-case';
 import { useSettingsStore } from '@/stores/settings.store';
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
+const COMMUNITY_NODE_TYPE_PREVIEW_TOKEN = '-preview';
+
 export function transformNodeType(
 	node: SimplifiedNodeType,
 	subcategory?: string,
@@ -202,3 +204,8 @@ export const formatTriggerActionName = (actionPropertyName: string) => {
 	}
 	return changeCase.noCase(name);
 };
+
+export const removePreviewToken = (key: string) =>
+	key.replace(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN, '');
+
+export const isNodePreviewKey = (key = '') => key.includes(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN);

@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 import axios from 'axios';
 import { Logger } from 'n8n-core';
 import type { CommunityNodeAttributes, INodeTypeDescription } from 'n8n-workflow';
-import { COMMUNITY_NODE_TYPE_PREVIEW_TOKEN, ensureError } from 'n8n-workflow';
+import { ensureError } from 'n8n-workflow';
 
 import { CommunityPackagesService } from './community-packages.service';
 
@@ -136,8 +136,7 @@ export class CommunityNodeTypesService {
 	}
 
 	getCommunityNodeAttributes(nodeName: string): CommunityNodeAttributes | null {
-		const name = nodeName.replace(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN, '');
-		const node = this.communityNodes[name];
+		const node = this.communityNodes[nodeName];
 		if (!node) return null;
 		const { nodeDescription, ...attributes } = node;
 		return attributes;

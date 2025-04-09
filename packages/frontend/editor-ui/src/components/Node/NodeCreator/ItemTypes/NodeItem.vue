@@ -18,7 +18,7 @@ import { useViewStacks } from '../composables/useViewStacks';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNodeType } from '@/composables/useNodeType';
-import { COMMUNITY_NODE_TYPE_PREVIEW_TOKEN } from 'n8n-workflow';
+import { isNodePreviewKey } from '../utils';
 
 export interface Props {
 	nodeType: SimplifiedNodeType;
@@ -91,9 +91,7 @@ const draggableStyle = computed<{ top: string; left: string }>(() => ({
 }));
 
 const isCommunityNode = computed<boolean>(() => isCommunityPackageName(props.nodeType.name));
-const isCommunityNodePreview = computed<boolean>(() =>
-	props.nodeType.name.includes(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN),
-);
+const isCommunityNodePreview = computed<boolean>(() => isNodePreviewKey(props.nodeType.name));
 
 const displayName = computed<string>(() => {
 	const trimmedDisplayName = props.nodeType.displayName.trimEnd();

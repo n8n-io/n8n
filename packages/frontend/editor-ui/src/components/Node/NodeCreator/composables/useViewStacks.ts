@@ -26,6 +26,8 @@ import {
 	flattenCreateElements,
 	groupItemsInSections,
 	isAINode,
+	isNodePreviewKey,
+	removePreviewToken,
 	searchNodes,
 	sortNodeCreateElements,
 	subcategorizeItems,
@@ -38,7 +40,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useKeyboardNavigation } from './useKeyboardNavigation';
 
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { AI_TRANSFORM_NODE_TYPE, COMMUNITY_NODE_TYPE_PREVIEW_TOKEN } from 'n8n-workflow';
+import { AI_TRANSFORM_NODE_TYPE } from 'n8n-workflow';
 import type { NodeConnectionType, INodeInputFilter } from 'n8n-workflow';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -514,8 +516,8 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			transitionDirection?: 'in' | 'out' | 'none';
 		},
 	) {
-		const installed = !item.key.includes(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN);
-		const packageName = item.key.split('.')[0].replace(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN, '');
+		const installed = !isNodePreviewKey(item.key);
+		const packageName = removePreviewToken(item.key.split('.')[0]);
 
 		const communityNodeDetails: CommunityNodeDetails = {
 			title: item.properties.displayName,

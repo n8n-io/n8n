@@ -37,8 +37,7 @@ class CommunityPackagesConfig {
 	/** Url to get vetted node types from, N8n_COMMUNITY_PACKAGES_ENABLED must be true */
 	@Env('N8N_VETTED_NODE_TYPES_URL')
 	// TODO: replace with production url
-	vettedNodeTypesUrl: string =
-		'https://wn-dealing-adjustment-feature.trycloudflare.com/api/community-nodes';
+	vettedNodeTypesUrl: string = 'http://localhost:5678/webhook/strapi-mock';
 }
 
 @Config

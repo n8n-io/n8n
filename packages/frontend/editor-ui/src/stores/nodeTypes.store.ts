@@ -26,6 +26,7 @@ import * as utils from '@/utils/credentialOnlyNodes';
 import { groupNodeTypesByNameAndType } from '@/utils/nodeTypes/nodeTypeTransforms';
 import { computed, ref } from 'vue';
 import { useActionsGenerator } from '../components/Node/NodeCreator/composables/useActionsGeneration';
+import { removePreviewToken } from '../components/Node/NodeCreator/utils';
 
 export type NodeTypesStore = ReturnType<typeof useNodeTypesStore>;
 
@@ -348,7 +349,10 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	};
 
 	const getCommunityNodeAttributes = async (nodeName: string) => {
-		return await nodeTypesApi.getCommunityNodeAttributes(rootStore.restApiContext, nodeName);
+		return await nodeTypesApi.getCommunityNodeAttributes(
+			rootStore.restApiContext,
+			removePreviewToken(nodeName),
+		);
 	};
 
 	// #endregion

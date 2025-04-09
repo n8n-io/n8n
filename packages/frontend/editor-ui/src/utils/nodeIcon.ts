@@ -1,8 +1,9 @@
-import { COMMUNITY_NODE_TYPE_PREVIEW_TOKEN, type INodeTypeDescription } from 'n8n-workflow';
+import { type INodeTypeDescription } from 'n8n-workflow';
 import type { IVersionNode } from '../Interface';
 import { useRootStore } from '../stores/root.store';
 import { useUIStore } from '../stores/ui.store';
 import { getThemedValue } from './nodeTypesUtils';
+import { isNodePreviewKey } from '../components/Node/NodeCreator/utils';
 
 type NodeIconSourceIcon = { type: 'icon'; name: string; color?: string };
 type NodeIconSourceFile = {
@@ -72,11 +73,7 @@ export function getNodeIconSource(nodeType?: IconNodeType | null): NodeIconSourc
 		}
 	}
 
-	if (
-		nodeType.name &&
-		nodeType.name.includes(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN) &&
-		typeof nodeType.iconUrl === 'string'
-	) {
+	if (nodeType.name && isNodePreviewKey(nodeType.name) && typeof nodeType.iconUrl === 'string') {
 		return {
 			type: 'file',
 			src: nodeType.iconUrl,
