@@ -25,6 +25,19 @@ describe('Google GSuiteAdmin Node - Create User', () => {
 					givenName: 'NewOne',
 					familyName: 'User',
 				},
+				emails: [
+					{
+						address: 'test@mail.com',
+						type: 'work',
+					},
+				],
+				phones: [
+					{
+						primary: false,
+						type: 'work',
+						value: '+1-202-555-0123',
+					},
+				],
 				isAdmin: false,
 				isDelegatedAdmin: false,
 				creationTime: '2024-12-20T20:48:53.000Z',

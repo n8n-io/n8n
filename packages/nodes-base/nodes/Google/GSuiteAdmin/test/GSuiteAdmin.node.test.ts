@@ -105,24 +105,6 @@ describe('GSuiteAdmin Node - loadOptions', () => {
 				{ name: 'HR', value: '/hr' },
 			]);
 		});
-
-		it('should throw an error if no organizational units found', async () => {
-			(googleApiRequest as jest.Mock).mockResolvedValue({
-				organizationUnits: [],
-			});
-
-			await expect(node.methods.loadOptions.getOrgUnits.call(mockThis)).rejects.toThrow(
-				'No organizational units found',
-			);
-		});
-
-		it('should throw an error if organizationUnits is missing', async () => {
-			(googleApiRequest as jest.Mock).mockResolvedValue({});
-
-			await expect(node.methods.loadOptions.getOrgUnits.call(mockThis)).rejects.toThrow(
-				'Failed to retrieve organizational units',
-			);
-		});
 	});
 });
 

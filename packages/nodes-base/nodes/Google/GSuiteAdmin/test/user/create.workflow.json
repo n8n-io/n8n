@@ -58,6 +58,19 @@
 					"isAdmin": false,
 					"isDelegatedAdmin": false,
 					"creationTime": "2024-12-20T20:48:53.000Z",
+					"emails": [
+						{
+							"address": "test@mail.com",
+							"type": "work"
+						}
+					],
+					"phones": [
+						{
+							"value": "+1-202-555-0123",
+							"primary": false,
+							"type": "work"
+						}
+					],
 					"customerId": "C4444hnz2",
 					"orgUnitPath": "/",
 					"isMailboxSetup": false

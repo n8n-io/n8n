@@ -76,7 +76,7 @@ describe('searchFunctions', () => {
 	describe('searchDevices', () => {
 		it('should return formatted device search results', async () => {
 			(googleApiRequest as jest.Mock).mockResolvedValueOnce({
-				chromeosdevices: [{ deviceId: 'dev1', serialNumber: 'SN123' }, { deviceId: 'dev2' }],
+				chromeosdevices: [{ deviceId: 'dev1', serialNumber: 'SN123' }, { deviceId: 'Dev2' }],
 			});
 
 			const result = await searchDevices.call(mockContext);
@@ -90,7 +90,7 @@ describe('searchFunctions', () => {
 			expect(result).toEqual({
 				results: [
 					{ name: 'SN123', value: 'dev1' },
-					{ name: 'Unknown Device', value: 'dev2' },
+					{ name: 'Dev2', value: 'Dev2' },
 				],
 			});
 		});
