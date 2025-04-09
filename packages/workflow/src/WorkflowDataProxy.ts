@@ -181,8 +181,12 @@ export class WorkflowDataProxy {
 
 		const operation =
 			nodeType.description.properties
-				.find((x) => x.name === 'operation')
-				?.options?.find((x) => 'value' in x && x.value === operationKey)?.name ?? null;
+				.find(
+					(x) =>
+						x.name === 'operation' &&
+						x.displayOptions?.show?.resource?.some((y) => y === resourceKey),
+				)
+				?.options?.find((y) => 'value' in y && y.value === operationKey)?.name ?? null;
 
 		const hasCredentials = !isObjectEmpty(node.credentials ?? {});
 

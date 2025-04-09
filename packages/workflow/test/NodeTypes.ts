@@ -922,6 +922,26 @@ const googleCalendarTool: LoadedClass<INodeType> = {
 					noDataExpression: true,
 					displayOptions: {
 						show: {
+							resource: ['calendar'],
+						},
+					},
+					options: [
+						{
+							name: 'Availability',
+							value: 'availability',
+							description: 'If a time-slot is available in a calendar',
+							action: 'Get availability in a calendar',
+						},
+					],
+					default: 'availability',
+				},
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					noDataExpression: true,
+					displayOptions: {
+						show: {
 							resource: ['event'],
 						},
 					},
