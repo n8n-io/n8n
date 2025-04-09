@@ -17,8 +17,8 @@ export class McpTrigger extends Node {
 		displayName: 'MCP Server Trigger',
 		name: 'mcpTrigger',
 		icon: {
-			light: 'file:mcp.svg',
-			dark: 'file:mcp.dark.svg',
+			light: 'file:../mcp.svg',
+			dark: 'file:../mcp.dark.svg',
 		},
 		group: ['trigger'],
 		version: 1,
