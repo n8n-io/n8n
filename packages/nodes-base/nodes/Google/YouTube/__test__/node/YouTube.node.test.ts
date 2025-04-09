@@ -3,6 +3,7 @@ import nock from 'nock';
 import { testWorkflows } from '@test/nodes/Helpers';
 
 import channels from './fixtures/channels.json';
+import playlists from './fixtures/playlists.json';
 
 describe('Test YouTube Node', () => {
 	beforeAll(() => {
@@ -53,18 +54,46 @@ describe('Test YouTube Node', () => {
 			//Mock Playlists
 			youtubeNock
 				.post('/v3/playlists', {
-					snippet: { title: 'Test', privacyStatus: 'private', defaultLanguage: 'en' },
+					snippet: { title: 'Playlist 1', privacyStatus: 'public', defaultLanguage: 'en' },
 				})
 				.query({ part: 'snippet' })
-				.reply(200, { items: channels });
+				.reply(200, playlists[0]);
 			youtubeNock
 				.put('/v3/playlists', {
-					id: 'PLVP4mWdqlaa4yZzZrY5daibndICp3lpWX',
+					id: 'playlist_id_1',
 					snippet: { title: 'Test Updated', description: 'This description is updated' },
 					status: { privacyStatus: 'private' },
 				})
 				.query({ part: 'snippet, status' })
-				.reply(200, {});
+				.reply(200, {
+					...playlists[0],
+					snippet: {
+						...playlists[0].snippet,
+						title: 'The title is updated',
+						description: 'The description is updated',
+						localized: {
+							...playlists[0].snippet.localized,
+							title: 'The title is updated',
+							description: 'The description is updated',
+						},
+					},
+				});
+			youtubeNock
+				.get('/v3/playlists')
+				.query({
+					part: 'contentDetails,id,localizations,player,snippet,status',
+					id: 'playlist_id_1',
+				})
+				.reply(200, playlists[0]);
+			youtubeNock
+				.get('/v3/playlists')
+				.query({
+					part: 'contentDetails,id,localizations,player,snippet,status',
+					mine: true,
+					maxResults: 25,
+				})
+				.reply(200, { items: playlists });
+			youtubeNock.delete('/v3/playlists', { id: 'playlist_id_1' }).reply(200, { success: true });
 			nock.emitter.on('no match', (req) => {
 				console.error('Unmatched request:', req);
 			});

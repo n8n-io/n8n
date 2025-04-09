@@ -13,10 +13,10 @@
 			"parameters": {
 				"resource": "playlist",
 				"operation": "create",
-				"title": "Test",
+				"title": "Playlist 1",
 				"options": {
-					"description": "Just a Test Playlist",
-					"privacyStatus": "private",
+					"description": "Description for Playlist 1.",
+					"privacyStatus": "public",
 					"defaultLanguage": "en"
 				}
 			},
@@ -44,7 +44,7 @@
 			"parameters": {
 				"resource": "playlist",
 				"operation": "update",
-				"playlistId": "PLVP4mWdqlaa4yZzZrY5daibndICp3lpWX",
+				"playlistId": "playlist_id_1",
 				"title": "Test Updated",
 				"updateFields": {
 					"description": "This description is updated",
@@ -75,7 +75,7 @@
 			"parameters": {
 				"resource": "playlist",
 				"operation": "get",
-				"playlistId": "PLVP4mWdqlaa4yZzZrY5daibndICp3lpWX",
+				"playlistId": "playlist_id_1",
 				"options": {}
 			},
 			"type": "n8n-nodes-base.youTube",
@@ -128,7 +128,7 @@
 			"parameters": {
 				"resource": "playlist",
 				"operation": "delete",
-				"playlistId": "PLVP4mWdqlaa4yZzZrY5daibndICp3lpWX",
+				"playlistId": "playlist_id_1",
 				"options": {}
 			},
 			"type": "n8n-nodes-base.youTube",
@@ -157,36 +157,39 @@
 			{
 				"json": {
 					"kind": "youtube#playlist",
-					"etag": "0XLy-ODoBX2Ge_bqKHwaagVhWro",
-					"id": "PLVP4mWdqlaa4yZzZrY5daibndICp3lpWX",
+					"etag": "etag_placeholder_1",
+					"id": "playlist_id_1",
 					"snippet": {
-						"publishedAt": "2025-04-09T10:24:38Z",
-						"channelId": "UCL98mKpoT4XMS5Mg6mHQgLg",
-						"title": "Test",
-						"description": "",
+						"publishedAt": "2024-11-22T12:40:13Z",
+						"channelId": "channel_id_placeholder",
+						"title": "Playlist 1",
+						"description": "Description for Playlist 1.",
 						"thumbnails": {
-							"default": {
-								"url": "https://i.ytimg.com/img/no_thumbnail.jpg",
-								"width": 120,
-								"height": 90
+							"default": { "url": "https://example.com/default.jpg", "width": 120, "height": 90 },
+							"medium": { "url": "https://example.com/mqdefault.jpg", "width": 320, "height": 180 },
+							"high": { "url": "https://example.com/hqdefault.jpg", "width": 480, "height": 360 },
+							"standard": {
+								"url": "https://example.com/sddefault.jpg",
+								"width": 640,
+								"height": 480
 							},
-							"medium": {
-								"url": "https://i.ytimg.com/img/no_thumbnail.jpg",
-								"width": 320,
-								"height": 180
-							},
-							"high": {
-								"url": "https://i.ytimg.com/img/no_thumbnail.jpg",
-								"width": 480,
-								"height": 360
+							"maxres": {
+								"url": "https://example.com/maxresdefault.jpg",
+								"width": 1280,
+								"height": 720
 							}
 						},
-						"channelTitle": "Shireen M",
+						"channelTitle": "Channel Placeholder",
 						"defaultLanguage": "en",
 						"localized": {
-							"title": "Test",
-							"description": ""
+							"title": "Playlist 1",
+							"description": "Description for Playlist 1."
 						}
+					},
+					"status": { "privacyStatus": "public" },
+					"contentDetails": { "itemCount": 16 },
+					"player": {
+						"embedHtml": "<iframe width=\"640\" height=\"360\" src=\"https://example.com/embed/playlist1\" frameborder=\"0\" allowfullscreen></iframe>"
 					}
 				}
 			}
@@ -195,38 +198,39 @@
 			{
 				"json": {
 					"kind": "youtube#playlist",
-					"etag": "sN4zOpDLve5JOiFziifyAanO8ao",
-					"id": "PLVP4mWdqlaa4yZzZrY5daibndICp3lpWX",
+					"etag": "etag_placeholder_1",
+					"id": "playlist_id_1",
 					"snippet": {
-						"publishedAt": "2025-04-09T10:24:38Z",
-						"channelId": "UCL98mKpoT4XMS5Mg6mHQgLg",
-						"title": "Test Updated",
-						"description": "This description is updated",
+						"publishedAt": "2024-11-22T12:40:13Z",
+						"channelId": "channel_id_placeholder",
+						"title": "The title is updated",
+						"description": "The description is updated",
 						"thumbnails": {
-							"default": {
-								"url": "https://i.ytimg.com/img/no_thumbnail.jpg",
-								"width": 120,
-								"height": 90
+							"default": { "url": "https://example.com/default.jpg", "width": 120, "height": 90 },
+							"medium": { "url": "https://example.com/mqdefault.jpg", "width": 320, "height": 180 },
+							"high": { "url": "https://example.com/hqdefault.jpg", "width": 480, "height": 360 },
+							"standard": {
+								"url": "https://example.com/sddefault.jpg",
+								"width": 640,
+								"height": 480
 							},
-							"medium": {
-								"url": "https://i.ytimg.com/img/no_thumbnail.jpg",
-								"width": 320,
-								"height": 180
-							},
-							"high": {
-								"url": "https://i.ytimg.com/img/no_thumbnail.jpg",
-								"width": 480,
-								"height": 360
+							"maxres": {
+								"url": "https://example.com/maxresdefault.jpg",
+								"width": 1280,
+								"height": 720
 							}
 						},
-						"channelTitle": "Shireen M",
+						"channelTitle": "Channel Placeholder",
+						"defaultLanguage": "en",
 						"localized": {
-							"title": "Test Updated",
-							"description": "This description is updated"
+							"title": "The title is updated",
+							"description": "The description is updated"
 						}
 					},
-					"status": {
-						"privacyStatus": "private"
+					"status": { "privacyStatus": "public" },
+					"contentDetails": { "itemCount": 16 },
+					"player": {
+						"embedHtml": "<iframe width=\"640\" height=\"360\" src=\"https://example.com/embed/playlist1\" frameborder=\"0\" allowfullscreen></iframe>"
 					}
 				}
 			}
@@ -235,44 +239,39 @@
 			{
 				"json": {
 					"kind": "youtube#playlist",
-					"etag": "gCszvhTxc528oTpbKR413Dk4z2Q",
-					"id": "PLVP4mWdqlaa4yZzZrY5daibndICp3lpWX",
+					"etag": "etag_placeholder_1",
+					"id": "playlist_id_1",
 					"snippet": {
-						"publishedAt": "2025-04-09T10:24:38.831091Z",
-						"channelId": "UCL98mKpoT4XMS5Mg6mHQgLg",
-						"title": "Test Updated",
-						"description": "This description is updated",
+						"publishedAt": "2024-11-22T12:40:13Z",
+						"channelId": "channel_id_placeholder",
+						"title": "Playlist 1",
+						"description": "Description for Playlist 1.",
 						"thumbnails": {
-							"default": {
-								"url": "https://i.ytimg.com/img/no_thumbnail.jpg",
-								"width": 120,
-								"height": 90
+							"default": { "url": "https://example.com/default.jpg", "width": 120, "height": 90 },
+							"medium": { "url": "https://example.com/mqdefault.jpg", "width": 320, "height": 180 },
+							"high": { "url": "https://example.com/hqdefault.jpg", "width": 480, "height": 360 },
+							"standard": {
+								"url": "https://example.com/sddefault.jpg",
+								"width": 640,
+								"height": 480
 							},
-							"medium": {
-								"url": "https://i.ytimg.com/img/no_thumbnail.jpg",
-								"width": 320,
-								"height": 180
-							},
-							"high": {
-								"url": "https://i.ytimg.com/img/no_thumbnail.jpg",
-								"width": 480,
-								"height": 360
+							"maxres": {
+								"url": "https://example.com/maxresdefault.jpg",
+								"width": 1280,
+								"height": 720
 							}
 						},
-						"channelTitle": "Shireen M",
+						"channelTitle": "Channel Placeholder",
+						"defaultLanguage": "en",
 						"localized": {
-							"title": "Test Updated",
-							"description": "This description is updated"
+							"title": "Playlist 1",
+							"description": "Description for Playlist 1."
 						}
 					},
-					"status": {
-						"privacyStatus": "private"
-					},
-					"contentDetails": {
-						"itemCount": 0
-					},
+					"status": { "privacyStatus": "public" },
+					"contentDetails": { "itemCount": 16 },
 					"player": {
-						"embedHtml": "<iframe width=\"640\" height=\"360\" src=\"http://www.youtube.com/embed/videoseries?list=PLVP4mWdqlaa4yZzZrY5daibndICp3lpWX\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share\" referrerpolicy=\"strict-origin-when-cross-origin\" allowfullscreen></iframe>"
+						"embedHtml": "<iframe width=\"640\" height=\"360\" src=\"https://example.com/embed/playlist1\" frameborder=\"0\" allowfullscreen></iframe>"
 					}
 				}
 			}
@@ -281,662 +280,77 @@
 			{
 				"json": {
 					"kind": "youtube#playlist",
-					"etag": "gCszvhTxc528oTpbKR413Dk4z2Q",
-					"id": "PLVP4mWdqlaa4yZzZrY5daibndICp3lpWX",
+					"etag": "etag_placeholder_1",
+					"id": "playlist_id_1",
 					"snippet": {
-						"publishedAt": "2025-04-09T10:24:38.831091Z",
-						"channelId": "UCL98mKpoT4XMS5Mg6mHQgLg",
-						"title": "Test Updated",
-						"description": "This description is updated",
+						"publishedAt": "2024-11-22T12:40:13Z",
+						"channelId": "channel_id_placeholder",
+						"title": "Playlist 1",
+						"description": "Description for Playlist 1.",
 						"thumbnails": {
-							"default": {
-								"url": "https://i.ytimg.com/img/no_thumbnail.jpg",
-								"width": 120,
-								"height": 90
-							},
-							"medium": {
-								"url": "https://i.ytimg.com/img/no_thumbnail.jpg",
-								"width": 320,
-								"height": 180
-							},
-							"high": {
-								"url": "https://i.ytimg.com/img/no_thumbnail.jpg",
-								"width": 480,
-								"height": 360
-							}
-						},
-						"channelTitle": "Shireen M",
-						"localized": {
-							"title": "Test Updated",
-							"description": "This description is updated"
-						}
-					},
-					"status": {
-						"privacyStatus": "private"
-					},
-					"contentDetails": {
-						"itemCount": 0
-					},
-					"player": {
-						"embedHtml": "<iframe width=\"640\" height=\"360\" src=\"http://www.youtube.com/embed/videoseries?list=PLVP4mWdqlaa4yZzZrY5daibndICp3lpWX\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share\" referrerpolicy=\"strict-origin-when-cross-origin\" allowfullscreen></iframe>"
-					}
-				}
-			},
-			{
-				"json": {
-					"kind": "youtube#playlist",
-					"etag": "9MA3AHF84GwUom6lRww5lgX1zjA",
-					"id": "PLVP4mWdqlaa4l4X26bfZQMdB6D0YUDI6t",
-					"snippet": {
-						"publishedAt": "2025-04-07T05:22:38.101295Z",
-						"channelId": "UCL98mKpoT4XMS5Mg6mHQgLg",
-						"title": "Run",
-						"description": "",
-						"thumbnails": {
-							"default": {
-								"url": "https://i.ytimg.com/vi/6cjfjhG_LRc/default.jpg",
-								"width": 120,
-								"height": 90
-							},
-							"medium": {
-								"url": "https://i.ytimg.com/vi/6cjfjhG_LRc/mqdefault.jpg",
-								"width": 320,
-								"height": 180
-							},
-							"high": {
-								"url": "https://i.ytimg.com/vi/6cjfjhG_LRc/hqdefault.jpg",
-								"width": 480,
-								"height": 360
-							}
-						},
-						"channelTitle": "Shireen M",
-						"localized": {
-							"title": "Run",
-							"description": ""
-						}
-					},
-					"status": {
-						"privacyStatus": "private"
-					},
-					"contentDetails": {
-						"itemCount": 10
-					},
-					"player": {
-						"embedHtml": "<iframe width=\"640\" height=\"360\" src=\"http://www.youtube.com/embed/videoseries?list=PLVP4mWdqlaa4l4X26bfZQMdB6D0YUDI6t\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share\" referrerpolicy=\"strict-origin-when-cross-origin\" allowfullscreen></iframe>"
-					}
-				}
-			},
-			{
-				"json": {
-					"kind": "youtube#playlist",
-					"etag": "6PmPoM3bzeAEQQNzIVwK1peZkE4",
-					"id": "PLVP4mWdqlaa6rCAA6IuPAH9NYGPJbiEc3",
-					"snippet": {
-						"publishedAt": "2025-03-30T08:52:19.792138Z",
-						"channelId": "UCL98mKpoT4XMS5Mg6mHQgLg",
-						"title": "Spring 2025",
-						"description": "",
-						"thumbnails": {
-							"default": {
-								"url": "https://i.ytimg.com/vi/Y03n19YRXD4/default.jpg",
-								"width": 120,
-								"height": 90
-							},
-							"medium": {
-								"url": "https://i.ytimg.com/vi/Y03n19YRXD4/mqdefault.jpg",
-								"width": 320,
-								"height": 180
-							},
-							"high": {
-								"url": "https://i.ytimg.com/vi/Y03n19YRXD4/hqdefault.jpg",
-								"width": 480,
-								"height": 360
-							},
+							"default": { "url": "https://example.com/default.jpg", "width": 120, "height": 90 },
+							"medium": { "url": "https://example.com/mqdefault.jpg", "width": 320, "height": 180 },
+							"high": { "url": "https://example.com/hqdefault.jpg", "width": 480, "height": 360 },
 							"standard": {
-								"url": "https://i.ytimg.com/vi/Y03n19YRXD4/sddefault.jpg",
+								"url": "https://example.com/sddefault.jpg",
 								"width": 640,
 								"height": 480
 							},
 							"maxres": {
-								"url": "https://i.ytimg.com/vi/Y03n19YRXD4/maxresdefault.jpg",
+								"url": "https://example.com/maxresdefault.jpg",
 								"width": 1280,
 								"height": 720
 							}
 						},
-						"channelTitle": "Shireen M",
+						"channelTitle": "Channel Placeholder",
+						"defaultLanguage": "en",
 						"localized": {
-							"title": "Spring 2025",
-							"description": ""
+							"title": "Playlist 1",
+							"description": "Description for Playlist 1."
 						}
 					},
-					"status": {
-						"privacyStatus": "private"
-					},
-					"contentDetails": {
-						"itemCount": 10
-					},
+					"status": { "privacyStatus": "public" },
+					"contentDetails": { "itemCount": 16 },
 					"player": {
-						"embedHtml": "<iframe width=\"640\" height=\"360\" src=\"http://www.youtube.com/embed/videoseries?list=PLVP4mWdqlaa6rCAA6IuPAH9NYGPJbiEc3\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share\" referrerpolicy=\"strict-origin-when-cross-origin\" allowfullscreen></iframe>"
+						"embedHtml": "<iframe width=\"640\" height=\"360\" src=\"https://example.com/embed/playlist1\" frameborder=\"0\" allowfullscreen></iframe>"
 					}
 				}
 			},
 			{
 				"json": {
 					"kind": "youtube#playlist",
-					"etag": "ELBkM_-_J02KwCcQEm8YPCqXcg0",
-					"id": "PLVP4mWdqlaa7x21bcopXBCJDl2J8G73kF",
+					"etag": "etag_placeholder_2",
+					"id": "playlist_id_2",
 					"snippet": {
-						"publishedAt": "2024-08-31T08:30:52.190459Z",
-						"channelId": "UCL98mKpoT4XMS5Mg6mHQgLg",
-						"title": "new",
-						"description": "",
+						"publishedAt": "2024-08-30T18:23:41Z",
+						"channelId": "channel_id_placeholder",
+						"title": "Playlist 2",
+						"description": "Description for Playlist 2.",
 						"thumbnails": {
-							"default": {
-								"url": "https://i.ytimg.com/vi/6cjfjhG_LRc/default.jpg",
-								"width": 120,
-								"height": 90
-							},
-							"medium": {
-								"url": "https://i.ytimg.com/vi/6cjfjhG_LRc/mqdefault.jpg",
-								"width": 320,
-								"height": 180
-							},
-							"high": {
-								"url": "https://i.ytimg.com/vi/6cjfjhG_LRc/hqdefault.jpg",
-								"width": 480,
-								"height": 360
-							}
-						},
-						"channelTitle": "Shireen M",
-						"localized": {
-							"title": "new",
-							"description": ""
-						}
-					},
-					"status": {
-						"privacyStatus": "private"
-					},
-					"contentDetails": {
-						"itemCount": 7
-					},
-					"player": {
-						"embedHtml": "<iframe width=\"640\" height=\"360\" src=\"http://www.youtube.com/embed/videoseries?list=PLVP4mWdqlaa7x21bcopXBCJDl2J8G73kF\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share\" referrerpolicy=\"strict-origin-when-cross-origin\" allowfullscreen></iframe>"
-					}
-				}
-			},
-			{
-				"json": {
-					"kind": "youtube#playlist",
-					"etag": "js5L_JTKaOWhDojViqCYRAbONAI",
-					"id": "PLVP4mWdqlaa6MT9p0vbMlDnmceH9MtWkF",
-					"snippet": {
-						"publishedAt": "2024-07-17T09:24:33.110666Z",
-						"channelId": "UCL98mKpoT4XMS5Mg6mHQgLg",
-						"title": "Fun",
-						"description": "",
-						"thumbnails": {
-							"default": {
-								"url": "https://i.ytimg.com/vi/ug6qNkHYhpw/default.jpg",
-								"width": 120,
-								"height": 90
-							},
-							"medium": {
-								"url": "https://i.ytimg.com/vi/ug6qNkHYhpw/mqdefault.jpg",
-								"width": 320,
-								"height": 180
-							},
-							"high": {
-								"url": "https://i.ytimg.com/vi/ug6qNkHYhpw/hqdefault.jpg",
-								"width": 480,
-								"height": 360
-							},
+							"default": { "url": "https://example.com/default.jpg", "width": 120, "height": 90 },
+							"medium": { "url": "https://example.com/mqdefault.jpg", "width": 320, "height": 180 },
+							"high": { "url": "https://example.com/hqdefault.jpg", "width": 480, "height": 360 },
 							"standard": {
-								"url": "https://i.ytimg.com/vi/ug6qNkHYhpw/sddefault.jpg",
+								"url": "https://example.com/sddefault.jpg",
 								"width": 640,
 								"height": 480
 							},
 							"maxres": {
-								"url": "https://i.ytimg.com/vi/ug6qNkHYhpw/maxresdefault.jpg",
+								"url": "https://example.com/maxresdefault.jpg",
 								"width": 1280,
 								"height": 720
 							}
 						},
-						"channelTitle": "Shireen M",
+						"channelTitle": "Channel Placeholder",
 						"localized": {
-							"title": "Fun",
-							"description": ""
+							"title": "Playlist 2",
+							"description": "Description for Playlist 2."
 						}
 					},
-					"status": {
-						"privacyStatus": "private"
-					},
-					"contentDetails": {
-						"itemCount": 56
-					},
+					"status": { "privacyStatus": "public" },
+					"contentDetails": { "itemCount": 18 },
 					"player": {
-						"embedHtml": "<iframe width=\"640\" height=\"360\" src=\"http://www.youtube.com/embed/videoseries?list=PLVP4mWdqlaa6MT9p0vbMlDnmceH9MtWkF\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share\" referrerpolicy=\"strict-origin-when-cross-origin\" allowfullscreen></iframe>"
-					}
-				}
-			},
-			{
-				"json": {
-					"kind": "youtube#playlist",
-					"etag": "iMaDudzE_G80QiaLesdW3YrUc0Q",
-					"id": "PLVP4mWdqlaa6nt7RQa4nDAiHncT-jlv2J",
-					"snippet": {
-						"publishedAt": "2024-05-22T20:27:55.564343Z",
-						"channelId": "UCL98mKpoT4XMS5Mg6mHQgLg",
-						"title": "Workout",
-						"description": "",
-						"thumbnails": {
-							"default": {
-								"url": "https://i.ytimg.com/vi/vq5-vdgJc0I/default.jpg",
-								"width": 120,
-								"height": 90
-							},
-							"medium": {
-								"url": "https://i.ytimg.com/vi/vq5-vdgJc0I/mqdefault.jpg",
-								"width": 320,
-								"height": 180
-							},
-							"high": {
-								"url": "https://i.ytimg.com/vi/vq5-vdgJc0I/hqdefault.jpg",
-								"width": 480,
-								"height": 360
-							},
-							"standard": {
-								"url": "https://i.ytimg.com/vi/vq5-vdgJc0I/sddefault.jpg",
-								"width": 640,
-								"height": 480
-							},
-							"maxres": {
-								"url": "https://i.ytimg.com/vi/vq5-vdgJc0I/maxresdefault.jpg",
-								"width": 1280,
-								"height": 720
-							}
-						},
-						"channelTitle": "Shireen M",
-						"localized": {
-							"title": "Workout",
-							"description": ""
-						}
-					},
-					"status": {
-						"privacyStatus": "private"
-					},
-					"contentDetails": {
-						"itemCount": 1
-					},
-					"player": {
-						"embedHtml": "<iframe width=\"640\" height=\"360\" src=\"http://www.youtube.com/embed/videoseries?list=PLVP4mWdqlaa6nt7RQa4nDAiHncT-jlv2J\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share\" referrerpolicy=\"strict-origin-when-cross-origin\" allowfullscreen></iframe>"
-					}
-				}
-			},
-			{
-				"json": {
-					"kind": "youtube#playlist",
-					"etag": "sA-H1kLlmvV2UvEY8lg1OPMUlj8",
-					"id": "PLVP4mWdqlaa6p-m7fwBoKfhq7S0HnfJLe",
-					"snippet": {
-						"publishedAt": "2024-05-04T12:06:31.940335Z",
-						"channelId": "UCL98mKpoT4XMS5Mg6mHQgLg",
-						"title": "Road trip",
-						"description": "",
-						"thumbnails": {
-							"default": {
-								"url": "https://i.ytimg.com/vi/lXm9BL2liM0/default.jpg",
-								"width": 120,
-								"height": 90
-							},
-							"medium": {
-								"url": "https://i.ytimg.com/vi/lXm9BL2liM0/mqdefault.jpg",
-								"width": 320,
-								"height": 180
-							},
-							"high": {
-								"url": "https://i.ytimg.com/vi/lXm9BL2liM0/hqdefault.jpg",
-								"width": 480,
-								"height": 360
-							},
-							"standard": {
-								"url": "https://i.ytimg.com/vi/lXm9BL2liM0/sddefault.jpg",
-								"width": 640,
-								"height": 480
-							},
-							"maxres": {
-								"url": "https://i.ytimg.com/vi/lXm9BL2liM0/maxresdefault.jpg",
-								"width": 1280,
-								"height": 720
-							}
-						},
-						"channelTitle": "Shireen M",
-						"localized": {
-							"title": "Road trip",
-							"description": ""
-						}
-					},
-					"status": {
-						"privacyStatus": "private"
-					},
-					"contentDetails": {
-						"itemCount": 21
-					},
-					"player": {
-						"embedHtml": "<iframe width=\"640\" height=\"360\" src=\"http://www.youtube.com/embed/videoseries?list=PLVP4mWdqlaa6p-m7fwBoKfhq7S0HnfJLe\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share\" referrerpolicy=\"strict-origin-when-cross-origin\" allowfullscreen></iframe>"
-					}
-				}
-			},
-			{
-				"json": {
-					"kind": "youtube#playlist",
-					"etag": "4DPpYwvqlJnsaaXzKqnzpgdQDcg",
-					"id": "PLVP4mWdqlaa6PvWSuxyyaM8WWVADZciIu",
-					"snippet": {
-						"publishedAt": "2024-04-29T15:33:27.109109Z",
-						"channelId": "UCL98mKpoT4XMS5Mg6mHQgLg",
-						"title": "Mix",
-						"description": "",
-						"thumbnails": {
-							"default": {
-								"url": "https://i.ytimg.com/vi/UmM8gt6G5kU/default.jpg",
-								"width": 120,
-								"height": 90
-							},
-							"medium": {
-								"url": "https://i.ytimg.com/vi/UmM8gt6G5kU/mqdefault.jpg",
-								"width": 320,
-								"height": 180
-							},
-							"high": {
-								"url": "https://i.ytimg.com/vi/UmM8gt6G5kU/hqdefault.jpg",
-								"width": 480,
-								"height": 360
-							},
-							"standard": {
-								"url": "https://i.ytimg.com/vi/UmM8gt6G5kU/sddefault.jpg",
-								"width": 640,
-								"height": 480
-							},
-							"maxres": {
-								"url": "https://i.ytimg.com/vi/UmM8gt6G5kU/maxresdefault.jpg",
-								"width": 1280,
-								"height": 720
-							}
-						},
-						"channelTitle": "Shireen M",
-						"localized": {
-							"title": "Mix",
-							"description": ""
-						}
-					},
-					"status": {
-						"privacyStatus": "private"
-					},
-					"contentDetails": {
-						"itemCount": 7
-					},
-					"player": {
-						"embedHtml": "<iframe width=\"640\" height=\"360\" src=\"http://www.youtube.com/embed/videoseries?list=PLVP4mWdqlaa6PvWSuxyyaM8WWVADZciIu\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share\" referrerpolicy=\"strict-origin-when-cross-origin\" allowfullscreen></iframe>"
-					}
-				}
-			},
-			{
-				"json": {
-					"kind": "youtube#playlist",
-					"etag": "mrVeAwkzsk2GTyJvwbxSnn-kIy0",
-					"id": "PLVP4mWdqlaa4HjUtrWOxb5eQVenuZ8vOF",
-					"snippet": {
-						"publishedAt": "2024-02-02T11:17:29.93521Z",
-						"channelId": "UCL98mKpoT4XMS5Mg6mHQgLg",
-						"title": "Random things",
-						"description": "",
-						"thumbnails": {
-							"default": {
-								"url": "https://i.ytimg.com/vi/xDxYKOSWRB8/default.jpg",
-								"width": 120,
-								"height": 90
-							},
-							"medium": {
-								"url": "https://i.ytimg.com/vi/xDxYKOSWRB8/mqdefault.jpg",
-								"width": 320,
-								"height": 180
-							},
-							"high": {
-								"url": "https://i.ytimg.com/vi/xDxYKOSWRB8/hqdefault.jpg",
-								"width": 480,
-								"height": 360
-							},
-							"standard": {
-								"url": "https://i.ytimg.com/vi/xDxYKOSWRB8/sddefault.jpg",
-								"width": 640,
-								"height": 480
-							},
-							"maxres": {
-								"url": "https://i.ytimg.com/vi/xDxYKOSWRB8/maxresdefault.jpg",
-								"width": 1280,
-								"height": 720
-							}
-						},
-						"channelTitle": "Shireen M",
-						"localized": {
-							"title": "Random things",
-							"description": ""
-						}
-					},
-					"status": {
-						"privacyStatus": "private"
-					},
-					"contentDetails": {
-						"itemCount": 23
-					},
-					"player": {
-						"embedHtml": "<iframe width=\"640\" height=\"360\" src=\"http://www.youtube.com/embed/videoseries?list=PLVP4mWdqlaa4HjUtrWOxb5eQVenuZ8vOF\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share\" referrerpolicy=\"strict-origin-when-cross-origin\" allowfullscreen></iframe>"
-					}
-				}
-			},
-			{
-				"json": {
-					"kind": "youtube#playlist",
-					"etag": "Fx4NXC3x-vBKfY7IWCzHAikMOW8",
-					"id": "PLVP4mWdqlaa7d-ZJWpvOaR8wLdfOF1xZf",
-					"snippet": {
-						"publishedAt": "2023-02-12T11:15:49.104888Z",
-						"channelId": "UCL98mKpoT4XMS5Mg6mHQgLg",
-						"title": "songs I like atm",
-						"description": "",
-						"thumbnails": {
-							"default": {
-								"url": "https://i.ytimg.com/vi/G7KNmW9a75Y/default.jpg",
-								"width": 120,
-								"height": 90
-							},
-							"medium": {
-								"url": "https://i.ytimg.com/vi/G7KNmW9a75Y/mqdefault.jpg",
-								"width": 320,
-								"height": 180
-							},
-							"high": {
-								"url": "https://i.ytimg.com/vi/G7KNmW9a75Y/hqdefault.jpg",
-								"width": 480,
-								"height": 360
-							},
-							"standard": {
-								"url": "https://i.ytimg.com/vi/G7KNmW9a75Y/sddefault.jpg",
-								"width": 640,
-								"height": 480
-							},
-							"maxres": {
-								"url": "https://i.ytimg.com/vi/G7KNmW9a75Y/maxresdefault.jpg",
-								"width": 1280,
-								"height": 720
-							}
-						},
-						"channelTitle": "Shireen M",
-						"localized": {
-							"title": "songs I like atm",
-							"description": ""
-						}
-					},
-					"status": {
-						"privacyStatus": "private"
-					},
-					"contentDetails": {
-						"itemCount": 9
-					},
-					"player": {
-						"embedHtml": "<iframe width=\"640\" height=\"360\" src=\"http://www.youtube.com/embed/videoseries?list=PLVP4mWdqlaa7d-ZJWpvOaR8wLdfOF1xZf\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share\" referrerpolicy=\"strict-origin-when-cross-origin\" allowfullscreen></iframe>"
-					}
-				}
-			},
-			{
-				"json": {
-					"kind": "youtube#playlist",
-					"etag": "o2d0yyUbG7OdFIrjAeZnPVsWvKE",
-					"id": "PLVP4mWdqlaa5w1-Uh6GvipyLRe-h2HOOR",
-					"snippet": {
-						"publishedAt": "2019-11-03T22:27:26.217953Z",
-						"channelId": "UCL98mKpoT4XMS5Mg6mHQgLg",
-						"title": "check later",
-						"description": "",
-						"thumbnails": {
-							"default": {
-								"url": "https://i.ytimg.com/img/no_thumbnail.jpg",
-								"width": 120,
-								"height": 90
-							},
-							"medium": {
-								"url": "https://i.ytimg.com/img/no_thumbnail.jpg",
-								"width": 320,
-								"height": 180
-							},
-							"high": {
-								"url": "https://i.ytimg.com/img/no_thumbnail.jpg",
-								"width": 480,
-								"height": 360
-							}
-						},
-						"channelTitle": "Shireen M",
-						"localized": {
-							"title": "check later",
-							"description": ""
-						}
-					},
-					"status": {
-						"privacyStatus": "private"
-					},
-					"contentDetails": {
-						"itemCount": 0
-					},
-					"player": {
-						"embedHtml": "<iframe width=\"640\" height=\"360\" src=\"http://www.youtube.com/embed/videoseries?list=PLVP4mWdqlaa5w1-Uh6GvipyLRe-h2HOOR\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share\" referrerpolicy=\"strict-origin-when-cross-origin\" allowfullscreen></iframe>"
-					}
-				}
-			},
-			{
-				"json": {
-					"kind": "youtube#playlist",
-					"etag": "wuWezZ-VndUVAep4HSJoUJLg7VY",
-					"id": "PLVP4mWdqlaa5OXuxmmnQgTvSf-igd-V3c",
-					"snippet": {
-						"publishedAt": "2019-08-22T07:58:33.626388Z",
-						"channelId": "UCL98mKpoT4XMS5Mg6mHQgLg",
-						"title": "Today Music",
-						"description": "",
-						"thumbnails": {
-							"default": {
-								"url": "https://i.ytimg.com/vi/a3frT6VZZpw/default.jpg",
-								"width": 120,
-								"height": 90
-							},
-							"medium": {
-								"url": "https://i.ytimg.com/vi/a3frT6VZZpw/mqdefault.jpg",
-								"width": 320,
-								"height": 180
-							},
-							"high": {
-								"url": "https://i.ytimg.com/vi/a3frT6VZZpw/hqdefault.jpg",
-								"width": 480,
-								"height": 360
-							},
-							"standard": {
-								"url": "https://i.ytimg.com/vi/a3frT6VZZpw/sddefault.jpg",
-								"width": 640,
-								"height": 480
-							},
-							"maxres": {
-								"url": "https://i.ytimg.com/vi/a3frT6VZZpw/maxresdefault.jpg",
-								"width": 1280,
-								"height": 720
-							}
-						},
-						"channelTitle": "Shireen M",
-						"localized": {
-							"title": "Today Music",
-							"description": ""
-						}
-					},
-					"status": {
-						"privacyStatus": "private"
-					},
-					"contentDetails": {
-						"itemCount": 4
-					},
-					"player": {
-						"embedHtml": "<iframe width=\"640\" height=\"360\" src=\"http://www.youtube.com/embed/videoseries?list=PLVP4mWdqlaa5OXuxmmnQgTvSf-igd-V3c\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share\" referrerpolicy=\"strict-origin-when-cross-origin\" allowfullscreen></iframe>"
-					}
-				}
-			},
-			{
-				"json": {
-					"kind": "youtube#playlist",
-					"etag": "ULmAkN3PBivYTDcvKPpFsn9jdRM",
-					"id": "PLVP4mWdqlaa4iLz06Eeyl85G840PA4Trk",
-					"snippet": {
-						"publishedAt": "2019-02-23T08:31:20.965054Z",
-						"channelId": "UCL98mKpoT4XMS5Mg6mHQgLg",
-						"title": "Music",
-						"description": "",
-						"thumbnails": {
-							"default": {
-								"url": "https://i.ytimg.com/vi/CNUTlKqSO-I/default.jpg",
-								"width": 120,
-								"height": 90
-							},
-							"medium": {
-								"url": "https://i.ytimg.com/vi/CNUTlKqSO-I/mqdefault.jpg",
-								"width": 320,
-								"height": 180
-							},
-							"high": {
-								"url": "https://i.ytimg.com/vi/CNUTlKqSO-I/hqdefault.jpg",
-								"width": 480,
-								"height": 360
-							},
-							"standard": {
-								"url": "https://i.ytimg.com/vi/CNUTlKqSO-I/sddefault.jpg",
-								"width": 640,
-								"height": 480
-							},
-							"maxres": {
-								"url": "https://i.ytimg.com/vi/CNUTlKqSO-I/maxresdefault.jpg",
-								"width": 1280,
-								"height": 720
-							}
-						},
-						"channelTitle": "Shireen M",
-						"localized": {
-							"title": "Music",
-							"description": ""
-						}
-					},
-					"status": {
-						"privacyStatus": "private"
-					},
-					"contentDetails": {
-						"itemCount": 16
-					},
-					"player": {
-						"embedHtml": "<iframe width=\"640\" height=\"360\" src=\"http://www.youtube.com/embed/videoseries?list=PLVP4mWdqlaa4iLz06Eeyl85G840PA4Trk\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share\" referrerpolicy=\"strict-origin-when-cross-origin\" allowfullscreen></iframe>"
+						"embedHtml": "<iframe width=\"640\" height=\"360\" src=\"https://example.com/embed/playlist2\" frameborder=\"0\" allowfullscreen></iframe>"
 					}
 				}
 			}

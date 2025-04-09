@@ -16,6 +16,7 @@
 				"maxres": { "url": "https://example.com/maxresdefault.jpg", "width": 1280, "height": 720 }
 			},
 			"channelTitle": "Channel Placeholder",
+			"defaultLanguage": "en",
 			"localized": {
 				"title": "Playlist 1",
 				"description": "Description for Playlist 1."
