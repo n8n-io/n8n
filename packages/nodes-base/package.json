@@ -167,6 +167,7 @@
       "dist/credentials/HighLevelOAuth2Api.credentials.js",
       "dist/credentials/HomeAssistantApi.credentials.js",
       "dist/credentials/HttpBasicAuth.credentials.js",
+      "dist/credentials/HttpBearerAuth.credentials.js",
       "dist/credentials/HttpDigestAuth.credentials.js",
       "dist/credentials/HttpHeaderAuth.credentials.js",
       "dist/credentials/HttpCustomAuth.credentials.js",

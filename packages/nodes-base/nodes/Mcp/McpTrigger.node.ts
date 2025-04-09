@@ -49,11 +49,11 @@ export class McpTrigger extends Node {
 		credentials: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
-				name: 'httpHeaderAuth',
+				name: 'httpBearerAuth',
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: ['headerAuth'],
+						authentication: ['bearerAuth'],
 					},
 				},
 			},
@@ -64,7 +64,7 @@ export class McpTrigger extends Node {
 				name: 'authentication',
 				type: 'options',
 				options: [
-					{ name: 'Header Auth', value: 'headerAuth' },
+					{ name: 'Bearer Auth', value: 'bearerAuth' },
 					{ name: 'None', value: 'none' },
 				],
 				default: 'none',
