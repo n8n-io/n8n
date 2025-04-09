@@ -65,15 +65,6 @@ export class McpTrigger extends Node {
 					},
 				},
 			},
-			{
-				name: 'httpCustomAuth',
-				required: true,
-				displayOptions: {
-					show: {
-						authentication: ['customAuth'],
-					},
-				},
-			},
 		],
 		properties: [
 			{
@@ -84,7 +75,6 @@ export class McpTrigger extends Node {
 					{ name: 'None', value: 'none' },
 					{ name: 'Bearer Auth', value: 'bearerAuth' },
 					{ name: 'Header Auth', value: 'headerAuth' },
-					{ name: 'Custom Auth', value: 'customAuth' },
 				],
 				default: 'none',
 				description: 'The way to authenticate',
