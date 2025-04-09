@@ -156,7 +156,10 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				displayName: 'Channel',
 				name: 'channelId',
 				type: 'resourceLocator',
-				default: { mode: 'list', value: '' },
+				default: {
+					mode: 'list',
+					value: '',
+				},
 				required: true,
 				description:
 					'Select the channel from the list, by URL, or by ID (the ID is the "threadId" in the URL)',
