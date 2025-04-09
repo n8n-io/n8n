@@ -9,13 +9,13 @@ import {
 	isTool,
 	rewireGraph,
 } from 'n8n-core';
-import type {
-	IPinData,
-	IRun,
-	IRunExecutionData,
-	IWorkflowExecuteAdditionalData,
-	IWorkflowExecutionDataProcess,
-	Workflow,
+import {
+	type IPinData,
+	type IRun,
+	type IRunExecutionData,
+	type IWorkflowExecuteAdditionalData,
+	type IWorkflowExecutionDataProcess,
+	type Workflow,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
@@ -50,7 +50,7 @@ export class ManualExecutionService {
 		executionId: string,
 		pinData?: IPinData,
 	): PCancelable<IRun> {
-		if (data.triggerToStartFrom?.data && data.startNodes && !data.destinationNode) {
+		if (data.triggerToStartFrom?.data && data.startNodes) {
 			console.log('chat execution');
 			this.logger.debug(
 				`Execution ID ${executionId} had triggerToStartFrom. Starting from that trigger.`,
@@ -117,7 +117,6 @@ export class ManualExecutionService {
 				a.ok(destinationNode);
 
 				if (isTool(destinationNode, workflow.nodeTypes)) {
-					console.log('done this');
 					workflow = rewireGraph(destinationNode, DirectedGraph.fromWorkflow(workflow)).toWorkflow(
 						workflow,
 					);
@@ -127,9 +126,14 @@ export class ManualExecutionService {
 			// Can execute without webhook so go on
 			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
 
-			return workflowExecute.run(workflow, startNode, data.destinationNode, data.pinData);
+			return workflowExecute.run(
+				workflow,
+				startNode,
+				data.destinationNode,
+				data.pinData,
+				data.aiToolTestParameters,
+			);
 		} else {
-			console.log('partial execution');
 			// Partial Execution
 			this.logger.debug(`Execution ID ${executionId} is a partial execution.`, { executionId });
 			// Execute only the nodes between start and destination nodes
@@ -142,6 +146,7 @@ export class ManualExecutionService {
 					data.pinData,
 					data.dirtyNodeNames,
 					data.destinationNode,
+					data.aiToolTestParameters,
 				);
 			} else {
 				return workflowExecute.runPartialWorkflow(

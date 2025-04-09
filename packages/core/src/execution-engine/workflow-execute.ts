@@ -40,6 +40,7 @@ import type {
 	INodeIssues,
 	INodeType,
 	ITaskStartedData,
+	IContextObject,
 } from 'n8n-workflow';
 import {
 	LoggerProxy as Logger,
@@ -69,7 +70,6 @@ import {
 	handleCycles,
 	filterDisabledNodes,
 	isTool,
-	rewireGraph,
 } from './partial-execution-utils';
 import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
@@ -114,6 +114,7 @@ export class WorkflowExecute {
 		startNode?: INode,
 		destinationNode?: string,
 		pinData?: IPinData,
+		aiToolTestParameters: IContextObject = {},
 	): PCancelable<IRun> {
 		this.status = 'running';
 
@@ -158,7 +159,9 @@ export class WorkflowExecute {
 				pinData,
 			},
 			executionData: {
-				contextData: {},
+				contextData: {
+					aiToolTestParameters,
+				},
 				nodeExecutionStack,
 				metadata: {},
 				waitingExecution: {},
@@ -342,6 +345,7 @@ export class WorkflowExecute {
 		pinData: IPinData = {},
 		dirtyNodeNames: string[] = [],
 		destinationNodeName?: string,
+		aiToolTestParameters?: IContextObject,
 	): PCancelable<IRun> {
 		// TODO: Refactor the call-site to make `destinationNodeName` a required
 		// after removing the old partial execution flow.
@@ -358,9 +362,10 @@ export class WorkflowExecute {
 
 		let graph = DirectedGraph.fromWorkflow(workflow);
 
+		const destinationHasNoParents = graph.getDirectParentConnections(destination).length === 0;
+
 		// Edge Case 1:
 		// Support executing a single node that is not connected to a trigger
-		const destinationHasNoParents = graph.getDirectParentConnections(destination).length === 0;
 		if (destinationHasNoParents) {
 			// short cut here, only create a subgraph and the stacks
 			graph = findSubgraph({
@@ -368,8 +373,14 @@ export class WorkflowExecute {
 				destination,
 				trigger: destination,
 			});
+
+			if (isTool(destination, workflow.nodeTypes)) {
+				console.log('partial execution of a tool');
+				destination.rewireOutputLogTo = NodeConnectionTypes.AiTool;
+			}
 			const filteredNodes = graph.getNodes();
 			runData = cleanRunData(runData, graph, new Set([destination]));
+
 			const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
 				recreateNodeExecutionStack(graph, new Set([destination]), runData, pinData ?? {});
 
@@ -384,7 +395,9 @@ export class WorkflowExecute {
 					pinData,
 				},
 				executionData: {
-					contextData: {},
+					contextData: {
+						aiToolTestParameters: aiToolTestParameters || {},
+					},
 					nodeExecutionStack,
 					metadata: {},
 					waitingExecution,
@@ -401,13 +414,9 @@ export class WorkflowExecute {
 			throw new UserError('Connect a trigger to run this node');
 		}
 
-		console.log('trigger.name', trigger.name);
-
 		// 2. Find the Subgraph
 		graph = findSubgraph({ graph: filterDisabledNodes(graph), destination, trigger });
 		const filteredNodes = graph.getNodes();
-
-		console.log('[...filteredNodes.keys()]', [...filteredNodes.keys()]);
 
 		// 3. Find the Start Nodes
 		const dirtyNodes = graph.getNodesByNames(dirtyNodeNames);
@@ -426,7 +435,6 @@ export class WorkflowExecute {
 			recreateNodeExecutionStack(graph, startNodes, runData, pinData ?? {});
 
 		// 8. Execute
-		this.status = 'running';
 		this.runExecutionData = {
 			startData: {
 				destinationNode: destinationNodeName,
@@ -437,7 +445,9 @@ export class WorkflowExecute {
 				pinData,
 			},
 			executionData: {
-				contextData: {},
+				contextData: {
+					aiToolTestParameters: aiToolTestParameters || {},
+				},
 				nodeExecutionStack,
 				metadata: {},
 				waitingExecution,

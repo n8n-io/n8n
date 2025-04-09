@@ -1,8 +1,7 @@
 import * as a from 'assert/strict';
 import { NodeConnectionTypes, type INode, type INodeTypes } from 'n8n-workflow';
-import { DirectedGraph } from './directed-graph';
 
-export { DirectedGraph } from './directed-graph';
+import { type DirectedGraph } from './directed-graph';
 export { findTriggerForPartialExecution } from './find-trigger-for-partial-execution';
 export { findStartNodes } from './find-start-nodes';
 export { findSubgraph } from './find-subgraph';
@@ -28,16 +27,9 @@ export function rewireGraph(tool: INode, graph: DirectedGraph): DirectedGraph {
 
 	a.ok(rootNode);
 
-	console.log('rootNode', rootNode);
-
 	const allIncomingConnection = graph
 		.getDirectParentConnections(rootNode)
 		.filter((cn) => cn.type === NodeConnectionTypes.Main);
-
-	console.log(
-		'incoming connections',
-		allIncomingConnection.map((cn) => `${cn.from.name} -> ${cn.to.name}`),
-	);
 
 	tool.rewireOutputLogTo = NodeConnectionTypes.AiTool;
 
@@ -46,8 +38,6 @@ export function rewireGraph(tool: INode, graph: DirectedGraph): DirectedGraph {
 	}
 
 	graph.removeNode(rootNode);
-
-	console.log('');
 
 	return graph;
 }

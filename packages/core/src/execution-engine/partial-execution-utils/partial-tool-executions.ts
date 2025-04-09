@@ -1,9 +1,9 @@
 import * as assert from 'assert/strict';
-import { type INode, type INodeTypes, NodeConnectionTypes } from "n8n-workflow";
+import { type INode, type INodeTypes, NodeConnectionTypes } from 'n8n-workflow';
 
-import type { DirectedGraph } from "./directed-graph";
+import type { DirectedGraph } from './directed-graph';
 
-export function isTool(node: INode, nodeTypes: INodeTypes) : boolean {
+export function isTool(node: INode, nodeTypes: INodeTypes): boolean {
 	const type = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	return type.description.outputs.includes(NodeConnectionTypes.AiTool);
 }
@@ -14,8 +14,6 @@ export function rewireGraph(tool: INode, graph: DirectedGraph): DirectedGraph {
 	const rootNode = [...children][0];
 
 	assert.ok(rootNode);
-
-	console.log('rootNode', rootNode);
 
 	const allIncomingConnection = graph
 		.getDirectParentConnections(rootNode)
@@ -33,8 +31,6 @@ export function rewireGraph(tool: INode, graph: DirectedGraph): DirectedGraph {
 	}
 
 	graph.removeNode(rootNode);
-
-	console.log('');
 
 	return graph;
 }

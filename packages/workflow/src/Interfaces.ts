@@ -2295,6 +2295,7 @@ export interface IWorkflowExecutionDataProcess {
 		name: string;
 		data?: ITaskData;
 	};
+	aiToolTestParameters?: IContextObject;
 }
 
 export interface ExecuteWorkflowOptions {

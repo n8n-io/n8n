@@ -108,6 +108,7 @@ export class WorkflowExecutionService {
 			destinationNode,
 			dirtyNodeNames,
 			triggerToStartFrom,
+			aiToolTestParameters,
 		}: WorkflowRequest.ManualRunPayload,
 		user: User,
 		pushRef?: string,
@@ -182,6 +183,7 @@ export class WorkflowExecutionService {
 			partialExecutionVersion,
 			dirtyNodeNames,
 			triggerToStartFrom,
+			aiToolTestParameters,
 		};
 
 		const hasRunData = (node: INode) => runData !== undefined && !!runData[node.name];
