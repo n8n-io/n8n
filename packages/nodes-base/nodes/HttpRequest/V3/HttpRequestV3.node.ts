@@ -58,7 +58,6 @@ export class HttpRequestV3 implements INodeType {
 				name: 'HTTP Request [NEW]',
 				color: '#0004F5',
 			},
-			usableAsTool: true,
 			inputs: [NodeConnectionTypes.Main],
 			outputs: [NodeConnectionTypes.Main],
 			credentials: [
@@ -693,8 +692,6 @@ export class HttpRequestV3 implements INodeType {
 			}
 		}
 
-		const shouldOptimizeResponse = this.getNodeParameter('optimizeResponse', 0, false) as boolean;
-
 		const sanitizedRequests: IDataObject[] = [];
 		const promisesResponses = await Promise.allSettled(
 			requestPromises.map(
@@ -836,14 +833,8 @@ export class HttpRequestV3 implements INodeType {
 						}
 					}
 				}
-				const optimizeResponse2 = shouldOptimizeResponse
-					? configureResponseOptimizer(this, itemIndex)
-					: <T>(x: T) => x;
-
-				let optimizeResponse = (x: any) => {
-					// console.log(x);
-					return optimizeResponse2(x);
-				};
+				// This is a no-op outside of tool usage
+				const optimizeResponse = configureResponseOptimizer(this, itemIndex);
 
 				if (autoDetectResponseFormat && !fullResponse) {
 					delete response.headers;
@@ -851,11 +842,8 @@ export class HttpRequestV3 implements INodeType {
 					delete response.statusMessage;
 				}
 				if (!fullResponse) {
-					console.log(response.body);
 					response = optimizeResponse(response.body);
-					console.log(response);
 				}
-				optimizeResponse = (x) => x;
 				if (responseFormat === 'file') {
 					const outputPropertyName = this.getNodeParameter(
 						'options.response.response.outputPropertyName',
@@ -922,13 +910,10 @@ export class HttpRequestV3 implements INodeType {
 						const returnItem: IDataObject = {};
 						for (const property of fullResponseProperties) {
 							if (property === 'body') {
-								console.log('A');
-								returnItem[outputPropertyName] = optimizeResponse(toText(response[property]));
+								returnItem[outputPropertyName] = toText(response[property]);
 								continue;
 							}
-							console.log('B');
-
-							returnItem[property] = optimizeResponse(response[property]);
+							returnItem[property] = response[property];
 						}
 						returnItems.push({
 							json: returnItem,
@@ -937,10 +922,9 @@ export class HttpRequestV3 implements INodeType {
 							},
 						});
 					} else {
-						console.log('C');
 						returnItems.push({
 							json: {
-								[outputPropertyName]: optimizeResponse(toText(response)),
+								[outputPropertyName]: toText(response),
 							},
 							pairedItem: {
 								item: itemIndex,
@@ -952,15 +936,12 @@ export class HttpRequestV3 implements INodeType {
 					if (fullResponse) {
 						const returnItem: IDataObject = {};
 						for (const property of fullResponseProperties) {
-							returnItem[property] = optimizeResponse(response[property]);
+							returnItem[property] = response[property];
 						}
 
 						if (responseFormat === 'json' && typeof returnItem.body === 'string') {
 							try {
-								console.log('D', optimizeResponse(returnItem.body), JSON.parse(returnItem.body));
-								const returnItemBody = optimizeResponse(returnItem.body);
-								returnItem.body =
-									typeof returnItemBody === 'string' ? JSON.parse(returnItemBody) : returnItemBody;
+								returnItem.body = JSON.parse(returnItem.body);
 							} catch (error) {
 								throw new NodeOperationError(
 									this.getNode(),
@@ -978,11 +959,9 @@ export class HttpRequestV3 implements INodeType {
 						});
 					} else {
 						if (responseFormat === 'json' && typeof response === 'string') {
-							console.log('e');
 							try {
 								if (typeof response !== 'object') {
-									console.log('f');
-									response = JSON.parse(optimizeResponse(response));
+									response = JSON.parse(response);
 								}
 							} catch (error) {
 								throw new NodeOperationError(
@@ -994,8 +973,6 @@ export class HttpRequestV3 implements INodeType {
 						}
 
 						if (Array.isArray(response)) {
-							console.log('g');
-
 							// eslint-disable-next-line @typescript-eslint/no-loop-func
 							response.forEach((item) =>
 								returnItems.push({
@@ -1006,11 +983,8 @@ export class HttpRequestV3 implements INodeType {
 								}),
 							);
 						} else {
-							console.log('h', response);
-							const responseResult = optimizeResponse(response);
 							returnItems.push({
-								json: responseResult,
-								// json: response,
+								json: response,
 								pairedItem: {
 									item: itemIndex,
 								},
@@ -1022,10 +996,6 @@ export class HttpRequestV3 implements INodeType {
 		}
 
 		returnItems = returnItems.map(replaceNullValues);
-
-		if (shouldOptimizeResponse) {
-			// returnItems = returnItems.map(x => )
-		}
 
 		if (
 			returnItems.length === 1 &&

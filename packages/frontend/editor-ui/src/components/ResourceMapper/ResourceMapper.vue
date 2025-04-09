@@ -666,6 +666,7 @@ defineExpose({
 					displayName: locale.baseText('resourceMapper.attemptToConvertTypes.displayName'),
 					default: false,
 					description: locale.baseText('resourceMapper.attemptToConvertTypes.description'),
+					noDataExpression: true,
 				}"
 				:path="props.path + '.attemptToConvertTypes'"
 				:value="state.paramValue.attemptToConvertTypes"

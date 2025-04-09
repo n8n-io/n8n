@@ -188,6 +188,7 @@ import {
 	statusCanceled,
 	statusNew,
 	statusUnknown,
+	statusWarning,
 	faPopOut,
 } from './custom';
 import { faStickyNote } from '@fortawesome/free-regular-svg-icons';
@@ -385,6 +386,7 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(statusCanceled);
 		addIcon(statusNew);
 		addIcon(statusUnknown);
+		addIcon(statusWarning);
 
 		addIcon(faPopOut);
 

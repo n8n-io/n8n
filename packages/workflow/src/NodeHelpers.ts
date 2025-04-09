@@ -402,11 +402,7 @@ const getPropertyValues = (
 	} else if (propertyName === '@version') {
 		value = node?.typeVersion || 0;
 	} else if (propertyName === '@tool') {
-		if (nodeTypeDescription) {
-			value = !!nodeTypeDescription.codex?.subcategories?.AI?.includes('Tools');
-		} else {
-			value = false;
-		}
+		value = nodeTypeDescription?.name.endsWith('Tool') ?? false;
 	} else {
 		// Get the value from current level
 		value = get(nodeValues, propertyName);

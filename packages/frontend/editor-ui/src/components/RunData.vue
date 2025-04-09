@@ -86,11 +86,11 @@ import {
 } from '@n8n/design-system';
 import { storeToRefs } from 'pinia';
 import { useRoute } from 'vue-router';
-import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import { useUIStore } from '@/stores/ui.store';
 import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
 import { asyncComputed } from '@vueuse/core';
 import { usePostHog } from '@/stores/posthog.store';
+import ViewSubExecution from './ViewSubExecution.vue';
 
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
@@ -200,7 +200,6 @@ const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
 const telemetry = useTelemetry();
 const i18n = useI18n();
-const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl } = useExecutionHelpers();
 
 const node = toRef(props, 'node');
 
@@ -556,12 +555,6 @@ const activeTaskMetadata = computed((): ITaskMetadata | null => {
 	}
 
 	return workflowRunData.value?.[node.value.name]?.[props.runIndex]?.metadata ?? null;
-});
-
-const hasRelatedExecution = computed(() => {
-	return Boolean(
-		activeTaskMetadata.value?.subExecution ?? activeTaskMetadata.value?.parentExecution,
-	);
 });
 
 const hasInputOverwrite = computed((): boolean => {
@@ -1313,26 +1306,6 @@ function onSearchClear() {
 	document.dispatchEvent(new KeyboardEvent('keyup', { key: '/' }));
 }
 
-function getExecutionLinkLabel(task: ITaskMetadata): string | undefined {
-	if (task.parentExecution) {
-		return i18n.baseText('runData.openParentExecution', {
-			interpolate: { id: task.parentExecution.executionId },
-		});
-	}
-
-	if (task.subExecution) {
-		if (activeTaskMetadata.value?.subExecutionsCount === 1) {
-			return i18n.baseText('runData.openSubExecutionSingle');
-		} else {
-			return i18n.baseText('runData.openSubExecutionWithId', {
-				interpolate: { id: task.subExecution.executionId },
-			});
-		}
-	}
-
-	return;
-}
-
 defineExpose({ enterEditMode });
 </script>
 
@@ -1504,20 +1477,11 @@ defineExpose({ enterEditMode });
 
 				<slot name="run-info"></slot>
 			</div>
-
-			<a
-				v-if="
-					activeTaskMetadata && hasRelatedExecution && !(paneType === 'input' && hasInputOverwrite)
-				"
-				:class="$style.relatedExecutionInfo"
-				data-test-id="related-execution-link"
-				:href="resolveRelatedExecutionUrl(activeTaskMetadata)"
-				target="_blank"
-				@click.stop="trackOpeningRelatedExecution(activeTaskMetadata, displayMode)"
-			>
-				<N8nIcon icon="external-link-alt" size="xsmall" />
-				{{ getExecutionLinkLabel(activeTaskMetadata) }}
-			</a>
+			<ViewSubExecution
+				v-if="activeTaskMetadata && !(paneType === 'input' && hasInputOverwrite)"
+				:task-metadata="activeTaskMetadata"
+				:display-mode="displayMode"
+			/>
 		</div>
 
 		<slot v-if="!displaysMultipleNodes" name="before-data" />
@@ -1544,6 +1508,11 @@ defineExpose({ enterEditMode });
 			data-test-id="branches"
 		>
 			<slot v-if="inputSelectLocation === 'outputs'" name="input-select"></slot>
+			<ViewSubExecution
+				v-if="activeTaskMetadata && !(paneType === 'input' && hasInputOverwrite)"
+				:task-metadata="activeTaskMetadata"
+				:display-mode="displayMode"
+			/>
 
 			<div :class="$style.tabs">
 				<N8nTabs
@@ -1594,20 +1563,11 @@ defineExpose({ enterEditMode });
 					}}
 				</span>
 			</N8nText>
-
-			<a
-				v-if="
-					activeTaskMetadata && hasRelatedExecution && !(paneType === 'input' && hasInputOverwrite)
-				"
-				:class="$style.relatedExecutionInfo"
-				data-test-id="related-execution-link"
-				:href="resolveRelatedExecutionUrl(activeTaskMetadata)"
-				target="_blank"
-				@click.stop="trackOpeningRelatedExecution(activeTaskMetadata, displayMode)"
-			>
-				<N8nIcon icon="external-link-alt" size="xsmall" />
-				{{ getExecutionLinkLabel(activeTaskMetadata) }}
-			</a>
+			<ViewSubExecution
+				v-if="activeTaskMetadata && !(paneType === 'input' && hasInputOverwrite)"
+				:task-metadata="activeTaskMetadata"
+				:display-mode="displayMode"
+			/>
 		</div>
 
 		<div ref="dataContainerRef" :class="$style.dataContainer" data-test-id="ndv-data-container">
@@ -2303,15 +2263,6 @@ defineExpose({ enterEditMode });
 
 .schema {
 	padding: 0 var(--spacing-s);
-}
-
-.relatedExecutionInfo {
-	font-size: var(--font-size-s);
-	margin-left: var(--spacing-3xs);
-
-	svg {
-		padding-bottom: 2px;
-	}
 }
 </style>
 

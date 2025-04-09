@@ -4690,11 +4690,15 @@ describe('NodeHelpers', () => {
 					...defaultTestInput,
 					nodeTypeDescription: {
 						...testNodeType,
+<<<<<<< HEAD
 						codex: {
 							subcategories: {
 								AI: ['Tools'],
 							},
 						},
+=======
+						name: testNodeType.name + 'Tool',
+>>>>>>> ADO-3304_4
 					},
 					parameter: {
 						...defaultTestInput.parameter,
@@ -4711,6 +4715,7 @@ describe('NodeHelpers', () => {
 				'Should return false if @tool is true in nodeTypeDescription of non-tool',
 				{
 					...defaultTestInput,
+<<<<<<< HEAD
 					nodeTypeDescription: {
 						...testNodeType,
 						codex: {
@@ -4719,6 +4724,8 @@ describe('NodeHelpers', () => {
 							},
 						},
 					},
+=======
+>>>>>>> ADO-3304_4
 					parameter: {
 						...defaultTestInput.parameter,
 						displayOptions: {
@@ -4790,11 +4797,7 @@ describe('NodeHelpers', () => {
 					},
 					nodeTypeDescription: {
 						...testNodeType,
-						codex: {
-							subcategories: {
-								AI: ['Tools'],
-							},
-						},
+						name: testNodeType.name + 'Tool',
 					},
 					parameter: {
 						...defaultTestInput.parameter,
@@ -4824,11 +4827,7 @@ describe('NodeHelpers', () => {
 					},
 					nodeTypeDescription: {
 						...testNodeType,
-						codex: {
-							subcategories: {
-								AI: ['Tools'],
-							},
-						},
+						name: testNodeType.name + 'Tool',
 					},
 					parameter: {
 						...defaultTestInput.parameter,

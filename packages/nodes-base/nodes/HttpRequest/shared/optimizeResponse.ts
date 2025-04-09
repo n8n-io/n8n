@@ -11,36 +11,6 @@ import {
 	type IExecuteFunctions,
 } from 'n8n-workflow';
 
-const defaultOptimizer = <T>(response: T) => {
-	if (typeof response === 'string') {
-		return response;
-	}
-	if (typeof response === 'object') {
-		return JSON.stringify(response, null, 2);
-	}
-
-	return String(response);
-};
-
-function isBinary(data: unknown) {
-	// Check if data is a Buffer
-	if (Buffer.isBuffer(data)) {
-		return true;
-	}
-
-	// If data is a string, assume it's text unless it contains null characters.
-	if (typeof data === 'string') {
-		// If the string contains a null character, it's likely binary.
-		if (data.includes('\0')) {
-			return true;
-		}
-		return false;
-	}
-
-	// For any other type, assume it's not binary.
-	return false;
-}
-
 const htmlOptimizer = (ctx: IExecuteFunctions, itemIndex: number, maxLength: number) => {
 	const cssSelector = ctx.getNodeParameter('cssSelector', itemIndex, '') as string;
 	const onlyContent = ctx.getNodeParameter('onlyContent', itemIndex, false) as boolean;
@@ -245,7 +215,7 @@ export const configureResponseOptimizer = (ctx: IExecuteFunctions, itemIndex: nu
 		}
 	}
 
-	return defaultOptimizer;
+	return <T>(x: T) => x;
 };
 
 export const optimizeResponseProperties: INodeProperties[] = [
