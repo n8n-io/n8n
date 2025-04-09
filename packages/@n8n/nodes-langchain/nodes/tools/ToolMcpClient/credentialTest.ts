@@ -1,4 +1,5 @@
-import { EventSource, type ErrorEvent } from 'eventsource';
+import EventSource from 'eventsource';
+import get from 'lodash/get';
 import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -22,17 +23,15 @@ export async function testMcpSseCredential(
 			return resolve({ status: 'Error', message: ERROR_MESSAGE });
 		}
 
-		const source = new EventSource(
-			typedCredential.sseEndpoint,
-			// @ts-expect-error eventSourceInit type is not complete
-			{ headers: getHeaders(credential) },
-		);
+		const source = new EventSource(typedCredential.sseEndpoint, {
+			headers: getHeaders(typedCredential),
+		});
 
-		source.onerror = (event: ErrorEvent) => {
+		source.onerror = (event) => {
 			source.close();
 			resolve({
 				status: 'Error',
-				message: event.message ?? ERROR_MESSAGE,
+				message: get(event, 'message') ?? ERROR_MESSAGE,
 			});
 		};
 

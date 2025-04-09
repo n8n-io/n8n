@@ -16,6 +16,7 @@ import type { McpSseCredential, McpToolIncludeMode } from './types';
 import {
 	connectMcpClient,
 	createCallTool,
+	getAllTools,
 	getSelectedTools,
 	getToolCallErrorDescription,
 	McpToolkit,
@@ -128,6 +129,7 @@ export class ToolMcpClient implements INodeType {
 		const node = this.getNode();
 		const client = await connectMcpClient({
 			credential: sseCredentials,
+			name: node.type,
 			version: node.typeVersion,
 		});
 
@@ -157,8 +159,9 @@ export class ToolMcpClient implements INodeType {
 		const includeTools = this.getNodeParameter('includeTools', itemIndex, []) as string[];
 		const excludeTools = this.getNodeParameter('excludeTools', itemIndex, []) as string[];
 
-		const mcpTools = await getSelectedTools({
-			client: client.result,
+		const allTools = await getAllTools(client.result);
+		const mcpTools = getSelectedTools({
+			tools: allTools,
 			mode,
 			includeTools,
 			excludeTools,

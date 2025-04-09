@@ -31,31 +31,30 @@ export async function getAllTools(client: Client, cursor?: string): Promise<McpT
 	return tools as McpTool[];
 }
 
-export async function getSelectedTools({
+export function getSelectedTools({
 	mode,
 	includeTools,
 	excludeTools,
-	client,
+	tools,
 }: {
 	mode: McpToolIncludeMode;
 	includeTools?: string[];
 	excludeTools?: string[];
-	client: Client;
+	tools: McpTool[];
 }) {
-	const allTools = await getAllTools(client);
-
 	switch (mode) {
 		case 'selected': {
-			const include = new Set(includeTools ?? []);
-			return allTools.filter((tool) => include.has(tool.name));
+			if (!includeTools?.length) return tools;
+			const include = new Set(includeTools);
+			return tools.filter((tool) => include.has(tool.name));
 		}
 		case 'except': {
 			const except = new Set(excludeTools ?? []);
-			return allTools.filter((tool) => !except.has(tool.name));
+			return tools.filter((tool) => !except.has(tool.name));
 		}
 		case 'all':
 		default:
-			return allTools;
+			return tools;
 	}
 }
 
@@ -126,8 +125,9 @@ type ConnectMcpClientError =
 	| { type: 'connection'; error: Error };
 export async function connectMcpClient({
 	credential,
+	name,
 	version,
-}: { credential: McpSseCredential; version: number }): Promise<
+}: { credential: McpSseCredential; name: string; version: number }): Promise<
 	Result<Client, ConnectMcpClientError>
 > {
 	try {
@@ -146,10 +146,7 @@ export async function connectMcpClient({
 		});
 
 		const client = new Client(
-			{
-				name: 'n8n-toolMcpClient',
-				version: version.toString(),
-			},
+			{ name, version: version.toString() },
 			{ capabilities: { tools: {} } },
 		);
 
