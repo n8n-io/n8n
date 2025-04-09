@@ -2180,16 +2180,22 @@ export interface ITaskMetadata {
 	subExecutionsCount?: number;
 }
 
-// The data that gets returned when a node runs
-export interface ITaskData {
+/** The data that gets returned when a node execution starts */
+export interface ITaskStartedData {
 	startTime: number;
+	/** This index tracks the order in which nodes are executed */
+	executionIndex: number;
+	source: Array<ISourceData | null>; // Is an array as nodes have multiple inputs
+	hints?: NodeExecutionHint[];
+}
+
+/** The data that gets returned when a node execution ends */
+export interface ITaskData extends ITaskStartedData {
 	executionTime: number;
 	executionStatus?: ExecutionStatus;
 	data?: ITaskDataConnections;
 	inputOverride?: ITaskDataConnections;
 	error?: ExecutionError;
-	hints?: NodeExecutionHint[];
-	source: Array<ISourceData | null>; // Is an array as nodes have multiple inputs
 	metadata?: ITaskMetadata;
 }
 
@@ -2336,6 +2342,7 @@ export interface IWorkflowExecuteAdditionalData {
 	) => Promise<ExecuteWorkflowData>;
 	executionId?: string;
 	restartExecutionId?: string;
+	currentNodeExecutionIndex: number;
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;
 	restApiUrl: string;
