@@ -125,7 +125,7 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 	}
 
 	private getParentFolderFields(alias: string): string[] {
-		return [`${alias}.id`, `${alias}.name`];
+		return [`${alias}.id`, `${alias}.name`, `${alias}.parentFolderId`];
 	}
 
 	private applyFilters(

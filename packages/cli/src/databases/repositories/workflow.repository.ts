@@ -544,7 +544,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		const isParentFolderIncluded = isDefaultSelect || select?.parentFolder;
 
 		if (isParentFolderIncluded) {
-			qb.leftJoinAndSelect('workflow.parentFolder', 'parentFolder');
+			qb.leftJoin('workflow.parentFolder', 'parentFolder').addSelect([
+				'parentFolder.id',
+				'parentFolder.name',
+				'parentFolder.parentFolderId',
+			]);
 		}
 
 		if (areTagsEnabled && areTagsRequested) {
