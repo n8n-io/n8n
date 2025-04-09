@@ -20,6 +20,32 @@ describe('BinaryDataController', () => {
 	});
 
 	describe('get', () => {
+		it('should validate a signed token', async () => {
+			request.query = {
+				id: 'filesystem:123',
+				token: '12344',
+				action: 'view',
+			};
+
+			binaryDataService.validateSignedToken.mockReturnValueOnce('filesystem:123');
+			const stream = mock<Readable>();
+
+			binaryDataService.getAsStream.mockResolvedValue(stream);
+			await controller.getSigned(request, response);
+
+			expect(binaryDataService.getAsStream).toHaveBeenCalledWith('filesystem:123');
+		});
+
+		it('should return 400 if token is missing', async () => {
+			// @ts-expect-error invalid query object
+			request.query = {};
+
+			await controller.getSigned(request, response);
+
+			expect(response.status).toHaveBeenCalledWith(400);
+			expect(response.end).toHaveBeenCalledWith('Missing token');
+		});
+
 		it('should return 400 if binary data ID is missing', async () => {
 			// @ts-expect-error invalid query object
 			request.query = {};

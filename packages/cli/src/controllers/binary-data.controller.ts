@@ -8,18 +8,12 @@ import { BinaryDataRequest } from '@/requests';
 export class BinaryDataController {
 	constructor(private readonly binaryDataService: BinaryDataService) {}
 
-	@Get('/')
-	async get(req: BinaryDataRequest, res: express.Response) {
-		const { id: binaryDataId, action } = req.query;
-
-		if (!binaryDataId) {
-			return res.status(400).end('Missing binary data ID');
-		}
-
-		if (!binaryDataId.includes(':')) {
-			return res.status(400).end('Missing binary data mode');
-		}
-
+	async getStream(
+		req: BinaryDataRequest,
+		res: express.Response,
+		binaryDataId: string,
+		action: string,
+	) {
 		const [mode] = binaryDataId.split(':');
 
 		if (!isValidNonDefaultMode(mode)) {
@@ -57,5 +51,33 @@ export class BinaryDataController {
 			if (error instanceof FileNotFoundError) return res.status(404).end();
 			else throw error;
 		}
+	}
+
+	@Get('/signed', { skipAuth: true })
+	async getSigned(req: BinaryDataRequest, res: express.Response) {
+		const { token } = req.query;
+
+		if (!token) {
+			return res.status(400).end('Missing token');
+		}
+
+		const binaryDataId = this.binaryDataService.validateSignedToken(token);
+
+		return await this.getStream(req, res, binaryDataId, 'download');
+	}
+
+	@Get('/')
+	async get(req: BinaryDataRequest, res: express.Response) {
+		const { id: binaryDataId, action } = req.query;
+
+		if (!binaryDataId) {
+			return res.status(400).end('Missing binary data ID');
+		}
+
+		if (!binaryDataId.includes(':')) {
+			return res.status(400).end('Missing binary data mode');
+		}
+
+		return await this.getStream(req, res, binaryDataId, action);
 	}
 }

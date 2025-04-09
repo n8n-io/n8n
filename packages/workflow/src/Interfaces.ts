@@ -690,6 +690,7 @@ export interface BinaryHelperFunctions {
 	binaryToString(body: Buffer | Readable, encoding?: BufferEncoding): Promise<string>;
 	getBinaryPath(binaryDataId: string): string;
 	getBinaryStream(binaryDataId: string, chunkSize?: number): Promise<Readable>;
+	getBinarySignedUrl(binaryDataId: string): string;
 	getBinaryMetadata(binaryDataId: string): Promise<{
 		fileName?: string;
 		mimeType?: string;

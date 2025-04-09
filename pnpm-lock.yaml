@@ -1299,6 +1299,9 @@ importers:
       iconv-lite:
         specifier: 'catalog:'
         version: 0.6.3
+      jsonwebtoken:
+        specifier: 9.0.2
+        version: 9.0.2
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
@@ -1357,6 +1360,9 @@ importers:
       '@types/express':
         specifier: 'catalog:'
         version: 5.0.1
+      '@types/jsonwebtoken':
+        specifier: ^9.0.6
+        version: 9.0.6
       '@types/lodash':
         specifier: 'catalog:'
         version: 4.14.195

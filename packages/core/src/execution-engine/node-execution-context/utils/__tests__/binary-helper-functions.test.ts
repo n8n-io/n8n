@@ -1,3 +1,4 @@
+import { type BinaryDataConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { mkdtempSync, readFileSync } from 'fs';
 import { IncomingMessage } from 'http';
@@ -13,6 +14,7 @@ import { join } from 'path';
 import { Readable } from 'stream';
 
 import { BinaryDataService } from '@/binary-data/binary-data.service';
+import { type InstanceSettings } from '@/instance-settings';
 
 import {
 	assertBinaryData,
@@ -21,6 +23,7 @@ import {
 	detectBinaryEncoding,
 	getBinaryDataBuffer,
 	getBinaryHelperFunctions,
+	getBinarySignedUrl,
 	prepareBinaryData,
 	setBinaryDataBuffer,
 } from '../binary-helper-functions';
@@ -41,7 +44,7 @@ describe('test binary data helper methods', () => {
 	const temporaryDir = mkdtempSync(join(tmpdir(), 'n8n'));
 
 	beforeEach(() => {
-		binaryDataService = new BinaryDataService();
+		binaryDataService = new BinaryDataService(mock<InstanceSettings>(), mock<BinaryDataConfig>());
 		Container.set(BinaryDataService, binaryDataService);
 	});
 
@@ -448,6 +451,22 @@ describe('setBinaryDataBuffer', () => {
 
 		expect(result).toBeDefined();
 		expect(result.data).toBe('');
+	});
+});
+
+describe('getBinarySignedUrl', () => {
+	it('should get a signed url', async () => {
+		const binaryDataId = 'binary123';
+		const binaryDataService = mock<BinaryDataService>();
+		const signedUrl = 'https://example.com/signed-url';
+
+		binaryDataService.createSignedUrl.mockReturnValueOnce(signedUrl);
+		Container.set(BinaryDataService, binaryDataService);
+
+		const result = getBinarySignedUrl(binaryDataId);
+
+		expect(result).toBe(signedUrl);
+		expect(binaryDataService.createSignedUrl).toHaveBeenCalledWith(binaryDataId);
 	});
 });
 
