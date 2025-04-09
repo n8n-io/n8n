@@ -148,6 +148,7 @@ describe('formCompletionUtils', () => {
 			const buffer = Buffer.from(expectedBinaryResponse.inputData.data);
 
 			for (const parentNodes of parentNodesTestCases) {
+				mockWebhookFunctions.getRequestObject.mockReturnValue(jest.fn());
 				mockWebhookFunctions.getParentNodes.mockReturnValueOnce(parentNodes);
 				mockWebhookFunctions.evaluateExpression.mockImplementation((arg) => {
 					if (arg === `{{ $('${nodeNameWithFileToDownload}').first().binary }}`) {

@@ -185,23 +185,25 @@
 			}
 		};
 
+
 		document.addEventListener('DOMContentLoaded', function () {
+			const binaryBlob = (binary) => {
+				const byteArray = Uint8Array.from(binary.binaryData, c => c.charCodeAt(0));
+
+				return new Blob([byteArray], { type: binary.type });
+			}
+
 			const binary = "{{{responseBinary}}}"
 				?	JSON.parse(decodeURIComponent("{{{responseBinary}}}"))
 				: '';
 
-			const byteArray = binary.data.type === 'Buffer'
-				? new Uint8Array(binary.data.data)
-				: Uint8Array.from(binary.data, c => c.charCodeAt(0));
-
 			if (binary) {
-				const blob = new Blob(
-					[byteArray],
-					{ type: binary.type }
-				);
-
 				const link = document.createElement("a");
-				link.href = URL.createObjectURL(blob);
+
+				link.href = binary.binaryData
+					? URL.createObjectURL(binaryBlob(binary))
+					: binary.binaryUrl
+
 				link.download = binary.fileName;
 				document.body.appendChild(link);
 
