@@ -15,6 +15,7 @@ describe('Test YouTube Node', () => {
 		const youtubeNock = nock('https://www.googleapis.com/youtube');
 
 		beforeAll(() => {
+			//Mock Channels
 			youtubeNock
 				.get('/v3/channels')
 				.query({
@@ -49,12 +50,30 @@ describe('Test YouTube Node', () => {
 						image: {},
 					},
 				});
+			//Mock Playlists
+			youtubeNock
+				.post('/v3/playlists', {
+					snippet: { title: 'Test', privacyStatus: 'private', defaultLanguage: 'en' },
+				})
+				.query({ part: 'snippet' })
+				.reply(200, { items: channels });
+			youtubeNock
+				.put('/v3/playlists', {
+					id: 'PLVP4mWdqlaa4yZzZrY5daibndICp3lpWX',
+					snippet: { title: 'Test Updated', description: 'This description is updated' },
+					status: { privacyStatus: 'private' },
+				})
+				.query({ part: 'snippet, status' })
+				.reply(200, {});
 			nock.emitter.on('no match', (req) => {
 				console.error('Unmatched request:', req);
 			});
 		});
 
-		testWorkflows(['nodes/Google/YouTube/test/node/channels.workflow.json']);
+		testWorkflows([
+			'nodes/Google/YouTube/__test__/node/channels.workflow.json',
+			'nodes/Google/YouTube/__test__/node/playlists.workflow.json',
+		]);
 
 		it('should make the correct network calls', () => {
 			youtubeNock.done();
