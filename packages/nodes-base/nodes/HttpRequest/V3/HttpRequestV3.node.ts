@@ -843,6 +843,8 @@ export class HttpRequestV3 implements INodeType {
 				}
 				if (!fullResponse) {
 					response = optimizeResponse(response.body);
+				} else {
+					response.body = optimizeResponse(response.body);
 				}
 				if (responseFormat === 'file') {
 					const outputPropertyName = this.getNodeParameter(
