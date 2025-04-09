@@ -195,6 +195,15 @@ export async function getAuthHeaders(
 
 			return { headers: { [header.name]: header.value } };
 		}
+		case 'bearerAuth': {
+			const result = await ctx
+				.getCredentials<{ token: string }>('httpBearerAuth')
+				.catch(() => null);
+
+			if (!result) return {};
+
+			return { headers: { Authorization: `Bearer ${result.token}` } };
+		}
 		case 'none':
 		default: {
 			return {};

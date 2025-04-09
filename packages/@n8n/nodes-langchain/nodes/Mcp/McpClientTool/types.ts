@@ -4,4 +4,4 @@ export type McpTool = { name: string; description?: string; inputSchema: JSONSch
 
 export type McpToolIncludeMode = 'all' | 'selected' | 'except';
 
-export type McpAuthenticationOption = 'none' | 'headerAuth';
+export type McpAuthenticationOption = 'none' | 'headerAuth' | 'bearerAuth';

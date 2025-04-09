@@ -55,6 +55,15 @@ export class McpClientTool implements INodeType {
 		credentials: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
+				name: 'httpBearerAuth',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['bearerAuth'],
+					},
+				},
+			},
+			{
 				name: 'httpHeaderAuth',
 				required: true,
 				displayOptions: {
@@ -80,6 +89,10 @@ export class McpClientTool implements INodeType {
 				name: 'authentication',
 				type: 'options',
 				options: [
+					{
+						name: 'Bearer Auth',
+						value: 'bearerAuth',
+					},
 					{
 						name: 'Header Auth',
 						value: 'headerAuth',
