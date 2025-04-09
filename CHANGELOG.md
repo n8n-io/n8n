@@ -1,3 +1,12 @@
+## [1.86.1](https://github.com/n8n-io/n8n/compare/n8n@1.86.0...n8n@1.86.1) (2025-04-09)
+
+
+### Bug Fixes
+
+* **Code Node:** Use an explicit `indexURL` to load the pyodide runtime ([#14487](https://github.com/n8n-io/n8n/issues/14487)) ([1c6b797](https://github.com/n8n-io/n8n/commit/1c6b797c4919c7f47bee16032d79b0fc597f10ca))
+
+
+
 # [1.86.0](https://github.com/n8n-io/n8n/compare/n8n@1.85.0...n8n@1.86.0) (2025-03-31)
 
 
