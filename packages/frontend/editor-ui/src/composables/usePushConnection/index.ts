@@ -40,6 +40,20 @@ import { clearPopupWindowState, hasTrimmedData, hasTrimmedItem } from '../utils/
 import { usePostHog } from '@/stores/posthog.store';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
+import {
+	testWebhookDeleted,
+	testWebhookReceived,
+	reloadNodeType,
+	removeNodeType,
+	nodeDescriptionUpdated,
+	nodeExecuteBefore,
+	nodeExecuteAfter,
+	executionStarted,
+	sendWorkerStatusMessage,
+	sendConsoleMessage,
+	workflowFailedToActivate,
+} from '@/composables/usePushConnection/handlers';
+import { executionWaiting } from '@/composables/usePushConnection/handlers/executionWaiting';
 
 export function usePushConnection({ router }: { router: ReturnType<typeof useRouter> }) {
 	const workflowHelpers = useWorkflowHelpers({ router });
@@ -129,38 +143,31 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 		const retryAttempts = 5;
 
 		if (receivedData.type === 'sendWorkerStatusMessage') {
-			const pushData = receivedData.data;
-			orchestrationManagerStore.updateWorkerStatus(pushData.status);
+			void sendWorkerStatusMessage(receivedData);
 			return true;
 		}
 
 		if (receivedData.type === 'sendConsoleMessage') {
-			const pushData = receivedData.data;
-			console.log(pushData.source, ...pushData.messages);
+			void sendConsoleMessage(receivedData);
 			return true;
 		}
 
-		if (
-			!['testWebhookReceived'].includes(receivedData.type) &&
-			isRetry !== true &&
-			pushMessageQueue.value.length
-		) {
-			// If there are already messages in the queue add the new one that all of them
-			// get executed in order
-			queuePushMessage(receivedData, retryAttempts);
-			return false;
-		}
-
-		if (receivedData.type === 'executionStarted') {
-			if (!workflowsStore.activeExecutionId) {
-				workflowsStore.setActiveExecutionId(receivedData.data.executionId);
-			}
-		}
+		// Redesign queueing
+		// if (
+		// 	!['testWebhookReceived'].includes(receivedData.type) &&
+		// 	isRetry !== true &&
+		// 	pushMessageQueue.value.length
+		// ) {
+		// 	// If there are already messages in the queue add the new one that all of them
+		// 	// get executed in order
+		// 	queuePushMessage(receivedData, retryAttempts);
+		// 	return false;
+		// }
 
 		if (
 			receivedData.type === 'nodeExecuteAfter' ||
-			receivedData.type === 'nodeExecuteBefore' ||
-			receivedData.type === 'executionStarted'
+			receivedData.type === 'nodeExecuteBefore'
+			// || receivedData.type === 'executionStarted'
 		) {
 			if (!uiStore.isActionActive.workflowRunning) {
 				// No workflow is running so ignore the messages
@@ -177,20 +184,8 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 			}
 		}
 
-		if (
-			receivedData.type === 'workflowFailedToActivate' &&
-			workflowsStore.workflowId === receivedData.data.workflowId
-		) {
-			workflowsStore.setWorkflowInactive(receivedData.data.workflowId);
-			workflowsStore.setActive(false);
-
-			toast.showError(
-				new Error(receivedData.data.errorMessage),
-				i18n.baseText('workflowActivator.showError.title', {
-					interpolate: { newStateName: 'activated' },
-				}) + ':',
-			);
-
+		if (receivedData.type === 'workflowFailedToActivate') {
+			void workflowFailedToActivate(receivedData);
 			return true;
 		}
 
@@ -233,6 +228,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				}
 			}
 
+			// @TODO
 			const { executionId } = receivedData.data;
 			if (executionId !== workflowsStore.activeExecutionId) {
 				// The workflow which did finish execution did either not get started
@@ -538,109 +534,27 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				resultDataError: iRunExecutionData.resultData.error,
 			});
 		} else if (receivedData.type === 'executionWaiting') {
-			// Nothing to do
+			void executionWaiting(receivedData);
 		} else if (receivedData.type === 'executionStarted') {
-			if (workflowsStore.workflowExecutionData?.data && receivedData.data.flattedRunData) {
-				workflowsStore.workflowExecutionData.data.resultData.runData = parse(
-					receivedData.data.flattedRunData,
-				);
-			}
+			void executionStarted(receivedData);
 		} else if (receivedData.type === 'nodeExecuteAfter') {
-			// A node finished to execute. Add its data
-			const pushData = receivedData.data;
-
-			/**
-			 * When we receive a placeholder in `nodeExecuteAfter`, we fake the items
-			 * to be the same count as the data the placeholder is standing in for.
-			 * This prevents the items count from jumping up when the execution
-			 * finishes and the full data replaces the placeholder.
-			 */
-			if (
-				pushData.itemCount &&
-				pushData.data?.data?.main &&
-				Array.isArray(pushData.data.data.main[0]) &&
-				pushData.data.data.main[0].length < pushData.itemCount
-			) {
-				pushData.data.data.main[0]?.push(...new Array(pushData.itemCount - 1).fill({ json: {} }));
-			}
-
-			workflowsStore.updateNodeExecutionData(pushData);
-			void assistantStore.onNodeExecution(pushData);
-			void useSchemaPreviewStore().trackSchemaPreviewExecution(pushData);
+			void nodeExecuteAfter(receivedData);
 		} else if (receivedData.type === 'nodeExecuteBefore') {
-			// A node started to be executed. Set it as executing.
-			const pushData = receivedData.data;
-			workflowsStore.addExecutingNode(pushData.nodeName);
+			void nodeExecuteBefore(receivedData);
 		} else if (receivedData.type === 'testWebhookDeleted') {
-			// A test-webhook was deleted
-			const pushData = receivedData.data;
-
-			if (pushData.workflowId === workflowsStore.workflowId) {
-				workflowsStore.executionWaitingForWebhook = false;
-				uiStore.removeActiveAction('workflowRunning');
-			}
+			void testWebhookDeleted(receivedData);
 		} else if (receivedData.type === 'testWebhookReceived') {
-			// A test-webhook did get called
-			const pushData = receivedData.data;
-
-			if (pushData.workflowId === workflowsStore.workflowId) {
-				workflowsStore.executionWaitingForWebhook = false;
-				workflowsStore.setActiveExecutionId(pushData.executionId);
-			}
-
-			void processWaitingPushMessages();
+			void testWebhookReceived(receivedData);
+			// void processWaitingPushMessages();
 		} else if (receivedData.type === 'reloadNodeType') {
-			await nodeTypesStore.getNodeTypes();
-			await nodeTypesStore.getFullNodesProperties([receivedData.data]);
+			void reloadNodeType(receivedData);
 		} else if (receivedData.type === 'removeNodeType') {
-			const pushData = receivedData.data;
-
-			const nodesToBeRemoved: INodeTypeNameVersion[] = [pushData];
-
-			// Force reload of all credential types
-			await credentialsStore.fetchCredentialTypes(false).then(() => {
-				nodeTypesStore.removeNodeTypes(nodesToBeRemoved as INodeTypeDescription[]);
-			});
+			void removeNodeType(receivedData);
 		} else if (receivedData.type === 'nodeDescriptionUpdated') {
-			await nodeTypesStore.getNodeTypes();
-			await credentialsStore.fetchCredentialTypes(true);
+			void nodeDescriptionUpdated(receivedData);
 		}
 
 		return true;
-	}
-
-	function getExecutionError(data: IRunExecutionData | IExecuteContextData) {
-		const error = data.resultData.error;
-
-		let errorMessage: string;
-
-		if (data.resultData.lastNodeExecuted && error) {
-			errorMessage = error.message || error.description;
-		} else {
-			errorMessage = i18n.baseText('pushConnection.executionError', {
-				interpolate: { error: '!' },
-			});
-
-			if (error?.message) {
-				let nodeName: string | undefined;
-				if ('node' in error) {
-					nodeName = typeof error.node === 'string' ? error.node : error.node!.name;
-				}
-
-				const receivedError = nodeName ? `${nodeName}: ${error.message}` : error.message;
-				errorMessage = i18n.baseText('pushConnection.executionError', {
-					interpolate: {
-						error: `.${i18n.baseText('pushConnection.executionError.details', {
-							interpolate: {
-								details: receivedError,
-							},
-						})}`,
-					},
-				});
-			}
-		}
-
-		return errorMessage;
 	}
 
 	return {
