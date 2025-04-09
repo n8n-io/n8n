@@ -67,7 +67,6 @@ export class SalesforceJwtApi implements ICredentialType {
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
-		console.log('i am here');
 		const now = moment().unix();
 		const authUrl =
 			credentials.environment === 'sandbox'
