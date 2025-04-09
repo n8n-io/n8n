@@ -74,7 +74,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const chatSessionCredType = ref<ICredentialType | undefined>();
 	const chatSessionError = ref<ChatRequest.ErrorContext | undefined>();
 	const currentSessionId = ref<string | undefined>();
-	const currentSessionActiveExecutionId = ref<string | undefined>();
+	const currentSessionActiveExecutionId = ref<string | null>(null);
 	const currentSessionWorkflowId = ref<string | undefined>();
 	const lastUnread = ref<ChatUI.AssistantMessage | undefined>();
 	const nodeExecutionStatus = ref<NodeExecutionStatus>('not_executed');
@@ -125,7 +125,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		currentSessionId.value = undefined;
 		chatSessionError.value = undefined;
 		lastUnread.value = undefined;
-		currentSessionActiveExecutionId.value = undefined;
+		currentSessionActiveExecutionId.value = null;
 		suggestions.value = {};
 		nodeExecutionStatus.value = 'not_executed';
 		chatSessionCredType.value = undefined;
