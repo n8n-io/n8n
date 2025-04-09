@@ -50,12 +50,6 @@ export class MicrosoftAzureCosmosDbSharedKeyApi implements ICredentialType {
 			required: true,
 			type: 'string',
 		},
-		{
-			displayName: 'Base URL',
-			name: 'baseUrl',
-			default: '=https://{{ $self["account"] }}.documents.azure.com/dbs/{{ $self["database"] }}',
-			type: 'hidden',
-		},
 	];
 
 	async authenticate(
