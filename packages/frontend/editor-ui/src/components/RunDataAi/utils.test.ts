@@ -216,7 +216,7 @@ describe(createLogEntries, () => {
 		]);
 	});
 
-	it.only('should return sub node log entries in ascending order of executionIndex', () => {
+	it('should return sub node log entries in ascending order of executionIndex', () => {
 		const workflow = createTestWorkflowObject({
 			nodes: [
 				createTestNode({ name: 'A' }),
