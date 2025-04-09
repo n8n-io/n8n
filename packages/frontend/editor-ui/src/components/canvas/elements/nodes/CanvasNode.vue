@@ -288,7 +288,9 @@ provide(CanvasNodeKey, {
 	eventBus: canvasNodeEventBus,
 });
 
-const hasToolbar = computed(() => props.data.type !== CanvasNodeRenderType.AddNodes);
+const hasToolbar = computed(
+	() => ![CanvasNodeRenderType.AddNodes, CanvasNodeRenderType.AIPrompt].includes(props.data.type),
+);
 
 const showToolbar = computed(() => {
 	const target = contextMenu.target.value;

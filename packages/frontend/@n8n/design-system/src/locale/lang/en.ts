@@ -47,6 +47,7 @@ export default {
 	'assistantChat.inputPlaceholder': 'Enter your response...',
 	'assistantChat.copy': 'Copy',
 	'assistantChat.copied': 'Copied',
+	'assistantChat.rateWorkflow.title': 'Please rate the generated workflow',
 	'inlineAskAssistantButton.asked': 'Asked',
 	'iconPicker.button.defaultToolTip': 'Choose icon',
 	'iconPicker.tabs.icons': 'Icons',

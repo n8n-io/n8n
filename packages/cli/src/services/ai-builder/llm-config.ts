@@ -15,13 +15,21 @@ export const gpt4o = new ChatOpenAI({
 	apiKey: openAIKey,
 });
 
+export const o3mini = new ChatOpenAI({
+	modelName: 'o3-mini-2025-01-31',
+	apiKey: openAIKey,
+});
+
 export const anthropicClaude35Sonnet = new ChatAnthropic({
 	modelName: 'claude-3-7-sonnet-20250219',
 	apiKey: anthropicApiKey,
-	temperature: 0.1,
+	temperature: 0,
+	maxTokens: 16000,
 });
 
 export const anthropicClaude35Haiku = new ChatAnthropic({
 	modelName: 'claude-3-5-haiku-20241022',
 	apiKey: anthropicApiKey,
+	temperature: 0,
+	maxTokens: 16000,
 });

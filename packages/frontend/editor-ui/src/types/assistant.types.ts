@@ -226,6 +226,11 @@ export namespace ChatRequest {
 		type: 'workflow-generated';
 		codeSnippet: string;
 	}
+	interface RateWorkflowMessage {
+		role: 'assistant';
+		type: 'rate-workflow';
+		content: string;
+	}
 
 	export type MessageResponse =
 		| ((
@@ -239,6 +244,7 @@ export namespace ChatRequest {
 				| WorkflowComposedMessage
 				| WorkflowConnectionsMessage
 				| WorkflowGeneratedMessage
+				| RateWorkflowMessage
 		  ) & {
 				quickReplies?: QuickReplyOption[];
 		  })

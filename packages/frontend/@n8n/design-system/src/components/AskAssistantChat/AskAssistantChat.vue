@@ -18,6 +18,7 @@ import AssistantText from '../AskAssistantText/AssistantText.vue';
 import BetaTag from '../BetaTag/BetaTag.vue';
 import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
 import WorkflowGeneratedMessage from './messages/workflow/WorkflowGeneratedMessage.vue';
+import RateWorkflowMessage from './messages/workflow/RateWorkflowMessage.vue';
 
 const { t } = useI18n();
 
@@ -43,6 +44,9 @@ const emit = defineEmits<{
 	codeUndo: [string];
 	modeChange: [string];
 	insertWorkflow: [string];
+	thumbsUp: [];
+	thumbsDown: [];
+	submitFeedback: [string];
 }>();
 
 const onClose = () => emit('close');
@@ -101,6 +105,18 @@ function growInput() {
 
 function onInsertWorkflow(code: string) {
 	emit('insertWorkflow', code);
+}
+
+function onThumbsUp() {
+	emit('thumbsUp');
+}
+
+function onThumbsDown() {
+	emit('thumbsDown');
+}
+
+function onSubmitFeedback(feedback: string) {
+	emit('submitFeedback', feedback);
 }
 </script>
 
@@ -190,6 +206,15 @@ function onInsertWorkflow(code: string) {
 							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
 							:user="user"
 							@insert-workflow="onInsertWorkflow"
+						/>
+						<RateWorkflowMessage
+							v-else-if="message.type === 'rate-workflow'"
+							:message="message"
+							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
+							:user="user"
+							@thumbs-up="onThumbsUp"
+							@thumbs-down="onThumbsDown"
+							@submit-feedback="onSubmitFeedback"
 						/>
 
 						<div

@@ -488,3 +488,20 @@ ComposedConnectionsChat.args = {
 		},
 	]),
 };
+
+export const RateWorkflowMessage = Template.bind({});
+RateWorkflowMessage.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+	messages: getMessages([
+		{
+			id: '126',
+			type: 'rate-workflow',
+			role: 'assistant',
+			content: 'How would you rate this workflow?',
+			read: false,
+		},
+	]),
+};

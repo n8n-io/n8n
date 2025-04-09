@@ -258,11 +258,19 @@ const fallbackNodes = computed<INodeUi[]>(() =>
 		? []
 		: [
 				{
+					id: CanvasNodeRenderType.AIPrompt,
+					name: CanvasNodeRenderType.AIPrompt,
+					type: CanvasNodeRenderType.AIPrompt,
+					typeVersion: 1,
+					position: [0, -140],
+					parameters: {},
+				},
+				{
 					id: CanvasNodeRenderType.AddNodes,
 					name: CanvasNodeRenderType.AddNodes,
 					type: CanvasNodeRenderType.AddNodes,
 					typeVersion: 1,
-					position: [0, 0],
+					position: [400, 0],
 					parameters: {},
 				},
 			],

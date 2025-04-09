@@ -138,6 +138,11 @@ export namespace ChatUI {
 		type: 'workflow-generated';
 		codeSnippet: string;
 	}
+	export interface RateWorkflowMessage {
+		role: 'assistant';
+		type: 'rate-workflow';
+		content: string;
+	}
 
 	export interface WorkflowConnectionsMessage {
 		role: 'assistant';
@@ -189,6 +194,7 @@ export namespace ChatUI {
 		| WorkflowComposedMessage
 		| WorkflowConnectionsMessage
 		| WorkflowGeneratedMessage
+		| RateWorkflowMessage
 	) & {
 		id: string;
 		read: boolean;

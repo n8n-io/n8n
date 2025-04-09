@@ -166,7 +166,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		);
 		assistantThinkingMessage.value = undefined;
 
-		console.log('newMessages', newMessages);
 		newMessages.forEach((msg) => {
 			if (msg.type === 'message') {
 				messages.push({
@@ -259,6 +258,14 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					workflowJSON: msg.workflowJSON,
 					read,
 				});
+			} else if (msg.type === 'rate-workflow') {
+				messages.push({
+					id,
+					type: 'rate-workflow',
+					role: 'assistant',
+					content: msg.content,
+					read,
+				});
 			}
 		});
 		chatMessages.value = messages;
@@ -329,7 +336,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}
 
 	function onEachStreamingMessage(response: ChatRequest.ResponsePayload, id: string) {
-		console.log('Stream message', JSON.stringify(response, null, 2));
 		if (response.sessionId && !currentSessionId.value) {
 			currentSessionId.value = response.sessionId;
 			telemetry.track(

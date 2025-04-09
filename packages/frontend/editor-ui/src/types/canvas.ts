@@ -45,6 +45,7 @@ export const enum CanvasNodeRenderType {
 	Default = 'default',
 	StickyNote = 'n8n-nodes-base.stickyNote',
 	AddNodes = 'n8n-nodes-internal.addNodes',
+	AIPrompt = 'n8n-nodes-base.aiPrompt',
 }
 
 export type CanvasNodeDefaultRenderLabelSize = 'small' | 'medium' | 'large';
@@ -79,6 +80,11 @@ export type CanvasNodeDefaultRender = {
 
 export type CanvasNodeAddNodesRender = {
 	type: CanvasNodeRenderType.AddNodes;
+	options: Record<string, never>;
+};
+
+export type CanvasNodeAIPromptRender = {
+	type: CanvasNodeRenderType.AIPrompt;
 	options: Record<string, never>;
 };
 
@@ -123,7 +129,11 @@ export interface CanvasNodeData {
 		iterations: number;
 		visible: boolean;
 	};
-	render: CanvasNodeDefaultRender | CanvasNodeStickyNoteRender | CanvasNodeAddNodesRender;
+	render:
+		| CanvasNodeDefaultRender
+		| CanvasNodeStickyNoteRender
+		| CanvasNodeAddNodesRender
+		| CanvasNodeAIPromptRender;
 }
 
 export type CanvasNode = Node<CanvasNodeData>;

@@ -2,12 +2,13 @@
 import { useAssistantStore } from '@/stores/assistant.store';
 import { useDebounce } from '@/composables/useDebounce';
 import { useUsersStore } from '@/stores/users.store';
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import SlideTransition from '@/components/transitions/SlideTransition.vue';
 import AskAssistantChat from '@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { IWorkflowDataUpdate } from '@/Interface';
+import type { IWorkflowDataUpdate } from '@/Interface';
 import { nodeViewEventBus } from '@/event-bus';
+import { v4 as uuid } from 'uuid';
 
 const assistantStore = useAssistantStore();
 const usersStore = useUsersStore();
@@ -51,26 +52,14 @@ async function onUserMessage(content: string, quickReplyType?: string, isFeedbac
 	}
 }
 
-async function onCodeReplace(index: number) {
-	await assistantStore.applyCodeDiff(index);
-	telemetry.track('User clicked solution card action', {
-		action: 'replace_code',
-	});
-}
-
-async function undoCodeDiff(index: number) {
-	await assistantStore.undoCodeDiff(index);
-	telemetry.track('User clicked solution card action', {
-		action: 'undo_code_replace',
-	});
-}
-
 function onClose() {
 	assistantStore.closeChat();
 	telemetry.track('User closed assistant', { source: 'top-toggle' });
 }
 
 function onInsertWorkflow(code: string) {
+	// TODO: Tracking
+	stopWorkflowGeneratedWatcher();
 	let workflowData: IWorkflowDataUpdate;
 	try {
 		workflowData = JSON.parse(code);
@@ -78,9 +67,23 @@ function onInsertWorkflow(code: string) {
 		console.error('Error parsing workflow data', error);
 		return;
 	}
-
 	nodeViewEventBus.emit('importWorkflowData', { data: workflowData, tidyUp: true });
+	assistantStore.addAssistantMessages(
+		[{ type: 'rate-workflow', content: 'HOW WAS IT???', role: 'assistant' }],
+		uuid(),
+	);
 }
+
+const stopWorkflowGeneratedWatcher = watch(
+	() => assistantStore.chatMessages,
+	(messages) => {
+		const workflowGeneratedMessage = messages.find((msg) => msg.type === 'workflow-generated');
+		if (workflowGeneratedMessage) {
+			onInsertWorkflow(workflowGeneratedMessage.codeSnippet);
+		}
+	},
+	{ deep: true },
+);
 </script>
 
 <template>
@@ -108,7 +111,7 @@ function onInsertWorkflow(code: string) {
 					mode="AI Builder"
 					@close="onClose"
 					@message="onUserMessage"
-					@insertWorkflow="onInsertWorkflow"
+					@insert-workflow="onInsertWorkflow"
 				>
 					<template #placeholder> Please describe the workflow you want to create. </template>
 				</AskAssistantChat>
