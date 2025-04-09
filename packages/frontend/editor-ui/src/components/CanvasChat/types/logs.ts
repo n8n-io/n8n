@@ -1,9 +1,9 @@
-export interface LogEntryIdentity {
-	node: string;
-	runIndex: number;
-}
+import { type TreeNode } from '@/components/RunDataAi/utils';
 
-export type SelectedLogEntry = LogEntryIdentity | 'initial' | 'none';
+export type SelectedLogEntry =
+	| { type: 'selected'; data: TreeNode }
+	| { type: 'initial' }
+	| { type: 'none' };
 
 export const LOGS_PANEL_STATE = {
 	CLOSED: 'closed',

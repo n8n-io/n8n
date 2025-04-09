@@ -92,15 +92,15 @@ function onClearExecutionData() {
 
 function handleClickNode(clicked: TreeNode) {
 	if (
-		typeof selected === 'object' &&
-		selected.node === clicked.node &&
-		selected.runIndex === clicked.runIndex
+		selected.type === 'selected' &&
+		selected.data.node === clicked.node &&
+		selected.data.runIndex === clicked.runIndex
 	) {
-		emit('select', 'none');
+		emit('select', { type: 'none' });
 		return;
 	}
 
-	emit('select', { node: clicked.node, runIndex: clicked.runIndex });
+	emit('select', { type: 'selected', data: clicked });
 	telemetry.track('User selected node in log view', {
 		node_type: workflowsStore.nodesByName[clicked.node].type,
 		node_id: workflowsStore.nodesByName[clicked.node].id,
@@ -112,7 +112,9 @@ function handleClickNode(clicked: TreeNode) {
 function handleSwitchView(value: 'overview' | 'details') {
 	emit(
 		'select',
-		value === 'overview' || executionTree.value.length === 0 ? 'none' : executionTree.value[0],
+		value === 'overview' || executionTree.value.length === 0
+			? { type: 'none' }
+			: { type: 'selected', data: executionTree.value[0] },
 	);
 }
 
@@ -132,7 +134,7 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 watch(
 	executionTree,
 	() => {
-		if (selected !== 'initial' || executionTree.value.length === 0) {
+		if (selected.type !== 'initial' || executionTree.value.length === 0) {
 			return;
 		}
 
@@ -142,7 +144,10 @@ watch(
 			workflowsStore.workflowExecutionData?.data?.resultData.runData ?? {},
 		);
 
-		emit('select', logEntryToAutoSelect ?? 'none');
+		emit(
+			'select',
+			logEntryToAutoSelect ? { type: 'selected', data: logEntryToAutoSelect } : { type: 'none' },
+		);
 	},
 	{ immediate: true },
 );
@@ -156,7 +161,7 @@ watch(
 			return;
 		}
 
-		emit('select', 'initial');
+		emit('select', { type: 'initial' });
 	},
 	{ immediate: true },
 );
@@ -231,9 +236,9 @@ watch(
 							:node="elTreeNode"
 							:is-read-only="isReadOnly"
 							:is-selected="
-								typeof selected === 'object' &&
-								data.node === selected.node &&
-								data.runIndex === selected.runIndex
+								selected.type === 'selected' &&
+								data.node === selected.data.node &&
+								data.runIndex === selected.data.runIndex
 							"
 							:is-compact="selected !== undefined"
 							:should-show-consumed-tokens="consumedTokens.totalTokens > 0"
