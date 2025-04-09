@@ -3,7 +3,7 @@ import { useI18n } from '@/composables/useI18n';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/insights/insights.store';
 import type { InsightsSummaryType } from '@n8n/api-types';
-import { computed, defineAsyncComponent, watch, ref } from 'vue';
+import { computed, defineAsyncComponent, ref, watch } from 'vue';
 
 const InsightsPaywall = defineAsyncComponent(
 	async () => await import('@/features/insights/components/InsightsPaywall.vue'),
@@ -54,7 +54,7 @@ const fetchPaginatedTableData = ({
 	itemsPerPage = 20,
 	sortBy,
 }: {
-	page: number;
+	page?: number;
 	itemsPerPage?: number;
 	sortBy: Array<{ id: string; desc: boolean }>;
 }) => {
