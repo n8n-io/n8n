@@ -278,6 +278,7 @@ export const SUPPORT_CHAT_TEST_PAYLOAD: ChatRequest.RequestPayload = {
 						{
 							hints: [],
 							startTime: 1737540693122,
+							executionIndex: 0,
 							executionTime: 1,
 							source: [],
 							executionStatus: 'success',
@@ -287,6 +288,7 @@ export const SUPPORT_CHAT_TEST_PAYLOAD: ChatRequest.RequestPayload = {
 						{
 							hints: [],
 							startTime: 1737540693124,
+							executionIndex: 1,
 							executionTime: 2,
 							source: [
 								{
@@ -300,6 +302,7 @@ export const SUPPORT_CHAT_TEST_PAYLOAD: ChatRequest.RequestPayload = {
 						{
 							hints: [],
 							startTime: 1737540693126,
+							executionIndex: 2,
 							executionTime: 0,
 							source: [
 								{
@@ -313,6 +316,7 @@ export const SUPPORT_CHAT_TEST_PAYLOAD: ChatRequest.RequestPayload = {
 						{
 							hints: [],
 							startTime: 1737540693127,
+							executionIndex: 3,
 							executionTime: 0,
 							source: [
 								{
@@ -326,6 +330,7 @@ export const SUPPORT_CHAT_TEST_PAYLOAD: ChatRequest.RequestPayload = {
 						{
 							hints: [],
 							startTime: 1737540693127,
+							executionIndex: 4,
 							executionTime: 28,
 							source: [
 								{
