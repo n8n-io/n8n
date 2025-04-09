@@ -39,7 +39,6 @@ export async function handleError(
 		let errorMessage = error.message;
 
 		let errorDetails: string[] | undefined = undefined;
-		let inputValue: string | undefined;
 
 		if (resource === 'container') {
 			if (error.code === 'Conflict') {
