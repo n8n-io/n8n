@@ -110,7 +110,6 @@ describe('JS TaskRunner execution on internal mode', () => {
 							startTime: Date.now(),
 							executionIndex: 0,
 							executionTime: 0,
-							executionIndex: 0,
 							executionStatus: 'success',
 							source: [],
 							data: {

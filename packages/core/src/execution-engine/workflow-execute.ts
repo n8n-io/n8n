@@ -73,9 +73,6 @@ import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
 
 export class WorkflowExecute {
-	/** This is the index of the node that's currently being executed */
-	private executionIndex = 0;
-
 	private status: ExecutionStatus = 'new';
 
 	private readonly abortController = new AbortController();

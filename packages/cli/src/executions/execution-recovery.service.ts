@@ -94,8 +94,8 @@ export class ExecutionRecoveryService {
 
 			const taskData: ITaskData = {
 				startTime: nodeStartedMessage.ts.toUnixInteger(),
+				executionIndex: 0,
 				executionTime: -1,
-				executionIndex: -1,
 				source: [null],
 			};
 

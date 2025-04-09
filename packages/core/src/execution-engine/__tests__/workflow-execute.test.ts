@@ -851,7 +851,6 @@ describe('WorkflowExecute', () => {
 							startTime: 0,
 							executionIndex: 0,
 							executionTime: 0,
-							executionIndex: 0,
 						},
 					],
 				},
@@ -1129,7 +1128,6 @@ describe('WorkflowExecute', () => {
 						startTime: 0,
 						executionIndex: 0,
 						executionTime: 0,
-						executionIndex: 0,
 					},
 				],
 			};
@@ -1164,7 +1162,6 @@ describe('WorkflowExecute', () => {
 						startTime: 0,
 						executionIndex: 0,
 						executionTime: 0,
-						executionIndex: 0,
 					},
 				],
 			};
@@ -1189,7 +1186,6 @@ describe('WorkflowExecute', () => {
 						startTime: 0,
 						executionIndex: 0,
 						executionTime: 0,
-						executionIndex: 0,
 					},
 					{
 						source: [],
@@ -1199,7 +1195,6 @@ describe('WorkflowExecute', () => {
 						startTime: 0,
 						executionIndex: 1,
 						executionTime: 0,
-						executionIndex: 1,
 					},
 				],
 			};
@@ -1220,7 +1215,6 @@ describe('WorkflowExecute', () => {
 						startTime: 0,
 						executionIndex: 0,
 						executionTime: 0,
-						executionIndex: 0,
 					},
 				],
 			};
@@ -1304,7 +1298,6 @@ describe('WorkflowExecute', () => {
 						startTime: 0,
 						executionIndex: 0,
 						executionTime: 0,
-						executionIndex: 0,
 						source: [],
 						metadata: { subExecutionsCount: 4 },
 					},

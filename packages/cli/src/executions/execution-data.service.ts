@@ -37,8 +37,8 @@ export class ExecutionDataService {
 			returnData.data.resultData.runData[node.name] = [
 				{
 					startTime,
-					executionTime: 0,
 					executionIndex: 0,
+					executionTime: 0,
 					executionStatus: 'error',
 					error: executionError,
 					source: [],
