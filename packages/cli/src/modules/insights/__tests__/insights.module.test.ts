@@ -1,9 +1,9 @@
-import type { GlobalConfig } from '@n8n/config';
+import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import type { ExecutionLifecycleHooks } from 'n8n-core';
 import { InstanceSettings } from 'n8n-core';
-import { Logger } from 'n8n-core';
+import type { ExecutionLifecycleHooks } from 'n8n-core';
+import type { Logger } from 'n8n-core';
 
 import { OrchestrationService } from '@/services/orchestration.service';
 import { mockInstance } from '@test/mocking';
@@ -20,7 +20,13 @@ describe('InsightsModule', () => {
 	let orchestrationService: OrchestrationService;
 
 	beforeEach(() => {
-		logger = mockInstance(Logger);
+		logger = mock<Logger>({
+			scoped: jest.fn().mockReturnValue(
+				mock<Logger>({
+					error: jest.fn(),
+				}),
+			),
+		});
 		insightsService = mockInstance(InsightsService);
 		hooks = mock<ExecutionLifecycleHooks>();
 		globalConfig = {
@@ -29,78 +35,88 @@ describe('InsightsModule', () => {
 		orchestrationService = Container.get(OrchestrationService);
 	});
 
-	describe('compactionScheduler', () => {
-		it('should start compaction scheduler if instance is main and leader', () => {
+	describe('backgroundProcess', () => {
+		it('should start background process if instance is main and leader', () => {
 			instanceSettings = mockInstance(InstanceSettings, { instanceType: 'main', isLeader: true });
-			const module = new InsightsModule(
+			new InsightsModule(
 				logger,
 				insightsService,
 				instanceSettings,
 				globalConfig,
 				orchestrationService,
 			);
-			module.registerLifecycleHooks(hooks);
 			expect(insightsService.startBackgroundProcess).toHaveBeenCalled();
 		});
 
-		it('should not start compaction scheduler if instance is main but not leader', () => {
+		it('should not start background process if instance is main but not leader', () => {
 			instanceSettings = mockInstance(InstanceSettings, { instanceType: 'main', isLeader: false });
-			const module = new InsightsModule(
+			new InsightsModule(
 				logger,
 				insightsService,
 				instanceSettings,
 				globalConfig,
 				orchestrationService,
 			);
-			module.registerLifecycleHooks(hooks);
 			expect(insightsService.startBackgroundProcess).not.toHaveBeenCalled();
 		});
 
-		it('should not start compaction scheduler if instance is worker', () => {
+		it('should not start background process if instance is worker', () => {
 			instanceSettings = mockInstance(InstanceSettings, { instanceType: 'worker' });
-			const module = new InsightsModule(
+			new InsightsModule(
 				logger,
 				insightsService,
 				instanceSettings,
 				globalConfig,
 				orchestrationService,
 			);
-			module.registerLifecycleHooks(hooks);
 			expect(insightsService.startBackgroundProcess).not.toHaveBeenCalled();
 		});
 
-		it('should start compaction scheduler on leader takeover', () => {
-			instanceSettings = mockInstance(InstanceSettings, { instanceType: 'main', isLeader: false });
-			const module = new InsightsModule(
+		it('should not start background process if db type is legacy sqlite', () => {
+			instanceSettings = mockInstance(InstanceSettings, { instanceType: 'worker' });
+			globalConfig = mockInstance(GlobalConfig, {
+				database: { type: 'sqlite', sqlite: { poolSize: 0 } },
+			});
+			new InsightsModule(
 				logger,
 				insightsService,
 				instanceSettings,
 				globalConfig,
 				orchestrationService,
 			);
-			module.registerLifecycleHooks(hooks);
+			expect(insightsService.startBackgroundProcess).not.toHaveBeenCalled();
+		});
+
+		it('should start background process on leader takeover', () => {
+			instanceSettings = mockInstance(InstanceSettings, { instanceType: 'main', isLeader: false });
+			new InsightsModule(
+				logger,
+				insightsService,
+				instanceSettings,
+				globalConfig,
+				orchestrationService,
+			);
 			expect(insightsService.startBackgroundProcess).not.toHaveBeenCalled();
 			orchestrationService.multiMainSetup.emit('leader-takeover');
 			expect(insightsService.startBackgroundProcess).toHaveBeenCalled();
 		});
 
-		it('should stop compaction scheduler on leader stepdown', () => {
+		it('should stop background process on leader stepdown', () => {
 			instanceSettings = mockInstance(InstanceSettings, { instanceType: 'main', isLeader: true });
-			const module = new InsightsModule(
+			new InsightsModule(
 				logger,
 				insightsService,
 				instanceSettings,
 				globalConfig,
 				orchestrationService,
 			);
-			module.registerLifecycleHooks(hooks);
 			expect(insightsService.stopBackgroundProcess).not.toHaveBeenCalled();
 			orchestrationService.multiMainSetup.emit('leader-stepdown');
 			expect(insightsService.stopBackgroundProcess).toHaveBeenCalled();
 		});
 	});
 
-	describe('shouldRegisterLifecycleHooks', () => {
+	describe('shouldCollectInsights', () => {
 		it('should return false if database type is sqlite and poolSize is not set', () => {
 			globalConfig.database.type = 'sqlite';
 			globalConfig.database.sqlite.poolSize = 0;

@@ -19,6 +19,14 @@ export class InsightsModule implements BaseN8nModule {
 		private readonly orchestrationService: OrchestrationService,
 	) {
 		this.logger = this.logger.scoped('insights');
+		this.initializeModule();
+	}
+
+	private initializeModule() {
+		// If insights collection is disabled, no need to start compaction and flushing process
+		if (!this.shouldCollectInsights()) {
+			return;
+		}
 
 		// Initialize background process for insights if instance is main and leader
 		if (this.instanceSettings.instanceType === 'main' && this.instanceSettings.isLeader) {
@@ -35,7 +43,7 @@ export class InsightsModule implements BaseN8nModule {
 		}
 	}
 
-	private shouldRegisterLifecycleHooks(): boolean {
+	private shouldCollectInsights(): boolean {
 		// Disable insights for workers
 		if (this.instanceSettings.instanceType === 'worker') {
 			return false;
@@ -57,7 +65,7 @@ export class InsightsModule implements BaseN8nModule {
 		const insightsService = this.insightsService;
 
 		// Workers should not be saving any insights
-		if (this.shouldRegisterLifecycleHooks()) {
+		if (this.shouldCollectInsights()) {
 			hooks.addHandler('workflowExecuteAfter', async function (fullRunData) {
 				await insightsService.workflowExecuteAfterHandler(this, fullRunData);
 			});
