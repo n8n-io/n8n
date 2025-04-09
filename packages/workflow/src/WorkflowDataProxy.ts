@@ -916,7 +916,15 @@ export class WorkflowDataProxy {
 				);
 
 				if (pinData) {
-					taskData = { data: { main: [pinData] }, startTime: 0, executionTime: 0, source: [] };
+					taskData = {
+						data: {
+							main: [pinData],
+						},
+						startTime: 0,
+						executionTime: 0,
+						executionIndex: 0,
+						source: [],
+					};
 				}
 			}
 
