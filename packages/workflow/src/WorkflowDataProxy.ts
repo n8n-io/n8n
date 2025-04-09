@@ -25,6 +25,7 @@ import {
 	type NodeParameterValueType,
 	type WorkflowExecuteMode,
 	type ProxyInput,
+	type IContextObject,
 	NodeConnectionTypes,
 } from './Interfaces';
 import * as NodeHelpers from './NodeHelpers';
@@ -984,17 +985,16 @@ export class WorkflowDataProxy {
 			const currentNode = that.workflow.getNode(that.activeNodeName);
 
 			if (currentNode?.rewireOutputLogTo) {
-				if (testValue === undefined) {
-					throw new ExpressionError(`Test value for ${name} is missing`, {
-						runIndex,
-						itemIndex,
-						type: 'no_execution_data',
-					});
+				const executionData = that.runExecutionData?.executionData;
+
+				const toolTestParameters: IContextObject | undefined =
+					executionData?.contextData?.aiToolTestParameters;
+				if (toolTestParameters?.[name]) {
+					return toolTestParameters[name];
 				}
-				return testValue;
 			}
 
-			if (Boolean(!placeholdersDataInputData) && !testValue) {
+			if (Boolean(!placeholdersDataInputData) && !defaultValue) {
 				throw new ExpressionError('No execution data available', {
 					runIndex,
 					itemIndex,

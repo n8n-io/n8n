@@ -1,0 +1,91 @@
+{
+	"data": {
+		"startData": {},
+		"resultData": {
+			"runData": {
+				"When clicking ‘Test workflow’": [
+					{
+						"hints": [],
+						"startTime": 1733478795595,
+						"executionTime": 0,
+						"source": [],
+						"executionStatus": "success",
+						"data": {
+							"main": [
+								[
+									{
+										"json": {},
+										"pairedItem": {
+											"item": 0
+										}
+									}
+								]
+							]
+						}
+					}
+				],
+				"Google Sheets1": [
+					{
+						"startTime": 1733478796468,
+						"executionTime": 1417,
+						"executionStatus": "success",
+						"source": [null],
+						"data": {},
+						"metadata": {
+							"subRun": [
+								{
+									"node": "Google Sheets1",
+									"runIndex": 0
+								},
+								{
+									"node": "Google Sheets1",
+									"runIndex": 1
+								}
+							]
+						}
+					},
+					{
+						"startTime": 1733478799915,
+						"executionTime": 1271,
+						"executionStatus": "success",
+						"source": [null],
+						"data": {}
+					}
+				]
+			},
+			"pinData": {},
+			"lastNodeExecuted": "Google Sheets1"
+		},
+		"executionData": {
+			"contextData": {
+				"aiToolTestParameters": {
+					"full_name": "Mr. Input 2",
+					"email": "input2@n8n.io"
+				}
+			},
+			"nodeExecutionStack": [],
+			"metadata": {
+				"Google Sheets1": [
+					{
+						"subRun": [
+							{
+								"node": "Google Sheets1",
+								"runIndex": 0
+							},
+							{
+								"node": "Google Sheets1",
+								"runIndex": 1
+							}
+						]
+					}
+				]
+			},
+			"waitingExecution": {},
+			"waitingExecutionSource": {}
+		}
+	},
+	"mode": "manual",
+	"startedAt": "2024-02-08T15:45:18.848Z",
+	"stoppedAt": "2024-02-08T15:45:18.862Z",
+	"status": "running"
+}

@@ -11,6 +11,7 @@ import {
 	type IRun,
 	type IWorkflowBase,
 	type WorkflowExecuteMode,
+	type IContextObject,
 } from '@/Interfaces';
 import { Workflow } from '@/Workflow';
 import { WorkflowDataProxy } from '@/WorkflowDataProxy';
@@ -35,6 +36,7 @@ const getProxyFromFixture = (
 		throwOnMissingExecutionData: boolean;
 		connectionType?: NodeConnectionType;
 		runIndex?: number;
+		aiToolTestData?: IContextObject;
 	},
 ) => {
 	const taskData = run?.data.resultData.runData[activeNode]?.[opts?.runIndex ?? 0];
@@ -60,6 +62,12 @@ const getProxyFromFixture = (
 		// so adding here to keep updating tests simple
 		for (let nodeName in workflow.pinData) {
 			pinData[nodeName] = workflow.pinData[nodeName].map((item) => ({ json: item }));
+		}
+	}
+
+	if (opts?.aiToolTestData) {
+		if (run?.data.executionData) {
+			run.data.executionData.contextData.aiToolTestData = opts.aiToolTestData;
 		}
 	}
 
@@ -550,6 +558,41 @@ describe('WorkflowDataProxy', () => {
 			expect(() => getFromAIProxy().$fromAI('')).toThrow(ExpressionError);
 			expect(() => getFromAIProxy().$fromAI('invalid key')).toThrow(ExpressionError);
 			expect(() => getFromAIProxy().$fromAI('invalid!')).toThrow(ExpressionError);
+		});
+	});
+
+	describe('$fromAI in partial tool execution', () => {
+		const fixture_partial_run = loadFixture('from_ai_partial_tool_execution');
+		const getFromAIProxy = (runIndex = 0) => {
+			fixture_partial_run.workflow.nodes.find(
+				(node) => node.name === 'Google Sheets1',
+			)!.rewireOutputLogTo = NodeConnectionTypes.AiTool;
+			return getProxyFromFixture(
+				fixture_partial_run.workflow,
+				fixture_partial_run.run,
+				'Google Sheets1',
+				'manual',
+				{
+					connectionType: NodeConnectionTypes.AiTool,
+					throwOnMissingExecutionData: false,
+					runIndex,
+				},
+			);
+		};
+
+		test('Gets value from provided test data', () => {
+			expect(getFromAIProxy().$fromAi('full_name')).toEqual('Mr. Input 2');
+			expect(getFromAIProxy().$fromai('email')).toEqual('input2@n8n.io');
+		});
+
+		test('Throws an error on missing data', () => {
+			expect(() => getFromAIProxy().$fromAi('non_existent_key')).toThrow(ExpressionError);
+		});
+
+		test('Returns default value if provided and key was not found', () => {
+			expect(
+				getFromAIProxy().$fromAI('non_existent_key', 'description', 'string', 'default_value'),
+			).toEqual('default_value');
 		});
 	});
 
