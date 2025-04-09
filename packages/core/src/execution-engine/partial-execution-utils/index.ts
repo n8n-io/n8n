@@ -2,6 +2,7 @@ import * as a from 'assert/strict';
 import { NodeConnectionTypes, type INode, type INodeTypes } from 'n8n-workflow';
 
 import { type DirectedGraph } from './directed-graph';
+export { DirectedGraph } from './directed-graph';
 export { findTriggerForPartialExecution } from './find-trigger-for-partial-execution';
 export { findStartNodes } from './find-start-nodes';
 export { findSubgraph } from './find-subgraph';
