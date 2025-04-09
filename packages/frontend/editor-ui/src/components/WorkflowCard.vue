@@ -363,8 +363,10 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 					<div v-if="showCardBreadcrumbs" :class="$style.breadcrumbs">
 						<n8n-breadcrumbs
 							:items="cardBreadcrumbs"
-							:hidden-items="hiddenBreadcrumbsItemsAsync"
-							:path-truncated="true"
+							:hidden-items="
+								data.parentFolder?.parentFolderId !== null ? hiddenBreadcrumbsItemsAsync : undefined
+							"
+							:path-truncated="data.parentFolder?.parentFolderId !== null"
 							:highlight-last-item="false"
 							hidden-items-trigger="hover"
 							theme="small"
