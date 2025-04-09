@@ -1151,11 +1151,11 @@ export class Freshdesk implements INodeType {
 						//const jsonActive = this.getNodeParameter('jsonParameters') as boolean;
 						const body: ICreateTicketBody = {
 							// @ts-ignore
-							status: Status[capitalize(status)],
+							status: Statuses[capitalize(status)],
 							// @ts-ignore
-							priority: Priority[capitalize(priority)],
+							priority: Priorities[capitalize(priority)],
 							// @ts-ignore
-							source: Source[capitalize(source)],
+							source: Sources[capitalize(source)],
 						};
 
 						if (requester === 'requesterId') {
