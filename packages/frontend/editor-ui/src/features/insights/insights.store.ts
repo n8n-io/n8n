@@ -49,7 +49,7 @@ export const useInsightsStore = defineStore('insights', () => {
 			count: 0,
 			data: [],
 		},
-		{ immediate: false },
+		{ resetOnExecute: false, immediate: false },
 	);
 
 	return {

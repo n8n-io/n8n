@@ -364,6 +364,7 @@ describe('useRunWorkflow({ router })', () => {
 				[parentName]: [
 					{
 						startTime: 1,
+						executionIndex: 0,
 						executionTime: 0,
 						source: [],
 					},
@@ -371,6 +372,7 @@ describe('useRunWorkflow({ router })', () => {
 				[executeName]: [
 					{
 						startTime: 1,
+						executionIndex: 1,
 						executionTime: 8,
 						source: [
 							{
