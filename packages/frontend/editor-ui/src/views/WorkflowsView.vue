@@ -133,6 +133,8 @@ const currentSort = ref('updatedAt:desc');
 
 const currentFolderId = ref<string | null>(null);
 
+const showCardsBadge = ref(false);
+
 /**
  * Folder actions
  * These can appear on the list header, and then they are applied to current folder
@@ -502,6 +504,10 @@ const fetchWorkflows = async () => {
 		}
 
 		workflowsAndFolders.value = fetchedResources;
+
+		// Toggle ownership cards visibility only after we have fetched the workflows
+		showCardsBadge.value = isOverviewPage.value || filters.value.search !== '';
+
 		return fetchedResources;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflows.list.error.fetching'));
@@ -1323,6 +1329,7 @@ const onCreateWorkflowClick = () => {
 				:actions="folderCardActions"
 				:read-only="readOnlyEnv || (!hasPermissionToDeleteFolders && !hasPermissionToCreateFolders)"
 				:personal-project="projectsStore.personalProject"
+				:show-ownership-badge="showCardsBadge"
 				class="mb-2xs"
 				@action="onFolderCardAction"
 			/>
@@ -1334,6 +1341,7 @@ const onCreateWorkflowClick = () => {
 				:data="data as WorkflowResource"
 				:workflow-list-event-bus="workflowListEventBus"
 				:read-only="readOnlyEnv"
+				:show-ownership-badge="showCardsBadge"
 				@click:tag="onClickTag"
 				@workflow:deleted="onWorkflowDeleted"
 				@workflow:moved="fetchWorkflows"

@@ -44,10 +44,12 @@ const props = withDefaults(
 		data: WorkflowResource;
 		readOnly?: boolean;
 		workflowListEventBus?: EventBus;
+		showOwnershipBadge?: boolean;
 	}>(),
 	{
 		readOnly: false,
 		workflowListEventBus: undefined,
+		showOwnershipBadge: false,
 	},
 );
 
@@ -78,14 +80,13 @@ const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {
 const resourceTypeLabel = computed(() => locale.baseText('generic.workflow').toLowerCase());
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const workflowPermissions = computed(() => getResourcePermissions(props.data.scopes).workflow);
-const isOverviewPage = computed(() => route.name === VIEWS.WORKFLOWS);
 
 const showFolders = computed(() => {
 	return settingsStore.isFoldersFeatureEnabled && route.name !== VIEWS.WORKFLOWS;
 });
 
 const showCardBreadcrumbs = computed(() => {
-	return isOverviewPage.value && !isSomeoneElsesWorkflow.value && cardBreadcrumbs.value.length;
+	return props.showOwnershipBadge && !isSomeoneElsesWorkflow.value && cardBreadcrumbs.value.length;
 });
 
 const projectName = computed(() => {
@@ -351,6 +352,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
 				<ProjectCardBadge
+					v-if="showOwnershipBadge"
 					:class="{ [$style.cardBadge]: true, [$style['with-breadcrumbs']]: showCardBreadcrumbs }"
 					:resource="data"
 					:resource-type="ResourceType.Workflow"
