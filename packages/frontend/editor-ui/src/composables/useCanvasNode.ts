@@ -59,7 +59,7 @@ export function useCanvasNode() {
 	const executionStatus = computed(() => data.value.execution.status);
 	const executionWaiting = computed(() => data.value.execution.waiting);
 	const executionRunning = computed(() => data.value.execution.running);
-	const executionRunningThrottled = refThrottled(executionRunning, 50);
+	const executionRunningThrottled = refThrottled(executionRunning, 300);
 
 	const runDataOutputMap = computed(() => data.value.runData.outputMap);
 	const runDataIterations = computed(() => data.value.runData.iterations);
