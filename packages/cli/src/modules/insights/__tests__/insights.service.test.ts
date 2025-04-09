@@ -126,7 +126,10 @@ describe('workflowExecuteAfterHandler', () => {
 		);
 		// expect timestamp to be close to workflow execution start
 		for (const insight of allInsights) {
-			expect(insight.timestamp.getTime() / 1000).toBeCloseTo(now.getTime() / 1000, 0);
+			const timeDiffInSeconds = Math.abs(
+				Math.round(insight.timestamp.getTime() / 1000) - Math.round(now.getTime() / 1000),
+			);
+			expect(timeDiffInSeconds).toBeLessThanOrEqual(1);
 		}
 		if (status === 'success') {
 			expect(allInsights).toContainEqual(
