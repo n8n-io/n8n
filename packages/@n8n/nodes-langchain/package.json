@@ -185,7 +185,6 @@
     "cohere-ai": "7.14.0",
     "d3-dsv": "2.0.0",
     "epub2": "3.0.2",
-    "eventsource": "catalog:",
     "form-data": "catalog:",
     "generate-schema": "2.6.0",
     "html-to-text": "9.0.5",
