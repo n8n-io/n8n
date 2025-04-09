@@ -1,69 +1,22 @@
 import type { IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 
-import { itemGetAllFieldsPreSend, untilSiteSelected } from '../../helpers/utils';
+import { itemGetAllFieldsPreSend } from '../../helpers/utils';
+import { listRLC, siteRLC, untilSiteSelected } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Site',
-		name: 'site',
-		default: {
-			mode: 'list',
-			value: '',
-		},
+		...siteRLC,
 		description: 'Select the site to retrieve lists from',
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'getSites',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				placeholder: 'e.g. mysite',
-				type: 'string',
-			},
-		],
-		required: true,
-		type: 'resourceLocator',
 	},
 	{
-		displayName: 'List',
-		name: 'list',
-		default: {
-			mode: 'list',
-			value: '',
-		},
+		...listRLC,
 		description: 'Select the list you want to search for items in',
 		displayOptions: {
 			hide: {
 				...untilSiteSelected,
 			},
 		},
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'getLists',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				placeholder: 'e.g. mylist',
-				type: 'string',
-			},
-		],
-		required: true,
-		type: 'resourceLocator',
 	},
 	{
 		displayName: 'Filter by Formula',

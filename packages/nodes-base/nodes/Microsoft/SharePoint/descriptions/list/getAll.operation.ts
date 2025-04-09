@@ -1,33 +1,11 @@
 import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
 
+import { siteRLC } from '../common.descriptions';
+
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Site',
-		name: 'site',
-		default: {
-			mode: 'list',
-			value: '',
-		},
+		...siteRLC,
 		description: 'Select the site to retrieve lists from',
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'getSites',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				placeholder: 'e.g. 3978c2c3-589e-4afe-9d11-ea39920ce644',
-				type: 'string',
-			},
-		],
-		required: true,
-		type: 'resourceLocator',
 	},
 	{
 		displayName: 'Return All',

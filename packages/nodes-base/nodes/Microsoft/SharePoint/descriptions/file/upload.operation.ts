@@ -1,69 +1,21 @@
 import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
 
-import { untilSiteSelected, uploadFilePreSend } from '../../helpers/utils';
+import { uploadFilePreSend } from '../../helpers/utils';
+import { folderRLC, siteRLC, untilSiteSelected } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Site',
-		name: 'site',
-		default: {
-			mode: 'list',
-			value: '',
-		},
+		...siteRLC,
 		description: 'Select the site to retrieve folders from',
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'getSites',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				placeholder: 'e.g. mysite',
-				type: 'string',
-			},
-		],
-		required: true,
-		type: 'resourceLocator',
 	},
 	{
-		displayName: 'Parent Folder',
-		name: 'folder',
-		default: {
-			mode: 'list',
-			value: '',
-		},
+		...folderRLC,
 		description: 'Select the folder to upload the file to',
 		displayOptions: {
 			hide: {
 				...untilSiteSelected,
 			},
 		},
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'getFolders',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				placeholder: 'e.g. folder1/folder2',
-				type: 'string',
-			},
-		],
-		placeholder: '/ (Library root)',
-		required: true,
-		type: 'resourceLocator',
 	},
 	{
 		displayName: 'File Name',

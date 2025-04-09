@@ -6,79 +6,31 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 
-import { untilFolderSelected, untilSiteSelected } from '../../helpers/utils';
 import { microsoftSharePointApiRequest } from '../../transport';
+import {
+	fileRLC,
+	folderRLC,
+	siteRLC,
+	untilFolderSelected,
+	untilSiteSelected,
+} from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Site',
-		name: 'site',
-		default: {
-			mode: 'list',
-			value: '',
-		},
+		...siteRLC,
 		description: 'Select the site to retrieve folders from',
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'getSites',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				placeholder: 'e.g. mysite',
-				type: 'string',
-			},
-		],
-		required: true,
-		type: 'resourceLocator',
 	},
 	{
-		displayName: 'Parent Folder',
-		name: 'folder',
-		default: {
-			mode: 'list',
-			value: '',
-		},
+		...folderRLC,
 		description: 'Select the folder to update the file in',
 		displayOptions: {
 			hide: {
 				...untilSiteSelected,
 			},
 		},
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'getFolders',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				placeholder: 'e.g. myfolder',
-				type: 'string',
-			},
-		],
-		placeholder: '/ (Library root)',
-		required: true,
-		type: 'resourceLocator',
 	},
 	{
-		displayName: 'File',
-		name: 'file',
-		default: {
-			mode: 'list',
-			value: '',
-		},
+		...fileRLC,
 		description: 'Select the file to update',
 		displayOptions: {
 			hide: {
@@ -86,25 +38,6 @@ const properties: INodeProperties[] = [
 				...untilFolderSelected,
 			},
 		},
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'getFiles',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				placeholder: 'e.g. mysite',
-				type: 'string',
-			},
-		],
-		required: true,
-		type: 'resourceLocator',
 	},
 	{
 		displayName: 'Updated File Name',
