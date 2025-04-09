@@ -111,14 +111,14 @@ const onClaimCreditsClicked = async () => {
 			</template>
 		</n8n-callout>
 		<n8n-callout v-else-if="showSuccessCallout" theme="success" icon="check-circle">
-			<n8n-text>
+			<n8n-text size="small">
 				{{
 					i18n.baseText('freeAi.credits.callout.success.title.part1', {
 						interpolate: { credits: settingsStore.aiCreditsQuota },
 					})
 				}}</n8n-text
 			>&nbsp;
-			<n8n-text :bold="true">
+			<n8n-text size="small" bold="true">
 				{{ i18n.baseText('freeAi.credits.callout.success.title.part2') }}</n8n-text
 			>
 		</n8n-callout>

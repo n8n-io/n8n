@@ -7,8 +7,24 @@ exports[`CanvasNodeDefault > configurable > should render configurable node corr
   style="--configurable-node--input-count: 0; --canvas-node--main-input-count: 0; --canvas-node--main-output-count: 0;"
 >
   <!--v-if-->
-  
-  
+  <div
+    class="n8n-node-icon"
+    shrink="false"
+  >
+    <div
+      class="nodeIconWrapper"
+      style="width: 40px; height: 40px; font-size: 40px; line-height: 40px;"
+    >
+      <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+      
+      <div
+        class="nodeIconPlaceholder"
+      >
+        ?
+      </div>
+      
+    </div>
+  </div>
   <!--v-if-->
   <!--v-if-->
   <div
@@ -36,8 +52,24 @@ exports[`CanvasNodeDefault > configuration > should render configurable configur
   style="--configurable-node--input-count: 0; --canvas-node--main-input-count: 0; --canvas-node--main-output-count: 0;"
 >
   <!--v-if-->
-  
-  
+  <div
+    class="n8n-node-icon"
+    shrink="false"
+  >
+    <div
+      class="nodeIconWrapper"
+      style="width: 30px; height: 30px; font-size: 30px; line-height: 30px;"
+    >
+      <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+      
+      <div
+        class="nodeIconPlaceholder"
+      >
+        ?
+      </div>
+      
+    </div>
+  </div>
   <!--v-if-->
   <!--v-if-->
   <div
@@ -65,8 +97,24 @@ exports[`CanvasNodeDefault > configuration > should render configuration node co
   style="--canvas-node--main-input-count: 0; --canvas-node--main-output-count: 0;"
 >
   <!--v-if-->
-  
-  
+  <div
+    class="n8n-node-icon"
+    shrink="false"
+  >
+    <div
+      class="nodeIconWrapper"
+      style="width: 30px; height: 30px; font-size: 30px; line-height: 30px;"
+    >
+      <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+      
+      <div
+        class="nodeIconPlaceholder"
+      >
+        ?
+      </div>
+      
+    </div>
+  </div>
   <!--v-if-->
   <!--v-if-->
   <div
@@ -94,8 +142,24 @@ exports[`CanvasNodeDefault > should render node correctly 1`] = `
   style="--canvas-node--main-input-count: 0; --canvas-node--main-output-count: 0;"
 >
   <!--v-if-->
-  
-  
+  <div
+    class="n8n-node-icon"
+    shrink="false"
+  >
+    <div
+      class="nodeIconWrapper"
+      style="width: 40px; height: 40px; font-size: 40px; line-height: 40px;"
+    >
+      <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+      
+      <div
+        class="nodeIconPlaceholder"
+      >
+        ?
+      </div>
+      
+    </div>
+  </div>
   <!--v-if-->
   <!--v-if-->
   <div
@@ -123,8 +187,24 @@ exports[`CanvasNodeDefault > trigger > should render trigger node correctly 1`] 
   style="--canvas-node--main-input-count: 0; --canvas-node--main-output-count: 0;"
 >
   <!--v-if-->
-  
-  
+  <div
+    class="n8n-node-icon"
+    shrink="false"
+  >
+    <div
+      class="nodeIconWrapper"
+      style="width: 40px; height: 40px; font-size: 40px; line-height: 40px;"
+    >
+      <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+      
+      <div
+        class="nodeIconPlaceholder"
+      >
+        ?
+      </div>
+      
+    </div>
+  </div>
   <!--v-if-->
   <!--v-if-->
   <div

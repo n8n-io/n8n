@@ -21,6 +21,7 @@ import { MarkerType } from '@vue-flow/core';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { mock } from 'vitest-mock-extended';
+import { useRootStore } from '../stores/root.store';
 
 beforeEach(() => {
 	const pinia = createTestingPinia({
@@ -147,6 +148,10 @@ describe('useCanvasMapping', () => {
 							options: {
 								configurable: false,
 								configuration: false,
+								icon: {
+									src: '/nodes/test-node/icon.svg',
+									type: 'file',
+								},
 								trigger: true,
 								inputs: {
 									labelSize: 'small',
@@ -280,12 +285,19 @@ describe('useCanvasMapping', () => {
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
 				});
 
+				const rootStore = mockedStore(useRootStore);
+				rootStore.baseUrl = 'http://test.local/';
+
 				expect(mappedNodes.value[0]?.data?.render).toEqual({
 					type: CanvasNodeRenderType.Default,
 					options: {
 						configurable: false,
 						configuration: false,
 						trigger: true,
+						icon: {
+							src: 'http://test.local/nodes/test-node/icon.svg',
+							type: 'file',
+						},
 						inputs: {
 							labelSize: 'small',
 						},

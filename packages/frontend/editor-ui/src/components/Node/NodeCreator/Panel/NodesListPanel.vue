@@ -19,6 +19,7 @@ import ActionsRenderer from '../Modes/ActionsMode.vue';
 import NodesRenderer from '../Modes/NodesMode.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useDebounce } from '@/composables/useDebounce';
+import NodeIcon from '@/components/NodeIcon.vue';
 
 const i18n = useI18n();
 const { callDebounced } = useDebounce();
@@ -155,13 +156,10 @@ function onBackButton() {
 					>
 						<font-awesome-icon :class="$style.backButtonIcon" icon="arrow-left" size="2x" />
 					</button>
-					<n8n-node-icon
+					<NodeIcon
 						v-if="activeViewStack.nodeIcon"
 						:class="$style.nodeIcon"
-						:type="activeViewStack.nodeIcon.iconType || 'unknown'"
-						:src="activeViewStack.nodeIcon.icon"
-						:name="activeViewStack.nodeIcon.icon"
-						:color="activeViewStack.nodeIcon.color"
+						:icon-source="activeViewStack.nodeIcon"
 						:circle="false"
 						:show-tooltip="false"
 						:size="20"

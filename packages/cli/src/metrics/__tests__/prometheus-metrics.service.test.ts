@@ -23,6 +23,8 @@ jest.mock('prom-client');
 jest.mock('express-prom-bundle', () => jest.fn(() => mockMiddleware));
 
 describe('PrometheusMetricsService', () => {
+	promClient.Counter.prototype.inc = jest.fn();
+
 	const globalConfig = mockInstance(GlobalConfig, {
 		endpoints: {
 			metrics: {

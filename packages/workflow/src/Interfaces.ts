@@ -1352,6 +1352,8 @@ export type FilterTypeOptions = {
 
 export type AssignmentTypeOptions = Partial<{
 	hideType?: boolean; // visible by default
+	defaultType?: FieldType | 'string';
+	disableType?: boolean; // visible by default
 }>;
 
 export type DisplayCondition =
@@ -1374,6 +1376,7 @@ export interface IDisplayOptions {
 	};
 	show?: {
 		'@version'?: Array<number | DisplayCondition>;
+		'@tool'?: [boolean];
 		[key: string]: Array<NodeParameterValue | DisplayCondition> | undefined;
 	};
 
@@ -2087,6 +2090,11 @@ export type KnownNodesAndCredentials = {
 	nodes: Record<string, NodeLoadingDetails>;
 	credentials: Record<string, CredentialLoadingDetails>;
 };
+
+export interface LoadedNodesAndCredentials {
+	nodes: INodeTypeData;
+	credentials: ICredentialTypeData;
+}
 
 export interface LoadedClass<T> {
 	sourcePath: string;

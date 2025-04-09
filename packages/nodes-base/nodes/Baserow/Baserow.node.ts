@@ -120,7 +120,9 @@ export class Baserow implements INodeType {
 					endpoint,
 					jwtToken,
 				)) as LoadedResource[];
-				return toOptions(databases);
+				// Baserow has different types of applications, we only want the databases
+				// https://api.baserow.io/api/redoc/#tag/Applications/operation/list_all_applications
+				return toOptions(databases.filter((database) => database.type === 'database'));
 			},
 
 			async getTableIds(this: ILoadOptionsFunctions) {

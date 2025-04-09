@@ -29,6 +29,7 @@ import {
 	faChartBar,
 	faCheck,
 	faCheckCircle,
+	faCheckDouble,
 	faCheckSquare,
 	faChevronDown,
 	faChevronUp,
@@ -187,6 +188,7 @@ import {
 	statusCanceled,
 	statusNew,
 	statusUnknown,
+	statusWarning,
 	faPopOut,
 } from './custom';
 import { faStickyNote } from '@fortawesome/free-regular-svg-icons';
@@ -225,6 +227,7 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faChartBar);
 		addIcon(faCheck);
 		addIcon(faCheckCircle);
+		addIcon(faCheckDouble);
 		addIcon(faCheckSquare);
 		addIcon(faChevronLeft);
 		addIcon(faChevronRight);
@@ -383,6 +386,7 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(statusCanceled);
 		addIcon(statusNew);
 		addIcon(statusUnknown);
+		addIcon(statusWarning);
 
 		addIcon(faPopOut);
 
