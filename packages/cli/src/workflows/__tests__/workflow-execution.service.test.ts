@@ -92,6 +92,7 @@ describe('WorkflowExecutionService', () => {
 			const runPayload = mock<WorkflowRequest.ManualRunPayload>({
 				startNodes: [],
 				destinationNode: undefined,
+				aiToolTestParameters: undefined,
 			});
 
 			workflowRunner.run.mockResolvedValue(executionId);
@@ -123,6 +124,7 @@ describe('WorkflowExecutionService', () => {
 				workflowData: { nodes: [node] },
 				startNodes: [],
 				destinationNode: node.name,
+				aiToolTestParameters: undefined,
 			});
 
 			jest
@@ -200,9 +202,53 @@ describe('WorkflowExecutionService', () => {
 					],
 					dirtyNodeNames: runPayload.dirtyNodeNames,
 					triggerToStartFrom: runPayload.triggerToStartFrom,
+					aiToolTestParameters: runPayload.aiToolTestParameters,
 				});
 				expect(result).toEqual({ executionId });
 			});
+		});
+
+		test('should pass aiToolTestParameters for partial execution of tools', async () => {
+			const executionId = 'fake-execution-id';
+			const userId = 'user-id';
+			const user = mock<User>({ id: userId });
+
+			const runPayload = mock<WorkflowRequest.ManualRunPayload>({
+				startNodes: [],
+				workflowData: {
+					pinData: {},
+					nodes: [hackerNewsNode],
+				},
+				triggerToStartFrom: undefined,
+				destinationNode: 'Hacker News',
+				aiToolTestParameters: {
+					full_name: 'Mr. Input 1',
+				},
+			});
+
+			jest
+				.spyOn(nodeTypes, 'getByNameAndVersion')
+				.mockReturnValueOnce(mock<INodeType>({ description: { group: ['transform'] } }));
+
+			workflowRunner.run.mockResolvedValue(executionId);
+
+			const result = await workflowExecutionService.executeManually(runPayload, user, 'a', 2);
+
+			expect(workflowRunner.run).toHaveBeenCalledWith({
+				destinationNode: runPayload.destinationNode,
+				executionMode: 'manual',
+				runData: runPayload.runData,
+				pinData: runPayload.workflowData.pinData,
+				pushRef: 'a',
+				workflowData: runPayload.workflowData,
+				userId,
+				startNodes: runPayload.startNodes,
+				partialExecutionVersion: 2,
+				dirtyNodeNames: runPayload.dirtyNodeNames,
+				triggerToStartFrom: runPayload.triggerToStartFrom,
+				aiToolTestParameters: runPayload.aiToolTestParameters,
+			});
+			expect(result).toEqual({ executionId });
 		});
 
 		test('should start from pinned trigger', async () => {

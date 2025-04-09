@@ -116,7 +116,9 @@ describe('WorkflowExecute', () => {
 
 				// Check if other data has correct value
 				expect(result.finished).toEqual(true);
-				expect(result.data.executionData!.contextData).toEqual({});
+				expect(result.data.executionData!.contextData).toEqual({
+					aiToolTestParameters: {},
+				});
 				expect(result.data.executionData!.nodeExecutionStack).toEqual([]);
 			});
 		}
@@ -185,7 +187,9 @@ describe('WorkflowExecute', () => {
 
 				// Check if other data has correct value
 				expect(result.finished).toEqual(true);
-				expect(result.data.executionData!.contextData).toEqual({});
+				expect(result.data.executionData!.contextData).toEqual({
+					aiToolTestParameters: {},
+				});
 				expect(result.data.executionData!.nodeExecutionStack).toEqual([]);
 			});
 		}

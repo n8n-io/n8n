@@ -226,6 +226,7 @@ describe('ManualExecutionService', () => {
 				executionMode: 'manual',
 				destinationNode: undefined,
 				pinData: undefined,
+				aiToolTestParameters: undefined,
 			});
 
 			const workflow = mock<Workflow>({
@@ -248,6 +249,7 @@ describe('ManualExecutionService', () => {
 				undefined, // startNode
 				undefined, // destinationNode
 				undefined, // pinData
+				undefined, // aiToolTestParameters
 			);
 		});
 
@@ -257,6 +259,7 @@ describe('ManualExecutionService', () => {
 				pinData: {},
 				startNodes: [],
 				destinationNode: undefined,
+				aiToolTestParameters: undefined,
 			});
 
 			const startNode = mock<INode>({ name: 'startNode' });
@@ -291,6 +294,7 @@ describe('ManualExecutionService', () => {
 				startNode, // startNode
 				undefined, // destinationNode
 				data.pinData, // pinData
+				data.aiToolTestParameters, // aiToolTestParameters
 			);
 		});
 
