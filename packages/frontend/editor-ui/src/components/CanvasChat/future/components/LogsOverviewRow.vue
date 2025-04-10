@@ -2,7 +2,7 @@
 import { type TreeNode as ElTreeNode } from 'element-plus';
 import { getSubtreeTotalConsumedTokens, type TreeNode } from '@/components/RunDataAi/utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { computed } from 'vue';
+import { computed, useTemplateRef, watch } from 'vue';
 import { type INodeUi } from '@/Interface';
 import { N8nButton, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import { type ITaskData } from 'n8n-workflow';
@@ -29,6 +29,7 @@ const emit = defineEmits<{
 }>();
 
 const locale = useI18n();
+const containerRef = useTemplateRef('containerRef');
 const workflowsStore = useWorkflowsStore();
 const nodeTypeStore = useNodeTypesStore();
 const node = computed<INodeUi | undefined>(() => workflowsStore.nodesByName[props.data.node]);
@@ -78,11 +79,22 @@ function isLastChild(level: number) {
 		(data?.node === lastSibling?.node && data?.runIndex === lastSibling?.runIndex)
 	);
 }
+
+watch(
+	[() => props.isSelected, containerRef],
+	([isSelected, ref]) => {
+		if (isSelected && ref) {
+			ref.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+		}
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
 	<div
 		v-if="node !== undefined"
+		ref="containerRef"
 		:class="{
 			[$style.container]: true,
 			[$style.compact]: props.isCompact,
@@ -107,8 +119,8 @@ function isLastChild(level: number) {
 			size="small"
 			:class="$style.name"
 			:color="isError ? 'danger' : undefined"
-			>{{ node.name }}</N8nText
-		>
+			>{{ node.name }}
+		</N8nText>
 		<N8nText tag="div" color="text-light" size="small" :class="$style.timeTook">
 			<I18nT v-if="isSettled && runData" keypath="logs.overview.body.summaryText">
 				<template #status>
