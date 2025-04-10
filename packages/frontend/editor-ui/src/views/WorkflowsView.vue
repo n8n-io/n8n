@@ -11,7 +11,6 @@ import WorkflowCard from '@/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import {
 	EASY_AI_WORKFLOW_EXPERIMENT,
-	AI_CREDITS_EXPERIMENT,
 	EnterpriseEditionFeature,
 	VIEWS,
 	DEFAULT_WORKFLOW_PAGE_SIZE,

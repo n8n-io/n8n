@@ -18,7 +18,7 @@ import type { PushMessage } from '@n8n/api-types';
 
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
-import { AI_CREDITS_EXPERIMENT, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/event-bus';
 import { useUIStore } from '@/stores/ui.store';

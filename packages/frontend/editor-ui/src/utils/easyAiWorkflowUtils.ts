@@ -1,5 +1,5 @@
 import type { WorkflowDataWithTemplateId } from '@/Interface';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 /**
  * Generates a workflow JSON object for an AI Agent in n8n.
@@ -79,7 +79,7 @@ export const getEasyAiWorkflowJson = (): WorkflowDataWithTemplateId => {
 					[
 						{
 							node: 'Agent',
-							type: NodeConnectionType.Main,
+							type: NodeConnectionTypes.Main,
 							index: 0,
 						},
 					],
@@ -90,7 +90,7 @@ export const getEasyAiWorkflowJson = (): WorkflowDataWithTemplateId => {
 					[
 						{
 							node: 'Agent',
-							type: NodeConnectionType.AiLanguageModel,
+							type: NodeConnectionTypes.AiLanguageModel,
 							index: 0,
 						},
 					],
