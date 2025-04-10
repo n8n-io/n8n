@@ -2,7 +2,7 @@
 	"compilerOptions": {
 		"strict": true,
 		"module": "commonjs",
-		"moduleResolution": "node",
+		"moduleResolution": "node16",
 		"target": "es2021",
 		"lib": ["es2021", "es2022.error", "dom"],
 		"removeComments": true,
