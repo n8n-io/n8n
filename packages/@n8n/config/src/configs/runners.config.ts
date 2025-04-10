@@ -4,7 +4,7 @@ import { Config, Env } from '../decorators';
 
 const runnerModeSchema = z.enum(['internal', 'external']);
 
-type RunnerMode = z.infer<typeof runnerModeSchema>;
+export type TaskRunnerMode = z.infer<typeof runnerModeSchema>;
 
 @Config
 export class TaskRunnersConfig {
@@ -16,7 +16,7 @@ export class TaskRunnersConfig {
 	 * or as a separate process launched outside n8n (external mode).
 	 */
 	@Env('N8N_RUNNERS_MODE', runnerModeSchema)
-	mode: RunnerMode = 'internal';
+	mode: TaskRunnerMode = 'internal';
 
 	/** Endpoint which task runners connect to */
 	@Env('N8N_RUNNERS_PATH')
