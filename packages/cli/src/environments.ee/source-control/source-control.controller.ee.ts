@@ -175,7 +175,7 @@ export class SourceControlController {
 				`${req.user.firstName} ${req.user.lastName}`,
 				req.user.email,
 			);
-			const result = await this.sourceControlService.pushWorkfolder(payload);
+			const result = await this.sourceControlService.pushWorkfolder(req.user, payload);
 			res.statusCode = result.statusCode;
 			return result.statusResult;
 		} catch (error) {

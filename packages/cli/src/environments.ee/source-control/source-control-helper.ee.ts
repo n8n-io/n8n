@@ -160,9 +160,13 @@ export function getTrackingInformationFromPrePushResult(result: SourceControlled
 	};
 }
 
-export function getTrackingInformationFromPostPushResult(result: SourceControlledFile[]) {
+export function getTrackingInformationFromPostPushResult(
+	result: SourceControlledFile[],
+	userId: string,
+) {
 	const uniques = filterSourceControlledFilesUniqueIds(result);
 	return {
+		userId,
 		workflowsPushed: uniques.filter((file) => file.pushed && file.type === 'workflow').length ?? 0,
 		workflowsEligible: uniques.filter((file) => file.type === 'workflow').length ?? 0,
 		credsPushed:

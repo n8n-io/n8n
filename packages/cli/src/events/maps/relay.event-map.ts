@@ -396,6 +396,7 @@ export type RelayEventMap = {
 	};
 
 	'source-control-user-started-push-ui': {
+		userId?: string;
 		workflowsEligible: number;
 		workflowsEligibleWithConflicts: number;
 		credsEligible: number;
@@ -404,6 +405,7 @@ export type RelayEventMap = {
 	};
 
 	'source-control-user-finished-push-ui': {
+		userId: string;
 		workflowsEligible: number;
 		workflowsPushed: number;
 		credsPushed: number;

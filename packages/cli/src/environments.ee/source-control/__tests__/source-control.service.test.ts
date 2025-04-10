@@ -45,8 +45,9 @@ describe('SourceControlService', () => {
 
 	describe('pushWorkfolder', () => {
 		it('should throw an error if a file is given that is not in the workfolder', async () => {
+			const user = mock<User>();
 			await expect(
-				sourceControlService.pushWorkfolder({
+				sourceControlService.pushWorkfolder(user, {
 					fileNames: [
 						{
 							file: '/etc/passwd',
@@ -115,8 +116,9 @@ describe('SourceControlService', () => {
 		});
 
 		it('should throw an error if a file is given that is not in the workfolder', async () => {
+			const user = mock<User>();
 			await expect(
-				sourceControlService.pushWorkfolder({
+				sourceControlService.pushWorkfolder(user, {
 					fileNames: [
 						{
 							file: '/etc/passwd',
