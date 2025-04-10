@@ -41,18 +41,8 @@ describe(restoreChatHistory, () => {
 				createdAt: '2025-04-20T00:00:00.000Z',
 			}),
 		).toEqual([
-			{
-				createdAt: '2025-04-20T00:00:01.000Z',
-				id: expect.any(String),
-				sender: 'user',
-				text: 'test input',
-			},
-			{
-				createdAt: '2025-04-20T00:00:02.999Z',
-				id: 'test-exec-id',
-				sender: 'bot',
-				text: 'test output',
-			},
+			{ id: expect.any(String), sender: 'user', text: 'test input' },
+			{ id: 'test-exec-id', sender: 'bot', text: 'test output' },
 		]);
 	});
 });
